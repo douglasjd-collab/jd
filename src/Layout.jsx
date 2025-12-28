@@ -16,17 +16,29 @@ import {
   Menu,
   X,
   ChevronDown,
-  Wallet
+  Wallet,
+  Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import LogoUploader from '@/components/ui/LogoUploader';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [logoUploaderOpen, setLogoUploaderOpen] = useState(false);
 
   useEffect(() => {
     loadUser();
+    loadLogo();
   }, []);
 
   const loadUser = async () => {
@@ -35,6 +47,17 @@ export default function Layout({ children, currentPageName }) {
       setUser(userData);
     } catch (e) {
       console.log('User not logged in');
+    }
+  };
+
+  const loadLogo = async () => {
+    try {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
+      if (configs.length > 0 && configs[0].valor) {
+        setLogoUrl(configs[0].valor);
+      }
+    } catch (e) {
+      console.log('No logo configured');
     }
   };
 
@@ -61,8 +84,9 @@ export default function Layout({ children, currentPageName }) {
       ]
     },
     { name: 'Importação', icon: Upload, page: 'Importacao', roles: ['master', 'admin'] },
-    { name: 'Comissões', icon: Wallet, page: 'Comissoes', roles: ['master', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'admin', 'vendedor'] },
     { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'admin', 'gerente'] },
+    { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'admin'] },
   ];
 
@@ -107,9 +131,13 @@ export default function Layout({ children, currentPageName }) {
       )}>
         <div className="p-6 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-              <Wallet className="w-5 h-5" />
-            </div>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
+            ) : (
+              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                <Wallet className="w-5 h-5" />
+              </div>
+            )}
             <div>
               <h1 className="font-bold text-lg">CRM Consórcio</h1>
               <p className="text-xs text-white/60">Gestão Financeira</p>
@@ -123,15 +151,32 @@ export default function Layout({ children, currentPageName }) {
         {/* User Info */}
         {user && (
           <div className="p-4 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                <UserCircle className="w-6 h-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{user.full_name}</p>
-                <p className="text-xs text-white/60 capitalize">{user.perfil || 'Vendedor'}</p>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full flex items-center gap-3 hover:bg-white/10 p-2 rounded-xl transition-colors">
+                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+                    <UserCircle className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-medium truncate">{user.full_name}</p>
+                    <p className="text-xs text-white/60 capitalize">{user.perfil || 'Vendedor'}</p>
+                  </div>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {(user.perfil === 'master' || user.perfil === 'admin') && (
+                  <DropdownMenuItem onClick={() => setLogoUploaderOpen(true)}>
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    Alterar Logo
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
 
@@ -196,16 +241,7 @@ export default function Layout({ children, currentPageName }) {
           ))}
         </nav>
 
-        {/* Logout */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Sair</span>
-          </button>
-        </div>
+
       </aside>
 
       {/* Main Content */}
@@ -214,6 +250,16 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </div>
       </main>
+
+      {/* Logo Uploader Modal */}
+      <LogoUploader 
+        open={logoUploaderOpen} 
+        onOpenChange={setLogoUploaderOpen}
+        onSuccess={(url) => {
+          setLogoUrl(url);
+          loadLogo();
+        }}
+      />
     </div>
   );
 }

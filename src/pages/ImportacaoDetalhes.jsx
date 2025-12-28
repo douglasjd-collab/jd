@@ -182,7 +182,7 @@ function ItemsTable({ itens, formatCurrency, showMotivo = false }) {
         <TableHeader>
           <TableRow>
             <TableHead>Linha</TableHead>
-            <TableHead>CPF</TableHead>
+            <TableHead>Contrato</TableHead>
             <TableHead>Grupo</TableHead>
             <TableHead>Cota</TableHead>
             <TableHead>Parcela</TableHead>
@@ -195,9 +195,9 @@ function ItemsTable({ itens, formatCurrency, showMotivo = false }) {
           {itens.map((item) => (
             <TableRow key={item.id}>
               <TableCell>{item.linha}</TableCell>
-              <TableCell>{item.cpf || '-'}</TableCell>
-              <TableCell>{item.grupo}</TableCell>
-              <TableCell>{item.cota}</TableCell>
+              <TableCell>{item.contrato || '-'}</TableCell>
+              <TableCell>{item.grupo || '-'}</TableCell>
+              <TableCell>{item.cota || '-'}</TableCell>
               <TableCell>{item.parcela}</TableCell>
               <TableCell>{formatCurrency(item.valor_recebido)}</TableCell>
               <TableCell><StatusBadge status={item.status} /></TableCell>

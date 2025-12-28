@@ -12,6 +12,8 @@ import Comissoes from './pages/Comissoes';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
 import ClienteDetalhes from './pages/ClienteDetalhes';
+import MeusDados from './pages/MeusDados';
+import Saques from './pages/Saques';
 import __Layout from './Layout.jsx';
 
 
@@ -30,6 +32,8 @@ export const PAGES = {
     "Relatorios": Relatorios,
     "Configuracoes": Configuracoes,
     "ClienteDetalhes": ClienteDetalhes,
+    "MeusDados": MeusDados,
+    "Saques": Saques,
 }
 
 export const pagesConfig = {

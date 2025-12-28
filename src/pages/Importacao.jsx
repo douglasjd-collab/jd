@@ -101,12 +101,13 @@ export default function Importacao() {
           items: {
             type: "object",
             properties: {
-              cpf: { type: "string" },
+              data_recebimento: { type: "string" },
               contrato: { type: "string" },
               grupo: { type: "string" },
               cota: { type: "string" },
+              valor: { type: "number" },
               parcela: { type: "number" },
-              valor: { type: "number" }
+              administradora: { type: "string" }
             }
           }
         }
@@ -153,51 +154,34 @@ export default function Importacao() {
       const itensParaCriar = [];
 
       for (const item of previewData.items) {
+        const contrato = String(item.contrato || '').trim();
         const grupo = String(item.grupo || '').trim();
         const cota = String(item.cota || '').trim();
-        const cpf = String(item.cpf || '').replace(/\D/g, '');
-        const contrato = String(item.contrato || '').trim();
         const numeroParcela = parseInt(item.parcela) || 1;
         const valorRecebido = parseFloat(item.valor) || 0;
+        const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
 
-        // Regras de identificação da venda
+        // NOVAS REGRAS DE IDENTIFICAÇÃO
         let vendaEncontrada = null;
         let motivoDivergencia = '';
 
-        // 1. CPF + Grupo + Cota
-        if (cpf && grupo && cota) {
-          const vendasMatch = vendas.filter(v => 
-            v.cliente_cpf?.replace(/\D/g, '') === cpf &&
-            String(v.grupo).trim() === grupo &&
-            String(v.cota).trim() === cota &&
-            v.administradora_id === selectedAdmin
-          );
-          
-          if (vendasMatch.length === 1) {
-            vendaEncontrada = vendasMatch[0];
-          } else if (vendasMatch.length > 1) {
-            motivoDivergencia = 'Múltiplas vendas encontradas para CPF + Grupo + Cota';
-          }
-        }
-
-        // 2. Contrato + Grupo + Cota
-        if (!vendaEncontrada && !motivoDivergencia && contrato && grupo && cota) {
+        // REGRA 1 - PRIORIDADE CONTRATO
+        if (contrato) {
           const vendasMatch = vendas.filter(v => 
             v.contrato === contrato &&
-            String(v.grupo).trim() === grupo &&
-            String(v.cota).trim() === cota &&
             v.administradora_id === selectedAdmin
           );
           
           if (vendasMatch.length === 1) {
             vendaEncontrada = vendasMatch[0];
           } else if (vendasMatch.length > 1) {
-            motivoDivergencia = 'Múltiplas vendas encontradas para Contrato + Grupo + Cota';
+            motivoDivergencia = 'Múltiplas vendas encontradas para Contrato + Administradora';
+          } else {
+            motivoDivergencia = 'Venda não encontrada para o contrato informado';
           }
         }
-
-        // 3. Grupo + Cota + Administradora
-        if (!vendaEncontrada && !motivoDivergencia && grupo && cota) {
+        // REGRA 2 - PRIORIDADE GRUPO + COTA
+        else if (grupo && cota) {
           const vendasMatch = vendas.filter(v => 
             String(v.grupo).trim() === grupo &&
             String(v.cota).trim() === cota &&
@@ -207,14 +191,14 @@ export default function Importacao() {
           if (vendasMatch.length === 1) {
             vendaEncontrada = vendasMatch[0];
           } else if (vendasMatch.length > 1) {
-            motivoDivergencia = 'Múltiplas vendas encontradas para Grupo + Cota';
+            motivoDivergencia = 'Múltiplas vendas encontradas para Grupo + Cota + Administradora';
           } else {
-            motivoDivergencia = 'Venda não encontrada';
+            motivoDivergencia = 'Venda não encontrada para o Grupo e Cota informados';
           }
         }
-
-        if (!grupo || !cota) {
-          motivoDivergencia = 'Grupo ou Cota não informados';
+        // REGRA DE SEGURANÇA - Dados insuficientes
+        else {
+          motivoDivergencia = 'Dados insuficientes: informe Contrato OU (Grupo + Cota)';
         }
 
         // Verificar parcela
@@ -242,7 +226,7 @@ export default function Importacao() {
         const itemImportacao = {
           importacao_id: importacao.id,
           linha: previewData.items.indexOf(item) + 1,
-          cpf,
+          cpf: '',
           contrato,
           grupo,
           cota,
@@ -261,7 +245,7 @@ export default function Importacao() {
           await base44.entities.Parcela.update(parcelaEncontrada.id, {
             status: 'recebida',
             valor_recebido: valorRecebido,
-            data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+            data_recebimento: dataRecebimento,
             importacao_id: importacao.id
           });
 
@@ -270,6 +254,33 @@ export default function Importacao() {
           await base44.entities.Venda.update(vendaEncontrada.id, {
             comissao_total_recebida: novoValorRecebido
           });
+
+          // GERAR COMISSÃO PARA O VENDEDOR (adiciona ao saldo)
+          if (vendaEncontrada.vendedor_id) {
+            // Buscar vendedor
+            const vendedores = await base44.entities.User.filter({ id: vendaEncontrada.vendedor_id });
+            if (vendedores.length > 0) {
+              const vendedor = vendedores[0];
+              const novoSaldo = (vendedor.saldo_comissao || 0) + valorRecebido;
+              
+              // Atualizar saldo do vendedor
+              await base44.entities.User.update(vendedor.id, {
+                saldo_comissao: novoSaldo
+              });
+
+              // Criar registro de comissão
+              await base44.entities.Comissao.create({
+                venda_id: vendaEncontrada.id,
+                parcela_id: parcelaEncontrada.id,
+                usuario_id: vendedor.id,
+                usuario_nome: vendedor.full_name,
+                usuario_perfil: vendedor.perfil,
+                tipo: 'receber',
+                valor: valorRecebido,
+                status: 'confirmada'
+              });
+            }
+          }
 
           processados++;
           valorTotal += valorRecebido;
@@ -469,7 +480,7 @@ export default function Importacao() {
                         {file ? file.name : 'Clique para selecionar arquivo'}
                       </span>
                       <span className="text-xs text-slate-400">
-                        Colunas esperadas: CPF, Contrato, Grupo, Cota, Parcela, Valor
+                        Colunas: A=Data Recebimento, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela, G=Administradora
                       </span>
                     </div>
                   )}
@@ -485,21 +496,23 @@ export default function Importacao() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>CPF</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Contrato</TableHead>
                         <TableHead>Grupo</TableHead>
                         <TableHead>Cota</TableHead>
-                        <TableHead>Parcela</TableHead>
                         <TableHead>Valor</TableHead>
+                        <TableHead>Parcela</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {previewData.items.slice(0, 10).map((item, i) => (
                         <TableRow key={i}>
-                          <TableCell>{item.cpf || '-'}</TableCell>
+                          <TableCell>{item.data_recebimento || '-'}</TableCell>
+                          <TableCell>{item.contrato || '-'}</TableCell>
                           <TableCell>{item.grupo || '-'}</TableCell>
                           <TableCell>{item.cota || '-'}</TableCell>
-                          <TableCell>{item.parcela || '-'}</TableCell>
                           <TableCell>{formatCurrency(item.valor)}</TableCell>
+                          <TableCell>{item.parcela || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -518,13 +531,17 @@ export default function Importacao() {
               <CardContent className="p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div className="text-sm text-amber-800">
-                  <p className="font-medium">Regras de identificação:</p>
-                  <ol className="list-decimal ml-4 mt-2 space-y-1">
-                    <li>CPF + Grupo + Cota</li>
-                    <li>Contrato + Grupo + Cota</li>
-                    <li>Grupo + Cota + Administradora</li>
-                  </ol>
-                  <p className="mt-2">Registros com múltiplas vendas ou parcelas já baixadas serão marcados como divergência.</p>
+                <p className="font-medium">Regras de identificação:</p>
+                <ol className="list-decimal ml-4 mt-2 space-y-1">
+                  <li><strong>Se Contrato informado:</strong> Busca por Contrato + Administradora (Grupo e Cota não obrigatórios)</li>
+                  <li><strong>Se Grupo e Cota informados:</strong> Busca por Grupo + Cota + Administradora (Contrato não obrigatório)</li>
+                </ol>
+                <p className="mt-2 font-medium">⚠️ Divergências:</p>
+                <ul className="list-disc ml-4 mt-1 space-y-1">
+                  <li>Múltiplas vendas encontradas</li>
+                  <li>Parcela já baixada</li>
+                  <li>Dados insuficientes</li>
+                </ul>
                 </div>
               </CardContent>
             </Card>

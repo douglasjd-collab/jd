@@ -122,11 +122,11 @@ export default function Relatorios() {
       .sort((a, b) => b.valor - a.valor);
   }, [vendasFiltradas]);
 
-  // Comissões a pagar por vendedor
+  // Comissões recebidas por vendedor
   const comissoesPorVendedor = React.useMemo(() => {
     const data = {};
     comissoes
-      .filter(c => c.tipo === 'pagar' && c.status !== 'paga')
+      .filter(c => c.tipo === 'receber')
       .forEach(c => {
         const nome = c.usuario_nome || 'Sem nome';
         if (!data[nome]) {
@@ -206,7 +206,7 @@ export default function Relatorios() {
           </TabsTrigger>
           <TabsTrigger value="comissoes" className="gap-2">
             <TrendingUp className="w-4 h-4" />
-            Comissões a Pagar
+            Comissões Recebidas
           </TabsTrigger>
         </TabsList>
 
@@ -328,11 +328,11 @@ export default function Relatorios() {
           </div>
         </TabsContent>
 
-        {/* Comissões a Pagar */}
+        {/* Comissões Recebidas */}
         <TabsContent value="comissoes">
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle>Comissões Pendentes de Pagamento</CardTitle>
+              <CardTitle>Comissões Recebidas por Vendedor</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
@@ -341,7 +341,7 @@ export default function Relatorios() {
                     <TableHead>Usuário</TableHead>
                     <TableHead>Perfil</TableHead>
                     <TableHead className="text-right">Quantidade</TableHead>
-                    <TableHead className="text-right">Total a Pagar</TableHead>
+                    <TableHead className="text-right">Total Recebido</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -350,7 +350,7 @@ export default function Relatorios() {
                       <TableCell className="font-medium">{r.nome}</TableCell>
                       <TableCell className="capitalize">{r.perfil}</TableCell>
                       <TableCell className="text-right">{r.quantidade}</TableCell>
-                      <TableCell className="text-right font-semibold text-amber-600">
+                      <TableCell className="text-right font-semibold text-emerald-600">
                         {formatCurrency(r.total)}
                       </TableCell>
                     </TableRow>
@@ -358,7 +358,7 @@ export default function Relatorios() {
                   {comissoesPorVendedor.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-slate-500 py-8">
-                        Nenhuma comissão pendente
+                        Nenhuma comissão encontrada
                       </TableCell>
                     </TableRow>
                   )}
@@ -368,8 +368,8 @@ export default function Relatorios() {
               {/* Total */}
               {comissoesPorVendedor.length > 0 && (
                 <div className="mt-4 p-4 bg-slate-50 rounded-xl flex justify-between items-center">
-                  <span className="font-semibold">Total a Pagar:</span>
-                  <span className="text-2xl font-bold text-amber-600">
+                  <span className="font-semibold">Total Recebido:</span>
+                  <span className="text-2xl font-bold text-emerald-600">
                     {formatCurrency(comissoesPorVendedor.reduce((acc, r) => acc + r.total, 0))}
                   </span>
                 </div>

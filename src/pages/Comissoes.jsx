@@ -64,17 +64,16 @@ export default function Comissoes() {
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
   const isGerente = currentUser?.perfil === 'gerente';
 
-  // Filtrar por perfil
+  // Filtrar por perfil - apenas comissões recebidas
   const filteredByRole = comissoes.filter(c => {
-    if (isAdmin) return true;
-    return c.usuario_id === currentUser?.id;
+    if (isAdmin) return c.tipo === 'receber'; // Admin vê todas as comissões a receber
+    return c.usuario_id === currentUser?.id && c.tipo === 'receber'; // Vendedor vê apenas suas comissões
   });
 
   const filteredComissoes = filteredByRole.filter(c => {
     const matchSearch = c.usuario_nome?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'todos' || c.status === filterStatus;
-    const matchTipo = filterTipo === 'todos' || c.tipo === filterTipo;
-    return matchSearch && matchStatus && matchTipo;
+    return matchSearch && matchStatus;
   });
 
   const formatCurrency = (value) => {
@@ -84,32 +83,19 @@ export default function Comissoes() {
     }).format(value || 0);
   };
 
-  // Cálculos
-  const comissoesReceber = filteredByRole
-    .filter(c => c.tipo === 'receber')
+  // Cálculos - apenas comissões recebidas
+  const comissoesTotal = filteredByRole
     .reduce((acc, c) => acc + (c.valor || 0), 0);
 
-  const comissoesReceberPrevistas = filteredByRole
-    .filter(c => c.tipo === 'receber' && c.status === 'prevista')
+  const comissoesPrevistas = filteredByRole
+    .filter(c => c.status === 'prevista')
     .reduce((acc, c) => acc + (c.valor || 0), 0);
 
-  const comissoesPagar = filteredByRole
-    .filter(c => c.tipo === 'pagar')
+  const comissoesConfirmadas = filteredByRole
+    .filter(c => c.status === 'confirmada')
     .reduce((acc, c) => acc + (c.valor || 0), 0);
 
-  const comissoesPagarPendentes = filteredByRole
-    .filter(c => c.tipo === 'pagar' && c.status !== 'paga')
-    .reduce((acc, c) => acc + (c.valor || 0), 0);
 
-  const marcarComoPaga = async (comissao) => {
-    updateMutation.mutate({
-      id: comissao.id,
-      data: {
-        status: 'paga',
-        data_pagamento: format(new Date(), 'yyyy-MM-dd')
-      }
-    });
-  };
 
   const columns = [
     {
@@ -121,14 +107,11 @@ export default function Comissoes() {
         </div>
       )
     },
-    {
-      header: 'Tipo',
-      cell: (row) => <StatusBadge status={row.tipo} />
-    },
+
     {
       header: 'Valor',
       cell: (row) => (
-        <span className={`font-semibold ${row.tipo === 'receber' ? 'text-emerald-600' : 'text-amber-600'}`}>
+        <span className="font-semibold text-emerald-600">
           {formatCurrency(row.valor)}
         </span>
       )
@@ -145,21 +128,7 @@ export default function Comissoes() {
       header: 'Data Pagamento',
       cell: (row) => row.data_pagamento ? format(new Date(row.data_pagamento), 'dd/MM/yyyy') : '-'
     },
-    ...(isAdmin ? [{
-      header: '',
-      className: 'w-32',
-      cell: (row) => row.tipo === 'pagar' && row.status !== 'paga' && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => marcarComoPaga(row)}
-          className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-        >
-          <CheckCircle className="w-4 h-4 mr-1" />
-          Pagar
-        </Button>
-      )
-    }] : [])
+
   ];
 
   return (
@@ -172,31 +141,32 @@ export default function Comissoes() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
-          title="Total a Receber"
-          value={formatCurrency(comissoesReceber)}
-          subtitle={`${formatCurrency(comissoesReceberPrevistas)} previsto`}
+          title="Total Recebido"
+          value={formatCurrency(comissoesTotal)}
           icon={TrendingUp}
           color="green"
         />
         <StatsCard
-          title="Total a Pagar"
-          value={formatCurrency(comissoesPagar)}
-          subtitle={`${formatCurrency(comissoesPagarPendentes)} pendente`}
-          icon={TrendingDown}
+          title="Comissões Previstas"
+          value={formatCurrency(comissoesPrevistas)}
+          icon={Wallet}
           color="yellow"
         />
         <StatsCard
-          title="Comissões Pagas"
-          value={filteredByRole.filter(c => c.status === 'paga').length}
+          title="Comissões Confirmadas"
+          value={formatCurrency(comissoesConfirmadas)}
           icon={CheckCircle}
           color="blue"
         />
-        <StatsCard
-          title="Saldo"
-          value={formatCurrency(comissoesReceber - comissoesPagar)}
-          icon={Wallet}
-          color="purple"
-        />
+        {!isAdmin && (
+          <StatsCard
+            title="Saldo Disponível"
+            value={formatCurrency(currentUser?.saldo_comissao)}
+            subtitle="Para saque"
+            icon={Wallet}
+            color="purple"
+          />
+        )}
       </div>
 
       {/* Filters */}
@@ -211,16 +181,7 @@ export default function Comissoes() {
               className="pl-10"
             />
           </div>
-          <Select value={filterTipo} onValueChange={setFilterTipo}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="receber">A Receber</SelectItem>
-              <SelectItem value="pagar">A Pagar</SelectItem>
-            </SelectContent>
-          </Select>
+
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-40">
               <SelectValue />
