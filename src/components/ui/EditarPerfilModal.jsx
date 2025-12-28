@@ -36,7 +36,7 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setFotoUrl(file_url);
-      toast.success('Foto carregada! Clique em "Salvar Alterações" para confirmar.');
+      toast.success('Foto carregada! Clique em "Salvar Foto" para confirmar.');
     } catch (error) {
       toast.error('Erro ao fazer upload da foto');
     } finally {
@@ -45,42 +45,25 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
   };
 
   const handleSalvar = async () => {
-    if (!nomeCompleto.trim()) {
-      toast.error('Digite um nome válido');
+    if (!fotoUrl) {
+      toast.error('Nenhuma alteração para salvar');
       return;
     }
 
     setSalvando(true);
     try {
-      // Atualizar nome e foto no registro do usuário usando updateMe
-      const dataToUpdate = { 
-        full_name: nomeCompleto.trim()
-      };
+      await base44.auth.updateMe({ foto_perfil: fotoUrl });
+
+      toast.success('Foto de perfil atualizada com sucesso!');
       
-      // Só adiciona foto_perfil se houver uma URL válida
-      if (fotoUrl) {
-        dataToUpdate.foto_perfil = fotoUrl;
+      if (onSuccess) {
+        await onSuccess();
       }
-
-      // Usar updateMe para atualizar o próprio perfil do usuário logado
-      await base44.auth.updateMe(dataToUpdate);
-
-      toast.success('Perfil atualizado com sucesso!');
       
-      // Fechar o modal primeiro
       onOpenChange(false);
-      
-      // Aguardar um momento e forçar reload do usuário
-      setTimeout(async () => {
-        if (onSuccess) {
-          await onSuccess();
-        }
-        // Forçar recarregamento da página para garantir atualização completa
-        window.location.reload();
-      }, 500);
     } catch (error) {
-      console.error('Erro detalhado ao atualizar perfil:', error);
-      toast.error('Erro ao atualizar perfil: ' + (error.message || 'Tente novamente'));
+      console.error('Erro ao atualizar foto:', error);
+      toast.error('Erro ao atualizar foto: ' + (error.message || 'Tente novamente'));
     } finally {
       setSalvando(false);
     }
