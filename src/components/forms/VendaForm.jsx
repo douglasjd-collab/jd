@@ -99,16 +99,22 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   }, [vendedorId, vendedores, setValue]);
 
   const loadData = async () => {
-    const [clientesData, adminData, vendedoresData, gerentesData] = await Promise.all([
-      base44.entities.Cliente.filter({ status: 'ativo' }),
-      base44.entities.Administradora.filter({ status: 'ativa' }),
-      base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
-      base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' })
-    ]);
-    setClientes(clientesData);
-    setAdministradoras(adminData);
-    setVendedores(vendedoresData);
-    setGerentes(gerentesData);
+    try {
+      // Buscar TODOS os clientes ativos - sem filtro por perfil ou usuário
+      const [clientesData, adminData, vendedoresData, gerentesData] = await Promise.all([
+        base44.entities.Cliente.filter({ status: 'ativo' }),
+        base44.entities.Administradora.filter({ status: 'ativa' }),
+        base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
+        base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' })
+      ]);
+      setClientes(clientesData);
+      setAdministradoras(adminData);
+      setVendedores(vendedoresData);
+      setGerentes(gerentesData);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast.error('Erro ao carregar dados do formulário');
+    }
   };
 
   const loadTabelas = async (adminId) => {
@@ -171,17 +177,32 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     </div>
                   </div>
                   {filteredClientes.length > 0 ? (
-                    filteredClientes.slice(0, 20).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{c.nome}</span>
-                          <span className="text-xs text-slate-500">{c.cpf}</span>
+                    <>
+                      {searchCliente && (
+                        <div className="px-3 py-2 text-xs text-slate-500 bg-slate-50">
+                          {filteredClientes.length} cliente(s) encontrado(s)
                         </div>
-                      </SelectItem>
-                    ))
+                      )}
+                      {filteredClientes.slice(0, 30).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <div className="flex flex-col py-1">
+                            <span className="font-medium">{c.nome}</span>
+                            <span className="text-xs text-slate-500">CPF: {c.cpf}</span>
+                            {c.telefone && (
+                              <span className="text-xs text-slate-400">Tel: {c.telefone}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  ) : searchCliente ? (
+                    <div className="p-6 text-center">
+                      <p className="text-sm text-slate-500 mb-2">Nenhum cliente encontrado</p>
+                      <p className="text-xs text-slate-400">Tente buscar por nome, CPF ou telefone</p>
+                    </div>
                   ) : (
-                    <div className="p-4 text-center text-sm text-slate-500">
-                      Nenhum cliente encontrado
+                    <div className="p-4 text-center text-sm text-slate-400">
+                      Digite para buscar clientes
                     </div>
                   )}
                 </SelectContent>
