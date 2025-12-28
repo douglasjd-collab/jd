@@ -119,10 +119,17 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     setTabelas(data);
   };
 
-  const filteredClientes = clientes.filter(c => 
-    c.nome?.toLowerCase().includes(searchCliente.toLowerCase()) ||
-    c.cpf?.includes(searchCliente)
-  );
+  const filteredClientes = clientes.filter(c => {
+    const search = searchCliente.toLowerCase().trim();
+    const nome = (c.nome || '').toLowerCase();
+    const cpf = (c.cpf || '').replace(/\D/g, '');
+    const telefone = (c.telefone || '').replace(/\D/g, '');
+    const searchNormalized = search.replace(/\D/g, '');
+    
+    return nome.includes(search) || 
+           cpf.includes(searchNormalized) || 
+           telefone.includes(searchNormalized);
+  });
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
 
@@ -152,19 +159,31 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  <div className="p-2">
-                    <Input
-                      placeholder="Buscar por nome ou CPF..."
-                      value={searchCliente}
-                      onChange={(e) => setSearchCliente(e.target.value)}
-                      className="mb-2"
-                    />
+                  <div className="p-2 sticky top-0 bg-white z-10">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <Input
+                        placeholder="Buscar por nome, CPF ou telefone..."
+                        value={searchCliente}
+                        onChange={(e) => setSearchCliente(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
                   </div>
-                  {filteredClientes.slice(0, 10).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome} - {c.cpf}
-                    </SelectItem>
-                  ))}
+                  {filteredClientes.length > 0 ? (
+                    filteredClientes.slice(0, 20).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{c.nome}</span>
+                          <span className="text-xs text-slate-500">{c.cpf}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-sm text-slate-500">
+                      Nenhum cliente encontrado
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
               {errors.cliente_id && <p className="text-sm text-red-500 mt-1">Cliente é obrigatório</p>}
