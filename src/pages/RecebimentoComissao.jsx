@@ -1052,7 +1052,7 @@ export default function RecebimentoComissao() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-between gap-3">
+                <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"
@@ -1060,19 +1060,26 @@ export default function RecebimentoComissao() {
                       setImportData(null);
                       setImportFile(null);
                     }}
+                    disabled={importarRecebimentosMutation.isPending}
                   >
-                    <X className="w-4 h-4 mr-2" />
-                    Cancelar
+                    Voltar
                   </Button>
                   <Button
                     onClick={handleConfirmarImportacao}
                     disabled={importarRecebimentosMutation.isPending || importData.validos === 0}
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
-                    {importarRecebimentosMutation.isPending && (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {importarRecebimentosMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Importando...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Confirmar Importação ({importData.validos})
+                      </>
                     )}
-                    Importar {importData.validos} Recebimento{importData.validos !== 1 ? 's' : ''}
                   </Button>
                 </div>
               </div>
