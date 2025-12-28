@@ -21,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { createPageUrl } from './utils';
 
 export default function RecebimentoComissao() {
   const [formOpen, setFormOpen] = useState(false);
@@ -71,6 +72,12 @@ export default function RecebimentoComissao() {
   const { data: comissoes = [], isLoading } = useQuery({
     queryKey: ['comissoes-previstas'],
     queryFn: () => base44.entities.Comissao.filter({ status: 'prevista' }),
+  });
+
+  // Buscar comissões recebidas/confirmadas
+  const { data: comissoesRecebidas = [] } = useQuery({
+    queryKey: ['comissoes-recebidas'],
+    queryFn: () => base44.entities.Comissao.filter({ status: 'confirmada' }, '-created_date', 100),
   });
 
   const { data: vendas = [] } = useQuery({
@@ -122,6 +129,7 @@ export default function RecebimentoComissao() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
+      queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
       setFormOpen(false);
       setSelectedComissao(null);
       resetForm();
@@ -217,13 +225,31 @@ export default function RecebimentoComissao() {
       const processedData = processImportData(result.output);
       setImportData(processedData);
       setIsProcessing(false);
+      
+      if (processedData.total === 0) {
+        toast.error('Nenhum dado encontrado no arquivo');
+      } else if (processedData.validos === 0) {
+        toast.warning('Nenhum registro válido encontrado');
+      } else {
+        toast.success(`${processedData.validos} de ${processedData.total} registros válidos`);
+      }
     } catch (error) {
-      toast.error('Erro ao processar arquivo');
+      console.error('Erro ao processar arquivo:', error);
+      toast.error(error.message || 'Erro ao processar arquivo');
       setIsProcessing(false);
     }
   };
 
   const processImportData = (rawData) => {
+    if (!rawData || !Array.isArray(rawData) || rawData.length === 0) {
+      return {
+        total: 0,
+        validos: 0,
+        erros: 0,
+        registros: []
+      };
+    }
+
     const processed = rawData.map((row, index) => {
       const errors = [];
       let venda = null;
@@ -379,6 +405,7 @@ export default function RecebimentoComissao() {
       const errorCount = results.filter(r => !r.success).length;
 
       queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
+      queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
       setImportOpen(false);
       setImportFile(null);
       setImportData(null);
@@ -403,6 +430,119 @@ export default function RecebimentoComissao() {
     const registrosValidos = importData.registros.filter(r => r.isValid);
     importarRecebimentosMutation.mutate(registrosValidos);
   };
+
+  const excluirComissaoMutation = useMutation({
+    mutationFn: async (comissaoId) => {
+      const comissao = comissoesRecebidas.find(c => c.id === comissaoId);
+      if (!comissao) throw new Error('Comissão não encontrada');
+
+      // Reverter saldo
+      const usuarioData = await base44.entities.User.filter({ id: comissao.usuario_id });
+      if (usuarioData.length > 0) {
+        const saldoAtual = usuarioData[0].saldo_comissao || 0;
+        await base44.entities.User.update(comissao.usuario_id, {
+          saldo_comissao: saldoAtual - parseFloat(comissao.valor)
+        });
+      }
+
+      // Excluir comissão
+      await base44.entities.Comissao.delete(comissaoId);
+
+      // Auditoria
+      const user = await base44.auth.me();
+      await base44.entities.LogAuditoria.create({
+        usuario_id: user.id,
+        usuario_nome: user.full_name,
+        acao: `Exclusão de recebimento de comissão`,
+        entidade: 'Comissao',
+        entidade_id: comissaoId,
+        dados_anteriores: JSON.stringify(comissao),
+        tipo: 'exclusao'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
+      toast.success('Recebimento excluído com sucesso');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao excluir recebimento');
+    }
+  });
+
+  const filteredComissoesRecebidas = comissoesRecebidas.filter(c => {
+    if (!isAdmin && c.usuario_id !== currentUser?.id) return false;
+    
+    const matchSearch = 
+      c.usuario_nome?.toLowerCase().includes(search.toLowerCase()) ||
+      getVendaInfo(c.venda_id).toLowerCase().includes(search.toLowerCase());
+    return matchSearch;
+  });
+
+  const historicoColumns = [
+    {
+      header: 'Data',
+      cell: (row) => format(new Date(row.data_recebimento || row.created_date), 'dd/MM/yyyy')
+    },
+    {
+      header: 'Venda',
+      cell: (row) => (
+        <div>
+          <p className="font-medium text-slate-900">{getVendaInfo(row.venda_id)}</p>
+          <p className="text-sm text-slate-500">{getAdminNome(row.administradora_id)}</p>
+        </div>
+      )
+    },
+    {
+      header: 'Vendedor',
+      cell: (row) => row.usuario_nome || '-'
+    },
+    {
+      header: 'Parcela',
+      cell: (row) => {
+        const match = row.observacoes?.match(/Parcela (\d+)/);
+        return match ? match[1] : '-';
+      }
+    },
+    {
+      header: 'Valor',
+      cell: (row) => (
+        <span className="font-semibold text-emerald-600">
+          {formatCurrency(row.valor)}
+        </span>
+      )
+    },
+    {
+      header: '',
+      className: 'w-32',
+      cell: (row) => (
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => window.open(createPageUrl(`VendaDetalhes?id=${row.venda_id}`), '_blank')}
+            title="Ver venda"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </Button>
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                if (confirm('Tem certeza que deseja excluir este recebimento?')) {
+                  excluirComissaoMutation.mutate(row.id);
+                }
+              }}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              title="Excluir"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      )
+    }
+  ];
 
   const registrarRecebimentoManualMutation = useMutation({
     mutationFn: async (data) => {
@@ -454,6 +594,7 @@ export default function RecebimentoComissao() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
+      queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
       setManualFormOpen(false);
       resetManualForm();
       toast.success('Recebimento registrado com sucesso!');
@@ -635,13 +776,26 @@ export default function RecebimentoComissao() {
         />
       </div>
 
-      {/* Table */}
-      <DataTable
-        columns={columns}
-        data={filteredComissoes}
-        isLoading={isLoading}
-        emptyMessage="Nenhuma comissão prevista encontrada"
-      />
+      {/* Table Comissões Previstas */}
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold text-slate-900">Comissões Previstas</h2>
+        <DataTable
+          columns={columns}
+          data={filteredComissoes}
+          isLoading={isLoading}
+          emptyMessage="Nenhuma comissão prevista encontrada"
+        />
+      </div>
+
+      {/* Histórico de Recebimentos */}
+      <div className="space-y-2 mt-8">
+        <h2 className="text-lg font-semibold text-slate-900">Histórico de Recebimentos</h2>
+        <DataTable
+          columns={historicoColumns}
+          data={filteredComissoesRecebidas}
+          emptyMessage="Nenhum recebimento registrado"
+        />
+      </div>
 
       {/* Form Modal */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
