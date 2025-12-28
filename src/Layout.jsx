@@ -77,7 +77,15 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'admin', 'gerente', 'vendedor'] },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'admin', 'gerente', 'vendedor'] },
     { name: 'Vendas', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Recebimento Comissão', icon: Wallet, page: 'RecebimentoComissao', roles: ['master', 'admin', 'gerente', 'vendedor'] },
+    { 
+      name: 'Comissões', 
+      icon: Wallet, 
+      roles: ['master', 'admin', 'gerente', 'vendedor'],
+      submenu: [
+        { name: 'Recebimento de Comissão', page: 'RecebimentoComissao' },
+        { name: 'Comissão a Pagar', page: 'ComissaoPagar' },
+      ]
+    },
     { 
       name: 'Cadastros', 
       icon: Building2, 
