@@ -1,0 +1,272 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PageHeader from '@/components/ui/PageHeader';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { 
+  User, 
+  Building2, 
+  Calendar, 
+  Hash, 
+  Wallet,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+
+export default function VendaDetalhes() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const vendaId = urlParams.get('id');
+  const queryClient = useQueryClient();
+
+  const { data: venda, isLoading: loadingVenda } = useQuery({
+    queryKey: ['venda', vendaId],
+    queryFn: async () => {
+      const vendas = await base44.entities.Venda.filter({ id: vendaId });
+      return vendas[0];
+    },
+    enabled: !!vendaId
+  });
+
+  const { data: parcelas = [], isLoading: loadingParcelas } = useQuery({
+    queryKey: ['parcelas', vendaId],
+    queryFn: () => base44.entities.Parcela.filter({ venda_id: vendaId }),
+    enabled: !!vendaId
+  });
+
+  const { data: comissoes = [] } = useQuery({
+    queryKey: ['comissoes', vendaId],
+    queryFn: () => base44.entities.Comissao.filter({ venda_id: vendaId }),
+    enabled: !!vendaId
+  });
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  if (loadingVenda || !venda) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]"></div>
+      </div>
+    );
+  }
+
+  const parcelasRecebidas = parcelas.filter(p => p.status === 'recebida').length;
+  const totalParcelas = parcelas.length;
+  const valorRecebido = parcelas
+    .filter(p => p.status === 'recebida')
+    .reduce((acc, p) => acc + (p.valor_recebido || p.valor_previsto || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={`Venda - ${venda.grupo}/${venda.cota}`}
+        subtitle={venda.cliente_nome}
+        backTo="Vendas"
+      />
+
+      {/* Status Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-blue-50">
+                <Wallet className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Valor da Carta</p>
+                <p className="text-xl font-bold">{formatCurrency(venda.valor_carta)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-emerald-50">
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Comissão Recebida</p>
+                <p className="text-xl font-bold">{formatCurrency(valorRecebido)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-amber-50">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Comissão Prevista</p>
+                <p className="text-xl font-bold">{formatCurrency(venda.comissao_total_prevista)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-purple-50">
+                <Hash className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Parcelas</p>
+                <p className="text-xl font-bold">{parcelasRecebidas}/{totalParcelas}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Informações da Venda */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle>Informações da Venda</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <User className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Cliente</p>
+                <p className="font-medium">{venda.cliente_nome}</p>
+                <p className="text-sm text-slate-500">{venda.cliente_cpf}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <Building2 className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Administradora</p>
+                <p className="font-medium">{venda.administradora_nome}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <Hash className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Grupo / Cota / Contrato</p>
+                <p className="font-medium">{venda.grupo} / {venda.cota} / {venda.contrato || '-'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <Calendar className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Data da Venda</p>
+                <p className="font-medium">{format(new Date(venda.data_venda), 'dd/MM/yyyy')}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <User className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Vendedor / Gerente</p>
+                <p className="font-medium">{venda.vendedor_nome || '-'}</p>
+                <p className="text-sm text-slate-500">{venda.gerente_nome || '-'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+              <span className="text-slate-500">Status</span>
+              <StatusBadge status={venda.status} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Parcelas */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle>Parcelas de Comissão</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {parcelas.length > 0 ? (
+              <div className="max-h-96 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Parcela</TableHead>
+                      <TableHead>Previsto</TableHead>
+                      <TableHead>Recebido</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {parcelas.sort((a, b) => a.numero_parcela - b.numero_parcela).map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.numero_parcela}</TableCell>
+                        <TableCell>{formatCurrency(p.valor_previsto)}</TableCell>
+                        <TableCell>{p.valor_recebido ? formatCurrency(p.valor_recebido) : '-'}</TableCell>
+                        <TableCell><StatusBadge status={p.status} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-center text-slate-500 py-8">Nenhuma parcela cadastrada</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Comissões */}
+      {comissoes.length > 0 && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle>Comissões</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {comissoes.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{c.usuario_nome}</p>
+                        <p className="text-sm text-slate-500">{c.usuario_perfil}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell><StatusBadge status={c.tipo} /></TableCell>
+                    <TableCell className="font-medium">{formatCurrency(c.valor)}</TableCell>
+                    <TableCell><StatusBadge status={c.status} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

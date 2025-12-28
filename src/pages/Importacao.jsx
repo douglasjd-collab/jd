@@ -1,0 +1,555 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PageHeader from '@/components/ui/PageHeader';
+import DataTable from '@/components/ui/DataTable';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { 
+  Upload, 
+  FileSpreadsheet, 
+  AlertTriangle, 
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Eye
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+
+export default function Importacao() {
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState('');
+  const [file, setFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const user = await base44.auth.me();
+    setCurrentUser(user);
+  };
+
+  const { data: importacoes = [], isLoading } = useQuery({
+    queryKey: ['importacoes'],
+    queryFn: () => base44.entities.Importacao.list('-created_date'),
+  });
+
+  const { data: administradoras = [] } = useQuery({
+    queryKey: ['administradoras'],
+    queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
+  });
+
+  const { data: vendas = [] } = useQuery({
+    queryKey: ['vendas'],
+    queryFn: () => base44.entities.Venda.filter({ status: 'ativa' }),
+  });
+
+  const { data: parcelas = [] } = useQuery({
+    queryKey: ['parcelas'],
+    queryFn: () => base44.entities.Parcela.list(),
+  });
+
+  const handleFileUpload = async (e) => {
+    const uploadedFile = e.target.files[0];
+    if (!uploadedFile) return;
+
+    setFile(uploadedFile);
+    setIsProcessing(true);
+
+    try {
+      // Upload do arquivo
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
+
+      // Extrair dados do arquivo
+      const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url,
+        json_schema: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              cpf: { type: "string" },
+              contrato: { type: "string" },
+              grupo: { type: "string" },
+              cota: { type: "string" },
+              parcela: { type: "number" },
+              valor: { type: "number" }
+            }
+          }
+        }
+      });
+
+      if (result.status === 'success' && result.output) {
+        setPreviewData({
+          file_url,
+          items: Array.isArray(result.output) ? result.output : [result.output]
+        });
+      } else {
+        toast.error('Erro ao processar arquivo: ' + (result.details || 'Formato inválido'));
+      }
+    } catch (error) {
+      toast.error('Erro ao fazer upload do arquivo');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const processarImportacao = async () => {
+    if (!previewData || !selectedAdmin) return;
+
+    setIsProcessing(true);
+
+    try {
+      const admin = administradoras.find(a => a.id === selectedAdmin);
+      
+      // Criar registro de importação
+      const importacao = await base44.entities.Importacao.create({
+        administradora_id: selectedAdmin,
+        administradora_nome: admin?.nome_fantasia || admin?.razao_social,
+        usuario_id: currentUser?.id,
+        usuario_nome: currentUser?.full_name,
+        arquivo_nome: file?.name,
+        arquivo_url: previewData.file_url,
+        total_registros: previewData.items.length,
+        status: 'processando'
+      });
+
+      let processados = 0;
+      let divergencias = 0;
+      let valorTotal = 0;
+      const itensParaCriar = [];
+
+      for (const item of previewData.items) {
+        const grupo = String(item.grupo || '').trim();
+        const cota = String(item.cota || '').trim();
+        const cpf = String(item.cpf || '').replace(/\D/g, '');
+        const contrato = String(item.contrato || '').trim();
+        const numeroParcela = parseInt(item.parcela) || 1;
+        const valorRecebido = parseFloat(item.valor) || 0;
+
+        // Regras de identificação da venda
+        let vendaEncontrada = null;
+        let motivoDivergencia = '';
+
+        // 1. CPF + Grupo + Cota
+        if (cpf && grupo && cota) {
+          const vendasMatch = vendas.filter(v => 
+            v.cliente_cpf?.replace(/\D/g, '') === cpf &&
+            String(v.grupo).trim() === grupo &&
+            String(v.cota).trim() === cota &&
+            v.administradora_id === selectedAdmin
+          );
+          
+          if (vendasMatch.length === 1) {
+            vendaEncontrada = vendasMatch[0];
+          } else if (vendasMatch.length > 1) {
+            motivoDivergencia = 'Múltiplas vendas encontradas para CPF + Grupo + Cota';
+          }
+        }
+
+        // 2. Contrato + Grupo + Cota
+        if (!vendaEncontrada && !motivoDivergencia && contrato && grupo && cota) {
+          const vendasMatch = vendas.filter(v => 
+            v.contrato === contrato &&
+            String(v.grupo).trim() === grupo &&
+            String(v.cota).trim() === cota &&
+            v.administradora_id === selectedAdmin
+          );
+          
+          if (vendasMatch.length === 1) {
+            vendaEncontrada = vendasMatch[0];
+          } else if (vendasMatch.length > 1) {
+            motivoDivergencia = 'Múltiplas vendas encontradas para Contrato + Grupo + Cota';
+          }
+        }
+
+        // 3. Grupo + Cota + Administradora
+        if (!vendaEncontrada && !motivoDivergencia && grupo && cota) {
+          const vendasMatch = vendas.filter(v => 
+            String(v.grupo).trim() === grupo &&
+            String(v.cota).trim() === cota &&
+            v.administradora_id === selectedAdmin
+          );
+          
+          if (vendasMatch.length === 1) {
+            vendaEncontrada = vendasMatch[0];
+          } else if (vendasMatch.length > 1) {
+            motivoDivergencia = 'Múltiplas vendas encontradas para Grupo + Cota';
+          } else {
+            motivoDivergencia = 'Venda não encontrada';
+          }
+        }
+
+        if (!grupo || !cota) {
+          motivoDivergencia = 'Grupo ou Cota não informados';
+        }
+
+        // Verificar parcela
+        let parcelaEncontrada = null;
+        if (vendaEncontrada) {
+          const parcelasVenda = parcelas.filter(p => 
+            p.venda_id === vendaEncontrada.id && 
+            p.numero_parcela === numeroParcela
+          );
+
+          if (parcelasVenda.length === 1) {
+            parcelaEncontrada = parcelasVenda[0];
+            
+            if (parcelaEncontrada.status === 'recebida') {
+              motivoDivergencia = 'Parcela já baixada anteriormente';
+              vendaEncontrada = null;
+            }
+          } else if (parcelasVenda.length === 0) {
+            motivoDivergencia = 'Parcela não encontrada';
+            vendaEncontrada = null;
+          }
+        }
+
+        // Criar item de importação
+        const itemImportacao = {
+          importacao_id: importacao.id,
+          linha: previewData.items.indexOf(item) + 1,
+          cpf,
+          contrato,
+          grupo,
+          cota,
+          parcela: numeroParcela,
+          valor_recebido: valorRecebido,
+          venda_id: vendaEncontrada?.id,
+          parcela_id: parcelaEncontrada?.id,
+          status: vendaEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
+          motivo_divergencia: motivoDivergencia || null
+        };
+
+        itensParaCriar.push(itemImportacao);
+
+        if (vendaEncontrada && !motivoDivergencia) {
+          // Baixar parcela
+          await base44.entities.Parcela.update(parcelaEncontrada.id, {
+            status: 'recebida',
+            valor_recebido: valorRecebido,
+            data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+            importacao_id: importacao.id
+          });
+
+          // Atualizar comissão recebida na venda
+          const novoValorRecebido = (vendaEncontrada.comissao_total_recebida || 0) + valorRecebido;
+          await base44.entities.Venda.update(vendaEncontrada.id, {
+            comissao_total_recebida: novoValorRecebido
+          });
+
+          processados++;
+          valorTotal += valorRecebido;
+        } else {
+          divergencias++;
+        }
+      }
+
+      // Criar itens em lote
+      if (itensParaCriar.length > 0) {
+        await base44.entities.ImportacaoItem.bulkCreate(itensParaCriar);
+      }
+
+      // Atualizar importação
+      await base44.entities.Importacao.update(importacao.id, {
+        status: 'concluida',
+        registros_processados: processados,
+        registros_divergencia: divergencias,
+        valor_total: valorTotal
+      });
+
+      queryClient.invalidateQueries();
+      setUploadOpen(false);
+      setPreviewData(null);
+      setFile(null);
+      setSelectedAdmin('');
+      
+      toast.success(`Importação concluída: ${processados} processados, ${divergencias} divergências`);
+    } catch (error) {
+      toast.error('Erro ao processar importação');
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  const columns = [
+    {
+      header: 'Data',
+      cell: (row) => format(new Date(row.created_date), 'dd/MM/yyyy HH:mm')
+    },
+    {
+      header: 'Administradora',
+      cell: (row) => row.administradora_nome || '-'
+    },
+    {
+      header: 'Arquivo',
+      cell: (row) => row.arquivo_nome || '-'
+    },
+    {
+      header: 'Registros',
+      cell: (row) => (
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-600 font-medium">{row.registros_processados || 0}</span>
+          <span className="text-slate-400">/</span>
+          <span className="text-red-600 font-medium">{row.registros_divergencia || 0}</span>
+          <span className="text-slate-400">/</span>
+          <span>{row.total_registros || 0}</span>
+        </div>
+      )
+    },
+    {
+      header: 'Valor',
+      cell: (row) => formatCurrency(row.valor_total)
+    },
+    {
+      header: 'Status',
+      cell: (row) => <StatusBadge status={row.status} />
+    },
+    {
+      header: '',
+      className: 'w-12',
+      cell: (row) => (
+        <Link to={createPageUrl(`ImportacaoDetalhes?id=${row.id}`)}>
+          <Button variant="ghost" size="icon">
+            <Eye className="w-4 h-4" />
+          </Button>
+        </Link>
+      )
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Importação de Comissões"
+        subtitle="Importe arquivos de comissões recebidas das administradoras"
+        actionLabel="Nova Importação"
+        actionIcon={Upload}
+        onAction={() => setUploadOpen(true)}
+      />
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-0 shadow-sm bg-emerald-50">
+          <CardContent className="p-4 flex items-center gap-4">
+            <CheckCircle className="w-8 h-8 text-emerald-600" />
+            <div>
+              <p className="text-sm text-emerald-700">Processados</p>
+              <p className="text-2xl font-bold text-emerald-800">
+                {importacoes.reduce((acc, i) => acc + (i.registros_processados || 0), 0)}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm bg-red-50">
+          <CardContent className="p-4 flex items-center gap-4">
+            <XCircle className="w-8 h-8 text-red-600" />
+            <div>
+              <p className="text-sm text-red-700">Divergências</p>
+              <p className="text-2xl font-bold text-red-800">
+                {importacoes.reduce((acc, i) => acc + (i.registros_divergencia || 0), 0)}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm bg-blue-50">
+          <CardContent className="p-4 flex items-center gap-4">
+            <FileSpreadsheet className="w-8 h-8 text-blue-600" />
+            <div>
+              <p className="text-sm text-blue-700">Valor Importado</p>
+              <p className="text-2xl font-bold text-blue-800">
+                {formatCurrency(importacoes.reduce((acc, i) => acc + (i.valor_total || 0), 0))}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Table */}
+      <DataTable
+        columns={columns}
+        data={importacoes}
+        isLoading={isLoading}
+        emptyMessage="Nenhuma importação realizada"
+      />
+
+      {/* Upload Modal */}
+      <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nova Importação</DialogTitle>
+            <DialogDescription>
+              Selecione a administradora e faça o upload do arquivo Excel/CSV
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Administradora */}
+            <div>
+              <Label>Administradora *</Label>
+              <Select value={selectedAdmin} onValueChange={setSelectedAdmin}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a administradora" />
+                </SelectTrigger>
+                <SelectContent>
+                  {administradoras.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.nome_fantasia || a.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Upload */}
+            <div>
+              <Label>Arquivo (Excel ou CSV)</Label>
+              <div className="mt-2 border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-slate-300 transition-colors">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                  disabled={!selectedAdmin}
+                />
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  {isProcessing ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
+                      <span className="text-slate-500">Processando arquivo...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload className="w-8 h-8 text-slate-400" />
+                      <span className="text-slate-500">
+                        {file ? file.name : 'Clique para selecionar arquivo'}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        Colunas esperadas: CPF, Contrato, Grupo, Cota, Parcela, Valor
+                      </span>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {/* Preview */}
+            {previewData && (
+              <div>
+                <Label>Pré-visualização ({previewData.items.length} registros)</Label>
+                <div className="mt-2 border rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>CPF</TableHead>
+                        <TableHead>Grupo</TableHead>
+                        <TableHead>Cota</TableHead>
+                        <TableHead>Parcela</TableHead>
+                        <TableHead>Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {previewData.items.slice(0, 10).map((item, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{item.cpf || '-'}</TableCell>
+                          <TableCell>{item.grupo || '-'}</TableCell>
+                          <TableCell>{item.cota || '-'}</TableCell>
+                          <TableCell>{item.parcela || '-'}</TableCell>
+                          <TableCell>{formatCurrency(item.valor)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {previewData.items.length > 10 && (
+                    <p className="p-3 text-center text-sm text-slate-500">
+                      ... e mais {previewData.items.length - 10} registros
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Alerta */}
+            <Card className="bg-amber-50 border-amber-200">
+              <CardContent className="p-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium">Regras de identificação:</p>
+                  <ol className="list-decimal ml-4 mt-2 space-y-1">
+                    <li>CPF + Grupo + Cota</li>
+                    <li>Contrato + Grupo + Cota</li>
+                    <li>Grupo + Cota + Administradora</li>
+                  </ol>
+                  <p className="mt-2">Registros com múltiplas vendas ou parcelas já baixadas serão marcados como divergência.</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => {
+                setUploadOpen(false);
+                setPreviewData(null);
+                setFile(null);
+              }}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={processarImportacao}
+                disabled={!previewData || !selectedAdmin || isProcessing}
+                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+              >
+                {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Processar Importação
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

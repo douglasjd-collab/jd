@@ -1,0 +1,266 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PageHeader from '@/components/ui/PageHeader';
+import DataTable from '@/components/ui/DataTable';
+import StatusBadge from '@/components/ui/StatusBadge';
+import VendaForm from '@/components/forms/VendaForm';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Search, MoreHorizontal, Pencil, Eye, Filter } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+
+export default function Vendas() {
+  const [formOpen, setFormOpen] = useState(false);
+  const [selectedVenda, setSelectedVenda] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('todos');
+  const [currentUser, setCurrentUser] = useState(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const user = await base44.auth.me();
+    setCurrentUser(user);
+  };
+
+  const { data: vendas = [], isLoading } = useQuery({
+    queryKey: ['vendas'],
+    queryFn: () => base44.entities.Venda.list('-created_date'),
+  });
+
+  const { data: tabelas = [] } = useQuery({
+    queryKey: ['tabelas-consorcio'],
+    queryFn: () => base44.entities.TabelaConsorcio.list(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data) => {
+      // Criar venda
+      const venda = await base44.entities.Venda.create(data);
+      
+      // Buscar tabela para gerar parcelas
+      const tabela = tabelas.find(t => t.id === data.tabela_id);
+      if (tabela && tabela.num_parcelas_comissao) {
+        const parcelas = [];
+        for (let i = 1; i <= tabela.num_parcelas_comissao; i++) {
+          parcelas.push({
+            venda_id: venda.id,
+            numero_parcela: i,
+            valor_previsto: tabela.comissao_por_parcela,
+            status: 'prevista'
+          });
+        }
+        await base44.entities.Parcela.bulkCreate(parcelas);
+        
+        // Atualizar comissão total prevista na venda
+        await base44.entities.Venda.update(venda.id, {
+          comissao_total_prevista: tabela.comissao_total
+        });
+      }
+      
+      return venda;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendas'] });
+      setFormOpen(false);
+      toast.success('Venda cadastrada com sucesso!');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Venda.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendas'] });
+      setFormOpen(false);
+      setSelectedVenda(null);
+      toast.success('Venda atualizada com sucesso!');
+    },
+  });
+
+  const handleSubmit = (data) => {
+    if (selectedVenda) {
+      updateMutation.mutate({ id: selectedVenda.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  const handleEdit = (venda) => {
+    setSelectedVenda(venda);
+    setFormOpen(true);
+  };
+
+  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
+  const isGerente = currentUser?.perfil === 'gerente';
+
+  // Filtrar vendas por perfil
+  const filteredByRole = vendas.filter(v => {
+    if (isAdmin) return true;
+    if (isGerente) return v.gerente_id === currentUser?.id || v.vendedor_id === currentUser?.id;
+    return v.vendedor_id === currentUser?.id;
+  });
+
+  const filteredVendas = filteredByRole.filter(v => {
+    const matchSearch = 
+      v.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
+      v.cliente_cpf?.includes(search) ||
+      v.grupo?.includes(search) ||
+      v.cota?.includes(search) ||
+      v.contrato?.includes(search);
+    const matchStatus = filterStatus === 'todos' || v.status === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  const columns = [
+    {
+      header: 'Cliente',
+      cell: (row) => (
+        <div>
+          <p className="font-medium text-slate-900">{row.cliente_nome}</p>
+          <p className="text-sm text-slate-500">{row.cliente_cpf}</p>
+        </div>
+      )
+    },
+    {
+      header: 'Grupo/Cota',
+      cell: (row) => (
+        <div>
+          <p className="font-medium">{row.grupo} / {row.cota}</p>
+          {row.contrato && <p className="text-sm text-slate-500">Contrato: {row.contrato}</p>}
+        </div>
+      )
+    },
+    {
+      header: 'Administradora',
+      cell: (row) => row.administradora_nome || '-'
+    },
+    {
+      header: 'Valor',
+      cell: (row) => formatCurrency(row.valor_carta)
+    },
+    {
+      header: 'Vendedor',
+      cell: (row) => row.vendedor_nome || '-'
+    },
+    {
+      header: 'Data',
+      cell: (row) => row.data_venda ? format(new Date(row.data_venda), 'dd/MM/yyyy') : '-'
+    },
+    {
+      header: 'Status',
+      cell: (row) => <StatusBadge status={row.status} />
+    },
+    {
+      header: '',
+      className: 'w-12',
+      cell: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link to={createPageUrl(`VendaDetalhes?id=${row.id}`)}>
+                <Eye className="w-4 h-4 mr-2" />
+                Ver detalhes
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEdit(row)}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Vendas"
+        subtitle={`${filteredVendas.length} vendas`}
+        actionLabel="Nova Venda"
+        onAction={() => {
+          setSelectedVenda(null);
+          setFormOpen(true);
+        }}
+      />
+
+      {/* Filters */}
+      <Card className="p-4 border-0 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por cliente, CPF, grupo, cota ou contrato..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-40">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="ativa">Ativas</SelectItem>
+              <SelectItem value="cancelada">Canceladas</SelectItem>
+              <SelectItem value="contemplada">Contempladas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
+      {/* Table */}
+      <DataTable
+        columns={columns}
+        data={filteredVendas}
+        isLoading={isLoading}
+        emptyMessage="Nenhuma venda encontrada"
+      />
+
+      {/* Form Modal */}
+      <VendaForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        venda={selectedVenda}
+        onSubmit={handleSubmit}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+        currentUser={currentUser}
+      />
+    </div>
+  );
+}

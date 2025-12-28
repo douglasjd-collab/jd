@@ -1,0 +1,215 @@
+import React from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import PageHeader from '@/components/ui/PageHeader';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  CheckCircle, 
+  XCircle, 
+  FileSpreadsheet,
+  Calendar,
+  User,
+  Building2
+} from 'lucide-react';
+import { format } from 'date-fns';
+
+export default function ImportacaoDetalhes() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const importacaoId = urlParams.get('id');
+
+  const { data: importacao, isLoading: loadingImportacao } = useQuery({
+    queryKey: ['importacao', importacaoId],
+    queryFn: async () => {
+      const data = await base44.entities.Importacao.filter({ id: importacaoId });
+      return data[0];
+    },
+    enabled: !!importacaoId
+  });
+
+  const { data: itens = [], isLoading: loadingItens } = useQuery({
+    queryKey: ['importacao-itens', importacaoId],
+    queryFn: () => base44.entities.ImportacaoItem.filter({ importacao_id: importacaoId }),
+    enabled: !!importacaoId
+  });
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  if (loadingImportacao || !importacao) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]"></div>
+      </div>
+    );
+  }
+
+  const itensProcessados = itens.filter(i => i.status === 'processado');
+  const itensDivergencia = itens.filter(i => i.status === 'divergencia');
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Detalhes da Importação"
+        subtitle={`${importacao.arquivo_nome || 'Arquivo importado'}`}
+        backTo="Importacao"
+      />
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <Calendar className="w-8 h-8 text-slate-400" />
+            <div>
+              <p className="text-sm text-slate-500">Data</p>
+              <p className="font-semibold">
+                {format(new Date(importacao.created_date), 'dd/MM/yyyy HH:mm')}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <Building2 className="w-8 h-8 text-slate-400" />
+            <div>
+              <p className="text-sm text-slate-500">Administradora</p>
+              <p className="font-semibold">{importacao.administradora_nome}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <User className="w-8 h-8 text-slate-400" />
+            <div>
+              <p className="text-sm text-slate-500">Usuário</p>
+              <p className="font-semibold">{importacao.usuario_nome}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 flex items-center gap-4">
+            <FileSpreadsheet className="w-8 h-8 text-slate-400" />
+            <div>
+              <p className="text-sm text-slate-500">Valor Total</p>
+              <p className="font-semibold">{formatCurrency(importacao.valor_total)}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-0 shadow-sm bg-slate-50">
+          <CardContent className="p-6 text-center">
+            <p className="text-4xl font-bold text-slate-900">{importacao.total_registros || 0}</p>
+            <p className="text-slate-500 mt-1">Total de Registros</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm bg-emerald-50">
+          <CardContent className="p-6 text-center">
+            <p className="text-4xl font-bold text-emerald-700">{importacao.registros_processados || 0}</p>
+            <p className="text-emerald-600 mt-1">Processados</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm bg-red-50">
+          <CardContent className="p-6 text-center">
+            <p className="text-4xl font-bold text-red-700">{importacao.registros_divergencia || 0}</p>
+            <p className="text-red-600 mt-1">Divergências</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Items Tabs */}
+      <Card className="border-0 shadow-sm">
+        <Tabs defaultValue="todos">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Registros</CardTitle>
+              <TabsList>
+                <TabsTrigger value="todos">Todos ({itens.length})</TabsTrigger>
+                <TabsTrigger value="processados">Processados ({itensProcessados.length})</TabsTrigger>
+                <TabsTrigger value="divergencias">Divergências ({itensDivergencia.length})</TabsTrigger>
+              </TabsList>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <TabsContent value="todos">
+              <ItemsTable itens={itens} formatCurrency={formatCurrency} />
+            </TabsContent>
+            <TabsContent value="processados">
+              <ItemsTable itens={itensProcessados} formatCurrency={formatCurrency} />
+            </TabsContent>
+            <TabsContent value="divergencias">
+              <ItemsTable itens={itensDivergencia} formatCurrency={formatCurrency} showMotivo />
+            </TabsContent>
+          </CardContent>
+        </Tabs>
+      </Card>
+    </div>
+  );
+}
+
+function ItemsTable({ itens, formatCurrency, showMotivo = false }) {
+  if (itens.length === 0) {
+    return (
+      <div className="text-center py-8 text-slate-500">
+        Nenhum registro encontrado
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto max-h-96 overflow-y-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Linha</TableHead>
+            <TableHead>CPF</TableHead>
+            <TableHead>Grupo</TableHead>
+            <TableHead>Cota</TableHead>
+            <TableHead>Parcela</TableHead>
+            <TableHead>Valor</TableHead>
+            <TableHead>Status</TableHead>
+            {showMotivo && <TableHead>Motivo</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {itens.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell>{item.linha}</TableCell>
+              <TableCell>{item.cpf || '-'}</TableCell>
+              <TableCell>{item.grupo}</TableCell>
+              <TableCell>{item.cota}</TableCell>
+              <TableCell>{item.parcela}</TableCell>
+              <TableCell>{formatCurrency(item.valor_recebido)}</TableCell>
+              <TableCell><StatusBadge status={item.status} /></TableCell>
+              {showMotivo && (
+                <TableCell className="max-w-xs">
+                  <span className="text-sm text-red-600">{item.motivo_divergencia}</span>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
