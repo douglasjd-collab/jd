@@ -155,7 +155,6 @@ export default function FunilVendas() {
 
       // HU 07 - Integração com vendas
       if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
-        // Pode criar venda automaticamente aqui se necessário
         toast.success('Oportunidade movida para "Ganho". Lembre-se de registrar a venda!');
       }
 
@@ -168,12 +167,52 @@ export default function FunilVendas() {
         entidade_id: oportunidadeId,
         tipo: 'edicao'
       });
+
+      return { oportunidadeId, novaEtapaId, etapaDestino };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+    onMutate: async ({ oportunidadeId, novaEtapaId }) => {
+      // Cancelar queries em andamento
+      await queryClient.cancelQueries({ queryKey: ['oportunidades'] });
+
+      // Snapshot do estado anterior
+      const previousOportunidades = queryClient.getQueryData(['oportunidades']);
+
+      // Atualização otimista
+      queryClient.setQueryData(['oportunidades'], (old) => {
+        return old.map(o => {
+          if (o.id === oportunidadeId) {
+            const etapaDestino = etapas.find(e => e.id === novaEtapaId);
+            return {
+              ...o,
+              etapa_id: novaEtapaId,
+              etapa_nome: etapaDestino?.nome || '',
+              data_ultima_movimentacao: new Date().toISOString(),
+              status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
+            };
+          }
+          return o;
+        });
+      });
+
+      return { previousOportunidades };
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // Rollback em caso de erro
+      queryClient.setQueryData(['oportunidades'], context.previousOportunidades);
       toast.error(error.message || 'Erro ao mover oportunidade');
+      
+      // Log de auditoria do erro
+      base44.entities.LogAuditoria.create({
+        usuario_id: currentUser?.id || 'system',
+        usuario_nome: currentUser?.full_name || 'Sistema',
+        acao: `Erro ao mover oportunidade: ${error.message}`,
+        entidade: 'Oportunidade',
+        entidade_id: variables.oportunidadeId,
+        tipo: 'edicao'
+      }).catch(console.error);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
     }
   });
 
@@ -242,6 +281,25 @@ export default function FunilVendas() {
       style: 'currency',
       currency: 'BRL'
     }).format(value || 0);
+  };
+
+  const calcularTempoNaEtapa = (dataUltimaMovimentacao) => {
+    if (!dataUltimaMovimentacao) return 'Sem data';
+    
+    const agora = new Date();
+    const dataMovimentacao = new Date(dataUltimaMovimentacao);
+    const diffMs = agora - dataMovimentacao;
+    const diffMinutos = Math.floor(diffMs / (1000 * 60));
+    const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDias > 0) {
+      return `${diffDias} ${diffDias === 1 ? 'dia' : 'dias'}`;
+    } else if (diffHoras > 0) {
+      return `${diffHoras} ${diffHoras === 1 ? 'hora' : 'horas'}`;
+    } else {
+      return `${diffMinutos} ${diffMinutos === 1 ? 'minuto' : 'minutos'}`;
+    }
   };
 
   // HU 05 - Indicadores
@@ -422,19 +480,24 @@ export default function FunilVendas() {
                                   <p className="text-xs text-slate-600 mb-2">👤 {oport.cliente_nome}</p>
                                 )}
 
-                                <div className="flex items-center justify-between text-xs text-slate-500">
+                                <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
                                   <span className="font-semibold text-emerald-600">
                                     {formatCurrency(oport.valor_estimado)}
                                   </span>
                                   <span>{oport.vendedor_nome}</span>
                                 </div>
 
-                                {oport.data_fechamento_prevista && (
-                                  <div className="flex items-center gap-1 text-xs text-slate-500 mt-2">
-                                    <Calendar className="w-3 h-3" />
-                                    {format(new Date(oport.data_fechamento_prevista), 'dd/MM/yyyy')}
+                                <div className="flex items-center justify-between text-xs mt-2 pt-2 border-t border-slate-100">
+                                  <div className="flex items-center gap-1 text-orange-600 font-medium">
+                                    ⏱️ Neste funil há {calcularTempoNaEtapa(oport.data_ultima_movimentacao)}
                                   </div>
-                                )}
+                                  {oport.data_fechamento_prevista && (
+                                    <div className="flex items-center gap-1 text-slate-500">
+                                      <Calendar className="w-3 h-3" />
+                                      {format(new Date(oport.data_fechamento_prevista), 'dd/MM/yyyy')}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </Draggable>
