@@ -248,6 +248,10 @@ export default function RecebimentoComissao() {
       toast.error('Informe a data de recebimento');
       return;
     }
+    if (!manualFormData.administradora_id) {
+      toast.error('Selecione a administradora');
+      return;
+    }
 
     registrarRecebimentoManualMutation.mutate(manualFormData);
   };
