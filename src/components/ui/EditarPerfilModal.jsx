@@ -54,7 +54,7 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
 
     setSalvando(true);
     try {
-      // Atualizar nome e foto no registro do usuário
+      // Atualizar nome e foto no registro do usuário usando updateMe
       const dataToUpdate = { 
         full_name: nomeCompleto.trim()
       };
@@ -64,7 +64,8 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
         dataToUpdate.foto_perfil = fotoUrl;
       }
 
-      await base44.entities.User.update(user.id, dataToUpdate);
+      // Usar updateMe para atualizar o próprio perfil do usuário logado
+      await base44.auth.updateMe(dataToUpdate);
 
       toast.success('Perfil atualizado com sucesso!');
       
