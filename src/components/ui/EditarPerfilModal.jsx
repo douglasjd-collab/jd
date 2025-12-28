@@ -15,12 +15,10 @@ import { toast } from 'sonner';
 export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess }) {
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [nomeCompleto, setNomeCompleto] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
 
   useEffect(() => {
     if (user) {
-      setNomeCompleto(user.full_name || '');
       setFotoUrl(user.foto_perfil || '');
     }
   }, [user]);
@@ -95,8 +93,8 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Editar Perfil
+            <Camera className="w-5 h-5" />
+            Alterar Foto de Perfil
           </DialogTitle>
         </DialogHeader>
 
@@ -112,7 +110,7 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
                 />
               ) : (
                 <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg border-4 border-slate-100">
-                  {nomeCompleto?.charAt(0).toUpperCase() || user.full_name?.charAt(0).toUpperCase()}
+                  {user.full_name?.charAt(0).toUpperCase()}
                 </div>
               )}
               <input
@@ -139,20 +137,12 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
             </p>
           </div>
 
-          {/* Nome */}
-          <div className="space-y-2">
-            <Label htmlFor="nome-completo">Nome de Exibição *</Label>
-            <Input
-              id="nome-completo"
-              value={nomeCompleto}
-              onChange={(e) => setNomeCompleto(e.target.value)}
-              placeholder="Seu nome completo"
-              className="text-base"
-            />
-          </div>
-
-          {/* Informações fixas */}
+          {/* Informações do perfil (apenas leitura) */}
           <div className="space-y-3 p-4 bg-slate-50 rounded-xl">
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Nome:</span>
+              <span className="font-medium">{user.full_name}</span>
+            </div>
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Email:</span>
               <span className="font-medium">{user.email}</span>
@@ -169,6 +159,10 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
             )}
           </div>
 
+          <p className="text-xs text-slate-500 text-center border-t pt-4">
+            Para alterar nome, email ou outros dados pessoais, entre em contato com o administrador do sistema.
+          </p>
+
           {/* Ações */}
           <div className="flex justify-end gap-3 pt-2">
             <Button 
@@ -180,7 +174,7 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
             </Button>
             <Button
               onClick={handleSalvar}
-              disabled={salvando || (!nomeCompleto.trim())}
+              disabled={salvando || !fotoUrl || fotoUrl === user.foto_perfil}
               className="bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2"
             >
               {salvando ? (
@@ -191,7 +185,7 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Salvar Alterações
+                  Salvar Foto
                 </>
               )}
             </Button>

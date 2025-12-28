@@ -18,7 +18,8 @@ import {
   ChevronDown,
   Wallet,
   Image as ImageIcon,
-  TrendingUp
+  TrendingUp,
+  Camera
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -202,8 +203,8 @@ export default function Layout({ children, currentPageName }) {
                 {/* Opções do Menu */}
                 <div className="py-1">
                   <DropdownMenuItem onClick={() => setEditarPerfilOpen(true)}>
-                    <UserCircle className="w-4 h-4 mr-2" />
-                    Editar Perfil
+                    <Camera className="w-4 h-4 mr-2" />
+                    Alterar Foto de Perfil
                   </DropdownMenuItem>
 
                   {(user.perfil === 'master' || user.perfil === 'admin') && (
