@@ -30,7 +30,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       codigo_vendedor: '',
       perfil: 'vendedor',
       gerente_id: '',
-      status: 'ativo'
+      status: 'ativo',
+      senha: ''
     }
   });
 
@@ -55,7 +56,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
         codigo_vendedor: '',
         perfil: 'vendedor',
         gerente_id: '',
-        status: 'ativo'
+        status: 'ativo',
+        senha: ''
       });
     }
   }, [usuario, setValue, reset]);
@@ -114,6 +116,22 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                 <p className="text-xs text-slate-500 mt-1">Apenas Gerente ou superior pode alterar o email</p>
               )}
             </div>
+
+            {!usuario && (
+              <div className="col-span-2">
+                <Label htmlFor="senha">Senha *</Label>
+                <Input
+                  id="senha"
+                  type="password"
+                  {...register('senha', { 
+                    required: !usuario ? 'Senha é obrigatória' : false,
+                    minLength: { value: 6, message: 'Senha deve ter no mínimo 6 caracteres' }
+                  })}
+                  placeholder="Mínimo 6 caracteres"
+                />
+                {errors.senha && <p className="text-sm text-red-500 mt-1">{errors.senha.message}</p>}
+              </div>
+            )}
             
             <div>
               <Label htmlFor="cpf">CPF</Label>
