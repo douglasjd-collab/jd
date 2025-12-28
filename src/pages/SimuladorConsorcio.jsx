@@ -105,24 +105,48 @@ export default function SimuladorConsorcio() {
       return;
     }
 
-    const saldoAposLance = creditoTotal - lanceTotal;
-
+    // 🧮 CÁLCULO CORRETO CANOPUS
+    
+    // 1. Total do Plano = Prazo × Parcela
+    const totalPlano = parseFloat(prazoOriginal) * parcelaTotal;
+    
+    // 2. Saldo Base = Total do Plano - Lance
+    const saldoBase = totalPlano - lanceTotal;
+    
+    // 3. Saldo Após Ato = Saldo Base - Parcela (primeira parcela paga no ato)
+    const saldoAposAto = saldoBase - parcelaTotal;
+    
     let novoPrazo = null;
     let novaParcela = null;
+    let saldoFinal = saldoAposAto;
 
     if (opcaoPos === 'prazo') {
-      // Reduzir prazo, manter parcela
-      novoPrazo = Math.ceil(saldoAposLance / parcelaTotal);
+      // 📉 OPÇÃO 1: REDUZIR PRAZO (Lógica Canopus Completa)
+      // 4. Saldo Final = Saldo Após Ato - (Parcela × 3) [carência Canopus - 3 parcelas]
+      saldoFinal = saldoAposAto - (parcelaTotal * 3);
+      
+      // 5. Novo Prazo = Prazo - 4 (1 paga no ato + 3 de carência)
+      novoPrazo = parseFloat(prazoOriginal) - 4;
+      
+      // 6. Nova Parcela = Saldo Final ÷ Novo Prazo
+      novaParcela = saldoFinal / novoPrazo;
     } else {
-      // Reduzir parcela, manter prazo
-      novaParcela = saldoAposLance / parseFloat(prazoOriginal);
+      // 📉 OPÇÃO 2: REDUZIR PARCELA (Mantém prazo, calcula nova parcela)
+      // Novo Prazo = Prazo - 1 (apenas 1 paga no ato)
+      novoPrazo = parseFloat(prazoOriginal) - 1;
+      
+      // Nova Parcela = Saldo Após Ato ÷ Novo Prazo
+      novaParcela = saldoAposAto / novoPrazo;
     }
 
     setResultado({
       creditoTotal,
       parcelaTotal,
+      totalPlano,
       lanceTotal,
-      saldoAposLance,
+      saldoBase,
+      saldoAposAto,
+      saldoFinal,
       prazoOriginal: parseFloat(prazoOriginal),
       opcaoPos,
       novoPrazo,
@@ -155,7 +179,7 @@ export default function SimuladorConsorcio() {
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
-        saldo_apos_contemplacao: resultado.saldoAposLance,
+        saldo_apos_contemplacao: resultado.saldoFinal,
         usuario_id: user.id,
         usuario_nome: user.full_name,
         status: 'ativa'
@@ -493,20 +517,20 @@ export default function SimuladorConsorcio() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="mb-3 block">Escolha uma opção:</Label>
+                <Label className="mb-3 block">Escolha o modelo de cálculo:</Label>
                 <RadioGroup value={opcaoPos} onValueChange={setOpcaoPos}>
                   <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border cursor-pointer hover:bg-slate-100">
                     <RadioGroupItem value="prazo" id="opcao_prazo" />
                     <Label htmlFor="opcao_prazo" className="cursor-pointer flex-1">
-                      <span className="font-semibold">Reduzir Prazo</span>
-                      <p className="text-xs text-slate-600 mt-1">Mantém a parcela e reduz o tempo</p>
+                      <span className="font-semibold">Modelo Canopus (Recomendado)</span>
+                      <p className="text-xs text-slate-600 mt-1">1 parcela no ato + 3 de carência = novo prazo e parcela</p>
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border cursor-pointer hover:bg-slate-100">
                     <RadioGroupItem value="parcela" id="opcao_parcela" />
                     <Label htmlFor="opcao_parcela" className="cursor-pointer flex-1">
-                      <span className="font-semibold">Reduzir Parcela</span>
-                      <p className="text-xs text-slate-600 mt-1">Mantém o prazo e reduz o valor mensal</p>
+                      <span className="font-semibold">Modelo Simples</span>
+                      <p className="text-xs text-slate-600 mt-1">Apenas 1 parcela no ato, sem carência</p>
                     </Label>
                   </div>
                 </RadioGroup>
@@ -542,61 +566,71 @@ export default function SimuladorConsorcio() {
                 <div className="space-y-4">
                   {/* Antes da Contemplação */}
                   <div className="p-3 bg-slate-50 rounded-lg">
-                    <p className="text-xs text-slate-600 font-semibold mb-2">Antes da Contemplação</p>
+                    <p className="text-xs text-slate-600 font-semibold mb-2">Dados do Plano</p>
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Crédito:</span>
-                        <span className="font-semibold">{formatCurrency(resultado.creditoTotal)}</span>
+                        <span className="text-slate-600">Prazo:</span>
+                        <span className="font-semibold">{resultado.prazoOriginal} meses</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Parcela:</span>
                         <span className="font-semibold">{formatCurrency(resultado.parcelaTotal)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Prazo:</span>
-                        <span className="font-semibold">{resultado.prazoOriginal} meses</span>
+                      <div className="flex justify-between border-t pt-1">
+                        <span className="text-slate-600">Total do Plano:</span>
+                        <span className="font-bold">{formatCurrency(resultado.totalPlano)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Lance */}
                   <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <p className="text-xs text-emerald-700 font-semibold mb-2">Lance Aplicado</p>
+                    <p className="text-xs text-emerald-700 font-semibold mb-2">🎯 Lance Ofertado</p>
                     <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceTotal)}</p>
                   </div>
 
-                  {/* Saldo Após Lance */}
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-xs text-blue-700 font-semibold mb-2">Saldo Após Lance</p>
-                    <p className="text-2xl font-bold text-blue-900">{formatCurrency(resultado.saldoAposLance)}</p>
+                  {/* Cálculos Intermediários */}
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
+                    <p className="text-xs text-blue-700 font-semibold">Cálculos</p>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">Saldo Base:</span>
+                        <span className="font-semibold">{formatCurrency(resultado.saldoBase)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-blue-700">(-) 1ª parcela (ato):</span>
+                        <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
+                      </div>
+                      {resultado.opcaoPos === 'prazo' && (
+                        <div className="flex justify-between">
+                          <span className="text-blue-700">(-) Carência (3x):</span>
+                          <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal * 3)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-t pt-1">
+                        <span className="text-blue-900 font-semibold">Saldo Final:</span>
+                        <span className="font-bold">{formatCurrency(resultado.saldoFinal)}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Depois da Contemplação */}
-                  <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                    <p className="text-xs text-purple-700 font-semibold mb-2">Depois da Contemplação</p>
-                    <div className="space-y-1 text-sm">
-                      {resultado.opcaoPos === 'prazo' ? (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-purple-700">Novo Prazo:</span>
-                            <span className="font-bold text-purple-900 text-lg">{resultado.novoPrazo} meses</span>
-                          </div>
-                          <div className="flex justify-between text-xs text-purple-600">
-                            <span>Parcela:</span>
-                            <span>{formatCurrency(resultado.parcelaTotal)} (mantida)</span>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-purple-700">Nova Parcela:</span>
-                            <span className="font-bold text-purple-900 text-lg">{formatCurrency(resultado.novaParcela)}</span>
-                          </div>
-                          <div className="flex justify-between text-xs text-purple-600">
-                            <span>Prazo:</span>
-                            <span>{resultado.prazoOriginal} meses (mantido)</span>
-                          </div>
-                        </>
+                  <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
+                    <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-purple-700 text-sm">Novo Prazo:</span>
+                        <span className="font-bold text-purple-900 text-xl">{resultado.novoPrazo} meses</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-purple-700 text-sm">Nova Parcela:</span>
+                        <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
+                      </div>
+                      {resultado.opcaoPos === 'prazo' && (
+                        <div className="text-xs text-purple-600 pt-2 border-t border-purple-200">
+                          ✓ 1 parcela paga no ato<br/>
+                          ✓ 3 parcelas de carência descontadas
+                        </div>
                       )}
                     </div>
                   </div>
