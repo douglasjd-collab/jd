@@ -170,9 +170,9 @@ export default function FunilVendas() {
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       const etapaDestino = etapas.find(e => e.id === novaEtapaId);
 
-      // Validações de regras
+      // Validações de regras (apenas aviso, não bloqueia)
       if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
-        throw new Error('Esta etapa requer cliente vinculado');
+        toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
       await base44.entities.Oportunidade.update(oportunidadeId, {
@@ -220,9 +220,9 @@ export default function FunilVendas() {
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       const etapaDestino = etapas.find(e => e.id === novaEtapaId);
 
-      // HU 04 - Validações de regras
+      // HU 04 - Validações de regras (apenas aviso, não bloqueia)
       if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
-        throw new Error('Esta etapa requer cliente vinculado');
+        toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
       // Atualizar oportunidade
