@@ -132,7 +132,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed top-0 left-0 h-full w-72 bg-[#1e3a5f] text-white z-50 transform transition-transform duration-300 lg:translate-x-0",
+        "fixed top-0 left-0 h-full w-72 bg-[#1e3a5f] text-white z-50 transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6 flex items-center justify-between border-b border-white/10">
@@ -214,21 +214,13 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuItem>
                   )}
                 </div>
-
-                {/* Sair (última opção) */}
-                <div className="border-t pt-1">
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sair
-                  </DropdownMenuItem>
-                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         )}
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-250px)]">
+        <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-280px)]">
           {filteredMenuItems.map((item) => (
             <div key={item.name}>
               {item.submenu ? (
@@ -288,7 +280,16 @@ export default function Layout({ children, currentPageName }) {
           ))}
         </nav>
 
-
+        {/* Botão Sair */}
+        <div className="p-4 border-t border-white/10 mt-auto">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-400 hover:bg-red-500/10 hover:text-red-300"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Sair</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
