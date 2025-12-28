@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink, Wallet } from 'lucide-react';
+import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink, Wallet, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
@@ -43,14 +43,14 @@ export default function RecebimentoComissao() {
   const [manualFormData, setManualFormData] = useState({
     venda_id: '',
     usuario_id: '',
-    numero_parcela: '',
-    valor: '',
-    valor_pagar_vendedor: '',
-    percentual: '',
     administradora_id: '',
     data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+    percentual: '',
     observacoes: ''
   });
+  const [parcelas, setParcelas] = useState([
+    { numero_parcela: '', valor: '', valor_pagar_vendedor: '' }
+  ]);
   const [contratoSearch, setContratoSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -170,14 +170,14 @@ export default function RecebimentoComissao() {
     setManualFormData({
       venda_id: '',
       usuario_id: '',
-      numero_parcela: '',
-      valor: '',
-      valor_pagar_vendedor: '',
-      percentual: '',
       administradora_id: '',
       data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+      percentual: '',
       observacoes: ''
     });
+    setParcelas([
+      { numero_parcela: '', valor: '', valor_pagar_vendedor: '' }
+    ]);
     setContratoSearch('');
   };
 
@@ -764,76 +764,84 @@ export default function RecebimentoComissao() {
         throw new Error('Venda ou usuário não encontrado');
       }
 
-      // Buscar ou criar parcela
-      const parcelas = await base44.entities.Parcela.filter({ 
-        venda_id: data.venda_id,
-        numero_parcela: parseInt(data.numero_parcela)
-      });
+      const user = await base44.auth.me();
+      const parcelasProcessadas = [];
 
-      let parcela;
-      if (parcelas.length > 0) {
-        // Atualizar parcela existente
-        parcela = parcelas[0];
-        await base44.entities.Parcela.update(parcela.id, {
-          status: 'recebida',
-          valor_recebido: parseFloat(data.valor),
-          data_recebimento: data.data_recebimento
-        });
-      } else {
-        // Criar nova parcela
-        parcela = await base44.entities.Parcela.create({
+      // Processar cada parcela
+      for (const parcelaInfo of data.parcelas) {
+        // Buscar ou criar parcela
+        const parcelasExistentes = await base44.entities.Parcela.filter({ 
           venda_id: data.venda_id,
-          numero_parcela: parseInt(data.numero_parcela),
-          valor_previsto: parseFloat(data.valor),
-          valor_recebido: parseFloat(data.valor),
-          data_recebimento: data.data_recebimento,
-          status: 'recebida'
+          numero_parcela: parseInt(parcelaInfo.numero_parcela)
         });
-      }
 
-      // Criar comissão de recebimento (da administradora)
-      const comissaoRecebimento = await base44.entities.Comissao.create({
-        venda_id: data.venda_id,
-        parcela_id: parcela.id,
-        usuario_id: data.usuario_id,
-        usuario_nome: usuario.full_name,
-        usuario_perfil: usuario.perfil,
-        tipo_comissao: 'parcela',
-        tipo: 'receber',
-        valor: parseFloat(data.valor),
-        percentual: parseFloat(data.percentual || 0),
-        status: 'confirmada',
-        data_recebimento: data.data_recebimento,
-        administradora_id: data.administradora_id || venda.administradora_id,
-        observacoes: `Parcela ${data.numero_parcela} - Recebido${data.observacoes ? ' - ' + data.observacoes : ''}`
-      });
+        let parcela;
+        if (parcelasExistentes.length > 0) {
+          // Atualizar parcela existente
+          parcela = parcelasExistentes[0];
+          await base44.entities.Parcela.update(parcela.id, {
+            status: 'recebida',
+            valor_recebido: parseFloat(parcelaInfo.valor),
+            data_recebimento: data.data_recebimento
+          });
+        } else {
+          // Criar nova parcela
+          parcela = await base44.entities.Parcela.create({
+            venda_id: data.venda_id,
+            numero_parcela: parseInt(parcelaInfo.numero_parcela),
+            valor_previsto: parseFloat(parcelaInfo.valor),
+            valor_recebido: parseFloat(parcelaInfo.valor),
+            data_recebimento: data.data_recebimento,
+            status: 'recebida'
+          });
+        }
 
-      // Criar comissão a pagar (ao vendedor) se valor especificado
-      if (data.valor_pagar_vendedor && parseFloat(data.valor_pagar_vendedor) > 0) {
-        await base44.entities.Comissao.create({
+        // Criar comissão de recebimento (da administradora)
+        const comissaoRecebimento = await base44.entities.Comissao.create({
           venda_id: data.venda_id,
           parcela_id: parcela.id,
           usuario_id: data.usuario_id,
           usuario_nome: usuario.full_name,
           usuario_perfil: usuario.perfil,
           tipo_comissao: 'parcela',
-          tipo: 'pagar',
-          valor: parseFloat(data.valor_pagar_vendedor),
+          tipo: 'receber',
+          valor: parseFloat(parcelaInfo.valor),
           percentual: parseFloat(data.percentual || 0),
           status: 'confirmada',
           data_recebimento: data.data_recebimento,
           administradora_id: data.administradora_id || venda.administradora_id,
-          observacoes: `Parcela ${data.numero_parcela} - A Pagar${data.observacoes ? ' - ' + data.observacoes : ''}`
+          observacoes: `Parcela ${parcelaInfo.numero_parcela} - Recebido${data.observacoes ? ' - ' + data.observacoes : ''}`
         });
 
-        // Atualizar saldo do usuário com o valor a pagar
-        const usuarioData = await base44.entities.User.filter({ id: data.usuario_id });
-        if (usuarioData.length > 0) {
-          const saldoAtual = usuarioData[0].saldo_comissao || 0;
-          await base44.entities.User.update(data.usuario_id, {
-            saldo_comissao: saldoAtual + parseFloat(data.valor_pagar_vendedor)
+        // Criar comissão a pagar (ao vendedor) se valor especificado
+        if (parcelaInfo.valor_pagar_vendedor && parseFloat(parcelaInfo.valor_pagar_vendedor) > 0) {
+          await base44.entities.Comissao.create({
+            venda_id: data.venda_id,
+            parcela_id: parcela.id,
+            usuario_id: data.usuario_id,
+            usuario_nome: usuario.full_name,
+            usuario_perfil: usuario.perfil,
+            tipo_comissao: 'parcela',
+            tipo: 'pagar',
+            valor: parseFloat(parcelaInfo.valor_pagar_vendedor),
+            percentual: parseFloat(data.percentual || 0),
+            status: 'confirmada',
+            data_recebimento: data.data_recebimento,
+            administradora_id: data.administradora_id || venda.administradora_id,
+            observacoes: `Parcela ${parcelaInfo.numero_parcela} - A Pagar${data.observacoes ? ' - ' + data.observacoes : ''}`
           });
+
+          // Atualizar saldo do usuário com o valor a pagar
+          const usuarioData = await base44.entities.User.filter({ id: data.usuario_id });
+          if (usuarioData.length > 0) {
+            const saldoAtual = usuarioData[0].saldo_comissao || 0;
+            await base44.entities.User.update(data.usuario_id, {
+              saldo_comissao: saldoAtual + parseFloat(parcelaInfo.valor_pagar_vendedor)
+            });
+          }
         }
+
+        parcelasProcessadas.push(parcelaInfo.numero_parcela);
       }
 
       // Atualizar total recebido na venda
@@ -847,25 +855,24 @@ export default function RecebimentoComissao() {
       });
 
       // Auditoria
-      const user = await base44.auth.me();
       await base44.entities.LogAuditoria.create({
         usuario_id: user.id,
         usuario_nome: user.full_name,
-        acao: `Registro manual de comissão - Parcela ${data.numero_parcela} | Recebido: ${data.valor} | A Pagar: ${data.valor_pagar_vendedor || '0'}`,
+        acao: `Registro manual de ${parcelasProcessadas.length} parcela(s): ${parcelasProcessadas.join(', ')}`,
         entidade: 'Comissao',
-        entidade_id: comissaoRecebimento.id,
         dados_novos: JSON.stringify(data),
         tipo: 'recebimento'
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
       queryClient.invalidateQueries({ queryKey: ['parcelas'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes'] });
       setManualFormOpen(false);
       resetManualForm();
-      toast.success('Recebimento registrado com sucesso!');
+      const qtdParcelas = variables.parcelas.length;
+      toast.success(`${qtdParcelas} parcela(s) registrada(s) com sucesso!`);
     },
     onError: (error) => {
       toast.error(error.message || 'Erro ao registrar recebimento');
@@ -892,22 +899,32 @@ export default function RecebimentoComissao() {
     });
   };
 
+  const adicionarParcela = () => {
+    setParcelas([...parcelas, { numero_parcela: '', valor: '', valor_pagar_vendedor: '' }]);
+  };
+
+  const removerParcela = (index) => {
+    if (parcelas.length === 1) {
+      toast.error('Deve haver pelo menos uma parcela');
+      return;
+    }
+    setParcelas(parcelas.filter((_, i) => i !== index));
+  };
+
+  const atualizarParcela = (index, field, value) => {
+    const novasParcelas = [...parcelas];
+    novasParcelas[index][field] = value;
+    setParcelas(novasParcelas);
+  };
+
   const handleRegistrarManual = () => {
-    // Validações
+    // Validações básicas
     if (!manualFormData.venda_id) {
       toast.error('Selecione um contrato/venda');
       return;
     }
     if (!manualFormData.usuario_id) {
       toast.error('Selecione um vendedor');
-      return;
-    }
-    if (!manualFormData.numero_parcela) {
-      toast.error('Informe o número da parcela');
-      return;
-    }
-    if (!manualFormData.valor || parseFloat(manualFormData.valor) <= 0) {
-      toast.error('Informe o valor recebido da administradora');
       return;
     }
     if (!manualFormData.data_recebimento) {
@@ -918,14 +935,38 @@ export default function RecebimentoComissao() {
       toast.error('Selecione a administradora');
       return;
     }
-    
-    // Validação: valor a pagar não pode ser maior que valor recebido
-    if (manualFormData.valor_pagar_vendedor && parseFloat(manualFormData.valor_pagar_vendedor) > parseFloat(manualFormData.valor)) {
-      toast.error('Valor a pagar ao vendedor não pode ser maior que o valor recebido da administradora');
+
+    // Validar parcelas
+    const parcelasValidas = parcelas.filter(p => 
+      p.numero_parcela && p.valor && parseFloat(p.valor) > 0
+    );
+
+    if (parcelasValidas.length === 0) {
+      toast.error('Informe pelo menos uma parcela válida');
       return;
     }
 
-    registrarRecebimentoManualMutation.mutate(manualFormData);
+    // Verificar parcelas duplicadas
+    const numerosParcelas = parcelasValidas.map(p => p.numero_parcela);
+    const duplicadas = numerosParcelas.filter((item, index) => numerosParcelas.indexOf(item) !== index);
+    if (duplicadas.length > 0) {
+      toast.error(`Parcelas duplicadas: ${duplicadas.join(', ')}`);
+      return;
+    }
+
+    // Validar valores a pagar
+    for (const parcela of parcelasValidas) {
+      if (parcela.valor_pagar_vendedor && parseFloat(parcela.valor_pagar_vendedor) > parseFloat(parcela.valor)) {
+        toast.error(`Parcela ${parcela.numero_parcela}: Valor a pagar não pode ser maior que o valor recebido`);
+        return;
+      }
+    }
+
+    // Submeter com as parcelas válidas
+    registrarRecebimentoManualMutation.mutate({
+      ...manualFormData,
+      parcelas: parcelasValidas
+    });
   };
 
   const getVendaInfo = (vendaId) => {
@@ -1297,17 +1338,6 @@ export default function RecebimentoComissao() {
               </div>
 
               <div>
-                <Label htmlFor="numero_parcela">Nº da Parcela *</Label>
-                <Input
-                  id="numero_parcela"
-                  type="number"
-                  value={manualFormData.numero_parcela}
-                  onChange={(e) => setManualFormData({ ...manualFormData, numero_parcela: e.target.value })}
-                  placeholder="Ex: 1"
-                />
-              </div>
-
-              <div>
                 <Label htmlFor="data_recebimento">Data de Recebimento *</Label>
                 <Input
                   id="data_recebimento"
@@ -1317,54 +1347,99 @@ export default function RecebimentoComissao() {
                 />
               </div>
 
-              <div className="col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <Label htmlFor="valor" className="text-blue-900 font-semibold">
-                  💰 Valor Recebido da Administradora (R$) *
-                </Label>
-                <Input
-                  id="valor"
-                  type="number"
-                  step="0.01"
-                  value={manualFormData.valor}
-                  onChange={(e) => setManualFormData({ ...manualFormData, valor: e.target.value })}
-                  placeholder="0,00"
-                  className="text-lg font-semibold mt-2 border-blue-300"
-                />
-                <p className="text-xs text-blue-700 mt-1">Valor total recebido da administradora (entrada financeira)</p>
-              </div>
+              <div className="col-span-2">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-base font-semibold">Parcelas *</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={adicionarParcela}
+                    className="gap-2"
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    Adicionar Parcela
+                  </Button>
+                </div>
 
-              <div className="col-span-2 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <Label htmlFor="valor_pagar_vendedor" className="text-emerald-900 font-semibold">
-                  💵 Valor a Pagar ao Vendedor (R$)
-                </Label>
-                <Input
-                  id="valor_pagar_vendedor"
-                  type="number"
-                  step="0.01"
-                  value={manualFormData.valor_pagar_vendedor}
-                  onChange={(e) => {
-                    const valorPagar = parseFloat(e.target.value) || 0;
-                    const valorRecebido = parseFloat(manualFormData.valor) || 0;
-                    
-                    if (valorPagar > valorRecebido && valorRecebido > 0) {
-                      toast.error('Valor a pagar não pode ser maior que o valor recebido');
-                      return;
-                    }
-                    
-                    setManualFormData({ ...manualFormData, valor_pagar_vendedor: e.target.value });
-                  }}
-                  placeholder="0,00"
-                  className="mt-2 border-emerald-300"
-                />
-                <p className="text-xs text-emerald-700 mt-1">Valor que será repassado ao vendedor (saída financeira)</p>
-                
-                {manualFormData.valor && manualFormData.valor_pagar_vendedor && (
-                  <div className="mt-2 pt-2 border-t border-emerald-200">
-                    <p className="text-xs font-semibold text-emerald-900">
-                      Saldo: {formatCurrency(parseFloat(manualFormData.valor) - parseFloat(manualFormData.valor_pagar_vendedor))}
-                    </p>
-                  </div>
-                )}
+                <div className="space-y-3 max-h-96 overflow-y-auto border rounded-lg p-4 bg-slate-50">
+                  {parcelas.map((parcela, index) => (
+                    <div key={index} className="relative p-4 bg-white border rounded-lg space-y-3">
+                      {parcelas.length > 1 && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => removerParcela(index)}
+                          className="absolute top-2 right-2 h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs">Nº Parcela *</Label>
+                          <Input
+                            type="number"
+                            value={parcela.numero_parcela}
+                            onChange={(e) => atualizarParcela(index, 'numero_parcela', e.target.value)}
+                            placeholder="Ex: 1"
+                            className="h-9"
+                          />
+                        </div>
+
+                        <div className="col-span-2">
+                          <Label className="text-xs text-blue-900">💰 Recebido ADM (R$) *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={parcela.valor}
+                            onChange={(e) => atualizarParcela(index, 'valor', e.target.value)}
+                            placeholder="0,00"
+                            className="h-9 border-blue-300"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-emerald-900">💵 A Pagar Vendedor (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={parcela.valor_pagar_vendedor}
+                          onChange={(e) => {
+                            const valorPagar = parseFloat(e.target.value) || 0;
+                            const valorRecebido = parseFloat(parcela.valor) || 0;
+                            
+                            if (valorPagar > valorRecebido && valorRecebido > 0) {
+                              toast.error('Valor a pagar não pode ser maior que o valor recebido');
+                              return;
+                            }
+                            
+                            atualizarParcela(index, 'valor_pagar_vendedor', e.target.value);
+                          }}
+                          placeholder="0,00"
+                          className="h-9 border-emerald-300"
+                        />
+                      </div>
+
+                      {parcela.valor && parcela.valor_pagar_vendedor && (
+                        <div className="text-xs text-slate-600 pt-2 border-t">
+                          Saldo: <span className="font-semibold">
+                            {formatCurrency(parseFloat(parcela.valor) - parseFloat(parcela.valor_pagar_vendedor))}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-xs text-slate-500 mt-2">
+                  📌 Total: {parcelas.filter(p => p.valor && parseFloat(p.valor) > 0).length} parcela(s) • 
+                  Recebido: {formatCurrency(parcelas.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0))} • 
+                  A Pagar: {formatCurrency(parcelas.reduce((acc, p) => acc + (parseFloat(p.valor_pagar_vendedor) || 0), 0))}
+                </p>
               </div>
 
               <div>
