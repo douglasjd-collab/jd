@@ -177,13 +177,24 @@ export default function FunilVendas() {
     }
   });
 
-  const handleDragEnd = (result) => {
+  const handleDragEnd = async (result) => {
     if (!result.destination) return;
+    
+    // Não fazer nada se soltar no mesmo lugar
+    if (result.source.droppableId === result.destination.droppableId && 
+        result.source.index === result.destination.index) {
+      return;
+    }
 
     const oportunidadeId = result.draggableId;
     const novaEtapaId = result.destination.droppableId;
 
-    moverOportunidadeMutation.mutate({ oportunidadeId, novaEtapaId });
+    try {
+      await moverOportunidadeMutation.mutateAsync({ oportunidadeId, novaEtapaId });
+    } catch (error) {
+      console.error('Erro ao mover:', error);
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+    }
   };
 
   const handleSubmit = () => {
