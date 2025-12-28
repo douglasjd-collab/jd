@@ -22,10 +22,15 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: cliente || {
       nome: '',
+      apelido: '',
       cpf: '',
       telefone: '',
       email: '',
       endereco: '',
+      numero: '',
+      cidade: '',
+      cep: '',
+      ponto_referencia: '',
       data_nascimento: '',
       status: 'ativo'
     }
@@ -39,10 +44,15 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
     } else {
       reset({
         nome: '',
+        apelido: '',
         cpf: '',
         telefone: '',
         email: '',
         endereco: '',
+        numero: '',
+        cidade: '',
+        cep: '',
+        ponto_referencia: '',
         data_nascimento: '',
         status: 'ativo'
       });
@@ -66,9 +76,16 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       .replace(/(-\d{4})\d+?$/, '$1');
   };
 
+  const formatCEP = (value) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{3})\d+?$/, '$1');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{cliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
         </DialogHeader>
@@ -82,6 +99,15 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                 placeholder="Nome do cliente"
               />
               {errors.nome && <p className="text-sm text-red-500 mt-1">{errors.nome.message}</p>}
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="apelido">Apelido</Label>
+              <Input
+                id="apelido"
+                {...register('apelido')}
+                placeholder="Como o cliente gosta de ser chamado"
+              />
             </div>
             
             <div>
@@ -120,7 +146,44 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
               <Input
                 id="endereco"
                 {...register('endereco')}
-                placeholder="Endereço completo"
+                placeholder="Rua, avenida, etc."
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="numero">Número</Label>
+              <Input
+                id="numero"
+                {...register('numero')}
+                placeholder="Nº"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="cidade">Cidade</Label>
+              <Input
+                id="cidade"
+                {...register('cidade')}
+                placeholder="Nome da cidade"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="cep">CEP</Label>
+              <Input
+                id="cep"
+                {...register('cep')}
+                placeholder="00000-000"
+                onChange={(e) => setValue('cep', formatCEP(e.target.value))}
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="ponto_referencia">Ponto de Referência</Label>
+              <Input
+                id="ponto_referencia"
+                {...register('ponto_referencia')}
+                placeholder="Ex: Próximo ao mercado, em frente à escola..."
               />
             </div>
             
