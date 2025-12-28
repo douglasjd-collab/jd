@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 
 export default function RecebimentoComissao() {
   const [formOpen, setFormOpen] = useState(false);
+  const [manualFormOpen, setManualFormOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [search, setSearch] = useState('');
   const [selectedComissao, setSelectedComissao] = useState(null);
@@ -35,6 +36,16 @@ export default function RecebimentoComissao() {
     valor_recebido: '',
     percentual_recebido: '',
     data_pagamento: '',
+    observacoes: ''
+  });
+  const [manualFormData, setManualFormData] = useState({
+    venda_id: '',
+    usuario_id: '',
+    numero_parcela: '',
+    valor: '',
+    percentual: '',
+    administradora_id: '',
+    data_recebimento: format(new Date(), 'yyyy-MM-dd'),
     observacoes: ''
   });
 
@@ -65,6 +76,11 @@ export default function RecebimentoComissao() {
   const { data: administradoras = [] } = useQuery({
     queryKey: ['administradoras'],
     queryFn: () => base44.entities.Administradora.list(),
+  });
+
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: () => base44.entities.User.filter({ status: 'ativo' }),
   });
 
   const registrarRecebimentoMutation = useMutation({
@@ -117,6 +133,78 @@ export default function RecebimentoComissao() {
       observacoes: ''
     });
   };
+
+  const resetManualForm = () => {
+    setManualFormData({
+      venda_id: '',
+      usuario_id: '',
+      numero_parcela: '',
+      valor: '',
+      percentual: '',
+      administradora_id: '',
+      data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+      observacoes: ''
+    });
+  };
+
+  const registrarRecebimentoManualMutation = useMutation({
+    mutationFn: async (data) => {
+      const venda = vendas.find(v => v.id === data.venda_id);
+      const usuario = usuarios.find(u => u.id === data.usuario_id);
+      
+      if (!venda || !usuario) {
+        throw new Error('Venda ou usuário não encontrado');
+      }
+
+      // Criar comissão diretamente como confirmada
+      const comissao = await base44.entities.Comissao.create({
+        venda_id: data.venda_id,
+        parcela_id: null,
+        usuario_id: data.usuario_id,
+        usuario_nome: usuario.full_name,
+        usuario_perfil: usuario.perfil,
+        tipo_comissao: 'parcela',
+        tipo: 'receber',
+        valor: parseFloat(data.valor),
+        percentual: parseFloat(data.percentual || 0),
+        status: 'confirmada',
+        data_recebimento: data.data_recebimento,
+        data_pagamento: data.data_recebimento,
+        administradora_id: data.administradora_id || venda.administradora_id,
+        observacoes: `Parcela ${data.numero_parcela}${data.observacoes ? ' - ' + data.observacoes : ''}`
+      });
+
+      // Atualizar saldo do usuário
+      const usuarioData = await base44.entities.User.filter({ id: data.usuario_id });
+      if (usuarioData.length > 0) {
+        const saldoAtual = usuarioData[0].saldo_comissao || 0;
+        await base44.entities.User.update(data.usuario_id, {
+          saldo_comissao: saldoAtual + parseFloat(data.valor)
+        });
+      }
+
+      // Auditoria
+      const user = await base44.auth.me();
+      await base44.entities.LogAuditoria.create({
+        usuario_id: user.id,
+        usuario_nome: user.full_name,
+        acao: `Registro manual de comissão - Parcela ${data.numero_parcela} para ${usuario.full_name}`,
+        entidade: 'Comissao',
+        entidade_id: comissao.id,
+        dados_novos: JSON.stringify(data),
+        tipo: 'recebimento'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
+      setManualFormOpen(false);
+      resetManualForm();
+      toast.success('Recebimento registrado com sucesso!');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao registrar recebimento');
+    }
+  });
 
   const handleRegistrar = () => {
     if (!selectedComissao) {
