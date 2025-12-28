@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink, Wallet, Plus } from 'lucide-react';
+import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink, Wallet, Plus, UserCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
@@ -625,6 +625,7 @@ export default function RecebimentoComissao() {
           parcela: parcela,
           data: c.data_recebimento || c.created_date,
           vendedor_nome: c.usuario_nome,
+          vendedor_id: c.usuario_id,
           administradora_id: c.administradora_id,
           recebido: null,
           pagar: null
@@ -640,6 +641,28 @@ export default function RecebimentoComissao() {
     
     return Object.values(grupos).sort((a, b) => new Date(b.data) - new Date(a.data));
   }, [filteredComissoesRecebidas]);
+
+  // Agrupar comissões por vendedor
+  const comissoesPorVendedor = React.useMemo(() => {
+    const porVendedor = {};
+    
+    comissoesAgrupadas.forEach(comissao => {
+      const vendedorId = comissao.vendedor_id || 'sem_vendedor';
+      if (!porVendedor[vendedorId]) {
+        porVendedor[vendedorId] = {
+          vendedor_nome: comissao.vendedor_nome || 'Sem vendedor',
+          vendedor_id: vendedorId,
+          comissoes: []
+        };
+      }
+      porVendedor[vendedorId].comissoes.push(comissao);
+    });
+    
+    // Ordenar vendedores por nome
+    return Object.values(porVendedor).sort((a, b) => 
+      a.vendedor_nome.localeCompare(b.vendedor_nome)
+    );
+  }, [comissoesAgrupadas]);
 
   const historicoColumns = [
     ...(isAdmin ? [{
@@ -1103,7 +1126,7 @@ export default function RecebimentoComissao() {
       </div>
 
       {/* Histórico de Recebimentos */}
-      <div className="space-y-4 mt-8">
+      <div className="space-y-6 mt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
             {isAdmin ? 'Histórico de Comissões' : 'Minhas Comissões'}
@@ -1126,11 +1149,43 @@ export default function RecebimentoComissao() {
             </div>
           )}
         </div>
-        <DataTable
-          columns={historicoColumns}
-          data={comissoesAgrupadas}
-          emptyMessage={isAdmin ? "Nenhuma comissão registrada" : "Nenhuma comissão disponível"}
-        />
+
+        {comissoesPorVendedor.length === 0 ? (
+          <div className="text-center py-12 text-slate-500">
+            {isAdmin ? "Nenhuma comissão registrada" : "Nenhuma comissão disponível"}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {comissoesPorVendedor.map((vendedorData) => (
+              <div key={vendedorData.vendedor_id} className="space-y-3">
+                {/* Título do Vendedor */}
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#1e3a5f] to-[#2a4a73] rounded-lg border border-[#1e3a5f]/20">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <UserCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-white">
+                      {vendedorData.vendedor_nome}
+                    </h3>
+                    <p className="text-xs text-white/70">
+                      {vendedorData.comissoes.length} comissão{vendedorData.comissoes.length > 1 ? 'ões' : ''} • 
+                      Total: {formatCurrency(vendedorData.comissoes.reduce((acc, c) => 
+                        acc + (c.pagar?.valor || 0), 0
+                      ))}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Comissões do Vendedor */}
+                <DataTable
+                  columns={historicoColumns}
+                  data={vendedorData.comissoes}
+                  emptyMessage="Nenhuma comissão"
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Form Modal */}
