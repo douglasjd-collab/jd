@@ -56,27 +56,91 @@ export default function Vendas() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
+      const user = await base44.auth.me();
+      
       // Criar venda
       const venda = await base44.entities.Venda.create(data);
       
-      // Buscar tabela para gerar parcelas
+      // HU 05 - Buscar tabela para gerar comissões automaticamente
       const tabela = tabelas.find(t => t.id === data.tabela_id);
-      if (tabela && tabela.num_parcelas_comissao) {
-        const parcelas = [];
-        for (let i = 1; i <= tabela.num_parcelas_comissao; i++) {
-          parcelas.push({
+      if (tabela) {
+        // Criar parcelas
+        if (tabela.num_parcelas_comissao && tabela.comissao_por_parcela) {
+          const parcelas = [];
+          for (let i = 1; i <= tabela.num_parcelas_comissao; i++) {
+            parcelas.push({
+              venda_id: venda.id,
+              numero_parcela: i,
+              valor_previsto: tabela.comissao_por_parcela,
+              status: 'prevista'
+            });
+          }
+          await base44.entities.Parcela.bulkCreate(parcelas);
+        }
+        
+        // HU 05 - Criar comissões automaticamente
+        const comissoes = [];
+        
+        // 1. Comissão de Faturamento (se existir)
+        if (tabela.comissao_faturamento && tabela.comissao_faturamento > 0) {
+          comissoes.push({
             venda_id: venda.id,
-            numero_parcela: i,
-            valor_previsto: tabela.comissao_por_parcela,
-            status: 'prevista'
+            usuario_id: data.vendedor_id,
+            usuario_nome: data.vendedor_nome,
+            usuario_perfil: 'vendedor',
+            tipo_comissao: 'faturamento',
+            tipo: 'receber',
+            valor: tabela.comissao_faturamento,
+            percentual: tabela.percentual_faturamento || 0,
+            status: 'prevista',
+            administradora_id: data.administradora_id
           });
         }
-        await base44.entities.Parcela.bulkCreate(parcelas);
+        
+        // 2. Comissões por Parcela (vincular cada parcela criada)
+        if (tabela.num_parcelas_comissao && tabela.comissao_por_parcela) {
+          const parcelasCreated = await base44.entities.Parcela.filter({ venda_id: venda.id });
+          for (const parcela of parcelasCreated) {
+            comissoes.push({
+              venda_id: venda.id,
+              parcela_id: parcela.id,
+              usuario_id: data.vendedor_id,
+              usuario_nome: data.vendedor_nome,
+              usuario_perfil: 'vendedor',
+              tipo_comissao: 'parcela',
+              tipo: 'receber',
+              valor: tabela.comissao_por_parcela,
+              percentual: tabela.percentual_comissao || 0,
+              status: 'prevista',
+              administradora_id: data.administradora_id
+            });
+          }
+        }
+        
+        // Criar todas as comissões
+        if (comissoes.length > 0) {
+          await base44.entities.Comissao.bulkCreate(comissoes);
+        }
         
         // Atualizar comissão total prevista na venda
         await base44.entities.Venda.update(venda.id, {
-          comissao_total_prevista: tabela.comissao_total
+          comissao_total_prevista: (tabela.comissao_faturamento || 0) + (tabela.comissao_total || 0)
         });
+        
+        // HU 08 - Auditoria
+        try {
+          await base44.entities.LogAuditoria.create({
+            usuario_id: user.id,
+            usuario_nome: user.full_name,
+            acao: `Criação de venda e geração automática de ${comissoes.length} comissões`,
+            entidade: 'Venda',
+            entidade_id: venda.id,
+            dados_novos: JSON.stringify({ venda, comissoes }),
+            tipo: 'criacao'
+          });
+        } catch (e) {
+          console.log('Erro ao criar log:', e);
+        }
       }
       
       return venda;
@@ -84,7 +148,7 @@ export default function Vendas() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
       setFormOpen(false);
-      toast.success('Venda cadastrada com sucesso!');
+      toast.success('Venda e comissões cadastradas automaticamente!');
     },
   });
 

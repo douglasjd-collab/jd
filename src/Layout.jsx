@@ -74,6 +74,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'admin', 'gerente', 'vendedor'] },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'admin', 'gerente', 'vendedor'] },
     { name: 'Vendas', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Recebimento Comissão', icon: Wallet, page: 'RecebimentoComissao', roles: ['master', 'admin', 'gerente', 'vendedor'] },
     { 
       name: 'Cadastros', 
       icon: Building2, 
