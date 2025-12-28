@@ -48,6 +48,7 @@ export default function RecebimentoComissao() {
     data_recebimento: format(new Date(), 'yyyy-MM-dd'),
     observacoes: ''
   });
+  const [contratoSearch, setContratoSearch] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -145,7 +146,18 @@ export default function RecebimentoComissao() {
       data_recebimento: format(new Date(), 'yyyy-MM-dd'),
       observacoes: ''
     });
+    setContratoSearch('');
   };
+
+  const filteredVendas = vendas.filter(v => {
+    const searchLower = contratoSearch.toLowerCase();
+    return (
+      v.grupo?.toLowerCase().includes(searchLower) ||
+      v.cota?.toLowerCase().includes(searchLower) ||
+      v.contrato?.toLowerCase().includes(searchLower) ||
+      v.cliente_nome?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const registrarRecebimentoManualMutation = useMutation({
     mutationFn: async (data) => {
@@ -502,29 +514,46 @@ export default function RecebimentoComissao() {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label htmlFor="venda_id">Contrato / Venda *</Label>
-                <Select
-                  value={manualFormData.venda_id}
-                  onValueChange={(value) => {
-                    const venda = vendas.find(v => v.id === value);
-                    setManualFormData({ 
-                      ...manualFormData, 
-                      venda_id: value,
-                      usuario_id: venda?.vendedor_id || '',
-                      administradora_id: venda?.administradora_id || ''
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um contrato/venda" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendas.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.contrato || `${v.grupo}/${v.cota}`} - {v.cliente_nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder="Buscar por grupo, cota, contrato ou cliente..."
+                      value={contratoSearch}
+                      onChange={(e) => setContratoSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select
+                    value={manualFormData.venda_id}
+                    onValueChange={(value) => {
+                      const venda = vendas.find(v => v.id === value);
+                      setManualFormData({ 
+                        ...manualFormData, 
+                        venda_id: value,
+                        usuario_id: venda?.vendedor_id || '',
+                        administradora_id: venda?.administradora_id || ''
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um contrato/venda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredVendas.length === 0 ? (
+                        <div className="p-2 text-sm text-slate-500 text-center">
+                          Nenhuma venda encontrada
+                        </div>
+                      ) : (
+                        filteredVendas.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.contrato || `${v.grupo}/${v.cota}`} - {v.cliente_nome}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {manualFormData.venda_id && (
