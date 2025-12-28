@@ -45,6 +45,7 @@ export default function RecebimentoComissao() {
     usuario_id: '',
     numero_parcela: '',
     valor: '',
+    valor_pagar_vendedor: '',
     percentual: '',
     administradora_id: '',
     data_recebimento: format(new Date(), 'yyyy-MM-dd'),
@@ -160,6 +161,7 @@ export default function RecebimentoComissao() {
       usuario_id: '',
       numero_parcela: '',
       valor: '',
+      valor_pagar_vendedor: '',
       percentual: '',
       administradora_id: '',
       data_recebimento: format(new Date(), 'yyyy-MM-dd'),
@@ -715,8 +717,8 @@ export default function RecebimentoComissao() {
         });
       }
 
-      // Criar comissão diretamente como confirmada
-      const comissao = await base44.entities.Comissao.create({
+      // Criar comissão de recebimento (da administradora)
+      const comissaoRecebimento = await base44.entities.Comissao.create({
         venda_id: data.venda_id,
         parcela_id: parcela.id,
         usuario_id: data.usuario_id,
@@ -728,18 +730,36 @@ export default function RecebimentoComissao() {
         percentual: parseFloat(data.percentual || 0),
         status: 'confirmada',
         data_recebimento: data.data_recebimento,
-        data_pagamento: data.data_recebimento,
         administradora_id: data.administradora_id || venda.administradora_id,
-        observacoes: `Parcela ${data.numero_parcela}${data.observacoes ? ' - ' + data.observacoes : ''}`
+        observacoes: `Parcela ${data.numero_parcela} - Recebido${data.observacoes ? ' - ' + data.observacoes : ''}`
       });
 
-      // Atualizar saldo do usuário
-      const usuarioData = await base44.entities.User.filter({ id: data.usuario_id });
-      if (usuarioData.length > 0) {
-        const saldoAtual = usuarioData[0].saldo_comissao || 0;
-        await base44.entities.User.update(data.usuario_id, {
-          saldo_comissao: saldoAtual + parseFloat(data.valor)
+      // Criar comissão a pagar (ao vendedor) se valor especificado
+      if (data.valor_pagar_vendedor && parseFloat(data.valor_pagar_vendedor) > 0) {
+        await base44.entities.Comissao.create({
+          venda_id: data.venda_id,
+          parcela_id: parcela.id,
+          usuario_id: data.usuario_id,
+          usuario_nome: usuario.full_name,
+          usuario_perfil: usuario.perfil,
+          tipo_comissao: 'parcela',
+          tipo: 'pagar',
+          valor: parseFloat(data.valor_pagar_vendedor),
+          percentual: parseFloat(data.percentual || 0),
+          status: 'confirmada',
+          data_recebimento: data.data_recebimento,
+          administradora_id: data.administradora_id || venda.administradora_id,
+          observacoes: `Parcela ${data.numero_parcela} - A Pagar${data.observacoes ? ' - ' + data.observacoes : ''}`
         });
+
+        // Atualizar saldo do usuário com o valor a pagar
+        const usuarioData = await base44.entities.User.filter({ id: data.usuario_id });
+        if (usuarioData.length > 0) {
+          const saldoAtual = usuarioData[0].saldo_comissao || 0;
+          await base44.entities.User.update(data.usuario_id, {
+            saldo_comissao: saldoAtual + parseFloat(data.valor_pagar_vendedor)
+          });
+        }
       }
 
       // Atualizar total recebido na venda
@@ -757,9 +777,9 @@ export default function RecebimentoComissao() {
       await base44.entities.LogAuditoria.create({
         usuario_id: user.id,
         usuario_nome: user.full_name,
-        acao: `Registro manual de comissão - Parcela ${data.numero_parcela} para ${usuario.full_name}`,
+        acao: `Registro manual de comissão - Parcela ${data.numero_parcela} | Recebido: ${data.valor} | A Pagar: ${data.valor_pagar_vendedor || '0'}`,
         entidade: 'Comissao',
-        entidade_id: comissao.id,
+        entidade_id: comissaoRecebimento.id,
         dados_novos: JSON.stringify(data),
         tipo: 'recebimento'
       });
@@ -1215,8 +1235,8 @@ export default function RecebimentoComissao() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="valor">Valor Recebido (R$) *</Label>
+              <div className="col-span-2">
+                <Label htmlFor="valor">Valor Recebido da Administradora (R$) *</Label>
                 <Input
                   id="valor"
                   type="number"
@@ -1224,7 +1244,22 @@ export default function RecebimentoComissao() {
                   value={manualFormData.valor}
                   onChange={(e) => setManualFormData({ ...manualFormData, valor: e.target.value })}
                   placeholder="0,00"
+                  className="text-lg font-semibold"
                 />
+                <p className="text-xs text-slate-500 mt-1">Valor total recebido da administradora</p>
+              </div>
+
+              <div>
+                <Label htmlFor="valor_pagar_vendedor">Valor a Pagar ao Vendedor (R$)</Label>
+                <Input
+                  id="valor_pagar_vendedor"
+                  type="number"
+                  step="0.01"
+                  value={manualFormData.valor_pagar_vendedor}
+                  onChange={(e) => setManualFormData({ ...manualFormData, valor_pagar_vendedor: e.target.value })}
+                  placeholder="0,00"
+                />
+                <p className="text-xs text-slate-500 mt-1">Valor que será pago ao vendedor</p>
               </div>
 
               <div>
