@@ -138,6 +138,32 @@ export default function RecebimentoComissao() {
     });
   };
 
+  const handleRegistrarManual = () => {
+    // Validações
+    if (!manualFormData.venda_id) {
+      toast.error('Selecione um contrato/venda');
+      return;
+    }
+    if (!manualFormData.usuario_id) {
+      toast.error('Selecione um vendedor');
+      return;
+    }
+    if (!manualFormData.numero_parcela) {
+      toast.error('Informe o número da parcela');
+      return;
+    }
+    if (!manualFormData.valor || parseFloat(manualFormData.valor) <= 0) {
+      toast.error('Informe um valor válido');
+      return;
+    }
+    if (!manualFormData.data_recebimento) {
+      toast.error('Informe a data de recebimento');
+      return;
+    }
+
+    registrarRecebimentoManualMutation.mutate(manualFormData);
+  };
+
   const getVendaInfo = (vendaId) => {
     const venda = vendas.find(v => v.id === vendaId);
     if (!venda) return '-';
@@ -232,6 +258,12 @@ export default function RecebimentoComissao() {
       <PageHeader
         title="Recebimento de Comissão"
         subtitle="Registre manualmente os recebimentos de comissão"
+        actionLabel="Registrar Recebimento"
+        actionIcon={DollarSign}
+        onAction={() => {
+          resetManualForm();
+          setManualFormOpen(true);
+        }}
       />
 
       {/* Search */}
@@ -364,6 +396,175 @@ export default function RecebimentoComissao() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Recebimento Manual */}
+      <Dialog open={manualFormOpen} onOpenChange={setManualFormOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Registrar Recebimento Manual</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="venda_id">Contrato / Venda *</Label>
+                <Select
+                  value={manualFormData.venda_id}
+                  onValueChange={(value) => {
+                    const venda = vendas.find(v => v.id === value);
+                    setManualFormData({ 
+                      ...manualFormData, 
+                      venda_id: value,
+                      usuario_id: venda?.vendedor_id || '',
+                      administradora_id: venda?.administradora_id || ''
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um contrato/venda" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendas.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.contrato || `${v.grupo}/${v.cota}`} - {v.cliente_nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {manualFormData.venda_id && (
+                <>
+                  <div>
+                    <Label>Grupo</Label>
+                    <Input
+                      value={vendas.find(v => v.id === manualFormData.venda_id)?.grupo || '-'}
+                      disabled
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Cota</Label>
+                    <Input
+                      value={vendas.find(v => v.id === manualFormData.venda_id)?.cota || '-'}
+                      disabled
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="col-span-2">
+                <Label htmlFor="usuario_id">Vendedor *</Label>
+                <Select
+                  value={manualFormData.usuario_id}
+                  onValueChange={(value) => setManualFormData({ ...manualFormData, usuario_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usuarios.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="numero_parcela">Nº da Parcela *</Label>
+                <Input
+                  id="numero_parcela"
+                  type="number"
+                  value={manualFormData.numero_parcela}
+                  onChange={(e) => setManualFormData({ ...manualFormData, numero_parcela: e.target.value })}
+                  placeholder="Ex: 1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="data_recebimento">Data de Recebimento *</Label>
+                <Input
+                  id="data_recebimento"
+                  type="date"
+                  value={manualFormData.data_recebimento}
+                  onChange={(e) => setManualFormData({ ...manualFormData, data_recebimento: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="valor">Valor Recebido (R$) *</Label>
+                <Input
+                  id="valor"
+                  type="number"
+                  step="0.01"
+                  value={manualFormData.valor}
+                  onChange={(e) => setManualFormData({ ...manualFormData, valor: e.target.value })}
+                  placeholder="0,00"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="percentual">Percentual (%)</Label>
+                <Input
+                  id="percentual"
+                  type="number"
+                  step="0.01"
+                  value={manualFormData.percentual}
+                  onChange={(e) => setManualFormData({ ...manualFormData, percentual: e.target.value })}
+                  placeholder="0,00"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="administradora_id">Administradora *</Label>
+                <Select
+                  value={manualFormData.administradora_id}
+                  onValueChange={(value) => setManualFormData({ ...manualFormData, administradora_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a administradora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {administradoras.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.nome_fantasia || a.razao_social}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="observacoes_manual">Observação</Label>
+                <Textarea
+                  id="observacoes_manual"
+                  value={manualFormData.observacoes}
+                  onChange={(e) => setManualFormData({ ...manualFormData, observacoes: e.target.value })}
+                  placeholder="Informações adicionais..."
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setManualFormOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleRegistrarManual}
+                disabled={registrarRecebimentoManualMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {registrarRecebimentoManualMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Confirmar Recebimento
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
