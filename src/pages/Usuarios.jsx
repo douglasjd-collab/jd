@@ -115,13 +115,20 @@ export default function Usuarios() {
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário - convite
+      // Novo usuário - cadastro direto
       try {
         await base44.users.inviteUser(data.email, 'user');
-        // Depois de convidar, atualizar os dados adicionais
+        
+        // Aguardar um momento para garantir que o usuário foi criado
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Buscar o usuário recém-criado
         const users = await base44.entities.User.filter({ email: data.email });
         if (users.length > 0) {
           const { email, ...updateData } = data;
+          // Garantir que o status seja ativo
+          updateData.status = updateData.status || 'ativo';
+          
           await base44.entities.User.update(users[0].id, updateData);
           
           // Auditoria - criação de novo vendedor
@@ -139,10 +146,19 @@ export default function Usuarios() {
             console.log('Erro ao criar log:', e);
           }
         }
-        queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+        
+        // Invalidar TODAS as queries relacionadas a usuários/vendedores
+        await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+        await queryClient.invalidateQueries({ queryKey: ['vendedores'] });
+        await queryClient.invalidateQueries({ queryKey: ['User'] });
+        
+        // Forçar refetch imediato
+        await queryClient.refetchQueries({ queryKey: ['usuarios'] });
+        
         setFormOpen(false);
         toast.success('Usuário cadastrado! Email com credenciais enviado.');
       } catch (error) {
+        console.error('Erro ao cadastrar:', error);
         toast.error('Erro ao cadastrar usuário');
       }
     }
