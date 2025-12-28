@@ -124,7 +124,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                   id="senha"
                   type="password"
                   {...register('senha', { 
-                    required: !usuario ? 'Senha é obrigatória' : false,
+                    required: 'Senha é obrigatória',
                     minLength: { value: 6, message: 'Senha deve ter no mínimo 6 caracteres' }
                   })}
                   placeholder="Mínimo 6 caracteres"
