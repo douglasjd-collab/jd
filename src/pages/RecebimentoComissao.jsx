@@ -495,13 +495,15 @@ export default function RecebimentoComissao() {
       const comissao = comissoesRecebidas.find(c => c.id === comissaoId);
       if (!comissao) throw new Error('Comissão não encontrada');
 
-      // Reverter saldo
-      const usuarioData = await base44.entities.User.filter({ id: comissao.usuario_id });
-      if (usuarioData.length > 0) {
-        const saldoAtual = usuarioData[0].saldo_comissao || 0;
-        await base44.entities.User.update(comissao.usuario_id, {
-          saldo_comissao: saldoAtual - parseFloat(comissao.valor)
-        });
+      // Reverter saldo apenas se for tipo 'pagar'
+      if (comissao.tipo === 'pagar') {
+        const usuarioData = await base44.entities.User.filter({ id: comissao.usuario_id });
+        if (usuarioData.length > 0) {
+          const saldoAtual = usuarioData[0].saldo_comissao || 0;
+          await base44.entities.User.update(comissao.usuario_id, {
+            saldo_comissao: saldoAtual - parseFloat(comissao.valor)
+          });
+        }
       }
 
       // Excluir comissão
@@ -512,7 +514,7 @@ export default function RecebimentoComissao() {
       await base44.entities.LogAuditoria.create({
         usuario_id: user.id,
         usuario_nome: user.full_name,
-        acao: `Exclusão de recebimento de comissão`,
+        acao: `Exclusão de ${comissao.tipo === 'receber' ? 'recebimento da ADM' : 'pagamento ao vendedor'}`,
         entidade: 'Comissao',
         entidade_id: comissaoId,
         dados_anteriores: JSON.stringify(comissao),
@@ -521,10 +523,10 @@ export default function RecebimentoComissao() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
-      toast.success('Recebimento excluído com sucesso');
+      toast.success('Excluído com sucesso');
     },
     onError: (error) => {
-      toast.error(error.message || 'Erro ao excluir recebimento');
+      toast.error(error.message || 'Erro ao excluir');
     }
   });
 
@@ -608,27 +610,65 @@ export default function RecebimentoComissao() {
     .filter(c => selectedComissoesParaPagar.includes(c.id))
     .reduce((acc, c) => acc + parseFloat(c.valor), 0);
 
+  // Agrupar comissões por venda/parcela para exibir lado a lado
+  const comissoesAgrupadas = React.useMemo(() => {
+    const grupos = {};
+    
+    filteredComissoesRecebidas.forEach(c => {
+      const match = c.observacoes?.match(/Parcela (\d+)/);
+      const parcela = match ? match[1] : 'N/A';
+      const key = `${c.venda_id}-${parcela}`;
+      
+      if (!grupos[key]) {
+        grupos[key] = {
+          venda_id: c.venda_id,
+          parcela: parcela,
+          data: c.data_recebimento || c.created_date,
+          vendedor_nome: c.usuario_nome,
+          administradora_id: c.administradora_id,
+          recebido: null,
+          pagar: null
+        };
+      }
+      
+      if (c.tipo === 'receber') {
+        grupos[key].recebido = c;
+      } else if (c.tipo === 'pagar') {
+        grupos[key].pagar = c;
+      }
+    });
+    
+    return Object.values(grupos).sort((a, b) => new Date(b.data) - new Date(a.data));
+  }, [filteredComissoesRecebidas]);
+
   const historicoColumns = [
     ...(isAdmin ? [{
       header: () => (
         <div className="flex items-center gap-2">
           <Checkbox
-            checked={selectedComissoesParaPagar.length === filteredComissoesRecebidas.filter(c => c.tipo === 'pagar').length && filteredComissoesRecebidas.filter(c => c.tipo === 'pagar').length > 0}
-            onCheckedChange={toggleTodas}
+            checked={selectedComissoesParaPagar.length === comissoesAgrupadas.filter(g => g.pagar).length && comissoesAgrupadas.filter(g => g.pagar).length > 0}
+            onCheckedChange={() => {
+              const comissoesAPagar = comissoesAgrupadas.filter(g => g.pagar).map(g => g.pagar.id);
+              if (selectedComissoesParaPagar.length === comissoesAPagar.length) {
+                setSelectedComissoesParaPagar([]);
+              } else {
+                setSelectedComissoesParaPagar(comissoesAPagar);
+              }
+            }}
           />
         </div>
       ),
       className: 'w-12',
-      cell: (row) => row.tipo === 'pagar' ? (
+      cell: (row) => row.pagar ? (
         <Checkbox
-          checked={selectedComissoesParaPagar.includes(row.id)}
-          onCheckedChange={() => toggleComissaoSelecionada(row.id)}
+          checked={selectedComissoesParaPagar.includes(row.pagar.id)}
+          onCheckedChange={() => toggleComissaoSelecionada(row.pagar.id)}
         />
       ) : null
     }] : []),
     {
       header: 'Data',
-      cell: (row) => format(new Date(row.data_recebimento || row.created_date), 'dd/MM/yyyy')
+      cell: (row) => format(new Date(row.data), 'dd/MM/yyyy')
     },
     {
       header: 'Venda',
@@ -641,32 +681,45 @@ export default function RecebimentoComissao() {
     },
     {
       header: 'Vendedor',
-      cell: (row) => row.usuario_nome || '-'
-    },
-    {
-      header: 'Tipo',
-      cell: (row) => (
-        <StatusBadge 
-          status={row.tipo}
-          className={row.tipo === 'receber' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}
-        />
-      )
+      cell: (row) => row.vendedor_nome || '-'
     },
     {
       header: 'Parcela',
-      cell: (row) => {
-        const match = row.observacoes?.match(/Parcela (\d+)/);
-        return match ? match[1] : '-';
-      }
+      cell: (row) => row.parcela
     },
-    {
-      header: 'Valor',
-      cell: (row) => (
-        <span className={`font-semibold ${row.tipo === 'receber' ? 'text-blue-600' : 'text-emerald-600'}`}>
-          {formatCurrency(row.valor)}
+    ...(isAdmin ? [{
+      header: 'Recebido ADM',
+      cell: (row) => row.recebido ? (
+        <span className="font-semibold text-blue-600">
+          {formatCurrency(row.recebido.valor)}
         </span>
+      ) : (
+        <span className="text-slate-400">-</span>
+      )
+    }] : []),
+    {
+      header: isAdmin ? 'A Pagar Vendedor' : 'Minha Comissão',
+      cell: (row) => row.pagar ? (
+        <span className="font-semibold text-emerald-600">
+          {formatCurrency(row.pagar.valor)}
+        </span>
+      ) : (
+        <span className="text-slate-400">-</span>
       )
     },
+    ...(isAdmin ? [{
+      header: 'Saldo',
+      cell: (row) => {
+        const recebido = row.recebido?.valor || 0;
+        const pagar = row.pagar?.valor || 0;
+        const saldo = recebido - pagar;
+        return (
+          <span className={`font-semibold ${saldo >= 0 ? 'text-slate-600' : 'text-red-600'}`}>
+            {formatCurrency(saldo)}
+          </span>
+        );
+      }
+    }] : []),
     {
       header: '',
       className: 'w-32',
@@ -680,13 +733,15 @@ export default function RecebimentoComissao() {
           >
             <ExternalLink className="w-4 h-4" />
           </Button>
-          {isAdmin && (
+          {isAdmin && (row.recebido || row.pagar) && (
             <Button
               size="sm"
               variant="ghost"
               onClick={() => {
                 if (confirm('Tem certeza que deseja excluir este recebimento?')) {
-                  excluirComissaoMutation.mutate(row.id);
+                  // Excluir ambas comissões se existirem
+                  if (row.recebido) excluirComissaoMutation.mutate(row.recebido.id);
+                  if (row.pagar) excluirComissaoMutation.mutate(row.pagar.id);
                 }
               }}
               className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -852,7 +907,7 @@ export default function RecebimentoComissao() {
       return;
     }
     if (!manualFormData.valor || parseFloat(manualFormData.valor) <= 0) {
-      toast.error('Informe um valor válido');
+      toast.error('Informe o valor recebido da administradora');
       return;
     }
     if (!manualFormData.data_recebimento) {
@@ -861,6 +916,12 @@ export default function RecebimentoComissao() {
     }
     if (!manualFormData.administradora_id) {
       toast.error('Selecione a administradora');
+      return;
+    }
+    
+    // Validação: valor a pagar não pode ser maior que valor recebido
+    if (manualFormData.valor_pagar_vendedor && parseFloat(manualFormData.valor_pagar_vendedor) > parseFloat(manualFormData.valor)) {
+      toast.error('Valor a pagar ao vendedor não pode ser maior que o valor recebido da administradora');
       return;
     }
 
@@ -1026,7 +1087,7 @@ export default function RecebimentoComissao() {
         </div>
         <DataTable
           columns={historicoColumns}
-          data={filteredComissoesRecebidas}
+          data={comissoesAgrupadas}
           emptyMessage={isAdmin ? "Nenhuma comissão registrada" : "Nenhuma comissão disponível"}
         />
       </div>
@@ -1256,8 +1317,10 @@ export default function RecebimentoComissao() {
                 />
               </div>
 
-              <div className="col-span-2">
-                <Label htmlFor="valor">Valor Recebido da Administradora (R$) *</Label>
+              <div className="col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <Label htmlFor="valor" className="text-blue-900 font-semibold">
+                  💰 Valor Recebido da Administradora (R$) *
+                </Label>
                 <Input
                   id="valor"
                   type="number"
@@ -1265,22 +1328,43 @@ export default function RecebimentoComissao() {
                   value={manualFormData.valor}
                   onChange={(e) => setManualFormData({ ...manualFormData, valor: e.target.value })}
                   placeholder="0,00"
-                  className="text-lg font-semibold"
+                  className="text-lg font-semibold mt-2 border-blue-300"
                 />
-                <p className="text-xs text-slate-500 mt-1">Valor total recebido da administradora</p>
+                <p className="text-xs text-blue-700 mt-1">Valor total recebido da administradora (entrada financeira)</p>
               </div>
 
-              <div>
-                <Label htmlFor="valor_pagar_vendedor">Valor a Pagar ao Vendedor (R$)</Label>
+              <div className="col-span-2 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <Label htmlFor="valor_pagar_vendedor" className="text-emerald-900 font-semibold">
+                  💵 Valor a Pagar ao Vendedor (R$)
+                </Label>
                 <Input
                   id="valor_pagar_vendedor"
                   type="number"
                   step="0.01"
                   value={manualFormData.valor_pagar_vendedor}
-                  onChange={(e) => setManualFormData({ ...manualFormData, valor_pagar_vendedor: e.target.value })}
+                  onChange={(e) => {
+                    const valorPagar = parseFloat(e.target.value) || 0;
+                    const valorRecebido = parseFloat(manualFormData.valor) || 0;
+                    
+                    if (valorPagar > valorRecebido && valorRecebido > 0) {
+                      toast.error('Valor a pagar não pode ser maior que o valor recebido');
+                      return;
+                    }
+                    
+                    setManualFormData({ ...manualFormData, valor_pagar_vendedor: e.target.value });
+                  }}
                   placeholder="0,00"
+                  className="mt-2 border-emerald-300"
                 />
-                <p className="text-xs text-slate-500 mt-1">Valor que será pago ao vendedor</p>
+                <p className="text-xs text-emerald-700 mt-1">Valor que será repassado ao vendedor (saída financeira)</p>
+                
+                {manualFormData.valor && manualFormData.valor_pagar_vendedor && (
+                  <div className="mt-2 pt-2 border-t border-emerald-200">
+                    <p className="text-xs font-semibold text-emerald-900">
+                      Saldo: {formatCurrency(parseFloat(manualFormData.valor) - parseFloat(manualFormData.valor_pagar_vendedor))}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
