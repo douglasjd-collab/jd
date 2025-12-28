@@ -13,11 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User, CreditCard, Loader2, Save } from 'lucide-react';
+import { User, CreditCard, Loader2, Save, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function MeusDados() {
   const [user, setUser] = useState(null);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [nomeCompleto, setNomeCompleto] = useState('');
   const [dadosBancarios, setDadosBancarios] = useState({
     chave_pix: '',
     tipo_chave_pix: '',
@@ -34,6 +36,7 @@ export default function MeusDados() {
   const loadUser = async () => {
     const userData = await base44.auth.me();
     setUser(userData);
+    setNomeCompleto(userData.full_name || '');
     setDadosBancarios({
       chave_pix: userData.chave_pix || '',
       tipo_chave_pix: userData.tipo_chave_pix || '',
@@ -42,6 +45,36 @@ export default function MeusDados() {
       conta: userData.conta || ''
     });
   };
+
+  const handleFotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem');
+      return;
+    }
+
+    setUploadingFoto(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      await base44.entities.User.update(user.id, { foto_perfil: file_url });
+      toast.success('Foto atualizada com sucesso!');
+      loadUser();
+    } catch (error) {
+      toast.error('Erro ao fazer upload da foto');
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
+
+  const updateNomeMutation = useMutation({
+    mutationFn: (nome) => base44.auth.updateMe({ full_name: nome }),
+    onSuccess: () => {
+      toast.success('Nome atualizado com sucesso!');
+      loadUser();
+    },
+  });
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.User.update(user.id, data),
@@ -92,9 +125,72 @@ export default function MeusDados() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-3 bg-slate-50 rounded-xl">
-              <p className="text-sm text-slate-500">Nome</p>
-              <p className="font-medium">{user.full_name}</p>
+            {/* Foto de Perfil */}
+            <div className="flex flex-col items-center gap-4 pb-4 border-b">
+              <div className="relative">
+                {user.foto_perfil ? (
+                  <img 
+                    src={user.foto_perfil} 
+                    alt="Foto de perfil" 
+                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                    {user.full_name?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFotoUpload}
+                  className="hidden"
+                  id="foto-perfil"
+                  disabled={uploadingFoto}
+                />
+                <label
+                  htmlFor="foto-perfil"
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#1e3a5f] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#2a4a73] transition-colors shadow-lg"
+                >
+                  {uploadingFoto ? (
+                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4 text-white" />
+                  )}
+                </label>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-slate-500">Clique no ícone para alterar a foto</p>
+              </div>
+            </div>
+
+            {/* Nome Editável */}
+            <div className="space-y-2">
+              <Label>Nome Completo</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={nomeCompleto}
+                  onChange={(e) => setNomeCompleto(e.target.value)}
+                  placeholder="Seu nome completo"
+                />
+                <Button
+                  onClick={() => {
+                    if (!nomeCompleto.trim()) {
+                      toast.error('Digite um nome válido');
+                      return;
+                    }
+                    updateNomeMutation.mutate(nomeCompleto);
+                  }}
+                  disabled={updateNomeMutation.isPending || nomeCompleto === user.full_name}
+                  size="icon"
+                  className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+                >
+                  {updateNomeMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl">
               <p className="text-sm text-slate-500">Email</p>

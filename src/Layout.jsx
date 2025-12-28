@@ -154,9 +154,17 @@ export default function Layout({ children, currentPageName }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="w-full flex items-center gap-3 hover:bg-white/10 p-2 rounded-xl transition-colors">
-                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                    <UserCircle className="w-6 h-6" />
-                  </div>
+                  {user.foto_perfil ? (
+                    <img 
+                      src={user.foto_perfil} 
+                      alt="Foto" 
+                      className="w-10 h-10 rounded-full object-cover border-2 border-white/20"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/20">
+                      {user.full_name?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0 text-left">
                     <p className="font-medium truncate">{user.full_name}</p>
                     <p className="text-xs text-white/60 capitalize">{user.perfil || 'Vendedor'}</p>
@@ -168,7 +176,7 @@ export default function Layout({ children, currentPageName }) {
                 {(user.perfil === 'master' || user.perfil === 'admin') && (
                   <DropdownMenuItem onClick={() => setLogoUploaderOpen(true)}>
                     <ImageIcon className="w-4 h-4 mr-2" />
-                    Alterar Logo
+                    Alterar Logo do Sistema
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={handleLogout} className="text-red-600">
