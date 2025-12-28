@@ -141,9 +141,9 @@ export default function Usuarios() {
         }
         queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         setFormOpen(false);
-        toast.success('Convite enviado com sucesso!');
+        toast.success('Usuário cadastrado! Email com credenciais enviado.');
       } catch (error) {
-        toast.error('Erro ao enviar convite');
+        toast.error('Erro ao cadastrar usuário');
       }
     }
   };
@@ -226,7 +226,7 @@ export default function Usuarios() {
       <PageHeader
         title="Usuários"
         subtitle={`${usuarios.length} usuários cadastrados`}
-        actionLabel="Convidar Usuário"
+        actionLabel="Cadastrar Usuário"
         actionIcon={UserPlus}
         onAction={() => {
           setSelectedUsuario(null);
