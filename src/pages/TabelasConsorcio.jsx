@@ -102,6 +102,8 @@ export default function TabelasConsorcio() {
         comissao_total: '',
         comissao_por_parcela: '',
         num_parcelas_comissao: 12,
+        percentual_faturamento: 0,
+        comissao_faturamento: 0,
         status: 'ativa'
       });
       setSelectedTabela(null);
@@ -109,14 +111,23 @@ export default function TabelasConsorcio() {
     setFormOpen(true);
   };
 
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     // Calcular valores
     const valorCarta = parseFloat(data.valor_carta) || 0;
     const percentual = parseFloat(data.percentual_comissao) || 0;
     const numParcelas = parseInt(data.num_parcelas_comissao) || 12;
+    const percentualFaturamento = parseFloat(data.percentual_faturamento) || 0;
     
     const comissaoTotal = (valorCarta * percentual) / 100;
     const comissaoPorParcela = comissaoTotal / numParcelas;
+    const comissaoFaturamento = (valorCarta * percentualFaturamento) / 100;
+    
+    // HU 04 - Validação: soma das parcelas não pode ser maior que comissão total
+    const somaParcelas = comissaoPorParcela * numParcelas;
+    if (somaParcelas > comissaoTotal) {
+      toast.error('A soma das parcelas não pode ser maior que a comissão total!');
+      return;
+    }
 
     const submitData = {
       ...data,
@@ -124,8 +135,28 @@ export default function TabelasConsorcio() {
       percentual_comissao: percentual,
       comissao_total: comissaoTotal,
       comissao_por_parcela: comissaoPorParcela,
-      num_parcelas_comissao: numParcelas
+      num_parcelas_comissao: numParcelas,
+      percentual_faturamento: percentualFaturamento,
+      comissao_faturamento: comissaoFaturamento
     };
+
+    // HU 08 - Auditoria
+    try {
+      const user = await base44.auth.me();
+      const logData = {
+        usuario_id: user.id,
+        usuario_nome: user.full_name,
+        acao: selectedTabela ? 'Edição de tabela de consórcio' : 'Criação de tabela de consórcio',
+        entidade: 'TabelaConsorcio',
+        entidade_id: selectedTabela?.id || 'novo',
+        dados_anteriores: selectedTabela ? JSON.stringify(selectedTabela) : null,
+        dados_novos: JSON.stringify(submitData),
+        tipo: selectedTabela ? 'edicao' : 'criacao'
+      };
+      await base44.entities.LogAuditoria.create(logData);
+    } catch (e) {
+      console.log('Erro ao criar log:', e);
+    }
 
     if (selectedTabela) {
       updateMutation.mutate({ id: selectedTabela.id, data: submitData });
@@ -310,7 +341,52 @@ export default function TabelasConsorcio() {
                   placeholder="12"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="percentual_faturamento">% Comissão Faturamento</Label>
+                <Input
+                  id="percentual_faturamento"
+                  type="number"
+                  step="0.01"
+                  {...register('percentual_faturamento')}
+                  placeholder="0,00"
+                />
+              </div>
               
+              <div className="col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="text-sm font-semibold text-blue-900 mb-3">Resumo da Comissão</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-slate-600">Comissão Total:</p>
+                    <p className="font-bold text-slate-900">
+                      {formatCurrency((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-600">Por Parcela ({watch('num_parcelas_comissao') || 12}x):</p>
+                    <p className="font-bold text-slate-900">
+                      {formatCurrency(((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) / (parseInt(watch('num_parcelas_comissao')) || 12))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-600">Faturamento:</p>
+                    <p className="font-bold text-emerald-600">
+                      {formatCurrency((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_faturamento')) || 0) / 100)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-600">Soma Parcelas:</p>
+                    <p className={`font-bold ${
+                      (((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) / (parseInt(watch('num_parcelas_comissao')) || 12)) * (parseInt(watch('num_parcelas_comissao')) || 12) > ((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) 
+                      ? 'text-red-600' 
+                      : 'text-slate-900'
+                    }`}>
+                      {formatCurrency((((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) / (parseInt(watch('num_parcelas_comissao')) || 12)) * (parseInt(watch('num_parcelas_comissao')) || 12))}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <Label>Status</Label>
                 <Select
