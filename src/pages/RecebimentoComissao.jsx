@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink } from 'lucide-react';
+import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
@@ -54,6 +55,12 @@ export default function RecebimentoComissao() {
   const [importFile, setImportFile] = useState(null);
   const [importData, setImportData] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedComissoesParaPagar, setSelectedComissoesParaPagar] = useState([]);
+  const [pagarFormOpen, setPagarFormOpen] = useState(false);
+  const [pagarFormData, setPagarFormData] = useState({
+    data_pagamento: format(new Date(), 'yyyy-MM-dd'),
+    observacoes: ''
+  });
 
   const queryClient = useQueryClient();
 
@@ -517,7 +524,96 @@ export default function RecebimentoComissao() {
     return matchSearch;
   });
 
+  const pagarComissoesMutation = useMutation({
+    mutationFn: async ({ comissaoIds, data }) => {
+      for (const comissaoId of comissaoIds) {
+        await base44.entities.Comissao.update(comissaoId, {
+          status: 'paga',
+          data_pagamento: data.data_pagamento,
+          observacoes: data.observacoes
+        });
+      }
+
+      // Auditoria
+      const user = await base44.auth.me();
+      await base44.entities.LogAuditoria.create({
+        usuario_id: user.id,
+        usuario_nome: user.full_name,
+        acao: `Pagamento em lote de ${comissaoIds.length} comissões`,
+        entidade: 'Comissao',
+        dados_novos: JSON.stringify(data),
+        tipo: 'edicao'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
+      setPagarFormOpen(false);
+      setSelectedComissoesParaPagar([]);
+      setPagarFormData({
+        data_pagamento: format(new Date(), 'yyyy-MM-dd'),
+        observacoes: ''
+      });
+      toast.success('Pagamentos registrados com sucesso!');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao registrar pagamentos');
+    }
+  });
+
+  const handlePagarSelecionadas = () => {
+    if (selectedComissoesParaPagar.length === 0) {
+      toast.error('Selecione ao menos uma comissão');
+      return;
+    }
+    if (!pagarFormData.data_pagamento) {
+      toast.error('Informe a data de pagamento');
+      return;
+    }
+
+    pagarComissoesMutation.mutate({
+      comissaoIds: selectedComissoesParaPagar,
+      data: pagarFormData
+    });
+  };
+
+  const toggleComissaoSelecionada = (comissaoId) => {
+    setSelectedComissoesParaPagar(prev => 
+      prev.includes(comissaoId)
+        ? prev.filter(id => id !== comissaoId)
+        : [...prev, comissaoId]
+    );
+  };
+
+  const toggleTodas = () => {
+    if (selectedComissoesParaPagar.length === filteredComissoesRecebidas.length) {
+      setSelectedComissoesParaPagar([]);
+    } else {
+      setSelectedComissoesParaPagar(filteredComissoesRecebidas.map(c => c.id));
+    }
+  };
+
+  const totalSelecionado = filteredComissoesRecebidas
+    .filter(c => selectedComissoesParaPagar.includes(c.id))
+    .reduce((acc, c) => acc + parseFloat(c.valor), 0);
+
   const historicoColumns = [
+    {
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={selectedComissoesParaPagar.length === filteredComissoesRecebidas.length && filteredComissoesRecebidas.length > 0}
+            onCheckedChange={toggleTodas}
+          />
+        </div>
+      ),
+      className: 'w-12',
+      cell: (row) => (
+        <Checkbox
+          checked={selectedComissoesParaPagar.includes(row.id)}
+          onCheckedChange={() => toggleComissaoSelecionada(row.id)}
+        />
+      )
+    },
     {
       header: 'Data',
       cell: (row) => format(new Date(row.data_recebimento || row.created_date), 'dd/MM/yyyy')
@@ -866,8 +962,27 @@ export default function RecebimentoComissao() {
       </div>
 
       {/* Histórico de Recebimentos */}
-      <div className="space-y-2 mt-8">
-        <h2 className="text-lg font-semibold text-slate-900">Histórico de Recebimentos</h2>
+      <div className="space-y-4 mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Histórico de Recebimentos</h2>
+          {selectedComissoesParaPagar.length > 0 && (
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-slate-600">
+                {selectedComissoesParaPagar.length} selecionada{selectedComissoesParaPagar.length > 1 ? 's' : ''} • 
+                <span className="font-semibold text-emerald-600 ml-1">
+                  {formatCurrency(totalSelecionado)}
+                </span>
+              </div>
+              <Button
+                onClick={() => setPagarFormOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Wallet className="w-4 h-4 mr-2" />
+                Registrar Pagamento
+              </Button>
+            </div>
+          )}
+        </div>
         <DataTable
           columns={historicoColumns}
           data={filteredComissoesRecebidas}
@@ -1316,6 +1431,82 @@ export default function RecebimentoComissao() {
                 </div>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Pagamento em Lote */}
+      <Dialog open={pagarFormOpen} onOpenChange={setPagarFormOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registrar Pagamento de Comissões</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Resumo das selecionadas */}
+            <div className="p-4 bg-slate-50 rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Comissões Selecionadas:</span>
+                <span className="font-medium">{selectedComissoesParaPagar.length}</span>
+              </div>
+              <div className="flex justify-between text-sm border-t pt-2">
+                <span className="text-slate-600">Total a Pagar:</span>
+                <span className="font-bold text-emerald-600 text-lg">{formatCurrency(totalSelecionado)}</span>
+              </div>
+            </div>
+
+            {/* Lista de comissões */}
+            <div className="max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2">
+              {filteredComissoesRecebidas
+                .filter(c => selectedComissoesParaPagar.includes(c.id))
+                .map(c => (
+                  <div key={c.id} className="flex justify-between text-sm p-2 bg-slate-50 rounded">
+                    <span>{c.usuario_nome} - {getVendaInfo(c.venda_id)}</span>
+                    <span className="font-semibold text-emerald-600">{formatCurrency(c.valor)}</span>
+                  </div>
+                ))}
+            </div>
+
+            {/* Formulário */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="data_pagamento_lote">Data de Pagamento *</Label>
+                <Input
+                  id="data_pagamento_lote"
+                  type="date"
+                  value={pagarFormData.data_pagamento}
+                  onChange={(e) => setPagarFormData({ ...pagarFormData, data_pagamento: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="observacoes_lote">Observações</Label>
+                <Textarea
+                  id="observacoes_lote"
+                  value={pagarFormData.observacoes}
+                  onChange={(e) => setPagarFormData({ ...pagarFormData, observacoes: e.target.value })}
+                  placeholder="Informações sobre o pagamento..."
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setPagarFormOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handlePagarSelecionadas}
+                disabled={pagarComissoesMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {pagarComissoesMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Confirmar Pagamento
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
