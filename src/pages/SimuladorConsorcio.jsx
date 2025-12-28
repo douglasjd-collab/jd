@@ -23,13 +23,12 @@ export default function SimuladorConsorcio() {
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [cartas, setCartas] = useState([
-    { credito: '', parcela: '', quantidade: 1 }
+    { credito: '', parcela: '', prazo: '' }
   ]);
   const [lanceEmbutidoAtivo, setLanceEmbutidoAtivo] = useState(false);
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(25);
   const [lanceProprioAtivo, setLanceProprioAtivo] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
-  const [prazoOriginal, setPrazoOriginal] = useState('');
   const [opcaoPos, setOpcaoPos] = useState('prazo');
   const [resultado, setResultado] = useState(null);
 
@@ -49,7 +48,7 @@ export default function SimuladorConsorcio() {
   });
 
   const adicionarCarta = () => {
-    setCartas([...cartas, { credito: '', parcela: '', quantidade: 1 }]);
+    setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
   };
 
   const removerCarta = (index) => {
@@ -69,15 +68,16 @@ export default function SimuladorConsorcio() {
   // Cálculos automáticos
   const creditoTotal = cartas.reduce((acc, carta) => {
     const credito = parseFloat(carta.credito) || 0;
-    const qtd = parseInt(carta.quantidade) || 1;
-    return acc + (credito * qtd);
+    return acc + credito;
   }, 0);
 
   const parcelaTotal = cartas.reduce((acc, carta) => {
     const parcela = parseFloat(carta.parcela) || 0;
-    const qtd = parseInt(carta.quantidade) || 1;
-    return acc + (parcela * qtd);
+    return acc + parcela;
   }, 0);
+
+  // Prazo original é o da primeira carta com prazo preenchido
+  const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
 
   const lanceEmbutidoValor = lanceEmbutidoAtivo 
     ? creditoTotal * (lanceEmbutidoPercentual / 100) 
@@ -225,11 +225,10 @@ export default function SimuladorConsorcio() {
       // Limpar formulário
       setClienteNome('');
       setTelefone('');
-      setCartas([{ credito: '', parcela: '', quantidade: 1 }]);
+      setCartas([{ credito: '', parcela: '', prazo: '' }]);
       setLanceEmbutidoAtivo(false);
       setLanceProprioAtivo(false);
       setLanceProprio('');
-      setPrazoOriginal('');
       setResultado(null);
 
       // Mostrar link para oportunidade
@@ -362,23 +361,24 @@ export default function SimuladorConsorcio() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Quantidade</Label>
+                      <Label className="text-xs">Prazo (meses) *</Label>
                       <Input
                         type="number"
                         min="1"
-                        value={carta.quantidade}
-                        onChange={(e) => atualizarCarta(index, 'quantidade', e.target.value)}
+                        value={carta.prazo}
+                        onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)}
+                        placeholder="Ex: 120"
                         className="h-9"
                       />
                     </div>
                   </div>
 
-                  {carta.credito && carta.parcela && (
+                  {carta.credito && carta.parcela && carta.prazo && (
                     <div className="mt-2 text-xs text-slate-600 pt-2 border-t">
-                      Subtotal: <span className="font-semibold">
-                        {formatCurrency(parseFloat(carta.credito) * parseInt(carta.quantidade))} 
-                        {' • '}
-                        {formatCurrency(parseFloat(carta.parcela) * parseInt(carta.quantidade))}/mês
+                      <span className="font-semibold">
+                        {formatCurrency(parseFloat(carta.credito))} • 
+                        {formatCurrency(parseFloat(carta.parcela))}/mês • 
+                        {carta.prazo} meses
                       </span>
                     </div>
                   )}
@@ -492,17 +492,6 @@ export default function SimuladorConsorcio() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="prazo_original">Prazo Original (meses) *</Label>
-                <Input
-                  id="prazo_original"
-                  type="number"
-                  value={prazoOriginal}
-                  onChange={(e) => setPrazoOriginal(e.target.value)}
-                  placeholder="Ex: 120"
-                />
-              </div>
-
               <div>
                 <Label className="mb-3 block">Escolha uma opção:</Label>
                 <RadioGroup value={opcaoPos} onValueChange={setOpcaoPos}>
