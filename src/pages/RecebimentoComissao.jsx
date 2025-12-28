@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, DollarSign, Search } from 'lucide-react';
+import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -49,6 +49,10 @@ export default function RecebimentoComissao() {
     observacoes: ''
   });
   const [contratoSearch, setContratoSearch] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importData, setImportData] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -158,6 +162,247 @@ export default function RecebimentoComissao() {
       v.cliente_nome?.toLowerCase().includes(searchLower)
     );
   });
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv'
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      toast.error('Formato de arquivo inválido. Use .xlsx ou .csv');
+      return;
+    }
+
+    setImportFile(file);
+    setIsProcessing(true);
+
+    try {
+      // Upload do arquivo
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+      // Extrair dados
+      const schema = {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            Data: { type: 'string' },
+            Contrato: { type: 'string' },
+            Grupo: { type: 'string' },
+            Cota: { type: 'string' },
+            'Valor Recebido': { type: 'number' },
+            'Nº Parcela': { type: 'number' },
+            Administradora: { type: 'string' }
+          }
+        }
+      };
+
+      const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url,
+        json_schema: schema
+      });
+
+      if (result.status === 'error') {
+        toast.error(result.details || 'Erro ao processar arquivo');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Validar e processar dados
+      const processedData = processImportData(result.output);
+      setImportData(processedData);
+      setIsProcessing(false);
+    } catch (error) {
+      toast.error('Erro ao processar arquivo');
+      setIsProcessing(false);
+    }
+  };
+
+  const processImportData = (rawData) => {
+    const processed = rawData.map((row, index) => {
+      const errors = [];
+      let venda = null;
+      let administradora = null;
+
+      // Validar data
+      if (!row.Data) {
+        errors.push('Data obrigatória');
+      }
+
+      // Validar valor
+      if (!row['Valor Recebido'] || parseFloat(row['Valor Recebido']) <= 0) {
+        errors.push('Valor inválido');
+      }
+
+      // Validar parcela
+      if (!row['Nº Parcela']) {
+        errors.push('Número da parcela obrigatório');
+      }
+
+      // Validar vínculo (Contrato OU Grupo+Cota)
+      if (!row.Contrato && (!row.Grupo || !row.Cota)) {
+        errors.push('Informe Contrato ou Grupo+Cota');
+      }
+
+      // Buscar administradora
+      if (row.Administradora) {
+        administradora = administradoras.find(a => 
+          a.nome_fantasia?.toLowerCase() === row.Administradora.toLowerCase() ||
+          a.razao_social?.toLowerCase() === row.Administradora.toLowerCase()
+        );
+        if (!administradora) {
+          errors.push('Administradora não encontrada');
+        }
+      } else {
+        errors.push('Administradora obrigatória');
+      }
+
+      // Buscar venda
+      if (row.Contrato) {
+        venda = vendas.find(v => v.contrato === row.Contrato);
+      } else if (row.Grupo && row.Cota) {
+        venda = vendas.find(v => 
+          v.grupo === row.Grupo && 
+          v.cota === row.Cota &&
+          (!administradora || v.administradora_id === administradora.id)
+        );
+      }
+
+      if (!venda) {
+        errors.push('Venda não encontrada');
+      }
+
+      // Verificar duplicidade
+      if (venda && !errors.length) {
+        const isDuplicate = comissoes.some(c => 
+          c.venda_id === venda.id &&
+          c.observacoes?.includes(`Parcela ${row['Nº Parcela']}`) &&
+          parseFloat(c.valor) === parseFloat(row['Valor Recebido']) &&
+          c.status === 'confirmada'
+        );
+        if (isDuplicate) {
+          errors.push('Recebimento duplicado');
+        }
+      }
+
+      return {
+        linha: index + 2,
+        data: row.Data,
+        contrato: row.Contrato || `${row.Grupo}/${row.Cota}`,
+        grupo: row.Grupo,
+        cota: row.Cota,
+        valor: row['Valor Recebido'],
+        parcela: row['Nº Parcela'],
+        administradora: row.Administradora,
+        venda_id: venda?.id,
+        administradora_id: administradora?.id,
+        vendedor_id: venda?.vendedor_id,
+        vendedor_nome: venda?.vendedor_nome,
+        errors: errors,
+        isValid: errors.length === 0
+      };
+    });
+
+    return {
+      total: processed.length,
+      validos: processed.filter(p => p.isValid).length,
+      erros: processed.filter(p => !p.isValid).length,
+      registros: processed
+    };
+  };
+
+  const importarRecebimentosMutation = useMutation({
+    mutationFn: async (registros) => {
+      const user = await base44.auth.me();
+      const results = [];
+
+      for (const reg of registros) {
+        if (!reg.isValid) continue;
+
+        try {
+          const venda = vendas.find(v => v.id === reg.venda_id);
+          const usuario = usuarios.find(u => u.id === reg.vendedor_id);
+
+          // Criar comissão
+          const comissao = await base44.entities.Comissao.create({
+            venda_id: reg.venda_id,
+            parcela_id: null,
+            usuario_id: reg.vendedor_id,
+            usuario_nome: usuario.full_name,
+            usuario_perfil: usuario.perfil,
+            tipo_comissao: 'parcela',
+            tipo: 'receber',
+            valor: parseFloat(reg.valor),
+            percentual: 0,
+            status: 'confirmada',
+            data_recebimento: reg.data,
+            data_pagamento: reg.data,
+            administradora_id: reg.administradora_id,
+            observacoes: `Parcela ${reg.parcela} - Importado`
+          });
+
+          // Atualizar saldo
+          const usuarioData = await base44.entities.User.filter({ id: reg.vendedor_id });
+          if (usuarioData.length > 0) {
+            const saldoAtual = usuarioData[0].saldo_comissao || 0;
+            await base44.entities.User.update(reg.vendedor_id, {
+              saldo_comissao: saldoAtual + parseFloat(reg.valor)
+            });
+          }
+
+          // Auditoria
+          await base44.entities.LogAuditoria.create({
+            usuario_id: user.id,
+            usuario_nome: user.full_name,
+            acao: `Importação de recebimento - Linha ${reg.linha}`,
+            entidade: 'Comissao',
+            entidade_id: comissao.id,
+            dados_novos: JSON.stringify(reg),
+            tipo: 'recebimento'
+          });
+
+          results.push({ linha: reg.linha, success: true });
+        } catch (error) {
+          results.push({ linha: reg.linha, success: false, error: error.message });
+        }
+      }
+
+      return results;
+    },
+    onSuccess: (results) => {
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => !r.success).length;
+
+      queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
+      setImportOpen(false);
+      setImportFile(null);
+      setImportData(null);
+
+      if (errorCount === 0) {
+        toast.success(`${successCount} recebimentos importados com sucesso!`);
+      } else {
+        toast.warning(`${successCount} importados, ${errorCount} com erro`);
+      }
+    },
+    onError: (error) => {
+      toast.error('Erro ao importar recebimentos');
+    }
+  });
+
+  const handleConfirmarImportacao = () => {
+    if (!importData || importData.validos === 0) {
+      toast.error('Nenhum registro válido para importar');
+      return;
+    }
+
+    const registrosValidos = importData.registros.filter(r => r.isValid);
+    importarRecebimentosMutation.mutate(registrosValidos);
+  };
 
   const registrarRecebimentoManualMutation = useMutation({
     mutationFn: async (data) => {
@@ -368,7 +613,16 @@ export default function RecebimentoComissao() {
           resetManualForm();
           setManualFormOpen(true);
         }}
-      />
+      >
+        <Button
+          onClick={() => setImportOpen(true)}
+          variant="outline"
+          className="gap-2"
+        >
+          <Upload className="w-4 h-4" />
+          Importar Excel/CSV
+        </Button>
+      </PageHeader>
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -685,6 +939,144 @@ export default function RecebimentoComissao() {
                 Confirmar Recebimento
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Importação */}
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Importar Recebimentos (Excel / CSV)</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Upload */}
+            {!importData && (
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
+                  <Upload className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                  <p className="text-sm text-slate-600 mb-4">
+                    Arraste um arquivo ou clique para selecionar
+                  </p>
+                  <Input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileUpload}
+                    className="max-w-xs mx-auto"
+                    disabled={isProcessing}
+                  />
+                  {isProcessing && (
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm text-slate-600">Processando arquivo...</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Instruções */}
+                <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                  <h4 className="font-semibold text-sm">Formato do arquivo:</h4>
+                  <ul className="text-sm text-slate-600 space-y-1">
+                    <li>• <strong>Data</strong> (obrigatório)</li>
+                    <li>• <strong>Contrato</strong> OU <strong>Grupo + Cota</strong> (obrigatório)</li>
+                    <li>• <strong>Valor Recebido</strong> (obrigatório)</li>
+                    <li>• <strong>Nº Parcela</strong> (obrigatório)</li>
+                    <li>• <strong>Administradora</strong> (obrigatório)</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Pré-visualização */}
+            {importData && (
+              <div className="space-y-4">
+                {/* Resumo */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <p className="text-sm text-slate-600">Total de Registros</p>
+                    <p className="text-2xl font-bold text-slate-900">{importData.total}</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-lg p-4">
+                    <p className="text-sm text-emerald-600">Registros Válidos</p>
+                    <p className="text-2xl font-bold text-emerald-700">{importData.validos}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-4">
+                    <p className="text-sm text-red-600">Com Erro</p>
+                    <p className="text-2xl font-bold text-red-700">{importData.erros}</p>
+                  </div>
+                </div>
+
+                {/* Tabela de registros */}
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto max-h-96">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Linha</th>
+                          <th className="px-3 py-2 text-left">Status</th>
+                          <th className="px-3 py-2 text-left">Contrato</th>
+                          <th className="px-3 py-2 text-left">Parcela</th>
+                          <th className="px-3 py-2 text-left">Valor</th>
+                          <th className="px-3 py-2 text-left">Vendedor</th>
+                          <th className="px-3 py-2 text-left">Erros</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importData.registros.map((reg) => (
+                          <tr key={reg.linha} className="border-t">
+                            <td className="px-3 py-2">{reg.linha}</td>
+                            <td className="px-3 py-2">
+                              {reg.isValid ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4 text-red-600" />
+                              )}
+                            </td>
+                            <td className="px-3 py-2">{reg.contrato}</td>
+                            <td className="px-3 py-2">{reg.parcela}</td>
+                            <td className="px-3 py-2">{formatCurrency(reg.valor)}</td>
+                            <td className="px-3 py-2">{reg.vendedor_nome || '-'}</td>
+                            <td className="px-3 py-2">
+                              {reg.errors.length > 0 && (
+                                <span className="text-xs text-red-600">
+                                  {reg.errors.join(', ')}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-between gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setImportData(null);
+                      setImportFile(null);
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleConfirmarImportacao}
+                    disabled={importarRecebimentosMutation.isPending || importData.validos === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {importarRecebimentosMutation.isPending && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    Importar {importData.validos} Recebimento{importData.validos !== 1 ? 's' : ''}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
