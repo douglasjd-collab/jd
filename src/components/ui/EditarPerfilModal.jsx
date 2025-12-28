@@ -54,18 +54,29 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
 
     setSalvando(true);
     try {
-      // Atualizar nome no registro do usuário
-      await base44.entities.User.update(user.id, { 
-        full_name: nomeCompleto,
-        foto_perfil: fotoUrl 
-      });
+      // Atualizar nome e foto no registro do usuário
+      const dataToUpdate = { 
+        full_name: nomeCompleto.trim()
+      };
+      
+      // Só adiciona foto_perfil se houver uma URL válida
+      if (fotoUrl) {
+        dataToUpdate.foto_perfil = fotoUrl;
+      }
+
+      await base44.entities.User.update(user.id, dataToUpdate);
 
       toast.success('Perfil atualizado com sucesso!');
-      onSuccess?.();
+      
+      // Recarregar os dados do usuário
+      if (onSuccess) {
+        await onSuccess();
+      }
+      
       onOpenChange(false);
     } catch (error) {
-      toast.error('Erro ao atualizar perfil');
-      console.error(error);
+      console.error('Erro detalhado ao atualizar perfil:', error);
+      toast.error('Erro ao atualizar perfil: ' + (error.message || 'Tente novamente'));
     } finally {
       setSalvando(false);
     }

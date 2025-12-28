@@ -107,13 +107,16 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
         base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' })
       ]);
+      
+      console.log('Clientes carregados:', clientesData.length);
+      
       setClientes(clientesData);
       setAdministradoras(adminData);
       setVendedores(vendedoresData);
       setGerentes(gerentesData);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      toast.error('Erro ao carregar dados do formulário');
+      console.error('Erro detalhado ao carregar dados:', error);
+      toast.error('Erro ao carregar dados: ' + (error.message || 'Verifique suas permissões'));
     }
   };
 
