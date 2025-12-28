@@ -44,7 +44,17 @@ export default function Usuarios() {
   const [selectedUsuario, setSelectedUsuario] = useState(null);
   const [search, setSearch] = useState('');
   const [filterPerfil, setFilterPerfil] = useState('todos');
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const user = await base44.auth.me();
+    setCurrentUser(user);
+  };
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
@@ -63,9 +73,16 @@ export default function Usuarios() {
 
   const handleSubmit = async (data) => {
     if (selectedUsuario) {
-      // Edição - atualiza dados adicionais
-      const { email, full_name, ...updateData } = data;
-      updateMutation.mutate({ id: selectedUsuario.id, data: updateData });
+      // Edição - atualizar todos os dados incluindo nome e email (se permitido)
+      const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
+      
+      // Se não é gerente ou superior, remove o email dos dados a atualizar
+      const dataToUpdate = { ...data };
+      if (!isGerenteOuSuperior) {
+        delete dataToUpdate.email;
+      }
+      
+      updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
       // Novo usuário - convite
       try {
@@ -207,6 +224,7 @@ export default function Usuarios() {
         usuario={selectedUsuario}
         onSubmit={handleSubmit}
         isLoading={updateMutation.isPending}
+        currentUser={currentUser}
       />
     </div>
   );

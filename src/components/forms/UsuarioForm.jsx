@@ -19,7 +19,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading }) {
+export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading, currentUser }) {
   const [gerentes, setGerentes] = useState([]);
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: usuario || {
@@ -34,6 +34,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   });
 
   const perfil = watch('perfil');
+  const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
 
   useEffect(() => {
     loadGerentes();
@@ -104,9 +105,12 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                 type="email"
                 {...register('email', { required: 'Email é obrigatório' })}
                 placeholder="email@exemplo.com"
-                disabled={!!usuario}
+                disabled={!!usuario && !isGerenteOuSuperior}
               />
               {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
+              {!!usuario && !isGerenteOuSuperior && (
+                <p className="text-xs text-slate-500 mt-1">Apenas Gerente ou superior pode alterar o email</p>
+              )}
             </div>
             
             <div>

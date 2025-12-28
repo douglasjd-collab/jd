@@ -1,39 +1,39 @@
-import Dashboard from './pages/Dashboard';
-import Clientes from './pages/Clientes';
-import Usuarios from './pages/Usuarios';
 import Administradoras from './pages/Administradoras';
-import TabelasConsorcio from './pages/TabelasConsorcio';
-import PlanosConsorcio from './pages/PlanosConsorcio';
-import Vendas from './pages/Vendas';
-import VendaDetalhes from './pages/VendaDetalhes';
+import ClienteDetalhes from './pages/ClienteDetalhes';
+import Clientes from './pages/Clientes';
+import Comissoes from './pages/Comissoes';
+import Configuracoes from './pages/Configuracoes';
+import Dashboard from './pages/Dashboard';
 import Importacao from './pages/Importacao';
 import ImportacaoDetalhes from './pages/ImportacaoDetalhes';
-import Comissoes from './pages/Comissoes';
-import Relatorios from './pages/Relatorios';
-import Configuracoes from './pages/Configuracoes';
-import ClienteDetalhes from './pages/ClienteDetalhes';
 import MeusDados from './pages/MeusDados';
+import PlanosConsorcio from './pages/PlanosConsorcio';
+import Relatorios from './pages/Relatorios';
 import Saques from './pages/Saques';
+import TabelasConsorcio from './pages/TabelasConsorcio';
+import Usuarios from './pages/Usuarios';
+import VendaDetalhes from './pages/VendaDetalhes';
+import Vendas from './pages/Vendas';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Clientes": Clientes,
-    "Usuarios": Usuarios,
     "Administradoras": Administradoras,
-    "TabelasConsorcio": TabelasConsorcio,
-    "PlanosConsorcio": PlanosConsorcio,
-    "Vendas": Vendas,
-    "VendaDetalhes": VendaDetalhes,
+    "ClienteDetalhes": ClienteDetalhes,
+    "Clientes": Clientes,
+    "Comissoes": Comissoes,
+    "Configuracoes": Configuracoes,
+    "Dashboard": Dashboard,
     "Importacao": Importacao,
     "ImportacaoDetalhes": ImportacaoDetalhes,
-    "Comissoes": Comissoes,
-    "Relatorios": Relatorios,
-    "Configuracoes": Configuracoes,
-    "ClienteDetalhes": ClienteDetalhes,
     "MeusDados": MeusDados,
+    "PlanosConsorcio": PlanosConsorcio,
+    "Relatorios": Relatorios,
     "Saques": Saques,
+    "TabelasConsorcio": TabelasConsorcio,
+    "Usuarios": Usuarios,
+    "VendaDetalhes": VendaDetalhes,
+    "Vendas": Vendas,
 }
 
 export const pagesConfig = {
