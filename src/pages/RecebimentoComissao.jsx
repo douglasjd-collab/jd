@@ -354,10 +354,37 @@ export default function RecebimentoComissao() {
           const venda = vendas.find(v => v.id === reg.venda_id);
           const usuario = usuarios.find(u => u.id === reg.vendedor_id);
 
+          // Buscar ou criar parcela
+          const parcelas = await base44.entities.Parcela.filter({ 
+            venda_id: reg.venda_id,
+            numero_parcela: parseInt(reg.parcela)
+          });
+
+          let parcela;
+          if (parcelas.length > 0) {
+            // Atualizar parcela existente
+            parcela = parcelas[0];
+            await base44.entities.Parcela.update(parcela.id, {
+              status: 'recebida',
+              valor_recebido: parseFloat(reg.valor),
+              data_recebimento: reg.data
+            });
+          } else {
+            // Criar nova parcela
+            parcela = await base44.entities.Parcela.create({
+              venda_id: reg.venda_id,
+              numero_parcela: parseInt(reg.parcela),
+              valor_previsto: parseFloat(reg.valor),
+              valor_recebido: parseFloat(reg.valor),
+              data_recebimento: reg.data,
+              status: 'recebida'
+            });
+          }
+
           // Criar comissão
           const comissao = await base44.entities.Comissao.create({
             venda_id: reg.venda_id,
-            parcela_id: null,
+            parcela_id: parcela.id,
             usuario_id: reg.vendedor_id,
             usuario_nome: usuario.full_name,
             usuario_perfil: usuario.perfil,
@@ -380,6 +407,16 @@ export default function RecebimentoComissao() {
               saldo_comissao: saldoAtual + parseFloat(reg.valor)
             });
           }
+
+          // Atualizar total recebido na venda
+          const comissoesVenda = await base44.entities.Comissao.filter({ 
+            venda_id: reg.venda_id,
+            status: 'confirmada'
+          });
+          const totalRecebido = comissoesVenda.reduce((acc, c) => acc + parseFloat(c.valor), 0);
+          await base44.entities.Venda.update(reg.venda_id, {
+            comissao_total_recebida: totalRecebido
+          });
 
           // Auditoria
           await base44.entities.LogAuditoria.create({
@@ -406,6 +443,8 @@ export default function RecebimentoComissao() {
 
       queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
+      queryClient.invalidateQueries({ queryKey: ['parcelas'] });
+      queryClient.invalidateQueries({ queryKey: ['comissoes'] });
       setImportOpen(false);
       setImportFile(null);
       setImportData(null);
@@ -553,10 +592,37 @@ export default function RecebimentoComissao() {
         throw new Error('Venda ou usuário não encontrado');
       }
 
+      // Buscar ou criar parcela
+      const parcelas = await base44.entities.Parcela.filter({ 
+        venda_id: data.venda_id,
+        numero_parcela: parseInt(data.numero_parcela)
+      });
+
+      let parcela;
+      if (parcelas.length > 0) {
+        // Atualizar parcela existente
+        parcela = parcelas[0];
+        await base44.entities.Parcela.update(parcela.id, {
+          status: 'recebida',
+          valor_recebido: parseFloat(data.valor),
+          data_recebimento: data.data_recebimento
+        });
+      } else {
+        // Criar nova parcela
+        parcela = await base44.entities.Parcela.create({
+          venda_id: data.venda_id,
+          numero_parcela: parseInt(data.numero_parcela),
+          valor_previsto: parseFloat(data.valor),
+          valor_recebido: parseFloat(data.valor),
+          data_recebimento: data.data_recebimento,
+          status: 'recebida'
+        });
+      }
+
       // Criar comissão diretamente como confirmada
       const comissao = await base44.entities.Comissao.create({
         venda_id: data.venda_id,
-        parcela_id: null,
+        parcela_id: parcela.id,
         usuario_id: data.usuario_id,
         usuario_nome: usuario.full_name,
         usuario_perfil: usuario.perfil,
@@ -580,6 +646,16 @@ export default function RecebimentoComissao() {
         });
       }
 
+      // Atualizar total recebido na venda
+      const comissoesVenda = await base44.entities.Comissao.filter({ 
+        venda_id: data.venda_id,
+        status: 'confirmada'
+      });
+      const totalRecebido = comissoesVenda.reduce((acc, c) => acc + parseFloat(c.valor), 0);
+      await base44.entities.Venda.update(data.venda_id, {
+        comissao_total_recebida: totalRecebido
+      });
+
       // Auditoria
       const user = await base44.auth.me();
       await base44.entities.LogAuditoria.create({
@@ -595,6 +671,8 @@ export default function RecebimentoComissao() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comissoes-previstas'] });
       queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
+      queryClient.invalidateQueries({ queryKey: ['parcelas'] });
+      queryClient.invalidateQueries({ queryKey: ['comissoes'] });
       setManualFormOpen(false);
       resetManualForm();
       toast.success('Recebimento registrado com sucesso!');
