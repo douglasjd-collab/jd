@@ -104,11 +104,11 @@ export default function Usuarios() {
     }
 
     if (selectedUsuario) {
-      // Edição - atualizar todos os dados incluindo nome e email (se permitido)
+      // Edição - sempre permite atualizar nome, mas email só se for gerente ou superior
       const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
       
-      // Se não é gerente ou superior, remove o email dos dados a atualizar
       const dataToUpdate = { ...data };
+      // Remove o email dos dados se não for gerente ou superior
       if (!isGerenteOuSuperior) {
         delete dataToUpdate.email;
       }
