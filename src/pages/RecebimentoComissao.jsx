@@ -85,7 +85,18 @@ export default function RecebimentoComissao() {
   // Buscar comissões recebidas/confirmadas
   const { data: comissoesRecebidas = [] } = useQuery({
     queryKey: ['comissoes-recebidas'],
-    queryFn: () => base44.entities.Comissao.filter({ status: 'confirmada' }, '-created_date', 100),
+    queryFn: async () => {
+      const todasComissoes = await base44.entities.Comissao.filter({ status: 'confirmada' }, '-created_date', 200);
+      
+      // Admin/Gerente vê todas (receber e pagar)
+      if (isAdmin) {
+        return todasComissoes;
+      }
+      
+      // Vendedor vê apenas comissões a pagar (tipo: 'pagar')
+      return todasComissoes.filter(c => c.tipo === 'pagar' && c.usuario_id === currentUser?.id);
+    },
+    enabled: !!currentUser
   });
 
   const { data: vendas = [] } = useQuery({
@@ -518,8 +529,6 @@ export default function RecebimentoComissao() {
   });
 
   const filteredComissoesRecebidas = comissoesRecebidas.filter(c => {
-    if (!isAdmin && c.usuario_id !== currentUser?.id) return false;
-    
     const matchSearch = 
       c.usuario_nome?.toLowerCase().includes(search.toLowerCase()) ||
       getVendaInfo(c.venda_id).toLowerCase().includes(search.toLowerCase());
@@ -587,10 +596,11 @@ export default function RecebimentoComissao() {
   };
 
   const toggleTodas = () => {
-    if (selectedComissoesParaPagar.length === filteredComissoesRecebidas.length) {
+    const comissoesAPagar = filteredComissoesRecebidas.filter(c => c.tipo === 'pagar');
+    if (selectedComissoesParaPagar.length === comissoesAPagar.length) {
       setSelectedComissoesParaPagar([]);
     } else {
-      setSelectedComissoesParaPagar(filteredComissoesRecebidas.map(c => c.id));
+      setSelectedComissoesParaPagar(comissoesAPagar.map(c => c.id));
     }
   };
 
@@ -599,23 +609,23 @@ export default function RecebimentoComissao() {
     .reduce((acc, c) => acc + parseFloat(c.valor), 0);
 
   const historicoColumns = [
-    {
+    ...(isAdmin ? [{
       header: () => (
         <div className="flex items-center gap-2">
           <Checkbox
-            checked={selectedComissoesParaPagar.length === filteredComissoesRecebidas.length && filteredComissoesRecebidas.length > 0}
+            checked={selectedComissoesParaPagar.length === filteredComissoesRecebidas.filter(c => c.tipo === 'pagar').length && filteredComissoesRecebidas.filter(c => c.tipo === 'pagar').length > 0}
             onCheckedChange={toggleTodas}
           />
         </div>
       ),
       className: 'w-12',
-      cell: (row) => (
+      cell: (row) => row.tipo === 'pagar' ? (
         <Checkbox
           checked={selectedComissoesParaPagar.includes(row.id)}
           onCheckedChange={() => toggleComissaoSelecionada(row.id)}
         />
-      )
-    },
+      ) : null
+    }] : []),
     {
       header: 'Data',
       cell: (row) => format(new Date(row.data_recebimento || row.created_date), 'dd/MM/yyyy')
@@ -634,6 +644,15 @@ export default function RecebimentoComissao() {
       cell: (row) => row.usuario_nome || '-'
     },
     {
+      header: 'Tipo',
+      cell: (row) => (
+        <StatusBadge 
+          status={row.tipo}
+          className={row.tipo === 'receber' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}
+        />
+      )
+    },
+    {
       header: 'Parcela',
       cell: (row) => {
         const match = row.observacoes?.match(/Parcela (\d+)/);
@@ -643,7 +662,7 @@ export default function RecebimentoComissao() {
     {
       header: 'Valor',
       cell: (row) => (
-        <span className="font-semibold text-emerald-600">
+        <span className={`font-semibold ${row.tipo === 'receber' ? 'text-blue-600' : 'text-emerald-600'}`}>
           {formatCurrency(row.valor)}
         </span>
       )
@@ -984,8 +1003,10 @@ export default function RecebimentoComissao() {
       {/* Histórico de Recebimentos */}
       <div className="space-y-4 mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Histórico de Recebimentos</h2>
-          {selectedComissoesParaPagar.length > 0 && (
+          <h2 className="text-lg font-semibold text-slate-900">
+            {isAdmin ? 'Histórico de Comissões' : 'Minhas Comissões'}
+          </h2>
+          {isAdmin && selectedComissoesParaPagar.length > 0 && (
             <div className="flex items-center gap-4">
               <div className="text-sm text-slate-600">
                 {selectedComissoesParaPagar.length} selecionada{selectedComissoesParaPagar.length > 1 ? 's' : ''} • 
@@ -1006,7 +1027,7 @@ export default function RecebimentoComissao() {
         <DataTable
           columns={historicoColumns}
           data={filteredComissoesRecebidas}
-          emptyMessage="Nenhum recebimento registrado"
+          emptyMessage={isAdmin ? "Nenhuma comissão registrada" : "Nenhuma comissão disponível"}
         />
       </div>
 
