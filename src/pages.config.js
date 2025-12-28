@@ -8,13 +8,16 @@ import Importacao from './pages/Importacao';
 import ImportacaoDetalhes from './pages/ImportacaoDetalhes';
 import MeusDados from './pages/MeusDados';
 import PlanosConsorcio from './pages/PlanosConsorcio';
+import RecebimentoComissao from './pages/RecebimentoComissao';
 import Relatorios from './pages/Relatorios';
 import Saques from './pages/Saques';
 import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import RecebimentoComissao from './pages/RecebimentoComissao';
+import FunilVendas from './pages/FunilVendas';
+import ConfiguracaoFunil from './pages/ConfiguracaoFunil';
+import OportunidadeDetalhes from './pages/OportunidadeDetalhes';
 import __Layout from './Layout.jsx';
 
 
@@ -29,13 +32,16 @@ export const PAGES = {
     "ImportacaoDetalhes": ImportacaoDetalhes,
     "MeusDados": MeusDados,
     "PlanosConsorcio": PlanosConsorcio,
+    "RecebimentoComissao": RecebimentoComissao,
     "Relatorios": Relatorios,
     "Saques": Saques,
     "TabelasConsorcio": TabelasConsorcio,
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "RecebimentoComissao": RecebimentoComissao,
+    "FunilVendas": FunilVendas,
+    "ConfiguracaoFunil": ConfiguracaoFunil,
+    "OportunidadeDetalhes": OportunidadeDetalhes,
 }
 
 export const pagesConfig = {
