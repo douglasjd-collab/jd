@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import LogoUploader from '@/components/ui/LogoUploader';
+import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -35,6 +36,7 @@ export default function Layout({ children, currentPageName }) {
   const [expandedMenus, setExpandedMenus] = useState({});
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoUploaderOpen, setLogoUploaderOpen] = useState(false);
+  const [editarPerfilOpen, setEditarPerfilOpen] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -172,17 +174,50 @@ export default function Layout({ children, currentPageName }) {
                   <ChevronDown className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                {(user.perfil === 'master' || user.perfil === 'admin') && (
-                  <DropdownMenuItem onClick={() => setLogoUploaderOpen(true)}>
-                    <ImageIcon className="w-4 h-4 mr-2" />
-                    Alterar Logo do Sistema
+              <DropdownMenuContent align="start" className="w-64">
+                {/* Header do Menu */}
+                <div className="px-3 py-2 border-b">
+                  <div className="flex items-center gap-3">
+                    {user.foto_perfil ? (
+                      <img 
+                        src={user.foto_perfil} 
+                        alt="Foto" 
+                        className="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                        {user.full_name?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{user.full_name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{user.perfil}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Opções do Menu */}
+                <div className="py-1">
+                  <DropdownMenuItem onClick={() => setEditarPerfilOpen(true)}>
+                    <UserCircle className="w-4 h-4 mr-2" />
+                    Editar Perfil
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sair
-                </DropdownMenuItem>
+
+                  {(user.perfil === 'master' || user.perfil === 'admin') && (
+                    <DropdownMenuItem onClick={() => setLogoUploaderOpen(true)}>
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      Alterar Logo do Sistema
+                    </DropdownMenuItem>
+                  )}
+                </div>
+
+                {/* Sair (última opção) */}
+                <div className="border-t pt-1">
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -267,6 +302,14 @@ export default function Layout({ children, currentPageName }) {
           setLogoUrl(url);
           loadLogo();
         }}
+      />
+
+      {/* Editar Perfil Modal */}
+      <EditarPerfilModal
+        open={editarPerfilOpen}
+        onOpenChange={setEditarPerfilOpen}
+        user={user}
+        onSuccess={loadUser}
       />
     </div>
   );
