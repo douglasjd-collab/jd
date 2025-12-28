@@ -62,7 +62,26 @@ export default function Usuarios() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const usuarioAntigo = usuarios.find(u => u.id === id);
+      await base44.entities.User.update(id, data);
+      
+      // Auditoria
+      try {
+        await base44.entities.LogAuditoria.create({
+          usuario_id: currentUser.id,
+          usuario_nome: currentUser.full_name,
+          acao: `Edição de usuário/vendedor: ${data.full_name}`,
+          entidade: 'User',
+          entidade_id: id,
+          dados_anteriores: JSON.stringify(usuarioAntigo),
+          dados_novos: JSON.stringify(data),
+          tipo: 'edicao'
+        });
+      } catch (e) {
+        console.log('Erro ao criar log:', e);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       setFormOpen(false);
@@ -72,6 +91,18 @@ export default function Usuarios() {
   });
 
   const handleSubmit = async (data) => {
+    // Validação de CPF único
+    if (data.cpf) {
+      const cpfLimpo = data.cpf.replace(/\D/g, '');
+      const usuariosComMesmoCPF = usuarios.filter(u => 
+        u.cpf?.replace(/\D/g, '') === cpfLimpo && u.id !== selectedUsuario?.id
+      );
+      if (usuariosComMesmoCPF.length > 0) {
+        toast.error('CPF já cadastrado no sistema');
+        return;
+      }
+    }
+
     if (selectedUsuario) {
       // Edição - atualizar todos os dados incluindo nome e email (se permitido)
       const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
@@ -92,6 +123,21 @@ export default function Usuarios() {
         if (users.length > 0) {
           const { email, ...updateData } = data;
           await base44.entities.User.update(users[0].id, updateData);
+          
+          // Auditoria - criação de novo vendedor
+          try {
+            await base44.entities.LogAuditoria.create({
+              usuario_id: currentUser.id,
+              usuario_nome: currentUser.full_name,
+              acao: `Criação de novo usuário/vendedor: ${data.full_name}`,
+              entidade: 'User',
+              entidade_id: users[0].id,
+              dados_novos: JSON.stringify(data),
+              tipo: 'criacao'
+            });
+          } catch (e) {
+            console.log('Erro ao criar log:', e);
+          }
         }
         queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         setFormOpen(false);
@@ -133,6 +179,10 @@ export default function Usuarios() {
     {
       header: 'CPF',
       cell: (row) => row.cpf || '-'
+    },
+    {
+      header: 'Código',
+      cell: (row) => row.codigo_vendedor || '-'
     },
     {
       header: 'Perfil',

@@ -27,6 +27,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       email: '',
       cpf: '',
       telefone: '',
+      codigo_vendedor: '',
+      percentual_repasse: '',
       perfil: 'vendedor',
       gerente_id: '',
       status: 'ativo'
@@ -51,6 +53,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
         email: '',
         cpf: '',
         telefone: '',
+        codigo_vendedor: '',
+        percentual_repasse: '',
         perfil: 'vendedor',
         gerente_id: '',
         status: 'ativo'
@@ -130,6 +134,26 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                 {...register('telefone')}
                 placeholder="(00) 00000-0000"
                 onChange={(e) => setValue('telefone', formatPhone(e.target.value))}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="codigo_vendedor">Código Vendedor</Label>
+              <Input
+                id="codigo_vendedor"
+                {...register('codigo_vendedor')}
+                placeholder="Ex: V001"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="percentual_repasse">% Repasse</Label>
+              <Input
+                id="percentual_repasse"
+                type="number"
+                step="0.01"
+                {...register('percentual_repasse')}
+                placeholder="0,00"
               />
             </div>
             
