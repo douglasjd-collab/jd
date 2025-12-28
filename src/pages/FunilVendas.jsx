@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -39,6 +39,11 @@ export default function FunilVendas() {
   const [selectedOportunidade, setSelectedOportunidade] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('todos');
+  const [alterarResponsavelOpen, setAlterarResponsavelOpen] = useState(false);
+  const [alterarQuadroOpen, setAlterarQuadroOpen] = useState(false);
+  const [oportunidadeParaAlterar, setOportunidadeParaAlterar] = useState(null);
+  const [novoResponsavelId, setNovoResponsavelId] = useState('');
+  const [novaEtapaId, setNovaEtapaId] = useState('');
   const [formData, setFormData] = useState({
     titulo: '',
     cliente_id: '',
@@ -122,6 +127,92 @@ export default function FunilVendas() {
       resetForm();
       toast.success('Oportunidade atualizada!');
     },
+  });
+
+  const alterarResponsavelMutation = useMutation({
+    mutationFn: async ({ oportunidadeId, novoResponsavelId }) => {
+      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
+      const novoResponsavel = vendedores.find(v => v.id === novoResponsavelId);
+      
+      await base44.entities.Oportunidade.update(oportunidadeId, {
+        vendedor_id: novoResponsavelId,
+        vendedor_nome: novoResponsavel?.full_name || '',
+        gerente_id: novoResponsavel?.gerente_id || '',
+        data_ultima_movimentacao: new Date().toISOString()
+      });
+
+      // Auditoria
+      await base44.entities.LogAuditoria.create({
+        usuario_id: currentUser.id,
+        usuario_nome: currentUser.full_name,
+        acao: `Alterou responsável da oportunidade "${oportunidade?.titulo}" de "${oportunidade?.vendedor_nome}" para "${novoResponsavel?.full_name}"`,
+        entidade: 'Oportunidade',
+        entidade_id: oportunidadeId,
+        dados_anteriores: JSON.stringify({ vendedor_id: oportunidade?.vendedor_id, vendedor_nome: oportunidade?.vendedor_nome }),
+        dados_novos: JSON.stringify({ vendedor_id: novoResponsavelId, vendedor_nome: novoResponsavel?.full_name }),
+        tipo: 'edicao'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      setAlterarResponsavelOpen(false);
+      setOportunidadeParaAlterar(null);
+      setNovoResponsavelId('');
+      toast.success('Responsável alterado!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao alterar responsável');
+    }
+  });
+
+  const alterarQuadroMutation = useMutation({
+    mutationFn: async ({ oportunidadeId, novaEtapaId }) => {
+      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
+      const etapaDestino = etapas.find(e => e.id === novaEtapaId);
+
+      // Validações de regras
+      if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
+        throw new Error('Esta etapa requer cliente vinculado');
+      }
+
+      await base44.entities.Oportunidade.update(oportunidadeId, {
+        etapa_id: novaEtapaId,
+        etapa_nome: etapaDestino?.nome || '',
+        data_ultima_movimentacao: new Date().toISOString(),
+        status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
+      });
+
+      // Registrar movimentação
+      await base44.entities.MovimentacaoFunil.create({
+        oportunidade_id: oportunidadeId,
+        etapa_origem_id: oportunidade?.etapa_id,
+        etapa_origem_nome: oportunidade?.etapa_nome || '',
+        etapa_destino_id: novaEtapaId,
+        etapa_destino_nome: etapaDestino?.nome || '',
+        usuario_id: currentUser.id,
+        usuario_nome: currentUser.full_name
+      });
+
+      // Auditoria
+      await base44.entities.LogAuditoria.create({
+        usuario_id: currentUser.id,
+        usuario_nome: currentUser.full_name,
+        acao: `Alterou quadro da oportunidade "${oportunidade?.titulo}" de "${oportunidade?.etapa_nome}" para "${etapaDestino?.nome}"`,
+        entidade: 'Oportunidade',
+        entidade_id: oportunidadeId,
+        tipo: 'edicao'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      setAlterarQuadroOpen(false);
+      setOportunidadeParaAlterar(null);
+      setNovaEtapaId('');
+      toast.success('Quadro alterado!');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao alterar quadro');
+    }
   });
 
   const moverOportunidadeMutation = useMutation({
@@ -431,14 +522,16 @@ export default function FunilVendas() {
                       <div className="p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
                         {oportEtapa.map((oport, index) => (
                           <Draggable key={oport.id} draggableId={oport.id} index={index}>
-                            {(provided, snapshot) => (
+                            {(provided, snapshot) => {
+                              const isResponsavel = oport.vendedor_id === currentUser?.id;
+                              return (
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-move ${
+                                className={`p-3 rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-move ${
                                   snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
-                                }`}
+                                } ${isResponsavel ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-300'}`}
                               >
                                 <div className="flex items-start justify-between mb-2">
                                   <h4 className="font-medium text-slate-900 text-sm flex-1">{oport.titulo}</h4>
@@ -466,6 +559,26 @@ export default function FunilVendas() {
                                         <Pencil className="w-4 h-4 mr-2" />
                                         Editar
                                       </DropdownMenuItem>
+                                      {(isAdmin || isGerente) && (
+                                        <>
+                                          <DropdownMenuItem onClick={() => {
+                                            setOportunidadeParaAlterar(oport);
+                                            setNovoResponsavelId(oport.vendedor_id);
+                                            setAlterarResponsavelOpen(true);
+                                          }}>
+                                            <UserCheck className="w-4 h-4 mr-2" />
+                                            Alterar Responsável
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => {
+                                            setOportunidadeParaAlterar(oport);
+                                            setNovaEtapaId(oport.etapa_id);
+                                            setAlterarQuadroOpen(true);
+                                          }}>
+                                            <MoveHorizontal className="w-4 h-4 mr-2" />
+                                            Alterar Quadro
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
                                       <DropdownMenuItem asChild>
                                         <Link to={createPageUrl(`OportunidadeDetalhes?id=${oport.id}`)}>
                                           <Eye className="w-4 h-4 mr-2" />
@@ -480,11 +593,16 @@ export default function FunilVendas() {
                                   <p className="text-xs text-slate-600 mb-2">👤 {oport.cliente_nome}</p>
                                 )}
 
-                                <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                                <div className="flex items-center justify-between text-xs mb-2">
                                   <span className="font-semibold text-emerald-600">
                                     {formatCurrency(oport.valor_estimado)}
                                   </span>
-                                  <span>{oport.vendedor_nome}</span>
+                                  <div className="flex items-center gap-1 text-slate-600">
+                                    <User className="w-3 h-3" />
+                                    <span className={isResponsavel ? 'font-semibold text-blue-600' : ''}>
+                                      {oport.vendedor_nome}
+                                    </span>
+                                  </div>
                                 </div>
 
                                 <div className="flex items-center justify-between text-xs mt-2 pt-2 border-t border-slate-100">
@@ -499,7 +617,8 @@ export default function FunilVendas() {
                                   )}
                                 </div>
                               </div>
-                            )}
+                            );
+                            }}
                           </Draggable>
                         ))}
                         {provided.placeholder}
@@ -643,6 +762,120 @@ export default function FunilVendas() {
                 className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
               >
                 {selectedOportunidade ? 'Salvar' : 'Criar Oportunidade'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Alterar Responsável */}
+      <Dialog open={alterarResponsavelOpen} onOpenChange={setAlterarResponsavelOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Responsável</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm text-slate-600">Oportunidade</Label>
+              <p className="font-semibold">{oportunidadeParaAlterar?.titulo}</p>
+            </div>
+            <div>
+              <Label className="text-sm text-slate-600 mb-2 block">Responsável Atual</Label>
+              <p className="text-sm mb-4">{oportunidadeParaAlterar?.vendedor_nome}</p>
+            </div>
+            <div>
+              <Label>Novo Responsável *</Label>
+              <Select value={novoResponsavelId} onValueChange={setNovoResponsavelId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o vendedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendedores.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setAlterarResponsavelOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (!novoResponsavelId) {
+                    toast.error('Selecione um responsável');
+                    return;
+                  }
+                  alterarResponsavelMutation.mutate({ 
+                    oportunidadeId: oportunidadeParaAlterar.id, 
+                    novoResponsavelId 
+                  });
+                }}
+                disabled={alterarResponsavelMutation.isPending}
+                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Alterar Quadro */}
+      <Dialog open={alterarQuadroOpen} onOpenChange={setAlterarQuadroOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Quadro / Etapa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm text-slate-600">Oportunidade</Label>
+              <p className="font-semibold">{oportunidadeParaAlterar?.titulo}</p>
+            </div>
+            <div>
+              <Label className="text-sm text-slate-600 mb-2 block">Quadro Atual</Label>
+              <p className="text-sm mb-4">{oportunidadeParaAlterar?.etapa_nome}</p>
+            </div>
+            <div>
+              <Label>Novo Quadro *</Label>
+              <Select value={novaEtapaId} onValueChange={setNovaEtapaId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a etapa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {etapasOrdenadas.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ backgroundColor: e.cor }}
+                        />
+                        {e.nome}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setAlterarQuadroOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={() => {
+                  if (!novaEtapaId) {
+                    toast.error('Selecione uma etapa');
+                    return;
+                  }
+                  alterarQuadroMutation.mutate({ 
+                    oportunidadeId: oportunidadeParaAlterar.id, 
+                    novaEtapaId 
+                  });
+                }}
+                disabled={alterarQuadroMutation.isPending}
+                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+              >
+                Confirmar
               </Button>
             </div>
           </div>
