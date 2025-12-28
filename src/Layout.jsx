@@ -53,6 +53,13 @@ export default function Layout({ children, currentPageName }) {
     }
   };
 
+  // Forçar refresh do usuário quando o modal de editar perfil fecha
+  useEffect(() => {
+    if (!editarPerfilOpen) {
+      loadUser();
+    }
+  }, [editarPerfilOpen]);
+
   const loadLogo = async () => {
     try {
       const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });

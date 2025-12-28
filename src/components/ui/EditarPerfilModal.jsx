@@ -69,12 +69,17 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
 
       toast.success('Perfil atualizado com sucesso!');
       
-      // Recarregar os dados do usuário
-      if (onSuccess) {
-        await onSuccess();
-      }
-      
+      // Fechar o modal primeiro
       onOpenChange(false);
+      
+      // Aguardar um momento e forçar reload do usuário
+      setTimeout(async () => {
+        if (onSuccess) {
+          await onSuccess();
+        }
+        // Forçar recarregamento da página para garantir atualização completa
+        window.location.reload();
+      }, 500);
     } catch (error) {
       console.error('Erro detalhado ao atualizar perfil:', error);
       toast.error('Erro ao atualizar perfil: ' + (error.message || 'Tente novamente'));
