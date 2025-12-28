@@ -29,6 +29,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import IntegracaoCanopus from '@/components/configuracoes/IntegracaoCanopus';
 
 export default function Configuracoes() {
   const [novaConfig, setNovaConfig] = useState({
@@ -79,6 +80,9 @@ export default function Configuracoes() {
         title="Configurações"
         subtitle="Configure as regras do sistema"
       />
+
+      {/* Integração Canopus */}
+      <IntegracaoCanopus />
 
       {/* Configuração de Comissões */}
       <Card className="border-0 shadow-sm">
