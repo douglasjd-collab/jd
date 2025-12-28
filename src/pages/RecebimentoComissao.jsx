@@ -24,7 +24,7 @@ import {
 import { Loader2, DollarSign, Search, Upload, CheckCircle2, AlertCircle, X, Trash2, Eye, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { createPageUrl } from './utils';
+import { createPageUrl } from '@/utils';
 
 export default function RecebimentoComissao() {
   const [formOpen, setFormOpen] = useState(false);
