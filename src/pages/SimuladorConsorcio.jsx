@@ -185,11 +185,9 @@ export default function SimuladorConsorcio() {
         status: 'ativa'
       });
 
-      // 2. Gerar PDF usando jsPDF
-      const pdfUrl = await gerarPDF(simulacao, resultado);
-      
+      // 2. Marcar simulação como gerada
       await base44.entities.Simulacao.update(simulacao.id, {
-        pdf_url: pdfUrl
+        pdf_url: `#simulacao-impressao-${simulacao.id}`
       });
 
       // 3. Criar oportunidade no funil
@@ -242,12 +240,11 @@ export default function SimuladorConsorcio() {
       return { simulacao, oportunidade };
     },
     onSuccess: ({ simulacao, oportunidade }) => {
-      toast.success('Simulação gerada, PDF criado e enviada ao funil!');
+      toast.success('Simulação gerada e enviada ao funil!');
       
-      // Abrir PDF em nova aba
-      if (simulacao.pdf_url) {
-        window.open(simulacao.pdf_url, '_blank');
-      }
+      // Abrir página de impressão
+      const urlImpressao = `${window.location.origin}/imprimir-simulacao?id=${simulacao.id}`;
+      window.open(urlImpressao, '_blank');
       
       // Limpar formulário
       setClienteNome('');
@@ -258,10 +255,10 @@ export default function SimuladorConsorcio() {
       setLanceProprio('');
       setResultado(null);
 
-      // Mostrar link para oportunidade
+      // Abrir oportunidade
       setTimeout(() => {
-        const url = window.location.origin + `/oportunidade-detalhes?id=${oportunidade.id}`;
-        window.open(url, '_blank');
+        const urlOportunidade = `${window.location.origin}/oportunidade-detalhes?id=${oportunidade.id}`;
+        window.open(urlOportunidade, '_blank');
       }, 500);
     },
     onError: (error) => {
@@ -269,136 +266,7 @@ export default function SimuladorConsorcio() {
     }
   });
 
-  const gerarPDF = async (simulacao, resultado) => {
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF();
-    
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 20;
 
-    // Cabeçalho
-    doc.setFontSize(20);
-    doc.setFont(undefined, 'bold');
-    doc.text('Simulação de Consórcio', pageWidth / 2, y, { align: 'center' });
-    y += 15;
-
-    // Data
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth / 2, y, { align: 'center' });
-    y += 15;
-
-    // Dados do Cliente
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('📋 Dados do Cliente', 15, y);
-    y += 8;
-    
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
-    doc.text(`Nome: ${clienteNome}`, 20, y);
-    y += 7;
-    doc.text(`Telefone: ${telefone}`, 20, y);
-    y += 12;
-
-    // Cartas de Crédito
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('💳 Cartas de Crédito', 15, y);
-    y += 8;
-
-    cartas.forEach((carta, i) => {
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
-      doc.text(`Carta ${i + 1}: ${formatCurrency(parseFloat(carta.credito))} • ${formatCurrency(parseFloat(carta.parcela))}/mês • ${carta.prazo} meses`, 20, y);
-      y += 6;
-    });
-    y += 6;
-
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.text(`Crédito Total: ${formatCurrency(creditoTotal)}`, 20, y);
-    y += 6;
-    doc.text(`Parcela Total: ${formatCurrency(parcelaTotal)}/mês`, 20, y);
-    y += 12;
-
-    // Lances
-    if (lanceTotal > 0) {
-      doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
-      doc.text('🎯 Lances', 15, y);
-      y += 8;
-
-      doc.setFontSize(11);
-      doc.setFont(undefined, 'normal');
-      
-      if (lanceEmbutidoAtivo) {
-        doc.text(`Lance Embutido: ${formatCurrency(lanceEmbutidoValor)} (${lanceEmbutidoPercentual}%)`, 20, y);
-        y += 6;
-      }
-      
-      if (lanceProprioAtivo) {
-        doc.text(`Lance Próprio: ${formatCurrency(lanceProprioValor)}`, 20, y);
-        y += 6;
-      }
-      
-      doc.setFont(undefined, 'bold');
-      doc.text(`Lance Total: ${formatCurrency(lanceTotal)}`, 20, y);
-      y += 12;
-    }
-
-    // Cálculos
-    doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
-    doc.text('🧮 Cálculos', 15, y);
-    y += 8;
-
-    doc.setFontSize(11);
-    doc.setFont(undefined, 'normal');
-    doc.text(`Total do Plano: ${formatCurrency(resultado.totalPlano)}`, 20, y);
-    y += 6;
-    doc.text(`(-) Lance: ${formatCurrency(lanceTotal)}`, 20, y);
-    y += 6;
-    doc.text(`Saldo Base: ${formatCurrency(resultado.saldoBase)}`, 20, y);
-    y += 6;
-    doc.text(`(-) 1ª Parcela (no ato): ${formatCurrency(resultado.parcelaTotal)}`, 20, y);
-    y += 6;
-    doc.setFont(undefined, 'bold');
-    doc.text(`Saldo Devedor: ${formatCurrency(resultado.saldoFinal)}`, 20, y);
-    y += 12;
-
-    // Resultado Final
-    doc.setFillColor(147, 51, 234);
-    doc.rect(10, y - 5, pageWidth - 20, 30, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
-    doc.text('✨ Resultado Final', pageWidth / 2, y + 2, { align: 'center' });
-    y += 10;
-
-    doc.setFontSize(14);
-    doc.text(`Novo Prazo: ${resultado.novoPrazo} meses`, pageWidth / 2, y, { align: 'center' });
-    y += 8;
-    doc.text(`Nova Parcela: ${formatCurrency(resultado.novaParcela)}`, pageWidth / 2, y, { align: 'center' });
-    
-    y += 15;
-    doc.setTextColor(0, 0, 0);
-
-    if (resultado.opcaoPos === 'prazo') {
-      doc.setFontSize(9);
-      doc.setFont(undefined, 'italic');
-      doc.text('* Modelo Canopus: 1 parcela no ato + 3 meses de carência', pageWidth / 2, y, { align: 'center' });
-    }
-
-    // Converter para blob e fazer upload
-    const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], `simulacao-${simulacao.id}.pdf`, { type: 'application/pdf' });
-    
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: pdfFile });
-    
-    return file_url;
-  };
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -784,7 +652,7 @@ export default function SimuladorConsorcio() {
                   </Button>
 
                   <p className="text-xs text-slate-500 text-center">
-                    Será gerado PDF e criada oportunidade no funil automaticamente
+                    Será aberta página para impressão e criada oportunidade no funil
                   </p>
                 </div>
               )}
