@@ -154,22 +154,28 @@ export default function Usuarios() {
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário - cadastro direto interno
+      // Novo usuário - cadastro interno
       try {
-        // 1. Criar usuário diretamente no banco
-        const novoUsuario = await base44.entities.User.create({
-          full_name: normalizedData.full_name,
-          email: normalizedData.email,
-          role: 'user',
-          perfil: normalizedData.perfil,
-          status: 'ativo',
-          cpf: normalizedData.cpf,
-          telefone: normalizedData.telefone,
-          codigo_vendedor: normalizedData.codigo_vendedor,
-          gerente_id: normalizedData.gerente_id
-        });
+        // 1. Criar usuário via inviteUser
+        await base44.users.inviteUser(normalizedData.email, 'user');
+        
+        // 2. Aguardar criação
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // 3. Buscar usuário criado
+        const users = await base44.entities.User.filter({ email: normalizedData.email });
+        if (users.length === 0) {
+          throw new Error('Usuário não foi criado');
+        }
+        
+        const novoUsuario = users[0];
+        
+        // 4. Atualizar dados adicionais
+        const { email, senha, ...updateData } = normalizedData;
+        updateData.status = 'ativo';
+        await base44.entities.User.update(novoUsuario.id, updateData);
 
-        // 2. Enviar email automático com credenciais
+        // 5. Enviar email com credenciais
         try {
           const urlLogin = window.location.origin;
           await base44.integrations.Core.SendEmail({
@@ -193,10 +199,10 @@ Equipe CRM Consórcio`
           });
         } catch (emailError) {
           console.error('Erro ao enviar email:', emailError);
-          toast.warning('Usuário criado, mas falha ao enviar email com credenciais');
+          toast.warning('Usuário criado, mas falha ao enviar email');
         }
 
-        // 3. Auditoria
+        // 6. Auditoria
         try {
           await base44.entities.LogAuditoria.create({
             usuario_id: currentUser.id,
@@ -204,20 +210,19 @@ Equipe CRM Consórcio`
             acao: `Criação de novo usuário: ${normalizedData.full_name}`,
             entidade: 'User',
             entidade_id: novoUsuario.id,
-            dados_novos: JSON.stringify(normalizedData),
+            dados_novos: JSON.stringify(updateData),
             tipo: 'criacao'
           });
         } catch (e) {
           console.log('Erro ao criar log:', e);
         }
 
-        // 4. Atualizar queries
+        // 7. Atualizar queries
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-        await queryClient.invalidateQueries({ queryKey: ['vendedores'] });
         await queryClient.refetchQueries({ queryKey: ['usuarios'] });
         
         setFormOpen(false);
-        toast.success('Usuário cadastrado com sucesso! Email com credenciais enviado.');
+        toast.success('Usuário cadastrado! Email com credenciais enviado.');
       } catch (error) {
         console.error('Erro ao cadastrar:', error);
         toast.error(error.message || 'Erro ao cadastrar usuário');
