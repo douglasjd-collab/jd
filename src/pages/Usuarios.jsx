@@ -156,20 +156,31 @@ export default function Usuarios() {
     } else {
       // Novo usuário - cadastro direto
       try {
-        const { senha, ...dadosUsuario } = normalizedData;
-        const novoUsuario = await base44.entities.User.create({
-          ...dadosUsuario,
-          role: 'user',
+        // 1. Criar usuário no AUTH
+        const authUser = await base44.auth.createUser({
+          email: normalizedData.email,
+          password: normalizedData.senha,
+          sendEmail: true
+        });
+
+        // 2. Criar usuário na entidade
+        await base44.entities.User.create({
+          id: authUser.id,
+          full_name: normalizedData.full_name,
+          email: normalizedData.email,
+          perfil: normalizedData.perfil,
+          gerente_id: normalizedData.gerente_id,
+          cpf: normalizedData.cpf,
+          telefone: normalizedData.telefone,
+          codigo_vendedor: normalizedData.codigo_vendedor,
           status: 'ativo'
         });
 
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-        await queryClient.refetchQueries({ queryKey: ['usuarios'] });
-        
         setFormOpen(false);
-        toast.success('Usuário cadastrado com sucesso!');
+        toast.success('Usuário cadastrado e e-mail enviado com sucesso!');
       } catch (error) {
-        console.error('Erro ao cadastrar:', error);
+        console.error(error);
         toast.error(error.message || 'Erro ao cadastrar usuário');
       }
     }
