@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 export default function ImprimirSimulacao() {
   const [simulacao, setSimulacao] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadSimulacao();
@@ -20,15 +21,17 @@ export default function ImprimirSimulacao() {
         throw new Error('ID da simulação não encontrado');
       }
 
-      const result = await base44.entities.Simulacao.filter({ id });
-      if (result.length === 0) {
+      const result = await base44.entities.Simulacao.list();
+      const encontrada = result.find(s => s.id === id);
+      
+      if (!encontrada) {
         throw new Error('Simulação não encontrada');
       }
 
-      setSimulacao(result[0]);
-    } catch (error) {
-      console.error('Erro ao carregar simulação:', error);
-      alert('Erro ao carregar simulação');
+      setSimulacao(encontrada);
+    } catch (err) {
+      console.error('Erro ao carregar simulação:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -53,15 +56,20 @@ export default function ImprimirSimulacao() {
     );
   }
 
-  if (!simulacao) {
+  if (error || !simulacao) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-slate-500">Simulação não encontrada</p>
+        <p className="text-slate-500">{error || 'Simulação não encontrada'}</p>
       </div>
     );
   }
 
-  const cartas = JSON.parse(simulacao.cartas || '[]');
+  let cartas = [];
+  try {
+    cartas = JSON.parse(simulacao.cartas || '[]');
+  } catch (e) {
+    cartas = [];
+  }
   const modelo = simulacao.opcao_pos_contemplacao === 'prazo' ? 'Canopus (Recomendado)' : 'Simples';
 
   return (
