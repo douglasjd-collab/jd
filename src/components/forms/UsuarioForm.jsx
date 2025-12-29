@@ -84,13 +84,24 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       .replace(/(-\d{4})\d+?$/, '$1');
   };
 
+  const handleFormSubmit = (data) => {
+    // Normalizar CPF e telefone (remover máscaras)
+    const normalizedData = {
+      ...data,
+      cpf: data.cpf ? data.cpf.replace(/\D/g, '') : '',
+      telefone: data.telefone ? data.telefone.replace(/\D/g, '') : ''
+    };
+
+    onSubmit(normalizedData);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{usuario ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label htmlFor="full_name">Nome Completo *</Label>
