@@ -52,7 +52,9 @@ export default function FunilVendas() {
     vendedor_id: '',
     origem: '',
     observacoes: '',
-    data_fechamento_prevista: ''
+    data_fechamento_prevista: '',
+    telefone_lead: '',
+    data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
   });
 
   const queryClient = useQueryClient();
@@ -389,8 +391,18 @@ export default function FunilVendas() {
       vendedor_id: currentUser?.id || '',
       origem: '',
       observacoes: '',
-      data_fechamento_prevista: ''
+      data_fechamento_prevista: '',
+      telefone_lead: '',
+      data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
     });
+  };
+
+  const formatPhone = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 10) {
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    }
+    return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
 
   const formatCurrency = (value) => {
@@ -578,7 +590,9 @@ export default function FunilVendas() {
                                           vendedor_id: oport.vendedor_id,
                                           origem: oport.origem || '',
                                           observacoes: oport.observacoes || '',
-                                          data_fechamento_prevista: oport.data_fechamento_prevista || ''
+                                          data_fechamento_prevista: oport.data_fechamento_prevista || '',
+                                          telefone_lead: oport.telefone_lead || '',
+                                          data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
                                         });
                                         setFormOpen(true);
                                       }}>
@@ -754,6 +768,29 @@ export default function FunilVendas() {
                   </Select>
                 </div>
               )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="telefone_lead">Telefone do Lead</Label>
+                <Input
+                  id="telefone_lead"
+                  value={formData.telefone_lead}
+                  onChange={(e) => setFormData({ ...formData, telefone_lead: formatPhone(e.target.value) })}
+                  placeholder="(00) 00000-0000"
+                  maxLength={15}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="data_cadastro_lead">Data de Cadastro do Lead</Label>
+                <Input
+                  id="data_cadastro_lead"
+                  type="date"
+                  value={formData.data_cadastro_lead}
+                  onChange={(e) => setFormData({ ...formData, data_cadastro_lead: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
