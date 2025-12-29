@@ -45,6 +45,8 @@ export default function Usuarios() {
   const [search, setSearch] = useState('');
   const [filterPerfil, setFilterPerfil] = useState('todos');
   const [currentUser, setCurrentUser] = useState(null);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function Usuarios() {
     }
   });
 
-  const handleSubmit = async (data) => {
+  const handleSubmit = async (data, resetForm) => {
     // Validação de CPF único
     if (data.cpf) {
       const cpfLimpo = data.cpf.replace(/\D/g, '');
@@ -154,12 +156,11 @@ export default function Usuarios() {
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário - cadastro direto
+      // Novo usuário - enviar convite
+      setIsSubmitting(true);
+      setInviteSuccess(false);
+      
       try {
-        // Fechar modal e mostrar mensagem imediatamente
-        setFormOpen(false);
-        toast.success('Convite enviado com sucesso!');
-        
         // 1. Enviar convite (cria auth e envia email)
         await base44.users.inviteUser(normalizedData.email, 'user');
         
@@ -197,9 +198,16 @@ export default function Usuarios() {
         }
 
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+        
+        // Mostrar sucesso e limpar formulário
+        setInviteSuccess(true);
+        resetForm();
+        toast.success('Convite enviado com sucesso!');
       } catch (error) {
         console.error('Erro detalhado:', error);
         toast.error(error.message || 'Erro ao enviar convite');
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -337,11 +345,17 @@ export default function Usuarios() {
       {/* Form Modal */}
       <UsuarioForm
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(isOpen) => {
+          setFormOpen(isOpen);
+          if (!isOpen) {
+            setInviteSuccess(false);
+          }
+        }}
         usuario={selectedUsuario}
         onSubmit={handleSubmit}
-        isLoading={updateMutation.isPending}
+        isLoading={isSubmitting || updateMutation.isPending}
         currentUser={currentUser}
+        inviteSuccess={inviteSuccess}
       />
     </div>
   );

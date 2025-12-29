@@ -19,7 +19,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading, currentUser }) {
+export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading, currentUser, inviteSuccess }) {
   const [gerentes, setGerentes] = useState([]);
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     mode: 'onChange',
@@ -94,7 +94,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       gerente_id: data.gerente_id || null // Garantir que gerente_id seja null se vazio
     };
 
-    onSubmit(normalizedData);
+    onSubmit(normalizedData, reset);
   };
 
   return (
@@ -226,6 +226,12 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
             )}
             </div>
           </div>
+          
+          {inviteSuccess && !usuario && (
+            <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-3 text-green-700 text-sm">
+              ✅ Convite enviado com sucesso! Você pode cadastrar um novo usuário.
+            </div>
+          )}
           
           <div className="flex justify-end gap-3 pt-4 border-t bg-white flex-shrink-0 -mx-6 px-6 pb-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
