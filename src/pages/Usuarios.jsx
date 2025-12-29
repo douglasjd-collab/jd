@@ -194,7 +194,7 @@ export default function Usuarios() {
 
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         setFormOpen(false);
-        toast.success('Usuário cadastrado! E-mail de convite enviado.');
+        toast.success('Convite enviado com sucesso!');
       } catch (error) {
         console.error('Erro detalhado:', error);
         toast.error(error.message || 'Erro ao cadastrar usuário');
