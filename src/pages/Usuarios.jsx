@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MoreHorizontal, Pencil, UserPlus } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, UserPlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -88,6 +88,35 @@ export default function Usuarios() {
       setSelectedUsuario(null);
       toast.success('Usuário atualizado com sucesso!');
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      const usuario = usuarios.find(u => u.id === id);
+      await base44.entities.User.delete(id);
+      
+      // Auditoria
+      try {
+        await base44.entities.LogAuditoria.create({
+          usuario_id: currentUser.id,
+          usuario_nome: currentUser.full_name,
+          acao: `Exclusão de usuário/vendedor: ${usuario.full_name}`,
+          entidade: 'User',
+          entidade_id: id,
+          dados_anteriores: JSON.stringify(usuario),
+          tipo: 'exclusao'
+        });
+      } catch (e) {
+        console.log('Erro ao criar log:', e);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      toast.success('Usuário excluído com sucesso!');
+    },
+    onError: () => {
+      toast.error('Erro ao excluir usuário');
+    }
   });
 
   const handleSubmit = async (data) => {
@@ -230,6 +259,17 @@ export default function Usuarios() {
             <DropdownMenuItem onClick={() => handleEdit(row)}>
               <Pencil className="w-4 h-4 mr-2" />
               Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => {
+                if (confirm(`Tem certeza que deseja excluir o usuário "${row.full_name}"?`)) {
+                  deleteMutation.mutate(row.id);
+                }
+              }}
+              className="text-red-600"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
