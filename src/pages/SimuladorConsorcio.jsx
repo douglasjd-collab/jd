@@ -242,9 +242,12 @@ export default function SimuladorConsorcio() {
     onSuccess: ({ simulacao, oportunidade }) => {
       toast.success('Simulação gerada e enviada ao funil!');
       
-      // Abrir página de impressão
-      const urlImpressao = `${window.location.origin}/ImprimirSimulacao?id=${simulacao.id}`;
-      window.open(urlImpressao, '_blank');
+      // Aguardar um pouco para garantir que dados foram salvos no banco
+      setTimeout(() => {
+        // Abrir página de impressão
+        const urlImpressao = `${window.location.origin}/ImprimirSimulacao?id=${simulacao.id}`;
+        window.open(urlImpressao, '_blank');
+      }, 300);
       
       // Limpar formulário
       setClienteNome('');
@@ -259,7 +262,7 @@ export default function SimuladorConsorcio() {
       setTimeout(() => {
         const urlOportunidade = `${window.location.origin}/OportunidadeDetalhes?id=${oportunidade.id}`;
         window.open(urlOportunidade, '_blank');
-      }, 500);
+      }, 800);
     },
     onError: (error) => {
       toast.error(error.message || 'Erro ao gerar simulação');
