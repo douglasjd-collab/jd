@@ -156,32 +156,47 @@ export default function Usuarios() {
     } else {
       // Novo usuário - cadastro direto
       try {
-        // Criar usuário via inviteUser (cria auth + envia email)
+        // 1. Enviar convite (cria auth e envia email)
         await base44.users.inviteUser(normalizedData.email, 'user');
         
-        // Aguardar criação
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // 2. Aguardar processamento
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Buscar usuário criado
+        // 3. Buscar usuário criado pelo convite
         const users = await base44.entities.User.filter({ email: normalizedData.email });
         if (users.length === 0) {
-          throw new Error('Usuário não foi criado');
+          throw new Error('Usuário não foi encontrado após convite');
         }
         
-        const novoUsuario = users[0];
+        const usuarioCriado = users[0];
         
-        // Atualizar com dados adicionais
-        const { email, senha, ...updateData } = normalizedData;
-        await base44.entities.User.update(novoUsuario.id, {
-          ...updateData,
+        // 4. Atualizar com dados adicionais (remove senha do payload)
+        const { email, senha, ...dadosAdicionais } = normalizedData;
+        await base44.entities.User.update(usuarioCriado.id, {
+          ...dadosAdicionais,
           status: 'ativo'
         });
 
+        // Auditoria
+        try {
+          await base44.entities.LogAuditoria.create({
+            usuario_id: currentUser.id,
+            usuario_nome: currentUser.full_name,
+            acao: `Cadastro de novo usuário: ${normalizedData.full_name}`,
+            entidade: 'User',
+            entidade_id: usuarioCriado.id,
+            dados_novos: JSON.stringify(normalizedData),
+            tipo: 'criacao'
+          });
+        } catch (e) {
+          console.log('Erro ao criar log:', e);
+        }
+
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         setFormOpen(false);
-        toast.success('Usuário cadastrado com sucesso!');
+        toast.success('Usuário cadastrado! E-mail de convite enviado.');
       } catch (error) {
-        console.error(error);
+        console.error('Erro detalhado:', error);
         toast.error(error.message || 'Erro ao cadastrar usuário');
       }
     }
