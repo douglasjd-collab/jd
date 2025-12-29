@@ -156,7 +156,6 @@ export default function Usuarios() {
     } else {
       // Novo usuário - cadastro direto
       try {
-        // 1. Criar usuário diretamente no banco
         const { senha, ...dadosUsuario } = normalizedData;
         const novoUsuario = await base44.entities.User.create({
           ...dadosUsuario,
@@ -164,54 +163,11 @@ export default function Usuarios() {
           status: 'ativo'
         });
 
-        // 2. Enviar email com credenciais
-        try {
-          const urlLogin = window.location.origin;
-          await base44.integrations.Core.SendEmail({
-            to: normalizedData.email,
-            subject: 'Acesso ao sistema CRM Consórcio',
-            body: `Olá, ${normalizedData.full_name},
-
-Seu acesso ao sistema CRM Consórcio foi criado com sucesso.
-
-Dados de acesso:
-Email: ${normalizedData.email}
-Senha: ${normalizedData.senha}
-
-Acesse o sistema pelo link:
-${urlLogin}
-
-Recomendamos alterar sua senha no primeiro acesso.
-
-Atenciosamente,
-Equipe CRM Consórcio`
-          });
-        } catch (emailError) {
-          console.error('Erro ao enviar email:', emailError);
-          toast.warning('Usuário criado, mas falha ao enviar email');
-        }
-
-        // 3. Auditoria
-        try {
-          await base44.entities.LogAuditoria.create({
-            usuario_id: currentUser.id,
-            usuario_nome: currentUser.full_name,
-            acao: `Criação de novo usuário: ${normalizedData.full_name}`,
-            entidade: 'User',
-            entidade_id: novoUsuario.id,
-            dados_novos: JSON.stringify(dadosUsuario),
-            tipo: 'criacao'
-          });
-        } catch (e) {
-          console.log('Erro ao criar log:', e);
-        }
-
-        // 4. Atualizar queries
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         await queryClient.refetchQueries({ queryKey: ['usuarios'] });
         
         setFormOpen(false);
-        toast.success('Usuário cadastrado! Email com credenciais enviado.');
+        toast.success('Usuário cadastrado com sucesso!');
       } catch (error) {
         console.error('Erro ao cadastrar:', error);
         toast.error(error.message || 'Erro ao cadastrar usuário');
