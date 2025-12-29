@@ -239,15 +239,8 @@ export default function SimuladorConsorcio() {
 
       return { simulacao, oportunidade };
     },
-    onSuccess: ({ simulacao, oportunidade }) => {
-      toast.success('Simulação gerada e enviada ao funil!');
-      
-      // Aguardar um pouco para garantir que dados foram salvos no banco
-      setTimeout(() => {
-        // Abrir página de impressão
-        const urlImpressao = `${window.location.origin}/ImprimirSimulacao?id=${simulacao.id}`;
-        window.open(urlImpressao, '_blank');
-      }, 300);
+    onSuccess: ({ simulacao }) => {
+      toast.success('Simulação gerada com sucesso!');
       
       // Limpar formulário
       setClienteNome('');
@@ -257,12 +250,12 @@ export default function SimuladorConsorcio() {
       setLanceProprioAtivo(false);
       setLanceProprio('');
       setResultado(null);
-
-      // Abrir oportunidade
+      
+      // Aguardar 500ms para garantir que dados foram salvos
       setTimeout(() => {
-        const urlOportunidade = `${window.location.origin}/OportunidadeDetalhes?id=${oportunidade.id}`;
-        window.open(urlOportunidade, '_blank');
-      }, 800);
+        const urlImpressao = `${window.location.origin}/ImprimirSimulacao?id=${simulacao.id}`;
+        window.open(urlImpressao, '_blank');
+      }, 500);
     },
     onError: (error) => {
       toast.error(error.message || 'Erro ao gerar simulação');
@@ -655,7 +648,7 @@ export default function SimuladorConsorcio() {
                   </Button>
 
                   <p className="text-xs text-slate-500 text-center">
-                    Será aberta página para impressão e criada oportunidade no funil
+                    Será aberta a página de impressão da simulação
                   </p>
                 </div>
               )}
