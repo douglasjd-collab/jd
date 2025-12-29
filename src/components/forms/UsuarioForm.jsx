@@ -22,6 +22,7 @@ import { base44 } from '@/api/base44Client';
 export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading, currentUser }) {
   const [gerentes, setGerentes] = useState([]);
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
+    mode: 'onChange',
     defaultValues: usuario || {
       full_name: '',
       email: '',
@@ -97,20 +98,22 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{usuario ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-1">
+            <div className="grid grid-cols-2 gap-4 pb-4">
             <div className="col-span-2">
               <Label htmlFor="full_name">Nome Completo *</Label>
               <Input
                 id="full_name"
-                {...register('full_name', { required: 'Nome é obrigatório' })}
+                {...register('full_name', { required: true })}
                 placeholder="Nome do usuário"
               />
-              {errors.full_name && <p className="text-sm text-red-500 mt-1">{errors.full_name.message}</p>}
+              {errors.full_name && <p className="text-sm text-red-500 mt-1">Nome é obrigatório</p>}
             </div>
             
             <div className="col-span-2">
@@ -118,11 +121,11 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
               <Input
                 id="email"
                 type="email"
-                {...register('email', { required: 'Email é obrigatório' })}
+                {...register('email', { required: true })}
                 placeholder="email@exemplo.com"
                 disabled={!!usuario && !isGerenteOuSuperior}
               />
-              {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
+              {errors.email && <p className="text-sm text-red-500 mt-1">Email é obrigatório</p>}
               {!!usuario && !isGerenteOuSuperior && (
                 <p className="text-xs text-slate-500 mt-1">Apenas Gerente ou superior pode alterar o email</p>
               )}
@@ -135,12 +138,12 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                   id="senha"
                   type="password"
                   {...register('senha', { 
-                    required: 'Senha é obrigatória',
-                    minLength: { value: 6, message: 'Senha deve ter no mínimo 6 caracteres' }
+                    required: true,
+                    minLength: 6
                   })}
                   placeholder="Mínimo 6 caracteres"
                 />
-                {errors.senha && <p className="text-sm text-red-500 mt-1">{errors.senha.message}</p>}
+                {errors.senha && <p className="text-sm text-red-500 mt-1">Senha mínima de 6 caracteres</p>}
               </div>
             )}
             
@@ -226,9 +229,10 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                 </Select>
               </div>
             )}
+            </div>
           </div>
           
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4 border-t bg-white flex-shrink-0 -mx-6 px-6 pb-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
