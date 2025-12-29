@@ -156,6 +156,10 @@ export default function Usuarios() {
     } else {
       // Novo usuário - cadastro direto
       try {
+        // Fechar modal e mostrar mensagem imediatamente
+        setFormOpen(false);
+        toast.success('Convite enviado com sucesso!');
+        
         // 1. Enviar convite (cria auth e envia email)
         await base44.users.inviteUser(normalizedData.email, 'user');
         
@@ -193,11 +197,9 @@ export default function Usuarios() {
         }
 
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-        setFormOpen(false);
-        toast.success('Convite enviado com sucesso!');
       } catch (error) {
         console.error('Erro detalhado:', error);
-        toast.error(error.message || 'Erro ao cadastrar usuário');
+        toast.error(error.message || 'Erro ao enviar convite');
       }
     }
   };
