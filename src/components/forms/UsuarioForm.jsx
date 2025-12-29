@@ -90,7 +90,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
     const normalizedData = {
       ...data,
       cpf: data.cpf ? data.cpf.replace(/\D/g, '') : '',
-      telefone: data.telefone ? data.telefone.replace(/\D/g, '') : ''
+      telefone: data.telefone ? data.telefone.replace(/\D/g, '') : '',
+      gerente_id: data.gerente_id || null // Garantir que gerente_id seja null se vazio
     };
 
     onSubmit(normalizedData);
@@ -212,16 +213,16 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
             
             {perfil === 'vendedor' && (
               <div className="col-span-2">
-                <Label>Gerente Responsável</Label>
+                <Label>Gerente Responsável (Opcional)</Label>
                 <Select
-                  value={watch('gerente_id') || ''}
-                  onValueChange={(value) => setValue('gerente_id', value)}
+                  value={watch('gerente_id') || 'sem-gerente'}
+                  onValueChange={(value) => setValue('gerente_id', value === 'sem-gerente' ? null : value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um gerente" />
+                    <SelectValue placeholder="Sem gerente" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>Sem gerente</SelectItem>
+                    <SelectItem value="sem-gerente">Sem gerente</SelectItem>
                     {gerentes.map((g) => (
                       <SelectItem key={g.id} value={g.id}>{g.full_name}</SelectItem>
                     ))}
