@@ -47,6 +47,7 @@ export default function Usuarios() {
   const [currentUser, setCurrentUser] = useState(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -201,17 +202,7 @@ export default function Usuarios() {
         
         // Mostrar sucesso e limpar formulário
         setInviteSuccess(true);
-        resetForm({
-          full_name: '',
-          email: '',
-          cpf: '',
-          telefone: '',
-          codigo_vendedor: '',
-          perfil: 'vendedor',
-          gerente_id: '',
-          status: 'ativo',
-          senha: ''
-        });
+        setFormKey(prev => prev + 1);
         toast.success('Convite enviado com sucesso!');
       } catch (error) {
         console.error('Erro detalhado:', error);
@@ -354,6 +345,7 @@ export default function Usuarios() {
 
       {/* Form Modal */}
       <UsuarioForm
+        key={formKey}
         open={formOpen}
         onOpenChange={(isOpen) => {
           setFormOpen(isOpen);
