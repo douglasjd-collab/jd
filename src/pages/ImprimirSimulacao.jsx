@@ -50,16 +50,41 @@ export default function ImprimirSimulacao() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#23BE84]"></div>
+        <p className="text-slate-600 font-medium">Carregando simulação...</p>
       </div>
     );
   }
 
-  if (error || !simulacao) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-slate-500">{error || 'Simulação não encontrada'}</p>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-8">
+        <div className="text-red-500 text-6xl">⚠️</div>
+        <p className="text-slate-900 font-semibold text-xl">Erro ao carregar simulação</p>
+        <p className="text-slate-600">{error}</p>
+        <button 
+          onClick={() => window.close()} 
+          className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
+        >
+          Fechar
+        </button>
+      </div>
+    );
+  }
+
+  if (!simulacao) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <div className="text-slate-400 text-6xl">📄</div>
+        <p className="text-slate-900 font-semibold text-xl">Simulação não encontrada</p>
+        <p className="text-slate-600">Verifique se o link está correto</p>
+        <button 
+          onClick={() => window.close()} 
+          className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
+        >
+          Fechar
+        </button>
       </div>
     );
   }
