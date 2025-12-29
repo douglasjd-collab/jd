@@ -536,7 +536,7 @@ export default function SimuladorConsorcio() {
 
               <Button
                 onClick={calcularSimulacao}
-                className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+                className="w-full bg-[#23BE84] hover:bg-[#1da570] gap-2"
               >
                 <Calculator className="w-4 h-4" />
                 Calcular Simulação
@@ -636,7 +636,7 @@ export default function SimuladorConsorcio() {
                   <Button
                     onClick={() => gerarSimulacaoMutation.mutate()}
                     disabled={gerarSimulacaoMutation.isPending}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 gap-2"
+                    className="w-full bg-[#23BE84] hover:bg-[#1da570] gap-2"
                   >
                     {gerarSimulacaoMutation.isPending ? (
                       <>

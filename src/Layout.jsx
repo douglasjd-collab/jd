@@ -118,13 +118,13 @@ export default function Layout({ children, currentPageName }) {
     <div className="min-h-screen bg-slate-50">
       <style>{`
         :root {
-          --primary: 222 47% 24%;
-          --primary-foreground: 210 40% 98%;
+          --primary: 180 84% 38%;
+          --primary-foreground: 0 0% 100%;
         }
       `}</style>
 
       {/* Mobile Header */}
-      <header className="lg:hidden bg-[#1e3a5f] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+      <header className="lg:hidden bg-[#10353C] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-50">
         <button onClick={() => setSidebarOpen(true)} className="p-2">
           <Menu className="w-6 h-6" />
         </button>
@@ -142,7 +142,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed top-0 left-0 h-full w-72 bg-[#1e3a5f] text-white z-50 transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
+        "fixed top-0 left-0 h-full w-72 bg-[#10353C] text-white z-50 transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6 flex items-center justify-between border-b border-white/10">
@@ -150,7 +150,7 @@ export default function Layout({ children, currentPageName }) {
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
             ) : (
-              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-[#23BE84] rounded-xl flex items-center justify-center">
                 <Wallet className="w-5 h-5" />
               </div>
             )}
