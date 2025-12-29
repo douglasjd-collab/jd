@@ -240,8 +240,6 @@ export default function SimuladorConsorcio() {
       return { simulacao, oportunidade };
     },
     onSuccess: ({ simulacao }) => {
-      toast.success('Simulação gerada com sucesso!');
-      
       // Limpar formulário
       setClienteNome('');
       setTelefone('');
@@ -251,11 +249,16 @@ export default function SimuladorConsorcio() {
       setLanceProprio('');
       setResultado(null);
       
-      // Aguardar 500ms para garantir que dados foram salvos
-      setTimeout(() => {
-        const urlImpressao = `${window.location.origin}/ImprimirSimulacao?id=${simulacao.id}`;
-        window.open(urlImpressao, '_blank');
-      }, 500);
+      // Abrir popup de impressão
+      const urlImpressao = `${window.location.origin}/ImprimirSimulacao?id=${simulacao.id}`;
+      const popup = window.open(urlImpressao, 'impressao', 'width=900,height=700');
+      
+      if (!popup) {
+        toast.error('Pop-up bloqueado. Permita pop-ups para este site.');
+        return;
+      }
+      
+      toast.success('Simulação gerada! Página de impressão aberta.');
     },
     onError: (error) => {
       toast.error(error.message || 'Erro ao gerar simulação');

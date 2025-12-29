@@ -12,6 +12,16 @@ export default function ImprimirSimulacao() {
     loadSimulacao();
   }, []);
 
+  // Auto-print quando dados carregarem
+  useEffect(() => {
+    if (simulacao && !loading && !error) {
+      setTimeout(() => {
+        window.focus();
+        window.print();
+      }, 500);
+    }
+  }, [simulacao, loading, error]);
+
   const loadSimulacao = async () => {
     try {
       const params = new URLSearchParams(window.location.search);
