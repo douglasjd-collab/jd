@@ -291,7 +291,7 @@ export default function Usuarios() {
       <PageHeader
         title="Usuários"
         subtitle={`${usuarios.length} usuários cadastrados`}
-        actionLabel="Cadastrar Usuário"
+        actionLabel="Enviar Convite"
         actionIcon={UserPlus}
         onAction={() => {
           setSelectedUsuario(null);
