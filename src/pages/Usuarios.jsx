@@ -201,7 +201,17 @@ export default function Usuarios() {
         
         // Mostrar sucesso e limpar formulário
         setInviteSuccess(true);
-        resetForm();
+        resetForm({
+          full_name: '',
+          email: '',
+          cpf: '',
+          telefone: '',
+          codigo_vendedor: '',
+          perfil: 'vendedor',
+          gerente_id: '',
+          status: 'ativo',
+          senha: ''
+        });
         toast.success('Convite enviado com sucesso!');
       } catch (error) {
         console.error('Erro detalhado:', error);
