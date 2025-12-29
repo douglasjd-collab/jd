@@ -243,7 +243,7 @@ export default function SimuladorConsorcio() {
       toast.success('Simulação gerada e enviada ao funil!');
       
       // Abrir página de impressão
-      const urlImpressao = `${window.location.origin}/imprimir-simulacao?id=${simulacao.id}`;
+      const urlImpressao = `${window.location.origin}/ImprimirSimulacao?id=${simulacao.id}`;
       window.open(urlImpressao, '_blank');
       
       // Limpar formulário
@@ -257,7 +257,7 @@ export default function SimuladorConsorcio() {
 
       // Abrir oportunidade
       setTimeout(() => {
-        const urlOportunidade = `${window.location.origin}/oportunidade-detalhes?id=${oportunidade.id}`;
+        const urlOportunidade = `${window.location.origin}/OportunidadeDetalhes?id=${oportunidade.id}`;
         window.open(urlOportunidade, '_blank');
       }, 500);
     },

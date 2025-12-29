@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import FunilVendas from './pages/FunilVendas';
 import Importacao from './pages/Importacao';
 import ImportacaoDetalhes from './pages/ImportacaoDetalhes';
+import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import MeusDados from './pages/MeusDados';
 import OportunidadeDetalhes from './pages/OportunidadeDetalhes';
 import PlanosConsorcio from './pages/PlanosConsorcio';
@@ -20,7 +21,6 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import __Layout from './Layout.jsx';
 
 
@@ -36,6 +36,7 @@ export const PAGES = {
     "FunilVendas": FunilVendas,
     "Importacao": Importacao,
     "ImportacaoDetalhes": ImportacaoDetalhes,
+    "ImprimirSimulacao": ImprimirSimulacao,
     "MeusDados": MeusDados,
     "OportunidadeDetalhes": OportunidadeDetalhes,
     "PlanosConsorcio": PlanosConsorcio,
@@ -47,7 +48,6 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "ImprimirSimulacao": ImprimirSimulacao,
 }
 
 export const pagesConfig = {
