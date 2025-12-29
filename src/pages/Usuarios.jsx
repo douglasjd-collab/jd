@@ -132,11 +132,20 @@ export default function Usuarios() {
       }
     }
 
+    // Normalizar dados (garantir que campos vazios sejam null)
+    const normalizedData = {
+      ...data,
+      gerente_id: data.gerente_id || null,
+      cpf: data.cpf || null,
+      telefone: data.telefone || null,
+      codigo_vendedor: data.codigo_vendedor || null
+    };
+
     if (selectedUsuario) {
       // Edição - sempre permite atualizar nome, mas email só se for gerente ou superior
       const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
       
-      const dataToUpdate = { ...data };
+      const dataToUpdate = { ...normalizedData };
       // Remove o email dos dados se não for gerente ou superior
       if (!isGerenteOuSuperior) {
         delete dataToUpdate.email;
@@ -146,15 +155,15 @@ export default function Usuarios() {
     } else {
       // Novo usuário - cadastro direto
       try {
-        await base44.users.inviteUser(data.email, 'user');
+        await base44.users.inviteUser(normalizedData.email, 'user');
         
         // Aguardar um momento para garantir que o usuário foi criado
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // Buscar o usuário recém-criado
-        const users = await base44.entities.User.filter({ email: data.email });
+        const users = await base44.entities.User.filter({ email: normalizedData.email });
         if (users.length > 0) {
-          const { email, ...updateData } = data;
+          const { email, senha, ...updateData } = normalizedData;
           // Garantir que o status seja ativo
           updateData.status = updateData.status || 'ativo';
           
@@ -165,10 +174,10 @@ export default function Usuarios() {
             await base44.entities.LogAuditoria.create({
               usuario_id: currentUser.id,
               usuario_nome: currentUser.full_name,
-              acao: `Criação de novo usuário/vendedor: ${data.full_name}`,
+              acao: `Criação de novo usuário/vendedor: ${normalizedData.full_name}`,
               entidade: 'User',
               entidade_id: users[0].id,
-              dados_novos: JSON.stringify(data),
+              dados_novos: JSON.stringify(updateData),
               tipo: 'criacao'
             });
           } catch (e) {
