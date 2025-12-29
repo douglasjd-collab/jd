@@ -134,17 +134,11 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
 
             {!usuario && (
               <div className="col-span-2">
-                <Label htmlFor="senha">Senha *</Label>
-                <Input
-                  id="senha"
-                  type="password"
-                  {...register('senha', { 
-                    required: true,
-                    minLength: 6
-                  })}
-                  placeholder="Mínimo 6 caracteres"
-                />
-                {errors.senha && <p className="text-sm text-red-500 mt-1">Senha mínima de 6 caracteres</p>}
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    📧 Um e-mail de convite será enviado para o usuário criar sua própria senha de acesso.
+                  </p>
+                </div>
               </div>
             )}
             
