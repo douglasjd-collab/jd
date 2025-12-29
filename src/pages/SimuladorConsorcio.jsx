@@ -121,17 +121,17 @@ export default function SimuladorConsorcio() {
     let saldoFinal = saldoAposAto;
 
     if (opcaoPos === 'prazo') {
-      // 📉 OPÇÃO 1: REDUZIR PRAZO (Lógica Canopus Completa)
-      // 4. Saldo Final = Saldo Após Ato - (Parcela × 3) [carência Canopus - 3 parcelas]
-      saldoFinal = saldoAposAto - (parcelaTotal * 3);
+      // 📉 MODELO CANOPUS
+      // 4. Carência NÃO altera saldo, apenas reduz prazo
+      saldoFinal = saldoAposAto;
       
       // 5. Novo Prazo = Prazo - 4 (1 paga no ato + 3 de carência)
       novoPrazo = parseFloat(prazoOriginal) - 4;
       
-      // 6. Nova Parcela = Saldo Final ÷ Novo Prazo
+      // 6. Nova Parcela = Saldo Após Ato ÷ Novo Prazo
       novaParcela = saldoFinal / novoPrazo;
     } else {
-      // 📉 OPÇÃO 2: REDUZIR PARCELA (Mantém prazo, calcula nova parcela)
+      // 📉 MODELO SIMPLES
       // Novo Prazo = Prazo - 1 (apenas 1 paga no ato)
       novoPrazo = parseFloat(prazoOriginal) - 1;
       
@@ -601,16 +601,15 @@ export default function SimuladorConsorcio() {
                         <span className="text-blue-700">(-) 1ª parcela (ato):</span>
                         <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
                       </div>
-                      {resultado.opcaoPos === 'prazo' && (
-                        <div className="flex justify-between">
-                          <span className="text-blue-700">(-) Carência (3x):</span>
-                          <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal * 3)}</span>
-                        </div>
-                      )}
                       <div className="flex justify-between border-t pt-1">
-                        <span className="text-blue-900 font-semibold">Saldo Final:</span>
+                        <span className="text-blue-900 font-semibold">Saldo Devedor:</span>
                         <span className="font-bold">{formatCurrency(resultado.saldoFinal)}</span>
                       </div>
+                      {resultado.opcaoPos === 'prazo' && (
+                        <div className="text-xs text-blue-600 pt-1 border-t">
+                          ⏱️ Carência de 3 meses reduz apenas o prazo (não altera saldo)
+                        </div>
+                      )}
                     </div>
                   </div>
 
