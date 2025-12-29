@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Printer } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 export default function ImprimirSimulacao() {
   const [simulacao, setSimulacao] = useState(null);
@@ -11,16 +13,6 @@ export default function ImprimirSimulacao() {
   useEffect(() => {
     loadSimulacao();
   }, []);
-
-  // Auto-print quando dados carregarem
-  useEffect(() => {
-    if (simulacao && !loading && !error) {
-      setTimeout(() => {
-        window.focus();
-        window.print();
-      }, 500);
-    }
-  }, [simulacao, loading, error]);
 
   const loadSimulacao = async () => {
     try {
@@ -118,9 +110,15 @@ export default function ImprimirSimulacao() {
       `}</style>
 
       <div className="min-h-screen bg-white">
-        {/* Botão Imprimir - não aparece na impressão */}
-        <div className="no-print fixed top-4 right-4 z-50">
-          <Button onClick={handleImprimir} className="gap-2 shadow-lg">
+        {/* Botões - não aparecem na impressão */}
+        <div className="no-print fixed top-4 left-4 right-4 z-50 flex justify-between">
+          <Link to={createPageUrl('SimuladorConsorcio')}>
+            <Button variant="outline" className="gap-2 shadow-lg">
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao Simulador
+            </Button>
+          </Link>
+          <Button onClick={handleImprimir} className="gap-2 shadow-lg bg-[#23BE84] hover:bg-[#1da570]">
             <Printer className="w-4 h-4" />
             Imprimir Simulação
           </Button>
