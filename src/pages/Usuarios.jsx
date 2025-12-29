@@ -146,58 +146,81 @@ export default function Usuarios() {
       const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
       
       const dataToUpdate = { ...normalizedData };
-      // Remove o email dos dados se não for gerente ou superior
+      // Remove senha e email dos dados de atualização
+      delete dataToUpdate.senha;
       if (!isGerenteOuSuperior) {
         delete dataToUpdate.email;
       }
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário - cadastro direto
+      // Novo usuário - cadastro direto interno
       try {
-        await base44.users.inviteUser(normalizedData.email, 'user');
-        
-        // Aguardar um momento para garantir que o usuário foi criado
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Buscar o usuário recém-criado
-        const users = await base44.entities.User.filter({ email: normalizedData.email });
-        if (users.length > 0) {
-          const { email, senha, ...updateData } = normalizedData;
-          // Garantir que o status seja ativo
-          updateData.status = updateData.status || 'ativo';
-          
-          await base44.entities.User.update(users[0].id, updateData);
-          
-          // Auditoria - criação de novo vendedor
-          try {
-            await base44.entities.LogAuditoria.create({
-              usuario_id: currentUser.id,
-              usuario_nome: currentUser.full_name,
-              acao: `Criação de novo usuário/vendedor: ${normalizedData.full_name}`,
-              entidade: 'User',
-              entidade_id: users[0].id,
-              dados_novos: JSON.stringify(updateData),
-              tipo: 'criacao'
-            });
-          } catch (e) {
-            console.log('Erro ao criar log:', e);
-          }
+        // 1. Criar usuário diretamente no banco
+        const novoUsuario = await base44.entities.User.create({
+          full_name: normalizedData.full_name,
+          email: normalizedData.email,
+          role: 'user',
+          perfil: normalizedData.perfil,
+          status: 'ativo',
+          cpf: normalizedData.cpf,
+          telefone: normalizedData.telefone,
+          codigo_vendedor: normalizedData.codigo_vendedor,
+          gerente_id: normalizedData.gerente_id
+        });
+
+        // 2. Enviar email automático com credenciais
+        try {
+          const urlLogin = window.location.origin;
+          await base44.integrations.Core.SendEmail({
+            to: normalizedData.email,
+            subject: 'Acesso ao sistema CRM Consórcio',
+            body: `Olá, ${normalizedData.full_name},
+
+Seu acesso ao sistema CRM Consórcio foi criado com sucesso.
+
+Dados de acesso:
+Email: ${normalizedData.email}
+Senha: ${normalizedData.senha}
+
+Acesse o sistema pelo link:
+${urlLogin}
+
+Recomendamos alterar sua senha no primeiro acesso.
+
+Atenciosamente,
+Equipe CRM Consórcio`
+          });
+        } catch (emailError) {
+          console.error('Erro ao enviar email:', emailError);
+          toast.warning('Usuário criado, mas falha ao enviar email com credenciais');
         }
-        
-        // Invalidar TODAS as queries relacionadas a usuários/vendedores
+
+        // 3. Auditoria
+        try {
+          await base44.entities.LogAuditoria.create({
+            usuario_id: currentUser.id,
+            usuario_nome: currentUser.full_name,
+            acao: `Criação de novo usuário: ${normalizedData.full_name}`,
+            entidade: 'User',
+            entidade_id: novoUsuario.id,
+            dados_novos: JSON.stringify(normalizedData),
+            tipo: 'criacao'
+          });
+        } catch (e) {
+          console.log('Erro ao criar log:', e);
+        }
+
+        // 4. Atualizar queries
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         await queryClient.invalidateQueries({ queryKey: ['vendedores'] });
-        await queryClient.invalidateQueries({ queryKey: ['User'] });
-        
-        // Forçar refetch imediato
         await queryClient.refetchQueries({ queryKey: ['usuarios'] });
         
         setFormOpen(false);
-        toast.success('Usuário cadastrado! Email com credenciais enviado.');
+        toast.success('Usuário cadastrado com sucesso! Email com credenciais enviado.');
       } catch (error) {
         console.error('Erro ao cadastrar:', error);
-        toast.error('Erro ao cadastrar usuário');
+        toast.error(error.message || 'Erro ao cadastrar usuário');
       }
     }
   };
