@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -212,6 +212,32 @@ export default function FunilVendas() {
     },
     onError: (error) => {
       toast.error(error.message || 'Erro ao alterar quadro');
+    }
+  });
+
+  const excluirOportunidadeMutation = useMutation({
+    mutationFn: async (oportunidadeId) => {
+      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
+      
+      await base44.entities.Oportunidade.delete(oportunidadeId);
+
+      // Auditoria
+      await base44.entities.LogAuditoria.create({
+        usuario_id: currentUser.id,
+        usuario_nome: currentUser.full_name,
+        acao: `Excluiu oportunidade "${oportunidade?.titulo}"`,
+        entidade: 'Oportunidade',
+        entidade_id: oportunidadeId,
+        dados_anteriores: JSON.stringify(oportunidade),
+        tipo: 'exclusao'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      toast.success('Oportunidade excluída!');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao excluir oportunidade');
     }
   });
 
@@ -576,6 +602,17 @@ export default function FunilVendas() {
                                           }}>
                                             <MoveHorizontal className="w-4 h-4 mr-2" />
                                             Alterar Quadro
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => {
+                                              if (confirm(`Tem certeza que deseja excluir a oportunidade "${oport.titulo}"?`)) {
+                                                excluirOportunidadeMutation.mutate(oport.id);
+                                              }
+                                            }}
+                                            className="text-red-600"
+                                          >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Excluir Lead
                                           </DropdownMenuItem>
                                         </>
                                       )}
