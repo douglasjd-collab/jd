@@ -154,28 +154,17 @@ export default function Usuarios() {
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário - cadastro interno
+      // Novo usuário - cadastro direto
       try {
-        // 1. Criar usuário via inviteUser
-        await base44.users.inviteUser(normalizedData.email, 'user');
-        
-        // 2. Aguardar criação
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // 3. Buscar usuário criado
-        const users = await base44.entities.User.filter({ email: normalizedData.email });
-        if (users.length === 0) {
-          throw new Error('Usuário não foi criado');
-        }
-        
-        const novoUsuario = users[0];
-        
-        // 4. Atualizar dados adicionais
-        const { email, senha, ...updateData } = normalizedData;
-        updateData.status = 'ativo';
-        await base44.entities.User.update(novoUsuario.id, updateData);
+        // 1. Criar usuário diretamente no banco
+        const { senha, ...dadosUsuario } = normalizedData;
+        const novoUsuario = await base44.entities.User.create({
+          ...dadosUsuario,
+          role: 'user',
+          status: 'ativo'
+        });
 
-        // 5. Enviar email com credenciais
+        // 2. Enviar email com credenciais
         try {
           const urlLogin = window.location.origin;
           await base44.integrations.Core.SendEmail({
@@ -202,7 +191,7 @@ Equipe CRM Consórcio`
           toast.warning('Usuário criado, mas falha ao enviar email');
         }
 
-        // 6. Auditoria
+        // 3. Auditoria
         try {
           await base44.entities.LogAuditoria.create({
             usuario_id: currentUser.id,
@@ -210,14 +199,14 @@ Equipe CRM Consórcio`
             acao: `Criação de novo usuário: ${normalizedData.full_name}`,
             entidade: 'User',
             entidade_id: novoUsuario.id,
-            dados_novos: JSON.stringify(updateData),
+            dados_novos: JSON.stringify(dadosUsuario),
             tipo: 'criacao'
           });
         } catch (e) {
           console.log('Erro ao criar log:', e);
         }
 
-        // 7. Atualizar queries
+        // 4. Atualizar queries
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         await queryClient.refetchQueries({ queryKey: ['usuarios'] });
         
