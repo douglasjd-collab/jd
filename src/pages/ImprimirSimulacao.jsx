@@ -130,9 +130,9 @@ export default function ImprimirSimulacao() {
           <div className="text-center mb-8 pb-6 border-b-2 border-slate-800">
             <div className="flex justify-center mb-4">
               <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/e9167cebc_JDPromotoraICON2.png" 
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
                 alt="JD Promotora" 
-                className="h-20 w-auto object-contain"
+                className="h-12 w-auto object-contain"
               />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">

@@ -423,9 +423,9 @@ export default function SimuladorConsorcio() {
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-6">
         <img 
-          src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/e9167cebc_JDPromotoraICON2.png" 
+          src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
           alt="JD Promotora" 
-          className="h-16 w-auto object-contain"
+          className="h-12 w-auto object-contain"
         />
         <div className="flex-1">
           <PageHeader
