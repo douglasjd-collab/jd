@@ -229,6 +229,18 @@ export default function ImprimirSimulacao() {
             </div>
           )}
 
+          {/* Valor a Receber */}
+          <div className="mb-3 p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
+            <h2 className="text-sm font-bold mb-2">💰 Valor que o Cliente Recebe</h2>
+            <p className="text-3xl font-bold mb-1">
+              {formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}
+            </p>
+            <p className="text-xs opacity-90">
+              (Crédito de {formatCurrency(simulacao.credito_total)}
+              {simulacao.lance_embutido_valor > 0 && ` - Lance Embutido de ${formatCurrency(simulacao.lance_embutido_valor)}`})
+            </p>
+          </div>
+
           {/* Cálculos */}
           <div className="mb-3">
             <h2 className="text-lg font-bold text-slate-900 mb-2 pb-1 border-b border-slate-300">
