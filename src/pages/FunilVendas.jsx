@@ -41,6 +41,15 @@ export default function FunilVendas() {
   const [currentUser, setCurrentUser] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [alterarResponsavelOpen, setAlterarResponsavelOpen] = useState(false);
+
+  const { data: currentUserFull } = useQuery({
+    queryKey: ['current-user-full', currentUser?.id],
+    enabled: !!currentUser?.id,
+    queryFn: async () => {
+      const users = await base44.entities.User.list();
+      return users.find(u => u.id === currentUser.id);
+    },
+  });
   const [alterarQuadroOpen, setAlterarQuadroOpen] = useState(false);
   const [oportunidadeParaAlterar, setOportunidadeParaAlterar] = useState(null);
   const [novoResponsavelId, setNovoResponsavelId] = useState('');
@@ -96,15 +105,22 @@ export default function FunilVendas() {
 
   const { data: vendedores = [], isLoading: loadingVendedores } = useQuery({
     queryKey: ['vendedores'],
+    enabled: !!currentUser && (isAdmin || isGerente),
     queryFn: () => base44.entities.User.list(),
   });
 
   const criarOportunidadeMutation = useMutation({
     mutationFn: async (data) => {
+      const vendedorIdFinal = data.vendedor_id || currentUser?.id;
+      const vendedorObj =
+        vendedorIdFinal === currentUser?.id ? (currentUserFull || currentUser) : getVendedorById(vendedorIdFinal);
+      const fotoPerfil = vendedorObj?.foto_perfil || '';
+
       const oportunidade = await base44.entities.Oportunidade.create({
         ...data,
         data_ultima_movimentacao: new Date().toISOString(),
-        status: 'aberta'
+        status: 'aberta',
+        foto_perfil_responsavel: fotoPerfil
       });
 
       // Registrar movimentação inicial
@@ -146,11 +162,13 @@ export default function FunilVendas() {
       }
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       const novoResponsavel = vendedores.find(v => v.id === novoResponsavelId);
+      const novaFoto = novoResponsavel?.foto_perfil || '';
       
       await base44.entities.Oportunidade.update(oportunidadeId, {
         vendedor_id: novoResponsavelId,
         vendedor_nome: novoResponsavel?.full_name || '',
         gerente_id: novoResponsavel?.gerente_id || '',
+        foto_perfil_responsavel: novaFoto,
         data_ultima_movimentacao: new Date().toISOString()
       });
 
@@ -465,7 +483,17 @@ export default function FunilVendas() {
   };
 
   const getVendedorById = (id) => vendedores.find(v => v.id === id);
-  const getAvatarUrl = (v) => v?.foto_perfil || '';
+  const getAvatarUrlFromUser = (u) => u?.foto_perfil || '';
+
+  const getAvatarUrlForOportunidade = (oport) => {
+    if (oport?.foto_perfil_responsavel) return oport.foto_perfil_responsavel;
+    if (oport?.vendedor_id === currentUser?.id) {
+      return getAvatarUrlFromUser(currentUserFull || currentUser);
+    }
+    const v = getVendedorById(oport?.vendedor_id);
+    return getAvatarUrlFromUser(v);
+  };
+
   const getInitials = (name = '') => {
     const parts = name.trim().split(/\s+/).filter(Boolean);
     return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
@@ -593,8 +621,7 @@ export default function FunilVendas() {
                           <Draggable key={oport.id} draggableId={oport.id} index={index}>
                             {(provided, snapshot) => {
                               const isResponsavel = oport.vendedor_id === currentUser?.id;
-                              const vendedor = getVendedorById(oport.vendedor_id);
-                              const avatarUrl = getAvatarUrl(vendedor);
+                              const avatarUrl = getAvatarUrlForOportunidade(oport);
                               return (
                               <div
                                 ref={provided.innerRef}
@@ -696,12 +723,12 @@ export default function FunilVendas() {
                                   </span>
                                   <div
                                     className="flex items-center gap-2"
-                                    title={oport.vendedor_nome || vendedor?.full_name || 'Responsável'}
+                                    title={oport.vendedor_nome || 'Responsável'}
                                   >
                                     <Avatar className="h-6 w-6">
-                                      <AvatarImage src={avatarUrl} alt={oport.vendedor_nome || vendedor?.full_name || 'Responsável'} />
+                                      <AvatarImage src={avatarUrl} alt={oport.vendedor_nome || 'Responsável'} />
                                       <AvatarFallback className="text-xs">
-                                        {getInitials(oport.vendedor_nome || vendedor?.full_name || '') || 'RV'}
+                                        {getInitials(oport.vendedor_nome || '') || 'RV'}
                                       </AvatarFallback>
                                     </Avatar>
                                   </div>
