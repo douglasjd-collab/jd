@@ -148,33 +148,28 @@ export default function SimuladorConsorcio() {
     let saldoFinal = saldoAposAto;
 
     if (opcaoPos === 'prazo') {
-      // 📉 MODELO CANOPUS
-      // 4. Carência NÃO altera saldo, apenas reduz prazo
+      // 📉 MODELO CANOPUS: 1 parcela no ato + 3 meses de carência (reduz prazo, não altera saldo)
+      novoPrazo = prazoNum - 4;
       saldoFinal = saldoAposAto;
-      
-      // 5. Novo Prazo = Prazo - 4 (1 paga no ato + 3 de carência)
-      novoPrazo = parseFloat(prazoOriginal) - 4;
-      
-      // 6. Nova Parcela = Saldo Após Ato ÷ Novo Prazo
       novaParcela = saldoFinal / novoPrazo;
     } else {
-      // 📉 MODELO SIMPLES
-      // Novo Prazo = Prazo - 1 (apenas 1 paga no ato)
-      novoPrazo = parseFloat(prazoOriginal) - 1;
-      
-      // Nova Parcela = Saldo Após Ato ÷ Novo Prazo
-      novaParcela = saldoAposAto / novoPrazo;
+      // 📉 MODELO SIMPLES: apenas 1 no ato
+      novoPrazo = prazoNum - 1;
+      saldoFinal = saldoAposAto;
+      novaParcela = saldoFinal / novoPrazo;
     }
 
     setResultado({
       creditoTotal,
       parcelaTotal,
       totalPlano,
+      administradora: lanceEmbutidoAtivo ? administradora : null,
       lanceTotal,
+      lanceConsideradoNoSaldo,
       saldoBase,
       saldoAposAto,
       saldoFinal,
-      prazoOriginal: parseFloat(prazoOriginal),
+      prazoOriginal: prazoNum,
       opcaoPos,
       novoPrazo,
       novaParcela
@@ -239,7 +234,12 @@ export default function SimuladorConsorcio() {
       if (oportunidadeDuplicada) {
         // Cliente já tem oportunidade aberta - atualizar com nova simulação
         const observacoesAtuais = oportunidadeDuplicada.observacoes || '';
-        const novaSimulacaoInfo = `\n\n🔄 Nova Simulação (${new Date().toLocaleDateString('pt-BR')}):\nCrédito: ${formatCurrency(creditoTotal)}\nParcela: ${formatCurrency(parcelaTotal)}\nLance: ${formatCurrency(lanceTotal)}`;
+        const novaSimulacaoInfo =
+          `\n\n🔄 Nova Simulação (${new Date().toLocaleDateString('pt-BR')}):` +
+          `\nCrédito: ${formatCurrency(creditoTotal)}` +
+          `\nParcela: ${formatCurrency(parcelaTotal)}` +
+          `\nLance: ${formatCurrency(lanceTotal)}` +
+          (lanceEmbutidoAtivo ? `\nAdministradora: ${administradora}` : '');
         
         await base44.entities.Oportunidade.update(oportunidadeDuplicada.id, {
           observacoes: observacoesAtuais + novaSimulacaoInfo,
@@ -693,23 +693,33 @@ export default function SimuladorConsorcio() {
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
                     <p className="text-xs text-blue-700 font-semibold">Cálculos</p>
                     <div className="space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">Saldo Base:</span>
-                        <span className="font-semibold">{formatCurrency(resultado.saldoBase)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-blue-700">(-) 1ª parcela (ato):</span>
-                        <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-1">
-                        <span className="text-blue-900 font-semibold">Saldo Devedor:</span>
-                        <span className="font-bold">{formatCurrency(resultado.saldoFinal)}</span>
-                      </div>
-                      {resultado.opcaoPos === 'prazo' && (
-                        <div className="text-xs text-blue-600 pt-1 border-t">
-                          ⏱️ Carência de 3 meses reduz apenas o prazo (não altera saldo)
-                        </div>
-                      )}
+                     <div className="flex justify-between">
+                       <span className="text-blue-700">Saldo Base:</span>
+                       <span className="font-semibold">{formatCurrency(resultado.saldoBase)}</span>
+                     </div>
+
+                     <div className="flex justify-between">
+                       <span className="text-blue-700">(-) Lance considerado:</span>
+                       <span className="font-semibold">
+                         -{formatCurrency(resultado.lanceConsideradoNoSaldo ?? resultado.lanceTotal)}
+                       </span>
+                     </div>
+
+                     <div className="flex justify-between">
+                       <span className="text-blue-700">(-) 1ª parcela (ato):</span>
+                       <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
+                     </div>
+
+                     <div className="flex justify-between border-t pt-1">
+                       <span className="text-blue-900 font-semibold">Saldo Devedor:</span>
+                       <span className="font-bold">{formatCurrency(resultado.saldoFinal)}</span>
+                     </div>
+
+                     {resultado.opcaoPos === 'prazo' && (
+                       <div className="text-xs text-blue-600 pt-1 border-t">
+                         ⏱️ Carência de 3 meses reduz apenas o prazo (não altera saldo)
+                       </div>
+                     )}
                     </div>
                   </div>
 
