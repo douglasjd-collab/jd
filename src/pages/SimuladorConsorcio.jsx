@@ -790,6 +790,15 @@ export default function SimuladorConsorcio() {
                     )}
                   </div>
 
+                  {/* Valor a Receber */}
+                  <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
+                    <p className="text-xs font-semibold mb-1">💰 Valor que o Cliente Recebe</p>
+                    <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal - resultado.lanceTotal)}</p>
+                    <p className="text-xs mt-1 opacity-90">
+                      (Crédito de {formatCurrency(resultado.creditoTotal)} - Lance de {formatCurrency(resultado.lanceTotal)})
+                    </p>
+                  </div>
+
                   {/* Cálculos Intermediários */}
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
                     <p className="text-xs text-blue-700 font-semibold">Cálculos</p>
