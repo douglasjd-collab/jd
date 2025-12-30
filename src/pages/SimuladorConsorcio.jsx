@@ -421,18 +421,16 @@ export default function SimuladorConsorcio() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-6">
-        <img 
-          src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
-          alt="JD Promotora" 
-          className="h-12 w-auto object-contain"
-        />
-        <div className="flex-1">
-          <PageHeader
-            title="Simulador de Consórcio"
-            subtitle="Simule contemplação com multi-cotas e lances"
+      <div className="text-center mb-6">
+        <div className="flex justify-center mb-4">
+          <img 
+            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
+            alt="JD Promotora" 
+            className="h-12 w-auto object-contain"
           />
         </div>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulador de Consórcio</h1>
+        <p className="text-slate-500">Simule contemplação com multi-cotas e lances</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
