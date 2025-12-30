@@ -603,17 +603,17 @@ export default function FunilVendas() {
                                         <Pencil className="w-4 h-4 mr-2" />
                                         Editar
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => {
+                                       setOportunidadeParaAlterar(oport);
+                                       setNovoResponsavelId(oport.vendedor_id);
+                                       setAlterarResponsavelOpen(true);
+                                      }}>
+                                       <UserCheck className="w-4 h-4 mr-2" />
+                                       Alterar Responsável
+                                      </DropdownMenuItem>
                                       {(isAdmin || isGerente) && (
-                                        <>
-                                          <DropdownMenuItem onClick={() => {
-                                            setOportunidadeParaAlterar(oport);
-                                            setNovoResponsavelId(oport.vendedor_id);
-                                            setAlterarResponsavelOpen(true);
-                                          }}>
-                                            <UserCheck className="w-4 h-4 mr-2" />
-                                            Alterar Responsável
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => {
+                                       <>
+                                         <DropdownMenuItem onClick={() => {
                                             setOportunidadeParaAlterar(oport);
                                             setNovaEtapaId(oport.etapa_id);
                                             setAlterarQuadroOpen(true);
