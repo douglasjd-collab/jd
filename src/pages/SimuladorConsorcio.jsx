@@ -22,13 +22,15 @@ export default function SimuladorConsorcio() {
   const [currentUser, setCurrentUser] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [cartas, setCartas] = useState([
-    { credito: '', parcela: '', prazo: '' }
-  ]);
+  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
+
   const [lanceEmbutidoAtivo, setLanceEmbutidoAtivo] = useState(false);
+  const [administradora, setAdministradora] = useState('');
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(25);
+
   const [lanceProprioAtivo, setLanceProprioAtivo] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
+
   const [opcaoPos, setOpcaoPos] = useState('prazo');
   const [resultado, setResultado] = useState(null);
 
@@ -46,6 +48,19 @@ export default function SimuladorConsorcio() {
     queryKey: ['etapas-funil'],
     queryFn: () => base44.entities.EtapaFunil.filter({ status: 'ativa' }, 'ordem')
   });
+
+  // Regras do embutido por administradora
+  useEffect(() => {
+    if (!lanceEmbutidoAtivo) {
+      setAdministradora('');
+      return;
+    }
+
+    // Canopus: apenas 30% ou 50%
+    if (administradora === 'canopus' && ![30, 50].includes(lanceEmbutidoPercentual)) {
+      setLanceEmbutidoPercentual(30);
+    }
+  }, [lanceEmbutidoAtivo, administradora, lanceEmbutidoPercentual]);
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
@@ -105,15 +120,27 @@ export default function SimuladorConsorcio() {
       return;
     }
 
-    // 🧮 CÁLCULO CORRETO CANOPUS
-    
-    // 1. Total do Plano = Prazo × Parcela
-    const totalPlano = parseFloat(prazoOriginal) * parcelaTotal;
-    
-    // 2. Saldo Base = Total do Plano - Lance
-    const saldoBase = totalPlano - lanceTotal;
-    
-    // 3. Saldo Após Ato = Saldo Base - Parcela (primeira parcela paga no ato)
+    if (lanceEmbutidoAtivo && !administradora) {
+      toast.error('Selecione a administradora do lance embutido');
+      return;
+    }
+
+    // 🧮 CÁLCULO
+    const prazoNum = parseFloat(prazoOriginal);
+
+    // 1. Total do Plano = Prazo × Parcela (parcelaTotal pode já estar líquida em Canopus+embutido)
+    const totalPlano = prazoNum * parcelaTotal;
+
+    // ✅ Regra principal:
+    // - Canopus + Embutido: parcela já é líquida do embutido => desconta APENAS lance próprio
+    // - Outros casos: desconta lance total (embutido + próprio)
+    const usarRegraCanopusEmbutido = lanceEmbutidoAtivo && administradora === 'canopus';
+    const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
+
+    // 2. Saldo Base = Total do Plano - Lance considerado
+    const saldoBase = totalPlano - lanceConsideradoNoSaldo;
+
+    // 3. Saldo Após Ato = Saldo Base - Parcela (1ª parcela paga no ato)
     const saldoAposAto = saldoBase - parcelaTotal;
     
     let novoPrazo = null;
@@ -169,17 +196,24 @@ export default function SimuladorConsorcio() {
         cartas: JSON.stringify(cartas),
         credito_total: creditoTotal,
         parcela_total: parcelaTotal,
+
         lance_embutido_ativo: lanceEmbutidoAtivo,
+        administradora: lanceEmbutidoAtivo ? administradora : null,
         lance_embutido_percentual: lanceEmbutidoAtivo ? lanceEmbutidoPercentual : null,
         lance_embutido_valor: lanceEmbutidoValor,
+
         lance_proprio_ativo: lanceProprioAtivo,
         lance_proprio_valor: lanceProprioValor,
+
         lance_total: lanceTotal,
+        lance_considerado_no_saldo: resultado.lanceConsideradoNoSaldo,
+
         opcao_pos_contemplacao: opcaoPos,
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
         saldo_apos_contemplacao: resultado.saldoFinal,
+
         usuario_id: user.id,
         usuario_nome: user.full_name,
         status: 'ativa'
@@ -247,7 +281,12 @@ export default function SimuladorConsorcio() {
           vendedor_nome: user.full_name,
           gerente_id: user.perfil === 'vendedor' ? user.gerente_id : user.id,
           origem: 'Simulador',
-          observacoes: `Simulação gerada automaticamente.\n\nCrédito: ${formatCurrency(creditoTotal)}\nParcela: ${formatCurrency(parcelaTotal)}\nLance: ${formatCurrency(lanceTotal)}`,
+          observacoes:
+            `Simulação gerada automaticamente.` +
+            `\n\nCrédito: ${formatCurrency(creditoTotal)}` +
+            `\nParcela: ${formatCurrency(parcelaTotal)}` +
+            `\nLance: ${formatCurrency(lanceTotal)}` +
+            (lanceEmbutidoAtivo ? `\nAdministradora: ${administradora}` : ''),
           status: 'aberta',
           data_ultima_movimentacao: new Date().toISOString()
         });
@@ -472,24 +511,55 @@ export default function SimuladorConsorcio() {
                 {lanceEmbutidoAtivo && (
                   <div className="space-y-3">
                     <div>
+                      <Label className="text-xs">Administradora *</Label>
+                      <Select value={administradora} onValueChange={setAdministradora}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a administradora" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="canopus">Canopus</SelectItem>
+                          <SelectItem value="outra">Outra</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {administradora === 'canopus' && (
+                        <p className="text-xs text-slate-600 mt-1">
+                          Na Canopus, a parcela já vem com o lance embutido descontado.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
                       <Label className="text-xs">Percentual (%)</Label>
                       <Select
                         value={lanceEmbutidoPercentual.toString()}
                         onValueChange={(value) => setLanceEmbutidoPercentual(parseFloat(value))}
+                        disabled={!administradora}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder={!administradora ? "Selecione a administradora" : undefined} />
                         </SelectTrigger>
+
                         <SelectContent>
-                          <SelectItem value="25">25%</SelectItem>
-                          <SelectItem value="30">30%</SelectItem>
-                          <SelectItem value="35">35%</SelectItem>
-                          <SelectItem value="40">40%</SelectItem>
-                          <SelectItem value="45">45%</SelectItem>
-                          <SelectItem value="50">50%</SelectItem>
+                          {administradora === 'canopus' ? (
+                            <>
+                              <SelectItem value="30">30%</SelectItem>
+                              <SelectItem value="50">50%</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="25">25%</SelectItem>
+                              <SelectItem value="30">30%</SelectItem>
+                              <SelectItem value="35">35%</SelectItem>
+                              <SelectItem value="40">40%</SelectItem>
+                              <SelectItem value="45">45%</SelectItem>
+                              <SelectItem value="50">50%</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div className="pt-2 border-t">
                       <p className="text-xs text-slate-600">Valor do Lance Embutido:</p>
                       <p className="text-lg font-bold text-emerald-600">{formatCurrency(lanceEmbutidoValor)}</p>
@@ -612,6 +682,11 @@ export default function SimuladorConsorcio() {
                   <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                     <p className="text-xs text-emerald-700 font-semibold mb-2">🎯 Lance Ofertado</p>
                     <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceTotal)}</p>
+                    {resultado.administradora && (
+                      <p className="text-xs text-emerald-800 mt-1">
+                        Administradora: <span className="font-semibold capitalize">{resultado.administradora}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Cálculos Intermediários */}
@@ -652,7 +727,7 @@ export default function SimuladorConsorcio() {
                       </div>
                       {resultado.opcaoPos === 'prazo' && (
                         <div className="text-xs text-purple-600 pt-2 border-t border-purple-200">
-                          ✓ 1 parcela paga no ato<br/>
+                          ✓ 1 parcela paga no ato<br />
                           ✓ 3 parcelas de carência descontadas
                         </div>
                       )}
