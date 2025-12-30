@@ -600,12 +600,23 @@ export default function FunilVendas() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`p-3 rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-move ${
+                                className={`p-3 rounded-lg border shadow-sm transition-shadow cursor-move ${
                                   snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
-                                } ${isResponsavel ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-300'} ${podeVerTodos && !isResponsavel ? 'opacity-60' : ''}`}
+                                } ${
+                                  podeVerTodos && !isResponsavel
+                                    ? 'bg-purple-50 border-purple-300'
+                                    : 'bg-white border-slate-200 hover:shadow-md'
+                                }`}
                               >
                                 <div className="flex items-start justify-between mb-2">
-                                  <h4 className="font-medium text-slate-900 text-sm flex-1">{oport.titulo}</h4>
+                                  <div className="flex-1">
+                                    <h4 className="font-medium text-slate-900 text-sm">{oport.titulo}</h4>
+                                    {podeVerTodos && !isResponsavel && (
+                                      <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700 mt-1">
+                                        👁️ Visualização
+                                      </span>
+                                    )}
+                                  </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-6 w-6">
