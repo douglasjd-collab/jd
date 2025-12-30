@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, User, DollarSign, Calendar, TrendingUp, History } from 'lucide-react';
+import { Loader2, User, DollarSign, Calendar, TrendingUp, History, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function OportunidadeDetalhes() {
@@ -24,6 +24,11 @@ export default function OportunidadeDetalhes() {
   const { data: movimentacoes = [], isLoading: loadingMovimentacoes } = useQuery({
     queryKey: ['movimentacoes', oportunidadeId],
     queryFn: () => base44.entities.MovimentacaoFunil.filter({ oportunidade_id: oportunidadeId }),
+  });
+
+  const { data: simulacoes = [], isLoading: loadingSimulacoes } = useQuery({
+    queryKey: ['simulacoes', oportunidadeId],
+    queryFn: () => base44.entities.Simulacao.filter({ oportunidade_id: oportunidadeId }),
   });
 
   const formatCurrency = (value) => {
@@ -161,6 +166,92 @@ export default function OportunidadeDetalhes() {
           </div>
         </div>
       </Card>
+
+      {/* Histórico de Simulações */}
+      {simulacoes.length > 0 && (
+        <Card className="p-6 border-0 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Calculator className="w-5 h-5 text-slate-600" />
+            <h3 className="text-lg font-semibold">Histórico de Simulações</h3>
+          </div>
+          <div className="space-y-4">
+            {simulacoes
+              .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
+              .map((sim, index) => (
+                <div key={sim.id} className="p-4 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-blue-100 text-blue-700">
+                        Simulação #{simulacoes.length - index}
+                      </Badge>
+                      <span className="text-sm text-slate-600">
+                        {format(new Date(sim.created_date), 'dd/MM/yyyy HH:mm')}
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      Por: {sim.usuario_nome}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-500 text-xs">💰 Crédito Total</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(sim.credito_total)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-xs">📅 Parcela Original</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(sim.parcela_total)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-xs">🎯 Lance Total</p>
+                      <p className="font-semibold text-emerald-600">{formatCurrency(sim.lance_total)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-xs">⏱️ Prazo Original</p>
+                      <p className="font-semibold text-slate-900">{sim.prazo_original} meses</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <p className="text-xs text-slate-500 mb-2">✨ Após Contemplação:</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-slate-500 text-xs">💵 Nova Parcela</p>
+                        <p className="font-bold text-purple-600">{formatCurrency(sim.nova_parcela)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 text-xs">📆 Novo Prazo</p>
+                        <p className="font-bold text-purple-600">{sim.novo_prazo} meses</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 text-xs">💳 Saldo Devedor</p>
+                        <p className="font-semibold text-slate-900">{formatCurrency(sim.saldo_apos_contemplacao)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(sim.lance_embutido_ativo || sim.lance_proprio_ativo) && (
+                    <div className="mt-3 pt-3 border-t border-slate-200">
+                      <p className="text-xs text-slate-500 mb-2">🏆 Detalhes do Lance:</p>
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        {sim.lance_embutido_ativo && (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                            Lance Embutido: {sim.lance_embutido_percentual}% = {formatCurrency(sim.lance_embutido_valor)}
+                          </Badge>
+                        )}
+                        {sim.lance_proprio_ativo && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            Lance Próprio: {formatCurrency(sim.lance_proprio_valor)}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        </Card>
+      )}
 
       {/* Histórico de Movimentações */}
       <Card className="p-6 border-0 shadow-sm">
