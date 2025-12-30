@@ -22,6 +22,7 @@ export default function SimuladorConsorcio() {
   const [currentUser, setCurrentUser] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
 
   const [lanceEmbutidoAtivo, setLanceEmbutidoAtivo] = useState(false);
@@ -61,6 +62,13 @@ export default function SimuladorConsorcio() {
       setLanceEmbutidoPercentual(30);
     }
   }, [lanceEmbutidoAtivo, administradora, lanceEmbutidoPercentual]);
+
+  // Regra: Motocicleta NÃO tem carência (força modelo simples)
+  useEffect(() => {
+    if (tipoGrupo === 'motocicleta') {
+      setOpcaoPos('parcela');
+    }
+  }, [tipoGrupo]);
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
@@ -147,7 +155,9 @@ export default function SimuladorConsorcio() {
     let novaParcela = null;
     let saldoFinal = saldoAposAto;
 
-    if (opcaoPos === 'prazo') {
+    const semCarencia = tipoGrupo === 'motocicleta';
+    
+    if (!semCarencia && opcaoPos === 'prazo') {
       // 📉 MODELO CANOPUS: 1 parcela no ato + 3 meses de carência (reduz prazo, não altera saldo)
       novoPrazo = prazoNum - 4;
       saldoFinal = saldoAposAto;
@@ -163,6 +173,7 @@ export default function SimuladorConsorcio() {
       creditoTotal,
       parcelaTotal,
       totalPlano,
+      tipoGrupo,
       administradora: lanceEmbutidoAtivo ? administradora : null,
       lanceTotal,
       lanceConsideradoNoSaldo,
@@ -188,6 +199,7 @@ export default function SimuladorConsorcio() {
       const simulacao = await base44.entities.Simulacao.create({
         cliente_nome: clienteNome,
         telefone: telefone,
+        tipo_grupo: tipoGrupo,
         cartas: JSON.stringify(cartas),
         credito_total: creditoTotal,
         parcela_total: parcelaTotal,
@@ -386,6 +398,25 @@ export default function SimuladorConsorcio() {
                     placeholder="(00) 00000-0000"
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Tipo do Grupo *</Label>
+                <Select value={tipoGrupo} onValueChange={setTipoGrupo}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="automovel">Automóvel</SelectItem>
+                    <SelectItem value="imovel">Imóvel</SelectItem>
+                    <SelectItem value="motocicleta">Motocicleta</SelectItem>
+                  </SelectContent>
+                </Select>
+                {tipoGrupo === 'motocicleta' && (
+                  <p className="text-xs text-slate-600 mt-1">
+                    ⚠️ Motocicleta: sem carência de 3 meses (simulação simples).
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -614,9 +645,9 @@ export default function SimuladorConsorcio() {
               <div>
                 <Label className="mb-3 block">Escolha o modelo de cálculo:</Label>
                 <RadioGroup value={opcaoPos} onValueChange={setOpcaoPos}>
-                  <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border cursor-pointer hover:bg-slate-100">
-                    <RadioGroupItem value="prazo" id="opcao_prazo" />
-                    <Label htmlFor="opcao_prazo" className="cursor-pointer flex-1">
+                  <div className={`flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border ${tipoGrupo === 'motocicleta' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'}`}>
+                    <RadioGroupItem value="prazo" id="opcao_prazo" disabled={tipoGrupo === 'motocicleta'} />
+                    <Label htmlFor="opcao_prazo" className={`flex-1 ${tipoGrupo === 'motocicleta' ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                       <span className="font-semibold">Modelo Canopus (Recomendado)</span>
                       <p className="text-xs text-slate-600 mt-1">1 parcela no ato + 3 de carência = novo prazo e parcela</p>
                     </Label>
