@@ -190,41 +190,82 @@ export default function SimuladorConsorcio() {
         pdf_url: `#simulacao-impressao-${simulacao.id}`
       });
 
-      // 3. Criar oportunidade no funil
-      const etapaSimulacao = etapas.find(e => 
-        e.nome.toLowerCase().includes('simulação') || 
-        e.nome.toLowerCase().includes('simulacao')
-      ) || etapas[0];
-
-      const oportunidade = await base44.entities.Oportunidade.create({
-        titulo: `Simulação - ${clienteNome}`,
-        cliente_nome: clienteNome,
-        cliente_telefone: telefone,
-        valor_estimado: creditoTotal,
-        etapa_id: etapaSimulacao?.id,
-        etapa_nome: etapaSimulacao?.nome,
-        vendedor_id: user.id,
-        vendedor_nome: user.full_name,
-        gerente_id: user.perfil === 'vendedor' ? user.gerente_id : user.id,
-        origem: 'Simulador',
-        observacoes: `Simulação gerada automaticamente.\n\nCrédito: ${formatCurrency(creditoTotal)}\nParcela: ${formatCurrency(parcelaTotal)}\nLance: ${formatCurrency(lanceTotal)}`,
-        status: 'aberta',
-        data_ultima_movimentacao: new Date().toISOString()
+      // 3. Verificar se já existe oportunidade para este cliente (por nome ou telefone)
+      const telefoneLimpo = telefone.replace(/\D/g, '');
+      const oportunidadesExistentes = await base44.entities.Oportunidade.list();
+      
+      const oportunidadeDuplicada = oportunidadesExistentes.find(op => {
+        const nomeMatch = op.cliente_nome?.toLowerCase() === clienteNome.toLowerCase();
+        const telefoneMatch = op.telefone_lead?.replace(/\D/g, '') === telefoneLimpo;
+        return (nomeMatch || telefoneMatch) && op.status === 'aberta';
       });
+
+      let oportunidade;
+
+      if (oportunidadeDuplicada) {
+        // Cliente já tem oportunidade aberta - atualizar com nova simulação
+        const observacoesAtuais = oportunidadeDuplicada.observacoes || '';
+        const novaSimulacaoInfo = `\n\n🔄 Nova Simulação (${new Date().toLocaleDateString('pt-BR')}):\nCrédito: ${formatCurrency(creditoTotal)}\nParcela: ${formatCurrency(parcelaTotal)}\nLance: ${formatCurrency(lanceTotal)}`;
+        
+        await base44.entities.Oportunidade.update(oportunidadeDuplicada.id, {
+          observacoes: observacoesAtuais + novaSimulacaoInfo,
+          valor_estimado: creditoTotal, // Atualiza com valor mais recente
+          data_ultima_movimentacao: new Date().toISOString()
+        });
+
+        oportunidade = { ...oportunidadeDuplicada, observacoes: observacoesAtuais + novaSimulacaoInfo };
+
+        // Registrar movimentação de atualização
+        await base44.entities.MovimentacaoFunil.create({
+          oportunidade_id: oportunidadeDuplicada.id,
+          etapa_origem_id: oportunidadeDuplicada.etapa_id,
+          etapa_origem_nome: oportunidadeDuplicada.etapa_nome,
+          etapa_destino_id: oportunidadeDuplicada.etapa_id,
+          etapa_destino_nome: oportunidadeDuplicada.etapa_nome,
+          usuario_id: user.id,
+          usuario_nome: user.full_name,
+          observacao: '🔄 Nova simulação adicionada ao histórico do cliente'
+        });
+
+        toast.info('Cliente já possui oportunidade aberta. Nova simulação adicionada ao histórico.');
+      } else {
+        // Criar nova oportunidade
+        const etapaSimulacao = etapas.find(e => 
+          e.nome.toLowerCase().includes('simulação') || 
+          e.nome.toLowerCase().includes('simulacao')
+        ) || etapas[0];
+
+        oportunidade = await base44.entities.Oportunidade.create({
+          titulo: `Simulação - ${clienteNome}`,
+          cliente_nome: clienteNome,
+          cliente_telefone: telefone,
+          telefone_lead: telefone,
+          valor_estimado: creditoTotal,
+          etapa_id: etapaSimulacao?.id,
+          etapa_nome: etapaSimulacao?.nome,
+          vendedor_id: user.id,
+          vendedor_nome: user.full_name,
+          gerente_id: user.perfil === 'vendedor' ? user.gerente_id : user.id,
+          origem: 'Simulador',
+          observacoes: `Simulação gerada automaticamente.\n\nCrédito: ${formatCurrency(creditoTotal)}\nParcela: ${formatCurrency(parcelaTotal)}\nLance: ${formatCurrency(lanceTotal)}`,
+          status: 'aberta',
+          data_ultima_movimentacao: new Date().toISOString()
+        });
+
+        // Registrar movimentação no funil (apenas para nova oportunidade)
+        await base44.entities.MovimentacaoFunil.create({
+          oportunidade_id: oportunidade.id,
+          etapa_destino_id: etapaSimulacao?.id,
+          etapa_destino_nome: etapaSimulacao?.nome,
+          usuario_id: user.id,
+          usuario_nome: user.full_name,
+          observacao: 'Simulação gerada e enviada ao cliente'
+        });
+      }
 
       // Vincular oportunidade à simulação
       await base44.entities.Simulacao.update(simulacao.id, {
         oportunidade_id: oportunidade.id
-      });
-
-      // Registrar movimentação no funil
-      await base44.entities.MovimentacaoFunil.create({
-        oportunidade_id: oportunidade.id,
-        etapa_destino_id: etapaSimulacao?.id,
-        etapa_destino_nome: etapaSimulacao?.nome,
-        usuario_id: user.id,
-        usuario_nome: user.full_name,
-        observacao: 'Simulação gerada e enviada ao cliente'
       });
 
       // Auditoria
