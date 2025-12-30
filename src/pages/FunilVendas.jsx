@@ -86,9 +86,9 @@ export default function FunilVendas() {
     queryFn: () => base44.entities.Cliente.filter({ status: 'ativo' }),
   });
 
-  const { data: vendedores = [] } = useQuery({
+  const { data: vendedores = [], isLoading: loadingVendedores } = useQuery({
     queryKey: ['vendedores'],
-    queryFn: () => base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
+    queryFn: () => base44.entities.User.list(),
   });
 
   const criarOportunidadeMutation = useMutation({
@@ -868,9 +868,17 @@ export default function FunilVendas() {
                   <SelectValue placeholder="Selecione o vendedor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vendedores.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
-                  ))}
+                  {loadingVendedores ? (
+                    <SelectItem value={null} disabled>Carregando...</SelectItem>
+                  ) : vendedores.length === 0 ? (
+                    <SelectItem value={null} disabled>Nenhum vendedor disponível</SelectItem>
+                  ) : (
+                    vendedores
+                      .filter(v => ['vendedor', 'gerente', 'admin', 'master'].includes(v.perfil) && v.status === 'ativo')
+                      .map((v) => (
+                        <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                      ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
