@@ -558,6 +558,7 @@ export default function SimuladorConsorcio() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="canopus">Canopus</SelectItem>
+                          <SelectItem value="itau">Itaú Consórcio</SelectItem>
                           <SelectItem value="outra">Outra</SelectItem>
                         </SelectContent>
                       </Select>
