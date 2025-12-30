@@ -508,7 +508,7 @@ export default function FunilVendas() {
         <Card className="p-4 border-0 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500 mb-2">
+              <p className="text-sm text-slate-500">
                 Ganhos ({filteredOportunidades.filter(o => o.status === 'ganha').length})
               </p>
               <p className="text-2xl font-bold text-green-600">
@@ -521,7 +521,7 @@ export default function FunilVendas() {
         <Card className="p-4 border-0 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500 mb-2">
+              <p className="text-sm text-slate-500">
                 Perdidas ({filteredOportunidades.filter(o => o.status === 'perdida').length})
               </p>
               <p className="text-2xl font-bold text-red-600">
