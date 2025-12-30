@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -66,10 +67,17 @@ export default function FunilVendas() {
   const loadUser = async () => {
     const user = await base44.auth.me();
     setCurrentUser(user);
+    setFormData((prev) => ({
+      ...prev,
+      vendedor_id: prev.vendedor_id || user?.id || '',
+    }));
   };
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
   const isGerente = currentUser?.perfil === 'gerente';
+  const podeVerTodos = isAdmin || isGerente;
+  const podeAlterarResponsavel = isAdmin || isGerente;
+  const podeAlterarQuadro = isAdmin || isGerente;
 
   const { data: etapas = [], isLoading: loadingEtapas } = useQuery({
     queryKey: ['etapas-funil'],
@@ -133,6 +141,9 @@ export default function FunilVendas() {
 
   const alterarResponsavelMutation = useMutation({
     mutationFn: async ({ oportunidadeId, novoResponsavelId }) => {
+      if (!podeAlterarResponsavel) {
+        throw new Error('Você não tem permissão para alterar o responsável.');
+      }
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       const novoResponsavel = vendedores.find(v => v.id === novoResponsavelId);
       
@@ -362,7 +373,8 @@ export default function FunilVendas() {
     }
 
     const cliente = clientes.find(c => c.id === formData.cliente_id);
-    const vendedor = vendedores.find(v => v.id === formData.vendedor_id);
+    const vendedorIdFinal = formData.vendedor_id || currentUser?.id || '';
+    const vendedor = vendedores.find(v => v.id === vendedorIdFinal);
     const etapa = etapas.find(e => e.id === formData.etapa_id);
 
     const data = {
@@ -372,7 +384,8 @@ export default function FunilVendas() {
       vendedor_nome: vendedor?.full_name || '',
       gerente_id: vendedor?.gerente_id || '',
       etapa_nome: etapa?.nome || '',
-      valor_estimado: parseFloat(formData.valor_estimado) || 0
+      valor_estimado: parseFloat(formData.valor_estimado) || 0,
+      vendedor_id: vendedorIdFinal
     };
 
     if (selectedOportunidade) {
@@ -432,16 +445,30 @@ export default function FunilVendas() {
   };
 
   // HU 05 - Indicadores
-  const filteredOportunidades = oportunidades.filter(o => {
-    if (filterVendedor === 'todos') return true;
-    return o.vendedor_id === filterVendedor;
-  });
+  const filteredOportunidades = oportunidades
+    .filter((o) => {
+      if (!currentUser) return false;
+      if (podeVerTodos) return true;
+      return o.vendedor_id === currentUser.id;
+    })
+    .filter((o) => {
+      if (!podeVerTodos) return true;
+      if (filterVendedor === 'todos') return true;
+      return o.vendedor_id === filterVendedor;
+    });
 
   const calcularIndicadores = (etapaId) => {
     const oportEtapa = filteredOportunidades.filter(o => o.etapa_id === etapaId);
     const quantidade = oportEtapa.length;
     const valor = oportEtapa.reduce((sum, o) => sum + (o.valor_estimado || 0), 0);
     return { quantidade, valor };
+  };
+
+  const getVendedorById = (id) => vendedores.find(v => v.id === id);
+  const getAvatarUrl = (v) => v?.foto_perfil || '';
+  const getInitials = (name = '') => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
   };
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
@@ -462,7 +489,7 @@ export default function FunilVendas() {
           setFormOpen(true);
         }}
       >
-        {(isAdmin || isGerente) && (
+        {podeVerTodos && (
           <>
             <Select value={filterVendedor} onValueChange={setFilterVendedor}>
               <SelectTrigger className="w-48">
@@ -566,6 +593,8 @@ export default function FunilVendas() {
                           <Draggable key={oport.id} draggableId={oport.id} index={index}>
                             {(provided, snapshot) => {
                               const isResponsavel = oport.vendedor_id === currentUser?.id;
+                              const vendedor = getVendedorById(oport.vendedor_id);
+                              const avatarUrl = getAvatarUrl(vendedor);
                               return (
                               <div
                                 ref={provided.innerRef}
@@ -573,7 +602,7 @@ export default function FunilVendas() {
                                 {...provided.dragHandleProps}
                                 className={`p-3 rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-move ${
                                   snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
-                                } ${isResponsavel ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-300'}`}
+                                } ${isResponsavel ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-300'} ${podeVerTodos && !isResponsavel ? 'opacity-60' : ''}`}
                               >
                                 <div className="flex items-start justify-between mb-2">
                                   <h4 className="font-medium text-slate-900 text-sm flex-1">{oport.titulo}</h4>
@@ -602,18 +631,20 @@ export default function FunilVendas() {
                                       }}>
                                         <Pencil className="w-4 h-4 mr-2" />
                                         Editar
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => {
-                                       setOportunidadeParaAlterar(oport);
-                                       setNovoResponsavelId(oport.vendedor_id);
-                                       setAlterarResponsavelOpen(true);
-                                      }}>
-                                       <UserCheck className="w-4 h-4 mr-2" />
-                                       Alterar Responsável
-                                      </DropdownMenuItem>
-                                      {(isAdmin || isGerente) && (
-                                       <>
-                                         <DropdownMenuItem onClick={() => {
+                                        </DropdownMenuItem>
+                                        {podeAlterarResponsavel && (
+                                        <DropdownMenuItem onClick={() => {
+                                          setOportunidadeParaAlterar(oport);
+                                          setNovoResponsavelId(oport.vendedor_id);
+                                          setAlterarResponsavelOpen(true);
+                                        }}>
+                                          <UserCheck className="w-4 h-4 mr-2" />
+                                          Alterar Responsável
+                                        </DropdownMenuItem>
+                                        )}
+                                        {podeAlterarQuadro && (
+                                        <>
+                                          <DropdownMenuItem onClick={() => {
                                             setOportunidadeParaAlterar(oport);
                                             setNovaEtapaId(oport.etapa_id);
                                             setAlterarQuadroOpen(true);
@@ -652,11 +683,16 @@ export default function FunilVendas() {
                                   <span className="font-semibold text-emerald-600">
                                     {formatCurrency(oport.valor_estimado)}
                                   </span>
-                                  <div className="flex items-center gap-1 text-slate-600">
-                                    <User className="w-3 h-3" />
-                                    <span className={isResponsavel ? 'font-semibold text-blue-600' : ''}>
-                                      {oport.vendedor_nome}
-                                    </span>
+                                  <div
+                                    className="flex items-center gap-2"
+                                    title={oport.vendedor_nome || vendedor?.full_name || 'Responsável'}
+                                  >
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarImage src={avatarUrl} alt={oport.vendedor_nome || vendedor?.full_name || 'Responsável'} />
+                                      <AvatarFallback className="text-xs">
+                                        {getInitials(oport.vendedor_nome || vendedor?.full_name || '') || 'RV'}
+                                      </AvatarFallback>
+                                    </Avatar>
                                   </div>
                                 </div>
 
@@ -888,6 +924,10 @@ export default function FunilVendas() {
               </Button>
               <Button 
                 onClick={() => {
+                  if (!podeAlterarResponsavel) {
+                    toast.error('Você não tem permissão para alterar o responsável');
+                    return;
+                  }
                   if (!novoResponsavelId) {
                     toast.error('Selecione um responsável');
                     return;
