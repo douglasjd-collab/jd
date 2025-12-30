@@ -26,8 +26,9 @@ export default function SimuladorConsorcio() {
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
 
   const [lanceEmbutidoAtivo, setLanceEmbutidoAtivo] = useState(false);
-  const [administradora, setAdministradora] = useState('');
+  const [administradora, setAdministradora] = useState(''); // canopus | itau | outra
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(25);
+  const [parcelaReduzida, setParcelaReduzida] = useState(false);
 
   const [lanceProprioAtivo, setLanceProprioAtivo] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
@@ -69,6 +70,13 @@ export default function SimuladorConsorcio() {
       setOpcaoPos('parcela');
     }
   }, [tipoGrupo]);
+
+  // Regra: Itaú também não tem carência (força modelo simples)
+  useEffect(() => {
+    if (administradora === 'itau') {
+      setOpcaoPos('parcela');
+    }
+  }, [administradora]);
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
@@ -135,35 +143,82 @@ export default function SimuladorConsorcio() {
 
     // 🧮 CÁLCULO
     const prazoNum = parseFloat(prazoOriginal);
-
-    // 1. Total do Plano = Prazo × Parcela (parcelaTotal pode já estar líquida em Canopus+embutido)
     const totalPlano = prazoNum * parcelaTotal;
 
-    // ✅ Regra principal:
-    // - Canopus + Embutido: parcela já é líquida do embutido => desconta APENAS lance próprio
-    // - Outros casos: desconta lance total (embutido + próprio)
     const usarRegraCanopusEmbutido = lanceEmbutidoAtivo && administradora === 'canopus';
-    const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
+    const semCarenciaPorAdm = administradora === 'itau';
 
-    // 2. Saldo Base = Total do Plano - Lance considerado
-    const saldoBase = totalPlano - lanceConsideradoNoSaldo;
+    let saldoBase;
+    let saldoAposAto;
+    let saldoFinal;
 
-    // 3. Saldo Após Ato = Saldo Base - Parcela (1ª parcela paga no ato)
-    const saldoAposAto = saldoBase - parcelaTotal;
-    
+    // ✅ REGRA ESPECIAL: Motocicleta + Canopus + Embutido + Parcela cheia
+    // O embutido QUITA meses (reduz prazo), não reduz saldo
+    const regraMotoCanopusEmbutidoParcelaCheia =
+      tipoGrupo === 'motocicleta' &&
+      administradora === 'canopus' &&
+      lanceEmbutidoAtivo &&
+      parcelaReduzida === false;
+
+    if (regraMotoCanopusEmbutidoParcelaCheia) {
+      const mesesQuitadosEmbutido = Math.max(
+        0,
+        Math.floor((lanceEmbutidoValor || 0) / (parcelaTotal || 1))
+      );
+
+      const valorQuitadoEmbutido = mesesQuitadosEmbutido * parcelaTotal;
+
+      saldoFinal = totalPlano - parcelaTotal - lanceProprioValor - valorQuitadoEmbutido;
+      saldoBase = totalPlano - (lanceProprioValor + valorQuitadoEmbutido);
+      saldoAposAto = saldoFinal;
+
+      const novoPrazoForcado = Math.max(1, prazoNum - 1 - mesesQuitadosEmbutido);
+      const novaParcelaForcada = saldoFinal / novoPrazoForcado;
+
+      setResultado({
+        creditoTotal,
+        parcelaTotal,
+        totalPlano,
+        administradora,
+        tipoGrupo,
+        parcelaReduzida,
+        lanceEmbutidoValor,
+        lanceProprioValor,
+        lanceTotal,
+        lanceConsideradoNoSaldo: lanceProprioValor,
+        saldoBase,
+        saldoAposAto,
+        saldoFinal,
+        prazoOriginal: prazoNum,
+        opcaoPos: 'parcela',
+        novoPrazo: novoPrazoForcado,
+        novaParcela: novaParcelaForcada
+      });
+      return;
+    }
+
+    // ✅ REGRA GERAL
+    if (!parcelaReduzida && lanceEmbutidoAtivo) {
+      saldoFinal = totalPlano - lanceEmbutidoValor - lanceProprioValor - parcelaTotal;
+      saldoBase = totalPlano - (lanceEmbutidoValor + lanceProprioValor);
+      saldoAposAto = saldoFinal;
+    } else {
+      const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
+      saldoBase = totalPlano - lanceConsideradoNoSaldo;
+      saldoAposAto = saldoBase - parcelaTotal;
+      saldoFinal = saldoAposAto;
+    }
+
     let novoPrazo = null;
     let novaParcela = null;
-    let saldoFinal = saldoAposAto;
 
-    const semCarencia = tipoGrupo === 'motocicleta';
+    const semCarencia = tipoGrupo === 'motocicleta' || semCarenciaPorAdm;
     
     if (!semCarencia && opcaoPos === 'prazo') {
-      // 📉 MODELO CANOPUS: 1 parcela no ato + 3 meses de carência (reduz prazo, não altera saldo)
       novoPrazo = prazoNum - 4;
       saldoFinal = saldoAposAto;
       novaParcela = saldoFinal / novoPrazo;
     } else {
-      // 📉 MODELO SIMPLES: apenas 1 no ato
       novoPrazo = prazoNum - 1;
       saldoFinal = saldoAposAto;
       novaParcela = saldoFinal / novoPrazo;
@@ -176,12 +231,15 @@ export default function SimuladorConsorcio() {
       tipoGrupo,
       administradora: lanceEmbutidoAtivo ? administradora : null,
       lanceTotal,
-      lanceConsideradoNoSaldo,
+      lanceConsideradoNoSaldo: usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal,
+      parcelaReduzida,
+      lanceEmbutidoValor,
+      lanceProprioValor,
       saldoBase,
       saldoAposAto,
       saldoFinal,
       prazoOriginal: prazoNum,
-      opcaoPos,
+      opcaoPos: semCarencia ? 'parcela' : opcaoPos,
       novoPrazo,
       novaParcela
     });
