@@ -314,7 +314,9 @@ export default function SimuladorConsorcio() {
         await base44.entities.Oportunidade.update(oportunidadeDuplicada.id, {
           observacoes: observacoesAtuais + novaSimulacaoInfo,
           valor_estimado: creditoTotal, // Atualiza com valor mais recente
-          data_ultima_movimentacao: new Date().toISOString()
+          data_ultima_movimentacao: new Date().toISOString(),
+          responsavel_id: oportunidadeDuplicada.responsavel_id ?? user.id,
+          responsavel_nome: oportunidadeDuplicada.responsavel_nome ?? user.full_name
         });
 
         oportunidade = { ...oportunidadeDuplicada, observacoes: observacoesAtuais + novaSimulacaoInfo };
@@ -349,6 +351,8 @@ export default function SimuladorConsorcio() {
           etapa_nome: etapaSimulacao?.nome,
           vendedor_id: user.id,
           vendedor_nome: user.full_name,
+          responsavel_id: user.id,
+          responsavel_nome: user.full_name,
           gerente_id: user.perfil === 'vendedor' ? user.gerente_id : user.id,
           origem: 'Simulador',
           observacoes:
