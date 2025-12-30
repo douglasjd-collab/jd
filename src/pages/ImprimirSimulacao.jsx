@@ -107,13 +107,21 @@ export default function ImprimirSimulacao() {
           body { background: white !important; margin: 0; padding: 0; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           @page { 
-            margin: 0.5cm;
+            margin: 0.3cm;
             size: A4;
           }
           html, body {
             height: auto !important;
             overflow: hidden !important;
           }
+          .compact-print { 
+            font-size: 11px !important; 
+            line-height: 1.3 !important;
+          }
+          .compact-print h1 { font-size: 20px !important; margin-bottom: 4px !important; }
+          .compact-print h2 { font-size: 14px !important; margin-bottom: 6px !important; padding-bottom: 2px !important; }
+          .compact-print .section { margin-bottom: 8px !important; }
+          .compact-print .card-section { padding: 6px !important; }
         }
       `}</style>
 
@@ -133,31 +141,30 @@ export default function ImprimirSimulacao() {
         </div>
 
         {/* Conteúdo para impressão */}
-        <div className="max-w-4xl mx-auto p-4 print:p-2">
+        <div className="max-w-4xl mx-auto p-4 print:p-1 compact-print">
           {/* Cabeçalho */}
-          <div className="text-center mb-4 pb-3 border-b-2 border-slate-800">
-            <div className="flex justify-center mb-2">
+          <div className="text-center mb-2 pb-2 border-b-2 border-slate-800">
+            <div className="flex justify-center mb-1">
               <img 
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
                 alt="JD Promotora" 
-                className="h-10 w-auto object-contain"
+                className="h-8 w-auto object-contain print:h-7"
               />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">
+            <h1 className="text-2xl font-bold text-slate-900 mb-0">
               Simulação de Consórcio
             </h1>
             <p className="text-xs text-slate-600">
-              Gerado em: {new Date(simulacao.created_date).toLocaleDateString('pt-BR')} às{' '}
-              {new Date(simulacao.created_date).toLocaleTimeString('pt-BR')}
+              {new Date(simulacao.created_date).toLocaleDateString('pt-BR')} às {new Date(simulacao.created_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
             </p>
           </div>
 
           {/* Dados do Cliente */}
-          <div className="mb-3">
-            <h2 className="text-lg font-bold text-slate-900 mb-2 pb-1 border-b border-slate-300">
+          <div className="section mb-2">
+            <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
               📋 Dados do Cliente
             </h2>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="font-semibold">Nome:</span> {simulacao.cliente_nome}
               </div>
@@ -168,28 +175,27 @@ export default function ImprimirSimulacao() {
           </div>
 
           {/* Cartas de Crédito */}
-          <div className="mb-3">
-            <h2 className="text-lg font-bold text-slate-900 mb-2 pb-1 border-b border-slate-300">
+          <div className="section mb-2">
+            <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
               💳 Cartas de Crédito
             </h2>
-            <div className="space-y-1 mb-2">
+            <div className="space-y-0.5 mb-1">
               {cartas.map((carta, i) => (
-                <div key={i} className="text-xs bg-slate-50 p-2 rounded">
-                  <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} •{' '}
-                  {formatCurrency(parseFloat(carta.parcela))}/mês • {carta.prazo} meses
+                <div key={i} className="text-xs bg-slate-50 p-1.5 rounded">
+                  <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} • {formatCurrency(parseFloat(carta.parcela))}/mês • {carta.prazo}m
                 </div>
               ))}
             </div>
-            <div className="bg-blue-50 p-2 rounded text-xs space-y-1">
+            <div className="card-section bg-blue-50 p-2 rounded text-xs space-y-0.5">
               <div className="flex justify-between">
                 <span className="font-semibold">💰 Crédito Total:</span>
-                <span className="text-lg font-bold text-blue-900">
+                <span className="text-base font-bold text-blue-900">
                   {formatCurrency(simulacao.credito_total)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold">📅 Parcela Total:</span>
-                <span className="text-lg font-bold text-blue-900">
+                <span className="text-base font-bold text-blue-900">
                   {formatCurrency(simulacao.parcela_total)}/mês
                 </span>
               </div>
@@ -198,8 +204,8 @@ export default function ImprimirSimulacao() {
 
           {/* Lances */}
           {simulacao.lance_total > 0 && (
-            <div className="mb-3">
-              <h2 className="text-lg font-bold text-slate-900 mb-2 pb-1 border-b border-slate-300">
+            <div className="section mb-2">
+              <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
                 🎯 Lances
               </h2>
               <div className="space-y-1 text-xs">
@@ -219,9 +225,9 @@ export default function ImprimirSimulacao() {
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between pt-1 border-t border-emerald-200 bg-emerald-50 p-2 rounded">
+                <div className="card-section flex justify-between pt-1 border-t border-emerald-200 bg-emerald-50 p-1.5 rounded">
                   <span className="font-bold">🏆 Lance Total:</span>
-                  <span className="text-lg font-bold text-emerald-900">
+                  <span className="text-base font-bold text-emerald-900">
                     {formatCurrency(simulacao.lance_total)}
                   </span>
                 </div>
@@ -230,23 +236,23 @@ export default function ImprimirSimulacao() {
           )}
 
           {/* Valor a Receber */}
-          <div className="mb-3 p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
-            <h2 className="text-sm font-bold mb-2">💰 Valor que o Cliente Recebe</h2>
-            <p className="text-3xl font-bold mb-1">
+          <div className="section card-section mb-2 p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
+            <h2 className="text-sm font-bold mb-1">💰 Valor que o Cliente Recebe</h2>
+            <p className="text-2xl font-bold mb-0.5">
               {formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}
             </p>
             <p className="text-xs opacity-90">
-              (Crédito de {formatCurrency(simulacao.credito_total)}
-              {simulacao.lance_embutido_valor > 0 && ` - Lance Embutido de ${formatCurrency(simulacao.lance_embutido_valor)}`})
+              (Crédito {formatCurrency(simulacao.credito_total)}
+              {simulacao.lance_embutido_valor > 0 && ` - Lance Emb. ${formatCurrency(simulacao.lance_embutido_valor)}`})
             </p>
           </div>
 
           {/* Cálculos */}
-          <div className="mb-3">
-            <h2 className="text-lg font-bold text-slate-900 mb-2 pb-1 border-b border-slate-300">
+          <div className="section mb-2">
+            <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
               🧮 Cálculos
             </h2>
-            <div className="space-y-1 text-xs">
+            <div className="space-y-0.5 text-xs">
               <div className="flex justify-between">
                 <span>Total do Plano:</span>
                 <span className="font-semibold">
@@ -271,54 +277,51 @@ export default function ImprimirSimulacao() {
                 <span>(-) 1ª Parcela (no ato):</span>
                 <span className="font-semibold">{formatCurrency(simulacao.parcela_total)}</span>
               </div>
-              <div className="flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-2 rounded">
+              <div className="card-section flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-1.5 rounded">
                 <span className="font-bold">Saldo Devedor:</span>
-                <span className="text-lg font-bold text-blue-900">
+                <span className="text-base font-bold text-blue-900">
                   {formatCurrency(simulacao.saldo_apos_contemplacao)}
                 </span>
               </div>
               {simulacao.opcao_pos_contemplacao === 'prazo' && (
-                <p className="text-xs text-slate-600 italic mt-2">
-                  ⏱️ Carência de 3 meses reduz apenas o prazo (não altera saldo)
+                <p className="text-xs text-slate-600 italic mt-1">
+                  ⏱️ Carência 3 meses reduz prazo
                 </p>
               )}
             </div>
           </div>
 
           {/* Resultado Final */}
-          <div className="bg-gradient-to-r from-purple-100 to-purple-50 border-2 border-purple-300 rounded-lg p-3">
-            <h2 className="text-lg font-bold text-purple-900 mb-2 text-center">
+          <div className="card-section bg-gradient-to-r from-purple-100 to-purple-50 border-2 border-purple-300 rounded-lg p-2">
+            <h2 className="text-base font-bold text-purple-900 mb-1 text-center">
               ✨ Resultado Final
             </h2>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-purple-800">Novo Prazo:</span>
-                <span className="text-xl font-bold text-purple-900">
+                <span className="text-lg font-bold text-purple-900">
                   {simulacao.novo_prazo} meses
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-purple-800">Nova Parcela:</span>
-                <span className="text-xl font-bold text-purple-900">
+                <span className="text-lg font-bold text-purple-900">
                   {formatCurrency(simulacao.nova_parcela)}
                 </span>
               </div>
               {simulacao.opcao_pos_contemplacao === 'prazo' && (
-                <div className="pt-2 border-t border-purple-200 text-xs text-purple-700">
-                  ✓ 1 parcela paga no ato<br />
-                  ✓ 3 parcelas de carência descontadas
+                <div className="pt-1 border-t border-purple-200 text-xs text-purple-700">
+                  ✓ 1 parcela no ato • ✓ 3 carência
                 </div>
               )}
             </div>
           </div>
 
           {/* Rodapé */}
-          <div className="mt-3 pt-2 border-t border-slate-300 text-center text-xs text-slate-500">
-            <p>Modelo de Cálculo: {modelo}</p>
-            <p className="mt-2">Vendedor: {simulacao.usuario_nome}</p>
-            <p className="mt-4">
-              Esta simulação é apenas uma projeção e pode sofrer alterações conforme as condições
-              da administradora.
+          <div className="mt-2 pt-1.5 border-t border-slate-300 text-center text-xs text-slate-500">
+            <p>Modelo: {modelo} • Vendedor: {simulacao.usuario_nome}</p>
+            <p className="mt-1">
+              Simulação sujeita a alterações conforme condições da administradora.
             </p>
           </div>
         </div>
