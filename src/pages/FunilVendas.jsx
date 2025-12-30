@@ -600,12 +600,12 @@ export default function FunilVendas() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`p-3 rounded-lg border shadow-sm transition-shadow cursor-move ${
+                                className={`p-3 rounded-lg shadow-sm transition-shadow cursor-move ${
                                   snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
                                 } ${
                                   podeVerTodos && !isResponsavel
-                                    ? 'bg-purple-50 border-purple-300'
-                                    : 'bg-white border-slate-200 hover:shadow-md'
+                                    ? 'bg-purple-200/40'
+                                    : 'bg-white hover:shadow-md'
                                 }`}
                               >
                                 <div className="flex items-start justify-between mb-2">
