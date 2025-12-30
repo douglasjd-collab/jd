@@ -128,6 +128,13 @@ export default function ImprimirSimulacao() {
         <div className="max-w-4xl mx-auto p-8">
           {/* Cabeçalho */}
           <div className="text-center mb-8 pb-6 border-b-2 border-slate-800">
+            <div className="flex justify-center mb-4">
+              <img 
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/e9167cebc_JDPromotoraICON2.png" 
+                alt="JD Promotora" 
+                className="h-20 w-auto object-contain"
+              />
+            </div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
               Simulação de Consórcio
             </h1>
