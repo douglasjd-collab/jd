@@ -717,6 +717,14 @@ export default function FunilVendas() {
                                   <p className="text-xs text-slate-600 mb-2">👤 {oport.cliente_nome}</p>
                                 )}
 
+                                {oport.telefone_lead && (
+                                  <p className="text-xs text-slate-600 mb-2">📞 {oport.telefone_lead}</p>
+                                )}
+
+                                {oport.data_cadastro_lead && (
+                                  <p className="text-xs text-slate-600 mb-2">📅 {format(new Date(oport.data_cadastro_lead), 'dd/MM/yyyy')}</p>
+                                )}
+
                                 <div className="flex items-center justify-between text-xs mb-2">
                                   <span className="font-semibold text-emerald-600">
                                     {formatCurrency(oport.valor_estimado)}
