@@ -604,8 +604,8 @@ export default function FunilVendas() {
                                   snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
                                 } ${
                                   podeVerTodos && !isResponsavel
-                                    ? 'bg-purple-200/40'
-                                    : 'bg-white hover:shadow-md'
+                                    ? 'bg-purple-200/40 border border-transparent'
+                                    : 'bg-white border border-slate-200 hover:shadow-md'
                                 }`}
                               >
                                 <div className="flex items-start justify-between mb-2">
