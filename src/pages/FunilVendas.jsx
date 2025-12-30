@@ -506,31 +506,29 @@ export default function FunilVendas() {
           </div>
         </Card>
         <Card className="p-4 border-0 shadow-sm">
-          <div>
-            <p className="text-sm text-slate-500 mb-2">Ganhos</p>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-lg font-bold text-green-600">
-                {filteredOportunidades.filter(o => o.status === 'ganha').length}
-              </span>
-              <Badge className="bg-green-100 text-green-700">✓</Badge>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500 mb-2">
+                Ganhos ({filteredOportunidades.filter(o => o.status === 'ganha').length})
+              </p>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(filteredOportunidades.filter(o => o.status === 'ganha').reduce((acc, o) => acc + (o.valor_estimado || 0), 0))}
+              </p>
             </div>
-            <p className="text-xl font-semibold text-green-700">
-              {formatCurrency(filteredOportunidades.filter(o => o.status === 'ganha').reduce((acc, o) => acc + (o.valor_estimado || 0), 0))}
-            </p>
+            <Badge className="bg-green-100 text-green-700">✓</Badge>
           </div>
         </Card>
         <Card className="p-4 border-0 shadow-sm">
-          <div>
-            <p className="text-sm text-slate-500 mb-2">Perdidas</p>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-lg font-bold text-red-600">
-                {filteredOportunidades.filter(o => o.status === 'perdida').length}
-              </span>
-              <Badge className="bg-red-100 text-red-700">✗</Badge>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500 mb-2">
+                Perdidas ({filteredOportunidades.filter(o => o.status === 'perdida').length})
+              </p>
+              <p className="text-2xl font-bold text-red-600">
+                {formatCurrency(filteredOportunidades.filter(o => o.status === 'perdida').reduce((acc, o) => acc + (o.valor_estimado || 0), 0))}
+              </p>
             </div>
-            <p className="text-xl font-semibold text-red-700">
-              {formatCurrency(filteredOportunidades.filter(o => o.status === 'perdida').reduce((acc, o) => acc + (o.valor_estimado || 0), 0))}
-            </p>
+            <Badge className="bg-red-100 text-red-700">✗</Badge>
           </div>
         </Card>
       </div>
