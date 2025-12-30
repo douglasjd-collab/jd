@@ -106,11 +106,18 @@ export default function ImprimirSimulacao() {
           .no-print { display: none !important; }
           body { background: white !important; margin: 0; padding: 0; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { margin: 0.5cm; }
+          @page { 
+            margin: 0.5cm;
+            size: A4;
+          }
+          html, body {
+            height: auto !important;
+            overflow: hidden !important;
+          }
         }
       `}</style>
 
-      <div className="min-h-screen bg-white">
+      <div className="bg-white print:h-auto">
         {/* Botões - não aparecem na impressão */}
         <div className="no-print fixed top-4 left-4 right-4 z-50 flex justify-between">
           <Link to={createPageUrl('SimuladorConsorcio')}>
