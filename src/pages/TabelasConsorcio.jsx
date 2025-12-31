@@ -95,15 +95,9 @@ export default function TabelasConsorcio() {
       setSelectedTabela(tabela);
     } else {
       reset({
-        nome: '',
+        nomeTabela: '',
         administradora_id: '',
-        valor_carta: '',
-        percentual_comissao: '',
-        comissao_total: '',
-        comissao_por_parcela: '',
-        num_parcelas_comissao: 12,
-        percentual_faturamento: 0,
-        comissao_faturamento: 0,
+        tipoEmpresa: '',
         status: 'ativa'
       });
       setSelectedTabela(null);
@@ -112,32 +106,16 @@ export default function TabelasConsorcio() {
   };
 
   const onSubmit = async (data) => {
-    // Calcular valores
-    const valorCarta = parseFloat(data.valor_carta) || 0;
-    const percentual = parseFloat(data.percentual_comissao) || 0;
-    const numParcelas = parseInt(data.num_parcelas_comissao) || 12;
-    const percentualFaturamento = parseFloat(data.percentual_faturamento) || 0;
-    
-    const comissaoTotal = (valorCarta * percentual) / 100;
-    const comissaoPorParcela = comissaoTotal / numParcelas;
-    const comissaoFaturamento = (valorCarta * percentualFaturamento) / 100;
-    
-    // HU 04 - Validação: soma das parcelas não pode ser maior que comissão total
-    const somaParcelas = comissaoPorParcela * numParcelas;
-    if (somaParcelas > comissaoTotal) {
-      toast.error('A soma das parcelas não pode ser maior que a comissão total!');
+    // Validações
+    if (!data.nomeTabela || !data.administradora_id || !data.tipoEmpresa) {
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
+    const admin = administradoras.find(a => a.id === data.administradora_id);
     const submitData = {
       ...data,
-      valor_carta: valorCarta,
-      percentual_comissao: percentual,
-      comissao_total: comissaoTotal,
-      comissao_por_parcela: comissaoPorParcela,
-      num_parcelas_comissao: numParcelas,
-      percentual_faturamento: percentualFaturamento,
-      comissao_faturamento: comissaoFaturamento
+      administradora_nome: admin?.nome_fantasia || admin?.razao_social || ''
     };
 
     // HU 08 - Auditoria
@@ -178,8 +156,9 @@ export default function TabelasConsorcio() {
   };
 
   const filteredTabelas = tabelas.filter(t => 
-    t.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    getAdminNome(t.administradora_id).toLowerCase().includes(search.toLowerCase())
+    t.nomeTabela?.toLowerCase().includes(search.toLowerCase()) ||
+    getAdminNome(t.administradora_id).toLowerCase().includes(search.toLowerCase()) ||
+    t.tipoEmpresa?.toLowerCase().includes(search.toLowerCase())
   );
 
   const columns = [
@@ -187,30 +166,16 @@ export default function TabelasConsorcio() {
       header: 'Tabela',
       cell: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.nome}</p>
+          <p className="font-medium text-slate-900">{row.nomeTabela}</p>
           <p className="text-sm text-slate-500">{getAdminNome(row.administradora_id)}</p>
         </div>
       )
     },
     {
-      header: 'Valor da Carta',
-      cell: (row) => formatCurrency(row.valor_carta)
-    },
-    {
-      header: 'Comissão',
+      header: 'Tipo Empresa',
       cell: (row) => (
-        <div>
-          <p className="font-medium">{row.percentual_comissao}%</p>
-          <p className="text-sm text-slate-500">{formatCurrency(row.comissao_total)}</p>
-        </div>
-      )
-    },
-    {
-      header: 'Por Parcela',
-      cell: (row) => (
-        <div>
-          <p className="font-medium">{formatCurrency(row.comissao_por_parcela)}</p>
-          <p className="text-sm text-slate-500">{row.num_parcelas_comissao}x</p>
+        <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm font-medium inline-block">
+          {row.tipoEmpresa}
         </div>
       )
     },
@@ -281,24 +246,25 @@ export default function TabelasConsorcio() {
             <DialogTitle>{selectedTabela ? 'Editar Tabela' : 'Nova Tabela'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Label htmlFor="nome">Nome da Tabela *</Label>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="nomeTabela">Nome da Tabela *</Label>
                 <Input
-                  id="nome"
-                  {...register('nome', { required: true })}
-                  placeholder="Ex: Tabela Imóvel 120 meses"
+                  id="nomeTabela"
+                  {...register('nomeTabela', { required: true })}
+                  placeholder="Ex: Tabela Imóvel Premium"
                 />
+                {errors.nomeTabela && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
               </div>
               
-              <div className="col-span-2">
+              <div>
                 <Label>Administradora *</Label>
                 <Select
                   value={watch('administradora_id') || ''}
                   onValueChange={(value) => setValue('administradora_id', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder="Selecione a administradora" />
                   </SelectTrigger>
                   <SelectContent>
                     {administradoras.map((a) => (
@@ -308,83 +274,34 @@ export default function TabelasConsorcio() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.administradora_id && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
               </div>
               
               <div>
-                <Label htmlFor="valor_carta">Valor da Carta (R$) *</Label>
-                <Input
-                  id="valor_carta"
-                  type="number"
-                  step="0.01"
-                  {...register('valor_carta', { required: true })}
-                  placeholder="0,00"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="percentual_comissao">Percentual Comissão (%) *</Label>
-                <Input
-                  id="percentual_comissao"
-                  type="number"
-                  step="0.01"
-                  {...register('percentual_comissao', { required: true })}
-                  placeholder="0,00"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="num_parcelas_comissao">Nº Parcelas Comissão</Label>
-                <Input
-                  id="num_parcelas_comissao"
-                  type="number"
-                  {...register('num_parcelas_comissao')}
-                  placeholder="12"
-                />
+                <Label>Tipo de Empresa *</Label>
+                <Select
+                  value={watch('tipoEmpresa') || ''}
+                  onValueChange={(value) => setValue('tipoEmpresa', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MEI">MEI (Fator 0.25)</SelectItem>
+                    <SelectItem value="ME">ME (Fator 0.30)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.tipoEmpresa && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
               </div>
 
-              <div>
-                <Label htmlFor="percentual_faturamento">% Comissão Faturamento</Label>
-                <Input
-                  id="percentual_faturamento"
-                  type="number"
-                  step="0.01"
-                  {...register('percentual_faturamento')}
-                  placeholder="0,00"
-                />
-              </div>
-              
-              <div className="col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="text-sm font-semibold text-blue-900 mb-3">Resumo da Comissão</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-slate-600">Comissão Total:</p>
-                    <p className="font-bold text-slate-900">
-                      {formatCurrency((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600">Por Parcela ({watch('num_parcelas_comissao') || 12}x):</p>
-                    <p className="font-bold text-slate-900">
-                      {formatCurrency(((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) / (parseInt(watch('num_parcelas_comissao')) || 12))}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600">Faturamento:</p>
-                    <p className="font-bold text-emerald-600">
-                      {formatCurrency((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_faturamento')) || 0) / 100)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600">Soma Parcelas:</p>
-                    <p className={`font-bold ${
-                      (((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) / (parseInt(watch('num_parcelas_comissao')) || 12)) * (parseInt(watch('num_parcelas_comissao')) || 12) > ((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) 
-                      ? 'text-red-600' 
-                      : 'text-slate-900'
-                    }`}>
-                      {formatCurrency((((parseFloat(watch('valor_carta')) || 0) * (parseFloat(watch('percentual_comissao')) || 0) / 100) / (parseInt(watch('num_parcelas_comissao')) || 12)) * (parseInt(watch('num_parcelas_comissao')) || 12))}
-                    </p>
-                  </div>
-                </div>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-900">
+                  <strong>Tipo de Empresa:</strong> Define o fator de cálculo da comissão na venda.
+                </p>
+                <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4 list-disc">
+                  <li>MEI: percentualComissão = taxaAdministração × 0.25</li>
+                  <li>ME: percentualComissão = taxaAdministração × 0.30</li>
+                </ul>
               </div>
 
               <div>
