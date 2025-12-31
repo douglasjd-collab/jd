@@ -101,7 +101,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     const taxa = parseFloat(taxaAdministracao) || 0;
     
     if (credito > 0 && taxa > 0 && tipoEmpresa) {
-      const fator = tipoEmpresa === 'MEI' ? 0.25 : tipoEmpresa === 'ME' ? 0.30 : 0;
+      const fator = tipoEmpresa === 'MEI' ? 0.25 : (tipoEmpresa === 'ME' || tipoEmpresa === 'LTDA') ? 0.30 : 0;
       const percentualComissao = taxa * fator;
       const valorComissao = credito * (percentualComissao / 100);
       

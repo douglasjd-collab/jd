@@ -105,6 +105,14 @@ export default function Administradoras() {
       cell: (row) => row.cnpj || '-'
     },
     {
+      header: 'Tipo Empresa',
+      cell: (row) => (
+        <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm font-medium inline-block">
+          {row.tipoEmpresa || '-'}
+        </div>
+      )
+    },
+    {
       header: 'Contato',
       cell: (row) => row.contato || '-'
     },

@@ -278,20 +278,15 @@ export default function TabelasConsorcio() {
               </div>
               
               <div>
-                <Label>Tipo de Empresa *</Label>
-                <Select
-                  value={watch('tipoEmpresa') || ''}
-                  onValueChange={(value) => setValue('tipoEmpresa', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MEI">MEI (Fator 0.25)</SelectItem>
-                    <SelectItem value="ME">ME (Fator 0.30)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.tipoEmpresa && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+                <Label>Tipo de Empresa (da Administradora)</Label>
+                <Input
+                  value={watch('tipoEmpresa') || 'Selecione a administradora'}
+                  disabled
+                  className="bg-slate-100"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  O tipo é herdado automaticamente da administradora selecionada
+                </p>
               </div>
 
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -301,6 +296,7 @@ export default function TabelasConsorcio() {
                 <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4 list-disc">
                   <li>MEI: percentualComissão = taxaAdministração × 0.25</li>
                   <li>ME: percentualComissão = taxaAdministração × 0.30</li>
+                  <li>LTDA: percentualComissão = taxaAdministração × 0.30</li>
                 </ul>
               </div>
 

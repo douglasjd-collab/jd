@@ -25,6 +25,7 @@ export default function AdministradoraForm({ open, onOpenChange, administradora,
       nome_fantasia: '',
       cnpj: '',
       contato: '',
+      tipoEmpresa: '',
       status: 'ativa'
     }
   });
@@ -40,6 +41,7 @@ export default function AdministradoraForm({ open, onOpenChange, administradora,
         nome_fantasia: '',
         cnpj: '',
         contato: '',
+        tipoEmpresa: '',
         status: 'ativa'
       });
     }
@@ -91,6 +93,24 @@ export default function AdministradoraForm({ open, onOpenChange, administradora,
                 onChange={(e) => setValue('cnpj', formatCNPJ(e.target.value))}
               />
               {errors.cnpj && <p className="text-sm text-red-500 mt-1">{errors.cnpj.message}</p>}
+            </div>
+            
+            <div>
+              <Label>Tipo de Empresa *</Label>
+              <Select
+                value={watch('tipoEmpresa') || ''}
+                onValueChange={(value) => setValue('tipoEmpresa', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MEI">MEI</SelectItem>
+                  <SelectItem value="ME">ME</SelectItem>
+                  <SelectItem value="LTDA">LTDA</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.tipoEmpresa && <p className="text-sm text-red-500 mt-1">{errors.tipoEmpresa.message}</p>}
             </div>
             
             <div>
