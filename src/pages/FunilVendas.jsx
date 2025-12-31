@@ -638,11 +638,6 @@ export default function FunilVendas() {
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
                                     <h4 className="font-medium text-slate-900 text-sm">{oport.titulo}</h4>
-                                    {podeVerTodos && !isResponsavel && (
-                                      <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700 mt-1">
-                                        👁️ Visualização
-                                      </span>
-                                    )}
                                   </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -721,10 +716,6 @@ export default function FunilVendas() {
                                   <p className="text-xs text-slate-600 mb-2">📞 {oport.telefone_lead}</p>
                                 )}
 
-                                {oport.data_cadastro_lead && (
-                                  <p className="text-xs text-slate-600 mb-2">📅 {format(new Date(oport.data_cadastro_lead), 'dd/MM/yyyy')}</p>
-                                )}
-
                                 <div className="flex items-center justify-between text-xs mb-2">
                                   <span className="font-semibold text-emerald-600">
                                     {formatCurrency(oport.valor_estimado)}
@@ -743,8 +734,15 @@ export default function FunilVendas() {
                                 </div>
 
                                 <div className="flex items-center justify-between text-xs mt-2 pt-2 border-t border-slate-100">
-                                  <div className="flex items-center gap-1 text-orange-600 font-medium">
-                                    ⏱️ Neste funil há {calcularTempoNaEtapa(oport.data_ultima_movimentacao)}
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1 text-orange-600 font-medium">
+                                      ⏱️ Há {calcularTempoNaEtapa(oport.data_ultima_movimentacao)}
+                                    </div>
+                                    {oport.data_cadastro_lead && (
+                                      <div className="flex items-center gap-1 text-slate-500">
+                                        📅 {format(new Date(oport.data_cadastro_lead), 'dd/MM/yyyy')}
+                                      </div>
+                                    )}
                                   </div>
                                   {oport.data_fechamento_prevista && (
                                     <div className="flex items-center gap-1 text-slate-500">
