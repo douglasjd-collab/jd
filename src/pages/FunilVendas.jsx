@@ -1054,7 +1054,7 @@ export default function FunilVendas() {
 
       {/* Dialog Comentários/Conversas */}
       <Dialog open={comentariosOpen} onOpenChange={setComentariosOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>💬 Conversas - {oportunidadeComentarios?.titulo}</DialogTitle>
             <p className="text-sm text-slate-600">
@@ -1063,7 +1063,7 @@ export default function FunilVendas() {
           </DialogHeader>
 
           {/* Lista de Comentários */}
-          <div className="space-y-3 max-h-[400px] overflow-y-auto mb-4">
+          <div className="space-y-3 flex-1 overflow-y-auto pr-2">
             {comentarios.length === 0 ? (
               <div className="text-center py-8 text-slate-400">
                 <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
