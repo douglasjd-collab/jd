@@ -74,6 +74,7 @@ export default function Layout({ children, currentPageName }) {
   const isGerente = user?.perfil === 'gerente';
 
   const menuItems = [
+    { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'admin', 'gerente', 'vendedor'] },
     { name: 'Simulador', icon: Calculator, page: 'SimuladorConsorcio', roles: ['master', 'admin', 'gerente', 'vendedor'] },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'admin', 'gerente', 'vendedor'] },
