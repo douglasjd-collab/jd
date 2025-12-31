@@ -58,6 +58,7 @@ export default function FunilVendas() {
   const [alterarQuadroOpen, setAlterarQuadroOpen] = useState(false);
   const [oportunidadeParaAlterar, setOportunidadeParaAlterar] = useState(null);
   const [novoResponsavelId, setNovoResponsavelId] = useState('');
+  const [responsaveisSelecionados, setResponsaveisSelecionados] = useState([]);
   const [novaEtapaId, setNovaEtapaId] = useState('');
   const [formData, setFormData] = useState({
     titulo: '',
@@ -170,19 +171,31 @@ export default function FunilVendas() {
   });
 
   const alterarResponsavelMutation = useMutation({
-    mutationFn: async ({ oportunidadeId, novoResponsavelId }) => {
+    mutationFn: async ({ oportunidadeId, responsaveisIds }) => {
       if (!podeAlterarResponsavel) {
         throw new Error('Você não tem permissão para alterar o responsável.');
       }
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
-      const novoResponsavel = vendedores.find(v => v.id === novoResponsavelId);
-      const novaFoto = novoResponsavel?.foto_perfil || '';
+      
+      // Obter dados dos responsáveis selecionados
+      const responsaveisData = responsaveisIds.map(id => {
+        const user = vendedores.find(v => v.id === id);
+        return {
+          id,
+          nome: user?.full_name || '',
+          foto: user?.foto_perfil || ''
+        };
+      });
+
+      const responsavelPrincipal = responsaveisData[0];
       
       await base44.entities.Oportunidade.update(oportunidadeId, {
-        vendedor_id: novoResponsavelId,
-        vendedor_nome: novoResponsavel?.full_name || '',
-        gerente_id: novoResponsavel?.gerente_id || '',
-        foto_perfil_responsavel: novaFoto,
+        vendedor_id: responsavelPrincipal.id,
+        vendedor_nome: responsavelPrincipal.nome,
+        foto_perfil_responsavel: responsavelPrincipal.foto,
+        responsaveis_ids: JSON.stringify(responsaveisIds),
+        responsaveis_nomes: JSON.stringify(responsaveisData.map(r => r.nome)),
+        responsaveis_fotos: JSON.stringify(responsaveisData.map(r => r.foto)),
         data_ultima_movimentacao: new Date().toISOString()
       });
 
@@ -190,11 +203,9 @@ export default function FunilVendas() {
       await base44.entities.LogAuditoria.create({
         usuario_id: currentUser.id,
         usuario_nome: currentUser.full_name,
-        acao: `Alterou responsável da oportunidade "${oportunidade?.titulo}" de "${oportunidade?.vendedor_nome}" para "${novoResponsavel?.full_name}"`,
+        acao: `Alterou responsáveis da oportunidade "${oportunidade?.titulo}" para: ${responsaveisData.map(r => r.nome).join(', ')}`,
         entidade: 'Oportunidade',
         entidade_id: oportunidadeId,
-        dados_anteriores: JSON.stringify({ vendedor_id: oportunidade?.vendedor_id, vendedor_nome: oportunidade?.vendedor_nome }),
-        dados_novos: JSON.stringify({ vendedor_id: novoResponsavelId, vendedor_nome: novoResponsavel?.full_name }),
         tipo: 'edicao'
       });
     },
@@ -202,8 +213,8 @@ export default function FunilVendas() {
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
       setAlterarResponsavelOpen(false);
       setOportunidadeParaAlterar(null);
-      setNovoResponsavelId('');
-      toast.success('Responsável alterado!');
+      setResponsaveisSelecionados([]);
+      toast.success('Responsáveis atualizados!');
     },
     onError: (error) => {
       toast.error('Erro ao alterar responsável');
@@ -716,11 +727,17 @@ export default function FunilVendas() {
                                         {podeAlterarResponsavel && (
                                         <DropdownMenuItem onClick={() => {
                                           setOportunidadeParaAlterar(oport);
-                                          setNovoResponsavelId(oport.vendedor_id);
+                                          // Carregar responsáveis atuais
+                                          try {
+                                            const idsAtuais = oport.responsaveis_ids ? JSON.parse(oport.responsaveis_ids) : [oport.vendedor_id];
+                                            setResponsaveisSelecionados(idsAtuais);
+                                          } catch {
+                                            setResponsaveisSelecionados([oport.vendedor_id]);
+                                          }
                                           setAlterarResponsavelOpen(true);
                                         }}>
                                           <UserCheck className="w-4 h-4 mr-2" />
-                                          Alterar Responsável
+                                          Alterar Responsáveis
                                         </DropdownMenuItem>
                                         )}
                                         {podeAlterarQuadro && (
@@ -783,16 +800,32 @@ export default function FunilVendas() {
                                     >
                                       <MessageCircle className="w-4 h-4 text-blue-600" />
                                     </Button>
-                                    <div
-                                      className="flex items-center gap-2"
-                                      title={oport.vendedor_nome || 'Responsável'}
-                                    >
-                                      <Avatar className="h-6 w-6">
-                                        <AvatarImage src={avatarUrl} alt={oport.vendedor_nome || 'Responsável'} />
-                                        <AvatarFallback className="text-xs">
-                                          {getInitials(oport.vendedor_nome || '') || 'RV'}
-                                        </AvatarFallback>
-                                      </Avatar>
+                                    <div className="flex items-center -space-x-2">
+                                      {(() => {
+                                        try {
+                                          const responsaveisIds = oport.responsaveis_ids ? JSON.parse(oport.responsaveis_ids) : [oport.vendedor_id];
+                                          const responsaveisFotos = oport.responsaveis_fotos ? JSON.parse(oport.responsaveis_fotos) : [avatarUrl];
+                                          const responsaveisNomes = oport.responsaveis_nomes ? JSON.parse(oport.responsaveis_nomes) : [oport.vendedor_nome];
+
+                                          return responsaveisIds.slice(0, 3).map((id, idx) => (
+                                            <Avatar key={id} className="h-6 w-6 border-2 border-white" title={responsaveisNomes[idx] || 'Responsável'}>
+                                              <AvatarImage src={responsaveisFotos[idx]} alt={responsaveisNomes[idx]} />
+                                              <AvatarFallback className="text-xs">
+                                                {getInitials(responsaveisNomes[idx] || '') || 'RV'}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                          ));
+                                        } catch {
+                                          return (
+                                            <Avatar className="h-6 w-6">
+                                              <AvatarImage src={avatarUrl} alt={oport.vendedor_nome || 'Responsável'} />
+                                              <AvatarFallback className="text-xs">
+                                                {getInitials(oport.vendedor_nome || '') || 'RV'}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                          );
+                                        }
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
@@ -994,38 +1027,81 @@ export default function FunilVendas() {
       <Dialog open={alterarResponsavelOpen} onOpenChange={setAlterarResponsavelOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Alterar Responsável</DialogTitle>
+            <DialogTitle>Gerenciar Responsáveis</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label className="text-sm text-slate-600">Oportunidade</Label>
               <p className="font-semibold">{oportunidadeParaAlterar?.titulo}</p>
             </div>
+
             <div>
-              <Label className="text-sm text-slate-600 mb-2 block">Responsável Atual</Label>
-              <p className="text-sm mb-4">{oportunidadeParaAlterar?.vendedor_nome}</p>
+              <Label className="text-sm mb-2 block">Responsáveis da Oportunidade *</Label>
+              <p className="text-xs text-slate-500 mb-2">Selecione um ou mais responsáveis. O primeiro será o principal.</p>
+
+              <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-lg p-2">
+                {loadingVendedores ? (
+                  <p className="text-sm text-slate-500 p-2">Carregando...</p>
+                ) : vendedores.length === 0 ? (
+                  <p className="text-sm text-slate-500 p-2">Nenhum vendedor disponível</p>
+                ) : (
+                  vendedores
+                    .filter(v => ['vendedor', 'gerente', 'admin', 'master'].includes(v.perfil) && v.status === 'ativo')
+                    .map((v) => (
+                      <div 
+                        key={v.id} 
+                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                          responsaveisSelecionados.includes(v.id) 
+                            ? 'bg-blue-100 border border-blue-300' 
+                            : 'hover:bg-slate-50 border border-transparent'
+                        }`}
+                        onClick={() => {
+                          setResponsaveisSelecionados(prev => {
+                            if (prev.includes(v.id)) {
+                              return prev.filter(id => id !== v.id);
+                            } else {
+                              return [...prev, v.id];
+                            }
+                          });
+                        }}
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={v.foto_perfil} alt={v.full_name} />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(v.full_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{v.full_name}</p>
+                          <p className="text-xs text-slate-500 capitalize">{v.perfil}</p>
+                        </div>
+                        {responsaveisSelecionados.includes(v.id) && (
+                          <div className="flex items-center gap-1">
+                            {responsaveisSelecionados[0] === v.id && (
+                              <Badge variant="outline" className="text-xs">Principal</Badge>
+                            )}
+                            <div className="h-5 w-5 bg-blue-600 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                )}
+              </div>
             </div>
-            <div>
-              <Label>Novo Responsável *</Label>
-              <Select value={novoResponsavelId} onValueChange={setNovoResponsavelId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o vendedor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {loadingVendedores ? (
-                    <SelectItem value={null} disabled>Carregando...</SelectItem>
-                  ) : vendedores.length === 0 ? (
-                    <SelectItem value={null} disabled>Nenhum vendedor disponível</SelectItem>
-                  ) : (
-                    vendedores
-                      .filter(v => ['vendedor', 'gerente', 'admin', 'master'].includes(v.perfil) && v.status === 'ativo')
-                      .map((v) => (
-                        <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
-                      ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+
+            {responsaveisSelecionados.length > 0 && (
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-xs text-blue-700 mb-1">
+                  {responsaveisSelecionados.length} responsável(is) selecionado(s)
+                </p>
+                <p className="text-xs text-blue-600">
+                  Principal: {vendedores.find(v => v.id === responsaveisSelecionados[0])?.full_name}
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="outline" onClick={() => setAlterarResponsavelOpen(false)}>
                 Cancelar
@@ -1033,16 +1109,16 @@ export default function FunilVendas() {
               <Button 
                 onClick={() => {
                   if (!podeAlterarResponsavel) {
-                    toast.error('Você não tem permissão para alterar o responsável');
+                    toast.error('Você não tem permissão para alterar responsáveis');
                     return;
                   }
-                  if (!novoResponsavelId) {
-                    toast.error('Selecione um responsável');
+                  if (responsaveisSelecionados.length === 0) {
+                    toast.error('Selecione pelo menos um responsável');
                     return;
                   }
                   alterarResponsavelMutation.mutate({ 
                     oportunidadeId: oportunidadeParaAlterar.id, 
-                    novoResponsavelId 
+                    responsaveisIds: responsaveisSelecionados 
                   });
                 }}
                 disabled={alterarResponsavelMutation.isPending}
