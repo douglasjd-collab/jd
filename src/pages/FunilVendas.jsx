@@ -29,11 +29,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import VendaForm from '@/components/forms/VendaForm';
 
 export default function FunilVendas() {
   const [formOpen, setFormOpen] = useState(false);
@@ -46,6 +47,8 @@ export default function FunilVendas() {
   const [novoComentario, setNovoComentario] = useState('');
   const [tipoComentario, setTipoComentario] = useState('comentario');
   const [mostrarFormComentario, setMostrarFormComentario] = useState(false);
+  const [vendaFormOpen, setVendaFormOpen] = useState(false);
+  const [oportunidadeParaVenda, setOportunidadeParaVenda] = useState(null);
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -362,7 +365,7 @@ export default function FunilVendas() {
 
       // HU 07 - Integração com vendas
       if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
-        toast.success('Oportunidade movida para "Ganho". Lembre-se de registrar a venda!');
+        return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
       }
 
       // HU 08 - Auditoria
@@ -375,8 +378,16 @@ export default function FunilVendas() {
         tipo: 'edicao'
       });
 
-      return { oportunidadeId, novaEtapaId, etapaDestino };
-    },
+      return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
+      },
+      onSuccess: (data) => {
+      if (data?.abrirFormVenda && data?.oportunidade) {
+        // Abrir formulário de venda com dados da oportunidade
+        setOportunidadeParaVenda(data.oportunidade);
+        setVendaFormOpen(true);
+        toast.success('Oportunidade movida para "Ganho". Registre a venda agora!');
+      }
+      },
     onMutate: async ({ oportunidadeId, novaEtapaId }) => {
       // Cancelar queries em andamento
       await queryClient.cancelQueries({ queryKey: ['oportunidades'] });
@@ -1320,6 +1331,39 @@ export default function FunilVendas() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
+
+      {/* Dialog Criar Venda */}
+      <Dialog open={vendaFormOpen} onOpenChange={setVendaFormOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Registrar Venda - {oportunidadeParaVenda?.titulo}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setVendaFormOpen(false);
+                  setOportunidadeParaVenda(null);
+                }}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <VendaForm
+            open={vendaFormOpen}
+            onOpenChange={setVendaFormOpen}
+            venda={null}
+            oportunidade={oportunidadeParaVenda}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+              setVendaFormOpen(false);
+              setOportunidadeParaVenda(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+      </div>
+      );
+      }
