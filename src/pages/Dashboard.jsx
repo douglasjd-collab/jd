@@ -73,11 +73,22 @@ export default function Dashboard() {
     queryFn: () => base44.entities.User.filter({ status: 'ativo' }),
   });
 
+  const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
+    queryKey: ['oportunidades-dashboard'],
+    queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao', 100),
+  });
+
   // Filtrar dados por perfil
   const filteredVendas = vendas.filter(v => {
     if (isAdmin) return true;
     if (isGerente) return v.gerente_id === user?.id || v.vendedor_id === user?.id;
     return v.vendedor_id === user?.id;
+  });
+
+  const filteredOportunidades = oportunidades.filter(o => {
+    if (isAdmin) return true;
+    if (isGerente) return o.gerente_id === user?.id || o.vendedor_id === user?.id;
+    return o.vendedor_id === user?.id;
   });
 
   const vendasMes = filteredVendas.filter(v => {
@@ -98,6 +109,11 @@ export default function Dashboard() {
     .reduce((acc, c) => acc + c.valor, 0);
 
   const parcelasAtrasadas = parcelas.filter(p => p.status === 'atrasada').length;
+
+  const oportunidadesAbertas = filteredOportunidades.filter(o => o.status === 'aberta').length;
+  const valorOportunidades = filteredOportunidades
+    .filter(o => o.status === 'aberta')
+    .reduce((acc, o) => acc + (o.valor_estimado || 0), 0);
 
   // Dados para gráficos
   const vendasPorMes = React.useMemo(() => {
@@ -162,7 +178,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatsCard
           title="Vendas do Mês"
           value={totalVendasMes}
@@ -171,9 +187,16 @@ export default function Dashboard() {
           color="blue"
         />
         <StatsCard
+          title="Oportunidades Abertas"
+          value={oportunidadesAbertas}
+          subtitle={formatCurrency(valorOportunidades)}
+          icon={TrendingUp}
+          color="purple"
+        />
+        <StatsCard
           title="Comissão a Receber"
           value={formatCurrency(comissoesReceber)}
-          icon={TrendingUp}
+          icon={Wallet}
           color="green"
         />
         <StatsCard
@@ -301,12 +324,12 @@ export default function Dashboard() {
         {/* Vendas Recentes */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Vendas Recentes</CardTitle>
+            <CardTitle className="text-lg font-semibold">Vendas do Mês</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {vendasRecentes.length > 0 ? (
-                vendasRecentes.map((v) => (
+              {vendasMes.length > 0 ? (
+                vendasMes.slice(0, 5).map((v) => (
                   <div key={v.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#1e3a5f]/10 rounded-full flex items-center justify-center">
@@ -328,11 +351,50 @@ export default function Dashboard() {
                   </div>
                 ))
               ) : (
-                <p className="text-center text-slate-500 py-8">Nenhuma venda encontrada</p>
+                <p className="text-center text-slate-500 py-8">Nenhuma venda no mês</p>
               )}
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Oportunidades Recentes */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Oportunidades em Aberto</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).length > 0 ? (
+              filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).map((op) => (
+                <div key={op.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900">{op.titulo}</p>
+                      <p className="text-sm text-slate-500">
+                        {op.etapa_nome} • {op.vendedor_nome}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-slate-900">
+                      {formatCurrency(op.valor_estimado || 0)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {op.data_cadastro_lead ? format(new Date(op.data_cadastro_lead), 'dd/MM/yyyy') : '-'}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-slate-500 py-8">Nenhuma oportunidade em aberto</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       </div>
     </div>
   );
