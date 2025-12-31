@@ -45,6 +45,7 @@ export default function FunilVendas() {
   const [oportunidadeComentarios, setOportunidadeComentarios] = useState(null);
   const [novoComentario, setNovoComentario] = useState('');
   const [tipoComentario, setTipoComentario] = useState('comentario');
+  const [mostrarFormComentario, setMostrarFormComentario] = useState(false);
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -285,6 +286,7 @@ export default function FunilVendas() {
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
       setNovoComentario('');
       setTipoComentario('comentario');
+      setMostrarFormComentario(false);
       toast.success('Comentário adicionado!');
     },
     onError: (error) => {
@@ -774,6 +776,7 @@ export default function FunilVendas() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setOportunidadeComentarios(oport);
+                                        setMostrarFormComentario(false);
                                         setComentariosOpen(true);
                                       }}
                                       title="Ver conversas"
@@ -1100,58 +1103,83 @@ export default function FunilVendas() {
           </div>
 
           {/* Form Novo Comentário */}
-          <div className="border-t pt-4 space-y-3">
-            <div>
-              <Label className="text-sm mb-2 block">Tipo de Interação</Label>
-              <Select value={tipoComentario} onValueChange={setTipoComentario}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="comentario">💬 Comentário</SelectItem>
-                  <SelectItem value="ligacao">📞 Ligação</SelectItem>
-                  <SelectItem value="reuniao">🤝 Reunião</SelectItem>
-                  <SelectItem value="email">📧 Email</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="border-t pt-4">
+            {!mostrarFormComentario ? (
+              <div className="flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setComentariosOpen(false);
+                    setNovoComentario('');
+                    setTipoComentario('comentario');
+                    setMostrarFormComentario(false);
+                  }}
+                >
+                  Fechar
+                </Button>
+                <Button
+                  onClick={() => setMostrarFormComentario(true)}
+                  className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar Comentário
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm mb-2 block">Tipo de Interação</Label>
+                  <Select value={tipoComentario} onValueChange={setTipoComentario}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="comentario">💬 Comentário</SelectItem>
+                      <SelectItem value="ligacao">📞 Ligação</SelectItem>
+                      <SelectItem value="reuniao">🤝 Reunião</SelectItem>
+                      <SelectItem value="email">📧 Email</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div>
-              <Label className="text-sm mb-2 block">Mensagem *</Label>
-              <Textarea
-                value={novoComentario}
-                onChange={(e) => setNovoComentario(e.target.value)}
-                placeholder="Digite sua mensagem ou anotação..."
-                rows={3}
-                className="resize-none"
-              />
-            </div>
+                <div>
+                  <Label className="text-sm mb-2 block">Mensagem *</Label>
+                  <Textarea
+                    value={novoComentario}
+                    onChange={(e) => setNovoComentario(e.target.value)}
+                    placeholder="Digite sua mensagem ou anotação..."
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
 
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setComentariosOpen(false);
-                  setNovoComentario('');
-                  setTipoComentario('comentario');
-                }}
-              >
-                Fechar
-              </Button>
-              <Button
-                onClick={() => {
-                  criarComentarioMutation.mutate({
-                    oportunidadeId: oportunidadeComentarios.id,
-                    mensagem: novoComentario,
-                    tipo: tipoComentario
-                  });
-                }}
-                disabled={criarComentarioMutation.isPending || !novoComentario.trim()}
-                className="bg-[#23BE84] hover:bg-[#1da570]"
-              >
-                {criarComentarioMutation.isPending ? 'Enviando...' : 'Adicionar'}
-              </Button>
-            </div>
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMostrarFormComentario(false);
+                      setNovoComentario('');
+                      setTipoComentario('comentario');
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      criarComentarioMutation.mutate({
+                        oportunidadeId: oportunidadeComentarios.id,
+                        mensagem: novoComentario,
+                        tipo: tipoComentario
+                      });
+                    }}
+                    disabled={criarComentarioMutation.isPending || !novoComentario.trim()}
+                    className="bg-[#23BE84] hover:bg-[#1da570]"
+                  >
+                    {criarComentarioMutation.isPending ? 'Enviando...' : 'Enviar'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
