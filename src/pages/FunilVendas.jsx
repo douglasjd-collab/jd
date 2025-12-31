@@ -662,7 +662,7 @@ export default function FunilVendas() {
                       </div>
 
                       {/* Cards das oportunidades */}
-                      <div className="p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
+                      <div className="p-2 space-y-2 min-h-[250px] max-h-[600px] overflow-y-auto">
                         {oportEtapa.map((oport, index) => (
                           <Draggable key={oport.id} draggableId={oport.id} index={index}>
                             {(provided, snapshot) => {
