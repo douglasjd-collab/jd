@@ -178,7 +178,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatsCard
           title="Vendas do Mês"
           value={totalVendasMes}
@@ -192,18 +192,6 @@ export default function Dashboard() {
           subtitle={formatCurrency(valorOportunidades)}
           icon={TrendingUp}
           color="purple"
-        />
-        <StatsCard
-          title="Comissão a Receber"
-          value={formatCurrency(comissoesReceber)}
-          icon={Wallet}
-          color="green"
-        />
-        <StatsCard
-          title="Comissão a Pagar"
-          value={formatCurrency(comissoesPagar)}
-          icon={Wallet}
-          color="yellow"
         />
         <StatsCard
           title="Parcelas Atrasadas"
