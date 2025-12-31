@@ -734,22 +734,22 @@ export default function FunilVendas() {
                                 </div>
 
                                 <div className="flex items-center justify-between text-xs mt-2 pt-2 border-t border-slate-100">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <div className="flex items-center gap-1 text-orange-600 font-medium">
-                                      ⏱️ Há {calcularTempoNaEtapa(oport.data_ultima_movimentacao)}
-                                    </div>
+                                  <div className="flex items-center gap-1 text-orange-600 font-medium">
+                                    ⏱️ Há {calcularTempoNaEtapa(oport.data_ultima_movimentacao)}
+                                  </div>
+                                  <div className="flex items-center gap-2">
                                     {oport.data_cadastro_lead && (
                                       <div className="flex items-center gap-1 text-slate-500">
-                                        • 📅 {format(new Date(oport.data_cadastro_lead), 'dd/MM/yyyy')}
+                                        📅 {format(new Date(oport.data_cadastro_lead), 'dd/MM/yyyy')}
+                                      </div>
+                                    )}
+                                    {oport.data_fechamento_prevista && (
+                                      <div className="flex items-center gap-1 text-slate-500">
+                                        <Calendar className="w-3 h-3" />
+                                        {format(new Date(oport.data_fechamento_prevista), 'dd/MM/yyyy')}
                                       </div>
                                     )}
                                   </div>
-                                  {oport.data_fechamento_prevista && (
-                                    <div className="flex items-center gap-1 text-slate-500">
-                                      <Calendar className="w-3 h-3" />
-                                      {format(new Date(oport.data_fechamento_prevista), 'dd/MM/yyyy')}
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                             );
