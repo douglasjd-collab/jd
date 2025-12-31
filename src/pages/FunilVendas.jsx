@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -41,6 +41,10 @@ export default function FunilVendas() {
   const [currentUser, setCurrentUser] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [alterarResponsavelOpen, setAlterarResponsavelOpen] = useState(false);
+  const [comentariosOpen, setComentariosOpen] = useState(false);
+  const [oportunidadeComentarios, setOportunidadeComentarios] = useState(null);
+  const [novoComentario, setNovoComentario] = useState('');
+  const [tipoComentario, setTipoComentario] = useState('comentario');
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -107,6 +111,15 @@ export default function FunilVendas() {
     queryKey: ['vendedores'],
     enabled: !!currentUser && (isAdmin || isGerente),
     queryFn: () => base44.entities.User.list(),
+  });
+
+  const { data: comentarios = [] } = useQuery({
+    queryKey: ['comentarios', oportunidadeComentarios?.id],
+    enabled: !!oportunidadeComentarios?.id,
+    queryFn: () => base44.entities.ComentarioOportunidade.filter(
+      { oportunidade_id: oportunidadeComentarios.id },
+      '-created_date'
+    ),
   });
 
   const criarOportunidadeMutation = useMutation({
@@ -243,6 +256,39 @@ export default function FunilVendas() {
     },
     onError: (error) => {
       toast.error(error.message || 'Erro ao alterar quadro');
+    }
+  });
+
+  const criarComentarioMutation = useMutation({
+    mutationFn: async ({ oportunidadeId, mensagem, tipo }) => {
+      if (!mensagem.trim()) {
+        throw new Error('Digite uma mensagem');
+      }
+
+      const comentario = await base44.entities.ComentarioOportunidade.create({
+        oportunidade_id: oportunidadeId,
+        usuario_id: currentUser.id,
+        usuario_nome: currentUser.full_name,
+        mensagem: mensagem.trim(),
+        tipo: tipo
+      });
+
+      // Atualizar data de última movimentação
+      await base44.entities.Oportunidade.update(oportunidadeId, {
+        data_ultima_movimentacao: new Date().toISOString()
+      });
+
+      return comentario;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comentarios'] });
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      setNovoComentario('');
+      setTipoComentario('comentario');
+      toast.success('Comentário adicionado!');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao adicionar comentário');
     }
   });
 
@@ -720,16 +766,31 @@ export default function FunilVendas() {
                                   <span className="font-semibold text-emerald-600">
                                     {formatCurrency(oport.valor_estimado)}
                                   </span>
-                                  <div
-                                    className="flex items-center gap-2"
-                                    title={oport.vendedor_nome || 'Responsável'}
-                                  >
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarImage src={avatarUrl} alt={oport.vendedor_nome || 'Responsável'} />
-                                      <AvatarFallback className="text-xs">
-                                        {getInitials(oport.vendedor_nome || '') || 'RV'}
-                                      </AvatarFallback>
-                                    </Avatar>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 hover:bg-blue-100"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOportunidadeComentarios(oport);
+                                        setComentariosOpen(true);
+                                      }}
+                                      title="Ver conversas"
+                                    >
+                                      <MessageCircle className="w-4 h-4 text-blue-600" />
+                                    </Button>
+                                    <div
+                                      className="flex items-center gap-2"
+                                      title={oport.vendedor_nome || 'Responsável'}
+                                    >
+                                      <Avatar className="h-6 w-6">
+                                        <AvatarImage src={avatarUrl} alt={oport.vendedor_nome || 'Responsável'} />
+                                        <AvatarFallback className="text-xs">
+                                          {getInitials(oport.vendedor_nome || '') || 'RV'}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </div>
                                   </div>
                                 </div>
 
@@ -985,6 +1046,110 @@ export default function FunilVendas() {
                 className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
               >
                 Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Comentários/Conversas */}
+      <Dialog open={comentariosOpen} onOpenChange={setComentariosOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>💬 Conversas - {oportunidadeComentarios?.titulo}</DialogTitle>
+            <p className="text-sm text-slate-600">
+              Cliente: {oportunidadeComentarios?.cliente_nome || oportunidadeComentarios?.telefone_lead || 'Sem cliente'}
+            </p>
+          </DialogHeader>
+
+          {/* Lista de Comentários */}
+          <div className="space-y-3 max-h-[400px] overflow-y-auto mb-4">
+            {comentarios.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Nenhuma conversa registrada ainda</p>
+              </div>
+            ) : (
+              comentarios.map((comentario) => (
+                <div key={comentario.id} className="bg-slate-50 p-3 rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+                          {getInitials(comentario.usuario_nome)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{comentario.usuario_nome}</p>
+                        <p className="text-xs text-slate-500">
+                          {format(new Date(comentario.created_date), 'dd/MM/yyyy HH:mm')}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {comentario.tipo === 'comentario' && '💬 Comentário'}
+                      {comentario.tipo === 'ligacao' && '📞 Ligação'}
+                      {comentario.tipo === 'reuniao' && '🤝 Reunião'}
+                      {comentario.tipo === 'email' && '📧 Email'}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{comentario.mensagem}</p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Form Novo Comentário */}
+          <div className="border-t pt-4 space-y-3">
+            <div>
+              <Label className="text-sm mb-2 block">Tipo de Interação</Label>
+              <Select value={tipoComentario} onValueChange={setTipoComentario}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="comentario">💬 Comentário</SelectItem>
+                  <SelectItem value="ligacao">📞 Ligação</SelectItem>
+                  <SelectItem value="reuniao">🤝 Reunião</SelectItem>
+                  <SelectItem value="email">📧 Email</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-sm mb-2 block">Mensagem *</Label>
+              <Textarea
+                value={novoComentario}
+                onChange={(e) => setNovoComentario(e.target.value)}
+                placeholder="Digite sua mensagem ou anotação..."
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setComentariosOpen(false);
+                  setNovoComentario('');
+                  setTipoComentario('comentario');
+                }}
+              >
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  criarComentarioMutation.mutate({
+                    oportunidadeId: oportunidadeComentarios.id,
+                    mensagem: novoComentario,
+                    tipo: tipoComentario
+                  });
+                }}
+                disabled={criarComentarioMutation.isPending || !novoComentario.trim()}
+                className="bg-[#23BE84] hover:bg-[#1da570]"
+              >
+                {criarComentarioMutation.isPending ? 'Enviando...' : 'Adicionar'}
               </Button>
             </div>
           </div>
