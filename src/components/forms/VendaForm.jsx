@@ -36,7 +36,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       grupo: '',
       cota: '',
       contrato: '',
-      valor_carta: '',
+      valorCredito: '',
+      taxaAdministracao: '',
       vendedor_id: currentUser?.id || '',
       gerente_id: currentUser?.gerente_id || '',
       data_venda: format(new Date(), 'yyyy-MM-dd'),
@@ -47,6 +48,9 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   const administradoraId = watch('administradora_id');
   const tabelaId = watch('tabela_id');
   const vendedorId = watch('vendedor_id');
+  const valorCredito = watch('valorCredito');
+  const taxaAdministracao = watch('taxaAdministracao');
+  const tipoEmpresa = watch('tipoEmpresa');
 
   useEffect(() => {
     loadData();
@@ -65,7 +69,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         grupo: '',
         cota: '',
         contrato: '',
-        valor_carta: '',
+        valorCredito: '',
+        taxaAdministracao: '',
         vendedor_id: currentUser?.id || '',
         gerente_id: currentUser?.gerente_id || '',
         data_venda: format(new Date(), 'yyyy-MM-dd'),
@@ -84,10 +89,29 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     if (tabelaId && tabelas.length > 0) {
       const tabela = tabelas.find(t => t.id === tabelaId);
       if (tabela) {
-        setValue('valor_carta', tabela.valor_carta);
+        setValue('tipoEmpresa', tabela.tipoEmpresa);
+        setValue('tabela_nome', tabela.nomeTabela);
       }
     }
   }, [tabelaId, tabelas, setValue]);
+
+  // Calcular comissão automaticamente
+  useEffect(() => {
+    const credito = parseFloat(valorCredito) || 0;
+    const taxa = parseFloat(taxaAdministracao) || 0;
+    
+    if (credito > 0 && taxa > 0 && tipoEmpresa) {
+      const fator = tipoEmpresa === 'MEI' ? 0.25 : tipoEmpresa === 'ME' ? 0.30 : 0;
+      const percentualComissao = taxa * fator;
+      const valorComissao = credito * (percentualComissao / 100);
+      
+      setValue('percentualComissao', percentualComissao);
+      setValue('valorComissao', valorComissao);
+    } else {
+      setValue('percentualComissao', 0);
+      setValue('valorComissao', 0);
+    }
+  }, [valorCredito, taxaAdministracao, tipoEmpresa, setValue]);
 
   useEffect(() => {
     if (vendedorId && vendedores.length > 0) {
@@ -254,7 +278,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 <SelectContent>
                   {tabelas.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.nome} - R$ {t.valor_carta?.toLocaleString('pt-BR')}
+                      {t.nomeTabela} ({t.tipoEmpresa})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -290,15 +314,59 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
               />
             </div>
             
-            {/* Valor Carta */}
+            {/* Tipo Empresa - somente leitura */}
             <div>
-              <Label htmlFor="valor_carta">Valor da Carta</Label>
+              <Label>Tipo Empresa</Label>
               <Input
-                id="valor_carta"
+                value={tipoEmpresa || '-'}
+                disabled
+                className="bg-slate-100"
+              />
+            </div>
+            
+            {/* Valor Crédito */}
+            <div>
+              <Label htmlFor="valorCredito">Valor do Crédito *</Label>
+              <Input
+                id="valorCredito"
                 type="number"
                 step="0.01"
-                {...register('valor_carta')}
+                {...register('valorCredito', { required: true, min: 0.01 })}
                 placeholder="0,00"
+              />
+              {errors.valorCredito && <p className="text-sm text-red-500 mt-1">Valor obrigatório e deve ser maior que zero</p>}
+            </div>
+            
+            {/* Taxa Administração */}
+            <div>
+              <Label htmlFor="taxaAdministracao">Taxa Administração (%) *</Label>
+              <Input
+                id="taxaAdministracao"
+                type="number"
+                step="0.01"
+                {...register('taxaAdministracao', { required: true, min: 0.01 })}
+                placeholder="0,00"
+              />
+              {errors.taxaAdministracao && <p className="text-sm text-red-500 mt-1">Taxa obrigatória e deve ser maior que zero</p>}
+            </div>
+            
+            {/* Percentual Comissão - calculado */}
+            <div>
+              <Label>Percentual Comissão (calculado)</Label>
+              <Input
+                value={watch('percentualComissao')?.toFixed(2) || '0.00'}
+                disabled
+                className="bg-slate-100"
+              />
+            </div>
+            
+            {/* Valor Comissão - calculado */}
+            <div>
+              <Label>Valor Comissão (calculado)</Label>
+              <Input
+                value={`R$ ${(watch('valorComissao') || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                disabled
+                className="bg-slate-100 font-semibold text-green-700"
               />
             </div>
             
@@ -368,7 +436,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
+            <Button 
+              type="submit" 
+              disabled={isLoading || !watch('tabela_id') || parseFloat(watch('valorCredito')) <= 0 || parseFloat(watch('taxaAdministracao')) <= 0} 
+              className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+            >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {venda ? 'Salvar' : 'Cadastrar'}
             </Button>
