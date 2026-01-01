@@ -207,7 +207,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
               />
             </div>
             
-            {(currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin') && (
+            {(currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin') && perfil !== 'super_admin' && (
               <div className="col-span-2">
                 <Label>Empresa *</Label>
                 <Select
@@ -232,6 +232,16 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                   </SelectContent>
                 </Select>
                 {errors.empresa_id && <p className="text-sm text-red-500 mt-1">Empresa é obrigatória</p>}
+              </div>
+            )}
+            
+            {perfil === 'super_admin' && (
+              <div className="col-span-2">
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm text-purple-700">
+                    🔐 Super Admin tem acesso a todas as empresas do sistema
+                  </p>
+                </div>
               </div>
             )}
 
