@@ -214,9 +214,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                         <div className="flex flex-col py-1">
                           <span className="font-medium">{c.nome}</span>
                           <span className="text-xs text-slate-500">CPF: {c.cpf}</span>
-                          {c.telefone && (
-                            <span className="text-xs text-slate-400">Tel: {c.telefone}</span>
-                          )}
                         </div>
                       </SelectItem>
                     ))}
