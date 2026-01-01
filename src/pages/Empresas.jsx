@@ -61,17 +61,17 @@ export default function Empresas() {
       // Buscar todas as empresas para gerar o próximo código
       const allEmpresas = await base44.entities.Empresa.list();
       
-      // Extrair números dos códigos existentes (EMP01 -> 1, EMP02 -> 2)
+      // Extrair números dos códigos existentes (ID001 -> 1, ID002 -> 2)
       const numeros = allEmpresas
-        .map(e => e.codigo?.match(/EMP(\d+)/)?.[1])
+        .map(e => e.codigo?.match(/ID(\d+)/)?.[1])
         .filter(Boolean)
         .map(Number);
       
       // Encontrar o próximo número
       const proximoNumero = numeros.length > 0 ? Math.max(...numeros) + 1 : 1;
       
-      // Formatar com zeros à esquerda (EMP01, EMP02, etc)
-      const codigo = `EMP${String(proximoNumero).padStart(2, '0')}`;
+      // Formatar com zeros à esquerda (ID001, ID002, etc)
+      const codigo = `ID${String(proximoNumero).padStart(3, '0')}`;
       
       // Criar empresa com o código gerado
       return base44.entities.Empresa.create({ ...data, codigo });
