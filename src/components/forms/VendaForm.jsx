@@ -36,8 +36,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       grupo: '',
       cota: '',
       contrato: '',
-      valorCredito: '',
-      taxaAdministracao: '',
+      valorCredito: 0,
+      taxaAdministracao: 0,
       vendedor_id: currentUser?.id || '',
       gerente_id: currentUser?.gerente_id || '',
       data_venda: format(new Date(), 'yyyy-MM-dd'),
@@ -69,8 +69,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         grupo: '',
         cota: '',
         contrato: '',
-        valorCredito: '',
-        taxaAdministracao: '',
+        valorCredito: 0,
+        taxaAdministracao: 0,
         vendedor_id: currentUser?.id || '',
         gerente_id: currentUser?.gerente_id || '',
         data_venda: format(new Date(), 'yyyy-MM-dd'),
@@ -489,7 +489,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || !watch('valorCredito') || parseFloat(watch('valorCredito')) <= 0 || !watch('taxaAdministracao') || parseFloat(watch('taxaAdministracao')) <= 0} 
+              disabled={isLoading || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || parseFloat(watch('valorCredito') || 0) <= 0 || parseFloat(watch('taxaAdministracao') || 0) <= 0} 
               className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
             >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
