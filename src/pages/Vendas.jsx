@@ -62,6 +62,7 @@ export default function Vendas() {
       // Se cota estiver vazia, marcar status como pendente
       const vendaData = {
         ...data,
+        empresa_id: data.empresa_id || user.empresa_id,
         status: !data.cota || data.cota.trim() === '' ? 'pendente' : data.status
       };
       
