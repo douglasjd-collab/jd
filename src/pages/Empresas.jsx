@@ -271,23 +271,25 @@ export default function Empresas() {
       />
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedEmpresa ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-            {selectedEmpresa && (
-              <div>
-                <Label htmlFor="codigo">ID da Empresa *</Label>
-                <Input
-                  id="codigo"
-                  {...register('codigo', { required: true })}
-                  placeholder="EMP001"
-                />
-                <p className="text-xs text-slate-500 mt-1">Formato: EMP001, EMP002, etc.</p>
-                {errors.codigo && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
-              </div>
-            )}
+          
+          {selectedEmpresa && (
+            <div className="px-6 pb-2 border-b">
+              <Label htmlFor="codigo">ID da Empresa *</Label>
+              <Input
+                id="codigo"
+                {...register('codigo', { required: true })}
+                placeholder="EMP001"
+              />
+              <p className="text-xs text-slate-500 mt-1">Formato: EMP001, EMP002, etc.</p>
+              {errors.codigo && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 overflow-y-auto pr-2 px-6 flex-1">
 
             <div>
               <Label htmlFor="cpf_cnpj">CPF/CNPJ *</Label>
@@ -451,7 +453,7 @@ export default function Empresas() {
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex justify-end gap-3 pt-4 border-t bg-white -mx-6 px-6 pb-2">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
                 Cancelar
               </Button>
