@@ -175,8 +175,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
   const handleValorCreditoChange = (e) => {
     const valorFormatado = formatarMoeda(e.target.value);
-    const valorNumerico = valorFormatado.replace(/\./g, '').replace(',', '.');
-    setValue('valorCredito', valorNumerico);
+    const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
+    setValue('valorCredito', valorNumerico, { shouldValidate: true });
   };
 
   return (
