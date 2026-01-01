@@ -44,6 +44,7 @@ export default function Usuarios() {
   const [selectedUsuario, setSelectedUsuario] = useState(null);
   const [search, setSearch] = useState('');
   const [filterPerfil, setFilterPerfil] = useState('todos');
+  const [filterEmpresa, setFilterEmpresa] = useState('todas');
   const [currentUser, setCurrentUser] = useState(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,6 +63,12 @@ export default function Usuarios() {
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
     queryFn: () => base44.entities.User.list('-created_date'),
+  });
+
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['empresas-usuarios'],
+    queryFn: () => base44.entities.Empresa.filter({ status: 'ativa' }),
+    enabled: currentUser?.perfil === 'master' || currentUser?.perfil === 'admin'
   });
 
   const updateMutation = useMutation({
@@ -228,7 +235,8 @@ export default function Usuarios() {
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.cpf?.includes(search);
     const matchPerfil = filterPerfil === 'todos' || u.perfil === filterPerfil;
-    return matchSearch && matchPerfil;
+    const matchEmpresa = filterEmpresa === 'todas' || u.empresa_id === filterEmpresa;
+    return matchSearch && matchPerfil && matchEmpresa;
   });
 
   const columns = [
@@ -248,6 +256,13 @@ export default function Usuarios() {
     {
       header: 'Código',
       cell: (row) => row.codigo_vendedor || '-'
+    },
+    {
+      header: 'Empresa',
+      cell: (row) => {
+        const empresa = empresas.find(e => e.id === row.empresa_id);
+        return empresa?.nome || row.empresa_nome || '-';
+      }
     },
     {
       header: 'Perfil',
@@ -312,6 +327,22 @@ export default function Usuarios() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
+        {(currentUser?.perfil === 'master' || currentUser?.perfil === 'admin') && (
+          <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Todas as empresas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as empresas</SelectItem>
+              {empresas.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
@@ -321,6 +352,7 @@ export default function Usuarios() {
             className="pl-10"
           />
         </div>
+        
         <Select value={filterPerfil} onValueChange={setFilterPerfil}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Todos os perfis" />
