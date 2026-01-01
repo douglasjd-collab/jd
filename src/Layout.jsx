@@ -179,11 +179,11 @@ export default function Layout({ children, currentPageName }) {
                     />
                   ) : (
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/20">
-                      {user.full_name?.charAt(0).toUpperCase()}
+                      {(user.nome_perfil || user.full_name)?.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="font-medium truncate">{user.full_name}</p>
+                    <p className="font-medium truncate">{user.nome_perfil || user.full_name}</p>
                     <p className="text-xs text-white/60 capitalize">{user.perfil || 'Vendedor'}</p>
                   </div>
                   <ChevronDown className="w-4 h-4" />
@@ -201,11 +201,11 @@ export default function Layout({ children, currentPageName }) {
                       />
                     ) : (
                       <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                        {user.full_name?.charAt(0).toUpperCase()}
+                        {(user.nome_perfil || user.full_name)?.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{user.full_name}</p>
+                      <p className="font-semibold truncate">{user.nome_perfil || user.full_name}</p>
                       <p className="text-xs text-slate-500 capitalize">{user.perfil}</p>
                     </div>
                   </div>
