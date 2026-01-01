@@ -61,17 +61,17 @@ export default function Empresas() {
       // Buscar todas as empresas para gerar o próximo código
       const allEmpresas = await base44.entities.Empresa.list();
       
-      // Extrair números dos códigos existentes (ID001 -> 1, ID002 -> 2)
+      // Extrair números dos códigos existentes (EMP001 -> 1, EMP002 -> 2)
       const numeros = allEmpresas
-        .map(e => e.codigo?.match(/ID(\d+)/)?.[1])
+        .map(e => e.codigo?.match(/EMP(\d+)/)?.[1])
         .filter(Boolean)
         .map(Number);
       
       // Encontrar o próximo número
       const proximoNumero = numeros.length > 0 ? Math.max(...numeros) + 1 : 1;
       
-      // Formatar com zeros à esquerda (ID001, ID002, etc)
-      const codigo = `ID${String(proximoNumero).padStart(3, '0')}`;
+      // Formatar com zeros à esquerda (EMP001, EMP002, etc)
+      const codigo = `EMP${String(proximoNumero).padStart(3, '0')}`;
       
       // Criar empresa com o código gerado
       return base44.entities.Empresa.create({ ...data, codigo });
@@ -276,6 +276,19 @@ export default function Empresas() {
             <DialogTitle>{selectedEmpresa ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            {selectedEmpresa && (
+              <div>
+                <Label htmlFor="codigo">ID da Empresa *</Label>
+                <Input
+                  id="codigo"
+                  {...register('codigo', { required: true })}
+                  placeholder="EMP001"
+                />
+                <p className="text-xs text-slate-500 mt-1">Formato: EMP001, EMP002, etc.</p>
+                {errors.codigo && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+              </div>
+            )}
+
             <div>
               <Label htmlFor="cpf_cnpj">CPF/CNPJ *</Label>
               <Input
