@@ -397,6 +397,7 @@ export default function FunilVendas() {
 
       // Atualização otimista
       queryClient.setQueryData(['oportunidades'], (old) => {
+        if (!old || !Array.isArray(old)) return old;
         return old.map(o => {
           if (o.id === oportunidadeId) {
             const etapaDestino = etapas.find(e => e.id === novaEtapaId);
@@ -416,7 +417,9 @@ export default function FunilVendas() {
     },
     onError: (error, variables, context) => {
       // Rollback em caso de erro
-      queryClient.setQueryData(['oportunidades'], context.previousOportunidades);
+      if (context?.previousOportunidades) {
+        queryClient.setQueryData(['oportunidades'], context.previousOportunidades);
+      }
       toast.error(error.message || 'Erro ao mover oportunidade');
       
       // Log de auditoria do erro
