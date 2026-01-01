@@ -56,6 +56,7 @@ export default function Vendas() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
+      console.log('CreateMutation recebeu:', data);
       const user = await base44.auth.me();
       
       // Se cota estiver vazia, marcar status como pendente
@@ -64,8 +65,12 @@ export default function Vendas() {
         status: !data.cota || data.cota.trim() === '' ? 'pendente' : data.status
       };
       
+      console.log('Tentando criar venda com:', vendaData);
+      
       // Criar venda
       const venda = await base44.entities.Venda.create(vendaData);
+      
+      console.log('Venda criada:', venda);
       
       // HU 05 - Buscar tabela para gerar comissões automaticamente
       const tabela = tabelas.find(t => t.id === data.tabela_id);
@@ -154,8 +159,13 @@ export default function Vendas() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
       setFormOpen(false);
+      setSelectedVenda(null);
       toast.success('Venda e comissões cadastradas automaticamente!');
     },
+    onError: (error) => {
+      console.error('Erro completo:', error);
+      toast.error('Erro ao cadastrar venda: ' + (error.message || 'Erro desconhecido'));
+    }
   });
 
   const updateMutation = useMutation({
@@ -170,12 +180,22 @@ export default function Vendas() {
 
   const handleSubmit = async (data) => {
     try {
+      console.log('Dados recebidos do form:', data);
+      
       // Adicionar empresa_id do usuário atual
       const user = await base44.auth.me();
+      
+      // Garantir que vendedor_nome está presente
+      if (!data.vendedor_nome && data.vendedor_id) {
+        data.vendedor_nome = user.full_name;
+      }
+      
       const vendaData = {
         ...data,
         empresa_id: user.empresa_id
       };
+      
+      console.log('Dados a serem enviados:', vendaData);
       
       if (selectedVenda) {
         updateMutation.mutate({ id: selectedVenda.id, data: vendaData });
