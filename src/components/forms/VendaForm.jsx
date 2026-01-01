@@ -179,19 +179,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     setValue('valorCredito', valorNumerico, { shouldValidate: true });
   };
 
-  const formatarPercentual = (valor) => {
-    if (!valor) return '';
-    const numero = valor.replace(/\D/g, '');
-    const valorFormatado = (Number(numero) / 100).toFixed(2);
-    return valorFormatado.replace('.', ',');
-  };
-
-  const handleTaxaChange = (e) => {
-    const valorFormatado = formatarPercentual(e.target.value);
-    const valorNumerico = parseFloat(valorFormatado.replace(',', '.')) || 0;
-    setValue('taxaAdministracao', valorNumerico, { shouldValidate: true });
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -385,15 +372,13 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
               
               <div>
                 <Label htmlFor="taxaAdministracao">Taxa Administração (%) *</Label>
-                <div className="relative">
-                  <Input
-                    id="taxaAdministracao"
-                    value={watch('taxaAdministracao') ? formatarPercentual((parseFloat(watch('taxaAdministracao')) * 100).toString()) : ''}
-                    onChange={handleTaxaChange}
-                    placeholder="0,00"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 font-medium">%</span>
-                </div>
+                <Input
+                  id="taxaAdministracao"
+                  type="number"
+                  step="0.01"
+                  {...register('taxaAdministracao', { required: true, min: 0.01 })}
+                  placeholder="0,00"
+                />
                 {errors.taxaAdministracao && <p className="text-sm text-red-500 mt-1">Taxa obrigatória</p>}
               </div>
               
