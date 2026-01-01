@@ -54,8 +54,10 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   const tipoEmpresa = watch('tipoEmpresa');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (venda) {
@@ -218,26 +220,30 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             <div className="border rounded-lg p-4 bg-white shadow-sm">
               <h3 className="font-semibold text-slate-900 mb-3">Empresa *</h3>
               <Select
-                value={watch('empresa_id')}
-                onValueChange={(value) => setValue('empresa_id', value)}
+                value={watch('empresa_id') || ''}
+                onValueChange={(value) => {
+                  console.log('Empresa selecionada:', value);
+                  setValue('empresa_id', value, { shouldValidate: true });
+                }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa para esta venda">
-                    {watch('empresa_id') && (() => {
-                      const empresa = empresas.find(e => e.id === watch('empresa_id'));
-                      return empresa ? empresa.nome : null;
-                    })()}
-                  </SelectValue>
+                  <SelectValue placeholder="Selecione a empresa para esta venda" />
                 </SelectTrigger>
                 <SelectContent>
-                  {empresas.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">{e.nome}</span>
-                        <span className="text-xs text-slate-500">{e.cpf_cnpj}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {empresas.length > 0 ? (
+                    empresas.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">{e.nome}</span>
+                          <span className="text-xs text-slate-500">{e.cpf_cnpj}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-sm text-slate-500">
+                      Nenhuma empresa cadastrada
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
               {errors.empresa_id && <p className="text-sm text-red-500 mt-1">Empresa é obrigatória</p>}
