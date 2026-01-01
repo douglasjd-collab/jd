@@ -21,6 +21,7 @@ import { base44 } from '@/api/base44Client';
 
 export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading, currentUser, inviteSuccess }) {
   const [gerentes, setGerentes] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     mode: 'onChange',
     defaultValues: usuario || {
@@ -41,7 +42,10 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
 
   useEffect(() => {
     loadGerentes();
-  }, []);
+    if (currentUser?.perfil === 'master' || currentUser?.perfil === 'admin') {
+      loadEmpresas();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (usuario) {
@@ -66,6 +70,11 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   const loadGerentes = async () => {
     const users = await base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' });
     setGerentes(users);
+  };
+
+  const loadEmpresas = async () => {
+    const empresasList = await base44.entities.Empresa.filter({ status: 'ativa' });
+    setEmpresas(empresasList);
   };
 
   const formatCPF = (value) => {
@@ -171,6 +180,34 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
               />
             </div>
             
+            {(currentUser?.perfil === 'master' || currentUser?.perfil === 'admin') && (
+              <div className="col-span-2">
+                <Label>Empresa *</Label>
+                <Select
+                  value={watch('empresa_id') || ''}
+                  onValueChange={(value) => {
+                    setValue('empresa_id', value);
+                    const empresa = empresas.find(e => e.id === value);
+                    if (empresa) {
+                      setValue('empresa_nome', empresa.nome);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresas.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.empresa_id && <p className="text-sm text-red-500 mt-1">Empresa é obrigatória</p>}
+              </div>
+            )}
+
             <div>
               <Label>Perfil *</Label>
               <Select
@@ -184,7 +221,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                   <SelectItem value="vendedor">Vendedor</SelectItem>
                   <SelectItem value="gerente">Gerente</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="master">Master</SelectItem>
+                  {currentUser?.perfil === 'master' && <SelectItem value="master">Master</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
