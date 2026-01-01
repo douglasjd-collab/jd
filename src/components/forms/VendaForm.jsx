@@ -26,6 +26,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   const [tabelas, setTabelas] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [gerentes, setGerentes] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
   const [searchCliente, setSearchCliente] = useState('');
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
@@ -125,12 +126,20 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   const loadData = async () => {
     try {
       // Buscar TODOS os clientes ativos - sem filtro por perfil ou usuário
-      const [clientesData, adminData, vendedoresData, gerentesData] = await Promise.all([
+      const promises = [
         base44.entities.Cliente.filter({ status: 'ativo' }),
         base44.entities.Administradora.filter({ status: 'ativa' }),
         base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
         base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' })
-      ]);
+      ];
+      
+      // Se for Master, buscar empresas também
+      if (currentUser?.perfil === 'master') {
+        promises.push(base44.entities.Empresa.filter({ status: 'ativa' }));
+      }
+      
+      const results = await Promise.all(promises);
+      const [clientesData, adminData, vendedoresData, gerentesData, empresasData] = results;
       
       console.log('Clientes carregados:', clientesData.length);
       
@@ -138,6 +147,10 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       setAdministradoras(adminData);
       setVendedores(vendedoresData);
       setGerentes(gerentesData);
+      
+      if (empresasData) {
+        setEmpresas(empresasData);
+      }
     } catch (error) {
       console.error('Erro detalhado ao carregar dados:', error);
       toast.error('Erro ao carregar dados: ' + (error.message || 'Verifique suas permissões'));
@@ -165,6 +178,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   });
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
+  const isMaster = currentUser?.perfil === 'master';
 
   const formatarMoeda = (valor) => {
     if (!valor) return '';
@@ -199,6 +213,37 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           <DialogTitle>{venda ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Card Empresa (apenas para Master) */}
+          {isMaster && (
+            <div className="border rounded-lg p-4 bg-white shadow-sm">
+              <h3 className="font-semibold text-slate-900 mb-3">Empresa *</h3>
+              <Select
+                value={watch('empresa_id')}
+                onValueChange={(value) => setValue('empresa_id', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a empresa para esta venda">
+                    {watch('empresa_id') && (() => {
+                      const empresa = empresas.find(e => e.id === watch('empresa_id'));
+                      return empresa ? empresa.nome : null;
+                    })()}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {empresas.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{e.nome}</span>
+                        <span className="text-xs text-slate-500">{e.cpf_cnpj}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.empresa_id && <p className="text-sm text-red-500 mt-1">Empresa é obrigatória</p>}
+            </div>
+          )}
+
           {/* Card Cliente */}
           <div className="border rounded-lg p-4 bg-white shadow-sm">
             <h3 className="font-semibold text-slate-900 mb-3">Cliente *</h3>
@@ -489,7 +534,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || parseFloat(watch('valorCredito') || 0) <= 0 || parseFloat(watch('taxaAdministracao') || 0) <= 0} 
+              disabled={isLoading || (isMaster && !watch('empresa_id')) || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || parseFloat(watch('valorCredito') || 0) <= 0 || parseFloat(watch('taxaAdministracao') || 0) <= 0} 
               className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
             >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
