@@ -40,11 +40,11 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   });
 
   const perfil = watch('perfil');
-  const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
+  const isGerenteOuSuperior = ['gerente', 'admin', 'super_admin', 'master'].includes(currentUser?.perfil);
 
   useEffect(() => {
     loadGerentes();
-    if (currentUser?.perfil === 'master' || currentUser?.perfil === 'admin') {
+    if (currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin') {
       loadEmpresas();
     }
   }, [currentUser]);
@@ -207,7 +207,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
               />
             </div>
             
-            {(currentUser?.perfil === 'master' || currentUser?.perfil === 'admin') && (
+            {(currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin') && (
               <div className="col-span-2">
                 <Label>Empresa *</Label>
                 <Select

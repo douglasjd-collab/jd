@@ -49,7 +49,7 @@ export default function Dashboard() {
     setUser(userData);
   };
 
-  const isAdmin = user?.perfil === 'master' || user?.perfil === 'admin';
+  const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
   const isGerente = user?.perfil === 'gerente';
 
   // Queries
