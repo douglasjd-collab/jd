@@ -122,13 +122,16 @@ export default function Dashboard() {
       const date = subMonths(new Date(), i);
       const monthStart = startOfMonth(date);
       const monthEnd = endOfMonth(date);
-      const count = filteredVendas.filter(v => {
+      const vendasDoMes = filteredVendas.filter(v => {
         const dataVenda = new Date(v.data_venda);
         return dataVenda >= monthStart && dataVenda <= monthEnd;
-      }).length;
+      });
+      const count = vendasDoMes.length;
+      const valor = vendasDoMes.reduce((acc, v) => acc + (v.valorCredito || 0), 0);
       months.push({
         name: format(date, 'MMM', { locale: ptBR }),
-        vendas: count
+        vendas: count,
+        valor: valor
       });
     }
     return months;
@@ -214,7 +217,8 @@ export default function Dashboard() {
                 <BarChart data={vendasPorMes}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
+                  <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Qtd', angle: -90, position: 'insideLeft' }} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#23BE84" fontSize={12} tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`} />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'white', 
@@ -222,8 +226,13 @@ export default function Dashboard() {
                       borderRadius: '8px', 
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' 
                     }}
+                    formatter={(value, name) => {
+                      if (name === 'vendas') return [value, 'Quantidade'];
+                      return [formatCurrency(value), 'Valor Total'];
+                    }}
                   />
                   <Bar dataKey="vendas" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
