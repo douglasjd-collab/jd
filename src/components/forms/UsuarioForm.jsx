@@ -257,6 +257,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                 <SelectContent>
                   <SelectItem value="vendedor">Vendedor</SelectItem>
                   <SelectItem value="gerente">Gerente</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
                   {currentUser?.perfil === 'master' && <SelectItem value="super_admin">Super Admin</SelectItem>}
                   {currentUser?.perfil === 'master' && <SelectItem value="master">Master</SelectItem>}
                 </SelectContent>
