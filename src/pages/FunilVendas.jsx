@@ -185,7 +185,7 @@ export default function FunilVendas() {
         const user = vendedores.find(v => v.id === id);
         return {
           id,
-          nome: user?.full_name || '',
+          nome: user?.razao_social || user?.full_name || '',
           foto: user?.foto_perfil || ''
         };
       });
@@ -193,6 +193,9 @@ export default function FunilVendas() {
       const responsavelPrincipal = responsaveisData[0];
       
       await base44.entities.Oportunidade.update(oportunidadeId, {
+        empresa_id: oportunidade.empresa_id,
+        titulo: oportunidade.titulo,
+        etapa_id: oportunidade.etapa_id,
         vendedor_id: responsavelPrincipal.id,
         vendedor_nome: responsavelPrincipal.nome,
         foto_perfil_responsavel: responsavelPrincipal.foto,
@@ -235,6 +238,9 @@ export default function FunilVendas() {
       }
 
       await base44.entities.Oportunidade.update(oportunidadeId, {
+        empresa_id: oportunidade.empresa_id,
+        titulo: oportunidade.titulo,
+        vendedor_id: oportunidade.vendedor_id,
         etapa_id: novaEtapaId,
         etapa_nome: etapaDestino?.nome || '',
         data_ultima_movimentacao: new Date().toISOString(),
@@ -289,7 +295,12 @@ export default function FunilVendas() {
       });
 
       // Atualizar data de última movimentação
+      const oportunidadeAtual = oportunidades.find(o => o.id === oportunidadeId);
       await base44.entities.Oportunidade.update(oportunidadeId, {
+        empresa_id: oportunidadeAtual.empresa_id,
+        titulo: oportunidadeAtual.titulo,
+        etapa_id: oportunidadeAtual.etapa_id,
+        vendedor_id: oportunidadeAtual.vendedor_id,
         data_ultima_movimentacao: new Date().toISOString()
       });
 
@@ -344,8 +355,11 @@ export default function FunilVendas() {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
-      // Atualizar oportunidade
+      // Atualizar oportunidade - incluir empresa_id para atender requisito obrigatório
       await base44.entities.Oportunidade.update(oportunidadeId, {
+        empresa_id: oportunidade.empresa_id,
+        titulo: oportunidade.titulo,
+        vendedor_id: oportunidade.vendedor_id,
         etapa_id: novaEtapaId,
         etapa_nome: etapaDestino?.nome || '',
         data_ultima_movimentacao: new Date().toISOString(),
@@ -479,9 +493,10 @@ export default function FunilVendas() {
 
     const data = {
       ...formData,
+      empresa_id: currentUser?.empresa_id || '',
       cliente_nome: cliente?.nome || '',
       cliente_telefone: cliente?.telefone || '',
-      vendedor_nome: vendedor?.full_name || '',
+      vendedor_nome: vendedor?.razao_social || vendedor?.full_name || '',
       gerente_id: vendedor?.gerente_id || '',
       etapa_nome: etapa?.nome || '',
       valor_estimado: parseFloat(formData.valor_estimado) || 0,
@@ -609,7 +624,7 @@ export default function FunilVendas() {
               <SelectContent>
                 <SelectItem value="todos">Todos os vendedores</SelectItem>
                 {vendedores.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                  <SelectItem key={v.id} value={v.id}>{v.razao_social || v.full_name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -966,7 +981,7 @@ export default function FunilVendas() {
                     </SelectTrigger>
                     <SelectContent>
                       {vendedores.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                        <SelectItem key={v.id} value={v.id}>{v.razao_social || v.full_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1095,7 +1110,7 @@ export default function FunilVendas() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <p className="text-sm font-medium">{v.full_name}</p>
+                          <p className="text-sm font-medium">{v.razao_social || v.full_name}</p>
                           <p className="text-xs text-slate-500 capitalize">{v.perfil}</p>
                         </div>
                         {responsaveisSelecionados.includes(v.id) && (
@@ -1120,7 +1135,7 @@ export default function FunilVendas() {
                   {responsaveisSelecionados.length} responsável(is) selecionado(s)
                 </p>
                 <p className="text-xs text-blue-600">
-                  Principal: {vendedores.find(v => v.id === responsaveisSelecionados[0])?.full_name}
+                  Principal: {vendedores.find(v => v.id === responsaveisSelecionados[0])?.razao_social || vendedores.find(v => v.id === responsaveisSelecionados[0])?.full_name}
                 </p>
               </div>
             )}
