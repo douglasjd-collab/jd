@@ -213,7 +213,7 @@ export default function Vendas() {
     setFormOpen(true);
   };
 
-  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
+  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
   const isGerente = currentUser?.perfil === 'gerente';
 
   // Filtrar vendas por perfil

@@ -70,20 +70,20 @@ export default function Layout({ children, currentPageName }) {
     await base44.auth.logout();
   };
 
-  const isAdmin = user?.perfil === 'master' || user?.perfil === 'admin';
+  const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
   const isGerente = user?.perfil === 'gerente';
 
   const menuItems = [
-    { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master'] },
-    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin'] },
+    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Simulador', icon: Calculator, page: 'SimuladorConsorcio', roles: ['master', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Vendas', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Vendas', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { 
       name: 'Comissões', 
       icon: Wallet, 
-      roles: ['master', 'admin', 'gerente', 'vendedor'],
+      roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
       submenu: [
         { name: 'Recebimento de Comissão', page: 'RecebimentoComissao' },
         { name: 'Comissão a Pagar', page: 'ComissaoPagar' },
@@ -92,7 +92,7 @@ export default function Layout({ children, currentPageName }) {
     { 
       name: 'Cadastros', 
       icon: Building2, 
-      roles: ['master', 'admin'],
+      roles: ['master', 'super_admin', 'admin'],
       submenu: [
         { name: 'Usuários', page: 'Usuarios' },
         { name: 'Administradoras', page: 'Administradoras' },
@@ -100,11 +100,11 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Planos de Consórcio', page: 'PlanosConsorcio' },
       ]
     },
-    { name: 'Importação', icon: Upload, page: 'Importacao', roles: ['master', 'admin'] },
-    { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'admin', 'vendedor'] },
-    { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'admin', 'gerente'] },
+    { name: 'Importação', icon: Upload, page: 'Importacao', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor'] },
+    { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente'] },
-    { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'admin'] },
+    { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => 
@@ -218,7 +218,7 @@ export default function Layout({ children, currentPageName }) {
                     Alterar Foto de Perfil
                   </DropdownMenuItem>
 
-                  {(user.perfil === 'master' || user.perfil === 'admin') && (
+                  {(user.perfil === 'master' || user.perfil === 'super_admin' || user.perfil === 'admin') && (
                     <DropdownMenuItem onClick={() => setLogoUploaderOpen(true)}>
                       <ImageIcon className="w-4 h-4 mr-2" />
                       Alterar Logo do Sistema

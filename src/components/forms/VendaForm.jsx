@@ -179,8 +179,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
            telefone.includes(searchNormalized);
   });
 
-  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
-  const isMaster = currentUser?.perfil === 'master';
+  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
+  const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
 
   const formatarMoeda = (valor) => {
     if (!valor) return '';
