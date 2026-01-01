@@ -211,7 +211,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     )}
                     {filteredClientes.slice(0, 30).map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        <div className="flex flex-col py-1">
+                        <div className="flex flex-col items-start">
                           <span className="font-medium">{c.nome}</span>
                           <span className="text-xs text-slate-500">CPF: {c.cpf}</span>
                         </div>
