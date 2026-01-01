@@ -58,11 +58,21 @@ export default function Vendas() {
     mutationFn: async (data) => {
       console.log('CreateMutation recebeu:', data);
       const user = await base44.auth.me();
+      console.log('currentUser completo:', user);
+      
+      // Capturar empresa_id de várias formas possíveis
+      const empresaId = data.empresa_id || user?.empresa_id || currentUser?.empresa_id;
+      
+      console.log('empresa_id detectado:', empresaId);
+      
+      if (!empresaId) {
+        throw new Error('empresa_id não encontrado. Vincule o usuário a uma empresa.');
+      }
       
       // Se cota estiver vazia, marcar status como pendente
       const vendaData = {
         ...data,
-        empresa_id: data.empresa_id || user.empresa_id,
+        empresa_id: empresaId,
         status: !data.cota || data.cota.trim() === '' ? 'pendente' : data.status
       };
       
@@ -81,6 +91,7 @@ export default function Vendas() {
           const parcelas = [];
           for (let i = 1; i <= tabela.num_parcelas_comissao; i++) {
             parcelas.push({
+              empresa_id: empresaId,
               venda_id: venda.id,
               numero_parcela: i,
               valor_previsto: tabela.comissao_por_parcela,
@@ -89,13 +100,14 @@ export default function Vendas() {
           }
           await base44.entities.Parcela.bulkCreate(parcelas);
         }
-        
+
         // HU 05 - Criar comissões automaticamente
         const comissoes = [];
-        
+
         // 1. Comissão de Faturamento (se existir)
         if (tabela.comissao_faturamento && tabela.comissao_faturamento > 0) {
           comissoes.push({
+            empresa_id: empresaId,
             venda_id: venda.id,
             usuario_id: data.vendedor_id,
             usuario_nome: data.vendedor_nome,
@@ -108,12 +120,13 @@ export default function Vendas() {
             administradora_id: data.administradora_id
           });
         }
-        
+
         // 2. Comissões por Parcela (vincular cada parcela criada)
         if (tabela.num_parcelas_comissao && tabela.comissao_por_parcela) {
           const parcelasCreated = await base44.entities.Parcela.filter({ venda_id: venda.id });
           for (const parcela of parcelasCreated) {
             comissoes.push({
+              empresa_id: empresaId,
               venda_id: venda.id,
               parcela_id: parcela.id,
               usuario_id: data.vendedor_id,
@@ -142,6 +155,7 @@ export default function Vendas() {
         // HU 08 - Auditoria
         try {
           await base44.entities.LogAuditoria.create({
+            empresa_id: empresaId,
             usuario_id: user.id,
             usuario_nome: user.full_name,
             acao: `Criação de venda e geração automática de ${comissoes.length} comissões`,
