@@ -183,25 +183,10 @@ export default function Vendas() {
     try {
       console.log('Dados recebidos do form:', data);
       
-      // Adicionar empresa_id do usuário atual
-      const user = await base44.auth.me();
-      
-      // Garantir que vendedor_nome está presente
-      if (!data.vendedor_nome && data.vendedor_id) {
-        data.vendedor_nome = user.full_name;
-      }
-      
-      const vendaData = {
-        ...data,
-        empresa_id: user.empresa_id
-      };
-      
-      console.log('Dados a serem enviados:', vendaData);
-      
       if (selectedVenda) {
-        updateMutation.mutate({ id: selectedVenda.id, data: vendaData });
+        updateMutation.mutate({ id: selectedVenda.id, data });
       } else {
-        createMutation.mutate(vendaData);
+        createMutation.mutate(data);
       }
     } catch (error) {
       console.error('Erro ao submeter venda:', error);
