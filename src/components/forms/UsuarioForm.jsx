@@ -27,7 +27,9 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
     defaultValues: usuario || {
       full_name: '',
       email: '',
-      cpf: '',
+      cpf_cnpj: '',
+      razao_social: '',
+      nome_perfil: '',
       telefone: '',
       codigo_vendedor: '',
       perfil: 'vendedor',
@@ -56,7 +58,9 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       reset({
         full_name: '',
         email: '',
-        cpf: '',
+        cpf_cnpj: '',
+        razao_social: '',
+        nome_perfil: '',
         telefone: '',
         codigo_vendedor: '',
         perfil: 'vendedor',
@@ -77,13 +81,25 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
     setEmpresas(empresasList);
   };
 
-  const formatCPF = (value) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-      .replace(/(-\d{2})\d+?$/, '$1');
+  const formatCPFCNPJ = (value) => {
+    const cleanValue = value.replace(/\D/g, '');
+    
+    if (cleanValue.length <= 11) {
+      // Formato CPF
+      return cleanValue
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
+    } else {
+      // Formato CNPJ
+      return cleanValue
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
+    }
   };
 
   const formatPhone = (value) => {
@@ -95,10 +111,10 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   };
 
   const handleFormSubmit = (data) => {
-    // Normalizar CPF e telefone (remover máscaras)
+    // Normalizar CPF/CNPJ e telefone (remover máscaras)
     const normalizedData = {
       ...data,
-      cpf: data.cpf ? data.cpf.replace(/\D/g, '') : '',
+      cpf_cnpj: data.cpf_cnpj ? data.cpf_cnpj.replace(/\D/g, '') : '',
       telefone: data.telefone ? data.telefone.replace(/\D/g, '') : '',
       gerente_id: data.gerente_id || null // Garantir que gerente_id seja null se vazio
     };
@@ -117,13 +133,34 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
           <div className="flex-1 overflow-y-auto px-1">
             <div className="grid grid-cols-2 gap-4 pb-4">
             <div className="col-span-2">
-              <Label htmlFor="full_name">Nome Completo *</Label>
+              <Label htmlFor="cpf_cnpj">CPF/CNPJ *</Label>
+              <Input
+                id="cpf_cnpj"
+                {...register('cpf_cnpj', { required: true })}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                onChange={(e) => setValue('cpf_cnpj', formatCPFCNPJ(e.target.value))}
+              />
+              {errors.cpf_cnpj && <p className="text-sm text-red-500 mt-1">CPF/CNPJ é obrigatório</p>}
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="full_name">Nome Completo / Razão Social *</Label>
               <Input
                 id="full_name"
                 {...register('full_name', { required: true })}
-                placeholder="Nome do usuário"
+                placeholder="Nome completo ou Razão Social"
               />
               {errors.full_name && <p className="text-sm text-red-500 mt-1">Nome é obrigatório</p>}
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="nome_perfil">Como você quer ser chamado? *</Label>
+              <Input
+                id="nome_perfil"
+                {...register('nome_perfil', { required: true })}
+                placeholder="Apelido ou nome de preferência"
+              />
+              {errors.nome_perfil && <p className="text-sm text-red-500 mt-1">Nome de perfil é obrigatório</p>}
             </div>
             
             <div className="col-span-2">
@@ -150,16 +187,6 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                 </div>
               </div>
             )}
-            
-            <div>
-              <Label htmlFor="cpf">CPF</Label>
-              <Input
-                id="cpf"
-                {...register('cpf')}
-                placeholder="000.000.000-00"
-                onChange={(e) => setValue('cpf', formatCPF(e.target.value))}
-              />
-            </div>
             
             <div>
               <Label htmlFor="telefone">Telefone</Label>

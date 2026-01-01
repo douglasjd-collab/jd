@@ -130,14 +130,14 @@ export default function Usuarios() {
   });
 
   const handleSubmit = async (data, resetForm) => {
-    // Validação de CPF único
-    if (data.cpf) {
-      const cpfLimpo = data.cpf.replace(/\D/g, '');
-      const usuariosComMesmoCPF = usuarios.filter(u => 
-        u.cpf?.replace(/\D/g, '') === cpfLimpo && u.id !== selectedUsuario?.id
+    // Validação de CPF/CNPJ único
+    if (data.cpf_cnpj) {
+      const cpfCnpjLimpo = data.cpf_cnpj.replace(/\D/g, '');
+      const usuariosComMesmoCPFCNPJ = usuarios.filter(u => 
+        u.cpf_cnpj?.replace(/\D/g, '') === cpfCnpjLimpo && u.id !== selectedUsuario?.id
       );
-      if (usuariosComMesmoCPF.length > 0) {
-        toast.error('CPF já cadastrado no sistema');
+      if (usuariosComMesmoCPFCNPJ.length > 0) {
+        toast.error('CPF/CNPJ já cadastrado no sistema');
         return;
       }
     }
@@ -146,9 +146,10 @@ export default function Usuarios() {
     const normalizedData = {
       ...data,
       gerente_id: data.gerente_id || null,
-      cpf: data.cpf || null,
+      cpf_cnpj: data.cpf_cnpj || null,
       telefone: data.telefone || null,
-      codigo_vendedor: data.codigo_vendedor || null
+      codigo_vendedor: data.codigo_vendedor || null,
+      nome_perfil: data.nome_perfil || null
     };
 
     if (selectedUsuario) {
@@ -233,7 +234,8 @@ export default function Usuarios() {
   const filteredUsuarios = usuarios.filter(u => {
     const matchSearch = u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.cpf?.includes(search);
+      u.nome_perfil?.toLowerCase().includes(search.toLowerCase()) ||
+      u.cpf_cnpj?.includes(search);
     const matchPerfil = filterPerfil === 'todos' || u.perfil === filterPerfil;
     const matchEmpresa = filterEmpresa === 'todas' || u.empresa_id === filterEmpresa;
     return matchSearch && matchPerfil && matchEmpresa;
@@ -244,14 +246,14 @@ export default function Usuarios() {
       header: 'Nome',
       cell: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.full_name}</p>
+          <p className="font-medium text-slate-900">{row.nome_perfil || row.full_name}</p>
           <p className="text-sm text-slate-500">{row.email}</p>
         </div>
       )
     },
     {
-      header: 'CPF',
-      cell: (row) => row.cpf || '-'
+      header: 'CPF/CNPJ',
+      cell: (row) => row.cpf_cnpj || '-'
     },
     {
       header: 'Código',
