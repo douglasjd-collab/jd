@@ -244,7 +244,7 @@ export default function FunilVendas() {
       }
 
       await base44.entities.Oportunidade.update(oportunidadeId, {
-        empresa_id: oportunidade.empresa_id,
+        empresa_id: oportunidade.empresa_id || currentUser?.empresa_id,
         titulo: oportunidade.titulo,
         vendedor_id: oportunidade.vendedor_id,
         etapa_id: novaEtapaId,
