@@ -226,8 +226,18 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   setValue('empresa_id', value, { shouldValidate: true });
                 }}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a empresa para esta venda" />
+                <SelectTrigger className="h-auto min-h-[60px] py-3">
+                  <SelectValue placeholder="Selecione a empresa para esta venda">
+                    {watch('empresa_id') && (() => {
+                      const empresa = empresas.find(e => e.id === watch('empresa_id'));
+                      return empresa ? (
+                        <div className="flex flex-col items-start text-left">
+                          <span className="font-medium">{empresa.nome}</span>
+                          <span className="text-xs text-slate-500">{empresa.cpf_cnpj}</span>
+                        </div>
+                      ) : null;
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {empresas.length > 0 ? (
