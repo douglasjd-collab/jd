@@ -57,27 +57,13 @@ export default function Empresas() {
 
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
-      // Criar empresa
-      const empresa = await base44.entities.Empresa.create(data);
-      
-      // Criar usuário ADM automaticamente
-      const emailAdmin = data.email;
-      const nomeAdmin = `Admin ${data.nome}`;
-      
-      await base44.users.inviteUser(emailAdmin, 'admin');
-      
-      return empresa;
-    },
+    mutationFn: (data) => base44.entities.Empresa.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       setFormOpen(false);
       reset();
-      toast.success('Empresa e usuário ADM criados com sucesso!');
+      toast.success('Empresa criada! Convide um usuário ADM pela tela de Usuários.');
     },
-    onError: (error) => {
-      toast.error(error.message || 'Erro ao criar empresa');
-    }
   });
 
   const updateMutation = useMutation({
@@ -422,7 +408,7 @@ export default function Empresas() {
             {!selectedEmpresa && (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-900">
-                  <strong>ℹ️ Importante:</strong> Um usuário administrador será criado automaticamente usando o email informado.
+                  <strong>ℹ️ Importante:</strong> Após criar a empresa, convide um usuário ADM pela tela de Usuários.
                 </p>
               </div>
             )}
