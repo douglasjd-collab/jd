@@ -355,6 +355,11 @@ export default function FunilVendas() {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
+      // Verificar se empresa_id existe
+      if (!oportunidade?.empresa_id) {
+        throw new Error('Oportunidade sem empresa vinculada. Entre em contato com o administrador.');
+      }
+
       // Atualizar oportunidade - incluir empresa_id para atender requisito obrigatório
       await base44.entities.Oportunidade.update(oportunidadeId, {
         empresa_id: oportunidade.empresa_id,
