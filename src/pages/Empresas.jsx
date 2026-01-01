@@ -276,18 +276,29 @@ export default function Empresas() {
             <DialogTitle>{selectedEmpresa ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
           </DialogHeader>
           
-          {selectedEmpresa && (
-            <div className="px-6 pb-2 border-b">
-              <Label htmlFor="codigo">ID da Empresa *</Label>
-              <Input
-                id="codigo"
-                {...register('codigo', { required: true })}
-                placeholder="EMP001"
-              />
-              <p className="text-xs text-slate-500 mt-1">Formato: EMP001, EMP002, etc.</p>
-              {errors.codigo && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
-            </div>
-          )}
+          <div className="px-6 pb-2 border-b">
+            <Label htmlFor="codigo">ID da Empresa *</Label>
+            {selectedEmpresa ? (
+              <>
+                <Input
+                  id="codigo"
+                  {...register('codigo', { required: true })}
+                  placeholder="EMP001"
+                />
+                <p className="text-xs text-slate-500 mt-1">Formato: EMP001, EMP002, etc.</p>
+              </>
+            ) : (
+              <>
+                <Input
+                  value="Será gerado automaticamente (EMP001, EMP002...)"
+                  disabled
+                  className="bg-slate-50 text-slate-500"
+                />
+                <p className="text-xs text-slate-500 mt-1">O ID será gerado automaticamente ao criar a empresa</p>
+              </>
+            )}
+            {errors.codigo && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+          </div>
           
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 overflow-y-auto pr-2 px-6 flex-1">
 
