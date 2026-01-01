@@ -166,6 +166,19 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
 
+  const formatarMoeda = (valor) => {
+    if (!valor) return '';
+    const numero = valor.replace(/\D/g, '');
+    const valorFormatado = (Number(numero) / 100).toFixed(2);
+    return valorFormatado.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  const handleValorCreditoChange = (e) => {
+    const valorFormatado = formatarMoeda(e.target.value);
+    const valorNumerico = valorFormatado.replace(/\./g, '').replace(',', '.');
+    setValue('valorCredito', valorNumerico);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -344,13 +357,16 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="valorCredito">Valor do Crédito *</Label>
-                <Input
-                  id="valorCredito"
-                  type="number"
-                  step="0.01"
-                  {...register('valorCredito', { required: true, min: 0.01 })}
-                  placeholder="0,00"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 font-medium">R$</span>
+                  <Input
+                    id="valorCredito"
+                    value={watch('valorCredito') ? formatarMoeda((parseFloat(watch('valorCredito')) * 100).toString()) : ''}
+                    onChange={handleValorCreditoChange}
+                    placeholder="0,00"
+                    className="pl-12"
+                  />
+                </div>
                 {errors.valorCredito && <p className="text-sm text-red-500 mt-1">Valor obrigatório</p>}
               </div>
               
