@@ -201,8 +201,12 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
               <Input
                 id="codigo_vendedor"
                 {...register('codigo_vendedor')}
-                placeholder="Ex: V001"
+                placeholder={watch('empresa_id') && empresas.length > 0 ? `Ex: ${empresas.find(e => e.id === watch('empresa_id'))?.codigo || 'EMP01'}-V001` : 'Ex: EMP01-V001'}
+                disabled={!!usuario}
               />
+              <p className="text-xs text-slate-500 mt-1">
+                Use o código da empresa seguido de -V001, -V002, etc.
+              </p>
             </div>
             
             {(currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin') && perfil !== 'super_admin' && (
