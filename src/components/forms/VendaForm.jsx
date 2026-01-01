@@ -174,8 +174,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Card Cliente */}
-          <div className="border rounded-lg p-6 bg-white shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-4 text-lg">Cliente *</h3>
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-3">Cliente *</h3>
             <Select
               value={watch('cliente_id')}
               onValueChange={(value) => {
