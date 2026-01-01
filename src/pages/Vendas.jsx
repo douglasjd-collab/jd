@@ -168,11 +168,23 @@ export default function Vendas() {
     },
   });
 
-  const handleSubmit = (data) => {
-    if (selectedVenda) {
-      updateMutation.mutate({ id: selectedVenda.id, data });
-    } else {
-      createMutation.mutate(data);
+  const handleSubmit = async (data) => {
+    try {
+      // Adicionar empresa_id do usuário atual
+      const user = await base44.auth.me();
+      const vendaData = {
+        ...data,
+        empresa_id: user.empresa_id
+      };
+      
+      if (selectedVenda) {
+        updateMutation.mutate({ id: selectedVenda.id, data: vendaData });
+      } else {
+        createMutation.mutate(vendaData);
+      }
+    } catch (error) {
+      console.error('Erro ao submeter venda:', error);
+      toast.error('Erro ao processar venda: ' + error.message);
     }
   };
 
