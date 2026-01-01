@@ -25,10 +25,9 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     mode: 'onChange',
     defaultValues: usuario || {
-      full_name: '',
+      razao_social: '',
       email: '',
       cpf_cnpj: '',
-      razao_social: '',
       nome_perfil: '',
       telefone: '',
       codigo_vendedor: '',
@@ -56,10 +55,9 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       });
     } else {
       reset({
-        full_name: '',
+        razao_social: '',
         email: '',
         cpf_cnpj: '',
-        razao_social: '',
         nome_perfil: '',
         telefone: '',
         codigo_vendedor: '',
@@ -144,13 +142,13 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
             </div>
 
             <div className="col-span-2">
-              <Label htmlFor="full_name">Nome Completo / Razão Social *</Label>
+              <Label htmlFor="razao_social">Nome Completo / Razão Social *</Label>
               <Input
-                id="full_name"
-                {...register('full_name', { required: true })}
+                id="razao_social"
+                {...register('razao_social', { required: true })}
                 placeholder="Nome completo ou Razão Social"
               />
-              {errors.full_name && <p className="text-sm text-red-500 mt-1">Nome é obrigatório</p>}
+              {errors.razao_social && <p className="text-sm text-red-500 mt-1">Razão Social é obrigatória</p>}
             </div>
 
             <div className="col-span-2">

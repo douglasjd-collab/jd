@@ -83,7 +83,7 @@ export default function Usuarios() {
         await base44.entities.LogAuditoria.create({
           usuario_id: currentUser.id,
           usuario_nome: currentUser.full_name,
-          acao: `Edição de usuário/vendedor: ${data.full_name}`,
+          acao: `Edição de usuário/vendedor: ${data.razao_social || data.full_name}`,
           entidade: 'User',
           entidade_id: id,
           dados_anteriores: JSON.stringify(usuarioAntigo),
@@ -112,7 +112,7 @@ export default function Usuarios() {
         await base44.entities.LogAuditoria.create({
           usuario_id: currentUser.id,
           usuario_nome: currentUser.full_name,
-          acao: `Exclusão de usuário/vendedor: ${usuario.full_name}`,
+          acao: `Exclusão de usuário/vendedor: ${usuario.razao_social || usuario.full_name}`,
           entidade: 'User',
           entidade_id: id,
           dados_anteriores: JSON.stringify(usuario),
@@ -198,7 +198,7 @@ export default function Usuarios() {
           await base44.entities.LogAuditoria.create({
             usuario_id: currentUser.id,
             usuario_nome: currentUser.full_name,
-            acao: `Cadastro de novo usuário: ${normalizedData.full_name}`,
+            acao: `Cadastro de novo usuário: ${normalizedData.razao_social || normalizedData.full_name}`,
             entidade: 'User',
             entidade_id: usuarioCriado.id,
             dados_novos: JSON.stringify(normalizedData),
@@ -230,11 +230,12 @@ export default function Usuarios() {
 
   const getGerenteNome = (gerenteId) => {
     const gerente = usuarios.find(u => u.id === gerenteId);
-    return gerente?.full_name || '-';
+    return gerente?.razao_social || gerente?.full_name || '-';
   };
 
   const filteredUsuarios = usuarios.filter(u => {
-    const matchSearch = u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch = u.razao_social?.toLowerCase().includes(search.toLowerCase()) ||
+      u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.nome_perfil?.toLowerCase().includes(search.toLowerCase()) ||
       u.cpf_cnpj?.includes(search);
@@ -301,7 +302,7 @@ export default function Usuarios() {
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => {
-                if (confirm(`Tem certeza que deseja excluir o usuário "${row.full_name}"?`)) {
+                if (confirm(`Tem certeza que deseja excluir o usuário "${row.razao_social || row.full_name}"?`)) {
                   deleteMutation.mutate(row.id);
                 }
               }}
