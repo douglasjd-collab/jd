@@ -48,39 +48,67 @@ export default function IntegracaoCanopus() {
   const { data: config } = useQuery({
     queryKey: ['config-canopus'],
     queryFn: async () => {
-      const configs = await base44.entities.ConfiguracaoSistema.filter({ 
-        chave: 'canopus_config' 
-      });
-      if (configs.length > 0 && configs[0].valor) {
-        try {
-          return JSON.parse(configs[0].valor);
-        } catch {
-          return null;
+      try {
+        const configs = await base44.entities.ConfiguracaoSistema.filter({ 
+          chave: 'canopus_config' 
+        });
+        if (configs.length > 0 && configs[0].valor) {
+          try {
+            return JSON.parse(configs[0].valor);
+          } catch {
+            return null;
+          }
         }
+        return null;
+      } catch (error) {
+        console.error('Erro ao buscar config:', error);
+        return null;
       }
-      return null;
-    }
+    },
+    retry: false
   });
 
   // Buscar última execução
   const { data: ultimaExecucao } = useQuery({
     queryKey: ['integracao-canopus-ultima'],
     queryFn: async () => {
-      const integracoes = await base44.entities.IntegracaoCanopus.list('-created_date', 1);
-      return integracoes[0] || null;
-    }
+      try {
+        const integracoes = await base44.entities.IntegracaoCanopus.list('-created_date', 1);
+        return integracoes[0] || null;
+      } catch (error) {
+        console.error('Erro ao buscar última execução:', error);
+        return null;
+      }
+    },
+    retry: false
   });
 
   // Buscar histórico
   const { data: historico = [] } = useQuery({
     queryKey: ['integracao-canopus-historico'],
-    queryFn: () => base44.entities.IntegracaoCanopus.list('-created_date', 20)
+    queryFn: async () => {
+      try {
+        return await base44.entities.IntegracaoCanopus.list('-created_date', 20);
+      } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+        return [];
+      }
+    },
+    retry: false
   });
 
   // Buscar clientes Canopus
   const { data: clientesCanopus = [] } = useQuery({
     queryKey: ['clientes-canopus'],
-    queryFn: () => base44.entities.ClienteCanopus.list('-created_date', 50)
+    queryFn: async () => {
+      try {
+        return await base44.entities.ClienteCanopus.list('-created_date', 50);
+      } catch (error) {
+        console.error('Erro ao buscar clientes Canopus:', error);
+        return [];
+      }
+    },
+    retry: false
   });
 
   // Salvar configurações
