@@ -173,222 +173,83 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           <DialogTitle>{venda ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {/* Cliente */}
-            <div className="col-span-2">
-              <Label>Cliente *</Label>
-              <Select
-                value={watch('cliente_id')}
-                onValueChange={(value) => {
-                  setValue('cliente_id', value);
-                  const cliente = clientes.find(c => c.id === value);
-                  if (cliente) {
-                    setValue('cliente_nome', cliente.nome);
-                    setValue('cliente_cpf', cliente.cpf);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <div className="p-2 sticky top-0 bg-white z-10">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <Input
-                        placeholder="Buscar por nome, CPF ou telefone..."
-                        value={searchCliente}
-                        onChange={(e) => setSearchCliente(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
+          {/* Card Cliente */}
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-3">Cliente *</h3>
+            <Select
+              value={watch('cliente_id')}
+              onValueChange={(value) => {
+                setValue('cliente_id', value);
+                const cliente = clientes.find(c => c.id === value);
+                if (cliente) {
+                  setValue('cliente_nome', cliente.nome);
+                  setValue('cliente_cpf', cliente.cpf);
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                <div className="p-2 sticky top-0 bg-white z-10">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder="Buscar por nome, CPF ou telefone..."
+                      value={searchCliente}
+                      onChange={(e) => setSearchCliente(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
-                  {filteredClientes.length > 0 ? (
-                    <>
-                      {searchCliente && (
-                        <div className="px-3 py-2 text-xs text-slate-500 bg-slate-50">
-                          {filteredClientes.length} cliente(s) encontrado(s)
+                </div>
+                {filteredClientes.length > 0 ? (
+                  <>
+                    {searchCliente && (
+                      <div className="px-3 py-2 text-xs text-slate-500 bg-slate-50">
+                        {filteredClientes.length} cliente(s) encontrado(s)
+                      </div>
+                    )}
+                    {filteredClientes.slice(0, 30).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <div className="flex flex-col py-1">
+                          <span className="font-medium">{c.nome}</span>
+                          <span className="text-xs text-slate-500">CPF: {c.cpf}</span>
+                          {c.telefone && (
+                            <span className="text-xs text-slate-400">Tel: {c.telefone}</span>
+                          )}
                         </div>
-                      )}
-                      {filteredClientes.slice(0, 30).map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          <div className="flex flex-col py-1">
-                            <span className="font-medium">{c.nome}</span>
-                            <span className="text-xs text-slate-500">CPF: {c.cpf}</span>
-                            {c.telefone && (
-                              <span className="text-xs text-slate-400">Tel: {c.telefone}</span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </>
-                  ) : searchCliente ? (
-                    <div className="p-6 text-center">
-                      <p className="text-sm text-slate-500 mb-2">Nenhum cliente encontrado</p>
-                      <p className="text-xs text-slate-400">Tente buscar por nome, CPF ou telefone</p>
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center text-sm text-slate-400">
-                      Digite para buscar clientes
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-              {errors.cliente_id && <p className="text-sm text-red-500 mt-1">Cliente é obrigatório</p>}
-            </div>
+                      </SelectItem>
+                    ))}
+                  </>
+                ) : searchCliente ? (
+                  <div className="p-6 text-center">
+                    <p className="text-sm text-slate-500 mb-2">Nenhum cliente encontrado</p>
+                    <p className="text-xs text-slate-400">Tente buscar por nome, CPF ou telefone</p>
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-slate-400">
+                    Digite para buscar clientes
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            {errors.cliente_id && <p className="text-sm text-red-500 mt-1">Cliente é obrigatório</p>}
+          </div>
             
-            {/* Administradora */}
-            <div>
-              <Label>Administradora *</Label>
-              <Select
-                value={watch('administradora_id')}
-                onValueChange={(value) => {
-                  setValue('administradora_id', value);
-                  setValue('tabela_id', '');
-                  const admin = administradoras.find(a => a.id === value);
-                  if (admin) {
-                    setValue('administradora_nome', admin.nome_fantasia || admin.razao_social);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {administradoras.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.nome_fantasia || a.razao_social}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Tabela */}
-            <div>
-              <Label>Tabela de Consórcio *</Label>
-              <Select
-                value={watch('tabela_id')}
-                onValueChange={(value) => setValue('tabela_id', value)}
-                disabled={!administradoraId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tabelas.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.nomeTabela} ({t.tipoEmpresa})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Grupo e Cota */}
-            <div>
-              <Label htmlFor="grupo">Grupo *</Label>
-              <Input
-                id="grupo"
-                {...register('grupo', { required: true })}
-                placeholder="Ex: 1234"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="cota">Cota</Label>
-              <Input
-                id="cota"
-                {...register('cota')}
-                placeholder="Ex: 56 (deixar vazio = pendente)"
-              />
-              <p className="text-xs text-slate-500 mt-1">Se não preencher, a venda ficará pendente</p>
-            </div>
-            
-            {/* Contrato */}
-            <div>
-              <Label htmlFor="contrato">Contrato (opcional)</Label>
-              <Input
-                id="contrato"
-                {...register('contrato')}
-                placeholder="Número do contrato"
-              />
-            </div>
-            
-            {/* Tipo Empresa - somente leitura */}
-            <div>
-              <Label>Tipo Empresa</Label>
-              <Input
-                value={tipoEmpresa || '-'}
-                disabled
-                className="bg-slate-100"
-              />
-            </div>
-            
-            {/* Valor Crédito */}
-            <div>
-              <Label htmlFor="valorCredito">Valor do Crédito *</Label>
-              <Input
-                id="valorCredito"
-                type="number"
-                step="0.01"
-                {...register('valorCredito', { required: true, min: 0.01 })}
-                placeholder="0,00"
-              />
-              {errors.valorCredito && <p className="text-sm text-red-500 mt-1">Valor obrigatório e deve ser maior que zero</p>}
-            </div>
-            
-            {/* Taxa Administração */}
-            <div>
-              <Label htmlFor="taxaAdministracao">Taxa Administração (%) *</Label>
-              <Input
-                id="taxaAdministracao"
-                type="number"
-                step="0.01"
-                {...register('taxaAdministracao', { required: true, min: 0.01 })}
-                placeholder="0,00"
-              />
-              {errors.taxaAdministracao && <p className="text-sm text-red-500 mt-1">Taxa obrigatória e deve ser maior que zero</p>}
-            </div>
-            
-            {/* Percentual Comissão - calculado */}
-            <div>
-              <Label>Percentual Comissão (calculado)</Label>
-              <Input
-                value={watch('percentualComissao')?.toFixed(2) || '0.00'}
-                disabled
-                className="bg-slate-100"
-              />
-            </div>
-            
-            {/* Valor Comissão - calculado */}
-            <div>
-              <Label>Valor Comissão (calculado)</Label>
-              <Input
-                value={`R$ ${(watch('valorComissao') || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                disabled
-                className="bg-slate-100 font-semibold text-green-700"
-              />
-            </div>
-            
-            {/* Vendedor - só admin pode alterar */}
-            {isAdmin && (
+          {/* Card Administradora e Tabela */}
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-3">Administradora e Tabela</h3>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Vendedor</Label>
+                <Label>Administradora *</Label>
                 <Select
-                  value={watch('vendedor_id')}
+                  value={watch('administradora_id')}
                   onValueChange={(value) => {
-                    setValue('vendedor_id', value);
-                    const vendedor = vendedores.find(v => v.id === value);
-                    if (vendedor) {
-                      setValue('vendedor_nome', vendedor.full_name);
-                      if (vendedor.gerente_id) {
-                        setValue('gerente_id', vendedor.gerente_id);
-                        const gerente = gerentes.find(g => g.id === vendedor.gerente_id);
-                        if (gerente) {
-                          setValue('gerente_nome', gerente.full_name);
-                        }
-                      }
+                    setValue('administradora_id', value);
+                    setValue('tabela_id', '');
+                    const admin = administradoras.find(a => a.id === value);
+                    if (admin) {
+                      setValue('administradora_nome', admin.nome_fantasia || admin.razao_social);
                     }
                   }}
                 >
@@ -396,40 +257,189 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {vendedores.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                    {administradoras.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.nome_fantasia || a.razao_social}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
-            
-            {/* Data Venda */}
-            <div>
-              <Label htmlFor="data_venda">Data da Venda *</Label>
-              <Input
-                id="data_venda"
-                type="date"
-                {...register('data_venda', { required: true })}
-              />
+              
+              <div>
+                <Label>Tabela de Consórcio *</Label>
+                <Select
+                  value={watch('tabela_id')}
+                  onValueChange={(value) => setValue('tabela_id', value)}
+                  disabled={!administradoraId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tabelas.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.nomeTabela} ({t.tipoEmpresa})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+          </div>
             
-            {/* Status */}
-            <div>
-              <Label>Status</Label>
-              <Select
-                value={watch('status')}
-                onValueChange={(value) => setValue('status', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ativa">Ativa</SelectItem>
-                  <SelectItem value="cancelada">Cancelada</SelectItem>
-                  <SelectItem value="contemplada">Contemplada</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Card Grupo, Cota e Contrato */}
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-3">Dados do Consórcio</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="grupo">Grupo *</Label>
+                <Input
+                  id="grupo"
+                  {...register('grupo', { required: true })}
+                  placeholder="Ex: 1234"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="cota">Cota</Label>
+                <Input
+                  id="cota"
+                  {...register('cota')}
+                  placeholder="Ex: 56 (deixar vazio = pendente)"
+                />
+                <p className="text-xs text-slate-500 mt-1">Se não preencher, ficará pendente</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="contrato">Contrato (opcional)</Label>
+                <Input
+                  id="contrato"
+                  {...register('contrato')}
+                  placeholder="Número do contrato"
+                />
+              </div>
+              
+              <div>
+                <Label>Tipo Empresa</Label>
+                <Input
+                  value={tipoEmpresa || '-'}
+                  disabled
+                  className="bg-slate-100"
+                />
+              </div>
+            </div>
+          </div>
+            
+          {/* Card Valores e Comissão */}
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-3">Valores e Comissão</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="valorCredito">Valor do Crédito *</Label>
+                <Input
+                  id="valorCredito"
+                  type="number"
+                  step="0.01"
+                  {...register('valorCredito', { required: true, min: 0.01 })}
+                  placeholder="0,00"
+                />
+                {errors.valorCredito && <p className="text-sm text-red-500 mt-1">Valor obrigatório</p>}
+              </div>
+              
+              <div>
+                <Label htmlFor="taxaAdministracao">Taxa Administração (%) *</Label>
+                <Input
+                  id="taxaAdministracao"
+                  type="number"
+                  step="0.01"
+                  {...register('taxaAdministracao', { required: true, min: 0.01 })}
+                  placeholder="0,00"
+                />
+                {errors.taxaAdministracao && <p className="text-sm text-red-500 mt-1">Taxa obrigatória</p>}
+              </div>
+              
+              <div>
+                <Label>Percentual Comissão (calculado)</Label>
+                <Input
+                  value={watch('percentualComissao')?.toFixed(2) || '0.00'}
+                  disabled
+                  className="bg-slate-100"
+                />
+              </div>
+              
+              <div>
+                <Label>Valor Comissão (calculado)</Label>
+                <Input
+                  value={`R$ ${(watch('valorComissao') || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  disabled
+                  className="bg-slate-100 font-semibold text-green-700"
+                />
+              </div>
+            </div>
+          </div>
+            
+          {/* Card Informações Adicionais */}
+          <div className="border rounded-lg p-4 bg-white shadow-sm">
+            <h3 className="font-semibold text-slate-900 mb-3">Informações Adicionais</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {isAdmin && (
+                <div>
+                  <Label>Vendedor</Label>
+                  <Select
+                    value={watch('vendedor_id')}
+                    onValueChange={(value) => {
+                      setValue('vendedor_id', value);
+                      const vendedor = vendedores.find(v => v.id === value);
+                      if (vendedor) {
+                        setValue('vendedor_nome', vendedor.full_name);
+                        if (vendedor.gerente_id) {
+                          setValue('gerente_id', vendedor.gerente_id);
+                          const gerente = gerentes.find(g => g.id === vendedor.gerente_id);
+                          if (gerente) {
+                            setValue('gerente_nome', gerente.full_name);
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <div>
+                <Label htmlFor="data_venda">Data da Venda *</Label>
+                <Input
+                  id="data_venda"
+                  type="date"
+                  {...register('data_venda', { required: true })}
+                />
+              </div>
+              
+              <div>
+                <Label>Status</Label>
+                <Select
+                  value={watch('status')}
+                  onValueChange={(value) => setValue('status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativa">Ativa</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                    <SelectItem value="contemplada">Contemplada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           
