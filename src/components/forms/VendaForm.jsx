@@ -187,8 +187,18 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 }
               }}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
+              <SelectTrigger className="h-auto min-h-[60px] py-3">
+                <SelectValue placeholder="Selecione um cliente">
+                  {watch('cliente_id') && (() => {
+                    const cliente = clientes.find(c => c.id === watch('cliente_id'));
+                    return cliente ? (
+                      <div className="flex flex-col items-start text-left">
+                        <span className="font-medium">{cliente.nome}</span>
+                        <span className="text-xs text-slate-500">CPF: {cliente.cpf}</span>
+                      </div>
+                    ) : null;
+                  })()}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <div className="p-2 sticky top-0 bg-white z-10">
