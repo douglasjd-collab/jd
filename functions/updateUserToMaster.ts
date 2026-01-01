@@ -14,11 +14,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { email } = await req.json();
+    const { email, perfil } = await req.json();
 
     if (!email) {
       return Response.json({ error: 'Email é obrigatório' }, { status: 400 });
     }
+
+    const targetPerfil = perfil || 'super_admin';
 
     // Buscar usuário
     const users = await base44.asServiceRole.entities.User.filter({ email });
@@ -29,14 +31,14 @@ Deno.serve(async (req) => {
 
     const targetUser = users[0];
 
-    // Atualizar para master
+    // Atualizar perfil
     await base44.asServiceRole.entities.User.update(targetUser.id, {
-      perfil: 'master'
+      perfil: targetPerfil
     });
 
     return Response.json({ 
       success: true, 
-      message: `Usuário ${email} atualizado para Master com sucesso!` 
+      message: `Usuário ${email} atualizado para ${targetPerfil === 'super_admin' ? 'Super Admin' : 'Master'} com sucesso!` 
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
