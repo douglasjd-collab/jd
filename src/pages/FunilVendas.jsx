@@ -91,7 +91,7 @@ export default function FunilVendas() {
     }));
   };
 
-  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
+  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
   const isGerente = currentUser?.perfil === 'gerente';
   const podeVerTodos = isAdmin || isGerente;
   const podeAlterarResponsavel = isAdmin || isGerente;
@@ -448,6 +448,15 @@ export default function FunilVendas() {
 
     const oportunidadeId = result.draggableId;
     const novaEtapaId = result.destination.droppableId;
+    const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
+    
+    // Verificar permissões: usuários superiores ou responsável pela oportunidade podem mover
+    const podeMovimentar = podeAlterarQuadro || oportunidade?.vendedor_id === currentUser?.id;
+    
+    if (!podeMovimentar) {
+      toast.error('Você não tem permissão para mover esta oportunidade');
+      return;
+    }
 
     try {
       await moverOportunidadeMutation.mutateAsync({ oportunidadeId, novaEtapaId });
