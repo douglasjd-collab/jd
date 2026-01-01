@@ -163,7 +163,13 @@ export default function FunilVendas() {
   });
 
   const atualizarOportunidadeMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Oportunidade.update(id, data),
+    mutationFn: ({ id, data }) => {
+      const oportunidade = oportunidades.find(o => o.id === id);
+      return base44.entities.Oportunidade.update(id, {
+        ...data,
+        empresa_id: oportunidade?.empresa_id || currentUser?.empresa_id
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
       setFormOpen(false);
@@ -193,7 +199,7 @@ export default function FunilVendas() {
       const responsavelPrincipal = responsaveisData[0];
       
       await base44.entities.Oportunidade.update(oportunidadeId, {
-        empresa_id: oportunidade.empresa_id,
+        empresa_id: oportunidade.empresa_id || currentUser?.empresa_id,
         titulo: oportunidade.titulo,
         etapa_id: oportunidade.etapa_id,
         vendedor_id: responsavelPrincipal.id,
@@ -297,7 +303,7 @@ export default function FunilVendas() {
       // Atualizar data de última movimentação
       const oportunidadeAtual = oportunidades.find(o => o.id === oportunidadeId);
       await base44.entities.Oportunidade.update(oportunidadeId, {
-        empresa_id: oportunidadeAtual.empresa_id,
+        empresa_id: oportunidadeAtual.empresa_id || currentUser?.empresa_id,
         titulo: oportunidadeAtual.titulo,
         etapa_id: oportunidadeAtual.etapa_id,
         vendedor_id: oportunidadeAtual.vendedor_id,
@@ -355,14 +361,9 @@ export default function FunilVendas() {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
-      // Verificar se empresa_id existe
-      if (!oportunidade?.empresa_id) {
-        throw new Error('Oportunidade sem empresa vinculada. Entre em contato com o administrador.');
-      }
-
       // Atualizar oportunidade - incluir empresa_id para atender requisito obrigatório
       await base44.entities.Oportunidade.update(oportunidadeId, {
-        empresa_id: oportunidade.empresa_id,
+        empresa_id: oportunidade.empresa_id || currentUser?.empresa_id,
         titulo: oportunidade.titulo,
         vendedor_id: oportunidade.vendedor_id,
         etapa_id: novaEtapaId,
