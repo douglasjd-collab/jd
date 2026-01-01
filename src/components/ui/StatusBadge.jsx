@@ -8,6 +8,7 @@ const statusConfig = {
   inativo: { label: 'Inativo', className: 'bg-slate-100 text-slate-700 hover:bg-slate-100' },
   inativa: { label: 'Inativa', className: 'bg-slate-100 text-slate-700 hover:bg-slate-100' },
   cancelada: { label: 'Cancelada', className: 'bg-red-100 text-red-700 hover:bg-red-100' },
+  em_atraso: { label: 'Em Atraso', className: 'bg-orange-100 text-orange-700 hover:bg-orange-100' },
   contemplada: { label: 'Contemplada', className: 'bg-blue-100 text-blue-700 hover:bg-blue-100' },
   prevista: { label: 'Prevista', className: 'bg-amber-100 text-amber-700 hover:bg-amber-100' },
   recebida: { label: 'Recebida', className: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' },

@@ -309,6 +309,7 @@ export default function Vendas() {
               <SelectItem value="ativa">Ativas</SelectItem>
               <SelectItem value="pendente">Pendentes</SelectItem>
               <SelectItem value="cancelada">Canceladas</SelectItem>
+              <SelectItem value="em_atraso">Em Atraso</SelectItem>
               <SelectItem value="contemplada">Contempladas</SelectItem>
             </SelectContent>
           </Select>

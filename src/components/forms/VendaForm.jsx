@@ -458,7 +458,9 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ativa">Ativa</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
                     <SelectItem value="cancelada">Cancelada</SelectItem>
+                    <SelectItem value="em_atraso">Em Atraso</SelectItem>
                     <SelectItem value="contemplada">Contemplada</SelectItem>
                   </SelectContent>
                 </Select>
