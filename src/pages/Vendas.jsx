@@ -58,8 +58,14 @@ export default function Vendas() {
     mutationFn: async (data) => {
       const user = await base44.auth.me();
       
+      // Se cota estiver vazia, marcar status como pendente
+      const vendaData = {
+        ...data,
+        status: !data.cota || data.cota.trim() === '' ? 'pendente' : data.status
+      };
+      
       // Criar venda
-      const venda = await base44.entities.Venda.create(data);
+      const venda = await base44.entities.Venda.create(vendaData);
       
       // HU 05 - Buscar tabela para gerar comissões automaticamente
       const tabela = tabelas.find(t => t.id === data.tabela_id);
@@ -301,6 +307,7 @@ export default function Vendas() {
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="ativa">Ativas</SelectItem>
+              <SelectItem value="pendente">Pendentes</SelectItem>
               <SelectItem value="cancelada">Canceladas</SelectItem>
               <SelectItem value="contemplada">Contempladas</SelectItem>
             </SelectContent>

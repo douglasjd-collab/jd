@@ -296,12 +296,13 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             </div>
             
             <div>
-              <Label htmlFor="cota">Cota *</Label>
+              <Label htmlFor="cota">Cota</Label>
               <Input
                 id="cota"
-                {...register('cota', { required: true })}
-                placeholder="Ex: 56"
+                {...register('cota')}
+                placeholder="Ex: 56 (deixar vazio = pendente)"
               />
+              <p className="text-xs text-slate-500 mt-1">Se não preencher, a venda ficará pendente</p>
             </div>
             
             {/* Contrato */}
@@ -438,7 +439,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading || !watch('tabela_id') || parseFloat(watch('valorCredito')) <= 0 || parseFloat(watch('taxaAdministracao')) <= 0} 
+              disabled={isLoading || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || parseFloat(watch('valorCredito')) <= 0 || parseFloat(watch('taxaAdministracao')) <= 0} 
               className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
             >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
