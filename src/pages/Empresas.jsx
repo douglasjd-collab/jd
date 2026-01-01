@@ -54,22 +54,30 @@ export default function Empresas() {
     queryFn: () => base44.entities.Empresa.list('-created_date'),
   });
 
-  const { data: admins = [] } = useQuery({
-    queryKey: ['admins-disponiveis'],
-    queryFn: async () => {
-      const users = await base44.entities.User.filter({ perfil: 'admin', status: 'ativo' });
-      return users;
-    },
-  });
+
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Empresa.create(data),
+    mutationFn: async (data) => {
+      // Criar empresa
+      const empresa = await base44.entities.Empresa.create(data);
+      
+      // Criar usuário ADM automaticamente
+      const emailAdmin = data.email;
+      const nomeAdmin = `Admin ${data.nome}`;
+      
+      await base44.users.inviteUser(emailAdmin, 'admin');
+      
+      return empresa;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       setFormOpen(false);
       reset();
-      toast.success('Empresa criada!');
+      toast.success('Empresa e usuário ADM criados com sucesso!');
     },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao criar empresa');
+    }
   });
 
   const updateMutation = useMutation({
@@ -98,9 +106,15 @@ export default function Empresas() {
       setSelectedEmpresa(empresa);
     } else {
       reset({
+        cpf_cnpj: '',
         nome: '',
-        cnpj: '',
-        admin_id: '',
+        telefone: '',
+        email: '',
+        endereco_rua: '',
+        endereco_numero: '',
+        endereco_complemento: '',
+        endereco_cep: '',
+        endereco_estado: '',
         status: 'ativa'
       });
       setSelectedEmpresa(null);
@@ -109,37 +123,54 @@ export default function Empresas() {
   };
 
   const onSubmit = async (data) => {
-    if (!data.nome || !data.cnpj) {
-      toast.error('Preencha os campos obrigatórios');
+    if (!data.nome || !data.cpf_cnpj || !data.telefone || !data.email || !data.endereco_rua || !data.endereco_numero || !data.endereco_cep || !data.endereco_estado) {
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
-    const admin = admins.find(a => a.id === data.admin_id);
-    const submitData = {
-      ...data,
-      admin_nome: admin?.full_name || ''
-    };
-
     if (selectedEmpresa) {
-      updateMutation.mutate({ id: selectedEmpresa.id, data: submitData });
+      updateMutation.mutate({ id: selectedEmpresa.id, data });
     } else {
-      createMutation.mutate(submitData);
+      createMutation.mutate(data);
     }
   };
 
-  const formatCNPJ = (value) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{2})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1.$2')
-      .replace(/(\d{3})(\d)/, '$1/$2')
-      .replace(/(\d{4})(\d)/, '$1-$2')
-      .replace(/(-\d{2})\d+?$/, '$1');
+  const formatCPFCNPJ = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      // CPF
+      return numbers
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
+    } else {
+      // CNPJ
+      return numbers
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
+    }
+  };
+
+  const formatPhone = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 10) {
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    }
+    return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  };
+
+  const formatCEP = (value) => {
+    return value.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').substring(0, 9);
   };
 
   const filteredEmpresas = empresas.filter(e => 
     e.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    e.cnpj?.includes(search)
+    e.cpf_cnpj?.includes(search) ||
+    e.email?.toLowerCase().includes(search.toLowerCase())
   );
 
   const columns = [
@@ -156,14 +187,19 @@ export default function Empresas() {
           )}
           <div>
             <p className="font-medium text-slate-900">{row.nome}</p>
-            <p className="text-sm text-slate-500">{row.cnpj}</p>
+            <p className="text-sm text-slate-500">{row.cpf_cnpj}</p>
           </div>
         </div>
       )
     },
     {
-      header: 'Administrador',
-      cell: (row) => row.admin_nome || 'Não definido'
+      header: 'Contato',
+      cell: (row) => (
+        <div>
+          <p className="text-sm text-slate-900">{row.email}</p>
+          <p className="text-sm text-slate-500">{row.telefone}</p>
+        </div>
+      )
     },
     {
       header: 'Status',
@@ -228,7 +264,19 @@ export default function Empresas() {
           <DialogHeader>
             <DialogTitle>{selectedEmpresa ? 'Editar Empresa' : 'Nova Empresa'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div>
+              <Label htmlFor="cpf_cnpj">CPF/CNPJ *</Label>
+              <Input
+                id="cpf_cnpj"
+                {...register('cpf_cnpj', { required: true })}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                onChange={(e) => setValue('cpf_cnpj', formatCPFCNPJ(e.target.value))}
+                maxLength={18}
+              />
+              {errors.cpf_cnpj && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+            </div>
+
             <div>
               <Label htmlFor="nome">Nome da Empresa *</Label>
               <Input
@@ -239,37 +287,123 @@ export default function Empresas() {
               {errors.nome && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
             </div>
 
-            <div>
-              <Label htmlFor="cnpj">CNPJ *</Label>
-              <Input
-                id="cnpj"
-                {...register('cnpj', { required: true })}
-                placeholder="00.000.000/0000-00"
-                onChange={(e) => setValue('cnpj', formatCNPJ(e.target.value))}
-              />
-              {errors.cnpj && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="telefone">Telefone *</Label>
+                <Input
+                  id="telefone"
+                  {...register('telefone', { required: true })}
+                  placeholder="(00) 00000-0000"
+                  onChange={(e) => setValue('telefone', formatPhone(e.target.value))}
+                  maxLength={15}
+                />
+                {errors.telefone && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  {...register('email', { required: true })}
+                  placeholder="contato@empresa.com"
+                />
+                {errors.email && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+              </div>
             </div>
 
-            <div>
-              <Label>Administrador da Empresa</Label>
-              <Select
-                value={watch('admin_id') || ''}
-                onValueChange={(value) => setValue('admin_id', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um ADM" />
-                </SelectTrigger>
-                <SelectContent>
-                  {admins.map((admin) => (
-                    <SelectItem key={admin.id} value={admin.id}>
-                      {admin.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="border-t pt-4 mt-4">
+              <h3 className="font-semibold mb-3">Endereço</h3>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="endereco_rua">Rua *</Label>
+                  <Input
+                    id="endereco_rua"
+                    {...register('endereco_rua', { required: true })}
+                    placeholder="Rua/Avenida"
+                  />
+                  {errors.endereco_rua && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+                </div>
+
+                <div>
+                  <Label htmlFor="endereco_numero">Número *</Label>
+                  <Input
+                    id="endereco_numero"
+                    {...register('endereco_numero', { required: true })}
+                    placeholder="123"
+                  />
+                  {errors.endereco_numero && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="endereco_complemento">Complemento</Label>
+                  <Input
+                    id="endereco_complemento"
+                    {...register('endereco_complemento')}
+                    placeholder="Sala, Andar..."
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="endereco_cep">CEP *</Label>
+                  <Input
+                    id="endereco_cep"
+                    {...register('endereco_cep', { required: true })}
+                    placeholder="00000-000"
+                    onChange={(e) => setValue('endereco_cep', formatCEP(e.target.value))}
+                    maxLength={9}
+                  />
+                  {errors.endereco_cep && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <Label htmlFor="endereco_estado">Estado *</Label>
+                <Select
+                  value={watch('endereco_estado') || ''}
+                  onValueChange={(value) => setValue('endereco_estado', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AC">Acre</SelectItem>
+                    <SelectItem value="AL">Alagoas</SelectItem>
+                    <SelectItem value="AP">Amapá</SelectItem>
+                    <SelectItem value="AM">Amazonas</SelectItem>
+                    <SelectItem value="BA">Bahia</SelectItem>
+                    <SelectItem value="CE">Ceará</SelectItem>
+                    <SelectItem value="DF">Distrito Federal</SelectItem>
+                    <SelectItem value="ES">Espírito Santo</SelectItem>
+                    <SelectItem value="GO">Goiás</SelectItem>
+                    <SelectItem value="MA">Maranhão</SelectItem>
+                    <SelectItem value="MT">Mato Grosso</SelectItem>
+                    <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                    <SelectItem value="MG">Minas Gerais</SelectItem>
+                    <SelectItem value="PA">Pará</SelectItem>
+                    <SelectItem value="PB">Paraíba</SelectItem>
+                    <SelectItem value="PR">Paraná</SelectItem>
+                    <SelectItem value="PE">Pernambuco</SelectItem>
+                    <SelectItem value="PI">Piauí</SelectItem>
+                    <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                    <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                    <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                    <SelectItem value="RO">Rondônia</SelectItem>
+                    <SelectItem value="RR">Roraima</SelectItem>
+                    <SelectItem value="SC">Santa Catarina</SelectItem>
+                    <SelectItem value="SP">São Paulo</SelectItem>
+                    <SelectItem value="SE">Sergipe</SelectItem>
+                    <SelectItem value="TO">Tocantins</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.endereco_estado && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+              </div>
             </div>
 
-            <div>
+            <div className="border-t pt-4">
               <Label>Status</Label>
               <Select
                 value={watch('status') || 'ativa'}
@@ -284,6 +418,14 @@ export default function Empresas() {
                 </SelectContent>
               </Select>
             </div>
+
+            {!selectedEmpresa && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-900">
+                  <strong>ℹ️ Importante:</strong> Um usuário administrador será criado automaticamente usando o email informado.
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>

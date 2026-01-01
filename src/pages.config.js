@@ -6,6 +6,7 @@ import Comissoes from './pages/Comissoes';
 import ConfiguracaoFunil from './pages/ConfiguracaoFunil';
 import Configuracoes from './pages/Configuracoes';
 import Dashboard from './pages/Dashboard';
+import Empresas from './pages/Empresas';
 import FunilVendas from './pages/FunilVendas';
 import Importacao from './pages/Importacao';
 import ImportacaoDetalhes from './pages/ImportacaoDetalhes';
@@ -21,7 +22,6 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import Empresas from './pages/Empresas';
 import __Layout from './Layout.jsx';
 
 
@@ -34,6 +34,7 @@ export const PAGES = {
     "ConfiguracaoFunil": ConfiguracaoFunil,
     "Configuracoes": Configuracoes,
     "Dashboard": Dashboard,
+    "Empresas": Empresas,
     "FunilVendas": FunilVendas,
     "Importacao": Importacao,
     "ImportacaoDetalhes": ImportacaoDetalhes,
@@ -49,7 +50,6 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "Empresas": Empresas,
 }
 
 export const pagesConfig = {
