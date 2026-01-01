@@ -57,7 +57,25 @@ export default function Empresas() {
 
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Empresa.create(data),
+    mutationFn: async (data) => {
+      // Buscar todas as empresas para gerar o próximo código
+      const allEmpresas = await base44.entities.Empresa.list();
+      
+      // Extrair números dos códigos existentes (EMP01 -> 1, EMP02 -> 2)
+      const numeros = allEmpresas
+        .map(e => e.codigo?.match(/EMP(\d+)/)?.[1])
+        .filter(Boolean)
+        .map(Number);
+      
+      // Encontrar o próximo número
+      const proximoNumero = numeros.length > 0 ? Math.max(...numeros) + 1 : 1;
+      
+      // Formatar com zeros à esquerda (EMP01, EMP02, etc)
+      const codigo = `EMP${String(proximoNumero).padStart(2, '0')}`;
+      
+      // Criar empresa com o código gerado
+      return base44.entities.Empresa.create({ ...data, codigo });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       setFormOpen(false);
@@ -172,7 +190,14 @@ export default function Empresas() {
             </div>
           )}
           <div>
-            <p className="font-medium text-slate-900">{row.nome}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-slate-900">{row.nome}</p>
+              {row.codigo && (
+                <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                  {row.codigo}
+                </span>
+              )}
+            </div>
             <p className="text-sm text-slate-500">{row.cpf_cnpj}</p>
           </div>
         </div>
