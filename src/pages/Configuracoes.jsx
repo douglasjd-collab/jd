@@ -26,7 +26,9 @@ import {
   Percent, 
   Plus, 
   Trash2,
-  Loader2
+  Loader2,
+  Zap,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import IntegracaoCanopus from '@/components/configuracoes/IntegracaoCanopus';
@@ -80,6 +82,66 @@ export default function Configuracoes() {
         title="Configurações"
         subtitle="Configure as regras do sistema"
       />
+
+      {/* Backend Functions */}
+      <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-blue-600">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <CardTitle>Backend Functions</CardTitle>
+                <CardDescription>
+                  Funcionalidades avançadas e automações do sistema
+                </CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-white rounded-xl border-2 border-blue-100">
+            <h4 className="font-semibold text-slate-900 mb-2">O que você ganha:</h4>
+            <ul className="space-y-2 text-sm text-slate-700">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Geração automática de códigos</strong> - EMP001, EMP002...</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Validações server-side</strong> - empresa_id, campos obrigatórios</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Integração RPA Canopus</strong> - sincronização automática de clientes</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Cálculos de comissão</strong> - processamento automático e confiável</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Filtros inteligentes</strong> - clientes visíveis por perfil/empresa</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => window.open('https://base44.dev/dashboard', '_blank')}
+              className="bg-blue-600 hover:bg-blue-700 gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              Habilitar Backend Functions
+              <ExternalLink className="w-3 h-3" />
+            </Button>
+            <p className="text-xs text-slate-500">
+              Acesse Dashboard → Settings → Enable Backend Functions
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Integração Canopus */}
       <IntegracaoCanopus />
