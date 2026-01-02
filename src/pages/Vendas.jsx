@@ -284,7 +284,12 @@ export default function Vendas() {
     },
     {
       header: 'Data',
-      cell: (row) => row.data_venda ? format(new Date(row.data_venda), 'dd/MM/yyyy') : '-'
+      cell: (row) => {
+        if (!row.data_venda) return '-';
+        // Adiciona 'T12:00:00' para evitar problemas de timezone
+        const date = new Date(row.data_venda + 'T12:00:00');
+        return format(date, 'dd/MM/yyyy');
+      }
     },
     {
       header: 'Status',
