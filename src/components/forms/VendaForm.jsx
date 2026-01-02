@@ -72,9 +72,19 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
   // React Query - Vendedores
   const { data: vendedores = [] } = useQuery({
-    queryKey: ['vendedores-venda-form'],
+    queryKey: ['vendedores-venda-form', empresaId],
     enabled: open,
-    queryFn: () => base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
+    queryFn: async () => {
+      const result = await base44.entities.User.list();
+      console.log('Todos os usuários:', result);
+      const vendedoresAtivos = result.filter(u => 
+        u.perfil === 'vendedor' && 
+        u.status === 'ativo' &&
+        (!empresaId || u.empresa_id === empresaId || isMaster)
+      );
+      console.log('Vendedores filtrados:', vendedoresAtivos);
+      return vendedoresAtivos;
+    },
   });
 
   // React Query - Gerentes
