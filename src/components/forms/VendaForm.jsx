@@ -21,7 +21,7 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
-export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser }) {
+export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser, oportunidade }) {
   const [clientes, setClientes] = useState([]);
   const [administradoras, setAdministradoras] = useState([]);
   const [tabelas, setTabelas] = useState([]);
@@ -32,15 +32,15 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: venda || {
-      cliente_id: '',
+      cliente_id: oportunidade?.cliente_id || '',
       administradora_id: '',
       tabela_id: '',
       grupo: '',
       cota: '',
       contrato: '',
-      valorCredito: 0,
+      valorCredito: oportunidade?.valor_estimado || 0,
       taxaAdministracao: 0,
-      vendedor_id: currentUser?.id || '',
+      vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
       gerente_id: currentUser?.gerente_id || '',
       data_venda: format(new Date(), 'yyyy-MM-dd'),
       status: 'ativa'
