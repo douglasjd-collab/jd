@@ -354,38 +354,45 @@ export default function FunilVendas() {
   const moverOportunidadeMutation = useMutation({
     mutationFn: async ({ oportunidadeId, novaEtapaId, updates = {} }) => {
       const user = await base44.auth.me();
+      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
+      const etapaDestino = etapas.find(e => e.id === novaEtapaId);
 
-      // Tenta pegar empresa_id de algum lugar confiável
+      // ✅ empresa_id com fallback REAL (prioriza o que já existe na oportunidade)
       const empresaId =
         updates.empresa_id ||
+        oportunidade?.empresa_id ||
+        currentUserFull?.empresa_id ||
+        currentUser?.empresa_id ||
         user?.empresa_id ||
         user?.empresa?.id;
 
       if (!empresaId) {
-        throw new Error("empresa_id não encontrado. Usuário sem empresa vinculada.");
+        throw new Error("empresa_id não encontrado. Verifique se o usuário e a oportunidade estão vinculados a uma empresa.");
       }
 
-      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
-      const etapaDestino = etapas.find(e => e.id === novaEtapaId);
-
-      // HU 04 - Validações de regras (apenas aviso, não bloqueia)
+      // HU 04 - avisos
       if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
-      // ✅ ENVIAR empresa_id SEMPRE
+      // ✅ UPDATE sempre com empresa_id + campos essenciais
       await base44.entities.Oportunidade.update(oportunidadeId, {
         ...updates,
-        etapa_id: novaEtapaId,
         empresa_id: empresaId,
-        titulo: oportunidade?.titulo,
-        vendedor_id: oportunidade?.vendedor_id,
+        etapa_id: novaEtapaId,
         etapa_nome: etapaDestino?.nome || '',
+        titulo: oportunidade?.titulo || '',
+        vendedor_id: oportunidade?.vendedor_id || '',
         data_ultima_movimentacao: new Date().toISOString(),
-        status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
+        status:
+          etapaDestino?.tipo === 'ganho'
+            ? 'ganha'
+            : etapaDestino?.tipo === 'perdida'
+            ? 'perdida'
+            : 'aberta',
       });
 
-      // HU 03 - Registrar movimentação no histórico
+      // histórico
       await base44.entities.MovimentacaoFunil.create({
         oportunidade_id: oportunidadeId,
         etapa_origem_id: oportunidade?.etapa_id,
@@ -396,12 +403,12 @@ export default function FunilVendas() {
         usuario_nome: user.full_name
       });
 
-      // HU 07 - Integração com vendas
+      // integração com vendas
       if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
         return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
       }
 
-      // HU 08 - Auditoria
+      // auditoria
       await base44.entities.LogAuditoria.create({
         usuario_id: user.id,
         usuario_nome: user.full_name,
@@ -413,60 +420,50 @@ export default function FunilVendas() {
 
       return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
     },
-      onSuccess: (data) => {
+
+    onSuccess: (data) => {
       if (data?.abrirFormVenda && data?.oportunidade) {
-        // Abrir formulário de venda com dados da oportunidade
         setOportunidadeParaVenda(data.oportunidade);
         setVendaFormOpen(true);
         toast.success('Oportunidade movida para "Ganho". Registre a venda agora!');
       }
-      },
-    onMutate: async ({ oportunidadeId, novaEtapaId }) => {
-      // Cancelar queries em andamento
-      await queryClient.cancelQueries({ queryKey: ['oportunidades'] });
+    },
 
-      // Snapshot do estado anterior
+    onMutate: async ({ oportunidadeId, novaEtapaId }) => {
+      await queryClient.cancelQueries({ queryKey: ['oportunidades'] });
       const previousOportunidades = queryClient.getQueryData(['oportunidades']);
 
-      // Atualização otimista
       queryClient.setQueryData(['oportunidades'], (old) => {
         if (!old || !Array.isArray(old)) return old;
+        const etapaDestino = etapas.find(e => e.id === novaEtapaId);
+
         return old.map(o => {
-          if (o.id === oportunidadeId) {
-            const etapaDestino = etapas.find(e => e.id === novaEtapaId);
-            return {
-              ...o,
-              etapa_id: novaEtapaId,
-              etapa_nome: etapaDestino?.nome || '',
-              data_ultima_movimentacao: new Date().toISOString(),
-              status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
-            };
-          }
-          return o;
+          if (o.id !== oportunidadeId) return o;
+          return {
+            ...o,
+            etapa_id: novaEtapaId,
+            etapa_nome: etapaDestino?.nome || '',
+            data_ultima_movimentacao: new Date().toISOString(),
+            status:
+              etapaDestino?.tipo === 'ganho'
+                ? 'ganha'
+                : etapaDestino?.tipo === 'perdida'
+                ? 'perdida'
+                : 'aberta'
+          };
         });
       });
 
       return { previousOportunidades };
     },
+
     onError: (error, variables, context) => {
-      // Rollback em caso de erro
       if (context?.previousOportunidades) {
         queryClient.setQueryData(['oportunidades'], context.previousOportunidades);
       }
       toast.error(error.message || 'Erro ao mover oportunidade');
-      
-      // Log de auditoria do erro (apenas se tiver usuário)
-      if (currentUser?.id) {
-        base44.entities.LogAuditoria.create({
-          usuario_id: currentUser.id,
-          usuario_nome: currentUser.full_name,
-          acao: `Erro ao mover oportunidade: ${error.message}`,
-          entidade: 'Oportunidade',
-          entidade_id: variables.oportunidadeId,
-          tipo: 'edicao'
-        }).catch(console.error);
-      }
     },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
     }
