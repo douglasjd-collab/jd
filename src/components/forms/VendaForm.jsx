@@ -502,9 +502,15 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     <SelectValue placeholder="Selecione o vendedor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {vendedores.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
-                    ))}
+                    {vendedores.length > 0 ? (
+                      vendedores.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-sm text-slate-500">
+                        Nenhum vendedor cadastrado
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.vendedor_id && <p className="text-sm text-red-500 mt-1">Vendedor é obrigatório</p>}
