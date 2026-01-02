@@ -19,6 +19,7 @@ import {
 import { Loader2, Search } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser }) {
   const [clientes, setClientes] = useState([]);
