@@ -39,7 +39,28 @@ export default function Configuracoes() {
     percentual: '',
     descricao: ''
   });
+  const [backendStatus, setBackendStatus] = useState(null);
+  const [verificando, setVerificando] = useState(false);
   const queryClient = useQueryClient();
+
+  const verificarBackend = async () => {
+    setVerificando(true);
+    try {
+      const response = await base44.functions.invoke('healthCheck', {});
+      if (response.data?.success) {
+        setBackendStatus('ativo');
+        toast.success('Backend Functions está ativo!');
+      } else {
+        setBackendStatus('inativo');
+        toast.error('Backend Functions não está ativo');
+      }
+    } catch (error) {
+      setBackendStatus('inativo');
+      toast.error('Backend Functions não habilitado');
+    } finally {
+      setVerificando(false);
+    }
+  };
 
   const { data: configuracoes = [], isLoading } = useQuery({
     queryKey: ['configuracoes-comissao'],
@@ -127,18 +148,56 @@ export default function Configuracoes() {
             </ul>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => window.open('https://base44.dev/dashboard', '_blank')}
-              className="bg-blue-600 hover:bg-blue-700 gap-2"
-            >
-              <Zap className="w-4 h-4" />
-              Habilitar Backend Functions
-              <ExternalLink className="w-3 h-3" />
-            </Button>
-            <p className="text-xs text-slate-500">
-              Acesse Dashboard → Settings → Enable Backend Functions
-            </p>
+          <div className="space-y-3">
+            {backendStatus === 'ativo' && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-green-900">Backend Functions está ATIVO ✓</span>
+              </div>
+            )}
+            
+            {backendStatus === 'inativo' && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-sm font-medium text-red-900">Backend Functions NÃO está ativo</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button
+                onClick={verificarBackend}
+                disabled={verificando}
+                variant="outline"
+                className="gap-2"
+              >
+                {verificando ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Settings className="w-4 h-4" />
+                )}
+                Verificar Status
+              </Button>
+
+              <Button
+                onClick={() => window.open('https://base44.dev/dashboard', '_blank')}
+                className="bg-blue-600 hover:bg-blue-700 gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                Ir para Dashboard
+                <ExternalLink className="w-3 h-3" />
+              </Button>
+            </div>
+
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <p className="text-xs font-semibold text-amber-900 mb-2">📋 Como habilitar:</p>
+              <ol className="text-xs text-amber-800 space-y-1 list-decimal list-inside">
+                <li>Clique em "Ir para Dashboard" acima</li>
+                <li>Acesse <strong>Settings</strong> no menu lateral</li>
+                <li>Encontre <strong>"Backend Functions"</strong></li>
+                <li>Clique em <strong>"Enable"</strong></li>
+                <li>Volte aqui e clique em "Verificar Status"</li>
+              </ol>
+            </div>
           </div>
         </CardContent>
       </Card>
