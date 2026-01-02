@@ -352,62 +352,26 @@ export default function FunilVendas() {
   });
 
   const moverOportunidadeMutation = useMutation({
-    mutationFn: async ({ oportunidadeId, novaEtapaId }) => {
-      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
-      const etapaDestino = etapas.find(e => e.id === novaEtapaId);
+    mutationFn: async ({ oportunidadeId, novaEtapaId, updates = {} }) => {
+      const user = await base44.auth.me();
 
-      if (!oportunidade) {
-        throw new Error('Oportunidade não encontrada');
+      // Tenta pegar empresa_id de algum lugar confiável
+      const empresaId =
+        updates.empresa_id ||
+        user?.empresa_id ||
+        user?.empresa?.id;
+
+      if (!empresaId) {
+        throw new Error("empresa_id não encontrado. Usuário sem empresa vinculada.");
       }
 
-      if (!oportunidade.empresa_id && !currentUser?.empresa_id) {
-        throw new Error('Empresa não identificada');
-      }
-
-      // HU 04 - Validações de regras (apenas aviso, não bloqueia)
-      if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
-        toast.warning('Atenção: Esta etapa requer cliente vinculado');
-      }
-
-      // Atualizar oportunidade - incluir empresa_id para atender requisito obrigatório
-      await base44.entities.Oportunidade.update(oportunidadeId, {
-        empresa_id: oportunidade.empresa_id || currentUser?.empresa_id,
-        titulo: oportunidade.titulo,
-        vendedor_id: oportunidade.vendedor_id,
+      // ✅ ENVIAR empresa_id SEMPRE
+      return base44.entities.Oportunidade.update(oportunidadeId, {
+        ...updates,
         etapa_id: novaEtapaId,
-        etapa_nome: etapaDestino?.nome || '',
-        data_ultima_movimentacao: new Date().toISOString(),
-        status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
+        empresa_id: empresaId,
       });
-
-      // HU 03 - Registrar movimentação no histórico
-      await base44.entities.MovimentacaoFunil.create({
-        oportunidade_id: oportunidadeId,
-        etapa_origem_id: oportunidade?.etapa_id,
-        etapa_origem_nome: oportunidade?.etapa_nome || '',
-        etapa_destino_id: novaEtapaId,
-        etapa_destino_nome: etapaDestino?.nome || '',
-        usuario_id: currentUser.id,
-        usuario_nome: currentUser.full_name
-      });
-
-      // HU 07 - Integração com vendas
-      if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
-        return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
-      }
-
-      // HU 08 - Auditoria
-      await base44.entities.LogAuditoria.create({
-        usuario_id: currentUser.id,
-        usuario_nome: currentUser.full_name,
-        acao: `Moveu oportunidade "${oportunidade?.titulo}" de "${oportunidade?.etapa_nome}" para "${etapaDestino?.nome}"`,
-        entidade: 'Oportunidade',
-        entidade_id: oportunidadeId,
-        tipo: 'edicao'
-      });
-
-      return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
-      },
+    },
       onSuccess: (data) => {
       if (data?.abrirFormVenda && data?.oportunidade) {
         // Abrir formulário de venda com dados da oportunidade
