@@ -67,21 +67,21 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       });
     } else {
       reset({
-        cliente_id: '',
+        cliente_id: oportunidade?.cliente_id || '',
         administradora_id: '',
         tabela_id: '',
         grupo: '',
         cota: '',
         contrato: '',
-        valorCredito: 0,
+        valorCredito: oportunidade?.valor_estimado || 0,
         taxaAdministracao: 0,
-        vendedor_id: currentUser?.id || '',
+        vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
         gerente_id: currentUser?.gerente_id || '',
         data_venda: format(new Date(), 'yyyy-MM-dd'),
         status: 'ativa'
       });
     }
-  }, [venda, setValue, reset, currentUser]);
+  }, [venda, oportunidade, setValue, reset, currentUser]);
 
   useEffect(() => {
     if (administradoraId) {
