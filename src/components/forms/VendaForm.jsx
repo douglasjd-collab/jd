@@ -135,15 +135,18 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' })
       ];
       
-      // Se for Master, buscar empresas também
-      if (currentUser?.perfil === 'master') {
+      // Se for Master ou Super Admin, buscar empresas também
+      if (currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin') {
         promises.push(base44.entities.Empresa.filter({ status: 'ativa' }));
       }
       
       const results = await Promise.all(promises);
       const [clientesData, adminData, vendedoresData, gerentesData, empresasData] = results;
       
-      console.log('Clientes carregados:', clientesData.length);
+      console.log('Dados carregados:', {
+        clientes: clientesData.length,
+        empresas: empresasData?.length || 0
+      });
       
       setClientes(clientesData);
       setAdministradoras(adminData);
@@ -151,6 +154,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       setGerentes(gerentesData);
       
       if (empresasData) {
+        console.log('Empresas carregadas:', empresasData);
         setEmpresas(empresasData);
       }
     } catch (error) {
