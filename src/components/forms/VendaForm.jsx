@@ -55,10 +55,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   const tipoEmpresa = watch('tipoEmpresa');
 
   useEffect(() => {
-    if (currentUser) {
+    if (open && currentUser) {
+      console.log('📂 Modal aberto, carregando dados...');
       loadData();
     }
-  }, [currentUser]);
+  }, [open, currentUser]);
 
   useEffect(() => {
     if (venda) {
@@ -128,7 +129,17 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
   const loadData = async () => {
     try {
-      // Buscar TODOS os clientes ativos - sem filtro por perfil ou usuário
+      if (!currentUser?.empresa_id && currentUser?.perfil !== 'master' && currentUser?.perfil !== 'super_admin') {
+        console.error('❌ Usuário sem empresa_id:', currentUser);
+        toast.error('Usuário não vinculado a uma empresa');
+        return;
+      }
+
+      console.log('🔄 Carregando dados do form com usuário:', {
+        perfil: currentUser?.perfil,
+        empresa_id: currentUser?.empresa_id
+      });
+
       const promises = [
         base44.entities.Cliente.filter({ status: 'ativo' }),
         base44.entities.Administradora.filter({ status: 'ativa' }),
@@ -136,7 +147,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' })
       ];
       
-      // Se for Master ou Super Admin, buscar empresas também
       if (currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin') {
         promises.push(base44.entities.Empresa.filter({ status: 'ativa' }));
       }
@@ -144,8 +154,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       const results = await Promise.all(promises);
       const [clientesData, adminData, vendedoresData, gerentesData, empresasData] = results;
       
-      console.log('Dados carregados:', {
+      console.log('✅ Dados carregados:', {
         clientes: clientesData.length,
+        administradoras: adminData.length,
+        vendedores: vendedoresData.length,
+        gerentes: gerentesData.length,
         empresas: empresasData?.length || 0
       });
       
@@ -155,11 +168,10 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       setGerentes(gerentesData);
       
       if (empresasData) {
-        console.log('Empresas carregadas:', empresasData);
         setEmpresas(empresasData);
       }
     } catch (error) {
-      console.error('Erro detalhado ao carregar dados:', error);
+      console.error('❌ Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados: ' + (error.message || 'Verifique suas permissões'));
     }
   };
