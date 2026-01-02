@@ -107,16 +107,18 @@ export default function TabelasConsorcio() {
 
   const onSubmit = async (data) => {
     // Validações
-    if (!data.nomeTabela || !data.administradora_id) {
+    if (!data.nomeTabela || !data.administradora_id || !data.tipoEmpresa) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
     const admin = administradoras.find(a => a.id === data.administradora_id);
+    
+    const user = await base44.auth.me();
     const submitData = {
       ...data,
-      administradora_nome: admin?.nome_fantasia || admin?.razao_social || '',
-      tipoEmpresa: admin?.tipoEmpresa || ''
+      empresa_id: user.empresa_id,
+      administradora_nome: admin?.nome_fantasia || admin?.razao_social || ''
     };
 
     // HU 08 - Auditoria
