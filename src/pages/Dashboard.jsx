@@ -92,7 +92,7 @@ export default function Dashboard() {
   });
 
   const vendasMes = filteredVendas.filter(v => {
-    const dataVenda = new Date(v.data_venda);
+    const dataVenda = new Date(v.data_venda + 'T12:00:00');
     return dataVenda >= dateRange.start && dataVenda <= dateRange.end;
   });
 
@@ -123,7 +123,7 @@ export default function Dashboard() {
       const monthStart = startOfMonth(date);
       const monthEnd = endOfMonth(date);
       const vendasDoMes = filteredVendas.filter(v => {
-        const dataVenda = new Date(v.data_venda);
+        const dataVenda = new Date(v.data_venda + 'T12:00:00');
         return dataVenda >= monthStart && dataVenda <= monthEnd;
       });
       const count = vendasDoMes.length;
@@ -381,7 +381,7 @@ export default function Dashboard() {
                       {formatCurrency(op.valor_estimado || 0)}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {op.data_cadastro_lead ? format(new Date(op.data_cadastro_lead), 'dd/MM/yyyy') : '-'}
+                      {op.data_cadastro_lead ? format(new Date(op.data_cadastro_lead + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
                     </p>
                   </div>
                 </div>
