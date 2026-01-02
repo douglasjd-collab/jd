@@ -193,6 +193,17 @@ export default function Vendas() {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }) => base44.entities.Venda.update(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendas'] });
+      toast.success('Status atualizado com sucesso!');
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar status');
+    }
+  });
+
   const handleSubmit = async (formData) => {
     try {
       console.log('📝 Dados brutos do form:', formData);
