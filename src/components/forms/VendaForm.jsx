@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,13 +23,8 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser, oportunidade }) {
-  const [clientes, setClientes] = useState([]);
-  const [administradoras, setAdministradoras] = useState([]);
-  const [tabelas, setTabelas] = useState([]);
-  const [vendedores, setVendedores] = useState([]);
-  const [gerentes, setGerentes] = useState([]);
-  const [empresas, setEmpresas] = useState([]);
   const [searchCliente, setSearchCliente] = useState('');
+  const [tabelas, setTabelas] = useState([]);
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: venda || {
@@ -54,12 +50,46 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   const taxaAdministracao = watch('taxaAdministracao');
   const tipoEmpresa = watch('tipoEmpresa');
 
-  useEffect(() => {
-    if (open && currentUser) {
-      console.log('📂 Modal aberto, carregando dados...');
-      loadData();
-    }
-  }, [open, currentUser]);
+  const empresaId = currentUser?.empresa_id;
+  const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
+
+  // React Query - Clientes
+  const { data: clientes = [], isLoading: clientesLoading } = useQuery({
+    queryKey: ['clientes-venda-form', empresaId, searchCliente],
+    enabled: open && (!!empresaId || isMaster),
+    queryFn: async () => {
+      const result = await base44.entities.Cliente.filter({ status: 'ativo' });
+      return result;
+    },
+  });
+
+  // React Query - Administradoras
+  const { data: administradoras = [] } = useQuery({
+    queryKey: ['administradoras-venda-form', empresaId],
+    enabled: open && (!!empresaId || isMaster),
+    queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
+  });
+
+  // React Query - Vendedores
+  const { data: vendedores = [] } = useQuery({
+    queryKey: ['vendedores-venda-form'],
+    enabled: open,
+    queryFn: () => base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
+  });
+
+  // React Query - Gerentes
+  const { data: gerentes = [] } = useQuery({
+    queryKey: ['gerentes-venda-form'],
+    enabled: open,
+    queryFn: () => base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' }),
+  });
+
+  // React Query - Empresas (só para Master)
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['empresas-venda-form'],
+    enabled: open && isMaster,
+    queryFn: () => base44.entities.Empresa.filter({ status: 'ativa' }),
+  });
 
   useEffect(() => {
     if (venda) {
@@ -127,55 +157,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     }
   }, [vendedorId, vendedores, setValue]);
 
-  const loadData = async () => {
-    try {
-      if (!currentUser?.empresa_id && currentUser?.perfil !== 'master' && currentUser?.perfil !== 'super_admin') {
-        console.error('❌ Usuário sem empresa_id:', currentUser);
-        toast.error('Usuário não vinculado a uma empresa');
-        return;
-      }
-
-      console.log('🔄 Carregando dados do form com usuário:', {
-        perfil: currentUser?.perfil,
-        empresa_id: currentUser?.empresa_id
-      });
-
-      const promises = [
-        base44.entities.Cliente.filter({ status: 'ativo' }),
-        base44.entities.Administradora.filter({ status: 'ativa' }),
-        base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' }),
-        base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' })
-      ];
-      
-      if (currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin') {
-        promises.push(base44.entities.Empresa.filter({ status: 'ativa' }));
-      }
-      
-      const results = await Promise.all(promises);
-      const [clientesData, adminData, vendedoresData, gerentesData, empresasData] = results;
-      
-      console.log('✅ Dados carregados:', {
-        clientes: clientesData.length,
-        administradoras: adminData.length,
-        vendedores: vendedoresData.length,
-        gerentes: gerentesData.length,
-        empresas: empresasData?.length || 0
-      });
-      
-      setClientes(clientesData);
-      setAdministradoras(adminData);
-      setVendedores(vendedoresData);
-      setGerentes(gerentesData);
-      
-      if (empresasData) {
-        setEmpresas(empresasData);
-      }
-    } catch (error) {
-      console.error('❌ Erro ao carregar dados:', error);
-      toast.error('Erro ao carregar dados: ' + (error.message || 'Verifique suas permissões'));
-    }
-  };
-
   const loadTabelas = async (adminId) => {
     const data = await base44.entities.TabelaConsorcio.filter({ 
       administradora_id: adminId, 
@@ -197,7 +178,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   });
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
-  const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
 
   const formatarMoeda = (valor) => {
     if (!valor) return '';
