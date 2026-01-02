@@ -261,34 +261,48 @@ export default function TabelasConsorcio() {
               <div>
                 <Label>Administradora *</Label>
                 <Select
-                  value={watch('administradora_id') || ''}
-                  onValueChange={(value) => setValue('administradora_id', value)}
+                 value={watch('administradora_id') || ''}
+                 onValueChange={(value) => {
+                   setValue('administradora_id', value);
+                   const admin = administradoras.find(a => a.id === value);
+                   if (admin) {
+                     setValue('tipoEmpresa', admin.tipoEmpresa || '');
+                   }
+                 }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a administradora" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {administradoras.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.nome_fantasia || a.razao_social}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                 <SelectTrigger>
+                   <SelectValue placeholder="Selecione a administradora" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {administradoras.map((a) => (
+                     <SelectItem key={a.id} value={a.id}>
+                       {a.nome_fantasia || a.razao_social}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
                 </Select>
                 {errors.administradora_id && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
-              </div>
-              
-              <div>
-                <Label>Tipo de Empresa (da Administradora)</Label>
-                <Input
-                  value={watch('tipoEmpresa') || 'Selecione a administradora'}
-                  disabled
-                  className="bg-slate-100"
-                />
+                </div>
+
+                <div>
+                <Label>Tipo de Empresa *</Label>
+                <Select
+                 value={watch('tipoEmpresa') || ''}
+                 onValueChange={(value) => setValue('tipoEmpresa', value)}
+                >
+                 <SelectTrigger>
+                   <SelectValue placeholder="Selecione o tipo" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="MEI">MEI</SelectItem>
+                   <SelectItem value="ME">ME</SelectItem>
+                   <SelectItem value="LTDA">LTDA</SelectItem>
+                 </SelectContent>
+                </Select>
                 <p className="text-xs text-slate-500 mt-1">
-                  O tipo é herdado automaticamente da administradora selecionada
+                 Valor padrão herdado da administradora, mas pode ser alterado
                 </p>
-              </div>
+                </div>
 
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-900">
