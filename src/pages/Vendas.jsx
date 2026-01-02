@@ -304,7 +304,32 @@ export default function Vendas() {
     },
     {
       header: 'Status',
-      cell: (row) => <StatusBadge status={row.status} />
+      cell: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 px-2">
+              <StatusBadge status={row.status} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'ativa' })}>
+              Ativa
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'pendente' })}>
+              Pendente
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'cancelada' })}>
+              Cancelada
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' })}>
+              Em Atraso
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'contemplada' })}>
+              Contemplada
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
     {
       header: '',
