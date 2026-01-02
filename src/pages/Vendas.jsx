@@ -276,7 +276,7 @@ export default function Vendas() {
     },
     {
       header: 'Valor',
-      cell: (row) => formatCurrency(row.valor_carta)
+      cell: (row) => formatCurrency(row.valorCredito)
     },
     {
       header: 'Vendedor',
