@@ -176,7 +176,7 @@ export default function VendaDetalhes() {
               <Calendar className="w-5 h-5 text-slate-400" />
               <div>
                 <p className="text-sm text-slate-500">Data da Venda</p>
-                <p className="font-medium">{format(new Date(venda.data_venda), 'dd/MM/yyyy')}</p>
+                <p className="font-medium">{format(new Date(venda.data_venda + 'T12:00:00'), 'dd/MM/yyyy')}</p>
               </div>
             </div>
 
