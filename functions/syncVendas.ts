@@ -9,12 +9,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { vendas, empresa_id } = await req.json();
+    const { vendas, empresa_id, data_desde } = await req.json();
 
     if (!Array.isArray(vendas) || vendas.length === 0) {
       return Response.json({ 
         error: 'Payload inválido. Envie um array de vendas.' 
       }, { status: 400 });
+    }
+
+    // Filtrar por data se informado
+    let vendasFiltradas = vendas;
+    if (data_desde) {
+      const dataFiltro = new Date(data_desde);
+      vendasFiltradas = vendas.filter(v => {
+        if (!v.updated_at && !v.created_at && !v.data_venda) return true; // Se não tem data, incluir
+        const dataVenda = new Date(v.updated_at || v.created_at || v.data_venda);
+        return dataVenda >= dataFiltro;
+      });
     }
 
     const empresaIdFinal = empresa_id || user.empresa_id;
@@ -29,8 +40,8 @@ Deno.serve(async (req) => {
     let successCount = 0;
     let updatedCount = 0;
 
-    for (let i = 0; i < vendas.length; i++) {
-      const venda = vendas[i];
+    for (let i = 0; i < vendasFiltradas.length; i++) {
+      const venda = vendasFiltradas[i];
       const external_id = venda.id?.toString();
 
       try {
@@ -173,7 +184,7 @@ Deno.serve(async (req) => {
     }
 
     const finishedAt = new Date().toISOString();
-    const total = vendas.length;
+    const total = vendasFiltradas.length;
     const failed = errors.length;
 
     // Criar log
@@ -181,6 +192,7 @@ Deno.serve(async (req) => {
       empresa_id: empresaIdFinal,
       tipo: 'VENDAS',
       origem: 'VendaWeb',
+      data_desde: data_desde || null,
       started_at: startedAt,
       finished_at: finishedAt,
       total,

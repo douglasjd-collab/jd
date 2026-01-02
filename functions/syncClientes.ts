@@ -9,12 +9,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { clientes, empresa_id } = await req.json();
+    const { clientes, empresa_id, data_desde } = await req.json();
 
     if (!Array.isArray(clientes) || clientes.length === 0) {
       return Response.json({ 
         error: 'Payload inválido. Envie um array de clientes.' 
       }, { status: 400 });
+    }
+
+    // Filtrar por data se informado
+    let clientesFiltrados = clientes;
+    if (data_desde) {
+      const dataFiltro = new Date(data_desde);
+      clientesFiltrados = clientes.filter(c => {
+        if (!c.updated_at && !c.created_at) return true; // Se não tem data, incluir
+        const dataCliente = new Date(c.updated_at || c.created_at);
+        return dataCliente >= dataFiltro;
+      });
     }
 
     const empresaIdFinal = empresa_id || user.empresa_id;
@@ -29,8 +40,8 @@ Deno.serve(async (req) => {
     let successCount = 0;
     let updatedCount = 0;
 
-    for (let i = 0; i < clientes.length; i++) {
-      const cliente = clientes[i];
+    for (let i = 0; i < clientesFiltrados.length; i++) {
+      const cliente = clientesFiltrados[i];
       const external_id = cliente.id?.toString();
 
       try {
@@ -108,7 +119,7 @@ Deno.serve(async (req) => {
     }
 
     const finishedAt = new Date().toISOString();
-    const total = clientes.length;
+    const total = clientesFiltrados.length;
     const failed = errors.length;
 
     // Criar log
@@ -116,6 +127,7 @@ Deno.serve(async (req) => {
       empresa_id: empresaIdFinal,
       tipo: 'CLIENTES',
       origem: 'VendaWeb',
+      data_desde: data_desde || null,
       started_at: startedAt,
       finished_at: finishedAt,
       total,
