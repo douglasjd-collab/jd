@@ -356,6 +356,14 @@ export default function FunilVendas() {
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       const etapaDestino = etapas.find(e => e.id === novaEtapaId);
 
+      if (!oportunidade) {
+        throw new Error('Oportunidade não encontrada');
+      }
+
+      if (!oportunidade.empresa_id && !currentUser?.empresa_id) {
+        throw new Error('Empresa não identificada');
+      }
+
       // HU 04 - Validações de regras (apenas aviso, não bloqueia)
       if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
@@ -442,15 +450,17 @@ export default function FunilVendas() {
       }
       toast.error(error.message || 'Erro ao mover oportunidade');
       
-      // Log de auditoria do erro
-      base44.entities.LogAuditoria.create({
-        usuario_id: currentUser?.id || 'system',
-        usuario_nome: currentUser?.full_name || 'Sistema',
-        acao: `Erro ao mover oportunidade: ${error.message}`,
-        entidade: 'Oportunidade',
-        entidade_id: variables.oportunidadeId,
-        tipo: 'edicao'
-      }).catch(console.error);
+      // Log de auditoria do erro (apenas se tiver usuário)
+      if (currentUser?.id) {
+        base44.entities.LogAuditoria.create({
+          usuario_id: currentUser.id,
+          usuario_nome: currentUser.full_name,
+          acao: `Erro ao mover oportunidade: ${error.message}`,
+          entidade: 'Oportunidade',
+          entidade_id: variables.oportunidadeId,
+          tipo: 'edicao'
+        }).catch(console.error);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
