@@ -470,11 +470,17 @@ export default function FunilVendas() {
   });
 
   const handleDragEnd = async (result) => {
-    if (!result.destination) return;
+    console.log('🎯 handleDragEnd iniciado:', result);
+    
+    if (!result.destination) {
+      console.log('❌ Sem destino - cancelando');
+      return;
+    }
     
     // Não fazer nada se soltar no mesmo lugar
     if (result.source.droppableId === result.destination.droppableId && 
         result.source.index === result.destination.index) {
+      console.log('⚠️ Mesma posição - cancelando');
       return;
     }
 
@@ -482,18 +488,40 @@ export default function FunilVendas() {
     const novaEtapaId = result.destination.droppableId;
     const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
     
+    console.log('📋 Dados do drag:', {
+      oportunidadeId,
+      novaEtapaId,
+      oportunidade: oportunidade?.titulo,
+      currentUser: currentUser?.full_name
+    });
+    
     // Verificar permissões: usuários superiores ou responsável pela oportunidade podem mover
     const podeMovimentar = podeAlterarQuadro || oportunidade?.vendedor_id === currentUser?.id;
     
+    console.log('🔐 Permissões:', {
+      podeAlterarQuadro,
+      isResponsavel: oportunidade?.vendedor_id === currentUser?.id,
+      podeMovimentar
+    });
+    
     if (!podeMovimentar) {
+      console.log('❌ SEM PERMISSÃO');
       toast.error('Você não tem permissão para mover esta oportunidade');
       return;
     }
 
     try {
-      await moverOportunidadeMutation.mutateAsync({ oportunidadeId, novaEtapaId });
+      console.log('🚀 Iniciando mutation...');
+      const result = await moverOportunidadeMutation.mutateAsync({ oportunidadeId, novaEtapaId });
+      console.log('✅ Mutation concluída:', result);
     } catch (error) {
-      console.error('Erro ao mover:', error);
+      console.error('❌ ERRO na mutation:', error);
+      console.error('Detalhes:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response
+      });
+      toast.error(`Erro: ${error.message}`);
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
     }
   };
