@@ -365,12 +365,53 @@ export default function FunilVendas() {
         throw new Error("empresa_id não encontrado. Usuário sem empresa vinculada.");
       }
 
+      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
+      const etapaDestino = etapas.find(e => e.id === novaEtapaId);
+
+      // HU 04 - Validações de regras (apenas aviso, não bloqueia)
+      if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
+        toast.warning('Atenção: Esta etapa requer cliente vinculado');
+      }
+
       // ✅ ENVIAR empresa_id SEMPRE
-      return base44.entities.Oportunidade.update(oportunidadeId, {
+      await base44.entities.Oportunidade.update(oportunidadeId, {
         ...updates,
         etapa_id: novaEtapaId,
         empresa_id: empresaId,
+        titulo: oportunidade?.titulo,
+        vendedor_id: oportunidade?.vendedor_id,
+        etapa_nome: etapaDestino?.nome || '',
+        data_ultima_movimentacao: new Date().toISOString(),
+        status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
       });
+
+      // HU 03 - Registrar movimentação no histórico
+      await base44.entities.MovimentacaoFunil.create({
+        oportunidade_id: oportunidadeId,
+        etapa_origem_id: oportunidade?.etapa_id,
+        etapa_origem_nome: oportunidade?.etapa_nome || '',
+        etapa_destino_id: novaEtapaId,
+        etapa_destino_nome: etapaDestino?.nome || '',
+        usuario_id: user.id,
+        usuario_nome: user.full_name
+      });
+
+      // HU 07 - Integração com vendas
+      if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
+        return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
+      }
+
+      // HU 08 - Auditoria
+      await base44.entities.LogAuditoria.create({
+        usuario_id: user.id,
+        usuario_nome: user.full_name,
+        acao: `Moveu oportunidade "${oportunidade?.titulo}" de "${oportunidade?.etapa_nome}" para "${etapaDestino?.nome}"`,
+        entidade: 'Oportunidade',
+        entidade_id: oportunidadeId,
+        tipo: 'edicao'
+      });
+
+      return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
     },
       onSuccess: (data) => {
       if (data?.abrirFormVenda && data?.oportunidade) {
