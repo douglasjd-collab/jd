@@ -479,37 +479,36 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           <div className="border rounded-lg p-4 bg-white shadow-sm">
             <h3 className="font-semibold text-slate-900 mb-3">Informações Adicionais</h3>
             <div className="grid grid-cols-2 gap-4">
-              {isAdmin && (
-                <div>
-                  <Label>Vendedor</Label>
-                  <Select
-                    value={watch('vendedor_id')}
-                    onValueChange={(value) => {
-                      setValue('vendedor_id', value);
-                      const vendedor = vendedores.find(v => v.id === value);
-                      if (vendedor) {
-                        setValue('vendedor_nome', vendedor.full_name);
-                        if (vendedor.gerente_id) {
-                          setValue('gerente_id', vendedor.gerente_id);
-                          const gerente = gerentes.find(g => g.id === vendedor.gerente_id);
-                          if (gerente) {
-                            setValue('gerente_nome', gerente.full_name);
-                          }
+              <div>
+                <Label>Vendedor *</Label>
+                <Select
+                  value={watch('vendedor_id')}
+                  onValueChange={(value) => {
+                    setValue('vendedor_id', value);
+                    const vendedor = vendedores.find(v => v.id === value);
+                    if (vendedor) {
+                      setValue('vendedor_nome', vendedor.full_name);
+                      if (vendedor.gerente_id) {
+                        setValue('gerente_id', vendedor.gerente_id);
+                        const gerente = gerentes.find(g => g.id === vendedor.gerente_id);
+                        if (gerente) {
+                          setValue('gerente_nome', gerente.full_name);
                         }
                       }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendedores.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendedores.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.vendedor_id && <p className="text-sm text-red-500 mt-1">Vendedor é obrigatório</p>}
+              </div>
               
               <div>
                 <Label htmlFor="data_venda">Data da Venda *</Label>
@@ -547,7 +546,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading || (isMaster && !watch('empresa_id')) || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || parseFloat(watch('valorCredito') || 0) <= 0 || parseFloat(watch('taxaAdministracao') || 0) <= 0} 
+              disabled={isLoading || (isMaster && !watch('empresa_id')) || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || !watch('vendedor_id') || parseFloat(watch('valorCredito') || 0) <= 0 || parseFloat(watch('taxaAdministracao') || 0) <= 0} 
               className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
             >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
