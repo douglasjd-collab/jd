@@ -193,9 +193,19 @@ export default function Vendas() {
     },
   });
 
-  const handleSubmit = async (data) => {
+  const handleSubmit = async (formData) => {
     try {
-      console.log('Dados recebidos do form:', data);
+      console.log('📝 Dados brutos do form:', formData);
+      
+      // Garantir que valorCredito e data_venda estejam corretos
+      const data = {
+        ...formData,
+        valorCredito: parseFloat(formData.valorCredito) || 0,
+        taxaAdministracao: parseFloat(formData.taxaAdministracao) || 0,
+        data_venda: formData.data_venda || format(new Date(), 'yyyy-MM-dd')
+      };
+      
+      console.log('✅ Dados processados para envio:', data);
       
       if (selectedVenda) {
         updateMutation.mutate({ id: selectedVenda.id, data });
