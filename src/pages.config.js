@@ -18,11 +18,11 @@ import RecebimentoComissao from './pages/RecebimentoComissao';
 import Relatorios from './pages/Relatorios';
 import Saques from './pages/Saques';
 import SimuladorConsorcio from './pages/SimuladorConsorcio';
+import SyncTests from './pages/SyncTests';
 import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import SyncTests from './pages/SyncTests';
 import __Layout from './Layout.jsx';
 
 
@@ -47,11 +47,11 @@ export const PAGES = {
     "Relatorios": Relatorios,
     "Saques": Saques,
     "SimuladorConsorcio": SimuladorConsorcio,
+    "SyncTests": SyncTests,
     "TabelasConsorcio": TabelasConsorcio,
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "SyncTests": SyncTests,
 }
 
 export const pagesConfig = {

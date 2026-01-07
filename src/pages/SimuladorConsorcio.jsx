@@ -29,6 +29,7 @@ export default function SimuladorConsorcio() {
   const [administradora, setAdministradora] = useState(''); // canopus | itau | outra
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(25);
   const [parcelaReduzida, setParcelaReduzida] = useState(false);
+  const [percentualReducao, setPercentualReducao] = useState(30);
 
   const [lanceProprioAtivo, setLanceProprioAtivo] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
@@ -266,6 +267,9 @@ export default function SimuladorConsorcio() {
         administradora: lanceEmbutidoAtivo ? administradora : null,
         lance_embutido_percentual: lanceEmbutidoAtivo ? lanceEmbutidoPercentual : null,
         lance_embutido_valor: lanceEmbutidoValor,
+
+        parcela_reduzida: parcelaReduzida,
+        percentual_reducao: parcelaReduzida ? percentualReducao : null,
 
         lance_proprio_ativo: lanceProprioAtivo,
         lance_proprio_valor: lanceProprioValor,
@@ -665,6 +669,39 @@ export default function SimuladorConsorcio() {
                       <p className="text-xs text-slate-600">Valor do Lance Embutido:</p>
                       <p className="text-lg font-bold text-emerald-600">{formatCurrency(lanceEmbutidoValor)}</p>
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Parcela Reduzida */}
+              <div className="p-4 bg-slate-50 rounded-lg border">
+                <div className="flex items-center justify-between mb-3">
+                  <Label htmlFor="parcela_reduzida" className="font-semibold">Parcela Reduzida?</Label>
+                  <Switch
+                    id="parcela_reduzida"
+                    checked={parcelaReduzida}
+                    onCheckedChange={setParcelaReduzida}
+                  />
+                </div>
+
+                {parcelaReduzida && (
+                  <div>
+                    <Label className="text-xs">Percentual de Redução (%)</Label>
+                    <Select
+                      value={percentualReducao.toString()}
+                      onValueChange={(value) => setPercentualReducao(parseFloat(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30%</SelectItem>
+                        <SelectItem value="50">50%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-600 mt-2">
+                      Parcela será reduzida em {percentualReducao}%
+                    </p>
                   </div>
                 )}
               </div>
