@@ -160,15 +160,12 @@ export default function SimuladorConsorcio() {
       let valorLanceProprio = lanceProprioAtivo ? (parseFloat(lanceProprio) || 0) : 0;
       
       // Calcular crédito e lance baseado no tipo de lance
-      if (tipoLanceReduzida === 'fixo_50') {
+      if (tipoLanceReduzida === 'fixo_50' || tipoLanceReduzida === 'lance_livre') {
         valorLanceEmbutido = creditoTotal * 0.50;
         creditoAReceber = creditoTotal * 0.50; // Cliente recebe 50%
       } else if (tipoLanceReduzida === 'fixo_30') {
         valorLanceEmbutido = creditoTotal * 0.30;
         creditoAReceber = creditoTotal * 0.70; // Cliente recebe 70%
-      } else if (tipoLanceReduzida === 'lance_livre') {
-        // Lance livre: cliente recebe o crédito total
-        creditoAReceber = creditoTotal;
       }
       
       const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
