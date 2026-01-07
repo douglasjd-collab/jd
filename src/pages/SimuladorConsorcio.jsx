@@ -30,9 +30,11 @@ export default function SimuladorConsorcio() {
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(25);
   const [parcelaReduzida, setParcelaReduzida] = useState(false);
   const [percentualReducao, setPercentualReducao] = useState(30);
+  const [tipoLanceReduzida, setTipoLanceReduzida] = useState(''); // lance_livre | lance_limitado | fixo_50 | fixo_30
 
   const [lanceProprioAtivo, setLanceProprioAtivo] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
+  const [lanceLimitado, setLanceLimitado] = useState('');
 
   const [opcaoPos, setOpcaoPos] = useState('prazo');
   const [resultado, setResultado] = useState(null);
@@ -142,9 +144,64 @@ export default function SimuladorConsorcio() {
       return;
     }
 
+    if (parcelaReduzida && !tipoLanceReduzida) {
+      toast.error('Selecione o tipo de lance para parcela reduzida');
+      return;
+    }
+
     // 🧮 CÁLCULO
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = prazoNum * parcelaTotal;
+
+    // ✅ REGRA ESPECIAL: PARCELA REDUZIDA
+    if (parcelaReduzida) {
+      let creditoAReceber = creditoTotal;
+      
+      // Calcular crédito baseado no tipo de lance
+      if (tipoLanceReduzida === 'fixo_50') {
+        creditoAReceber = creditoTotal * 0.50; // Cliente recebe 50%
+      } else if (tipoLanceReduzida === 'fixo_30') {
+        creditoAReceber = creditoTotal * 0.70; // Cliente recebe 70%
+      }
+      
+      // Saldo devedor inicial = Total do plano
+      let saldoDevedor = totalPlano;
+      
+      // Descontar primeira parcela (no ato)
+      saldoDevedor = saldoDevedor - parcelaTotal;
+      
+      // Se houver lance limitado, descontar do saldo devedor
+      const lanceLimitadoValor = (tipoLanceReduzida === 'lance_limitado' && lanceLimitado) 
+        ? parseFloat(lanceLimitado) 
+        : 0;
+      
+      if (lanceLimitadoValor > 0) {
+        saldoDevedor = saldoDevedor - lanceLimitadoValor;
+      }
+      
+      // Nova parcela = saldo devedor / (prazo - 1)
+      const novoPrazo = prazoNum - 1;
+      const novaParcela = saldoDevedor / novoPrazo;
+      
+      setResultado({
+        creditoTotal: creditoAReceber,
+        parcelaTotal,
+        totalPlano,
+        tipoGrupo,
+        parcelaReduzida: true,
+        tipoLanceReduzida,
+        lanceLimitadoValor,
+        lanceTotal: lanceLimitadoValor,
+        saldoBase: totalPlano,
+        saldoAposAto: totalPlano - parcelaTotal,
+        saldoFinal: saldoDevedor,
+        prazoOriginal: prazoNum,
+        opcaoPos: 'parcela',
+        novoPrazo,
+        novaParcela
+      });
+      return;
+    }
 
     const usarRegraCanopusEmbutido = lanceEmbutidoAtivo && administradora === 'canopus';
     const semCarenciaPorAdm = administradora === 'itau';
@@ -270,6 +327,8 @@ export default function SimuladorConsorcio() {
 
         parcela_reduzida: parcelaReduzida,
         percentual_reducao: parcelaReduzida ? percentualReducao : null,
+        tipo_lance_reduzida: parcelaReduzida ? tipoLanceReduzida : null,
+        lance_limitado_valor: (parcelaReduzida && tipoLanceReduzida === 'lance_limitado') ? parseFloat(lanceLimitado) : null,
 
         lance_proprio_ativo: lanceProprioAtivo,
         lance_proprio_valor: lanceProprioValor,
@@ -680,28 +739,79 @@ export default function SimuladorConsorcio() {
                   <Switch
                     id="parcela_reduzida"
                     checked={parcelaReduzida}
-                    onCheckedChange={setParcelaReduzida}
+                    onCheckedChange={(checked) => {
+                      setParcelaReduzida(checked);
+                      if (!checked) {
+                        setTipoLanceReduzida('');
+                        setLanceLimitado('');
+                      }
+                    }}
                   />
                 </div>
 
                 {parcelaReduzida && (
-                  <div>
-                    <Label className="text-xs">Percentual de Redução (%)</Label>
-                    <Select
-                      value={percentualReducao.toString()}
-                      onValueChange={(value) => setPercentualReducao(parseFloat(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">30%</SelectItem>
-                        <SelectItem value="50">50%</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-slate-600 mt-2">
-                      Parcela será reduzida em {percentualReducao}%
-                    </p>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs">Percentual de Redução (%)</Label>
+                      <Select
+                        value={percentualReducao.toString()}
+                        onValueChange={(value) => setPercentualReducao(parseFloat(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30%</SelectItem>
+                          <SelectItem value="50">50%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Tipo de Lance *</Label>
+                      <Select
+                        value={tipoLanceReduzida}
+                        onValueChange={setTipoLanceReduzida}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo de lance" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lance_livre">Lance Livre</SelectItem>
+                          <SelectItem value="lance_limitado">Lance Limitado</SelectItem>
+                          <SelectItem value="fixo_50">Fixo de 50%</SelectItem>
+                          <SelectItem value="fixo_30">Fixo de 30%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {tipoLanceReduzida === 'lance_limitado' && (
+                      <div>
+                        <Label className="text-xs">Valor do Lance Limitado (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={lanceLimitado}
+                          onChange={(e) => setLanceLimitado(e.target.value)}
+                          placeholder="0,00"
+                        />
+                        <p className="text-xs text-slate-600 mt-1">
+                          Este valor será abatido do saldo devedor
+                        </p>
+                      </div>
+                    )}
+
+                    {tipoLanceReduzida === 'fixo_50' && (
+                      <div className="text-xs bg-blue-50 p-2 rounded border border-blue-200 text-blue-700">
+                        ℹ️ Cliente receberá 50% do crédito total
+                      </div>
+                    )}
+
+                    {tipoLanceReduzida === 'fixo_30' && (
+                      <div className="text-xs bg-blue-50 p-2 rounded border border-blue-200 text-blue-700">
+                        ℹ️ Cliente receberá 70% do crédito total
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
