@@ -166,9 +166,12 @@ export default function SimuladorConsorcio() {
       } else if (tipoLanceReduzida === 'fixo_30') {
         valorLanceEmbutido = creditoTotal * 0.30;
         creditoAReceber = creditoTotal * 0.70; // Cliente recebe 70%
+      } else if (tipoLanceReduzida === 'lance_livre') {
+        // Lance livre: cliente recebe o crédito total
+        creditoAReceber = creditoTotal;
       }
       
-      const lanceTotal = valorLanceEmbutido + valorLanceProprio;
+      const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
       
       // Saldo devedor inicial = Total do plano
       let saldoDevedor = totalPlano;
@@ -205,7 +208,7 @@ export default function SimuladorConsorcio() {
         lanceEmbutidoValor: valorLanceEmbutido,
         lanceProprioValor: valorLanceProprio,
         lanceLimitadoValor,
-        lanceTotal: tipoLanceReduzida === 'lance_limitado' ? lanceLimitadoValor : lanceTotal,
+        lanceTotal: tipoLanceReduzida === 'lance_limitado' ? lanceLimitadoValor : lanceTotalCalculado,
         saldoBase: totalPlano,
         saldoAposAto: totalPlano - parcelaTotal,
         saldoFinal: saldoDevedor,
@@ -955,12 +958,13 @@ export default function SimuladorConsorcio() {
                   <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
                     <p className="text-xs font-semibold mb-1">💰 Valor que o Cliente Recebe</p>
                     <p className="text-3xl font-bold">
-                      {formatCurrency(resultado.creditoTotal - resultado.lanceEmbutidoValor)}
+                      {formatCurrency(resultado.creditoTotal)}
                     </p>
-                    <p className="text-xs mt-1 opacity-90">
-                      (Crédito de {formatCurrency(resultado.creditoTotal)} 
-                      {resultado.lanceEmbutidoValor > 0 && ` - Lance Embutido de ${formatCurrency(resultado.lanceEmbutidoValor)}`})
-                    </p>
+                    {resultado.creditoOriginal && resultado.creditoOriginal !== resultado.creditoTotal && (
+                      <p className="text-xs mt-1 opacity-90">
+                        Crédito original: {formatCurrency(resultado.creditoOriginal)}
+                      </p>
+                    )}
                   </div>
 
                   {/* Cálculos Intermediários */}
