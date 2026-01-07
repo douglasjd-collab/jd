@@ -272,9 +272,11 @@ export default function SimuladorConsorcio() {
 
     // ✅ REGRA GERAL
     if (!parcelaReduzida && lanceEmbutidoAtivo) {
-      saldoFinal = totalPlano - lanceEmbutidoValor - lanceProprioValor - parcelaTotal;
-      saldoBase = totalPlano - (lanceEmbutidoValor + lanceProprioValor);
-      saldoAposAto = saldoFinal;
+      // Lance embutido desconta do saldo devedor, cliente recebe crédito total
+      const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
+      saldoBase = totalPlano - lanceConsideradoNoSaldo;
+      saldoAposAto = saldoBase - parcelaTotal;
+      saldoFinal = saldoAposAto;
     } else {
       const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
       saldoBase = totalPlano - lanceConsideradoNoSaldo;
