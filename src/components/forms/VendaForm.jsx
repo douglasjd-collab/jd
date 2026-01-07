@@ -21,8 +21,9 @@ import { Loader2, Search } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
 
-export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser, oportunidade }) {
+export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser, oportunidade, onSuccess }) {
   const [searchCliente, setSearchCliente] = useState('');
   const [tabelas, setTabelas] = useState([]);
   
@@ -56,10 +57,10 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   // React Query - Clientes
   const { data: clientes = [], isLoading: clientesLoading } = useQuery({
     queryKey: ['clientes-venda-form', empresaId, searchCliente],
-    enabled: open && (!!empresaId || isMaster),
+    enabled: open,
     queryFn: async () => {
-      const result = await base44.entities.Cliente.filter({ status: 'ativo' });
-      return result;
+      const result = await base44.entities.Cliente.list();
+      return result.filter(c => c.status === 'ativo');
     },
   });
 
@@ -272,7 +273,18 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
           {/* Card Cliente */}
           <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-3">Cliente *</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-slate-900">Cliente *</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(createPageUrl('Clientes'), '_blank')}
+                className="text-xs"
+              >
+                + Cadastrar Novo Cliente
+              </Button>
+            </div>
             <Select
               value={watch('cliente_id')}
               onValueChange={(value) => {
@@ -328,7 +340,15 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 ) : searchCliente ? (
                   <div className="p-6 text-center">
                     <p className="text-sm text-slate-500 mb-2">Nenhum cliente encontrado</p>
-                    <p className="text-xs text-slate-400">Tente buscar por nome, CPF ou telefone</p>
+                    <p className="text-xs text-slate-400 mb-3">Tente buscar por nome, CPF ou telefone</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => window.open(createPageUrl('Clientes'), '_blank')}
+                      className="bg-[#23BE84] hover:bg-[#1da570]"
+                    >
+                      Cadastrar Novo Cliente
+                    </Button>
                   </div>
                 ) : (
                   <div className="p-4 text-center text-sm text-slate-400">

@@ -1429,11 +1429,27 @@ export default function FunilVendas() {
             onOpenChange={setVendaFormOpen}
             venda={null}
             oportunidade={oportunidadeParaVenda}
-            onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
-              setVendaFormOpen(false);
-              setOportunidadeParaVenda(null);
+            currentUser={currentUser}
+            onSubmit={async (data) => {
+              try {
+                // Criar venda via mutation da página Vendas
+                const response = await base44.entities.Venda.create(data);
+                
+                // Vincular venda à oportunidade
+                await base44.entities.Oportunidade.update(oportunidadeParaVenda.id, {
+                  venda_id: response.id,
+                  empresa_id: oportunidadeParaVenda.empresa_id || currentUser?.empresa_id
+                });
+                
+                toast.success('Venda registrada com sucesso!');
+                queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+                setVendaFormOpen(false);
+                setOportunidadeParaVenda(null);
+              } catch (error) {
+                toast.error('Erro ao registrar venda: ' + error.message);
+              }
             }}
+            isLoading={false}
           />
         </DialogContent>
       </Dialog>
