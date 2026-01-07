@@ -156,13 +156,19 @@ export default function SimuladorConsorcio() {
     // ✅ REGRA ESPECIAL: PARCELA REDUZIDA
     if (parcelaReduzida) {
       let creditoAReceber = creditoTotal;
+      let valorLanceEmbutido = 0;
+      let valorLanceProprio = lanceProprioAtivo ? (parseFloat(lanceProprio) || 0) : 0;
       
-      // Calcular crédito baseado no tipo de lance
+      // Calcular crédito e lance baseado no tipo de lance
       if (tipoLanceReduzida === 'fixo_50') {
+        valorLanceEmbutido = creditoTotal * 0.50;
         creditoAReceber = creditoTotal * 0.50; // Cliente recebe 50%
       } else if (tipoLanceReduzida === 'fixo_30') {
+        valorLanceEmbutido = creditoTotal * 0.30;
         creditoAReceber = creditoTotal * 0.70; // Cliente recebe 70%
       }
+      
+      const lanceTotal = valorLanceEmbutido + valorLanceProprio;
       
       // Saldo devedor inicial = Total do plano
       let saldoDevedor = totalPlano;
@@ -179,19 +185,27 @@ export default function SimuladorConsorcio() {
         saldoDevedor = saldoDevedor - lanceLimitadoValor;
       }
       
+      // Se houver lance próprio em qualquer tipo, descontar do saldo devedor
+      if (valorLanceProprio > 0) {
+        saldoDevedor = saldoDevedor - valorLanceProprio;
+      }
+      
       // Nova parcela = saldo devedor / (prazo - 1)
       const novoPrazo = prazoNum - 1;
       const novaParcela = saldoDevedor / novoPrazo;
       
       setResultado({
         creditoTotal: creditoAReceber,
+        creditoOriginal: creditoTotal,
         parcelaTotal,
         totalPlano,
         tipoGrupo,
         parcelaReduzida: true,
         tipoLanceReduzida,
+        lanceEmbutidoValor: valorLanceEmbutido,
+        lanceProprioValor: valorLanceProprio,
         lanceLimitadoValor,
-        lanceTotal: lanceLimitadoValor,
+        lanceTotal: tipoLanceReduzida === 'lance_limitado' ? lanceLimitadoValor : lanceTotal,
         saldoBase: totalPlano,
         saldoAposAto: totalPlano - parcelaTotal,
         saldoFinal: saldoDevedor,
