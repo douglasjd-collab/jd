@@ -193,8 +193,9 @@ export default function SimuladorConsorcio() {
         saldoDevedor = saldoDevedor - valorLanceProprio;
       }
       
-      // Nova parcela = saldo devedor / (prazo - 1)
-      const novoPrazo = prazoNum - 1;
+      // Nova parcela = saldo devedor / (prazo - 1 - 3 carência)
+      // Carência de 3 meses diminui apenas o prazo, não mexe no saldo
+      const novoPrazo = prazoNum - 1 - 3; // -1 no ato, -3 carência
       const novaParcela = saldoDevedor / novoPrazo;
       
       setResultado({
