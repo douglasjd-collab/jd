@@ -964,8 +964,16 @@ export default function SimuladorConsorcio() {
                   <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                     <p className="text-xs text-emerald-700 font-semibold mb-2">🎯 Lance Ofertado</p>
                     <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceTotal)}</p>
+                    <div className="mt-2 pt-2 border-t border-emerald-200">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-emerald-700">Lance Embutido:</span>
+                        <span className="font-semibold text-emerald-900">
+                          {formatCurrency(resultado.lanceEmbutidoValor || 0)}
+                        </span>
+                      </div>
+                    </div>
                     {resultado.administradora && (
-                      <p className="text-xs text-emerald-800 mt-1">
+                      <p className="text-xs text-emerald-800 mt-2">
                         Administradora: <span className="font-semibold capitalize">{resultado.administradora}</span>
                       </p>
                     )}
