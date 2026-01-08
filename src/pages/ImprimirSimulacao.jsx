@@ -182,7 +182,7 @@ export default function ImprimirSimulacao() {
             <div className="space-y-0.5 mb-1">
               {cartas.map((carta, i) => (
                 <div key={i} className="text-xs bg-slate-50 p-1.5 rounded">
-                  <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} • Parcela {formatCurrency(parseFloat(carta.parcela))}/Mês • {carta.prazo} Meses
+                  <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} • Parcela {formatCurrency(parseFloat(carta.parcela))} • {carta.prazo} Meses
                 </div>
               ))}
             </div>
