@@ -135,14 +135,24 @@ export default function ConfiguracaoFunil() {
 
     const data = {
       ...formData,
-      empresa_id: empresaId,
       ordem: parseInt(formData.ordem) || etapas.length + 1
     };
 
     if (selectedEtapa) {
-      updateMutation.mutate({ id: selectedEtapa.id, data });
+      // Update: mantém empresa_id original
+      updateMutation.mutate({ 
+        id: selectedEtapa.id, 
+        data: {
+          ...data,
+          empresa_id: selectedEtapa.empresa_id
+        }
+      });
     } else {
-      createMutation.mutate(data);
+      // Create: adiciona empresa_id do usuário
+      createMutation.mutate({
+        ...data,
+        empresa_id: empresaId
+      });
     }
   };
 
