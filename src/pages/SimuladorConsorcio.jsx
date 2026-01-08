@@ -817,10 +817,13 @@ export default function SimuladorConsorcio() {
                       <div>
                         <Label className="text-xs">Valor do Lance Limitado (R$)</Label>
                         <Input
-                          type="number"
-                          step="0.01"
-                          value={lanceLimitado}
-                          onChange={(e) => setLanceLimitado(e.target.value)}
+                          type="text"
+                          value={lanceLimitado ? formatarMoeda((parseFloat(lanceLimitado) * 100).toString()) : ''}
+                          onChange={(e) => {
+                            const valorFormatado = formatarMoeda(e.target.value);
+                            const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
+                            setLanceLimitado(valorNumerico.toString());
+                          }}
                           placeholder="0,00"
                         />
                         <p className="text-xs text-slate-600 mt-1">
@@ -859,10 +862,13 @@ export default function SimuladorConsorcio() {
                   <div>
                     <Label className="text-xs">Valor (R$)</Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      value={lanceProprio}
-                      onChange={(e) => setLanceProprio(e.target.value)}
+                      type="text"
+                      value={lanceProprio ? formatarMoeda((parseFloat(lanceProprio) * 100).toString()) : ''}
+                      onChange={(e) => {
+                        const valorFormatado = formatarMoeda(e.target.value);
+                        const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
+                        setLanceProprio(valorNumerico.toString());
+                      }}
                       placeholder="0,00"
                     />
                   </div>
