@@ -77,10 +77,6 @@ export default function ConfiguracaoFunil() {
     setCurrentUser(user);
   };
 
-  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
-  const isGerente = currentUser?.perfil === 'gerente';
-  const podeEditar = isAdmin || isGerente;
-
   const { data: etapas = [], isLoading } = useQuery({
     queryKey: ['etapas-funil'],
     enabled: !!currentUser,
@@ -194,6 +190,10 @@ export default function ConfiguracaoFunil() {
     }
     reordenarMutation.mutate({ id: etapaId, novaOrdem });
   };
+
+  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
+  const isGerente = currentUser?.perfil === 'gerente';
+  const podeEditar = isAdmin || isGerente;
 
   const columns = [
     {
