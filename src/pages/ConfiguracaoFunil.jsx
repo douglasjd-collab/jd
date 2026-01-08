@@ -78,8 +78,11 @@ export default function ConfiguracaoFunil() {
   };
 
   const { data: etapas = [], isLoading } = useQuery({
-    queryKey: ['etapas-funil'],
-    queryFn: () => base44.entities.EtapaFunil.list('ordem'),
+    queryKey: ['etapas-funil', currentUser?.empresa_id],
+    enabled: !!currentUser?.empresa_id,
+    queryFn: () => base44.entities.EtapaFunil.filter({ 
+      empresa_id: currentUser?.empresa_id 
+    }, 'ordem'),
   });
 
   const createMutation = useMutation({
