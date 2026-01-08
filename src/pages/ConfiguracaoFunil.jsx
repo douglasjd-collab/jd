@@ -79,10 +79,20 @@ export default function ConfiguracaoFunil() {
 
   const { data: etapas = [], isLoading } = useQuery({
     queryKey: ['etapas-funil', currentUser?.empresa_id],
-    enabled: !!currentUser?.empresa_id,
-    queryFn: () => base44.entities.EtapaFunil.filter({ 
-      empresa_id: currentUser?.empresa_id 
-    }, 'ordem'),
+    enabled: !!currentUser,
+    queryFn: async () => {
+      const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
+      
+      if (isMaster) {
+        // Master vê todas as etapas
+        return base44.entities.EtapaFunil.list('ordem');
+      } else {
+        // Outros usuários veem apenas da sua empresa
+        return base44.entities.EtapaFunil.filter({ 
+          empresa_id: currentUser?.empresa_id 
+        }, 'ordem');
+      }
+    },
   });
 
   const createMutation = useMutation({
