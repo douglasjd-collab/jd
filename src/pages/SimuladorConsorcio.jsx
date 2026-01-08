@@ -165,7 +165,7 @@ export default function SimuladorConsorcio() {
         creditoAReceber = creditoTotal * 0.50; // Cliente recebe 50%
       } else if (tipoLanceReduzida === 'fixo_30') {
         valorLanceEmbutido = creditoTotal * 0.30;
-        creditoAReceber = creditoTotal * 0.30; // Cliente recebe 30%
+        creditoAReceber = creditoTotal * 0.70; // Cliente recebe 70%
       }
       
       const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
