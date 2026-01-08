@@ -175,6 +175,36 @@ export default function SimuladorConsorcio() {
 
       const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
 
+      // Para fixo_30 e fixo_50: modelo simples sem carência
+      // Parcela permanece a mesma, prazo permanece o mesmo (menos 1 do ato)
+      if (tipoLanceReduzida === 'fixo_30' || tipoLanceReduzida === 'fixo_50') {
+        const novoPrazo = prazoNum - 1; // Apenas -1 da parcela no ato
+        const novaParcela = parcelaTotal; // Parcela permanece igual
+
+        setResultado({
+          creditoTotal: creditoAReceber,
+          creditoOriginal: creditoTotal,
+          parcelaTotal,
+          totalPlano,
+          tipoGrupo,
+          parcelaReduzida: true,
+          tipoLanceReduzida,
+          lanceEmbutidoValor: valorLanceEmbutido,
+          lanceProprioValor: valorLanceProprio,
+          lanceLimitadoValor: 0,
+          lanceTotal: lanceTotalCalculado,
+          saldoBase: totalPlano,
+          saldoAposAto: totalPlano - parcelaTotal,
+          saldoFinal: totalPlano - parcelaTotal,
+          prazoOriginal: prazoNum,
+          opcaoPos: 'parcela',
+          novoPrazo,
+          novaParcela
+        });
+        return;
+      }
+
+      // Para lance_livre e lance_limitado: aplicar carência
       // Saldo devedor inicial = Total do plano
       let saldoDevedor = totalPlano;
 
