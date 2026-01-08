@@ -55,6 +55,7 @@ export default function ConfiguracaoFunil() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedEtapa, setSelectedEtapa] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [formData, setFormData] = useState({
     nome: '',
     ordem: '',
@@ -67,6 +68,15 @@ export default function ConfiguracaoFunil() {
 
   const queryClient = useQueryClient();
 
+  React.useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const user = await base44.auth.me();
+    setCurrentUser(user);
+  };
+
   const { data: etapas = [], isLoading } = useQuery({
     queryKey: ['etapas-funil'],
     queryFn: () => base44.entities.EtapaFunil.list('ordem'),
@@ -74,15 +84,12 @@ export default function ConfiguracaoFunil() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      try {
-        console.log('CREATE - DATA:', data);
-        const res = await base44.entities.EtapaFunil.create(data);
-        console.log('CREATE OK:', res);
-        return res;
-      } catch (err) {
-        console.error('CREATE ERROR:', err);
-        throw err;
-      }
+      console.log('CREATE - DATA:', data);
+      return base44.entities.EtapaFunil.create({
+        ...data,
+        empresa_id: currentUser?.empresa_id,
+        status: 'ativa',
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
@@ -98,15 +105,13 @@ export default function ConfiguracaoFunil() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      try {
-        console.log('UPDATE - ID:', id, 'DATA:', data);
-        const res = await base44.entities.EtapaFunil.update(id, data);
-        console.log('UPDATE OK:', res);
-        return res;
-      } catch (err) {
-        console.error('UPDATE ERROR:', err);
-        throw err;
-      }
+      console.log('UPDATE - ID:', id, 'DATA:', data);
+      const etapaAtual = etapas.find(e => e.id === id);
+      
+      return base44.entities.EtapaFunil.update(id, {
+        ...data,
+        empresa_id: etapaAtual?.empresa_id || currentUser?.empresa_id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
@@ -152,14 +157,11 @@ export default function ConfiguracaoFunil() {
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!formData.nome) {
       toast.error('Informe o nome da etapa');
       return;
     }
-
-    const user = await base44.auth.me();
-    const empresaId = user.empresa_id || user?.empresa?.id;
 
     const data = {
       ...formData,
@@ -167,20 +169,9 @@ export default function ConfiguracaoFunil() {
     };
 
     if (selectedEtapa) {
-      // Update: mantém empresa_id original
-      updateMutation.mutate({ 
-        id: selectedEtapa.id, 
-        data: {
-          ...data,
-          empresa_id: selectedEtapa.empresa_id
-        }
-      });
+      updateMutation.mutate({ id: selectedEtapa.id, data });
     } else {
-      // Create: adiciona empresa_id do usuário
-      createMutation.mutate({
-        ...data,
-        empresa_id: empresaId
-      });
+      createMutation.mutate(data);
     }
   };
 
