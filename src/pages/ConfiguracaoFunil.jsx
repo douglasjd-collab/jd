@@ -114,16 +114,32 @@ export default function ConfiguracaoFunil() {
         empresa_id: etapaAtual?.empresa_id || currentUser?.empresa_id,
       });
     },
-    onSuccess: () => {
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ['etapas-funil'] });
+      const previousEtapas = queryClient.getQueryData(['etapas-funil']);
+
+      queryClient.setQueryData(['etapas-funil'], (old) => {
+        if (!old) return old;
+        return old.map((e) => (e.id === id ? { ...e, ...data } : e));
+      });
+
+      return { previousEtapas };
+    },
+    onError: (error, variables, context) => {
+      console.error('UPDATE MUTATION ERROR:', error);
+      if (context?.previousEtapas) {
+        queryClient.setQueryData(['etapas-funil'], context.previousEtapas);
+      }
+      toast.error(error?.message || 'Erro ao atualizar etapa');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
+    },
+    onSuccess: () => {
       setFormOpen(false);
       setSelectedEtapa(null);
       resetForm();
       toast.success('Etapa atualizada!');
-    },
-    onError: (error) => {
-      console.error('UPDATE MUTATION ERROR:', error);
-      toast.error(error?.message || 'Erro ao atualizar etapa');
     }
   });
 
