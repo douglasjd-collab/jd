@@ -73,13 +73,27 @@ export default function ConfiguracaoFunil() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.EtapaFunil.create(data),
+    mutationFn: async (data) => {
+      try {
+        console.log('CREATE - DATA:', data);
+        const res = await base44.entities.EtapaFunil.create(data);
+        console.log('CREATE OK:', res);
+        return res;
+      } catch (err) {
+        console.error('CREATE ERROR:', err);
+        throw err;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
       setFormOpen(false);
       resetForm();
       toast.success('Etapa criada!');
     },
+    onError: (error) => {
+      console.error('CREATE MUTATION ERROR:', error);
+      toast.error(error?.message || 'Erro ao criar etapa');
+    }
   });
 
   const updateMutation = useMutation({
