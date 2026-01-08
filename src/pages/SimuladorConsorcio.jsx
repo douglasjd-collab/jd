@@ -784,10 +784,9 @@ export default function SimuladorConsorcio() {
                     onCheckedChange={(checked) => {
                       setLanceFixoAtivo(checked);
                       if (checked) {
-                        // Desativar outros lances
+                        // Desativar outros lances (exceto parcela reduzida)
                         setLanceEmbutidoAtivo(false);
                         setLanceProprioAtivo(false);
-                        setParcelaReduzida(false);
                         setLanceFixoPercentual('');
                       }
                     }}
@@ -890,7 +889,7 @@ export default function SimuladorConsorcio() {
               </div>
 
               {/* Parcela Reduzida */}
-              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
+              <div className="p-4 bg-slate-50 rounded-lg border">
                 <div className="flex items-center justify-between mb-3">
                   <Label htmlFor="parcela_reduzida" className="font-semibold">Parcela Reduzida?</Label>
                   <Switch
