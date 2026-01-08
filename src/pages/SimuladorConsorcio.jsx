@@ -522,9 +522,18 @@ export default function SimuladorConsorcio() {
         });
       }
 
-      // Vincular oportunidade à simulação
+      // Vincular oportunidade à simulação (bidirecional)
       await base44.entities.Simulacao.update(simulacao.id, {
         oportunidade_id: oportunidade.id
+      });
+
+      // Vincular simulação à oportunidade
+      await base44.entities.Oportunidade.update(oportunidade.id, {
+        empresa_id: oportunidade.empresa_id,
+        titulo: oportunidade.titulo,
+        etapa_id: oportunidade.etapa_id,
+        vendedor_id: oportunidade.vendedor_id,
+        observacoes: (oportunidade.observacoes || '') + `\n\n📊 Simulação ID: ${simulacao.id}`
       });
 
       // Auditoria

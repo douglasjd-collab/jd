@@ -780,7 +780,21 @@ export default function FunilVendas() {
                               >
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
-                                    <h4 className="font-medium text-slate-900 text-sm">{oport.titulo}</h4>
+                                    <h4 
+                                      className="font-medium text-slate-900 text-sm cursor-pointer hover:text-blue-600 hover:underline"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        // Buscar simulação relacionada
+                                        const simulacoes = await base44.entities.Simulacao.filter({ oportunidade_id: oport.id });
+                                        if (simulacoes.length > 0) {
+                                          window.location.href = createPageUrl(`ImprimirSimulacao?id=${simulacoes[0].id}`);
+                                        } else {
+                                          window.location.href = createPageUrl(`OportunidadeDetalhes?id=${oport.id}`);
+                                        }
+                                      }}
+                                    >
+                                      {oport.titulo}
+                                    </h4>
                                   </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -860,17 +874,7 @@ export default function FunilVendas() {
                                 </div>
 
                                 {oport.cliente_nome && (
-                                  <p 
-                                    className="text-xs text-slate-600 mb-2 cursor-pointer hover:text-blue-600 hover:underline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (oport.oportunidade_id) {
-                                        window.location.href = createPageUrl(`OportunidadeDetalhes?id=${oport.id}`);
-                                      }
-                                    }}
-                                  >
-                                    👤 {oport.cliente_nome}
-                                  </p>
+                                  <p className="text-xs text-slate-600 mb-2">👤 {oport.cliente_nome}</p>
                                 )}
 
                                 {oport.telefone_lead && (
