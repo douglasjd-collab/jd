@@ -812,6 +812,39 @@ export default function SimuladorConsorcio() {
                         </Label>
                       </div>
                     </RadioGroup>
+
+                    {/* Pergunta sobre Parcela Reduzida */}
+                    <div className="mt-4 pt-4 border-t border-yellow-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label htmlFor="parcela_reduzida_fixo" className="font-semibold">A parcela está reduzida?</Label>
+                        <Switch
+                          id="parcela_reduzida_fixo"
+                          checked={parcelaReduzida}
+                          onCheckedChange={setParcelaReduzida}
+                        />
+                      </div>
+
+                      {parcelaReduzida && (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Percentual de redução da parcela:</Label>
+                          <Select
+                            value={percentualReducao.toString()}
+                            onValueChange={(value) => setPercentualReducao(parseFloat(value))}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="30">30% de redução</SelectItem>
+                              <SelectItem value="50">50% de redução</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-slate-500 mt-1">
+                            A parcela mensal será reduzida neste percentual
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
