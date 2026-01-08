@@ -83,7 +83,17 @@ export default function ConfiguracaoFunil() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.EtapaFunil.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      try {
+        console.log('UPDATE - ID:', id, 'DATA:', data);
+        const res = await base44.entities.EtapaFunil.update(id, data);
+        console.log('UPDATE OK:', res);
+        return res;
+      } catch (err) {
+        console.error('UPDATE ERROR:', err);
+        throw err;
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
       setFormOpen(false);
@@ -91,6 +101,10 @@ export default function ConfiguracaoFunil() {
       resetForm();
       toast.success('Etapa atualizada!');
     },
+    onError: (error) => {
+      console.error('UPDATE MUTATION ERROR:', error);
+      toast.error(error?.message || 'Erro ao atualizar etapa');
+    }
   });
 
   const deleteMutation = useMutation({
