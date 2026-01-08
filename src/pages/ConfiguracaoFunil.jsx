@@ -106,13 +106,26 @@ export default function ConfiguracaoFunil() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      console.log('UPDATE - ID:', id, 'DATA:', data);
       const etapaAtual = etapas.find(e => e.id === id);
+      const empresaId = etapaAtual?.empresa_id || currentUser?.empresa_id;
       
-      return base44.entities.EtapaFunil.update(id, {
-        ...data,
-        empresa_id: etapaAtual?.empresa_id || currentUser?.empresa_id,
-      });
+      if (!empresaId) {
+        throw new Error('empresa_id não encontrado');
+      }
+
+      // Enviar apenas os campos permitidos
+      const payload = {
+        empresa_id: empresaId,
+        nome: data.nome,
+        ordem: data.ordem,
+        cor: data.cor,
+        tipo: data.tipo,
+        requer_cliente: data.requer_cliente,
+        requer_documentos: data.requer_documentos,
+        status: data.status
+      };
+      
+      return base44.entities.EtapaFunil.update(id, payload);
     },
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ['etapas-funil'] });
