@@ -199,6 +199,12 @@ export default function ImprimirSimulacao() {
                   {formatCurrency(simulacao.parcela_total)}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="font-semibold">⏱️ Prazo:</span>
+                <span className="text-base font-bold text-blue-900">
+                  {simulacao.prazo_original} Meses
+                </span>
+              </div>
             </div>
           </div>
 
