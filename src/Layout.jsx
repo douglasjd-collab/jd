@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import LogoUploader from '@/components/ui/LogoUploader';
 import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -306,7 +307,9 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
         <div className="p-4 lg:p-8">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
 
