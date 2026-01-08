@@ -503,6 +503,19 @@ export default function SimuladorConsorcio() {
     return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
 
+  const formatarMoeda = (valor) => {
+    if (!valor) return '';
+    const numero = valor.replace(/\D/g, '');
+    const valorFormatado = (Number(numero) / 100).toFixed(2);
+    return valorFormatado.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  const handleMoedaChange = (index, field, value) => {
+    const valorFormatado = formatarMoeda(value);
+    const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
+    atualizarCarta(index, field, valorNumerico.toString());
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
@@ -606,10 +619,9 @@ export default function SimuladorConsorcio() {
                     <div>
                       <Label className="text-xs">Crédito (R$) *</Label>
                       <Input
-                        type="number"
-                        step="0.01"
-                        value={carta.credito}
-                        onChange={(e) => atualizarCarta(index, 'credito', e.target.value)}
+                        type="text"
+                        value={carta.credito ? formatarMoeda((parseFloat(carta.credito) * 100).toString()) : ''}
+                        onChange={(e) => handleMoedaChange(index, 'credito', e.target.value)}
                         placeholder="0,00"
                         className="h-9"
                       />
@@ -617,10 +629,9 @@ export default function SimuladorConsorcio() {
                     <div>
                       <Label className="text-xs">Parcela (R$) *</Label>
                       <Input
-                        type="number"
-                        step="0.01"
-                        value={carta.parcela}
-                        onChange={(e) => atualizarCarta(index, 'parcela', e.target.value)}
+                        type="text"
+                        value={carta.parcela ? formatarMoeda((parseFloat(carta.parcela) * 100).toString()) : ''}
+                        onChange={(e) => handleMoedaChange(index, 'parcela', e.target.value)}
                         placeholder="0,00"
                         className="h-9"
                       />
