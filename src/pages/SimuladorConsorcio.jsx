@@ -167,34 +167,34 @@ export default function SimuladorConsorcio() {
         valorLanceEmbutido = creditoTotal * 0.30;
         creditoAReceber = creditoTotal * 0.70; // Cliente recebe 70%
       }
-      
+
       const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
-      
+
       // Saldo devedor inicial = Total do plano
       let saldoDevedor = totalPlano;
-      
+
       // Descontar primeira parcela (no ato)
       saldoDevedor = saldoDevedor - parcelaTotal;
-      
+
       // Se houver lance limitado, descontar do saldo devedor
       const lanceLimitadoValor = (tipoLanceReduzida === 'lance_limitado' && lanceLimitado) 
         ? parseFloat(lanceLimitado) 
         : 0;
-      
+
       if (lanceLimitadoValor > 0) {
         saldoDevedor = saldoDevedor - lanceLimitadoValor;
       }
-      
+
       // Se houver lance próprio em qualquer tipo, descontar do saldo devedor
       if (valorLanceProprio > 0) {
         saldoDevedor = saldoDevedor - valorLanceProprio;
       }
-      
+
       // Nova parcela = saldo devedor / (prazo - 1 - 3 carência)
       // Carência de 3 meses diminui apenas o prazo, não mexe no saldo
       const novoPrazo = prazoNum - 1 - 3; // -1 no ato, -3 carência
       const novaParcela = saldoDevedor / novoPrazo;
-      
+
       setResultado({
         creditoTotal: creditoAReceber,
         creditoOriginal: creditoTotal,
@@ -206,7 +206,7 @@ export default function SimuladorConsorcio() {
         lanceEmbutidoValor: valorLanceEmbutido,
         lanceProprioValor: valorLanceProprio,
         lanceLimitadoValor,
-        lanceTotal: tipoLanceReduzida === 'lance_limitado' ? lanceLimitadoValor : lanceTotalCalculado,
+        lanceTotal: lanceTotalCalculado,
         saldoBase: totalPlano,
         saldoAposAto: totalPlano - parcelaTotal,
         saldoFinal: saldoDevedor,
