@@ -124,7 +124,14 @@ export default function SimuladorConsorcio() {
     ? (parseFloat(lanceProprio) || 0) 
     : 0;
 
-  const lanceTotal = lanceEmbutidoValor + lanceProprioValor;
+  // Calcular lance fixo se ativo
+  const lanceFixoValor = lanceFixoAtivo && lanceFixoPercentual
+    ? creditoTotal * (parseFloat(lanceFixoPercentual) / 100)
+    : 0;
+
+  const lanceTotal = lanceFixoAtivo 
+    ? lanceFixoValor 
+    : (lanceEmbutidoValor + lanceProprioValor);
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
