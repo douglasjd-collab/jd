@@ -196,7 +196,7 @@ export default function ImprimirSimulacao() {
               <div className="flex justify-between">
                 <span className="font-semibold">📅 Parcela Total:</span>
                 <span className="text-base font-bold text-blue-900">
-                  {formatCurrency(simulacao.parcela_total)}/mês
+                  {formatCurrency(simulacao.parcela_total)}
                 </span>
               </div>
             </div>
