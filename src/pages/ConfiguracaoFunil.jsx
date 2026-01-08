@@ -81,17 +81,22 @@ export default function ConfiguracaoFunil() {
     queryKey: ['etapas-funil', currentUser?.empresa_id],
     enabled: !!currentUser,
     queryFn: async () => {
+      console.log('🔍 Carregando etapas - User:', currentUser);
       const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
       
+      let result;
       if (isMaster) {
-        // Master vê todas as etapas
-        return base44.entities.EtapaFunil.list('ordem');
+        console.log('👑 Master - buscando todas as etapas');
+        result = await base44.entities.EtapaFunil.list('ordem');
       } else {
-        // Outros usuários veem apenas da sua empresa
-        return base44.entities.EtapaFunil.filter({ 
+        console.log('👤 User normal - filtrando por empresa_id:', currentUser?.empresa_id);
+        result = await base44.entities.EtapaFunil.filter({ 
           empresa_id: currentUser?.empresa_id 
         }, 'ordem');
       }
+      
+      console.log('📊 Etapas carregadas:', result);
+      return result;
     },
   });
 
