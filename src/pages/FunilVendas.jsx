@@ -860,7 +860,17 @@ export default function FunilVendas() {
                                 </div>
 
                                 {oport.cliente_nome && (
-                                  <p className="text-xs text-slate-600 mb-2">👤 {oport.cliente_nome}</p>
+                                  <p 
+                                    className="text-xs text-slate-600 mb-2 cursor-pointer hover:text-blue-600 hover:underline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (oport.oportunidade_id) {
+                                        window.location.href = createPageUrl(`OportunidadeDetalhes?id=${oport.id}`);
+                                      }
+                                    }}
+                                  >
+                                    👤 {oport.cliente_nome}
+                                  </p>
                                 )}
 
                                 {oport.telefone_lead && (
