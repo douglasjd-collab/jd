@@ -210,19 +210,13 @@ export default function SimuladorConsorcio() {
     }
 
     // ✅ REGRA ESPECIAL: PARCELA REDUZIDA
-    if (parcelaReduzida) {
+    if (parcelaReduzida && !lanceFixoAtivo) {
       let creditoAReceber = creditoTotal;
       let valorLanceEmbutido = 0;
       let valorLanceProprio = lanceProprioAtivo ? (parseFloat(lanceProprio) || 0) : 0;
 
       // Calcular crédito e lance baseado no tipo de lance
-      if (tipoLanceReduzida === 'fixo_50') {
-        valorLanceEmbutido = creditoTotal * 0.50;
-        creditoAReceber = creditoTotal * 0.50; // Cliente recebe 50%
-      } else if (tipoLanceReduzida === 'fixo_30') {
-        valorLanceEmbutido = creditoTotal * 0.30;
-        creditoAReceber = creditoTotal * 0.70; // Cliente recebe 70%
-      } else if (tipoLanceReduzida === 'lance_livre') {
+      if (tipoLanceReduzida === 'lance_livre') {
         // Lance livre usa o percentual de redução escolhido
         const percentual = percentualReducao / 100;
         valorLanceEmbutido = creditoTotal * percentual;
@@ -230,35 +224,6 @@ export default function SimuladorConsorcio() {
       }
 
       const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
-
-      // Para fixo_30 e fixo_50: modelo simples sem carência
-      // Parcela permanece a mesma, prazo permanece o mesmo (menos 1 do ato)
-      if (tipoLanceReduzida === 'fixo_30' || tipoLanceReduzida === 'fixo_50') {
-        const novoPrazo = prazoNum - 1; // Apenas -1 da parcela no ato
-        const novaParcela = parcelaTotal; // Parcela permanece igual
-
-        setResultado({
-          creditoTotal: creditoAReceber,
-          creditoOriginal: creditoTotal,
-          parcelaTotal,
-          totalPlano,
-          tipoGrupo,
-          parcelaReduzida: true,
-          tipoLanceReduzida,
-          lanceEmbutidoValor: valorLanceEmbutido,
-          lanceProprioValor: valorLanceProprio,
-          lanceLimitadoValor: 0,
-          lanceTotal: lanceTotalCalculado,
-          saldoBase: totalPlano,
-          saldoAposAto: totalPlano - parcelaTotal,
-          saldoFinal: totalPlano - parcelaTotal,
-          prazoOriginal: prazoNum,
-          opcaoPos: 'parcela',
-          novoPrazo,
-          novaParcela
-        });
-        return;
-      }
 
       // Para lance_livre e lance_limitado: aplicar carência
       // Saldo devedor inicial = Total do plano
@@ -985,8 +950,6 @@ export default function SimuladorConsorcio() {
                         <SelectContent>
                           <SelectItem value="lance_livre">Lance Livre</SelectItem>
                           <SelectItem value="lance_limitado">Lance Limitado</SelectItem>
-                          <SelectItem value="fixo_50">Fixo de 50%</SelectItem>
-                          <SelectItem value="fixo_30">Fixo de 30%</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1007,18 +970,6 @@ export default function SimuladorConsorcio() {
                         <p className="text-xs text-slate-600 mt-1">
                           Este valor será abatido do saldo devedor
                         </p>
-                      </div>
-                    )}
-
-                    {tipoLanceReduzida === 'fixo_50' && (
-                      <div className="text-xs bg-blue-50 p-2 rounded border border-blue-200 text-blue-700">
-                        ℹ️ Cliente receberá 50% do crédito total
-                      </div>
-                    )}
-
-                    {tipoLanceReduzida === 'fixo_30' && (
-                      <div className="text-xs bg-blue-50 p-2 rounded border border-blue-200 text-blue-700">
-                        ℹ️ Cliente receberá 70% do crédito total
                       </div>
                     )}
                   </div>
