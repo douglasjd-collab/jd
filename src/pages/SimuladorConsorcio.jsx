@@ -25,6 +25,9 @@ export default function SimuladorConsorcio() {
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
 
+  const [lanceFixoAtivo, setLanceFixoAtivo] = useState(false);
+  const [lanceFixoPercentual, setLanceFixoPercentual] = useState(''); // 30 | 50
+
   const [lanceEmbutidoAtivo, setLanceEmbutidoAtivo] = useState(false);
   const [administradora, setAdministradora] = useState(''); // canopus | itau | outra
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(25);
@@ -139,6 +142,11 @@ export default function SimuladorConsorcio() {
       return;
     }
 
+    if (lanceFixoAtivo && !lanceFixoPercentual) {
+      toast.error('Selecione o percentual do lance fixo (30% ou 50%)');
+      return;
+    }
+
     if (lanceEmbutidoAtivo && !administradora) {
       toast.error('Selecione a administradora do lance embutido');
       return;
@@ -152,6 +160,38 @@ export default function SimuladorConsorcio() {
     // 🧮 CÁLCULO
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = prazoNum * parcelaTotal;
+
+    // ✅ REGRA: LANCE FIXO (50% ou 30%)
+    if (lanceFixoAtivo && lanceFixoPercentual) {
+      const percentual = parseFloat(lanceFixoPercentual) / 100;
+      const valorLanceFixo = creditoTotal * percentual;
+      const creditoAReceber = creditoTotal - valorLanceFixo;
+      
+      const novoPrazo = prazoNum - 1; // Apenas -1 da parcela no ato
+      const novaParcela = parcelaTotal; // Parcela permanece igual
+
+      setResultado({
+        creditoTotal: creditoAReceber,
+        creditoOriginal: creditoTotal,
+        parcelaTotal,
+        totalPlano,
+        tipoGrupo,
+        lanceFixo: true,
+        lanceFixoPercentual: parseFloat(lanceFixoPercentual),
+        lanceEmbutidoValor: valorLanceFixo,
+        lanceProprioValor: 0,
+        lanceLimitadoValor: 0,
+        lanceTotal: valorLanceFixo,
+        saldoBase: totalPlano,
+        saldoAposAto: totalPlano - parcelaTotal,
+        saldoFinal: totalPlano - parcelaTotal,
+        prazoOriginal: prazoNum,
+        opcaoPos: 'parcela',
+        novoPrazo,
+        novaParcela
+      });
+      return;
+    }
 
     // ✅ REGRA ESPECIAL: PARCELA REDUZIDA
     if (parcelaReduzida) {
@@ -734,8 +774,51 @@ export default function SimuladorConsorcio() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Lance Fixo - Pergunta Inicial */}
+              <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border-2 border-yellow-300">
+                <div className="flex items-center justify-between mb-3">
+                  <Label htmlFor="lance_fixo" className="font-semibold text-lg">💎 Ofertar Lance Fixo?</Label>
+                  <Switch
+                    id="lance_fixo"
+                    checked={lanceFixoAtivo}
+                    onCheckedChange={(checked) => {
+                      setLanceFixoAtivo(checked);
+                      if (checked) {
+                        // Desativar outros lances
+                        setLanceEmbutidoAtivo(false);
+                        setLanceProprioAtivo(false);
+                        setParcelaReduzida(false);
+                        setLanceFixoPercentual('');
+                      }
+                    }}
+                  />
+                </div>
+
+                {lanceFixoAtivo && (
+                  <div className="space-y-3">
+                    <Label className="text-sm">Escolha o percentual do lance fixo:</Label>
+                    <RadioGroup value={lanceFixoPercentual} onValueChange={setLanceFixoPercentual}>
+                      <div className="flex items-center space-x-2 p-3 bg-white rounded-lg border-2 border-orange-300 cursor-pointer hover:bg-orange-50">
+                        <RadioGroupItem value="50" id="fixo_50" />
+                        <Label htmlFor="fixo_50" className="cursor-pointer flex-1">
+                          <span className="font-semibold text-base">Lance Fixo de 50%</span>
+                          <p className="text-xs text-slate-600 mt-1">Cliente recebe 50% do crédito total</p>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2 p-3 bg-white rounded-lg border-2 border-yellow-300 cursor-pointer hover:bg-yellow-50">
+                        <RadioGroupItem value="30" id="fixo_30" />
+                        <Label htmlFor="fixo_30" className="cursor-pointer flex-1">
+                          <span className="font-semibold text-base">Lance Fixo de 30%</span>
+                          <p className="text-xs text-slate-600 mt-1">Cliente recebe 70% do crédito total</p>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+              </div>
+
               {/* Lance Embutido */}
-              <div className="p-4 bg-slate-50 rounded-lg border">
+              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
                   <Label htmlFor="lance_embutido" className="font-semibold">Lance Embutido</Label>
                   <Switch
@@ -807,7 +890,7 @@ export default function SimuladorConsorcio() {
               </div>
 
               {/* Parcela Reduzida */}
-              <div className="p-4 bg-slate-50 rounded-lg border">
+              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
                   <Label htmlFor="parcela_reduzida" className="font-semibold">Parcela Reduzida?</Label>
                   <Switch
@@ -894,7 +977,7 @@ export default function SimuladorConsorcio() {
               </div>
 
               {/* Lance Próprio */}
-              <div className="p-4 bg-slate-50 rounded-lg border">
+              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
                   <Label htmlFor="lance_proprio" className="font-semibold">Lance Próprio</Label>
                   <Switch
