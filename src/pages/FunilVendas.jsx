@@ -789,70 +789,72 @@ export default function FunilVendas() {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                      <DropdownMenuItem onClick={() => {
-                                        setSelectedOportunidade(oport);
-                                        setFormData({
-                                          titulo: oport.titulo,
-                                          cliente_id: oport.cliente_id || '',
-                                          valor_estimado: oport.valor_estimado?.toString() || '',
-                                          etapa_id: oport.etapa_id,
-                                          vendedor_id: oport.vendedor_id,
-                                          origem: oport.origem || '',
-                                          observacoes: oport.observacoes || '',
-                                          data_fechamento_prevista: oport.data_fechamento_prevista || '',
-                                          telefone_lead: oport.telefone_lead || '',
-                                          data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
-                                        });
-                                        setFormOpen(true);
-                                      }}>
-                                        <Pencil className="w-4 h-4 mr-2" />
-                                        Editar
-                                        </DropdownMenuItem>
-                                        {podeAlterarResponsavel && (
-                                        <DropdownMenuItem onClick={() => {
-                                          setOportunidadeParaAlterar(oport);
-                                          // Carregar responsáveis atuais
-                                          try {
-                                            const idsAtuais = oport.responsaveis_ids ? JSON.parse(oport.responsaveis_ids) : [oport.vendedor_id];
-                                            setResponsaveisSelecionados(idsAtuais);
-                                          } catch {
-                                            setResponsaveisSelecionados([oport.vendedor_id]);
-                                          }
-                                          setAlterarResponsavelOpen(true);
-                                        }}>
-                                          <UserCheck className="w-4 h-4 mr-2" />
-                                          Alterar Responsáveis
-                                        </DropdownMenuItem>
-                                        )}
-                                        {podeAlterarQuadro && (
-                                        <>
-                                          <DropdownMenuItem onClick={() => {
-                                            setOportunidadeParaAlterar(oport);
-                                            setNovaEtapaId(oport.etapa_id);
-                                            setAlterarQuadroOpen(true);
-                                          }}>
-                                            <MoveHorizontal className="w-4 h-4 mr-2" />
-                                            Alterar Quadro
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => {
-                                              if (confirm(`Tem certeza que deseja excluir a oportunidade "${oport.titulo}"?`)) {
-                                                excluirOportunidadeMutation.mutate(oport.id);
-                                              }
-                                            }}
-                                            className="text-red-600"
-                                          >
-                                            <Trash2 className="w-4 h-4 mr-2" />
-                                            Excluir Lead
-                                          </DropdownMenuItem>
-                                        </>
-                                      )}
-                                      <DropdownMenuItem asChild>
-                                        <Link to={createPageUrl(`OportunidadeDetalhes?id=${oport.id}`)}>
-                                          <Eye className="w-4 h-4 mr-2" />
-                                          Ver detalhes
-                                        </Link>
-                                      </DropdownMenuItem>
+                                     {(isResponsavel || podeAlterarQuadro) && (
+                                       <DropdownMenuItem onClick={() => {
+                                         setSelectedOportunidade(oport);
+                                         setFormData({
+                                           titulo: oport.titulo,
+                                           cliente_id: oport.cliente_id || '',
+                                           valor_estimado: oport.valor_estimado?.toString() || '',
+                                           etapa_id: oport.etapa_id,
+                                           vendedor_id: oport.vendedor_id,
+                                           origem: oport.origem || '',
+                                           observacoes: oport.observacoes || '',
+                                           data_fechamento_prevista: oport.data_fechamento_prevista || '',
+                                           telefone_lead: oport.telefone_lead || '',
+                                           data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
+                                         });
+                                         setFormOpen(true);
+                                       }}>
+                                         <Pencil className="w-4 h-4 mr-2" />
+                                         Editar
+                                       </DropdownMenuItem>
+                                     )}
+                                     {podeAlterarResponsavel && (
+                                       <DropdownMenuItem onClick={() => {
+                                         setOportunidadeParaAlterar(oport);
+                                         // Carregar responsáveis atuais
+                                         try {
+                                           const idsAtuais = oport.responsaveis_ids ? JSON.parse(oport.responsaveis_ids) : [oport.vendedor_id];
+                                           setResponsaveisSelecionados(idsAtuais);
+                                         } catch {
+                                           setResponsaveisSelecionados([oport.vendedor_id]);
+                                         }
+                                         setAlterarResponsavelOpen(true);
+                                       }}>
+                                         <UserCheck className="w-4 h-4 mr-2" />
+                                         Alterar Responsáveis
+                                       </DropdownMenuItem>
+                                     )}
+                                     {podeAlterarQuadro && (
+                                       <>
+                                         <DropdownMenuItem onClick={() => {
+                                           setOportunidadeParaAlterar(oport);
+                                           setNovaEtapaId(oport.etapa_id);
+                                           setAlterarQuadroOpen(true);
+                                         }}>
+                                           <MoveHorizontal className="w-4 h-4 mr-2" />
+                                           Alterar Quadro
+                                         </DropdownMenuItem>
+                                         <DropdownMenuItem 
+                                           onClick={() => {
+                                             if (confirm(`Tem certeza que deseja excluir a oportunidade "${oport.titulo}"?`)) {
+                                               excluirOportunidadeMutation.mutate(oport.id);
+                                             }
+                                           }}
+                                           className="text-red-600"
+                                         >
+                                           <Trash2 className="w-4 h-4 mr-2" />
+                                           Excluir Lead
+                                         </DropdownMenuItem>
+                                       </>
+                                     )}
+                                     <DropdownMenuItem asChild>
+                                       <Link to={createPageUrl(`OportunidadeDetalhes?id=${oport.id}`)}>
+                                         <Eye className="w-4 h-4 mr-2" />
+                                         Ver detalhes
+                                       </Link>
+                                     </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </div>
