@@ -124,14 +124,18 @@ export default function ConfiguracaoFunil() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.nome) {
       toast.error('Informe o nome da etapa');
       return;
     }
 
+    const user = await base44.auth.me();
+    const empresaId = user.empresa_id || user?.empresa?.id;
+
     const data = {
       ...formData,
+      empresa_id: empresaId,
       ordem: parseInt(formData.ordem) || etapas.length + 1
     };
 
