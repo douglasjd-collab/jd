@@ -264,29 +264,33 @@ export default function ConfiguracaoFunil() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => {
-              setSelectedEtapa(row);
-              setFormData({
-                nome: row.nome,
-                ordem: row.ordem.toString(),
-                cor: row.cor,
-                tipo: row.tipo,
-                requer_cliente: row.requer_cliente || false,
-                requer_documentos: row.requer_documentos || false,
-                status: row.status
-              });
-              setFormOpen(true);
-            }}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setDeleteId(row.id)}
-              className="text-red-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir
-            </DropdownMenuItem>
+            {(isAdmin || isGerente) && (
+              <DropdownMenuItem onClick={() => {
+                setSelectedEtapa(row);
+                setFormData({
+                  nome: row.nome,
+                  ordem: row.ordem.toString(),
+                  cor: row.cor,
+                  tipo: row.tipo,
+                  requer_cliente: row.requer_cliente || false,
+                  requer_documentos: row.requer_documentos || false,
+                  status: row.status
+                });
+                setFormOpen(true);
+              }}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Editar
+              </DropdownMenuItem>
+            )}
+            {(isAdmin || isGerente) && (
+              <DropdownMenuItem
+                onClick={() => setDeleteId(row.id)}
+                className="text-red-600"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )
@@ -298,12 +302,12 @@ export default function ConfiguracaoFunil() {
       <PageHeader
         title="Configuração do Funil"
         subtitle="Gerencie as etapas do funil de vendas"
-        actionLabel="Nova Etapa"
-        onAction={() => {
+        actionLabel={podeEditar ? "Nova Etapa" : undefined}
+        onAction={podeEditar ? () => {
           setSelectedEtapa(null);
           resetForm();
           setFormOpen(true);
-        }}
+        } : undefined}
         backTo="FunilVendas"
       />
 
