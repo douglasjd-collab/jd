@@ -167,13 +167,20 @@ export default function SimuladorConsorcio() {
       const valorLanceFixo = creditoTotal * percentual;
       const creditoAReceber = creditoTotal - valorLanceFixo;
       
+      // Calcular parcela (considerando redução se aplicável)
+      let parcelaFinal = parcelaTotal;
+      if (parcelaReduzida) {
+        const reducao = percentualReducao / 100;
+        parcelaFinal = parcelaTotal * (1 - reducao);
+      }
+      
       const novoPrazo = prazoNum - 1; // Apenas -1 da parcela no ato
-      const novaParcela = parcelaTotal; // Parcela permanece igual
+      const novaParcela = parcelaFinal; // Parcela permanece igual (ou reduzida)
 
       setResultado({
         creditoTotal: creditoAReceber,
         creditoOriginal: creditoTotal,
-        parcelaTotal,
+        parcelaTotal: parcelaFinal,
         totalPlano,
         tipoGrupo,
         lanceFixo: true,
@@ -182,9 +189,11 @@ export default function SimuladorConsorcio() {
         lanceProprioValor: 0,
         lanceLimitadoValor: 0,
         lanceTotal: valorLanceFixo,
+        parcelaReduzida,
+        percentualReducao: parcelaReduzida ? percentualReducao : null,
         saldoBase: totalPlano,
-        saldoAposAto: totalPlano - parcelaTotal,
-        saldoFinal: totalPlano - parcelaTotal,
+        saldoAposAto: totalPlano - parcelaFinal,
+        saldoFinal: totalPlano - parcelaFinal,
         prazoOriginal: prazoNum,
         opcaoPos: 'parcela',
         novoPrazo,
@@ -921,8 +930,8 @@ export default function SimuladorConsorcio() {
                 )}
               </div>
 
-              {/* Parcela Reduzida */}
-              <div className="p-4 bg-slate-50 rounded-lg border">
+              {/* Parcela Reduzida (apenas quando NÃO for lance fixo) */}
+              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
                   <Label htmlFor="parcela_reduzida" className="font-semibold">Parcela Reduzida?</Label>
                   <Switch
@@ -935,6 +944,7 @@ export default function SimuladorConsorcio() {
                         setLanceLimitado('');
                       }
                     }}
+                    disabled={lanceFixoAtivo}
                   />
                 </div>
 
