@@ -311,7 +311,7 @@ export default function ImprimirSimulacao() {
               </div>
               {simulacao.opcao_pos_contemplacao === 'prazo' && (
                 <div className="pt-1 border-t border-purple-200 text-xs text-purple-700">
-                  ✓ 1 parcela no ato • ✓ 3 carência
+                  ✓ 3 meses de carência após contemplação
                 </div>
               )}
             </div>
