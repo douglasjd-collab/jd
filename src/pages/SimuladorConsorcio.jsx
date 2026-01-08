@@ -328,8 +328,15 @@ export default function SimuladorConsorcio() {
 
       const user = await base44.auth.me();
 
+      // Garantir empresa_id
+      const empresaId = user.empresa_id || user?.empresa?.id;
+      if (!empresaId) {
+        throw new Error('Usuário não está vinculado a uma empresa');
+      }
+
       // 1. Salvar simulação
       const simulacao = await base44.entities.Simulacao.create({
+        empresa_id: empresaId,
         cliente_nome: clienteNome,
         telefone: telefone,
         tipo_grupo: tipoGrupo,
@@ -345,13 +352,13 @@ export default function SimuladorConsorcio() {
         parcela_reduzida: parcelaReduzida,
         percentual_reducao: parcelaReduzida ? percentualReducao : null,
         tipo_lance_reduzida: parcelaReduzida ? tipoLanceReduzida : null,
-        lance_limitado_valor: (parcelaReduzida && tipoLanceReduzida === 'lance_limitado') ? parseFloat(lanceLimitado) : null,
+        lance_limitado_valor: (parcelaReduzida && tipoLanceReduzida === 'lance_limitado') ? parseFloat(lanceLimitado || 0) : null,
 
         lance_proprio_ativo: lanceProprioAtivo,
         lance_proprio_valor: lanceProprioValor,
 
         lance_total: lanceTotal,
-        lance_considerado_no_saldo: resultado.lanceConsideradoNoSaldo,
+        lance_considerado_no_saldo: resultado.lanceConsideradoNoSaldo || resultado.lanceTotal,
 
         opcao_pos_contemplacao: opcaoPos,
         prazo_original: resultado.prazoOriginal,
@@ -369,7 +376,7 @@ export default function SimuladorConsorcio() {
         pdf_url: `#simulacao-impressao-${simulacao.id}`
       });
 
-      // 3. Verificar se já existe oportunidade para este cliente (por nome ou telefone)
+      // 3. Verificar se já existe oportunidade para este cliente
       const telefoneLimpo = telefone.replace(/\D/g, '');
       const oportunidadesExistentes = await base44.entities.Oportunidade.list();
       
@@ -382,7 +389,7 @@ export default function SimuladorConsorcio() {
       let oportunidade;
 
       if (oportunidadeDuplicada) {
-        // Cliente já tem oportunidade aberta - atualizar com nova simulação
+        // Cliente já tem oportunidade aberta - atualizar
         const observacoesAtuais = oportunidadeDuplicada.observacoes || '';
         const novaSimulacaoInfo =
           `\n\n🔄 Nova Simulação (${new Date().toLocaleDateString('pt-BR')}):` +
@@ -392,28 +399,28 @@ export default function SimuladorConsorcio() {
           (lanceEmbutidoAtivo ? `\nAdministradora: ${administradora}` : '');
         
         await base44.entities.Oportunidade.update(oportunidadeDuplicada.id, {
+          empresa_id: oportunidadeDuplicada.empresa_id || empresaId,
+          titulo: oportunidadeDuplicada.titulo,
+          etapa_id: oportunidadeDuplicada.etapa_id,
+          vendedor_id: oportunidadeDuplicada.vendedor_id,
           observacoes: observacoesAtuais + novaSimulacaoInfo,
-          valor_estimado: creditoTotal, // Atualiza com valor mais recente
-          data_ultima_movimentacao: new Date().toISOString(),
-          responsavel_id: oportunidadeDuplicada.responsavel_id ?? user.id,
-          responsavel_nome: oportunidadeDuplicada.responsavel_nome ?? user.full_name
+          valor_estimado: creditoTotal,
+          data_ultima_movimentacao: new Date().toISOString()
         });
 
-        oportunidade = { ...oportunidadeDuplicada, observacoes: observacoesAtuais + novaSimulacaoInfo };
+        oportunidade = oportunidadeDuplicada;
 
-        // Registrar movimentação de atualização
+        // Registrar movimentação
         await base44.entities.MovimentacaoFunil.create({
           oportunidade_id: oportunidadeDuplicada.id,
-          etapa_origem_id: oportunidadeDuplicada.etapa_id,
-          etapa_origem_nome: oportunidadeDuplicada.etapa_nome,
           etapa_destino_id: oportunidadeDuplicada.etapa_id,
           etapa_destino_nome: oportunidadeDuplicada.etapa_nome,
           usuario_id: user.id,
           usuario_nome: user.full_name,
-          observacao: '🔄 Nova simulação adicionada ao histórico do cliente'
+          observacao: '🔄 Nova simulação adicionada'
         });
 
-        toast.info('Cliente já possui oportunidade aberta. Nova simulação adicionada ao histórico.');
+        toast.info('Cliente já possui oportunidade. Nova simulação adicionada.');
       } else {
         // Criar nova oportunidade
         const etapaSimulacao = etapas.find(e => 
@@ -421,18 +428,21 @@ export default function SimuladorConsorcio() {
           e.nome.toLowerCase().includes('simulacao')
         ) || etapas[0];
 
+        if (!etapaSimulacao) {
+          throw new Error('Nenhuma etapa do funil cadastrada. Configure as etapas primeiro.');
+        }
+
         oportunidade = await base44.entities.Oportunidade.create({
+          empresa_id: empresaId,
           titulo: `Simulação - ${clienteNome}`,
           cliente_nome: clienteNome,
           cliente_telefone: telefone,
           telefone_lead: telefone,
           valor_estimado: creditoTotal,
-          etapa_id: etapaSimulacao?.id,
-          etapa_nome: etapaSimulacao?.nome,
+          etapa_id: etapaSimulacao.id,
+          etapa_nome: etapaSimulacao.nome,
           vendedor_id: user.id,
           vendedor_nome: user.full_name,
-          responsavel_id: user.id,
-          responsavel_nome: user.full_name,
           gerente_id: user.perfil === 'vendedor' ? user.gerente_id : user.id,
           origem: 'Simulador',
           observacoes:
@@ -445,14 +455,14 @@ export default function SimuladorConsorcio() {
           data_ultima_movimentacao: new Date().toISOString()
         });
 
-        // Registrar movimentação no funil (apenas para nova oportunidade)
+        // Registrar movimentação no funil
         await base44.entities.MovimentacaoFunil.create({
           oportunidade_id: oportunidade.id,
-          etapa_destino_id: etapaSimulacao?.id,
-          etapa_destino_nome: etapaSimulacao?.nome,
+          etapa_destino_id: etapaSimulacao.id,
+          etapa_destino_nome: etapaSimulacao.nome,
           usuario_id: user.id,
           usuario_nome: user.full_name,
-          observacao: 'Simulação gerada e enviada ao cliente'
+          observacao: 'Simulação gerada'
         });
       }
 
@@ -476,12 +486,13 @@ export default function SimuladorConsorcio() {
     onSuccess: ({ simulacao }) => {
       toast.success('Simulação gerada com sucesso!');
       
-      // Navegar para página de impressão na mesma aba
+      // Navegar para página de impressão
       setTimeout(() => {
         window.location.href = `/ImprimirSimulacao?id=${simulacao.id}`;
       }, 300);
     },
     onError: (error) => {
+      console.error('Erro ao gerar simulação:', error);
       toast.error(error.message || 'Erro ao gerar simulação');
     }
   });
