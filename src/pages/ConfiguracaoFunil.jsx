@@ -78,26 +78,9 @@ export default function ConfiguracaoFunil() {
   };
 
   const { data: etapas = [], isLoading } = useQuery({
-    queryKey: ['etapas-funil', currentUser?.empresa_id],
+    queryKey: ['etapas-funil'],
     enabled: !!currentUser,
-    queryFn: async () => {
-      console.log('🔍 Carregando etapas - User:', currentUser);
-      const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
-      
-      let result;
-      if (isMaster) {
-        console.log('👑 Master - buscando todas as etapas');
-        result = await base44.entities.EtapaFunil.list('ordem');
-      } else {
-        console.log('👤 User normal - filtrando por empresa_id:', currentUser?.empresa_id);
-        result = await base44.entities.EtapaFunil.filter({ 
-          empresa_id: currentUser?.empresa_id 
-        }, 'ordem');
-      }
-      
-      console.log('📊 Etapas carregadas:', result);
-      return result;
-    },
+    queryFn: () => base44.entities.EtapaFunil.list('ordem'),
   });
 
   const createMutation = useMutation({
