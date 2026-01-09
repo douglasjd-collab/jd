@@ -76,19 +76,24 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     queryKey: ['vendedores-venda-form', empresaId],
     enabled: open && isAdmin,
     queryFn: async () => {
-      const result = await base44.entities.User.list();
-      if (isMaster) {
-        // Master vê todos os vendedores
-        return result.filter(u => u.perfil === 'vendedor' && u.status === 'ativo');
-      } else if (empresaId) {
-        // Admin vê vendedores da sua empresa
-        return result.filter(u => 
-          u.perfil === 'vendedor' && 
-          u.status === 'ativo' &&
-          u.empresa_id === empresaId
-        );
+      try {
+        const result = await base44.entities.Colaborador.list();
+        if (isMaster) {
+          // Master vê todos os vendedores
+          return result.filter(u => u.perfil === 'vendedor' && u.status === 'ativo');
+        } else if (empresaId) {
+          // Admin vê vendedores da sua empresa
+          return result.filter(u => 
+            u.perfil === 'vendedor' && 
+            u.status === 'ativo' &&
+            u.empresa_id === empresaId
+          );
+        }
+        return [];
+      } catch (err) {
+        console.error('Erro ao carregar vendedores:', err);
+        return [];
       }
-      return [];
     },
   });
 
@@ -96,7 +101,14 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   const { data: gerentes = [] } = useQuery({
     queryKey: ['gerentes-venda-form'],
     enabled: open && isAdmin,
-    queryFn: () => base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' }),
+    queryFn: async () => {
+      try {
+        return await base44.entities.Colaborador.filter({ perfil: 'gerente', status: 'ativo' });
+      } catch (err) {
+        console.error('Erro ao carregar gerentes:', err);
+        return [];
+      }
+    },
   });
 
   // React Query - Empresas (só para Master)
@@ -523,26 +535,26 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     setValue('vendedor_id', value, { shouldValidate: true });
                     const vendedor = vendedores.find(v => v.id === value);
                     if (vendedor) {
-                      setValue('vendedor_nome', vendedor.full_name);
+                      setValue('vendedor_nome', vendedor.nome);
                       if (vendedor.gerente_id) {
                         setValue('gerente_id', vendedor.gerente_id);
                         const gerente = gerentes.find(g => g.id === vendedor.gerente_id);
                         if (gerente) {
-                          setValue('gerente_nome', gerente.full_name);
+                          setValue('gerente_nome', gerente.nome);
                         }
                       }
                     }
-                  }}
+                    }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o vendedor">
-                      {watch('vendedor_id') && vendedores.find(v => v.id === watch('vendedor_id'))?.full_name}
+                      {watch('vendedor_id') && vendedores.find(v => v.id === watch('vendedor_id'))?.nome}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores.length > 0 ? (
                       vendedores.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>{v.full_name}</SelectItem>
+                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-slate-500">
