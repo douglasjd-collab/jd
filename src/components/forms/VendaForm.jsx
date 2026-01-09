@@ -517,9 +517,10 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
               <div>
                 <Label>Vendedor *</Label>
                 <Select
-                  value={watch('vendedor_id')}
+                  value={watch('vendedor_id') || ''}
                   onValueChange={(value) => {
-                    setValue('vendedor_id', value);
+                    console.log('Vendedor selecionado:', value);
+                    setValue('vendedor_id', value, { shouldValidate: true });
                     const vendedor = vendedores.find(v => v.id === value);
                     if (vendedor) {
                       setValue('vendedor_nome', vendedor.full_name);
@@ -534,7 +535,9 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o vendedor" />
+                    <SelectValue placeholder="Selecione o vendedor">
+                      {watch('vendedor_id') && vendedores.find(v => v.id === watch('vendedor_id'))?.full_name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores.length > 0 ? (
