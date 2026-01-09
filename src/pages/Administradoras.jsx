@@ -124,32 +124,14 @@ export default function Administradoras() {
       header: '',
       className: 'w-12',
       cell: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onSelect={() => {
-                setTimeout(() => handleEdit(row), 50);
-              }}
-            >
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onSelect={() => {
-                setTimeout(() => setDeleteId(row.id), 50);
-              }}
-              className="text-red-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={() => handleEdit(row)}
+          title="Editar"
+        >
+          <Pencil className="w-4 h-4" />
+        </Button>
       )
     }
   ];
@@ -188,14 +170,19 @@ export default function Administradoras() {
       {/* Form Modal */}
       <AdministradoraForm
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setSelectedAdmin(null);
+        }}
         administradora={selectedAdmin}
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => {
+        if (!open) setDeleteId(null);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir administradora?</AlertDialogTitle>
