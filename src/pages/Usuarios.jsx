@@ -72,11 +72,11 @@ export default function Usuarios() {
         const isMasterOrSuperAdmin = ['master', 'super_admin'].includes(currentUser?.perfil);
         
         if (isMasterOrSuperAdmin) {
-          return await base44.entities.User.list('-created_date');
+          return await base44.entities.Colaborador.list('-created_date');
         }
         
         if (currentUser?.empresa_id) {
-          return await base44.entities.User.filter(
+          return await base44.entities.Colaborador.filter(
             { empresa_id: currentUser.empresa_id },
             '-created_date'
           );
@@ -85,7 +85,6 @@ export default function Usuarios() {
         return [];
       } catch (err) {
         console.error('Erro ao listar usuários:', err);
-        toast.error('Sem permissão para listar usuários. Ajuste permissões do entity User no Base44.');
         return [];
       }
     },
@@ -100,15 +99,15 @@ export default function Usuarios() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const usuarioAntigo = usuarios.find(u => u.id === id);
-      await base44.entities.User.update(id, data);
+      await base44.entities.Colaborador.update(id, data);
       
       // Auditoria
       try {
         await base44.entities.LogAuditoria.create({
           usuario_id: currentUser.id,
-          usuario_nome: currentUser.full_name,
-          acao: `Edição de usuário/vendedor: ${data.razao_social || data.full_name}`,
-          entidade: 'User',
+          usuario_nome: currentUser.full_name || currentUser.nome_perfil,
+          acao: `Edição de usuário/vendedor: ${data.nome}`,
+          entidade: 'Colaborador',
           entidade_id: id,
           dados_anteriores: JSON.stringify(usuarioAntigo),
           dados_novos: JSON.stringify(data),
@@ -129,15 +128,15 @@ export default function Usuarios() {
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
       const usuario = usuarios.find(u => u.id === id);
-      await base44.entities.User.delete(id);
+      await base44.entities.Colaborador.delete(id);
       
       // Auditoria
       try {
         await base44.entities.LogAuditoria.create({
           usuario_id: currentUser.id,
-          usuario_nome: currentUser.full_name,
-          acao: `Exclusão de usuário/vendedor: ${usuario.razao_social || usuario.full_name}`,
-          entidade: 'User',
+          usuario_nome: currentUser.full_name || currentUser.nome_perfil,
+          acao: `Exclusão de usuário/vendedor: ${usuario.nome}`,
+          entidade: 'Colaborador',
           entidade_id: id,
           dados_anteriores: JSON.stringify(usuario),
           tipo: 'exclusao'
@@ -179,19 +178,13 @@ export default function Usuarios() {
     };
 
     if (selectedUsuario) {
-      // Edição - sempre permite atualizar nome, mas email só se for gerente ou superior
-      const isGerenteOuSuperior = ['gerente', 'admin', 'master'].includes(currentUser?.perfil);
-      
+      // Edição - atualizar Colaborador
       const dataToUpdate = { ...normalizedData };
-      // Remove senha e email dos dados de atualização
       delete dataToUpdate.senha;
-      if (!isGerenteOuSuperior) {
-        delete dataToUpdate.email;
-      }
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário - enviar convite
+      // Novo usuário - enviar convite e criar Colaborador
       setIsSubmitting(true);
       setInviteSuccess(false);
       
@@ -202,18 +195,20 @@ export default function Usuarios() {
         // 2. Aguardar processamento
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // 3. Buscar usuário criado pelo convite
-        const users = await base44.entities.User.filter({ email: normalizedData.email });
-        if (users.length === 0) {
+        // 3. Buscar user_id criado pelo convite
+        const usersFilter = await base44.asServiceRole.entities.User.filter({ email: normalizedData.email });
+        if (usersFilter.length === 0) {
           throw new Error('Usuário não foi encontrado após convite');
         }
         
-        const usuarioCriado = users[0];
+        const userAuth = usersFilter[0];
         
-        // 4. Atualizar com dados adicionais (remove senha do payload)
-        const { email, senha, ...dadosAdicionais } = normalizedData;
-        await base44.entities.User.update(usuarioCriado.id, {
-          ...dadosAdicionais,
+        // 4. Criar registro em Colaborador
+        const { email, senha, ...dadosColaborador } = normalizedData;
+        await base44.entities.Colaborador.create({
+          ...dadosColaborador,
+          user_id: userAuth.id,
+          email: normalizedData.email,
           status: 'ativo'
         });
 
@@ -221,10 +216,10 @@ export default function Usuarios() {
         try {
           await base44.entities.LogAuditoria.create({
             usuario_id: currentUser.id,
-            usuario_nome: currentUser.full_name,
-            acao: `Cadastro de novo usuário: ${normalizedData.razao_social || normalizedData.full_name}`,
-            entidade: 'User',
-            entidade_id: usuarioCriado.id,
+            usuario_nome: currentUser.full_name || currentUser.nome_perfil,
+            acao: `Cadastro de novo usuário: ${normalizedData.nome}`,
+            entidade: 'Colaborador',
+            entidade_id: userAuth.id,
             dados_novos: JSON.stringify(normalizedData),
             tipo: 'criacao'
           });
@@ -254,14 +249,12 @@ export default function Usuarios() {
 
   const getGerenteNome = (gerenteId) => {
     const gerente = usuarios.find(u => u.id === gerenteId);
-    return gerente?.razao_social || gerente?.full_name || '-';
+    return gerente?.nome || '-';
   };
 
   const filteredUsuarios = usuarios.filter(u => {
-    const matchSearch = u.razao_social?.toLowerCase().includes(search.toLowerCase()) ||
-      u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch = u.nome?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.nome_perfil?.toLowerCase().includes(search.toLowerCase()) ||
       u.cpf_cnpj?.includes(search);
     const matchPerfil = filterPerfil === 'todos' || u.perfil === filterPerfil;
     const matchEmpresa = filterEmpresa === 'todas' || u.empresa_id === filterEmpresa;
@@ -273,7 +266,7 @@ export default function Usuarios() {
       header: 'Nome',
       cell: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.nome_perfil || row.full_name}</p>
+          <p className="font-medium text-slate-900">{row.nome}</p>
           <p className="text-sm text-slate-500">{row.email}</p>
         </div>
       )
@@ -326,7 +319,7 @@ export default function Usuarios() {
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => {
-                if (confirm(`Tem certeza que deseja excluir o usuário "${row.razao_social || row.full_name}"?`)) {
+                if (confirm(`Tem certeza que deseja excluir o usuário "${row.nome}"?`)) {
                   deleteMutation.mutate(row.id);
                 }
               }}
