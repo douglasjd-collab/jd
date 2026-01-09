@@ -63,8 +63,20 @@ export default function Usuarios() {
   };
 
   const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ['usuarios'],
-    queryFn: () => base44.entities.User.list('-created_date'),
+    queryKey: ['usuarios', currentUser?.empresa_id],
+    enabled: !!currentUser,
+    queryFn: async () => {
+      const isMasterOrSuperAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
+      
+      if (isMasterOrSuperAdmin) {
+        // Master/Super Admin vê todos
+        return await base44.entities.User.list('-created_date');
+      } else if (currentUser?.empresa_id) {
+        // Admin vê apenas da sua empresa
+        return await base44.entities.User.filter({ empresa_id: currentUser.empresa_id }, '-created_date');
+      }
+      return [];
+    },
   });
 
   const { data: empresas = [] } = useQuery({
