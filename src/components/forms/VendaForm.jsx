@@ -300,6 +300,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             <Select
               value={watch('cliente_id')}
               onValueChange={(value) => {
+                if (venda) return; // Bloqueia alteração em vendas existentes
                 setValue('cliente_id', value);
                 const cliente = clientes.find(c => c.id === value);
                 if (cliente) {
