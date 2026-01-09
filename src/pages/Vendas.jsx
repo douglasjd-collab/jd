@@ -332,19 +332,19 @@ export default function Vendas() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'ativa' }), 50)}>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'ativa' })}>
               Ativa
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'pendente' }), 50)}>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'pendente' })}>
               Pendente
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'cancelada' }), 50)}>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'cancelada' })}>
               Cancelada
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' }), 50)}>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' })}>
               Em Atraso
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'contemplada' }), 50)}>
+            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'contemplada' })}>
               Contemplada
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -368,11 +368,7 @@ export default function Vendas() {
                Ver detalhes
              </Link>
            </DropdownMenuItem>
-           <DropdownMenuItem 
-             onSelect={() => {
-               setTimeout(() => handleEdit(row), 50);
-             }}
-           >
+           <DropdownMenuItem onClick={() => handleEdit(row)}>
              <Pencil className="w-4 h-4 mr-2" />
              Editar
            </DropdownMenuItem>

@@ -124,14 +124,26 @@ export default function Administradoras() {
       header: '',
       className: 'w-12',
       cell: (row) => (
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => handleEdit(row)}
-          title="Editar"
-        >
-          <Pencil className="w-4 h-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleEdit(row)}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => setDeleteId(row.id)}
+              className="text-red-600"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )
     }
   ];
@@ -170,19 +182,14 @@ export default function Administradoras() {
       {/* Form Modal */}
       <AdministradoraForm
         open={formOpen}
-        onOpenChange={(open) => {
-          setFormOpen(open);
-          if (!open) setSelectedAdmin(null);
-        }}
+        onOpenChange={setFormOpen}
         administradora={selectedAdmin}
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => {
-        if (!open) setDeleteId(null);
-      }}>
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir administradora?</AlertDialogTitle>

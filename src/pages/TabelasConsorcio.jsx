@@ -197,18 +197,12 @@ export default function TabelasConsorcio() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onSelect={() => {
-                setTimeout(() => openForm(row), 50);
-              }}
-            >
+            <DropdownMenuItem onClick={() => openForm(row)}>
               <Pencil className="w-4 h-4 mr-2" />
               Editar
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onSelect={() => {
-                setTimeout(() => setDeleteId(row.id), 50);
-              }}
+              onClick={() => setDeleteId(row.id)}
               className="text-red-600"
             >
               <Trash2 className="w-4 h-4 mr-2" />
