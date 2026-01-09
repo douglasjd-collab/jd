@@ -74,7 +74,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   // React Query - Vendedores
   const { data: vendedores = [] } = useQuery({
     queryKey: ['vendedores-venda-form', empresaId],
-    enabled: open,
+    enabled: open && isAdmin,
     queryFn: async () => {
       const result = await base44.entities.User.list();
       if (isMaster) {
@@ -95,7 +95,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   // React Query - Gerentes
   const { data: gerentes = [] } = useQuery({
     queryKey: ['gerentes-venda-form'],
-    enabled: open,
+    enabled: open && isAdmin,
     queryFn: () => base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' }),
   });
 

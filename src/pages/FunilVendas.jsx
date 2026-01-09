@@ -117,7 +117,10 @@ export default function FunilVendas() {
   const { data: vendedores = [], isLoading: loadingVendedores } = useQuery({
     queryKey: ['vendedores'],
     enabled: !!currentUser && (isAdmin || isGerente),
-    queryFn: () => base44.entities.User.list(),
+    queryFn: async () => {
+      const allUsers = await base44.entities.User.list();
+      return allUsers.filter(u => ['vendedor', 'gerente', 'admin', 'master'].includes(u.perfil) && u.status === 'ativo');
+    },
   });
 
   const { data: comentarios = [] } = useQuery({
