@@ -24,7 +24,6 @@ import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 
 export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser, oportunidade, onSuccess }) {
-  const [searchCliente, setSearchCliente] = useState('');
   const [tabelas, setTabelas] = useState([]);
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
