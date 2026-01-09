@@ -777,6 +777,19 @@ export default function FunilVendas() {
                              const dataAtrasada = oport.data_fechamento_prevista && 
                                format(new Date(oport.data_fechamento_prevista), 'yyyy-MM-dd') <= format(new Date(), 'yyyy-MM-dd');
 
+                             // Definir cores baseadas no status
+                             let cardClasses = 'bg-white border border-slate-200 hover:shadow-md';
+
+                             if (oport.status === 'ganha') {
+                               cardClasses = 'bg-green-50 border-2 border-green-600';
+                             } else if (oport.status === 'perdida') {
+                               cardClasses = 'bg-red-50 border-2 border-red-600';
+                             } else if (dataAtrasada) {
+                               cardClasses = 'bg-orange-50 border-2 border-orange-400 shadow-[0_0_15px_rgba(251,146,60,0.3)]';
+                             } else if (podeVerTodos && !isResponsavel) {
+                               cardClasses = 'bg-purple-200/40 border border-transparent';
+                             }
+
                              return (
                              <div
                                ref={provided.innerRef}
@@ -784,13 +797,7 @@ export default function FunilVendas() {
                                {...provided.dragHandleProps}
                                className={`p-3 rounded-lg shadow-sm transition-all cursor-move ${
                                  snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
-                               } ${
-                                 dataAtrasada
-                                   ? 'bg-orange-50 border-2 border-orange-400 shadow-[0_0_15px_rgba(251,146,60,0.3)]'
-                                   : podeVerTodos && !isResponsavel
-                                   ? 'bg-purple-200/40 border border-transparent'
-                                   : 'bg-white border border-slate-200 hover:shadow-md'
-                               }`}
+                               } ${cardClasses}`}
                              >
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
