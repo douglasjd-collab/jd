@@ -49,9 +49,6 @@ export default function Dashboard() {
     setUser(userData);
   };
 
-  const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
-  const isGerente = user?.perfil === 'gerente';
-
   // Queries
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
     queryKey: ['vendas-dashboard'],
@@ -68,10 +65,13 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Parcela.list('-created_date', 500),
   });
 
+  const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
+  const isGerente = user?.perfil === 'gerente';
+
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios-dashboard'],
-    enabled: isAdmin,
-    queryFn: () => base44.entities.User.filter({ status: 'ativo' }),
+    enabled: !!user && isAdmin,
+    queryFn: () => base44.entities.Colaborador.filter({ status: 'ativo' }),
   });
 
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
