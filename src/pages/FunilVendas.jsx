@@ -769,22 +769,29 @@ export default function FunilVendas() {
                       <div className="p-2 space-y-2 min-h-[250px] max-h-[600px] overflow-y-auto">
                         {oportEtapa.map((oport, index) => (
                           <Draggable key={oport.id} draggableId={oport.id} index={index}>
-                            {(provided, snapshot) => {
-                              const isResponsavel = oport.vendedor_id === currentUser?.id;
-                              const avatarUrl = getAvatarUrlForOportunidade(oport);
-                              return (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`p-3 rounded-lg shadow-sm transition-shadow cursor-move ${
-                                  snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
-                                } ${
-                                  podeVerTodos && !isResponsavel
-                                    ? 'bg-purple-200/40 border border-transparent'
-                                    : 'bg-white border border-slate-200 hover:shadow-md'
-                                }`}
-                              >
+                           {(provided, snapshot) => {
+                             const isResponsavel = oport.vendedor_id === currentUser?.id;
+                             const avatarUrl = getAvatarUrlForOportunidade(oport);
+
+                             // Verificar se a data de fechamento chegou ou passou
+                             const dataAtrasada = oport.data_fechamento_prevista && 
+                               new Date(oport.data_fechamento_prevista) <= new Date();
+
+                             return (
+                             <div
+                               ref={provided.innerRef}
+                               {...provided.draggableProps}
+                               {...provided.dragHandleProps}
+                               className={`p-3 rounded-lg shadow-sm transition-all cursor-move ${
+                                 snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
+                               } ${
+                                 dataAtrasada
+                                   ? 'bg-orange-50 border-2 border-orange-400 shadow-[0_0_15px_rgba(251,146,60,0.3)]'
+                                   : podeVerTodos && !isResponsavel
+                                   ? 'bg-purple-200/40 border border-transparent'
+                                   : 'bg-white border border-slate-200 hover:shadow-md'
+                               }`}
+                             >
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
                                     <h4 className="font-medium text-slate-900 text-sm">{oport.titulo}</h4>
