@@ -49,6 +49,8 @@ export default function FunilVendas() {
   const [mostrarFormComentario, setMostrarFormComentario] = useState(false);
   const [vendaFormOpen, setVendaFormOpen] = useState(false);
   const [oportunidadeParaVenda, setOportunidadeParaVenda] = useState(null);
+  const [indicadorNome, setIndicadorNome] = useState('');
+  const [indicadorTelefone, setIndicadorTelefone] = useState('');
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -546,7 +548,10 @@ export default function FunilVendas() {
       gerente_id: vendedor?.gerente_id || '',
       etapa_nome: etapa?.nome || '',
       valor_estimado: parseFloat(formData.valor_estimado) || 0,
-      vendedor_id: vendedorIdFinal
+      vendedor_id: vendedorIdFinal,
+      observacoes: formData.origem === 'Indicação' && (indicadorNome || indicadorTelefone)
+        ? `${formData.observacoes ? formData.observacoes + '\n\n' : ''}👤 Indicado por: ${indicadorNome || 'N/A'}\n📞 Telefone: ${indicadorTelefone || 'N/A'}`
+        : formData.observacoes
     };
 
     if (selectedOportunidade) {
@@ -569,6 +574,8 @@ export default function FunilVendas() {
       telefone_lead: '',
       data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
     });
+    setIndicadorNome('');
+    setIndicadorTelefone('');
   };
 
   const formatPhone = (value) => {
@@ -804,6 +811,12 @@ export default function FunilVendas() {
                                            telefone_lead: oport.telefone_lead || '',
                                            data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
                                          });
+                                         // Extrair dados do indicador se existir
+                                         const obsMatch = oport.observacoes?.match(/👤 Indicado por: (.+)\n📞 Telefone: (.+)/);
+                                         if (obsMatch) {
+                                           setIndicadorNome(obsMatch[1] === 'N/A' ? '' : obsMatch[1]);
+                                           setIndicadorTelefone(obsMatch[2] === 'N/A' ? '' : obsMatch[2]);
+                                         }
                                          setFormOpen(true);
                                        }}>
                                          <Pencil className="w-4 h-4 mr-2" />
@@ -1063,12 +1076,28 @@ export default function FunilVendas() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="origem">Origem</Label>
-                <Input
-                  id="origem"
+                <Select
                   value={formData.origem}
-                  onChange={(e) => setFormData({ ...formData, origem: e.target.value })}
-                  placeholder="Ex: Indicação, Site, etc"
-                />
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, origem: value });
+                    if (value !== 'Indicação') {
+                      setIndicadorNome('');
+                      setIndicadorTelefone('');
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a origem" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Trafego Pago">Tráfego Pago</SelectItem>
+                    <SelectItem value="Facebook">Facebook</SelectItem>
+                    <SelectItem value="Instagram">Instagram</SelectItem>
+                    <SelectItem value="Indicação">Indicação</SelectItem>
+                    <SelectItem value="Já é Cliente">Já é Cliente</SelectItem>
+                    <SelectItem value="Visita">Visita</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -1081,6 +1110,30 @@ export default function FunilVendas() {
                 />
               </div>
             </div>
+
+            {formData.origem === 'Indicação' && (
+              <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div>
+                  <Label htmlFor="indicador_nome">Nome do Indicador</Label>
+                  <Input
+                    id="indicador_nome"
+                    value={indicadorNome}
+                    onChange={(e) => setIndicadorNome(e.target.value)}
+                    placeholder="Nome completo"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="indicador_telefone">Telefone do Indicador</Label>
+                  <Input
+                    id="indicador_telefone"
+                    value={indicadorTelefone}
+                    onChange={(e) => setIndicadorTelefone(formatPhone(e.target.value))}
+                    placeholder="(00) 00000-0000"
+                    maxLength={15}
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="observacoes">Observações</Label>
