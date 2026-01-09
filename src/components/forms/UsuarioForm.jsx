@@ -70,8 +70,14 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   }, [usuario, setValue, reset]);
 
   const loadGerentes = async () => {
-    const users = await base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' });
-    setGerentes(users);
+    if (currentUser?.perfil === 'vendedor') return;
+    try {
+      const users = await base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' });
+      setGerentes(users);
+    } catch (error) {
+      console.log('Erro ao carregar gerentes:', error);
+      setGerentes([]);
+    }
   };
 
   const loadEmpresas = async () => {

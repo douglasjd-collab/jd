@@ -62,9 +62,11 @@ export default function Usuarios() {
     setCurrentUser(user);
   };
 
+  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
+
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios', currentUser?.empresa_id],
-    enabled: !!currentUser,
+    enabled: !!currentUser && isAdmin,
     queryFn: async () => {
       const isMasterOrSuperAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
       
