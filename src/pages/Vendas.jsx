@@ -40,26 +40,28 @@ export default function Vendas() {
   }, []);
 
   const loadUser = async () => {
-    const user = await base44.auth.me();
-    
-    // Buscar o perfil correto do Colaborador ao invés de usar User.role
-    try {
-      const colaboradores = await base44.entities.Colaborador.filter({ user_id: user.id });
-      if (colaboradores.length > 0) {
-        const colaborador = colaboradores[0];
-        setCurrentUser({
-          ...user,
-          perfil: colaborador.perfil,
-          empresa_id: colaborador.empresa_id,
-          gerente_id: colaborador.gerente_id
-        });
-      } else {
-        setCurrentUser(user);
-      }
-    } catch (err) {
-      console.error('Erro ao carregar colaborador:', err);
-      setCurrentUser(user);
-    }
+    const me = await base44.auth.me();
+
+    // Pegue todos os vínculos (colaboradores) desse auth user
+    const colabs = await base44.entities.Colaborador.filter(
+      { user_id: me.id, status: 'ativo' },
+      '-created_date'
+    );
+
+    // 1) tenta achar o colab da empresa atual do auth (se existir)
+    const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
+
+    // 2) senão pega o mais recente (já vem ordenado por -created_date)
+    const colab = byEmpresa || colabs?.[0] || null;
+
+    setCurrentUser({
+      ...me,
+      auth_id: me.id,
+      colaborador_id: colab?.id || null,
+      empresa_id: colab?.empresa_id || me?.empresa_id || null,
+      perfil: colab?.perfil || 'vendedor',
+      gerente_id: colab?.gerente_id || null,
+    });
   };
 
   const { data: vendas = [], isLoading } = useQuery({
@@ -255,11 +257,11 @@ export default function Vendas() {
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
   const isGerente = currentUser?.perfil === 'gerente';
 
-  // Filtrar vendas por perfil
+  // Filtrar vendas por perfil - usar colaborador_id
   const filteredByRole = vendas.filter(v => {
     if (isAdmin) return true;
-    if (isGerente) return v.gerente_id === currentUser?.id || v.vendedor_id === currentUser?.id;
-    return v.vendedor_id === currentUser?.id;
+    if (isGerente) return v.gerente_id === currentUser?.colaborador_id || v.vendedor_id === currentUser?.colaborador_id;
+    return v.vendedor_id === currentUser?.colaborador_id;
   });
 
   const filteredVendas = filteredByRole.filter(v => {

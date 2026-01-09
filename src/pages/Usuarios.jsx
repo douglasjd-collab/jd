@@ -203,26 +203,37 @@ export default function Usuarios() {
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário - enviar convite e criar Colaborador
+      // Novo usuário
       setIsSubmitting(true);
       setInviteSuccess(false);
       
       try {
-        // 1. Enviar convite (cria auth e envia email)
-        await base44.users.inviteUser(normalizedData.email, 'user');
-        
-        // 2. Aguardar processamento
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // 3. Buscar user_id criado pelo convite
-        const usersFilter = await base44.asServiceRole.entities.User.filter({ email: normalizedData.email });
-        if (usersFilter.length === 0) {
-          throw new Error('Usuário não foi encontrado após convite');
+        // 0) procurar user auth existente
+        const existingUsers = await base44.asServiceRole.entities.User.filter({ email: normalizedData.email });
+        let userAuth = existingUsers?.[0] || null;
+
+        if (!userAuth) {
+          // 1) só convida se não existir
+          await base44.users.inviteUser(normalizedData.email, 'user');
+          await new Promise(r => setTimeout(r, 1500));
+
+          const createdUsers = await base44.asServiceRole.entities.User.filter({ email: normalizedData.email });
+          if (!createdUsers?.length) throw new Error('Usuário não foi encontrado após convite');
+          userAuth = createdUsers[0];
         }
-        
-        const userAuth = usersFilter[0];
-        
-        // 4. Criar registro em Colaborador
+
+        // 2) impedir vínculo duplicado (mesmo user_id + empresa)
+        const vinculoExistente = await base44.entities.Colaborador.filter({
+          user_id: userAuth.id,
+          empresa_id: normalizedData.empresa_id,
+          status: 'ativo'
+        });
+
+        if (vinculoExistente?.length) {
+          throw new Error('Esse usuário já está vinculado a essa empresa.');
+        }
+
+        // 3) criar Colaborador
         const { email, senha, ...dadosColaborador } = normalizedData;
         await base44.entities.Colaborador.create({
           ...dadosColaborador,
