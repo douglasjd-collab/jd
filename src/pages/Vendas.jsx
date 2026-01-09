@@ -332,19 +332,19 @@ export default function Vendas() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'ativa' })}>
+            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'ativa' }), 50)}>
               Ativa
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'pendente' })}>
+            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'pendente' }), 50)}>
               Pendente
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'cancelada' })}>
+            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'cancelada' }), 50)}>
               Cancelada
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' })}>
+            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' }), 50)}>
               Em Atraso
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'contemplada' })}>
+            <DropdownMenuItem onSelect={() => setTimeout(() => updateStatusMutation.mutate({ id: row.id, status: 'contemplada' }), 50)}>
               Contemplada
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -362,16 +362,20 @@ export default function Vendas() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to={createPageUrl(`VendaDetalhes?id=${row.id}`)}>
-                <Eye className="w-4 h-4 mr-2" />
-                Ver detalhes
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEdit(row)}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar
-            </DropdownMenuItem>
+           <DropdownMenuItem asChild>
+             <Link to={createPageUrl(`VendaDetalhes?id=${row.id}`)}>
+               <Eye className="w-4 h-4 mr-2" />
+               Ver detalhes
+             </Link>
+           </DropdownMenuItem>
+           <DropdownMenuItem 
+             onSelect={() => {
+               setTimeout(() => handleEdit(row), 50);
+             }}
+           >
+             <Pencil className="w-4 h-4 mr-2" />
+             Editar
+           </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )
