@@ -53,6 +53,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
   const empresaId = currentUser?.empresa_id;
   const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
+  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
 
   // React Query - Clientes
   const { data: clientes = [], isLoading: clientesLoading } = useQuery({
@@ -203,8 +204,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
            cpf.includes(searchNormalized) || 
            telefone.includes(searchNormalized);
   });
-
-  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
 
   const formatarMoeda = (valor) => {
     if (!valor) return '';
