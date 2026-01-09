@@ -51,6 +51,11 @@ export default function Layout({ children, currentPageName }) {
     try {
       const me = await base44.auth.me();
 
+      if (!me) {
+        setUser(null);
+        return;
+      }
+
       // Pegue todos os vínculos (colaboradores) desse auth user
       const colabs = await base44.entities.Colaborador.filter(
         { user_id: me.id, status: 'ativo' },
@@ -74,7 +79,8 @@ export default function Layout({ children, currentPageName }) {
         email: colab?.email || me?.email || '',
       });
     } catch (e) {
-      console.log('User not logged in');
+      console.log('Erro ao carregar usuário:', e);
+      setUser(null);
     }
   };
 

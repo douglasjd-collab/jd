@@ -40,28 +40,33 @@ export default function Vendas() {
   }, []);
 
   const loadUser = async () => {
-    const me = await base44.auth.me();
+    try {
+      const me = await base44.auth.me();
 
-    // Pegue todos os vínculos (colaboradores) desse auth user
-    const colabs = await base44.entities.Colaborador.filter(
-      { user_id: me.id, status: 'ativo' },
-      '-created_date'
-    );
+      // Pegue todos os vínculos (colaboradores) desse auth user
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: me.id, status: 'ativo' },
+        '-created_date'
+      );
 
-    // 1) tenta achar o colab da empresa atual do auth (se existir)
-    const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
+      // 1) tenta achar o colab da empresa atual do auth (se existir)
+      const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
 
-    // 2) senão pega o mais recente (já vem ordenado por -created_date)
-    const colab = byEmpresa || colabs?.[0] || null;
+      // 2) senão pega o mais recente (já vem ordenado por -created_date)
+      const colab = byEmpresa || colabs?.[0] || null;
 
-    setCurrentUser({
-      ...me,
-      auth_id: me.id,
-      colaborador_id: colab?.id || null,
-      empresa_id: colab?.empresa_id || me?.empresa_id || null,
-      perfil: colab?.perfil || 'vendedor',
-      gerente_id: colab?.gerente_id || null,
-    });
+      setCurrentUser({
+        ...me,
+        auth_id: me.id,
+        colaborador_id: colab?.id || null,
+        empresa_id: colab?.empresa_id || me?.empresa_id || null,
+        perfil: colab?.perfil || 'vendedor',
+        gerente_id: colab?.gerente_id || null,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+      setCurrentUser({ perfil: 'vendedor' });
+    }
   };
 
   const { data: vendas = [], isLoading } = useQuery({
