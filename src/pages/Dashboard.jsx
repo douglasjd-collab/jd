@@ -49,8 +49,15 @@ export default function Dashboard() {
     setUser(userData);
   };
 
-  const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
-  const isGerente = user?.perfil === 'gerente';
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores-dashboard'],
+    enabled: !!user,
+    queryFn: () => base44.entities.Colaborador.list(),
+  });
+
+  const userProfile = colaboradores.find(col => col.user_id === user?.id);
+  const isAdmin = userProfile?.perfil === 'master' || userProfile?.perfil === 'super_admin' || userProfile?.perfil === 'admin';
+  const isGerente = userProfile?.perfil === 'gerente';
 
   // Queries
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
