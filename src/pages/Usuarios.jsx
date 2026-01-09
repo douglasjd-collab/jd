@@ -66,18 +66,28 @@ export default function Usuarios() {
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios', currentUser?.empresa_id],
-    enabled: !!currentUser && isAdmin,
+    enabled: !!currentUser,
     queryFn: async () => {
-      const isMasterOrSuperAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
-      
-      if (isMasterOrSuperAdmin) {
-        // Master/Super Admin vê todos
-        return await base44.entities.User.list('-created_date');
-      } else if (currentUser?.empresa_id) {
-        // Admin vê apenas da sua empresa
-        return await base44.entities.User.filter({ empresa_id: currentUser.empresa_id }, '-created_date');
+      try {
+        const isMasterOrSuperAdmin = ['master', 'super_admin'].includes(currentUser?.perfil);
+        
+        if (isMasterOrSuperAdmin) {
+          return await base44.entities.User.list('-created_date');
+        }
+        
+        if (currentUser?.empresa_id) {
+          return await base44.entities.User.filter(
+            { empresa_id: currentUser.empresa_id },
+            '-created_date'
+          );
+        }
+        
+        return [];
+      } catch (err) {
+        console.error('Erro ao listar usuários:', err);
+        toast.error('Sem permissão para listar usuários. Ajuste permissões do entity User no Base44.');
+        return [];
       }
-      return [];
     },
   });
 
