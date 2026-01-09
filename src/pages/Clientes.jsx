@@ -70,11 +70,13 @@ export default function Clientes() {
   });
 
   const handleSubmit = async (data) => {
-    // Adicionar empresa_id do usuário logado
+    // Adicionar empresa_id e vendedor do usuário logado
     const user = await base44.auth.me();
     const clienteData = {
       ...data,
-      empresa_id: user.empresa_id
+      empresa_id: user.empresa_id,
+      vendedor_id: user.id,
+      vendedor_nome: user.full_name
     };
 
     if (selectedCliente) {
