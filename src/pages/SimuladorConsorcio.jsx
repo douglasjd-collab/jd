@@ -490,7 +490,7 @@ export default function SimuladorConsorcio() {
 
         oportunidade = await base44.entities.Oportunidade.create({
           empresa_id: empresaId,
-          titulo: `Simulação - ${clienteNome}`,
+          titulo: clienteNome,
           cliente_nome: clienteNome,
           cliente_telefone: telefone,
           telefone_lead: telefone,
