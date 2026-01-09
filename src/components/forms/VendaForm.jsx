@@ -74,20 +74,21 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   // React Query - Vendedores
   const { data: vendedores = [] } = useQuery({
     queryKey: ['vendedores-venda-form', empresaId],
-    enabled: open && (!!empresaId || isMaster),
+    enabled: open,
     queryFn: async () => {
+      const result = await base44.entities.User.list();
       if (isMaster) {
         // Master vê todos os vendedores
-        return await base44.entities.User.filter({ perfil: 'vendedor', status: 'ativo' });
-      } else {
+        return result.filter(u => u.perfil === 'vendedor' && u.status === 'ativo');
+      } else if (empresaId) {
         // Admin vê vendedores da sua empresa
-        const result = await base44.entities.User.list();
         return result.filter(u => 
           u.perfil === 'vendedor' && 
           u.status === 'ativo' &&
           u.empresa_id === empresaId
         );
       }
+      return [];
     },
   });
 
@@ -295,6 +296,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   setValue('cliente_cpf', cliente.cpf);
                 }
               }}
+              disabled={!!venda}
             >
               <SelectTrigger className="h-auto min-h-[60px] py-3">
                 <SelectValue placeholder="Selecione um cliente">
