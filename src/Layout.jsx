@@ -51,6 +51,13 @@ export default function Layout({ children, currentPageName }) {
     try {
       const userData = await base44.auth.me();
       setUser(userData);
+      
+      // Buscar perfil do Colaborador para sobrescrever o role padrão
+      const colaboradores = await base44.entities.Colaborador.list();
+      const userProfile = colaboradores.find(col => col.user_id === userData.id);
+      if (userProfile) {
+        setUser(prev => ({ ...prev, perfil: userProfile.perfil, nome_perfil: userProfile.nome, foto_perfil: userProfile.foto_perfil }));
+      }
     } catch (e) {
       console.log('User not logged in');
     }
