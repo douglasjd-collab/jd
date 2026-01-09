@@ -58,31 +58,42 @@ export default function Usuarios() {
   }, []);
 
   const loadUser = async () => {
-    const user = await base44.auth.me();
-    setCurrentUser(user);
+    const me = await base44.auth.me();
+
+    // Perfil real vem do Colaborador (não do auth)
+    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id });
+    const colab = colabs?.[0];
+
+    setCurrentUser({
+      ...me,
+      auth_id: me.id,
+      colaborador_id: colab?.id || null,
+      empresa_id: colab?.empresa_id || me?.empresa_id || null,
+      perfil: colab?.perfil || 'vendedor',
+      nome_perfil: colab?.nome || me?.full_name || '',
+      email: colab?.email || me?.email || '',
+    });
   };
 
-  const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
+  const isAdmin = ['master','super_admin','admin'].includes(currentUser?.perfil);
+  const isGerente = currentUser?.perfil === 'gerente';
+  const podeListar = isAdmin || isGerente;
 
   const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ['usuarios', currentUser?.empresa_id],
-    enabled: !!currentUser,
+    queryKey: ['usuarios', currentUser?.empresa_id, currentUser?.perfil],
+    enabled: !!currentUser && podeListar,
     queryFn: async () => {
       try {
-        const isMasterOrSuperAdmin = ['master', 'super_admin'].includes(currentUser?.perfil);
+        const isMasterOrSuperAdmin = ['master','super_admin'].includes(currentUser?.perfil);
         
         if (isMasterOrSuperAdmin) {
           return await base44.entities.Colaborador.list('-created_date');
         }
         
-        if (currentUser?.empresa_id) {
-          return await base44.entities.Colaborador.filter(
-            { empresa_id: currentUser.empresa_id },
-            '-created_date'
-          );
-        }
-        
-        return [];
+        return await base44.entities.Colaborador.filter(
+          { empresa_id: currentUser.empresa_id },
+          '-created_date'
+        );
       } catch (err) {
         console.error('Erro ao listar usuários:', err);
         return [];
