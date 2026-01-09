@@ -41,7 +41,25 @@ export default function Vendas() {
 
   const loadUser = async () => {
     const user = await base44.auth.me();
-    setCurrentUser(user);
+    
+    // Buscar o perfil correto do Colaborador ao invés de usar User.role
+    try {
+      const colaboradores = await base44.entities.Colaborador.filter({ user_id: user.id });
+      if (colaboradores.length > 0) {
+        const colaborador = colaboradores[0];
+        setCurrentUser({
+          ...user,
+          perfil: colaborador.perfil,
+          empresa_id: colaborador.empresa_id,
+          gerente_id: colaborador.gerente_id
+        });
+      } else {
+        setCurrentUser(user);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar colaborador:', err);
+      setCurrentUser(user);
+    }
   };
 
   const { data: vendas = [], isLoading } = useQuery({
