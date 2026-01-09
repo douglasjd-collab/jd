@@ -46,6 +46,16 @@ export default function Dashboard() {
 
   const loadUser = async () => {
     const userData = await base44.auth.me();
+    
+    // Buscar perfil do Colaborador para sobrescrever o role padrão
+    const colaboradores = await base44.entities.Colaborador.list();
+    const userProfile = colaboradores.find(col => col.user_id === userData.id);
+    if (userProfile) {
+      userData.perfil = userProfile.perfil;
+      userData.empresa_id = userProfile.empresa_id;
+      userData.gerente_id = userProfile.gerente_id;
+    }
+    
     setUser(userData);
   };
 
