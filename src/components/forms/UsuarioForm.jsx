@@ -25,16 +25,15 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     mode: 'onChange',
     defaultValues: usuario || {
-      razao_social: '',
+      nome: '',
       email: '',
       cpf_cnpj: '',
-      nome_perfil: '',
       telefone: '',
       codigo_vendedor: '',
       perfil: 'vendedor',
       gerente_id: '',
-      status: 'ativo',
-      senha: ''
+      empresa_id: '',
+      status: 'ativo'
     }
   });
 
@@ -55,16 +54,15 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       });
     } else {
       reset({
-        razao_social: '',
+        nome: '',
         email: '',
         cpf_cnpj: '',
-        nome_perfil: '',
         telefone: '',
         codigo_vendedor: '',
         perfil: 'vendedor',
         gerente_id: '',
-        status: 'ativo',
-        senha: ''
+        empresa_id: '',
+        status: 'ativo'
       });
     }
   }, [usuario, setValue, reset]);
@@ -147,23 +145,13 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
             </div>
 
             <div className="col-span-2">
-              <Label htmlFor="razao_social">Nome Completo / Razão Social *</Label>
+              <Label htmlFor="nome">Nome Completo *</Label>
               <Input
-                id="razao_social"
-                {...register('razao_social', { required: true })}
-                placeholder="Nome completo ou Razão Social"
+                id="nome"
+                {...register('nome', { required: true })}
+                placeholder="Nome completo do colaborador"
               />
-              {errors.razao_social && <p className="text-sm text-red-500 mt-1">Razão Social é obrigatória</p>}
-            </div>
-
-            <div className="col-span-2">
-              <Label htmlFor="nome_perfil">Como você quer ser chamado? *</Label>
-              <Input
-                id="nome_perfil"
-                {...register('nome_perfil', { required: true })}
-                placeholder="Apelido ou nome de preferência"
-              />
-              {errors.nome_perfil && <p className="text-sm text-red-500 mt-1">Nome de perfil é obrigatório</p>}
+              {errors.nome && <p className="text-sm text-red-500 mt-1">Nome é obrigatório</p>}
             </div>
             
             <div className="col-span-2">
