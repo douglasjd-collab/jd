@@ -71,12 +71,11 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
 
   const loadGerentes = async () => {
     try {
-      const gerentes = await base44.entities.User.filter({ perfil: 'gerente', status: 'ativo' });
+      const gerentes = await base44.entities.Colaborador.filter({ perfil: 'gerente', status: 'ativo' });
       setGerentes(gerentes);
     } catch (err) {
       console.error('Erro ao carregar gerentes:', err);
       setGerentes([]);
-      // Não mostra toast para não poluir a UI em casos normais
     }
   };
 
@@ -300,7 +299,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                   <SelectContent>
                     <SelectItem value="sem-gerente">Sem gerente</SelectItem>
                     {gerentes.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>{g.full_name}</SelectItem>
+                      <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
