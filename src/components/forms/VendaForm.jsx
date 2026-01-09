@@ -56,7 +56,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
   // React Query - Clientes
   const { data: clientes = [], isLoading: clientesLoading } = useQuery({
-    queryKey: ['clientes-venda-form', empresaId, searchCliente],
+    queryKey: ['clientes-venda-form', empresaId],
     enabled: open,
     queryFn: async () => {
       const result = await base44.entities.Cliente.list();
