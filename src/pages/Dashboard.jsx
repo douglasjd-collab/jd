@@ -45,18 +45,21 @@ export default function Dashboard() {
   }, []);
 
   const loadUser = async () => {
-    const userData = await base44.auth.me();
-    
-    // Buscar perfil do Colaborador para sobrescrever o role padrão
-    const colaboradores = await base44.entities.Colaborador.filter({ user_id: userData.id });
-    if (colaboradores.length > 0) {
-      const userProfile = colaboradores[0];
-      userData.perfil = userProfile.perfil;
-      userData.empresa_id = userProfile.empresa_id;
-      userData.gerente_id = userProfile.gerente_id;
-    }
-    
-    setUser(userData);
+    const me = await base44.auth.me();
+
+    // Perfil real vem do Colaborador (não do auth)
+    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id });
+    const colab = colabs?.[0];
+
+    setUser({
+      ...me,
+      auth_id: me.id,
+      colaborador_id: colab?.id || null,
+      empresa_id: colab?.empresa_id || me?.empresa_id || null,
+      perfil: colab?.perfil || 'vendedor',
+      nome_perfil: colab?.nome || me?.full_name || '',
+      gerente_id: colab?.gerente_id || null,
+    });
   };
 
   const { data: colaboradores = [] } = useQuery({
