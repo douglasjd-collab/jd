@@ -70,6 +70,7 @@ export default function Dashboard() {
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios-dashboard'],
+    enabled: isAdmin,
     queryFn: () => base44.entities.User.filter({ status: 'ativo' }),
   });
 
