@@ -949,7 +949,7 @@ export default function FunilVendas() {
                                     {oport.data_fechamento_prevista && (
                                       <div className="flex items-center gap-1 text-slate-500">
                                         <Calendar className="w-3 h-3" />
-                                        {format(new Date(oport.data_fechamento_prevista), 'dd/MM/yyyy')}
+                                        {oport.data_fechamento_prevista.split('-').reverse().join('/')}
                                       </div>
                                     )}
                                   </div>
