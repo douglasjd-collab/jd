@@ -317,17 +317,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {filteredClientes.length > 0 ? (
-                  filteredClientes.slice(0, 30).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome} - CPF: {c.cpf}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-sm text-slate-500">
-                    {searchCliente ? 'Nenhum cliente encontrado' : 'Digite para buscar'}
-                  </div>
-                )}
+                {clientes.slice(0, 30).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nome} - CPF: {c.cpf}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {errors.cliente_id && <p className="text-sm text-red-500 mt-1">Cliente é obrigatório</p>}
