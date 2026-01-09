@@ -230,7 +230,7 @@ export default function Dashboard() {
             <CardTitle className="text-lg font-semibold">Vendas por Mês</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
+            <div className="h-72 min-h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={vendasPorMes}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
