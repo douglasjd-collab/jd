@@ -120,27 +120,31 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   });
 
   useEffect(() => {
-    if (venda) {
-      Object.keys(venda).forEach(key => {
-        setValue(key, venda[key]);
-      });
-    } else {
-      reset({
-        cliente_id: oportunidade?.cliente_id || '',
-        administradora_id: '',
-        tabela_id: '',
-        grupo: '',
-        cota: '',
-        contrato: '',
-        valorCredito: oportunidade?.valor_estimado || 0,
-        taxaAdministracao: 0,
-        vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
-        gerente_id: currentUser?.gerente_id || '',
-        data_venda: format(new Date(), 'yyyy-MM-dd'),
-        status: 'ativa'
-      });
+    if (open) {
+      if (venda) {
+        // Modo edição - preencher todos os campos
+        Object.keys(venda).forEach(key => {
+          setValue(key, venda[key]);
+        });
+      } else {
+        // Modo criação - valores padrão
+        reset({
+          cliente_id: oportunidade?.cliente_id || '',
+          administradora_id: '',
+          tabela_id: '',
+          grupo: '',
+          cota: '',
+          contrato: '',
+          valorCredito: oportunidade?.valor_estimado || 0,
+          taxaAdministracao: 0,
+          vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
+          gerente_id: currentUser?.gerente_id || '',
+          data_venda: format(new Date(), 'yyyy-MM-dd'),
+          status: 'ativa'
+        });
+      }
     }
-  }, [venda, oportunidade, setValue, reset, currentUser]);
+  }, [open, venda, oportunidade, setValue, reset, currentUser]);
 
   useEffect(() => {
     if (administradoraId) {
