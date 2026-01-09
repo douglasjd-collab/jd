@@ -69,11 +69,18 @@ export default function Clientes() {
     },
   });
 
-  const handleSubmit = (data) => {
+  const handleSubmit = async (data) => {
+    // Adicionar empresa_id do usuário logado
+    const user = await base44.auth.me();
+    const clienteData = {
+      ...data,
+      empresa_id: user.empresa_id
+    };
+
     if (selectedCliente) {
-      updateMutation.mutate({ id: selectedCliente.id, data });
+      updateMutation.mutate({ id: selectedCliente.id, data: clienteData });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(clienteData);
     }
   };
 
