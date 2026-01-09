@@ -68,9 +68,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Colaborador.list(),
   });
 
-  const userProfile = colaboradores.find(col => col.user_id === user?.id);
-  const isAdmin = userProfile?.perfil === 'master' || userProfile?.perfil === 'super_admin' || userProfile?.perfil === 'admin';
-  const isGerente = userProfile?.perfil === 'gerente';
+  const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
+  const isGerente = user?.perfil === 'gerente';
 
   // Queries
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
@@ -102,14 +101,14 @@ export default function Dashboard() {
   // Filtrar dados por perfil
   const filteredVendas = vendas.filter(v => {
     if (isAdmin) return true;
-    if (isGerente) return v.gerente_id === user?.id || v.vendedor_id === user?.id;
-    return v.vendedor_id === user?.id;
+    if (isGerente) return v.gerente_id === user?.colaborador_id || v.vendedor_id === user?.colaborador_id;
+    return v.vendedor_id === user?.colaborador_id;
   });
 
   const filteredOportunidades = oportunidades.filter(o => {
     if (isAdmin) return true;
-    if (isGerente) return o.gerente_id === user?.id || o.vendedor_id === user?.id;
-    return o.vendedor_id === user?.id;
+    if (isGerente) return o.gerente_id === user?.colaborador_id || o.vendedor_id === user?.colaborador_id;
+    return o.vendedor_id === user?.colaborador_id;
   });
 
   const vendasMes = filteredVendas.filter(v => {
