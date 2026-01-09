@@ -196,17 +196,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     setTabelas(data);
   };
 
-  const filteredClientes = clientes.filter(c => {
-    const search = searchCliente.toLowerCase().trim();
-    const nome = (c.nome || '').toLowerCase();
-    const cpf = (c.cpf || '').replace(/\D/g, '');
-    const telefone = (c.telefone || '').replace(/\D/g, '');
-    const searchNormalized = search.replace(/\D/g, '');
-    
-    return nome.includes(search) || 
-           cpf.includes(searchNormalized) || 
-           telefone.includes(searchNormalized);
-  });
+
 
   const formatarMoeda = (valor) => {
     if (!valor) return '';
