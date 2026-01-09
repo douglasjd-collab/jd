@@ -328,49 +328,15 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <div className="p-2 sticky top-0 bg-white z-10">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      placeholder="Buscar por nome, CPF ou telefone..."
-                      value={searchCliente}
-                      onChange={(e) => setSearchCliente(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
                 {filteredClientes.length > 0 ? (
-                  <>
-                    {searchCliente && (
-                      <div className="px-3 py-2 text-xs text-slate-500 bg-slate-50">
-                        {filteredClientes.length} cliente(s) encontrado(s)
-                      </div>
-                    )}
-                    {filteredClientes.slice(0, 30).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <div className="flex flex-col items-start">
-                          <span className="font-medium">{c.nome}</span>
-                          <span className="text-xs text-slate-500">CPF: {c.cpf}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </>
-                ) : searchCliente ? (
-                  <div className="p-6 text-center">
-                    <p className="text-sm text-slate-500 mb-2">Nenhum cliente encontrado</p>
-                    <p className="text-xs text-slate-400 mb-3">Tente buscar por nome, CPF ou telefone</p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => window.open(createPageUrl('Clientes'), '_blank')}
-                      className="bg-[#23BE84] hover:bg-[#1da570]"
-                    >
-                      Cadastrar Novo Cliente
-                    </Button>
-                  </div>
+                  filteredClientes.slice(0, 30).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome} - CPF: {c.cpf}
+                    </SelectItem>
+                  ))
                 ) : (
-                  <div className="p-4 text-center text-sm text-slate-400">
-                    Digite para buscar clientes
+                  <div className="p-4 text-center text-sm text-slate-500">
+                    {searchCliente ? 'Nenhum cliente encontrado' : 'Digite para buscar'}
                   </div>
                 )}
               </SelectContent>
