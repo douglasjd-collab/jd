@@ -176,12 +176,18 @@ export default function PlanosConsorcio() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openForm(row)}>
+            <DropdownMenuItem 
+              onSelect={() => {
+                setTimeout(() => openForm(row), 50);
+              }}
+            >
               <Pencil className="w-4 h-4 mr-2" />
               Editar
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={() => setDeleteId(row.id)}
+              onSelect={() => {
+                setTimeout(() => setDeleteId(row.id), 50);
+              }}
               className="text-red-600"
             >
               <Trash2 className="w-4 h-4 mr-2" />
