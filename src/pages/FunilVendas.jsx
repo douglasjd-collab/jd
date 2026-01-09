@@ -775,7 +775,7 @@ export default function FunilVendas() {
 
                              // Verificar se a data de fechamento chegou ou passou
                              const dataAtrasada = oport.data_fechamento_prevista && 
-                               new Date(oport.data_fechamento_prevista) <= new Date();
+                               format(new Date(oport.data_fechamento_prevista), 'yyyy-MM-dd') <= format(new Date(), 'yyyy-MM-dd');
 
                              return (
                              <div
