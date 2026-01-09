@@ -49,16 +49,22 @@ export default function Layout({ children, currentPageName }) {
 
   const loadUser = async () => {
     try {
-      const userData = await base44.auth.me();
-      
-      // Buscar perfil do Colaborador para sobrescrever o role padrão
-      const colaboradores = await base44.entities.Colaborador.filter({ user_id: userData.id });
-      if (colaboradores.length > 0) {
-        const userProfile = colaboradores[0];
-        setUser({ ...userData, perfil: userProfile.perfil, nome_perfil: userProfile.nome, foto_perfil: userProfile.foto_perfil });
-      } else {
-        setUser(userData);
-      }
+      const me = await base44.auth.me();
+
+      // Perfil real vem do Colaborador (não do auth)
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id });
+      const colab = colabs?.[0];
+
+      setUser({
+        ...me,
+        auth_id: me.id,
+        colaborador_id: colab?.id || null,
+        empresa_id: colab?.empresa_id || me?.empresa_id || null,
+        perfil: colab?.perfil || 'vendedor',
+        nome_perfil: colab?.nome || me?.full_name || '',
+        foto_perfil: colab?.foto_perfil || null,
+        email: colab?.email || me?.email || '',
+      });
     } catch (e) {
       console.log('User not logged in');
     }
