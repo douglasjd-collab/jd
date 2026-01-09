@@ -60,7 +60,7 @@ export default function Vendas() {
         auth_id: me.id,
         colaborador_id: colab?.id || null,
         empresa_id: colab?.empresa_id || me?.empresa_id || null,
-        perfil: colab?.perfil || 'vendedor',
+        perfil: colab?.perfil || me?.role || 'vendedor',
         gerente_id: colab?.gerente_id || null,
       });
     } catch (error) {

@@ -73,7 +73,7 @@ export default function Layout({ children, currentPageName }) {
         auth_id: me.id,
         colaborador_id: colab?.id || null,
         empresa_id: colab?.empresa_id || me?.empresa_id || null,
-        perfil: colab?.perfil || 'vendedor',
+        perfil: colab?.perfil || me?.role || 'vendedor',
         nome_perfil: colab?.nome || me?.full_name || '',
         foto_perfil: colab?.foto_perfil || null,
         email: colab?.email || me?.email || '',
