@@ -47,9 +47,17 @@ export default function Dashboard() {
   const loadUser = async () => {
     const me = await base44.auth.me();
 
-    // Perfil real vem do Colaborador (não do auth)
-    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id });
-    const colab = colabs?.[0];
+    // Pegue todos os vínculos (colaboradores) desse auth user
+    const colabs = await base44.entities.Colaborador.filter(
+      { user_id: me.id, status: 'ativo' },
+      '-created_date'
+    );
+
+    // 1) tenta achar o colab da empresa atual do auth (se existir)
+    const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
+
+    // 2) senão pega o mais recente (já vem ordenado por -created_date)
+    const colab = byEmpresa || colabs?.[0] || null;
 
     setUser({
       ...me,
