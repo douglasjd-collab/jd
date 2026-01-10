@@ -60,16 +60,27 @@ export default function Usuarios() {
   const loadUser = async () => {
     const me = await base44.auth.me();
 
-    // Pegue todos os vínculos (colaboradores) desse auth user
+    // Super admin não precisa de Colaborador - acessa tudo
+    if (me.role === 'super_admin') {
+      setCurrentUser({
+        ...me,
+        auth_id: me.id,
+        colaborador_id: null,
+        empresa_id: null, // Acessa todas empresas
+        perfil: 'super_admin',
+        nome_perfil: me.full_name,
+        email: me.email,
+      });
+      return;
+    }
+
+    // Para outros roles, buscar Colaborador
     const colabs = await base44.entities.Colaborador.filter(
       { user_id: me.id, status: 'ativo' },
       '-created_date'
     );
 
-    // 1) tenta achar o colab da empresa atual do auth (se existir)
     const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
-
-    // 2) senão pega o mais recente (já vem ordenado por -created_date)
     const colab = byEmpresa || colabs?.[0] || null;
 
     setCurrentUser({
