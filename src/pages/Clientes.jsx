@@ -70,13 +70,21 @@ export default function Clientes() {
   });
 
   const handleSubmit = async (data) => {
-    // Adicionar empresa_id e vendedor do usuário logado
     const user = await base44.auth.me();
+    
+    // Colaborador
+    const colabs = await base44.entities.Colaborador.filter(
+      { user_id: user.id, status: 'ativo' },
+      '-created_date'
+    );
+    const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
+    const colab = byEmpresa || colabs?.[0] || null;
+
     const clienteData = {
       ...data,
-      empresa_id: user.empresa_id,
-      vendedor_id: user.id,
-      vendedor_nome: user.full_name
+      empresa_id: user.empresa_id || colab?.empresa_id,
+      vendedor_id: colab?.id || user.id,
+      vendedor_nome: colab?.nome || user.full_name
     };
 
     if (selectedCliente) {
