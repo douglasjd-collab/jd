@@ -274,7 +274,6 @@ export default function Dashboard() {
                   <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
           </CardContent>
         </Card>
 
@@ -284,9 +283,8 @@ export default function Dashboard() {
             <CardTitle className="text-lg font-semibold">Status das Vendas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72 min-h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
                   <Pie
                     data={vendasPorStatus}
                     cx="50%"
@@ -314,7 +312,6 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            </div>
           </CardContent>
         </Card>
       </div>
