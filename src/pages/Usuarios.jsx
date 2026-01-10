@@ -77,7 +77,7 @@ export default function Usuarios() {
       auth_id: me.id,
       colaborador_id: colab?.id || null,
       empresa_id: colab?.empresa_id || me?.empresa_id || null,
-      perfil: colab?.perfil || 'vendedor',
+      perfil: colab?.perfil || me?.role || 'vendedor',
       nome_perfil: colab?.nome || me?.full_name || '',
       email: colab?.email || me?.email || '',
     });
