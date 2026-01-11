@@ -33,6 +33,15 @@ export default function Administradoras() {
   const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
 
+  // Limpa estados ao desmontar
+  React.useEffect(() => {
+    return () => {
+      setFormOpen(false);
+      setDeleteId(null);
+      setSelectedAdmin(null);
+    };
+  }, []);
+
   const { data: administradoras = [], isLoading } = useQuery({
     queryKey: ['administradoras'],
     queryFn: () => base44.entities.Administradora.list('-created_date'),

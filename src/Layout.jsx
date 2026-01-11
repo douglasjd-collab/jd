@@ -51,6 +51,8 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     setSidebarOpen(false);
     setExpandedMenus({});
+    setLogoUploaderOpen(false);
+    setEditarPerfilOpen(false);
   }, [currentPageName]);
 
   const loadUser = async () => {
@@ -353,9 +355,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
         <div className="p-4 lg:p-8">
-          <div key={currentPageName}>
-            {children}
-          </div>
+          {children}
         </div>
       </main>
 
