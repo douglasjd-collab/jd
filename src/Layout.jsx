@@ -47,6 +47,12 @@ export default function Layout({ children, currentPageName }) {
     loadLogo();
   }, []);
 
+  // Fecha sidebar e menus ao mudar de página
+  useEffect(() => {
+    setSidebarOpen(false);
+    setExpandedMenus({});
+  }, [currentPageName]);
+
   const loadUser = async () => {
     try {
       const me = await base44.auth.me();
@@ -346,8 +352,10 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
-        <div className="p-4 lg:p-8" key={currentPageName}>
-          {children}
+        <div className="p-4 lg:p-8">
+          <div key={currentPageName}>
+            {children}
+          </div>
         </div>
       </main>
 
