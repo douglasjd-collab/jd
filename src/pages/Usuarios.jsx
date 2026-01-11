@@ -283,7 +283,26 @@ export default function Usuarios() {
     }
   };
 
+  const safeCloseForm = () => {
+    setFormOpen(false);
+
+    // espera o Dialog desmontar (animação/portal)
+    window.setTimeout(() => {
+      setSelectedUsuario(null);
+      setInviteSuccess(false);
+    }, 200);
+  };
+
+  const openNewInvite = () => {
+    setSelectedUsuario(null);
+    setInviteSuccess(false);
+    // força form reset sem desmontar no meio do portal
+    setFormKey((k) => k + 1);
+    setFormOpen(true);
+  };
+
   const handleEdit = (usuario) => {
+    setInviteSuccess(false);
     setSelectedUsuario(usuario);
     setFormOpen(true);
   };
