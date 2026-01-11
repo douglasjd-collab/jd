@@ -149,9 +149,8 @@ export default function Usuarios() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      setFormOpen(false);
-      setSelectedUsuario(null);
       toast.success('Usuário atualizado com sucesso!');
+      safeCloseForm();
     },
   });
 
@@ -401,10 +400,7 @@ export default function Usuarios() {
         subtitle={`${usuarios.length} usuários cadastrados`}
         actionLabel="Enviar Convite"
         actionIcon={UserPlus}
-        onAction={() => {
-          setSelectedUsuario(null);
-          setFormOpen(true);
-        }}
+        onAction={openNewInvite}
       />
 
       {/* Filters */}
@@ -463,9 +459,10 @@ export default function Usuarios() {
         key={formKey}
         open={formOpen}
         onOpenChange={(isOpen) => {
-          setFormOpen(isOpen);
-          if (!isOpen) {
-            setInviteSuccess(false);
+          if (isOpen) {
+            setFormOpen(true);
+          } else {
+            safeCloseForm();
           }
         }}
         usuario={selectedUsuario}
