@@ -347,8 +347,10 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
         <div className="p-4 lg:p-8">
-          <ErrorBoundary key={currentPageName}>
-            {children}
+          <ErrorBoundary>
+            <div key={currentPageName}>
+              {children}
+            </div>
           </ErrorBoundary>
         </div>
       </main>
