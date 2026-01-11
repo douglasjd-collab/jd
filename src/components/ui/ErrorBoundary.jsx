@@ -18,6 +18,13 @@ export class ErrorBoundary extends React.Component {
     this.setState({ errorInfo });
   }
 
+  componentDidUpdate(prevProps) {
+    // Reset error state quando a página mudar
+    if (this.props.pageKey !== prevProps.pageKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null, errorInfo: null });
+    }
+  }
+
   handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
     window.location.reload();
