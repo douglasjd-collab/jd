@@ -462,7 +462,16 @@ export default function Usuarios() {
         actionLabel="Enviar Convite"
         actionIcon={UserPlus}
         onAction={openNewInvite}
-      />
+      >
+        {(currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin') && (
+          <Button
+            variant="outline"
+            onClick={() => promoteToSuperAdmin('douglas.jdpromotora@gmail.com')}
+          >
+            Tornar Douglas Super Admin
+          </Button>
+        )}
+      </PageHeader>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
