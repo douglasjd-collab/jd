@@ -47,13 +47,13 @@ export default function Dashboard() {
   const loadUser = async () => {
     const me = await base44.auth.me();
 
-    // Super admin não precisa de Colaborador - acessa tudo
-    if (me.role === 'super_admin') {
+    // Primeiro: tenta reconhecer super_admin pelo próprio auth
+    if (me.role === 'super_admin' || me.perfil === 'super_admin') {
       setUser({
         ...me,
         auth_id: me.id,
         colaborador_id: null,
-        empresa_id: null, // Acessa todas empresas
+        empresa_id: null,
         perfil: 'super_admin',
         nome_perfil: me.full_name,
         gerente_id: null,
@@ -61,23 +61,38 @@ export default function Dashboard() {
       return;
     }
 
-    // Para outros roles, buscar Colaborador
+    // Depois: busca Colaborador e se o perfil dele for super_admin, também vira super_admin
     const colabs = await base44.entities.Colaborador.filter(
       { user_id: me.id, status: 'ativo' },
       '-created_date'
     );
 
+    const colab = colabs?.[0] || null;
+
+    if (colab?.perfil === 'super_admin' || colab?.perfil === 'master') {
+      setUser({
+        ...me,
+        auth_id: me.id,
+        colaborador_id: colab?.id || null,
+        empresa_id: null,
+        perfil: 'super_admin',
+        nome_perfil: colab?.nome || me?.full_name || '',
+        gerente_id: null,
+      });
+      return;
+    }
+
     const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
-    const colab = byEmpresa || colabs?.[0] || null;
+    const colabFinal = byEmpresa || colab;
 
     setUser({
       ...me,
       auth_id: me.id,
-      colaborador_id: colab?.id || null,
-      empresa_id: colab?.empresa_id || me?.empresa_id || null,
-      perfil: colab?.perfil || me?.role || 'vendedor',
-      nome_perfil: colab?.nome || me?.full_name || '',
-      gerente_id: colab?.gerente_id || null,
+      colaborador_id: colabFinal?.id || null,
+      empresa_id: colabFinal?.empresa_id || me?.empresa_id || null,
+      perfil: colabFinal?.perfil || me?.role || 'vendedor',
+      nome_perfil: colabFinal?.nome || me?.full_name || '',
+      gerente_id: colabFinal?.gerente_id || null,
     });
   };
 
