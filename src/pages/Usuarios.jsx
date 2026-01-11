@@ -183,6 +183,67 @@ export default function Usuarios() {
     }
   });
 
+  const promoteToSuperAdmin = async (email) => {
+    try {
+      // 1) achar o user auth pelo email (service role)
+      const users = await base44.asServiceRole.entities.User.filter({ email });
+      const userAuth = users?.[0];
+
+      if (!userAuth) {
+        throw new Error(`User auth não encontrado para: ${email}`);
+      }
+
+      // 2) buscar vínculo no Colaborador
+      const colabs = await base44.asServiceRole.entities.Colaborador.filter({
+        user_id: userAuth.id,
+        status: 'ativo',
+      });
+
+      const colab = colabs?.[0] || null;
+
+      // 3) se não existir Colaborador, cria um mínimo
+      if (!colab) {
+        await base44.asServiceRole.entities.Colaborador.create({
+          user_id: userAuth.id,
+          email,
+          nome: userAuth.full_name || 'Super Admin',
+          perfil: 'super_admin',
+          empresa_id: null,
+          status: 'ativo',
+        });
+      } else {
+        // 4) se existir, atualiza para super_admin (e libera empresas)
+        await base44.asServiceRole.entities.Colaborador.update(colab.id, {
+          perfil: 'super_admin',
+          empresa_id: null,
+          gerente_id: null,
+          status: 'ativo',
+        });
+      }
+
+      // 5) auditoria (opcional)
+      try {
+        await base44.asServiceRole.entities.LogAuditoria.create({
+          usuario_id: currentUser?.id || null,
+          usuario_nome: currentUser?.full_name || currentUser?.nome_perfil || 'Sistema',
+          acao: `Promoção para SUPER_ADMIN: ${email}`,
+          entidade: 'Colaborador',
+          entidade_id: colab?.id || userAuth.id,
+          dados_novos: JSON.stringify({ email, perfil: 'super_admin', empresa_id: null }),
+          tipo: 'edicao',
+        });
+      } catch (e) {
+        console.log('Erro ao criar log:', e);
+      }
+
+      toast.success(`✅ ${email} agora é SUPER_ADMIN`);
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || 'Erro ao promover para super_admin');
+    }
+  };
+
   const handleSubmit = async (data, resetForm) => {
     // Validação de CPF/CNPJ único
     if (data.cpf_cnpj) {
