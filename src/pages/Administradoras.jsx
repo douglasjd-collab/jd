@@ -52,7 +52,7 @@ export default function Administradoras() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['administradoras'] });
       setFormOpen(false);
-      setTimeout(() => setSelectedAdmin(null), 100);
+      setSelectedAdmin(null);
       toast.success('Administradora atualizada com sucesso!');
     },
   });
@@ -75,11 +75,8 @@ export default function Administradoras() {
   };
 
   const handleEdit = (admin) => {
-    setFormOpen(false);
-    setTimeout(() => {
-      setSelectedAdmin(admin);
-      setFormOpen(true);
-    }, 50);
+    setSelectedAdmin(admin);
+    setFormOpen(true);
   };
 
   const filteredAdmins = administradoras.filter(a => 
@@ -188,7 +185,7 @@ export default function Administradoras() {
         onOpenChange={(isOpen) => {
           setFormOpen(isOpen);
           if (!isOpen) {
-            setTimeout(() => setSelectedAdmin(null), 100);
+            setSelectedAdmin(null);
           }
         }}
         administradora={selectedAdmin}
