@@ -382,13 +382,23 @@ export default function SimuladorConsorcio() {
         throw new Error('Calcule a simulação primeiro');
       }
 
-      const user = await base44.auth.me();
+      if (!currentUser) {
+        throw new Error('Usuário não autenticado');
+      }
 
-      // Garantir empresa_id
-      const empresaId = user.empresa_id || user?.empresa?.id;
-      if (!empresaId) {
+      // Buscar colaborador do usuário
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: currentUser.id, status: 'ativo' },
+        '-created_date'
+      );
+      
+      const colab = colabs?.[0];
+      
+      if (!colab || !colab.empresa_id) {
         throw new Error('Usuário não está vinculado a uma empresa');
       }
+
+      const empresaId = colab.empresa_id;
 
       // 1. Salvar simulação
       const simulacao = await base44.entities.Simulacao.create({
@@ -422,8 +432,8 @@ export default function SimuladorConsorcio() {
         nova_parcela: resultado.novaParcela,
         saldo_apos_contemplacao: resultado.saldoFinal,
 
-        usuario_id: user.id,
-        usuario_nome: user.full_name,
+        usuario_id: currentUser.id,
+        usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
       });
 
@@ -471,8 +481,8 @@ export default function SimuladorConsorcio() {
           oportunidade_id: oportunidadeDuplicada.id,
           etapa_destino_id: oportunidadeDuplicada.etapa_id,
           etapa_destino_nome: oportunidadeDuplicada.etapa_nome,
-          usuario_id: user.id,
-          usuario_nome: user.full_name,
+          usuario_id: currentUser.id,
+          usuario_nome: colab.nome || currentUser.full_name,
           observacao: '🔄 Nova simulação adicionada'
         });
 
@@ -497,9 +507,9 @@ export default function SimuladorConsorcio() {
           valor_estimado: creditoTotal,
           etapa_id: etapaSimulacao.id,
           etapa_nome: etapaSimulacao.nome,
-          vendedor_id: user.id,
-          vendedor_nome: user.full_name,
-          gerente_id: user.perfil === 'vendedor' ? user.gerente_id : user.id,
+          vendedor_id: currentUser.id,
+          vendedor_nome: colab.nome || currentUser.full_name,
+          gerente_id: colab.perfil === 'vendedor' ? colab.gerente_id : currentUser.id,
           origem: 'Simulador',
           observacoes:
             `Simulação gerada automaticamente.` +
@@ -516,8 +526,8 @@ export default function SimuladorConsorcio() {
           oportunidade_id: oportunidade.id,
           etapa_destino_id: etapaSimulacao.id,
           etapa_destino_nome: etapaSimulacao.nome,
-          usuario_id: user.id,
-          usuario_nome: user.full_name,
+          usuario_id: currentUser.id,
+          usuario_nome: colab.nome || currentUser.full_name,
           observacao: 'Simulação gerada'
         });
       }
@@ -538,8 +548,8 @@ export default function SimuladorConsorcio() {
 
       // Auditoria
       await base44.entities.LogAuditoria.create({
-        usuario_id: user.id,
-        usuario_nome: user.full_name,
+        usuario_id: currentUser.id,
+        usuario_nome: colab.nome || currentUser.full_name,
         acao: `Simulação gerada para ${clienteNome}`,
         entidade: 'Simulacao',
         entidade_id: simulacao.id,
