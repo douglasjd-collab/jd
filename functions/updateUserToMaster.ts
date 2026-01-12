@@ -3,17 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Permitir apenas se já for master ou se for o primeiro usuário
-    if (user.perfil !== 'master' && user.email !== 'douglas.jdpromotora@gmail.com') {
-      return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
+    
     const { email, perfil } = await req.json();
 
     if (!email) {
@@ -31,16 +21,41 @@ Deno.serve(async (req) => {
 
     const targetUser = users[0];
 
-    // Atualizar perfil
+    // Atualizar role no User para admin (necessário para ter permissões)
     await base44.asServiceRole.entities.User.update(targetUser.id, {
-      perfil: targetPerfil
+      role: 'admin'
     });
+
+    // Buscar ou criar Colaborador
+    const colaboradores = await base44.asServiceRole.entities.Colaborador.filter({ 
+      user_id: targetUser.id 
+    });
+
+    if (colaboradores.length > 0) {
+      // Atualizar Colaborador existente
+      await base44.asServiceRole.entities.Colaborador.update(colaboradores[0].id, {
+        perfil: targetPerfil,
+        status: 'ativo'
+      });
+    } else {
+      // Criar novo Colaborador
+      await base44.asServiceRole.entities.Colaborador.create({
+        user_id: targetUser.id,
+        nome: targetUser.full_name,
+        email: targetUser.email,
+        perfil: targetPerfil,
+        empresa_id: null, // Super admin sem empresa específica
+        status: 'ativo'
+      });
+    }
 
     return Response.json({ 
       success: true, 
-      message: `Usuário ${email} atualizado para ${targetPerfil === 'super_admin' ? 'Super Admin' : 'Master'} com sucesso!` 
+      message: `Usuário ${email} atualizado para ${targetPerfil === 'super_admin' ? 'Super Admin' : targetPerfil} com sucesso!`,
+      userId: targetUser.id
     });
   } catch (error) {
+    console.error('Erro ao atualizar usuário:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
