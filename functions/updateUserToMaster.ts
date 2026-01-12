@@ -33,20 +33,33 @@ Deno.serve(async (req) => {
 
     if (colaboradores.length > 0) {
       // Atualizar Colaborador existente
-      await base44.asServiceRole.entities.Colaborador.update(colaboradores[0].id, {
+      const updateData = {
         perfil: targetPerfil,
         status: 'ativo'
-      });
+      };
+      
+      // Super admin não precisa de empresa_id
+      if (targetPerfil === 'super_admin' || targetPerfil === 'master') {
+        updateData.empresa_id = '';
+      }
+      
+      await base44.asServiceRole.entities.Colaborador.update(colaboradores[0].id, updateData);
     } else {
       // Criar novo Colaborador
-      await base44.asServiceRole.entities.Colaborador.create({
+      const createData = {
         user_id: targetUser.id,
         nome: targetUser.full_name,
         email: targetUser.email,
         perfil: targetPerfil,
-        empresa_id: null, // Super admin sem empresa específica
         status: 'ativo'
-      });
+      };
+      
+      // Super admin não precisa de empresa_id
+      if (targetPerfil !== 'super_admin' && targetPerfil !== 'master') {
+        createData.empresa_id = '';
+      }
+      
+      await base44.asServiceRole.entities.Colaborador.create(createData);
     }
 
     return Response.json({ 
