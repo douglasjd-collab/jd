@@ -137,9 +137,9 @@ export default function ImprimirSimulacao() {
               Voltar ao Simulador
             </Button>
           </Link>
-          <Button onClick={handleImprimir} className="gap-2 shadow-lg bg-[#23BE84] hover:bg-[#1da570]">
+          <Button onClick={handleImprimir} className="gap-2 shadow-lg bg-[#23BE84] hover:bg-[#1da570] px-6">
             <Printer className="w-4 h-4" />
-            Imprimir
+            <span>Imprimir</span>
           </Button>
         </div>
 
