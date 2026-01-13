@@ -70,27 +70,38 @@ export default function Clientes() {
   });
 
   const handleSubmit = async (data) => {
-    const user = await base44.auth.me();
-    
-    // Colaborador
-    const colabs = await base44.entities.Colaborador.filter(
-      { user_id: user.id, status: 'ativo' },
-      '-created_date'
-    );
-    const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
-    const colab = byEmpresa || colabs?.[0] || null;
+    try {
+      const user = await base44.auth.me();
+      
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+      
+      // Colaborador
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: user.id, status: 'ativo' },
+        '-created_date'
+      );
+      
+      const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
+      const colab = byEmpresa || colabs?.[0] || null;
 
-    const clienteData = {
-      ...data,
-      empresa_id: user.empresa_id || colab?.empresa_id,
-      vendedor_id: colab?.id || user.id,
-      vendedor_nome: colab?.nome || user.full_name
-    };
+      const clienteData = {
+        ...data,
+        empresa_id: user.empresa_id || colab?.empresa_id || null,
+        vendedor_id: colab?.id || user.id,
+        vendedor_nome: colab?.nome || user.full_name
+      };
 
-    if (selectedCliente) {
-      updateMutation.mutate({ id: selectedCliente.id, data: clienteData });
-    } else {
-      createMutation.mutate(clienteData);
+      if (selectedCliente) {
+        updateMutation.mutate({ id: selectedCliente.id, data: clienteData });
+      } else {
+        createMutation.mutate(clienteData);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar cliente:', error);
+      toast.error('Erro ao salvar cliente: ' + error.message);
     }
   };
 

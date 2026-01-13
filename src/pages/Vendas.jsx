@@ -62,16 +62,29 @@ export default function Vendas() {
         '-created_date'
       );
 
+      if (!colabs || colabs.length === 0) {
+        console.warn('Usuário sem Colaborador vinculado:', me.email);
+        setCurrentUser({
+          ...me,
+          auth_id: me.id,
+          colaborador_id: null,
+          empresa_id: null,
+          perfil: 'vendedor',
+          gerente_id: null,
+        });
+        return;
+      }
+
       const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
-      const colab = byEmpresa || colabs?.[0] || null;
+      const colab = byEmpresa || colabs[0];
 
       setCurrentUser({
         ...me,
         auth_id: me.id,
-        colaborador_id: colab?.id || null,
-        empresa_id: colab?.empresa_id || me?.empresa_id || null,
-        perfil: colab?.perfil || me?.role || 'vendedor',
-        gerente_id: colab?.gerente_id || null,
+        colaborador_id: colab.id,
+        empresa_id: colab.empresa_id || null,
+        perfil: colab.perfil || 'vendedor',
+        gerente_id: colab.gerente_id || null,
       });
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);

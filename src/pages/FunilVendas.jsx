@@ -101,14 +101,23 @@ export default function FunilVendas() {
           { user_id: user.id, status: 'ativo' }
         );
         
-        const colab = colabs?.[0];
-        if (colab) {
+        if (colabs && colabs.length > 0) {
+          const colab = colabs[0];
           userData = {
             ...user,
             colaborador_id: colab.id,
             empresa_id: colab.empresa_id,
             perfil: colab.perfil,
             full_name: colab.nome || user.full_name
+          };
+        } else {
+          console.warn('Usuário sem Colaborador vinculado:', user.email);
+          userData = {
+            ...user,
+            colaborador_id: null,
+            empresa_id: null,
+            perfil: 'vendedor',
+            full_name: user.full_name
           };
         }
       } else {
