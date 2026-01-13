@@ -52,7 +52,12 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
 
     setSalvando(true);
     try {
-      await base44.auth.updateMe({ foto_perfil: fotoUrl });
+      // Atualizar foto no Colaborador
+      if (user.colaborador_id) {
+        await base44.entities.Colaborador.update(user.colaborador_id, {
+          foto_perfil: fotoUrl
+        });
+      }
 
       toast.success('Foto de perfil atualizada com sucesso!');
       
