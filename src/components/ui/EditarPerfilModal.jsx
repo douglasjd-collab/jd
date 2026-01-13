@@ -52,12 +52,24 @@ export default function EditarPerfilModal({ open, onOpenChange, user, onSuccess 
 
     setSalvando(true);
     try {
-      // Atualizar foto no Colaborador
-      if (user.colaborador_id) {
-        await base44.entities.Colaborador.update(user.colaborador_id, {
-          foto_perfil: fotoUrl
-        });
+      // Buscar Colaborador do usuário autenticado
+      const me = await base44.auth.me();
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: me.id, status: 'ativo' },
+        '-created_date'
+      );
+
+      if (!colabs || colabs.length === 0) {
+        toast.error('Colaborador não encontrado. Entre em contato com o administrador.');
+        return;
       }
+
+      const colab = colabs[0];
+
+      // Atualizar foto no Colaborador
+      await base44.entities.Colaborador.update(colab.id, {
+        foto_perfil: fotoUrl
+      });
 
       toast.success('Foto de perfil atualizada com sucesso!');
       
