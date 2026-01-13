@@ -245,10 +245,9 @@ export default function Usuarios() {
 
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         
-        // Mostrar sucesso e limpar formulário
-        setInviteSuccess(true);
-        setFormKey(prev => prev + 1);
+        // Mostrar sucesso e fechar formulário
         toast.success('Convite enviado com sucesso!');
+        safeCloseForm();
       } catch (error) {
         console.error('Erro detalhado:', error);
         toast.error(error.message || 'Erro ao enviar convite');
