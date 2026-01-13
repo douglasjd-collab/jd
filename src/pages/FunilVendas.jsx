@@ -85,12 +85,45 @@ export default function FunilVendas() {
   }, []);
 
   const loadUser = async () => {
-    const user = await base44.auth.me();
-    setCurrentUser(user);
-    setFormData((prev) => ({
-      ...prev,
-      vendedor_id: prev.vendedor_id || user?.id || '',
-    }));
+    try {
+      const user = await base44.auth.me();
+      
+      if (!user) {
+        console.error('Usuário não autenticado');
+        return;
+      }
+
+      // Para super admin, buscar Colaborador para obter empresa_id
+      let userData = { ...user };
+      
+      if (user.role !== 'super_admin') {
+        const colabs = await base44.entities.Colaborador.filter(
+          { user_id: user.id, status: 'ativo' }
+        );
+        
+        const colab = colabs?.[0];
+        if (colab) {
+          userData = {
+            ...user,
+            colaborador_id: colab.id,
+            empresa_id: colab.empresa_id,
+            perfil: colab.perfil,
+            full_name: colab.nome || user.full_name
+          };
+        }
+      } else {
+        userData.perfil = 'super_admin';
+      }
+
+      setCurrentUser(userData);
+      setFormData((prev) => ({
+        ...prev,
+        vendedor_id: prev.vendedor_id || userData?.id || '',
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+      toast.error('Erro ao carregar dados do usuário');
+    }
   };
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
@@ -118,8 +151,8 @@ export default function FunilVendas() {
     queryKey: ['vendedores'],
     enabled: !!currentUser && (isAdmin || isGerente),
     queryFn: async () => {
-      const allUsers = await base44.entities.User.list();
-      return allUsers.filter(u => ['vendedor', 'gerente', 'admin', 'master'].includes(u.perfil) && u.status === 'ativo');
+      const colabs = await base44.entities.Colaborador.filter({ status: 'ativo' });
+      return colabs.filter(c => ['vendedor', 'gerente', 'admin', 'master', 'super_admin'].includes(c.perfil));
     },
   });
 
@@ -654,8 +687,30 @@ export default function FunilVendas() {
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
 
-  if (loadingEtapas || loadingOportunidades) {
-    return <div className="p-8">Carregando funil...</div>;
+  if (loadingEtapas || loadingOportunidades || !currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f] mx-auto mb-4"></div>
+          <p className="text-slate-600">Carregando funil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (etapas.length === 0) {
+    return (
+      <div className="p-8">
+        <PageHeader
+          title="Funil de Vendas"
+          subtitle="Configure as etapas do funil primeiro"
+        >
+          <Link to={createPageUrl('ConfiguracaoFunil')}>
+            <Button>Configurar Etapas</Button>
+          </Link>
+        </PageHeader>
+      </div>
+    );
   }
 
   return (
