@@ -85,18 +85,34 @@ export default function Layout({ children, currentPageName }) {
         '-created_date'
       );
 
+      if (!colabs || colabs.length === 0) {
+        console.warn('Usuário sem Colaborador vinculado:', me.email);
+        // Criar um usuário básico mesmo sem Colaborador
+        setUser({
+          ...me,
+          auth_id: me.id,
+          colaborador_id: null,
+          empresa_id: null,
+          perfil: 'vendedor',
+          nome_perfil: me.full_name || '',
+          foto_perfil: null,
+          email: me.email || '',
+        });
+        return;
+      }
+
       const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
-      const colab = byEmpresa || colabs?.[0] || null;
+      const colab = byEmpresa || colabs[0];
 
       setUser({
         ...me,
         auth_id: me.id,
-        colaborador_id: colab?.id || null,
-        empresa_id: colab?.empresa_id || me?.empresa_id || null,
-        perfil: colab?.perfil || me?.role || 'vendedor',
-        nome_perfil: colab?.nome || me?.full_name || '',
-        foto_perfil: colab?.foto_perfil || null,
-        email: colab?.email || me?.email || '',
+        colaborador_id: colab.id,
+        empresa_id: colab.empresa_id || null,
+        perfil: colab.perfil || 'vendedor',
+        nome_perfil: colab.nome || me.full_name || '',
+        foto_perfil: colab.foto_perfil || null,
+        email: colab.email || me.email || '',
       });
     } catch (e) {
       console.log('Erro ao carregar usuário:', e);
