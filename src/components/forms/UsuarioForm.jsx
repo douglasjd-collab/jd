@@ -125,9 +125,12 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" aria-describedby="usuario-form-description">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{usuario ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
+          <p id="usuario-form-description" className="sr-only">
+            {usuario ? 'Formulário para editar dados do usuário' : 'Formulário para convidar novo usuário'}
+          </p>
         </DialogHeader>
         
         <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 min-h-0">

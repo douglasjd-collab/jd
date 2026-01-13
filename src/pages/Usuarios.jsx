@@ -185,55 +185,13 @@ export default function Usuarios() {
 
   const promoteToSuperAdmin = async (email) => {
     try {
-      // 1) achar o user auth pelo email (service role)
-      const users = await base44.asServiceRole.entities.User.filter({ email });
-      const userAuth = users?.[0];
-
-      if (!userAuth) {
-        throw new Error(`User auth não encontrado para: ${email}`);
-      }
-
-      // 2) buscar vínculo no Colaborador
-      const colabs = await base44.asServiceRole.entities.Colaborador.filter({
-        user_id: userAuth.id,
-        status: 'ativo',
+      const response = await base44.functions.invoke('updateUserToMaster', { 
+        email, 
+        perfil: 'super_admin' 
       });
-
-      const colab = colabs?.[0] || null;
-
-      // 3) se não existir Colaborador, cria um mínimo
-      if (!colab) {
-        await base44.asServiceRole.entities.Colaborador.create({
-          user_id: userAuth.id,
-          email,
-          nome: userAuth.full_name || 'Super Admin',
-          perfil: 'super_admin',
-          empresa_id: null,
-          status: 'ativo',
-        });
-      } else {
-        // 4) se existir, atualiza para super_admin (e libera empresas)
-        await base44.asServiceRole.entities.Colaborador.update(colab.id, {
-          perfil: 'super_admin',
-          empresa_id: null,
-          gerente_id: null,
-          status: 'ativo',
-        });
-      }
-
-      // 5) auditoria (opcional)
-      try {
-        await base44.asServiceRole.entities.LogAuditoria.create({
-          usuario_id: currentUser?.id || null,
-          usuario_nome: currentUser?.full_name || currentUser?.nome_perfil || 'Sistema',
-          acao: `Promoção para SUPER_ADMIN: ${email}`,
-          entidade: 'Colaborador',
-          entidade_id: colab?.id || userAuth.id,
-          dados_novos: JSON.stringify({ email, perfil: 'super_admin', empresa_id: null }),
-          tipo: 'edicao',
-        });
-      } catch (e) {
-        console.log('Erro ao criar log:', e);
+      
+      if (response.data.error) {
+        throw new Error(response.data.error);
       }
 
       toast.success(`✅ ${email} agora é SUPER_ADMIN`);
@@ -274,58 +232,15 @@ export default function Usuarios() {
       
       updateMutation.mutate({ id: selectedUsuario.id, data: dataToUpdate });
     } else {
-      // Novo usuário
+      // Novo usuário - chamar função backend
       setIsSubmitting(true);
       setInviteSuccess(false);
       
       try {
-        // 0) procurar user auth existente
-        const existingUsers = await base44.asServiceRole.entities.User.filter({ email: normalizedData.email });
-        let userAuth = existingUsers?.[0] || null;
-
-        if (!userAuth) {
-          // 1) só convida se não existir
-          await base44.users.inviteUser(normalizedData.email, 'user');
-          await new Promise(r => setTimeout(r, 1500));
-
-          const createdUsers = await base44.asServiceRole.entities.User.filter({ email: normalizedData.email });
-          if (!createdUsers?.length) throw new Error('Usuário não foi encontrado após convite');
-          userAuth = createdUsers[0];
-        }
-
-        // 2) impedir vínculo duplicado (mesmo user_id + empresa)
-        const vinculoExistente = await base44.entities.Colaborador.filter({
-          user_id: userAuth.id,
-          empresa_id: normalizedData.empresa_id,
-          status: 'ativo'
-        });
-
-        if (vinculoExistente?.length) {
-          throw new Error('Esse usuário já está vinculado a essa empresa.');
-        }
-
-        // 3) criar Colaborador
-        const { email, senha, ...dadosColaborador } = normalizedData;
-        await base44.entities.Colaborador.create({
-          ...dadosColaborador,
-          user_id: userAuth.id,
-          email: normalizedData.email,
-          status: 'ativo'
-        });
-
-        // Auditoria
-        try {
-          await base44.entities.LogAuditoria.create({
-            usuario_id: currentUser.id,
-            usuario_nome: currentUser.full_name || currentUser.nome_perfil,
-            acao: `Cadastro de novo usuário: ${normalizedData.nome}`,
-            entidade: 'Colaborador',
-            entidade_id: userAuth.id,
-            dados_novos: JSON.stringify(normalizedData),
-            tipo: 'criacao'
-          });
-        } catch (e) {
-          console.log('Erro ao criar log:', e);
+        const response = await base44.functions.invoke('inviteUser', normalizedData);
+        
+        if (response.data.error) {
+          throw new Error(response.data.error);
         }
 
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
