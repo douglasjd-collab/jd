@@ -57,6 +57,8 @@ export default function MeusDados() {
         chave_pix: colab?.chave_pix || '',
         tipo_chave_pix: colab?.tipo_chave_pix || '',
         banco: colab?.banco || '',
+        agencia: colab?.agencia || '',
+        conta: colab?.conta || '',
         cpf: colab?.cpf_cnpj || '',
         telefone: colab?.telefone || '',
         perfil: colab?.perfil || 'vendedor',
