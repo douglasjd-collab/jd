@@ -16,6 +16,9 @@ export default function ImprimirSimulacao() {
 
   const loadSimulacao = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       const params = new URLSearchParams(window.location.search);
       const id = params.get('id');
       
@@ -23,17 +26,17 @@ export default function ImprimirSimulacao() {
         throw new Error('ID da simulação não encontrado');
       }
 
-      const result = await base44.entities.Simulacao.list();
-      const encontrada = result.find(s => s.id === id);
+      // Buscar a simulação específica
+      const result = await base44.entities.Simulacao.filter({ id });
       
-      if (!encontrada) {
+      if (!result || result.length === 0) {
         throw new Error('Simulação não encontrada');
       }
 
-      setSimulacao(encontrada);
+      setSimulacao(result[0]);
     } catch (err) {
       console.error('Erro ao carregar simulação:', err);
-      setError(err.message);
+      setError(err.message || 'Erro ao carregar simulação');
     } finally {
       setLoading(false);
     }
@@ -136,7 +139,7 @@ export default function ImprimirSimulacao() {
           </Link>
           <Button onClick={handleImprimir} className="gap-2 shadow-lg bg-[#23BE84] hover:bg-[#1da570]">
             <Printer className="w-4 h-4" />
-            Imprimir Simulação
+            Imprimir
           </Button>
         </div>
 
