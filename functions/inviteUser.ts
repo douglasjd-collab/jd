@@ -19,8 +19,34 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Forbidden: Only admin users can invite other admins.' }, { status: 403 });
         }
 
-        // Convidar usuário
-        const invitedUser = await base44.asServiceRole.users.inviteUser(email, requestedRole);
+        // Verificar se usuário já existe
+        const existingUsers = await base44.asServiceRole.entities.User.filter({ email });
+        let invitedUser = existingUsers?.[0] || null;
+
+        // Convidar usuário se não existir
+        if (!invitedUser) {
+            // Criar convite através da API base44
+            const inviteResponse = await fetch(`${Deno.env.get('BASE44_API_URL')}/apps/${Deno.env.get('BASE44_APP_ID')}/users/invite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Deno.env.get('BASE44_SERVICE_ROLE_KEY')}`
+                },
+                body: JSON.stringify({ email, role: requestedRole })
+            });
+
+            if (!inviteResponse.ok) {
+                throw new Error('Erro ao enviar convite');
+            }
+
+            // Aguardar e buscar usuário criado
+            await new Promise(r => setTimeout(r, 1500));
+            const createdUsers = await base44.asServiceRole.entities.User.filter({ email });
+            if (!createdUsers?.length) {
+                throw new Error('Usuário não foi encontrado após convite');
+            }
+            invitedUser = createdUsers[0];
+        }
         
         // Criar dados do Colaborador
         let colaboradorData = {
