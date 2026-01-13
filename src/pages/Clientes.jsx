@@ -78,20 +78,32 @@ export default function Clientes() {
         return;
       }
       
-      // Colaborador
-      const colabs = await base44.entities.Colaborador.filter(
-        { user_id: user.id, status: 'ativo' },
-        '-created_date'
-      );
-      
-      const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
-      const colab = byEmpresa || colabs?.[0] || null;
+      let empresa_id = user.empresa_id || null;
+      let vendedor_id = user.id;
+      let vendedor_nome = user.full_name;
+
+      // Buscar Colaborador se não for super_admin
+      if (user.role !== 'super_admin') {
+        const colabs = await base44.entities.Colaborador.filter(
+          { user_id: user.id, status: 'ativo' },
+          '-created_date'
+        );
+        
+        if (colabs && colabs.length > 0) {
+          const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
+          const colab = byEmpresa || colabs[0];
+          
+          empresa_id = colab.empresa_id || empresa_id;
+          vendedor_id = colab.id;
+          vendedor_nome = colab.nome || vendedor_nome;
+        }
+      }
 
       const clienteData = {
         ...data,
-        empresa_id: user.empresa_id || colab?.empresa_id || null,
-        vendedor_id: colab?.id || user.id,
-        vendedor_nome: colab?.nome || user.full_name
+        empresa_id,
+        vendedor_id,
+        vendedor_nome
       };
 
       if (selectedCliente) {

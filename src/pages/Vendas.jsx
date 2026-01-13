@@ -88,7 +88,6 @@ export default function Vendas() {
       });
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
-      setCurrentUser({ perfil: 'vendedor' });
     }
   };
 
