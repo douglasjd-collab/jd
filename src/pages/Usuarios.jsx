@@ -58,40 +58,64 @@ export default function Usuarios() {
   }, []);
 
   const loadUser = async () => {
-    const me = await base44.auth.me();
+    try {
+      const me = await base44.auth.me();
 
-    // Super admin não precisa de Colaborador - acessa tudo
-    if (me.role === 'super_admin') {
+      if (!me) {
+        console.warn('Usuário não autenticado');
+        return;
+      }
+
+      // Super admin não precisa de Colaborador - acessa tudo
+      if (me.role === 'super_admin') {
+        setCurrentUser({
+          ...me,
+          auth_id: me.id,
+          colaborador_id: null,
+          empresa_id: null, // Acessa todas empresas
+          perfil: 'super_admin',
+          nome_perfil: me.full_name,
+          email: me.email,
+        });
+        return;
+      }
+
+      // Para outros roles, buscar Colaborador
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: me.id, status: 'ativo' },
+        '-created_date'
+      );
+
+      if (!colabs || colabs.length === 0) {
+        console.warn('Usuário sem Colaborador vinculado:', me.email);
+        // Criar usuário básico mesmo sem Colaborador
+        setCurrentUser({
+          ...me,
+          auth_id: me.id,
+          colaborador_id: null,
+          empresa_id: null,
+          perfil: 'vendedor',
+          nome_perfil: me.full_name || '',
+          email: me.email || '',
+        });
+        return;
+      }
+
+      const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
+      const colab = byEmpresa || colabs[0];
+
       setCurrentUser({
         ...me,
         auth_id: me.id,
-        colaborador_id: null,
-        empresa_id: null, // Acessa todas empresas
-        perfil: 'super_admin',
-        nome_perfil: me.full_name,
-        email: me.email,
+        colaborador_id: colab.id,
+        empresa_id: colab.empresa_id || null,
+        perfil: colab.perfil || 'vendedor',
+        nome_perfil: colab.nome || me.full_name || '',
+        email: colab.email || me.email || '',
       });
-      return;
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
     }
-
-    // Para outros roles, buscar Colaborador
-    const colabs = await base44.entities.Colaborador.filter(
-      { user_id: me.id, status: 'ativo' },
-      '-created_date'
-    );
-
-    const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
-    const colab = byEmpresa || colabs?.[0] || null;
-
-    setCurrentUser({
-      ...me,
-      auth_id: me.id,
-      colaborador_id: colab?.id || null,
-      empresa_id: colab?.empresa_id || me?.empresa_id || null,
-      perfil: colab?.perfil || me?.role || 'vendedor',
-      nome_perfil: colab?.nome || me?.full_name || '',
-      email: colab?.email || me?.email || '',
-    });
   };
 
   const isAdmin = ['master','super_admin','admin'].includes(currentUser?.perfil);
