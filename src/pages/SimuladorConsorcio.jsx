@@ -706,8 +706,12 @@ export default function SimuladorConsorcio() {
                       <Label className="text-xs">Crédito (R$) *</Label>
                       <Input
                         type="text"
-                        value={carta.credito ? formatarMoeda((parseFloat(carta.credito) * 100).toString()) : ''}
-                        onChange={(e) => handleMoedaChange(index, 'credito', e.target.value)}
+                        value={carta.credito ? formatCurrency(parseFloat(carta.credito)).replace('R$', '').trim() : ''}
+                        onChange={(e) => {
+                          const valor = e.target.value.replace(/\D/g, '');
+                          const valorNumerico = parseFloat(valor) / 100;
+                          atualizarCarta(index, 'credito', valorNumerico > 0 ? valorNumerico.toString() : '');
+                        }}
                         placeholder="0,00"
                         className="h-9"
                       />
@@ -716,8 +720,12 @@ export default function SimuladorConsorcio() {
                       <Label className="text-xs">Parcela (R$) *</Label>
                       <Input
                         type="text"
-                        value={carta.parcela ? formatarMoeda((parseFloat(carta.parcela) * 100).toString()) : ''}
-                        onChange={(e) => handleMoedaChange(index, 'parcela', e.target.value)}
+                        value={carta.parcela ? formatCurrency(parseFloat(carta.parcela)).replace('R$', '').trim() : ''}
+                        onChange={(e) => {
+                          const valor = e.target.value.replace(/\D/g, '');
+                          const valorNumerico = parseFloat(valor) / 100;
+                          atualizarCarta(index, 'parcela', valorNumerico > 0 ? valorNumerico.toString() : '');
+                        }}
                         placeholder="0,00"
                         className="h-9"
                       />
@@ -978,11 +986,11 @@ export default function SimuladorConsorcio() {
                         <Label className="text-xs">Valor do Lance Limitado (R$)</Label>
                         <Input
                           type="text"
-                          value={lanceLimitado ? formatarMoeda((parseFloat(lanceLimitado) * 100).toString()) : ''}
+                          value={lanceLimitado ? formatCurrency(parseFloat(lanceLimitado)).replace('R$', '').trim() : ''}
                           onChange={(e) => {
-                            const valorFormatado = formatarMoeda(e.target.value);
-                            const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
-                            setLanceLimitado(valorNumerico.toString());
+                            const valor = e.target.value.replace(/\D/g, '');
+                            const valorNumerico = parseFloat(valor) / 100;
+                            setLanceLimitado(valorNumerico > 0 ? valorNumerico.toString() : '');
                           }}
                           placeholder="0,00"
                         />
@@ -1011,11 +1019,11 @@ export default function SimuladorConsorcio() {
                     <Label className="text-xs">Valor (R$)</Label>
                     <Input
                       type="text"
-                      value={lanceProprio ? formatarMoeda((parseFloat(lanceProprio) * 100).toString()) : ''}
+                      value={lanceProprio ? formatCurrency(parseFloat(lanceProprio)).replace('R$', '').trim() : ''}
                       onChange={(e) => {
-                        const valorFormatado = formatarMoeda(e.target.value);
-                        const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
-                        setLanceProprio(valorNumerico.toString());
+                        const valor = e.target.value.replace(/\D/g, '');
+                        const valorNumerico = parseFloat(valor) / 100;
+                        setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
                       }}
                       placeholder="0,00"
                     />
