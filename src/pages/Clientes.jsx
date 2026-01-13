@@ -46,8 +46,13 @@ export default function Clientes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       setFormOpen(false);
+      setSelectedCliente(null);
       toast.success('Cliente cadastrado com sucesso!');
     },
+    onError: (error) => {
+      console.error('Erro ao criar cliente:', error);
+      toast.error('Erro ao cadastrar cliente');
+    }
   });
 
   const updateMutation = useMutation({
@@ -58,6 +63,10 @@ export default function Clientes() {
       setSelectedCliente(null);
       toast.success('Cliente atualizado com sucesso!');
     },
+    onError: (error) => {
+      console.error('Erro ao atualizar cliente:', error);
+      toast.error('Erro ao atualizar cliente');
+    }
   });
 
   const deleteMutation = useMutation({
@@ -67,6 +76,11 @@ export default function Clientes() {
       setDeleteId(null);
       toast.success('Cliente excluído com sucesso!');
     },
+    onError: (error) => {
+      console.error('Erro ao excluir cliente:', error);
+      toast.error('Erro ao excluir cliente');
+      setDeleteId(null);
+    }
   });
 
   const handleSubmit = async (data) => {
@@ -74,7 +88,7 @@ export default function Clientes() {
       const user = await base44.auth.me();
       
       if (!user) {
-        toast.error('Usuário não autenticado');
+        toast.error('Sessão expirada. Faça login novamente.');
         return;
       }
       
