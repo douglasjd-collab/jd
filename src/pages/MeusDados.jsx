@@ -34,16 +34,49 @@ export default function MeusDados() {
   }, []);
 
   const loadUser = async () => {
-    const userData = await base44.auth.me();
-    setUser(userData);
-    setNomeCompleto(userData.full_name || '');
-    setDadosBancarios({
-      chave_pix: userData.chave_pix || '',
-      tipo_chave_pix: userData.tipo_chave_pix || '',
-      banco: userData.banco || '',
-      agencia: userData.agencia || '',
-      conta: userData.conta || ''
-    });
+    try {
+      const me = await base44.auth.me();
+      
+      if (!me) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+
+      // Buscar Colaborador para pegar dados bancários
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: me.id, status: 'ativo' },
+        '-created_date'
+      );
+
+      const colab = colabs?.[0];
+      
+      // Combinar dados do User e Colaborador
+      const userData = {
+        ...me,
+        colaborador_id: colab?.id,
+        chave_pix: colab?.chave_pix || '',
+        tipo_chave_pix: colab?.tipo_chave_pix || '',
+        banco: colab?.banco || '',
+        cpf: colab?.cpf_cnpj || '',
+        telefone: colab?.telefone || '',
+        perfil: colab?.perfil || 'vendedor',
+        saldo_comissao: colab?.saldo_comissao || 0,
+        foto_perfil: colab?.foto_perfil || ''
+      };
+
+      setUser(userData);
+      setNomeCompleto(userData.full_name || '');
+      setDadosBancarios({
+        chave_pix: userData.chave_pix || '',
+        tipo_chave_pix: userData.tipo_chave_pix || '',
+        banco: userData.banco || '',
+        agencia: userData.agencia || '',
+        conta: userData.conta || ''
+      });
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+      toast.error('Erro ao carregar dados do usuário');
+    }
   };
 
   const handleFotoUpload = async (e) => {
@@ -58,10 +91,18 @@ export default function MeusDados() {
     setUploadingFoto(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      await base44.entities.User.update(user.id, { foto_perfil: file_url });
+      
+      // Atualizar foto no Colaborador
+      if (user.colaborador_id) {
+        await base44.entities.Colaborador.update(user.colaborador_id, { 
+          foto_perfil: file_url 
+        });
+      }
+      
       toast.success('Foto atualizada com sucesso!');
       loadUser();
     } catch (error) {
+      console.error('Erro ao fazer upload da foto:', error);
       toast.error('Erro ao fazer upload da foto');
     } finally {
       setUploadingFoto(false);
@@ -77,11 +118,20 @@ export default function MeusDados() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.User.update(user.id, data),
+    mutationFn: async (data) => {
+      if (!user.colaborador_id) {
+        throw new Error('Colaborador não encontrado');
+      }
+      return await base44.entities.Colaborador.update(user.colaborador_id, data);
+    },
     onSuccess: () => {
       toast.success('Dados bancários atualizados!');
       loadUser();
     },
+    onError: (error) => {
+      console.error('Erro ao atualizar dados:', error);
+      toast.error('Erro ao atualizar dados bancários');
+    }
   });
 
   const handleSubmit = (e) => {
