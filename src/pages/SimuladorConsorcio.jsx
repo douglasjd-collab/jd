@@ -589,17 +589,19 @@ export default function SimuladorConsorcio() {
     return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
 
-  const formatarMoeda = (valor) => {
-    if (!valor) return '';
-    const numero = valor.replace(/\D/g, '');
-    const valorFormatado = (Number(numero) / 100).toFixed(2);
-    return valorFormatado.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const handleMoedaInput = (value) => {
+    // Remove tudo exceto números
+    const numeros = value.replace(/\D/g, '');
+    // Converte para número dividindo por 100 (centavos)
+    const valorNumerico = parseFloat(numeros) / 100;
+    return valorNumerico;
   };
 
-  const handleMoedaChange = (index, field, value) => {
-    const valorFormatado = formatarMoeda(value);
-    const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
-    atualizarCarta(index, field, valorNumerico.toString());
+  const formatarParaExibicao = (valor) => {
+    if (!valor) return '';
+    const num = parseFloat(valor);
+    if (isNaN(num)) return '';
+    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   return (
@@ -706,10 +708,9 @@ export default function SimuladorConsorcio() {
                       <Label className="text-xs">Crédito (R$) *</Label>
                       <Input
                         type="text"
-                        value={carta.credito ? formatCurrency(parseFloat(carta.credito)).replace('R$', '').trim() : ''}
+                        value={carta.credito ? formatarParaExibicao(carta.credito) : ''}
                         onChange={(e) => {
-                          const valor = e.target.value.replace(/\D/g, '');
-                          const valorNumerico = parseFloat(valor) / 100;
+                          const valorNumerico = handleMoedaInput(e.target.value);
                           atualizarCarta(index, 'credito', valorNumerico > 0 ? valorNumerico.toString() : '');
                         }}
                         placeholder="0,00"
@@ -720,10 +721,9 @@ export default function SimuladorConsorcio() {
                       <Label className="text-xs">Parcela (R$) *</Label>
                       <Input
                         type="text"
-                        value={carta.parcela ? formatCurrency(parseFloat(carta.parcela)).replace('R$', '').trim() : ''}
+                        value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''}
                         onChange={(e) => {
-                          const valor = e.target.value.replace(/\D/g, '');
-                          const valorNumerico = parseFloat(valor) / 100;
+                          const valorNumerico = handleMoedaInput(e.target.value);
                           atualizarCarta(index, 'parcela', valorNumerico > 0 ? valorNumerico.toString() : '');
                         }}
                         placeholder="0,00"
@@ -986,10 +986,9 @@ export default function SimuladorConsorcio() {
                         <Label className="text-xs">Valor do Lance Limitado (R$)</Label>
                         <Input
                           type="text"
-                          value={lanceLimitado ? formatCurrency(parseFloat(lanceLimitado)).replace('R$', '').trim() : ''}
+                          value={lanceLimitado ? formatarParaExibicao(lanceLimitado) : ''}
                           onChange={(e) => {
-                            const valor = e.target.value.replace(/\D/g, '');
-                            const valorNumerico = parseFloat(valor) / 100;
+                            const valorNumerico = handleMoedaInput(e.target.value);
                             setLanceLimitado(valorNumerico > 0 ? valorNumerico.toString() : '');
                           }}
                           placeholder="0,00"
@@ -1019,10 +1018,9 @@ export default function SimuladorConsorcio() {
                     <Label className="text-xs">Valor (R$)</Label>
                     <Input
                       type="text"
-                      value={lanceProprio ? formatCurrency(parseFloat(lanceProprio)).replace('R$', '').trim() : ''}
+                      value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
                       onChange={(e) => {
-                        const valor = e.target.value.replace(/\D/g, '');
-                        const valorNumerico = parseFloat(valor) / 100;
+                        const valorNumerico = handleMoedaInput(e.target.value);
                         setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
                       }}
                       placeholder="0,00"
