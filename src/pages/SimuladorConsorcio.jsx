@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
 
 export default function SimuladorConsorcio() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -565,9 +566,9 @@ export default function SimuladorConsorcio() {
     onSuccess: ({ simulacao }) => {
       toast.success('Simulação gerada com sucesso!');
       
-      // Navegar para página de impressão
+      // Navegar para página de impressão usando createPageUrl
       setTimeout(() => {
-        window.location.href = `/ImprimirSimulacao?id=${simulacao.id}`;
+        window.location.href = createPageUrl('ImprimirSimulacao') + `?id=${simulacao.id}`;
       }, 300);
     },
     onError: (error) => {
