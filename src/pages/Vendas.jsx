@@ -404,7 +404,7 @@ export default function Vendas() {
            <DropdownMenuItem asChild>
              <Link to={createPageUrl(`VendaDetalhes?id=${row.id}`)}>
                <Eye className="w-4 h-4 mr-2" />
-               Ver detalhes
+               Ver detalhes da carta
              </Link>
            </DropdownMenuItem>
            <DropdownMenuItem onClick={() => handleEdit(row)}>
