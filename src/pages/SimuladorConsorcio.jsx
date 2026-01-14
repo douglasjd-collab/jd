@@ -211,16 +211,16 @@ export default function SimuladorConsorcio() {
 
     // ✅ REGRA ESPECIAL: PARCELA REDUZIDA
     if (parcelaReduzida && !lanceFixoAtivo) {
-      let creditoAReceber = creditoTotal;
+      let creditoAReceber = creditoTotal; // Cliente sempre recebe o crédito total
       let valorLanceEmbutido = 0;
       let valorLanceProprio = lanceProprioAtivo ? (parseFloat(lanceProprio) || 0) : 0;
 
-      // Calcular crédito e lance baseado no tipo de lance
+      // Calcular lance baseado no tipo de lance
       if (tipoLanceReduzida === 'lance_livre') {
         // Lance livre usa o percentual de redução escolhido
         const percentual = percentualReducao / 100;
         valorLanceEmbutido = creditoTotal * percentual;
-        creditoAReceber = creditoTotal * (1 - percentual); // Cliente recebe o restante
+        // Cliente recebe crédito total, lance é descontado do saldo devedor
       }
 
       const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
@@ -327,18 +327,11 @@ export default function SimuladorConsorcio() {
     }
 
     // ✅ REGRA GERAL
-    if (!parcelaReduzida && lanceEmbutidoAtivo) {
-      // Lance embutido desconta do saldo devedor, cliente recebe crédito total
-      const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
-      saldoBase = totalPlano - lanceConsideradoNoSaldo;
-      saldoAposAto = saldoBase - parcelaTotal;
-      saldoFinal = saldoAposAto;
-    } else {
-      const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
-      saldoBase = totalPlano - lanceConsideradoNoSaldo;
-      saldoAposAto = saldoBase - parcelaTotal;
-      saldoFinal = saldoAposAto;
-    }
+    // Lance embutido SEMPRE desconta do saldo devedor, NUNCA do crédito que o cliente recebe
+    const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
+    saldoBase = totalPlano - lanceConsideradoNoSaldo;
+    saldoAposAto = saldoBase - parcelaTotal;
+    saldoFinal = saldoAposAto;
 
     let novoPrazo = null;
     let novaParcela = null;
@@ -356,7 +349,8 @@ export default function SimuladorConsorcio() {
     }
 
     setResultado({
-      creditoTotal,
+      creditoTotal, // Cliente sempre recebe o crédito total
+      creditoOriginal: creditoTotal,
       parcelaTotal,
       totalPlano,
       tipoGrupo,
