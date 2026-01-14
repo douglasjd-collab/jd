@@ -864,7 +864,14 @@ export default function SimuladorConsorcio() {
                   <Switch
                     id="lance_embutido"
                     checked={lanceEmbutidoAtivo}
-                    onCheckedChange={setLanceEmbutidoAtivo}
+                    onCheckedChange={(checked) => {
+                      setLanceEmbutidoAtivo(checked);
+                      if (!checked) {
+                        setAdministradora('');
+                        setLanceEmbutidoPercentual(25);
+                      }
+                    }}
+                    disabled={lanceFixoAtivo}
                   />
                 </div>
 
@@ -930,22 +937,22 @@ export default function SimuladorConsorcio() {
               </div>
 
               {/* Parcela Reduzida (apenas quando NÃO for lance fixo) */}
-              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <Label htmlFor="parcela_reduzida" className="font-semibold">Parcela Reduzida?</Label>
-                  <Switch
-                    id="parcela_reduzida"
-                    checked={parcelaReduzida}
-                    onCheckedChange={(checked) => {
-                      setParcelaReduzida(checked);
-                      if (!checked) {
-                        setTipoLanceReduzida('');
-                        setLanceLimitado('');
-                      }
-                    }}
-                    disabled={lanceFixoAtivo}
-                  />
-                </div>
+              {!lanceFixoAtivo && (
+                <div className="p-4 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label htmlFor="parcela_reduzida" className="font-semibold">Parcela Reduzida?</Label>
+                    <Switch
+                      id="parcela_reduzida"
+                      checked={parcelaReduzida}
+                      onCheckedChange={(checked) => {
+                        setParcelaReduzida(checked);
+                        if (!checked) {
+                          setTipoLanceReduzida('');
+                          setLanceLimitado('');
+                        }
+                      }}
+                    />
+                  </div>
 
                 {parcelaReduzida && (
                   <div className="space-y-3">
@@ -1000,7 +1007,8 @@ export default function SimuladorConsorcio() {
                     )}
                   </div>
                 )}
-              </div>
+                </div>
+              )}
 
               {/* Lance Próprio */}
               <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
@@ -1009,7 +1017,13 @@ export default function SimuladorConsorcio() {
                   <Switch
                     id="lance_proprio"
                     checked={lanceProprioAtivo}
-                    onCheckedChange={setLanceProprioAtivo}
+                    onCheckedChange={(checked) => {
+                      setLanceProprioAtivo(checked);
+                      if (!checked) {
+                        setLanceProprio('');
+                      }
+                    }}
+                    disabled={lanceFixoAtivo}
                   />
                 </div>
 

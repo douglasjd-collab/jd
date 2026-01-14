@@ -12,6 +12,7 @@ import Importacao from './pages/Importacao';
 import ImportacaoDetalhes from './pages/ImportacaoDetalhes';
 import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import MeusDados from './pages/MeusDados';
+import OfertaLance from './pages/OfertaLance';
 import OportunidadeDetalhes from './pages/OportunidadeDetalhes';
 import PlanosConsorcio from './pages/PlanosConsorcio';
 import RecebimentoComissao from './pages/RecebimentoComissao';
@@ -23,7 +24,6 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import OfertaLance from './pages/OfertaLance';
 import __Layout from './Layout.jsx';
 
 
@@ -42,6 +42,7 @@ export const PAGES = {
     "ImportacaoDetalhes": ImportacaoDetalhes,
     "ImprimirSimulacao": ImprimirSimulacao,
     "MeusDados": MeusDados,
+    "OfertaLance": OfertaLance,
     "OportunidadeDetalhes": OportunidadeDetalhes,
     "PlanosConsorcio": PlanosConsorcio,
     "RecebimentoComissao": RecebimentoComissao,
@@ -53,7 +54,6 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "OfertaLance": OfertaLance,
 }
 
 export const pagesConfig = {
