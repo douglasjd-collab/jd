@@ -847,7 +847,13 @@ export default function FunilVendas() {
                              // Definir cores baseadas no status
                              let cardClasses = 'bg-white border border-slate-200 hover:shadow-md';
 
-                             if (oport.status === 'ganha') {
+                             // Verificar se a etapa é "venda fechada" ou tipo "ganho"
+                             const etapaAtual = etapas.find(e => e.id === oport.etapa_id);
+                             const isVendaFechada = etapaAtual?.nome?.toLowerCase().includes('venda fechada') || 
+                                                    etapaAtual?.nome?.toLowerCase().includes('fechada') ||
+                                                    etapaAtual?.tipo === 'ganho';
+
+                             if (oport.status === 'ganha' || isVendaFechada) {
                                cardClasses = 'bg-green-50 border-2 border-green-600';
                              } else if (oport.status === 'perdida') {
                                cardClasses = 'bg-red-50 border-2 border-red-600';
