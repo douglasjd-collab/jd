@@ -31,6 +31,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       cliente_id: oportunidade?.cliente_id || '',
       administradora_id: '',
       tabela_id: '',
+      tipo: 'automovel',
       grupo: '',
       cota: '',
       contrato: '',
@@ -131,6 +132,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           cliente_id: oportunidade?.cliente_id || '',
           administradora_id: '',
           tabela_id: '',
+          tipo: 'automovel',
           grupo: '',
           cota: '',
           contrato: '',
@@ -383,6 +385,25 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           <div className="border rounded-lg p-4 bg-white shadow-sm">
             <h3 className="font-semibold text-slate-900 mb-3">Dados do Consórcio</h3>
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tipo *</Label>
+                <Select
+                  value={watch('tipo')}
+                  onValueChange={(value) => setValue('tipo', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="automovel">Automóvel</SelectItem>
+                    <SelectItem value="imovel">Imóvel</SelectItem>
+                    <SelectItem value="motocicleta">Motocicleta</SelectItem>
+                    <SelectItem value="servico">Serviço</SelectItem>
+                    <SelectItem value="bens_moveis">Bens Móveis</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <div>
                 <Label htmlFor="grupo">Grupo *</Label>
                 <Input

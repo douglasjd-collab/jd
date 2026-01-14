@@ -309,6 +309,14 @@ export default function Vendas() {
     }).format(value || 0);
   };
 
+  const tipoLabels = {
+    automovel: 'Automóvel',
+    imovel: 'Imóvel',
+    motocicleta: 'Motocicleta',
+    servico: 'Serviço',
+    bens_moveis: 'Bens Móveis'
+  };
+
   const columns = [
     {
       header: 'Cliente',
@@ -318,6 +326,10 @@ export default function Vendas() {
           <p className="text-sm text-slate-500">{row.cliente_cpf}</p>
         </div>
       )
+    },
+    {
+      header: 'Tipo',
+      cell: (row) => tipoLabels[row.tipo] || row.tipo || '-'
     },
     {
       header: 'Grupo/Cota',
