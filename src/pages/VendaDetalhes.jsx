@@ -91,7 +91,7 @@ export default function VendaDetalhes() {
               </div>
               <div>
                 <p className="text-sm text-slate-500">Valor da Carta</p>
-                <p className="text-xl font-bold">{formatCurrency(venda.valor_carta)}</p>
+                <p className="text-xl font-bold">{formatCurrency(venda.valorCredito)}</p>
               </div>
             </div>
           </CardContent>
