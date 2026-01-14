@@ -377,27 +377,28 @@ export default function SimuladorConsorcio() {
 
   const gerarSimulacaoMutation = useMutation({
     mutationFn: async () => {
-      if (!resultado) {
-        throw new Error('Calcule a simulação primeiro');
-      }
+      try {
+        if (!resultado) {
+          throw new Error('Calcule a simulação primeiro');
+        }
 
-      if (!currentUser) {
-        throw new Error('Usuário não autenticado');
-      }
+        if (!currentUser) {
+          throw new Error('Usuário não autenticado');
+        }
 
-      // Buscar colaborador do usuário
-      const colabs = await base44.entities.Colaborador.filter(
-        { user_id: currentUser.id, status: 'ativo' },
-        '-created_date'
-      );
-      
-      const colab = colabs?.[0];
-      
-      if (!colab || !colab.empresa_id) {
-        throw new Error('Usuário não está vinculado a uma empresa');
-      }
+        // Buscar colaborador do usuário
+        const colabs = await base44.entities.Colaborador.filter(
+          { user_id: currentUser.id, status: 'ativo' },
+          '-created_date'
+        );
+        
+        const colab = colabs?.[0];
+        
+        if (!colab || !colab.empresa_id) {
+          throw new Error('Usuário não está vinculado a uma empresa');
+        }
 
-      const empresaId = colab.empresa_id;
+        const empresaId = colab.empresa_id;
 
       // 1. Salvar simulação
       const simulacao = await base44.entities.Simulacao.create({
@@ -556,6 +557,10 @@ export default function SimuladorConsorcio() {
       });
 
       return { simulacao, oportunidade };
+      } catch (error) {
+        console.error('Erro detalhado:', error);
+        throw error;
+      }
     },
     onSuccess: ({ simulacao }) => {
       toast.success('Simulação gerada com sucesso!');
@@ -567,7 +572,7 @@ export default function SimuladorConsorcio() {
     },
     onError: (error) => {
       console.error('Erro ao gerar simulação:', error);
-      toast.error(error.message || 'Erro ao gerar simulação');
+      toast.error(error?.message || 'Erro ao gerar simulação');
     }
   });
 
