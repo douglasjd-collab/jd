@@ -275,7 +275,6 @@ export default function SimuladorConsorcio() {
       return;
     }
 
-    const usarRegraCanopusEmbutido = lanceEmbutidoAtivo && administradora === 'canopus';
     const semCarenciaPorAdm = administradora === 'itau';
 
     let saldoBase;
@@ -334,9 +333,9 @@ export default function SimuladorConsorcio() {
     // ✅ REGRA GERAL
     // Lance embutido desconta do crédito a receber E do saldo devedor
     const creditoAReceber = creditoTotal - lanceEmbutidoValor;
-    const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
-    saldoBase = totalPlano - lanceConsideradoNoSaldo;
-    saldoAposAto = saldoBase - parcelaTotal;
+    // Lance total (embutido + próprio) desconta do saldo devedor
+    saldoBase = totalPlano;
+    saldoAposAto = saldoBase - parcelaTotal - lanceTotal;
     saldoFinal = saldoAposAto;
 
     let novoPrazo = null;
@@ -362,7 +361,7 @@ export default function SimuladorConsorcio() {
       tipoGrupo,
       administradora: lanceEmbutidoAtivo ? administradora : null,
       lanceTotal,
-      lanceConsideradoNoSaldo: usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal,
+      lanceConsideradoNoSaldo: lanceTotal, // Lance total desconta do saldo
       parcelaReduzida,
       lanceEmbutidoValor,
       lanceProprioValor,
