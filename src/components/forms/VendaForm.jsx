@@ -22,9 +22,12 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
+import ClienteSearchModal from './ClienteSearchModal';
 
 export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoading, currentUser, oportunidade, onSuccess }) {
   const [tabelas, setTabelas] = useState([]);
+  const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
+  const [clienteSelecionado, setClienteSelecionado] = useState(null);
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: venda || {
@@ -126,6 +129,13 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         Object.keys(venda).forEach(key => {
           setValue(key, venda[key]);
         });
+        // Se houver cliente, carregar dados
+        if (venda.cliente_id) {
+          const cliente = clientes.find(c => c.id === venda.cliente_id);
+          if (cliente) {
+            setClienteSelecionado(cliente);
+          }
+        }
       } else {
         // Modo criação - valores padrão
         reset({
@@ -143,9 +153,19 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           data_venda: format(new Date(), 'yyyy-MM-dd'),
           status: 'ativa'
         });
+        
+        // Se oportunidade tem cliente, carregar
+        if (oportunidade?.cliente_id) {
+          const cliente = clientes.find(c => c.id === oportunidade.cliente_id);
+          if (cliente) {
+            setClienteSelecionado(cliente);
+          }
+        } else {
+          setClienteSelecionado(null);
+        }
       }
     }
-  }, [open, venda, oportunidade, setValue, reset, currentUser]);
+  }, [open, venda, oportunidade, setValue, reset, currentUser, clientes]);
 
   useEffect(() => {
     if (administradoraId) {
@@ -284,54 +304,73 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
           {/* Card Cliente */}
           <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-slate-900">Cliente *</h3>
+            <h3 className="font-semibold text-slate-900 mb-3">Cliente *</h3>
+            
+            {/* Cliente Selecionado */}
+            {clienteSelecionado || watch('cliente_id') ? (
+              <div className="border-2 border-[#23BE84] rounded-lg p-4 bg-green-50">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-slate-900">
+                      {clienteSelecionado?.nome || clientes.find(c => c.id === watch('cliente_id'))?.nome}
+                    </h4>
+                    <div className="text-sm text-slate-600 mt-1">
+                      <p>CPF: {clienteSelecionado?.cpf || clientes.find(c => c.id === watch('cliente_id'))?.cpf}</p>
+                      {(clienteSelecionado?.telefone || clientes.find(c => c.id === watch('cliente_id'))?.telefone) && (
+                        <p>Telefone: {clienteSelecionado?.telefone || clientes.find(c => c.id === watch('cliente_id'))?.telefone}</p>
+                      )}
+                    </div>
+                  </div>
+                  {!venda && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setClienteSelecionado(null);
+                        setValue('cliente_id', '');
+                        setValue('cliente_nome', '');
+                        setValue('cliente_cpf', '');
+                        setClienteSearchOpen(true);
+                      }}
+                    >
+                      Trocar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Botão Buscar Cliente */
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                onClick={() => window.open(createPageUrl('Clientes'), '_blank')}
-                className="text-xs"
+                onClick={() => setClienteSearchOpen(true)}
+                className="w-full h-auto min-h-[80px] flex flex-col items-center justify-center gap-2 hover:bg-slate-50"
+                disabled={!!venda}
               >
-                + Cadastrar Novo Cliente
+                <Search className="w-6 h-6 text-slate-400" />
+                <div className="text-center">
+                  <p className="font-medium text-slate-900">Buscar Cliente</p>
+                  <p className="text-xs text-slate-500 mt-1">Clique para buscar por CPF ou nome</p>
+                </div>
               </Button>
-            </div>
-            <Select
-              value={watch('cliente_id')}
-              onValueChange={(value) => {
-                if (venda) return; // Bloqueia alteração em vendas existentes
-                setValue('cliente_id', value);
-                const cliente = clientes.find(c => c.id === value);
-                if (cliente) {
-                  setValue('cliente_nome', cliente.nome);
-                  setValue('cliente_cpf', cliente.cpf);
-                }
-              }}
-              disabled={!!venda}
-            >
-              <SelectTrigger className="h-auto min-h-[60px] py-3">
-                <SelectValue placeholder="Selecione um cliente">
-                  {watch('cliente_id') && (() => {
-                    const cliente = clientes.find(c => c.id === watch('cliente_id'));
-                    return cliente ? (
-                      <div className="flex flex-col items-start text-left">
-                        <span className="font-medium">{cliente.nome}</span>
-                        <span className="text-xs text-slate-500">CPF: {cliente.cpf}</span>
-                      </div>
-                    ) : null;
-                  })()}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {clientes.slice(0, 30).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nome} - CPF: {c.cpf}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.cliente_id && <p className="text-sm text-red-500 mt-1">Cliente é obrigatório</p>}
+            )}
+            
+            {errors.cliente_id && <p className="text-sm text-red-500 mt-2">Cliente é obrigatório</p>}
           </div>
+          
+          {/* Modal de Busca de Cliente */}
+          <ClienteSearchModal
+            open={clienteSearchOpen}
+            onOpenChange={setClienteSearchOpen}
+            currentUser={currentUser}
+            onSelectCliente={(cliente) => {
+              setClienteSelecionado(cliente);
+              setValue('cliente_id', cliente.id);
+              setValue('cliente_nome', cliente.nome);
+              setValue('cliente_cpf', cliente.cpf);
+            }}
+          />
             
           {/* Card Administradora e Tabela */}
           <div className="border rounded-lg p-4 bg-white shadow-sm">
