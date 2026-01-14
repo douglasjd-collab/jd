@@ -145,6 +145,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Vendas', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Oferta de Lance', icon: TrendingUp, page: 'OfertaLance', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { 
       name: 'Comissões', 
       icon: Wallet, 

@@ -52,6 +52,12 @@ export default function VendaDetalhes() {
     enabled: !!vendaId
   });
 
+  const { data: historicoLances = [] } = useQuery({
+    queryKey: ['historico-lances', vendaId],
+    queryFn: () => base44.entities.OfertaLance.filter({ venda_id: vendaId }),
+    enabled: !!vendaId
+  });
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -267,6 +273,43 @@ export default function VendaDetalhes() {
           </CardContent>
         </Card>
       )}
+
+      {/* Histórico de Lances */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle>Histórico de Lances</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {historicoLances.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Competência</TableHead>
+                  <TableHead>Percentual</TableHead>
+                  <TableHead>Valor Lance</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Usuário</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historicoLances.sort((a, b) => new Date(b.data_oferta) - new Date(a.data_oferta)).map((lance) => (
+                  <TableRow key={lance.id}>
+                    <TableCell className="font-medium">{lance.competencia}</TableCell>
+                    <TableCell>{lance.percentual_lance}%</TableCell>
+                    <TableCell>{formatCurrency(lance.valor_lance)}</TableCell>
+                    <TableCell className="capitalize">{lance.tipo_lance?.replace('_', ' ')}</TableCell>
+                    <TableCell>{format(new Date(lance.data_oferta), 'dd/MM/yyyy HH:mm')}</TableCell>
+                    <TableCell>{lance.usuario_nome}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-center text-slate-500 py-8">Nenhum lance ofertado ainda</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
