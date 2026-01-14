@@ -172,7 +172,7 @@ export default function SimuladorConsorcio() {
     if (lanceFixoAtivo && lanceFixoPercentual) {
       const percentual = parseFloat(lanceFixoPercentual) / 100;
       const valorLanceFixo = creditoTotal * percentual;
-      const creditoAReceber = creditoTotal - valorLanceFixo;
+      const creditoAReceber = creditoTotal - valorLanceFixo; // Lance fixo desconta do crédito
       
       // Calcular parcela (considerando redução se aplicável)
       let parcelaFinal = parcelaTotal;
@@ -211,7 +211,6 @@ export default function SimuladorConsorcio() {
 
     // ✅ REGRA ESPECIAL: PARCELA REDUZIDA
     if (parcelaReduzida && !lanceFixoAtivo) {
-      let creditoAReceber = creditoTotal; // Cliente sempre recebe o crédito total
       let valorLanceEmbutido = 0;
       let valorLanceProprio = lanceProprioAtivo ? (parseFloat(lanceProprio) || 0) : 0;
 
@@ -220,8 +219,10 @@ export default function SimuladorConsorcio() {
         // Lance livre usa o percentual de redução escolhido
         const percentual = percentualReducao / 100;
         valorLanceEmbutido = creditoTotal * percentual;
-        // Cliente recebe crédito total, lance é descontado do saldo devedor
       }
+      
+      // Lance embutido desconta do crédito a receber
+      const creditoAReceber = creditoTotal - valorLanceEmbutido;
 
       const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
 
@@ -304,8 +305,12 @@ export default function SimuladorConsorcio() {
       const novoPrazoForcado = Math.max(1, prazoNum - 1 - mesesQuitadosEmbutido);
       const novaParcelaForcada = saldoFinal / novoPrazoForcado;
 
+      // Lance embutido desconta do crédito a receber
+      const creditoAReceberMoto = creditoTotal - lanceEmbutidoValor;
+      
       setResultado({
-        creditoTotal,
+        creditoTotal: creditoAReceberMoto,
+        creditoOriginal: creditoTotal,
         parcelaTotal,
         totalPlano,
         administradora,
@@ -327,7 +332,8 @@ export default function SimuladorConsorcio() {
     }
 
     // ✅ REGRA GERAL
-    // Lance embutido SEMPRE desconta do saldo devedor, NUNCA do crédito que o cliente recebe
+    // Lance embutido desconta do crédito a receber E do saldo devedor
+    const creditoAReceber = creditoTotal - lanceEmbutidoValor;
     const lanceConsideradoNoSaldo = usarRegraCanopusEmbutido ? lanceProprioValor : lanceTotal;
     saldoBase = totalPlano - lanceConsideradoNoSaldo;
     saldoAposAto = saldoBase - parcelaTotal;
@@ -349,7 +355,7 @@ export default function SimuladorConsorcio() {
     }
 
     setResultado({
-      creditoTotal, // Cliente sempre recebe o crédito total
+      creditoTotal: creditoAReceber, // Cliente recebe crédito - lance embutido
       creditoOriginal: creditoTotal,
       parcelaTotal,
       totalPlano,
