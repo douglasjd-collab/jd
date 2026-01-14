@@ -1046,19 +1046,17 @@ export default function SimuladorConsorcio() {
               {/* Total Lance */}
               {lanceTotal > 0 && (
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <p className="text-xs text-emerald-700">🏆 Lance Total</p>
                       <p className="text-2xl font-bold text-emerald-900">{formatCurrency(lanceTotal)}</p>
                     </div>
                     {creditoTotal > 0 && (
-                      <div className="text-right">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-600 rounded-full">
-                          <span className="text-white font-bold text-lg">
-                            {((lanceTotal / creditoTotal) * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <p className="text-xs text-emerald-700 mt-1">do crédito</p>
+                      <div className="flex flex-col items-center justify-center bg-emerald-600 rounded-lg px-3 py-2 min-w-[70px]">
+                        <span className="text-white font-bold text-2xl">
+                          {((lanceTotal / creditoTotal) * 100).toFixed(0)}%
+                        </span>
+                        <p className="text-xs text-emerald-100">do crédito</p>
                       </div>
                     )}
                   </div>
