@@ -200,30 +200,34 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
 
 
-  const formatarMoeda = (valor) => {
-    if (!valor) return '';
-    const numero = valor.replace(/\D/g, '');
-    const valorFormatado = (Number(numero) / 100).toFixed(2);
-    return valorFormatado.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  };
-
   const handleValorCreditoChange = (e) => {
-    const valorFormatado = formatarMoeda(e.target.value);
-    const valorNumerico = parseFloat(valorFormatado.replace(/\./g, '').replace(',', '.')) || 0;
+    // Remove tudo exceto números
+    const apenasNumeros = e.target.value.replace(/\D/g, '');
+    // Converte para número decimal (centavos para reais)
+    const valorNumerico = parseFloat(apenasNumeros) / 100 || 0;
     setValue('valorCredito', valorNumerico, { shouldValidate: true });
   };
 
-  const formatarPercentual = (valor) => {
-    if (!valor) return '';
-    const numero = valor.replace(/\D/g, '');
-    const valorFormatado = (Number(numero) / 100).toFixed(2);
-    return valorFormatado.replace('.', ',');
+  const formatarValorParaExibicao = (valor) => {
+    if (!valor && valor !== 0) return '';
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(valor);
   };
 
   const handleTaxaChange = (e) => {
-    const input = e.target.value.replace(/\D/g, '');
-    const valorNumerico = parseFloat((Number(input) / 100).toFixed(2)) || 0;
+    const apenasNumeros = e.target.value.replace(/\D/g, '');
+    const valorNumerico = parseFloat(apenasNumeros) / 100 || 0;
     setValue('taxaAdministracao', valorNumerico, { shouldValidate: true });
+  };
+
+  const formatarPercentualParaExibicao = (valor) => {
+    if (!valor && valor !== 0) return '';
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(valor);
   };
 
   return (
@@ -453,7 +457,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 font-medium">R$</span>
                   <Input
                     id="valorCredito"
-                    value={watch('valorCredito') ? formatarMoeda((parseFloat(watch('valorCredito')) * 100).toString()) : ''}
+                    value={formatarValorParaExibicao(watch('valorCredito'))}
                     onChange={handleValorCreditoChange}
                     placeholder="0,00"
                     className="pl-12"
@@ -467,7 +471,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 <div className="relative">
                   <Input
                     id="taxaAdministracao"
-                    value={watch('taxaAdministracao') ? formatarPercentual((parseFloat(watch('taxaAdministracao')) * 100).toFixed(0)) : ''}
+                    value={formatarPercentualParaExibicao(watch('taxaAdministracao'))}
                     onChange={handleTaxaChange}
                     placeholder="0,00"
                   />
