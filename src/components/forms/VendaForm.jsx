@@ -78,22 +78,22 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   // React Query - Vendedores
   const { data: vendedores = [] } = useQuery({
     queryKey: ['vendedores-venda-form', empresaId],
-    enabled: open && isAdmin,
+    enabled: open,
     queryFn: async () => {
       try {
-        const result = await base44.entities.Colaborador.list();
+        const result = await base44.entities.Colaborador.filter({ status: 'ativo' });
+        
         if (isMaster) {
           // Master vê todos os vendedores
-          return result.filter(u => u.perfil === 'vendedor' && u.status === 'ativo');
+          return result.filter(u => ['vendedor', 'gerente', 'admin'].includes(u.perfil));
         } else if (empresaId) {
-          // Admin vê vendedores da sua empresa
+          // Filtrar por empresa
           return result.filter(u => 
-            u.perfil === 'vendedor' && 
-            u.status === 'ativo' &&
+            ['vendedor', 'gerente', 'admin'].includes(u.perfil) &&
             u.empresa_id === empresaId
           );
         }
-        return [];
+        return result.filter(u => ['vendedor', 'gerente', 'admin'].includes(u.perfil));
       } catch (err) {
         console.error('Erro ao carregar vendedores:', err);
         return [];
@@ -548,7 +548,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 <Select
                   value={watch('vendedor_id') || ''}
                   onValueChange={(value) => {
-                    console.log('Vendedor selecionado:', value);
                     setValue('vendedor_id', value, { shouldValidate: true });
                     const vendedor = vendedores.find(v => v.id === value);
                     if (vendedor) {
@@ -561,21 +560,21 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                         }
                       }
                     }
-                    }}
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o vendedor">
-                      {watch('vendedor_id') && vendedores.find(v => v.id === watch('vendedor_id'))?.nome}
-                    </SelectValue>
+                    <SelectValue placeholder="Selecione o vendedor" />
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores.length > 0 ? (
                       vendedores.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.nome} ({v.perfil})
+                        </SelectItem>
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-slate-500">
-                        Nenhum vendedor cadastrado
+                        Carregando vendedores...
                       </div>
                     )}
                   </SelectContent>
