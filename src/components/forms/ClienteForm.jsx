@@ -360,7 +360,27 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
                       <div>
                         <Label>Tipo de Logradouro</Label>
-                        <Input {...register('res_tipo_logradouro')} placeholder="Rua, Avenida, etc" />
+                        <Select
+                          value={watch('res_tipo_logradouro')}
+                          onValueChange={(value) => setValue('res_tipo_logradouro', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="RUA">Rua</SelectItem>
+                            <SelectItem value="AVENIDA">Avenida</SelectItem>
+                            <SelectItem value="ALAMEDA">Alameda</SelectItem>
+                            <SelectItem value="TRAVESSA">Travessa</SelectItem>
+                            <SelectItem value="PRAÇA">Praça</SelectItem>
+                            <SelectItem value="RODOVIA">Rodovia</SelectItem>
+                            <SelectItem value="ESTRADA">Estrada</SelectItem>
+                            <SelectItem value="VIA">Via</SelectItem>
+                            <SelectItem value="BLOCO">Bloco</SelectItem>
+                            <SelectItem value="CONJUNTO">Conjunto</SelectItem>
+                            <SelectItem value="QUADRA">Quadra</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="col-span-2">
@@ -426,7 +446,27 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
                       <div>
                         <Label>Tipo de Logradouro</Label>
-                        <Input {...register('com_tipo_logradouro')} placeholder="Rua, Avenida, etc" />
+                        <Select
+                          value={watch('com_tipo_logradouro')}
+                          onValueChange={(value) => setValue('com_tipo_logradouro', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="RUA">Rua</SelectItem>
+                            <SelectItem value="AVENIDA">Avenida</SelectItem>
+                            <SelectItem value="ALAMEDA">Alameda</SelectItem>
+                            <SelectItem value="TRAVESSA">Travessa</SelectItem>
+                            <SelectItem value="PRAÇA">Praça</SelectItem>
+                            <SelectItem value="RODOVIA">Rodovia</SelectItem>
+                            <SelectItem value="ESTRADA">Estrada</SelectItem>
+                            <SelectItem value="VIA">Via</SelectItem>
+                            <SelectItem value="BLOCO">Bloco</SelectItem>
+                            <SelectItem value="CONJUNTO">Conjunto</SelectItem>
+                            <SelectItem value="QUADRA">Quadra</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="col-span-2">
@@ -864,7 +904,27 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
                       <div>
                         <Label>Tipo de Logradouro</Label>
-                        <Input {...register('pj_tipo_logradouro')} placeholder="Rua, Avenida, etc" />
+                        <Select
+                          value={watch('pj_tipo_logradouro')}
+                          onValueChange={(value) => setValue('pj_tipo_logradouro', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="RUA">Rua</SelectItem>
+                            <SelectItem value="AVENIDA">Avenida</SelectItem>
+                            <SelectItem value="ALAMEDA">Alameda</SelectItem>
+                            <SelectItem value="TRAVESSA">Travessa</SelectItem>
+                            <SelectItem value="PRAÇA">Praça</SelectItem>
+                            <SelectItem value="RODOVIA">Rodovia</SelectItem>
+                            <SelectItem value="ESTRADA">Estrada</SelectItem>
+                            <SelectItem value="VIA">Via</SelectItem>
+                            <SelectItem value="BLOCO">Bloco</SelectItem>
+                            <SelectItem value="CONJUNTO">Conjunto</SelectItem>
+                            <SelectItem value="QUADRA">Quadra</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="col-span-2">
