@@ -100,6 +100,12 @@ export default function Administradoras() {
         }
       }
 
+      // Garantir que empresa_id seja sempre uma string válida
+      if (!empresa_id || typeof empresa_id !== 'string') {
+        toast.error('Empresa não identificada. Verifique seu cadastro de colaborador.');
+        return;
+      }
+
       const adminData = {
         ...data,
         empresa_id
