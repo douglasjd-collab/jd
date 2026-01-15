@@ -113,12 +113,17 @@ export default function Clientes() {
         }
       }
 
+      // Garantir que empresa_id seja uma string válida
       const clienteData = {
         ...data,
-        empresa_id,
         vendedor_id,
         vendedor_nome
       };
+
+      // Só adicionar empresa_id se for uma string válida e não vazia
+      if (empresa_id && typeof empresa_id === 'string' && empresa_id.trim() !== '') {
+        clienteData.empresa_id = empresa_id;
+      }
 
       if (selectedCliente) {
         updateMutation.mutate({ id: selectedCliente.id, data: clienteData });
