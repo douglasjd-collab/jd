@@ -106,6 +106,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       .replace(/(-\d{3})\d+?$/, '$1');
   };
 
+  const formatCurrency = (value) => {
+    if (!value) return '';
+    const numericValue = value.replace(/\D/g, '');
+    const number = parseFloat(numericValue) / 100;
+    return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   const ufs = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
   return (
@@ -253,8 +260,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       </div>
 
                       <div>
-                        <Label htmlFor="valor_patrimonial">Valor Patrimonial (R$)</Label>
-                        <Input type="number" step="0.01" id="valor_patrimonial" {...register('valor_patrimonial')} />
+                        <Label htmlFor="valor_patrimonial">Valor Patrimonial</Label>
+                        <Input
+                          id="valor_patrimonial"
+                          {...register('valor_patrimonial')}
+                          placeholder="R$ 0,00"
+                          onChange={(e) => setValue('valor_patrimonial', formatCurrency(e.target.value))}
+                        />
                       </div>
 
                       <div>
@@ -559,8 +571,12 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       </div>
 
                       <div>
-                        <Label>Renda (R$)</Label>
-                        <Input type="number" step="0.01" {...register('renda')} />
+                        <Label>Renda</Label>
+                        <Input
+                          {...register('renda')}
+                          placeholder="R$ 0,00"
+                          onChange={(e) => setValue('renda', formatCurrency(e.target.value))}
+                        />
                       </div>
                     </div>
                   </CardContent>
@@ -749,18 +765,30 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       </div>
 
                       <div>
-                        <Label>Valor Patrimonial (R$)</Label>
-                        <Input type="number" step="0.01" {...register('pj_valor_patrimonial')} />
+                        <Label>Valor Patrimonial</Label>
+                        <Input
+                          {...register('pj_valor_patrimonial')}
+                          placeholder="R$ 0,00"
+                          onChange={(e) => setValue('pj_valor_patrimonial', formatCurrency(e.target.value))}
+                        />
                       </div>
 
                       <div>
-                        <Label>Capital Social (R$)</Label>
-                        <Input type="number" step="0.01" {...register('pj_capital_social')} />
+                        <Label>Capital Social</Label>
+                        <Input
+                          {...register('pj_capital_social')}
+                          placeholder="R$ 0,00"
+                          onChange={(e) => setValue('pj_capital_social', formatCurrency(e.target.value))}
+                        />
                       </div>
 
                       <div>
-                        <Label>Faturamento Médio (R$)</Label>
-                        <Input type="number" step="0.01" {...register('pj_faturamento_medio')} />
+                        <Label>Faturamento Médio</Label>
+                        <Input
+                          {...register('pj_faturamento_medio')}
+                          placeholder="R$ 0,00"
+                          onChange={(e) => setValue('pj_faturamento_medio', formatCurrency(e.target.value))}
+                        />
                       </div>
 
                       <div>
