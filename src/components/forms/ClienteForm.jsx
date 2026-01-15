@@ -51,6 +51,15 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
     }
   }, [cliente, setValue, reset]);
 
+  // Converter valores de moeda para número
+  const parseCurrencyToNumber = (value) => {
+    if (!value || value === '') return null;
+    if (typeof value === 'number') return value;
+    const numericString = value.replace(/[^\d,]/g, '').replace(',', '.');
+    const number = parseFloat(numericString);
+    return isNaN(number) ? null : number;
+  };
+
   // Gerar código do cliente ao submeter
   const handleFormSubmit = async (data) => {
     if (!data.cliente_code) {
@@ -68,6 +77,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
         data.cliente_code = `CLI001`;
       }
     }
+
+    // Converter campos de moeda para número
+    if (data.valor_patrimonial) data.valor_patrimonial = parseCurrencyToNumber(data.valor_patrimonial);
+    if (data.renda) data.renda = parseCurrencyToNumber(data.renda);
+    if (data.pj_valor_patrimonial) data.pj_valor_patrimonial = parseCurrencyToNumber(data.pj_valor_patrimonial);
+    if (data.pj_capital_social) data.pj_capital_social = parseCurrencyToNumber(data.pj_capital_social);
+    if (data.pj_faturamento_medio) data.pj_faturamento_medio = parseCurrencyToNumber(data.pj_faturamento_medio);
     
     onSubmit(data);
   };
