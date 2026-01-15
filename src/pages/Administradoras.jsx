@@ -75,11 +75,44 @@ export default function Administradoras() {
     },
   });
 
-  const handleSubmit = (data) => {
-    if (selectedAdmin) {
-      updateMutation.mutate({ id: selectedAdmin.id, data });
-    } else {
-      createMutation.mutate(data);
+  const handleSubmit = async (data) => {
+    try {
+      const user = await base44.auth.me();
+      
+      if (!user) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        return;
+      }
+      
+      let empresa_id = user.empresa_id || null;
+
+      // Buscar Colaborador se não for super_admin
+      if (user.role !== 'super_admin') {
+        const colabs = await base44.entities.Colaborador.filter(
+          { user_id: user.id, status: 'ativo' },
+          '-created_date'
+        );
+        
+        if (colabs && colabs.length > 0) {
+          const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
+          const colab = byEmpresa || colabs[0];
+          empresa_id = colab.empresa_id || empresa_id;
+        }
+      }
+
+      const adminData = {
+        ...data,
+        empresa_id
+      };
+
+      if (selectedAdmin) {
+        updateMutation.mutate({ id: selectedAdmin.id, data: adminData });
+      } else {
+        createMutation.mutate(adminData);
+      }
+    } catch (error) {
+      console.error('Erro ao salvar administradora:', error);
+      toast.error('Erro ao salvar administradora: ' + error.message);
     }
   };
 
