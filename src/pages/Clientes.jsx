@@ -138,8 +138,11 @@ export default function Clientes() {
 
   const filteredClientes = clientes.filter(c => 
     c.nome?.toLowerCase().includes(search.toLowerCase()) ||
+    c.nome_completo?.toLowerCase().includes(search.toLowerCase()) ||
     c.cpf?.includes(search) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
+    c.email?.toLowerCase().includes(search.toLowerCase()) ||
+    c.pj_razao_social?.toLowerCase().includes(search.toLowerCase()) ||
+    c.pj_cnpj?.includes(search)
   );
 
   const columns = [
@@ -148,8 +151,12 @@ export default function Clientes() {
       accessor: 'nome',
       cell: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.nome}</p>
-          <p className="text-sm text-slate-500">{row.cpf}</p>
+          <p className="font-medium text-slate-900">
+            {row.tipo_pessoa === 'Jurídica' ? row.pj_razao_social : (row.nome_completo || row.nome)}
+          </p>
+          <p className="text-sm text-slate-500">
+            {row.tipo_pessoa === 'Jurídica' ? row.pj_cnpj : row.cpf}
+          </p>
         </div>
       )
     },
@@ -157,8 +164,12 @@ export default function Clientes() {
       header: 'Contato',
       cell: (row) => (
         <div>
-          <p className="text-slate-900">{row.telefone || '-'}</p>
-          <p className="text-sm text-slate-500">{row.email || '-'}</p>
+          <p className="text-slate-900">
+            {row.tipo_pessoa === 'Jurídica' ? (row.pj_celular || row.pj_telefone_fixo || '-') : (row.celular || row.telefone || '-')}
+          </p>
+          <p className="text-sm text-slate-500">
+            {row.tipo_pessoa === 'Jurídica' ? (row.pj_email || '-') : (row.email || '-')}
+          </p>
         </div>
       )
     },
