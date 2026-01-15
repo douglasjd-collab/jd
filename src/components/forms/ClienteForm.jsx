@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, User, Building2 } from 'lucide-react';
@@ -110,7 +110,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{cliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
         </DialogHeader>
@@ -121,8 +121,8 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
               <CardTitle className="text-lg">Tipo de Pessoa</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 gap-4">
+                <div>
                   <Label>Tipo de Pessoa *</Label>
                   <Select
                     value={watch('tipo_pessoa') || 'Física'}
@@ -153,18 +153,8 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
           {/* PESSOA FÍSICA */}
           {tipoPessoa === 'Física' && (
-            <Tabs defaultValue="dados" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="dados">Dados</TabsTrigger>
-                <TabsTrigger value="endereco-res">End. Residencial</TabsTrigger>
-                <TabsTrigger value="endereco-com">End. Comercial</TabsTrigger>
-                <TabsTrigger value="complementares">Complementares</TabsTrigger>
-                <TabsTrigger value="documentos">Documentos</TabsTrigger>
-                <TabsTrigger value="bancarios">Bancários</TabsTrigger>
-              </TabsList>
-
-              {/* Aba: Dados PF */}
-              <TabsContent value="dados">
+            <>
+              {/* Dados Pessoais */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Dados Pessoais</CardTitle>
@@ -351,15 +341,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              {/* Aba: Endereço Residencial */}
-              <TabsContent value="endereco-res">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Endereço Residencial</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Endereço Residencial */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Endereço Residencial</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>CEP</Label>
@@ -419,15 +407,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              {/* Aba: Endereço Comercial */}
-              <TabsContent value="endereco-com">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Endereço Comercial</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Endereço Comercial */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Endereço Comercial</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>CEP</Label>
@@ -487,15 +473,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              {/* Aba: Complementares */}
-              <TabsContent value="complementares">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Dados Complementares</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Dados Complementares */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Dados Complementares</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>Nome do Pai</Label>
@@ -541,15 +525,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              {/* Aba: Documentos */}
-              <TabsContent value="documentos">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Checklist de Documentos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Checklist de Documentos */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Checklist de Documentos</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -606,15 +588,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              {/* Aba: Bancários */}
-              <TabsContent value="bancarios">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Dados Bancários</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Dados Bancários */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Dados Bancários</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -687,28 +667,17 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
-            </Tabs>
+            </>
           )}
 
           {/* PESSOA JURÍDICA */}
           {tipoPessoa === 'Jurídica' && (
-            <Tabs defaultValue="empresa" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="empresa">Empresa</TabsTrigger>
-                <TabsTrigger value="endereco">Endereço</TabsTrigger>
-                <TabsTrigger value="complementares">Complementares</TabsTrigger>
-                <TabsTrigger value="documentos">Documentos</TabsTrigger>
-                <TabsTrigger value="bancarios">Bancários</TabsTrigger>
-              </TabsList>
-
-              {/* ... rest of PJ tabs - keep existing code ... */}
-              <TabsContent value="empresa" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Dados da Empresa</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Dados da Empresa</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <Label>Razão Social *</Label>
@@ -876,14 +845,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="endereco">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Endereço da Empresa</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Endereço da Empresa */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Endereço da Empresa</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>CEP</Label>
@@ -943,14 +911,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="complementares" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Dados Complementares</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Dados Complementares PJ */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Dados Complementares</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <Label>Atividade Principal</Label>
@@ -1085,14 +1052,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="documentos">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Checklist de Documentos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Checklist de Documentos PJ */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Checklist de Documentos</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -1149,14 +1115,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
 
-              <TabsContent value="bancarios">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Dados Bancários</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Dados Bancários PJ */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Dados Bancários</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -1235,8 +1200,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     </div>
                   </CardContent>
                 </Card>
-              </TabsContent>
-            </Tabs>
+            </>
           )}
           
           <div className="flex justify-end gap-3 pt-4 border-t">
