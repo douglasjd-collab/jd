@@ -299,34 +299,38 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
                       <div>
                         <Label>Ocupou cargo público nos últimos anos? *</Label>
-                        <Select
+                        <RadioGroup
                           value={watch('ocupou_cargo_publico_ultimos_anos')}
                           onValueChange={(value) => setValue('ocupou_cargo_publico_ultimos_anos', value)}
+                          className="flex gap-4 mt-2"
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Sim">Sim</SelectItem>
-                            <SelectItem value="Não">Não</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Sim" id="cargo-sim" />
+                            <Label htmlFor="cargo-sim" className="cursor-pointer font-normal">Sim</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Não" id="cargo-nao" />
+                            <Label htmlFor="cargo-nao" className="cursor-pointer font-normal">Não</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
 
                       <div>
                         <Label>Parente ocupou cargo público (últimos 5 anos)? *</Label>
-                        <Select
+                        <RadioGroup
                           value={watch('parente_cargo_publico_ultimos_5_anos')}
                           onValueChange={(value) => setValue('parente_cargo_publico_ultimos_5_anos', value)}
+                          className="flex gap-4 mt-2"
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Sim">Sim</SelectItem>
-                            <SelectItem value="Não">Não</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Sim" id="parente-sim" />
+                            <Label htmlFor="parente-sim" className="cursor-pointer font-normal">Sim</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Não" id="parente-nao" />
+                            <Label htmlFor="parente-nao" className="cursor-pointer font-normal">Não</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
 
                       <div>
