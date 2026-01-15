@@ -368,18 +368,31 @@ export default function OfertaLance() {
               </div>
 
               <div>
-                <Label htmlFor="percentual">Percentual do Lance * (%)</Label>
-                <Input
-                  id="percentual"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="100"
-                  value={percentual}
-                  onChange={(e) => setPercentual(e.target.value)}
-                  placeholder="Ex: 30"
-                  required
-                />
+                <Label htmlFor="percentual">Percentual do Lance *</Label>
+                <div className="relative">
+                  <Input
+                    id="percentual"
+                    type="text"
+                    value={percentual}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d]/g, '');
+                      if (value === '') {
+                        setPercentual('');
+                      } else {
+                        const num = parseFloat(value);
+                        if (num >= 0 && num <= 100) {
+                          setPercentual(value);
+                        }
+                      }
+                    }}
+                    placeholder="30"
+                    className="pr-8"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">
+                    %
+                  </span>
+                </div>
               </div>
 
               <div>
