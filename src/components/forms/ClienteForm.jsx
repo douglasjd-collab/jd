@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, User, Building2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
@@ -226,37 +227,39 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       </div>
 
                       <div>
-                        <Label>Sexo</Label>
-                        <Select
+                        <Label>Sexo *</Label>
+                        <RadioGroup
                           value={watch('sexo')}
                           onValueChange={(value) => setValue('sexo', value)}
+                          className="flex gap-4 mt-2"
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Masculino">Masculino</SelectItem>
-                            <SelectItem value="Feminino">Feminino</SelectItem>
-                            <SelectItem value="Outro">Outro</SelectItem>
-                            <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Masculino" id="sexo-masculino" />
+                            <Label htmlFor="sexo-masculino" className="cursor-pointer font-normal">Masculino</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Feminino" id="sexo-feminino" />
+                            <Label htmlFor="sexo-feminino" className="cursor-pointer font-normal">Feminino</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
 
                       <div>
-                        <Label>Politicamente Exposto? *</Label>
-                        <Select
+                        <Label>Politicamente exposto *</Label>
+                        <RadioGroup
                           value={watch('politicamente_exposto')}
                           onValueChange={(value) => setValue('politicamente_exposto', value)}
+                          className="flex gap-4 mt-2"
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Sim">Sim</SelectItem>
-                            <SelectItem value="Não">Não</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Sim" id="pe-sim" />
+                            <Label htmlFor="pe-sim" className="cursor-pointer font-normal">Sim</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="Não" id="pe-nao" />
+                            <Label htmlFor="pe-nao" className="cursor-pointer font-normal">Não</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
 
                       <div>
