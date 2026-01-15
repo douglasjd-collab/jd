@@ -375,7 +375,10 @@ export default function OfertaLance() {
                     type="text"
                     value={percentual}
                     onChange={(e) => {
-                      let value = e.target.value.replace(/[^\d,]/g, '').replace(',', '.');
+                      let value = e.target.value.replace(/[^\d,.]/g, '');
+                      
+                      // Substituir vírgula por ponto
+                      value = value.replace(',', '.');
                       
                       // Permitir apenas um ponto decimal
                       const parts = value.split('.');
