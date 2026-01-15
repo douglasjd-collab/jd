@@ -48,7 +48,6 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
     onSelectCliente(cliente);
     onOpenChange(false);
     setBusca('');
-    setResultados([]);
   };
 
   const handleNovoCliente = () => {
