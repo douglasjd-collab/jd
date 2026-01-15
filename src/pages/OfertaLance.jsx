@@ -375,17 +375,29 @@ export default function OfertaLance() {
                     type="text"
                     value={percentual}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^\d]/g, '');
-                      if (value === '') {
+                      let value = e.target.value.replace(/[^\d,]/g, '').replace(',', '.');
+                      
+                      // Permitir apenas um ponto decimal
+                      const parts = value.split('.');
+                      if (parts.length > 2) {
+                        value = parts[0] + '.' + parts.slice(1).join('');
+                      }
+                      
+                      // Limitar a 4 casas decimais
+                      if (parts.length === 2 && parts[1].length > 4) {
+                        value = parts[0] + '.' + parts[1].substring(0, 4);
+                      }
+                      
+                      if (value === '' || value === '.') {
                         setPercentual('');
                       } else {
                         const num = parseFloat(value);
-                        if (num >= 0 && num <= 100) {
+                        if (!isNaN(num) && num >= 0 && num <= 100) {
                           setPercentual(value);
                         }
                       }
                     }}
-                    placeholder="30"
+                    placeholder="30 ou 30.5000"
                     className="pr-8"
                     required
                   />
