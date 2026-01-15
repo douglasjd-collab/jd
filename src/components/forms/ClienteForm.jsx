@@ -32,6 +32,8 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
   });
 
   const tipoPessoa = watch('tipo_pessoa');
+  const bancoNaoDeseja = watch('banco_nao_deseja_informar');
+  const bancoNaoPossui = watch('banco_nao_possui_conta');
   const pjBancoNaoDeseja = watch('pj_banco_nao_deseja_informar');
   const pjBancoNaoPossui = watch('pj_banco_nao_possui_conta');
 
@@ -107,7 +109,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{cliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
         </DialogHeader>
@@ -150,135 +152,536 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
           {/* PESSOA FÍSICA */}
           {tipoPessoa === 'Física' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Dados Pessoais</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Label htmlFor="nome">Nome Completo *</Label>
-                    <Input
-                      id="nome"
-                      {...register('nome', { required: tipoPessoa === 'Física' && 'Nome é obrigatório' })}
-                      placeholder="Nome completo do cliente"
-                    />
-                    {errors.nome && <p className="text-sm text-red-500 mt-1">{errors.nome.message}</p>}
-                  </div>
+            <Tabs defaultValue="dados" className="w-full">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="dados">Dados</TabsTrigger>
+                <TabsTrigger value="endereco-res">End. Residencial</TabsTrigger>
+                <TabsTrigger value="endereco-com">End. Comercial</TabsTrigger>
+                <TabsTrigger value="complementares">Complementares</TabsTrigger>
+                <TabsTrigger value="documentos">Documentos</TabsTrigger>
+                <TabsTrigger value="bancarios">Bancários</TabsTrigger>
+              </TabsList>
 
-                  <div className="col-span-2">
-                    <Label htmlFor="apelido">Apelido</Label>
-                    <Input
-                      id="apelido"
-                      {...register('apelido')}
-                      placeholder="Como o cliente gosta de ser chamado"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="cpf">CPF *</Label>
-                    <Input
-                      id="cpf"
-                      {...register('cpf', { required: tipoPessoa === 'Física' && 'CPF é obrigatório' })}
-                      placeholder="000.000.000-00"
-                      onChange={(e) => setValue('cpf', formatCPF(e.target.value))}
-                    />
-                    {errors.cpf && <p className="text-sm text-red-500 mt-1">{errors.cpf.message}</p>}
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="telefone">Telefone</Label>
-                    <Input
-                      id="telefone"
-                      {...register('telefone')}
-                      placeholder="(00) 00000-0000"
-                      onChange={(e) => setValue('telefone', formatPhone(e.target.value))}
-                    />
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...register('email')}
-                      placeholder="email@exemplo.com"
-                    />
-                  </div>
-                  
-                  <div className="col-span-2">
-                    <Label htmlFor="endereco">Endereço</Label>
-                    <Input
-                      id="endereco"
-                      {...register('endereco')}
-                      placeholder="Rua, avenida, etc."
-                    />
-                  </div>
+              {/* Aba: Dados PF */}
+              <TabsContent value="dados">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Dados Pessoais</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <Label htmlFor="nome_completo">Nome Completo *</Label>
+                        <Input
+                          id="nome_completo"
+                          {...register('nome_completo', { required: tipoPessoa === 'Física' && 'Nome é obrigatório' })}
+                          placeholder="Nome completo do cliente"
+                        />
+                        {errors.nome_completo && <p className="text-sm text-red-500 mt-1">{errors.nome_completo.message}</p>}
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="cpf">CPF *</Label>
+                        <Input
+                          id="cpf"
+                          {...register('cpf', { required: tipoPessoa === 'Física' && 'CPF é obrigatório' })}
+                          placeholder="000.000.000-00"
+                          onChange={(e) => setValue('cpf', formatCPF(e.target.value))}
+                        />
+                        {errors.cpf && <p className="text-sm text-red-500 mt-1">{errors.cpf.message}</p>}
+                      </div>
 
-                  <div>
-                    <Label htmlFor="numero">Número</Label>
-                    <Input
-                      id="numero"
-                      {...register('numero')}
-                      placeholder="Nº"
-                    />
-                  </div>
+                      <div>
+                        <Label htmlFor="data_nascimento">Data de Nascimento</Label>
+                        <Input
+                          id="data_nascimento"
+                          type="date"
+                          {...register('data_nascimento')}
+                        />
+                      </div>
 
-                  <div>
-                    <Label htmlFor="cidade">Cidade</Label>
-                    <Input
-                      id="cidade"
-                      {...register('cidade')}
-                      placeholder="Nome da cidade"
-                    />
-                  </div>
+                      <div>
+                        <Label htmlFor="rg">RG</Label>
+                        <Input id="rg" {...register('rg')} />
+                      </div>
 
-                  <div>
-                    <Label htmlFor="cep">CEP</Label>
-                    <Input
-                      id="cep"
-                      {...register('cep')}
-                      placeholder="00000-000"
-                      onChange={(e) => setValue('cep', formatCEP(e.target.value))}
-                    />
-                  </div>
+                      <div>
+                        <Label htmlFor="rg_data_emissao">Data Emissão RG</Label>
+                        <Input type="date" id="rg_data_emissao" {...register('rg_data_emissao')} />
+                      </div>
 
-                  <div className="col-span-2">
-                    <Label htmlFor="ponto_referencia">Ponto de Referência</Label>
-                    <Input
-                      id="ponto_referencia"
-                      {...register('ponto_referencia')}
-                      placeholder="Ex: Próximo ao mercado..."
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="data_nascimento">Data de Nascimento</Label>
-                    <Input
-                      id="data_nascimento"
-                      type="date"
-                      {...register('data_nascimento')}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Status</Label>
-                    <Select
-                      value={watch('status')}
-                      onValueChange={(value) => setValue('status', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ativo">Ativo</SelectItem>
-                        <SelectItem value="inativo">Inativo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                      <div>
+                        <Label htmlFor="rg_orgao_emissor">Órgão Emissor</Label>
+                        <Input id="rg_orgao_emissor" {...register('rg_orgao_emissor')} placeholder="Ex: SSP" />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="estado_civil">Estado Civil</Label>
+                        <Input id="estado_civil" {...register('estado_civil')} />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="profissao">Profissão</Label>
+                        <Input id="profissao" {...register('profissao')} />
+                      </div>
+
+                      <div>
+                        <Label>Sexo</Label>
+                        <Select
+                          value={watch('sexo')}
+                          onValueChange={(value) => setValue('sexo', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Masculino">Masculino</SelectItem>
+                            <SelectItem value="Feminino">Feminino</SelectItem>
+                            <SelectItem value="Outro">Outro</SelectItem>
+                            <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Politicamente Exposto? *</Label>
+                        <Select
+                          value={watch('politicamente_exposto')}
+                          onValueChange={(value) => setValue('politicamente_exposto', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Sim">Sim</SelectItem>
+                            <SelectItem value="Não">Não</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="valor_patrimonial">Valor Patrimonial (R$)</Label>
+                        <Input type="number" step="0.01" id="valor_patrimonial" {...register('valor_patrimonial')} />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="celular">Celular</Label>
+                        <Input
+                          id="celular"
+                          {...register('celular')}
+                          placeholder="(00) 00000-0000"
+                          onChange={(e) => setValue('celular', formatPhone(e.target.value))}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="telefone_fixo">Telefone Fixo</Label>
+                        <Input
+                          id="telefone_fixo"
+                          {...register('telefone_fixo')}
+                          placeholder="(00) 0000-0000"
+                          onChange={(e) => setValue('telefone_fixo', formatPhone(e.target.value))}
+                        />
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          {...register('email')}
+                          placeholder="email@exemplo.com"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Ocupou cargo público nos últimos anos? *</Label>
+                        <Select
+                          value={watch('ocupou_cargo_publico_ultimos_anos')}
+                          onValueChange={(value) => setValue('ocupou_cargo_publico_ultimos_anos', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Sim">Sim</SelectItem>
+                            <SelectItem value="Não">Não</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Parente ocupou cargo público (últimos 5 anos)? *</Label>
+                        <Select
+                          value={watch('parente_cargo_publico_ultimos_5_anos')}
+                          onValueChange={(value) => setValue('parente_cargo_publico_ultimos_5_anos', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Sim">Sim</SelectItem>
+                            <SelectItem value="Não">Não</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Status</Label>
+                        <Select
+                          value={watch('status')}
+                          onValueChange={(value) => setValue('status', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ativo">Ativo</SelectItem>
+                            <SelectItem value="inativo">Inativo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba: Endereço Residencial */}
+              <TabsContent value="endereco-res">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Endereço Residencial</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>CEP</Label>
+                        <Input
+                          {...register('res_cep')}
+                          placeholder="00000-000"
+                          onChange={(e) => setValue('res_cep', formatCEP(e.target.value))}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Tipo de Logradouro</Label>
+                        <Input {...register('res_tipo_logradouro')} placeholder="Rua, Avenida, etc" />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label>Endereço</Label>
+                        <Input {...register('res_endereco')} placeholder="Nome da rua/avenida" />
+                      </div>
+
+                      <div>
+                        <Label>Número</Label>
+                        <Input {...register('res_numero')} />
+                      </div>
+
+                      <div>
+                        <Label>Complemento</Label>
+                        <Input {...register('res_complemento')} />
+                      </div>
+
+                      <div>
+                        <Label>Bairro</Label>
+                        <Input {...register('res_bairro')} />
+                      </div>
+
+                      <div>
+                        <Label>Cidade</Label>
+                        <Input {...register('res_cidade')} />
+                      </div>
+
+                      <div>
+                        <Label>UF</Label>
+                        <Select
+                          value={watch('res_uf')}
+                          onValueChange={(value) => setValue('res_uf', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ufs.map(uf => (
+                              <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba: Endereço Comercial */}
+              <TabsContent value="endereco-com">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Endereço Comercial</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>CEP</Label>
+                        <Input
+                          {...register('com_cep')}
+                          placeholder="00000-000"
+                          onChange={(e) => setValue('com_cep', formatCEP(e.target.value))}
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Tipo de Logradouro</Label>
+                        <Input {...register('com_tipo_logradouro')} placeholder="Rua, Avenida, etc" />
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label>Endereço</Label>
+                        <Input {...register('com_endereco')} placeholder="Nome da rua/avenida" />
+                      </div>
+
+                      <div>
+                        <Label>Número</Label>
+                        <Input {...register('com_numero')} />
+                      </div>
+
+                      <div>
+                        <Label>Complemento</Label>
+                        <Input {...register('com_complemento')} />
+                      </div>
+
+                      <div>
+                        <Label>Bairro</Label>
+                        <Input {...register('com_bairro')} />
+                      </div>
+
+                      <div>
+                        <Label>Cidade</Label>
+                        <Input {...register('com_cidade')} />
+                      </div>
+
+                      <div>
+                        <Label>UF</Label>
+                        <Select
+                          value={watch('com_uf')}
+                          onValueChange={(value) => setValue('com_uf', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ufs.map(uf => (
+                              <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba: Complementares */}
+              <TabsContent value="complementares">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Dados Complementares</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Nome do Pai</Label>
+                        <Input {...register('nome_pai')} />
+                      </div>
+
+                      <div>
+                        <Label>Nome da Mãe</Label>
+                        <Input {...register('nome_mae')} />
+                      </div>
+
+                      <div>
+                        <Label>Nacionalidade</Label>
+                        <Input {...register('nacionalidade')} />
+                      </div>
+
+                      <div>
+                        <Label>UF de Nascimento</Label>
+                        <Select
+                          value={watch('uf_nascimento')}
+                          onValueChange={(value) => setValue('uf_nascimento', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ufs.map(uf => (
+                              <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label>Local de Nascimento</Label>
+                        <Input {...register('local_nascimento')} placeholder="Cidade de nascimento" />
+                      </div>
+
+                      <div>
+                        <Label>Renda (R$)</Label>
+                        <Input type="number" step="0.01" {...register('renda')} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba: Documentos */}
+              <TabsContent value="documentos">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Checklist de Documentos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="doc_cpf"
+                          checked={watch('doc_cpf')}
+                          onCheckedChange={(checked) => setValue('doc_cpf', checked)}
+                        />
+                        <Label htmlFor="doc_cpf" className="cursor-pointer">
+                          CPF
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="doc_identidade"
+                          checked={watch('doc_identidade')}
+                          onCheckedChange={(checked) => setValue('doc_identidade', checked)}
+                        />
+                        <Label htmlFor="doc_identidade" className="cursor-pointer">
+                          Identidade (RG)
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="doc_comprovante_endereco"
+                          checked={watch('doc_comprovante_endereco')}
+                          onCheckedChange={(checked) => setValue('doc_comprovante_endereco', checked)}
+                        />
+                        <Label htmlFor="doc_comprovante_endereco" className="cursor-pointer">
+                          Comprovante de Endereço
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="doc_comprovante_renda"
+                          checked={watch('doc_comprovante_renda')}
+                          onCheckedChange={(checked) => setValue('doc_comprovante_renda', checked)}
+                        />
+                        <Label htmlFor="doc_comprovante_renda" className="cursor-pointer">
+                          Comprovante de Renda
+                        </Label>
+                      </div>
+
+                      <div className="pt-4">
+                        <Label>Observações</Label>
+                        <Textarea
+                          {...register('doc_observacoes')}
+                          placeholder="Observações sobre os documentos..."
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Aba: Bancários */}
+              <TabsContent value="bancarios">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Dados Bancários</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="banco_nao_deseja_informar"
+                          checked={watch('banco_nao_deseja_informar')}
+                          onCheckedChange={(checked) => setValue('banco_nao_deseja_informar', checked)}
+                        />
+                        <Label htmlFor="banco_nao_deseja_informar" className="cursor-pointer">
+                          Não deseja informar dados bancários
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="banco_nao_possui_conta"
+                          checked={watch('banco_nao_possui_conta')}
+                          onCheckedChange={(checked) => setValue('banco_nao_possui_conta', checked)}
+                        />
+                        <Label htmlFor="banco_nao_possui_conta" className="cursor-pointer">
+                          Não possui conta bancária
+                        </Label>
+                      </div>
+
+                      {!bancoNaoDeseja && !bancoNaoPossui && (
+                        <div className="grid grid-cols-2 gap-4 pt-4">
+                          <div>
+                            <Label>Banco</Label>
+                            <Input {...register('banco_nome')} placeholder="Nome do banco" />
+                          </div>
+
+                          <div>
+                            <Label>Código do Banco</Label>
+                            <Input {...register('banco_codigo')} placeholder="Ex: 001" />
+                          </div>
+
+                          <div>
+                            <Label>Agência</Label>
+                            <Input {...register('agencia')} />
+                          </div>
+
+                          <div>
+                            <Label>Conta</Label>
+                            <Input {...register('conta')} />
+                          </div>
+
+                          <div>
+                            <Label>Tipo de Conta</Label>
+                            <Select
+                              value={watch('tipo_conta')}
+                              onValueChange={(value) => setValue('tipo_conta', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Corrente">Corrente</SelectItem>
+                                <SelectItem value="Poupança">Poupança</SelectItem>
+                                <SelectItem value="Salário">Salário</SelectItem>
+                                <SelectItem value="Pix">Pix</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label>Chave PIX</Label>
+                            <Input {...register('pix_chave')} placeholder="CPF, email, telefone ou chave aleatória" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           )}
 
           {/* PESSOA JURÍDICA */}
@@ -292,7 +695,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                 <TabsTrigger value="bancarios">Bancários</TabsTrigger>
               </TabsList>
 
-              {/* Aba: Dados da Empresa */}
+              {/* ... rest of PJ tabs - keep existing code ... */}
               <TabsContent value="empresa" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -468,7 +871,6 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                 </Card>
               </TabsContent>
 
-              {/* Aba: Endereço */}
               <TabsContent value="endereco">
                 <Card>
                   <CardHeader>
@@ -536,7 +938,6 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                 </Card>
               </TabsContent>
 
-              {/* Aba: Complementares */}
               <TabsContent value="complementares" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -679,7 +1080,6 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                 </Card>
               </TabsContent>
 
-              {/* Aba: Documentos */}
               <TabsContent value="documentos">
                 <Card>
                   <CardHeader>
@@ -744,7 +1144,6 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                 </Card>
               </TabsContent>
 
-              {/* Aba: Bancários */}
               <TabsContent value="bancarios">
                 <Card>
                   <CardHeader>
