@@ -156,8 +156,11 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao', 100),
   });
 
-  // Filtrar dados por perfil
+  // Filtrar dados por perfil (excluir vendas canceladas)
   const filteredVendas = vendas.filter(v => {
+    // Não contar vendas canceladas
+    if (v.status === 'cancelada') return false;
+    
     if (isAdmin) return true;
     if (isGerente) return v.gerente_id === user?.colaborador_id || v.vendedor_id === user?.colaborador_id;
     return v.vendedor_id === user?.colaborador_id;
@@ -170,6 +173,8 @@ export default function Dashboard() {
   });
 
   const vendasMes = filteredVendas.filter(v => {
+    // Não contar vendas canceladas no mês
+    if (v.status === 'cancelada') return false;
     const dataVenda = new Date(v.data_venda + 'T12:00:00');
     return dataVenda >= dateRange.start && dataVenda <= dateRange.end;
   });
@@ -193,7 +198,7 @@ export default function Dashboard() {
     .filter(o => o.status === 'aberta')
     .reduce((acc, o) => acc + (o.valor_estimado || 0), 0);
 
-  // Dados para gráficos
+  // Dados para gráficos (excluir vendas canceladas)
   const vendasPorMes = React.useMemo(() => {
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -201,6 +206,7 @@ export default function Dashboard() {
       const monthStart = startOfMonth(date);
       const monthEnd = endOfMonth(date);
       const vendasDoMes = filteredVendas.filter(v => {
+        if (v.status === 'cancelada') return false;
         const dataVenda = new Date(v.data_venda + 'T12:00:00');
         return dataVenda >= monthStart && dataVenda <= monthEnd;
       });
