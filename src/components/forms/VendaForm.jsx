@@ -257,6 +257,9 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           <DialogTitle>{venda ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Campos hidden para dados denormalizados */}
+          <input type="hidden" {...register('cliente_nome')} />
+          <input type="hidden" {...register('cliente_cpf')} />
           {/* Card Empresa (apenas para Master) */}
           {isMaster && (
             <div className="border rounded-lg p-4 bg-white shadow-sm">
