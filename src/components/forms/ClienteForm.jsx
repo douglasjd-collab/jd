@@ -55,7 +55,11 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
   const parseCurrencyToNumber = (value) => {
     if (!value || value === '') return null;
     if (typeof value === 'number') return value;
-    const numericString = value.replace(/[^\d,]/g, '').replace(',', '.');
+    // Remove tudo exceto dígitos e vírgula, depois substitui vírgula por ponto
+    const numericString = String(value)
+      .replace(/[^\d,]/g, '')  // Remove tudo exceto números e vírgula
+      .replace(/\./g, '')       // Remove pontos de milhar
+      .replace(',', '.');       // Substitui vírgula decimal por ponto
     const number = parseFloat(numericString);
     return isNaN(number) ? null : number;
   };
