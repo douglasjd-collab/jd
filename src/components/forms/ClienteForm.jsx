@@ -395,7 +395,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px]">
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
@@ -481,7 +481,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px]">
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
@@ -955,7 +955,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-[300px]">
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
