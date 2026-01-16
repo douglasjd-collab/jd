@@ -42,9 +42,16 @@ export default function Administradoras() {
     };
   }, []);
 
-  const { data: administradoras = [], isLoading } = useQuery({
+  const { data: administradoras = [], isLoading, error } = useQuery({
     queryKey: ['administradoras'],
-    queryFn: () => base44.entities.Administradora.list('-created_date'),
+    queryFn: async () => {
+      try {
+        return await base44.entities.Administradora.list('-created_date');
+      } catch (error) {
+        console.error('Erro ao carregar administradoras:', error);
+        return [];
+      }
+    },
   });
 
   const createMutation = useMutation({
@@ -195,6 +202,50 @@ export default function Administradoras() {
       )
     }
   ];
+
+  // Verificar permissão
+  const [currentUser, setCurrentUser] = React.useState(null);
+  
+  React.useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const me = await base44.auth.me();
+        if (me.role === 'super_admin') {
+          setCurrentUser({ perfil: 'super_admin' });
+          return;
+        }
+        
+        const colabs = await base44.entities.Colaborador.filter(
+          { user_id: me.id, status: 'ativo' },
+          '-created_date'
+        );
+        
+        if (colabs && colabs.length > 0) {
+          const colab = colabs[0];
+          setCurrentUser({ perfil: colab.perfil });
+        }
+      } catch (error) {
+        console.error('Erro ao verificar usuário:', error);
+      }
+    };
+    checkUser();
+  }, []);
+
+  const hasAccess = currentUser && ['master', 'super_admin', 'admin'].includes(currentUser.perfil);
+
+  if (currentUser && !hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+          <Building2 className="w-8 h-8 text-red-600" />
+        </div>
+        <h2 className="text-xl font-semibold text-slate-900">Acesso Negado</h2>
+        <p className="text-slate-500 text-center max-w-md">
+          Você não tem permissão para acessar esta página. Entre em contato com o administrador.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
