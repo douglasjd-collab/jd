@@ -185,7 +185,7 @@ export default function Administradoras() {
               <MoreHorizontal className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="z-50">
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();

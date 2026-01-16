@@ -83,7 +83,7 @@ export default function DataTable({
                 )}
               >
                 {columns.map((col, j) => (
-                  <TableCell key={j} className={col.cellClassName}>
+                  <TableCell key={`${row.id || i}-col-${j}`} className={col.cellClassName}>
                     {col.cell ? col.cell(row) : row[col.accessor]}
                   </TableCell>
                 ))}

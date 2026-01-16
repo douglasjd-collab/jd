@@ -196,9 +196,9 @@ export default function Clientes() {
               <MoreHorizontal className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="z-50">
             <DropdownMenuItem asChild>
-              <Link to={createPageUrl(`ClienteDetalhes?id=${row.id}`)}>
+              <Link to={createPageUrl(`ClienteDetalhes?id=${row.id}`)} className="flex items-center cursor-pointer">
                 <Eye className="w-4 h-4 mr-2" />
                 Ver detalhes
               </Link>
