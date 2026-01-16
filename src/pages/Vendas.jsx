@@ -33,6 +33,8 @@ export default function Vendas() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
   const [currentUser, setCurrentUser] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [vendaToDelete, setVendaToDelete] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -251,6 +253,30 @@ export default function Vendas() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.Venda.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendas'] });
+      setDeleteDialogOpen(false);
+      setVendaToDelete(null);
+      toast.success('Venda excluída com sucesso!');
+    },
+    onError: () => {
+      toast.error('Erro ao excluir venda');
+    }
+  });
+
+  const handleDelete = (venda) => {
+    setVendaToDelete(venda);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (vendaToDelete) {
+      deleteMutation.mutate(vendaToDelete.id);
+    }
+  };
+
   const handleSubmit = async (formData) => {
     try {
       console.log('📝 Dados brutos do form:', formData);
@@ -411,6 +437,15 @@ export default function Vendas() {
              <Pencil className="w-4 h-4 mr-2" />
              Editar
            </DropdownMenuItem>
+           {isAdmin && (
+             <DropdownMenuItem 
+               onClick={() => handleDelete(row)}
+               className="text-red-600 focus:text-red-600"
+             >
+               <Trash2 className="w-4 h-4 mr-2" />
+               Excluir
+             </DropdownMenuItem>
+           )}
           </DropdownMenuContent>
         </DropdownMenu>
       )
@@ -484,6 +519,36 @@ export default function Vendas() {
         isLoading={createMutation.isPending || updateMutation.isPending}
         currentUser={currentUser}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta venda?
+              {vendaToDelete && (
+                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                  <p className="font-medium text-slate-900">{vendaToDelete.cliente_nome}</p>
+                  <p className="text-sm text-slate-600">Grupo: {vendaToDelete.grupo} / Cota: {vendaToDelete.cota}</p>
+                </div>
+              )}
+              <p className="mt-3 text-sm text-red-600">
+                Esta ação não pode ser desfeita. Todas as comissões e parcelas relacionadas também serão afetadas.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
