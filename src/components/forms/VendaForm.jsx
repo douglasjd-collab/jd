@@ -315,12 +315,12 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h4 className="font-semibold text-slate-900">
-                      {clienteSelecionado?.nome || clientes.find(c => c.id === watch('cliente_id'))?.nome}
+                      {clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social || clientes.find(c => c.id === watch('cliente_id'))?.nome_completo || clientes.find(c => c.id === watch('cliente_id'))?.pj_razao_social}
                     </h4>
                     <div className="text-sm text-slate-600 mt-1">
-                      <p>CPF: {clienteSelecionado?.cpf || clientes.find(c => c.id === watch('cliente_id'))?.cpf}</p>
-                      {(clienteSelecionado?.telefone || clientes.find(c => c.id === watch('cliente_id'))?.telefone) && (
-                        <p>Telefone: {clienteSelecionado?.telefone || clientes.find(c => c.id === watch('cliente_id'))?.telefone}</p>
+                      <p>CPF/CNPJ: {clienteSelecionado?.cpf || clienteSelecionado?.pj_cnpj || clientes.find(c => c.id === watch('cliente_id'))?.cpf || clientes.find(c => c.id === watch('cliente_id'))?.pj_cnpj}</p>
+                      {(clienteSelecionado?.celular || clientes.find(c => c.id === watch('cliente_id'))?.celular) && (
+                        <p>Telefone: {clienteSelecionado?.celular || clientes.find(c => c.id === watch('cliente_id'))?.celular}</p>
                       )}
                     </div>
                   </div>
