@@ -322,8 +322,8 @@ export default function Vendas() {
       header: 'Cliente',
       cell: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.cliente_nome}</p>
-          <p className="text-sm text-slate-500">{row.cliente_cpf}</p>
+          <p className="font-medium text-slate-900">{row.cliente_nome || '-'}</p>
+          <p className="text-sm text-slate-500">{row.cliente_cpf || '-'}</p>
         </div>
       )
     },
