@@ -132,8 +132,8 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
   const ufs = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>{cliente ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
         </DialogHeader>
@@ -389,13 +389,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div>
                         <Label>Tipo de Logradouro</Label>
                         <Select
-                          value={watch('res_tipo_logradouro')}
+                          value={watch('res_tipo_logradouro') || ''}
                           onValueChange={(value) => setValue('res_tipo_logradouro', value)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent position="popper" sideOffset={5} className="max-h-[200px] overflow-y-auto">
+                          <SelectContent position="popper" align="start" sideOffset={5} className="max-h-[200px] overflow-y-auto z-[100]">
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
@@ -475,13 +475,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div>
                         <Label>Tipo de Logradouro</Label>
                         <Select
-                          value={watch('com_tipo_logradouro')}
+                          value={watch('com_tipo_logradouro') || ''}
                           onValueChange={(value) => setValue('com_tipo_logradouro', value)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent position="popper" sideOffset={5} className="max-h-[200px] overflow-y-auto">
+                          <SelectContent position="popper" align="start" sideOffset={5} className="max-h-[200px] overflow-y-auto z-[100]">
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
@@ -949,13 +949,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div>
                         <Label>Tipo de Logradouro</Label>
                         <Select
-                          value={watch('pj_tipo_logradouro')}
+                          value={watch('pj_tipo_logradouro') || ''}
                           onValueChange={(value) => setValue('pj_tipo_logradouro', value)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent position="popper" sideOffset={5} className="max-h-[200px] overflow-y-auto">
+                          <SelectContent position="popper" align="start" sideOffset={5} className="max-h-[200px] overflow-y-auto z-[100]">
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
