@@ -367,8 +367,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             onSelectCliente={(cliente) => {
               setClienteSelecionado(cliente);
               setValue('cliente_id', cliente.id);
-              setValue('cliente_nome', cliente.nome);
-              setValue('cliente_cpf', cliente.cpf);
+              setValue('cliente_nome', cliente.nome_completo || cliente.pj_razao_social || cliente.nome || '');
+              setValue('cliente_cpf', cliente.cpf || cliente.pj_cnpj || '');
             }}
           />
             
