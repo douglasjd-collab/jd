@@ -186,12 +186,20 @@ export default function Administradoras() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEdit(row)}>
+            <DropdownMenuItem 
+              onSelect={(e) => {
+                e.preventDefault();
+                handleEdit(row);
+              }}
+            >
               <Pencil className="w-4 h-4 mr-2" />
               Editar
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={() => setDeleteId(row.id)}
+              onSelect={(e) => {
+                e.preventDefault();
+                setDeleteId(row.id);
+              }}
               className="text-red-600"
             >
               <Trash2 className="w-4 h-4 mr-2" />

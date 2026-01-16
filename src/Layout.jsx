@@ -279,13 +279,23 @@ export default function Layout({ children, currentPageName }) {
 
                 {/* Opções do Menu */}
                 <div className="py-1">
-                  <DropdownMenuItem onClick={() => setEditarPerfilOpen(true)}>
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setEditarPerfilOpen(true);
+                    }}
+                  >
                     <Camera className="w-4 h-4 mr-2" />
                     Alterar Foto de Perfil
                   </DropdownMenuItem>
 
                   {(user.perfil === 'master' || user.perfil === 'super_admin' || user.perfil === 'admin') && (
-                    <DropdownMenuItem onClick={() => setLogoUploaderOpen(true)}>
+                    <DropdownMenuItem 
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setLogoUploaderOpen(true);
+                      }}
+                    >
                       <ImageIcon className="w-4 h-4 mr-2" />
                       Alterar Logo do Sistema
                     </DropdownMenuItem>
@@ -299,7 +309,7 @@ export default function Layout({ children, currentPageName }) {
         {/* Navigation */}
         <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-280px)]">
           {filteredMenuItems.map((item) => (
-            <div key={item.name}>
+            <div key={item.page || item.name}>
               {item.submenu ? (
                 <>
                   <button
@@ -324,7 +334,10 @@ export default function Layout({ children, currentPageName }) {
                         <Link
                           key={sub.page}
                           to={createPageUrl(sub.page)}
-                          onClick={() => setSidebarOpen(false)}
+                          onClick={() => {
+                            setSidebarOpen(false);
+                            setExpandedMenus({});
+                          }}
                           className={cn(
                             "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm",
                             currentPageName === sub.page
