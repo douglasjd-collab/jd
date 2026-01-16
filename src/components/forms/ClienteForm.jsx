@@ -82,12 +82,12 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       }
     }
 
-    // Converter campos de moeda para número
-    if (data.valor_patrimonial) data.valor_patrimonial = parseCurrencyToNumber(data.valor_patrimonial);
-    if (data.renda) data.renda = parseCurrencyToNumber(data.renda);
-    if (data.pj_valor_patrimonial) data.pj_valor_patrimonial = parseCurrencyToNumber(data.pj_valor_patrimonial);
-    if (data.pj_capital_social) data.pj_capital_social = parseCurrencyToNumber(data.pj_capital_social);
-    if (data.pj_faturamento_medio) data.pj_faturamento_medio = parseCurrencyToNumber(data.pj_faturamento_medio);
+    // Converter campos de moeda para número (remover se vazio ou nulo)
+    data.valor_patrimonial = data.valor_patrimonial ? parseCurrencyToNumber(data.valor_patrimonial) : null;
+    data.renda = data.renda ? parseCurrencyToNumber(data.renda) : null;
+    data.pj_valor_patrimonial = data.pj_valor_patrimonial ? parseCurrencyToNumber(data.pj_valor_patrimonial) : null;
+    data.pj_capital_social = data.pj_capital_social ? parseCurrencyToNumber(data.pj_capital_social) : null;
+    data.pj_faturamento_medio = data.pj_faturamento_medio ? parseCurrencyToNumber(data.pj_faturamento_medio) : null;
     
     onSubmit(data);
   };
