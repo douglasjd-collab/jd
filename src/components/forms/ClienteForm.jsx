@@ -395,7 +395,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent position="popper" align="start" sideOffset={5} className="max-h-[200px] overflow-y-auto z-[100]">
+                          <SelectContent position="popper" align="start" sideOffset={4}>
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
@@ -481,7 +481,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent position="popper" align="start" sideOffset={5} className="max-h-[200px] overflow-y-auto z-[100]">
+                          <SelectContent position="popper" align="start" sideOffset={4}>
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
@@ -955,7 +955,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
-                          <SelectContent position="popper" align="start" sideOffset={5} className="max-h-[200px] overflow-y-auto z-[100]">
+                          <SelectContent position="popper" align="start" sideOffset={4}>
                             <SelectItem value="RUA">Rua</SelectItem>
                             <SelectItem value="AVENIDA">Avenida</SelectItem>
                             <SelectItem value="ALAMEDA">Alameda</SelectItem>
