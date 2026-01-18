@@ -174,7 +174,7 @@ export default function PlanosConsorcio() {
     return acc;
   }, {});
 
-  const modalItems = modalGroupName ? groupedPlanos[modalGroupName] || [] : [];
+  const modalItems = modalGroupName ? [...(groupedPlanos[modalGroupName] || [])].sort((a, b) => b.prazo - a.prazo) : [];
   const firstModalItem = modalItems[0];
 
   const renderGroupedTable = () => (
