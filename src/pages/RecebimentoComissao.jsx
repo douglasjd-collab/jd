@@ -823,19 +823,16 @@ export default function RecebimentoComissao() {
           >
             <ExternalLink className="w-4 h-4" />
           </Button>
-          {isAdmin && (row.recebido || row.pagar) && (
+          {podeExcluir && (row.recebido || row.pagar) && (
             <Button
               size="sm"
               variant="ghost"
               onClick={() => {
-                if (confirm('Tem certeza que deseja excluir este recebimento?')) {
-                  // Excluir ambas comissões se existirem
-                  if (row.recebido) excluirComissaoMutation.mutate(row.recebido.id);
-                  if (row.pagar) excluirComissaoMutation.mutate(row.pagar.id);
-                }
+                setComissaoParaExcluir(row);
+                setDeleteDialogOpen(true);
               }}
               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              title="Excluir"
+              title="Excluir comissão"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
