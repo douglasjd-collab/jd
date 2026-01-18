@@ -152,7 +152,13 @@ export default function ComissoesPagar() {
       const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
       if (colabs.length > 0) {
         const colab = colabs[0];
-        setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id, colaborador_id: colab.id, id: me.id });
+        const userData = { ...me, perfil: colab.perfil, empresa_id: colab.empresa_id, colaborador_id: colab.id, id: me.id };
+        setUser(userData);
+        
+        // Auto-select vendedor if user is vendedor
+        if (colab.perfil === 'vendedor') {
+          setVendedorSelecionado({ id: me.id, nome: colab.nome, email: colab.email });
+        }
       }
     }
   };
@@ -560,14 +566,6 @@ export default function ComissoesPagar() {
   if (!user) {
     return <div className="p-6">Carregando...</div>;
   }
-
-  // Se é vendedor, selecionar automaticamente
-  useEffect(() => {
-    if (user?.perfil === 'vendedor' && user?.colaborador_id && !vendedorSelecionado) {
-      const vendedor = { id: user.id, nome: user.full_name, email: user.email };
-      setVendedorSelecionado(vendedor);
-    }
-  }, [user, vendedorSelecionado]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
