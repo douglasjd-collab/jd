@@ -232,6 +232,13 @@ export default function PlanosConsorcio() {
                     Importar CSV
                   </Button>
                   <Button
+                    onClick={() => {}}
+                    className="bg-purple-600 hover:bg-purple-700 gap-2"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Importar com Print
+                  </Button>
+                  <Button
                     onClick={async () => {
                       setSyncLoading(true);
                       try {
@@ -253,18 +260,6 @@ export default function PlanosConsorcio() {
                       <Zap className="w-4 h-4" />
                     )}
                     Aplicar Taxas ADM
-                  </Button>
-                  <Button
-                    onClick={handleSyncPlanos}
-                    disabled={syncLoading}
-                    className="bg-blue-600 hover:bg-blue-700 gap-2"
-                  >
-                    {syncLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Zap className="w-4 h-4" />
-                    )}
-                    Sincronizar com Canopus
                   </Button>
                 </div>
               </div>
