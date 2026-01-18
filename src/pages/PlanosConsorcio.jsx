@@ -52,6 +52,7 @@ export default function PlanosConsorcio() {
   const [user, setUser] = useState(null);
   const [modalGroupName, setModalGroupName] = useState(null);
   const [selectedModalPlano, setSelectedModalPlano] = useState(null);
+  const [importPrintOpen, setImportPrintOpen] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
