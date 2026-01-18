@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
     const lines = csvContent.split(/\r?\n/);
     
     const items = [];
+    const errors = [];
     let startIndex = 0;
     
     // Detectar se primeira linha é cabeçalho
