@@ -5,8 +5,14 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user || user.role !== 'super_admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Permitir super_admin, admin e gerente
+    const userRole = user.perfil || user.role;
+    if (!['super_admin', 'master', 'admin', 'gerente'].includes(userRole)) {
+      return Response.json({ error: 'Forbidden: Requires admin or manager access' }, { status: 403 });
     }
 
     // Mapa de taxas por prazo
