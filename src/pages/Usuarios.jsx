@@ -5,6 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import UsuarioForm from '@/components/forms/UsuarioForm';
+import VincularUsuarioModal from '@/components/forms/VincularUsuarioModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
