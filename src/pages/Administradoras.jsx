@@ -104,11 +104,19 @@ export default function Administradoras() {
       }
 
       const colab = colabs[0];
-      const empresa_id = colab.empresa_id;
+      let empresa_id = colab.empresa_id;
+
+      // Para super_admin e master sem empresa_id, buscar primeira empresa ativa
+      if (!empresa_id && ['master', 'super_admin'].includes(colab.perfil)) {
+        const empresas = await base44.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 1);
+        if (empresas.length > 0) {
+          empresa_id = empresas[0].id;
+        }
+      }
 
       // Garantir que empresa_id seja válido
       if (!empresa_id || typeof empresa_id !== 'string') {
-        toast.error('Empresa não identificada. Verifique seu cadastro de colaborador.');
+        toast.error('Empresa não identificada. Verifique se existe uma empresa cadastrada.');
         return;
       }
 
