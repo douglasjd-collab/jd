@@ -379,9 +379,17 @@ export default function RelatoriosFinanceiros() {
                 </div>
               </div>
               {comissoesRecebidas.length > 0 && (
-                <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto">
-                  <p className="font-mono text-amber-900">Primeira data_recebimento: {comissoesRecebidas[0]?.data_recebimento}</p>
-                  <p className="font-mono text-amber-700 mt-1">Filtro: {dataInicio} até {dataFim}</p>
+                <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
+                  <p className="font-mono text-amber-900">Raw data_recebimento: {comissoesRecebidas[0]?.data_recebimento}</p>
+                  <p className="font-mono text-amber-700">
+                    Normalized: {normalizeDate(comissoesRecebidas[0]?.data_recebimento)}
+                  </p>
+                  <p className="font-mono text-amber-700">
+                    Filtro: {dataInicio} até {dataFim}
+                  </p>
+                  <p className="font-mono text-amber-700">
+                    valor_recebido (raw): {comissoesRecebidas[0]?.valor_recebido} (type: {typeof comissoesRecebidas[0]?.valor_recebido})
+                  </p>
                 </div>
               )}
             </div>
