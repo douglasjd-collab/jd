@@ -26,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import {
@@ -45,6 +45,7 @@ export default function PlanosConsorcio() {
   const [selectedPlano, setSelectedPlano] = useState(null);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [syncLoading, setSyncLoading] = useState(false);
   const queryClient = useQueryClient();
 
   const { register, handleSubmit, setValue, watch, reset } = useForm();
@@ -133,6 +134,22 @@ export default function PlanosConsorcio() {
     }).format(value || 0);
   };
 
+  const handleSyncPlanos = async () => {
+    setSyncLoading(true);
+    try {
+      const response = await base44.functions.invoke('syncPlanosCanopus', {
+        empresa_id: null
+      });
+      
+      toast.success(`Sincronização concluída: ${response.data.summary.successCount} criados, ${response.data.summary.updatedCount} atualizados`);
+      queryClient.invalidateQueries({ queryKey: ['planos-consorcio'] });
+    } catch (error) {
+      toast.error('Erro ao sincronizar: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   const filteredPlanos = planos.filter(p => 
     p.nome?.toLowerCase().includes(search.toLowerCase()) ||
     p.grupo?.toLowerCase().includes(search.toLowerCase()) ||
@@ -195,12 +212,26 @@ export default function PlanosConsorcio() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Planos de Consórcio"
-        subtitle={`${planos.length} planos cadastrados`}
-        actionLabel="Novo Plano"
-        onAction={() => openForm()}
-      />
+      <div className="flex items-center justify-between mb-6">
+        <PageHeader
+          title="Planos de Consórcio"
+          subtitle={`${planos.length} planos cadastrados`}
+          actionLabel="Novo Plano"
+          onAction={() => openForm()}
+        />
+        <Button
+          onClick={handleSyncPlanos}
+          disabled={syncLoading}
+          className="bg-blue-600 hover:bg-blue-700 gap-2"
+        >
+          {syncLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Zap className="w-4 h-4" />
+          )}
+          Sincronizar com Canopus
+        </Button>
+      </div>
 
       {/* Search */}
       <div className="relative max-w-md">
