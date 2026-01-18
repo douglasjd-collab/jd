@@ -118,7 +118,8 @@ Deno.serve(async (req) => {
     return Response.json({
       status: 'success',
       items,
-      total: items.length
+      total: items.length,
+      errors: errors.length > 0 ? errors : undefined
     });
 
   } catch (error) {
