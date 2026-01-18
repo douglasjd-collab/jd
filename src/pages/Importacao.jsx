@@ -71,6 +71,15 @@ export default function Importacao() {
       });
       
       for (const rec of recebimentos) {
+        // Excluir ComissaoAPagar relacionada
+        const comissoesAPagar = await base44.entities.ComissaoAPagar.filter({
+          recebimento_id: rec.id
+        });
+        for (const com of comissoesAPagar) {
+          await base44.entities.ComissaoAPagar.delete(com.id);
+        }
+        
+        // Excluir RecebimentoComissao
         await base44.entities.RecebimentoComissao.delete(rec.id);
       }
       
@@ -270,7 +279,7 @@ export default function Importacao() {
           const valorAPagar = valorRecebido * (percentualPadrao / 100);
 
           // Criar RecebimentoComissao
-          await base44.entities.RecebimentoComissao.create({
+          const recebimento = await base44.entities.RecebimentoComissao.create({
             empresa_id: vendaEncontrada.empresa_id,
             venda_id: vendaEncontrada.id,
             cliente_id: vendaEncontrada.cliente_id,
@@ -293,6 +302,34 @@ export default function Importacao() {
             status_recebimento: 'recebida',
             status_pagamento: 'a_pagar'
           });
+
+          // Criar ComissaoAPagar automaticamente
+          const jaExisteComissao = await base44.entities.ComissaoAPagar.filter({
+            recebimento_id: recebimento.id
+          });
+
+          if (jaExisteComissao.length === 0) {
+            await base44.entities.ComissaoAPagar.create({
+              empresa_id: vendaEncontrada.empresa_id,
+              recebimento_id: recebimento.id,
+              venda_id: vendaEncontrada.id,
+              cliente_id: vendaEncontrada.cliente_id,
+              cliente_nome: vendaEncontrada.cliente_nome,
+              vendedor_id: vendaEncontrada.vendedor_id,
+              vendedor_nome: vendaEncontrada.vendedor_nome,
+              administradora_id: selectedAdmin,
+              administradora_nome: admin.nome_fantasia || admin.razao_social,
+              grupo: vendaEncontrada.grupo,
+              cota: vendaEncontrada.cota,
+              contrato: vendaEncontrada.contrato,
+              parcela_numero: parcelaInformada,
+              data_recebimento: dataRecebimento,
+              valor_recebido: valorRecebido,
+              percentual_comissao: percentualPadrao,
+              valor_a_pagar: valorAPagar,
+              status_pagamento: 'a_pagar'
+            });
+          }
 
           // Atualizar comissão total recebida na venda
           const novoValorRecebido = (vendaEncontrada.comissao_total_recebida || 0) + valorRecebido;
