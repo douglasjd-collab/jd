@@ -47,6 +47,7 @@ export default function PlanosConsorcio() {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [user, setUser] = useState(null);
   const queryClient = useQueryClient();
 
