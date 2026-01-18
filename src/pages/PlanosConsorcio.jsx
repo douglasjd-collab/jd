@@ -26,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Pencil, Trash2, Loader2, Zap } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Loader2, Zap, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import {
@@ -212,25 +212,32 @@ export default function PlanosConsorcio() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <PageHeader
-          title="Planos de Consórcio"
-          subtitle={`${planos.length} planos cadastrados`}
-          actionLabel="Novo Plano"
-          onAction={() => openForm()}
-        />
-        <Button
-          onClick={handleSyncPlanos}
-          disabled={syncLoading}
-          className="bg-blue-600 hover:bg-blue-700 gap-2"
-        >
-          {syncLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Zap className="w-4 h-4" />
-          )}
-          Sincronizar com Canopus
-        </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Planos de Consórcio</h1>
+          <p className="text-slate-500 mt-1">{planos.length} planos cadastrados</p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <Button 
+            onClick={() => openForm()}
+            className="bg-[#23BE84] hover:bg-[#1da570]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Plano
+          </Button>
+          <Button
+            onClick={handleSyncPlanos}
+            disabled={syncLoading}
+            className="bg-blue-600 hover:bg-blue-700 gap-2"
+          >
+            {syncLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4" />
+            )}
+            Sincronizar com Canopus
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
