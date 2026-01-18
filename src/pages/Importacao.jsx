@@ -65,10 +65,30 @@ export default function Importacao() {
 
   const deleteImportMutation = useMutation({
     mutationFn: async (importId) => {
+      // Excluir RecebimentoComissao relacionados
+      const recebimentos = await base44.entities.RecebimentoComissao.filter({
+        origem_importacao_id: importId
+      });
+      
+      for (const rec of recebimentos) {
+        await base44.entities.RecebimentoComissao.delete(rec.id);
+      }
+      
+      // Excluir itens de importação
+      const itens = await base44.entities.ImportacaoItem.filter({
+        importacao_id: importId
+      });
+      
+      for (const item of itens) {
+        await base44.entities.ImportacaoItem.delete(item.id);
+      }
+      
+      // Excluir importação
       await base44.entities.Importacao.delete(importId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['importacoes']);
+      queryClient.invalidateQueries(['recebimentos']);
       toast.success('Importação excluída com sucesso');
     },
     onError: () => {
