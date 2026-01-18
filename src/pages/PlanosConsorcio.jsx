@@ -177,59 +177,89 @@ export default function PlanosConsorcio() {
     setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
   };
 
-  const columns = [
-    {
-      header: 'Plano',
-      cell: (row) => (
-        <div>
-          <p className="font-medium text-slate-900">{row.nome || `Grupo ${row.grupo}`}</p>
-          <p className="text-sm text-slate-500">{getAdminNome(row.administradora_id)}</p>
-        </div>
-      )
-    },
-    {
-      header: 'Grupo',
-      cell: (row) => row.grupo
-    },
-    {
-      header: 'Prazo',
-      cell: (row) => `${row.prazo} meses`
-    },
-    {
-      header: 'Valor da Carta',
-      cell: (row) => formatCurrency(row.valor_carta)
-    },
-    {
-      header: 'Status',
-      cell: (row) => <StatusBadge status={row.status} />
-    },
-    {
-      header: '',
-      className: 'w-12',
-      cell: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openForm(row)}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => setDeleteId(row.id)}
-              className="text-red-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-  ];
+  const renderGroupedTable = () => (
+    <div className="border rounded-lg overflow-hidden">
+      {Object.entries(groupedPlanos).map(([groupName, items]) => {
+        const isExpanded = expandedGroups[groupName];
+        const firstItem = items[0];
+
+        return (
+          <div key={groupName}>
+            {/* Header/Summary Row */}
+            <div className="border-b bg-slate-50 hover:bg-slate-100 transition-colors">
+              <div className="flex items-center gap-4 p-4 cursor-pointer" onClick={() => toggleGroup(groupName)}>
+                <button className="flex-shrink-0">
+                  <ChevronDown 
+                    className={`w-5 h-5 transition-transform text-slate-600 ${isExpanded ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900">{groupName}</p>
+                  <p className="text-sm text-slate-500">{getAdminNome(firstItem?.administradora_id)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-slate-900">{firstItem?.grupo || '-'}</p>
+                  <p className="text-xs text-slate-500">{items.length} plano(s)</p>
+                </div>
+                <div className="text-right min-w-[120px]">
+                  <p className="text-sm font-medium">{formatCurrency(firstItem?.valor_carta)}</p>
+                </div>
+                <div className="text-right min-w-[80px]">
+                  <StatusBadge status={firstItem?.status} />
+                </div>
+                <div className="w-12" />
+              </div>
+            </div>
+
+            {/* Expanded Items */}
+            {isExpanded && (
+              <div className="bg-white divide-y">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-4 p-4 hover:bg-slate-50">
+                    <div className="w-5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-600">{item.prazo} meses</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-slate-600">{item.grupo || '-'}</p>
+                    </div>
+                    <div className="text-right min-w-[120px]">
+                      <p className="text-sm">{formatCurrency(item.valor_carta)}</p>
+                    </div>
+                    <div className="text-right min-w-[80px]">
+                      <StatusBadge status={item.status} />
+                    </div>
+                    <div className="w-12">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openForm(item)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setDeleteId(item.id)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
