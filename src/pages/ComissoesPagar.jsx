@@ -60,6 +60,16 @@ export default function ComissoesPagar() {
       for (const rec of novosRegistros) {
         const valorAPagar = rec.valor_recebido * (rec.percentual_comissao || 100) / 100;
         
+        // Garantir que a data está no formato correto
+        let dataRecebimento = rec.data_recebimento;
+        if (dataRecebimento && !dataRecebimento.includes('-')) {
+          // Se vier no formato DD/MM/YYYY, converter para YYYY-MM-DD
+          const parts = dataRecebimento.split('/');
+          if (parts.length === 3) {
+            dataRecebimento = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+        }
+        
         await base44.entities.ComissaoAPagar.create({
           empresa_id: rec.empresa_id,
           recebimento_id: rec.id,
@@ -74,7 +84,7 @@ export default function ComissoesPagar() {
           cota: rec.cota,
           contrato: rec.contrato,
           parcela_numero: rec.parcela_informada,
-          data_recebimento: rec.data_recebimento,
+          data_recebimento: dataRecebimento,
           valor_recebido: rec.valor_recebido,
           percentual_comissao: rec.percentual_comissao || 100,
           valor_a_pagar: valorAPagar,
