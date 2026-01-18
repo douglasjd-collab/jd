@@ -28,11 +28,20 @@ Deno.serve(async (req) => {
     const csvContent = decoder.decode(arrayBuffer);
 
     // Processar CSV linha por linha
-    const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
+    const lines = csvContent.split(/\r?\n/);
     
     const items = [];
+    let startIndex = 0;
     
-    for (let i = 0; i < lines.length; i++) {
+    // Detectar se primeira linha é cabeçalho
+    if (lines.length > 0) {
+      const firstLine = lines[0].toLowerCase();
+      if (firstLine.includes('data') || firstLine.includes('contrato') || firstLine.includes('grupo')) {
+        startIndex = 1; // Pular cabeçalho
+      }
+    }
+    
+    for (let i = startIndex; i < lines.length; i++) {
       const line = lines[i];
       
       // Pular linhas vazias
@@ -59,15 +68,15 @@ Deno.serve(async (req) => {
       
       // Validar se tem pelo menos 7 colunas
       if (values.length < 7) {
-        console.log(`Linha ${i + 1} ignorada: menos de 7 colunas`);
+        console.log(`Linha ${i + 1} ignorada: apenas ${values.length} colunas`);
         continue;
       }
       
       // Extrair dados
       const [data_recebimento, contrato, grupo, cota, valorStr, parcelaStr, administradora] = values;
       
-      // Pular linha de cabeçalho
-      if (i === 0 && (data_recebimento.toLowerCase().includes('data') || contrato.toLowerCase().includes('contrato'))) {
+      // Validar se não é linha vazia ou inválida
+      if (!contrato.trim() && !grupo.trim()) {
         continue;
       }
       
