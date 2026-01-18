@@ -397,6 +397,17 @@ export default function PlanosConsorcio() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import CSV Modal */}
+      <ImportarPlanosCSV 
+        open={importOpen} 
+        onOpenChange={(open) => {
+          setImportOpen(open);
+          if (!open) {
+            queryClient.invalidateQueries({ queryKey: ['planos-consorcio'] });
+          }
+        }}
+      />
     </div>
   );
 }
