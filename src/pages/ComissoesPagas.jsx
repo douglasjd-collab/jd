@@ -187,84 +187,133 @@ export default function ComissoesPagas() {
         </div>
       </Card>
 
-      {/* Tabela */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-slate-50">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Data Pagamento</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Vendedor</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Cliente</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Grupo/Cota</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Parcela</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Valor Recebido</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">% Comissão</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Valor Pago</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Forma</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Lote</th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingComissoes ? (
-                <tr>
-                  <td colSpan="11" className="px-4 py-8 text-center text-slate-500">
-                    Carregando...
-                  </td>
-                </tr>
-              ) : dadosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan="11" className="px-4 py-8 text-center text-slate-500">
-                    Nenhum registro encontrado
-                  </td>
-                </tr>
-              ) : (
-                dadosFiltrados.map((c) => (
-                  <tr key={c.id} className="border-b hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm">{moment(c.data_pagamento).format('DD/MM/YYYY')}</td>
-                    <td className="px-4 py-3 text-sm">{c.vendedor_nome}</td>
-                    <td className="px-4 py-3 text-sm">{c.cliente_nome}</td>
-                    <td className="px-4 py-3 text-sm">{c.grupo}/{c.cota}</td>
-                    <td className="px-4 py-3 text-sm text-center">{c.parcela_numero}</td>
-                    <td className="px-4 py-3 text-sm text-right font-mono">
-                      {(c.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right">{c.percentual_comissao || 100}%</td>
-                    <td className="px-4 py-3 text-sm text-right font-mono font-bold text-green-600">
-                      {(c.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </td>
-                    <td className="px-4 py-3 text-sm">{c.forma_pagamento}</td>
-                    <td className="px-4 py-3 text-sm">
-                      {c.lote_id ? (
-                        <Badge variant="outline">{c.lote_id}</Badge>
-                      ) : (
-                        <span className="text-slate-400 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex gap-2 justify-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleBaixarRelatorio(c)}
-                          disabled={!c.lote_id}
-                          title={c.lote_id ? 'Baixar 2ª via' : 'Sem lote'}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
+      {/* Comissões Programadas */}
+      {comissoesProgramadas.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">Comissões Programadas</h2>
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-slate-700 text-white">
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Nº PROTOCOLO</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">DATA PROGRAMADA</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">VALOR COMISSÃO</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">ACRÉSCIMOS</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">DESCONTOS</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="bg-slate-100 border-b">
+                    <td colSpan="6" className="px-4 py-2 text-sm">
+                      <span className="font-semibold text-slate-700">Total: {comissoesProgramadas.length}</span>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                  {comissoesProgramadas.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-4 py-8 text-center text-slate-500">
+                        Nenhuma comissão programada
+                      </td>
+                    </tr>
+                  ) : (
+                    comissoesProgramadas.map((c) => (
+                      <tr key={c.id} className="border-b hover:bg-slate-50">
+                        <td className="px-4 py-3 text-sm">{c.recebimento_id}</td>
+                        <td className="px-4 py-3 text-sm">{moment(c.data_recebimento).format('DD/MM/YYYY')}</td>
+                        <td className="px-4 py-3 text-sm text-right font-mono">
+                          {(c.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-mono">R$ 0,00</td>
+                        <td className="px-4 py-3 text-sm text-right font-mono">R$ 0,00</td>
+                        <td className="px-4 py-3 text-sm text-right font-mono font-bold">
+                          {(c.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
-        <div className="p-4 border-t text-sm text-slate-600">
-          Total de registros: {dadosFiltrados.length}
-        </div>
-      </Card>
+      )}
+
+      {/* Comissões Quitadas */}
+      <div>
+        <h2 className="text-lg font-semibold text-slate-800 mb-4">Comissões Quitadas</h2>
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-slate-700 text-white">
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Nº PROTOCOLO</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">DATA PROGRAMADA</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">DATA QUITAÇÃO</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold">VALOR COMISSÃO</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold">ACRÉSCIMOS</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold">DESCONTOS</th>
+                  <th className="px-4 py-3 text-right text-sm font-semibold">TOTAL</th>
+                  <th className="px-4 py-3 text-center text-sm font-semibold">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingComissoes ? (
+                  <tr>
+                    <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                      Carregando...
+                    </td>
+                  </tr>
+                ) : comissoesQuitadas.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                      Nenhuma comissão quitada encontrada
+                    </td>
+                  </tr>
+                ) : (
+                  comissoesQuitadas.map((c) => (
+                    <tr key={c.id} className="border-b hover:bg-slate-50">
+                      <td className="px-4 py-3 text-sm">{c.recebimento_id}</td>
+                      <td className="px-4 py-3 text-sm">{moment(c.data_recebimento).format('DD/MM/YYYY')}</td>
+                      <td className="px-4 py-3 text-sm">{moment(c.data_pagamento).format('DD/MM/YYYY')}</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono">
+                        {(c.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-mono">R$ 0,00</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono">R$ 0,00</td>
+                      <td className="px-4 py-3 text-sm text-right font-mono font-bold text-green-600">
+                        {(c.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex gap-2 justify-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Visualizar"
+                            className="text-slate-600 hover:text-slate-900"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleBaixarRelatorio(c)}
+                            disabled={!c.lote_id}
+                            title={c.lote_id ? 'Imprimir' : 'Sem lote'}
+                            className="text-slate-600 hover:text-slate-900"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
