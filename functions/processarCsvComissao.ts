@@ -100,8 +100,7 @@ Deno.serve(async (req) => {
         grupo: grupo.trim(),
         cota: cota.trim(),
         valor,
-        parcela,
-        administradora: administradora.trim()
+        parcela
       });
     }
 
