@@ -34,27 +34,35 @@ Deno.serve(async (req) => {
     let atualizados = 0;
     const erros = [];
 
+    // Função para encontrar taxa do prazo mais próximo
+    const encontrarTaxaMaisPróxima = (prazo) => {
+      const prazosDisponiveis = Object.keys(taxasPorPrazo).map(Number).sort((a, b) => Math.abs(a - prazo) - Math.abs(b - prazo));
+      return taxasPorPrazo[prazosDisponiveis[0]] || null;
+    };
+
     // Aplicar taxas nos planos que atendem aos critérios
     for (const plano of planos) {
       const valor = plano.valor_carta || 0;
       const prazo = plano.prazo;
 
-      // Verificar se está entre 25k e 50k
-      if (valor >= 25000 && valor <= 50000 && taxasPorPrazo[prazo]) {
-        const taxa = taxasPorPrazo[prazo];
+      // Verificar se está entre 25k e 50k e encontrar taxa apropriada
+      if (valor >= 25000 && valor <= 50000 && !plano.taxa_adm) {
+        const taxa = taxasPorPrazo[prazo] || encontrarTaxaMaisPróxima(prazo);
         
-        try {
-          await base44.asServiceRole.entities.PlanoConsorcio.update(plano.id, {
-            taxa_adm: taxa
-          });
-          atualizados++;
-        } catch (e) {
-          erros.push({
-            planoId: plano.id,
-            prazo: prazo,
-            valor: valor,
-            erro: e.message
-          });
+        if (taxa) {
+          try {
+            await base44.asServiceRole.entities.PlanoConsorcio.update(plano.id, {
+              taxa_adm: taxa
+            });
+            atualizados++;
+          } catch (e) {
+            erros.push({
+              planoId: plano.id,
+              prazo: prazo,
+              valor: valor,
+              erro: e.message
+            });
+          }
         }
       }
     }
