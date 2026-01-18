@@ -84,7 +84,6 @@ Deno.serve(async (req) => {
       // Converter valor e parcela
       let valor = 0;
       let parcela = 0;
-      let errors = [];
       
       try {
         // Limpar valor: remover R$, pontos de milhares, trocar vírgula por ponto
