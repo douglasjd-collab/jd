@@ -238,31 +238,43 @@ export default function RelatoriosFinanceiros() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total de Receitas</p>
-              <p className="text-2xl font-bold text-green-600">
-                {totalReceitas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </p>
-            </div>
-            <TrendingUp className="w-10 h-10 text-green-600" />
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+         <Card className="p-6">
+           <div className="flex items-center justify-between">
+             <div>
+               <p className="text-sm text-slate-500">Total de Receitas</p>
+               <p className="text-2xl font-bold text-green-600">
+                 {totalReceitas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+               </p>
+             </div>
+             <TrendingUp className="w-10 h-10 text-green-600" />
+           </div>
+         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total de Despesas</p>
-              <p className="text-2xl font-bold text-red-600">
-                {totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </p>
-            </div>
-            <TrendingDown className="w-10 h-10 text-red-600" />
-          </div>
-        </Card>
-      </div>
+         <Card className="p-6">
+           <div className="flex items-center justify-between">
+             <div>
+               <p className="text-sm text-slate-500">Receitas + Comissões Recebidas</p>
+               <p className="text-2xl font-bold text-green-600">
+                 {(totalReceitas + totalComissoesRecebidas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+               </p>
+             </div>
+             <Wallet className="w-10 h-10 text-green-600" />
+           </div>
+         </Card>
+
+         <Card className="p-6">
+           <div className="flex items-center justify-between">
+             <div>
+               <p className="text-sm text-slate-500">Total de Despesas</p>
+               <p className="text-2xl font-bold text-red-600">
+                 {totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+               </p>
+             </div>
+             <TrendingDown className="w-10 h-10 text-red-600" />
+           </div>
+         </Card>
+       </div>
 
       {/* Resultado Final */}
       <Card className="p-8 mb-6 bg-gradient-to-r from-blue-50 to-purple-50">
