@@ -389,7 +389,37 @@ export default function PlanosConsorcio() {
                   placeholder="0,00"
                 />
               </div>
-              
+
+              <div>
+                <Label htmlFor="tipo_bem">Tipo de Bem</Label>
+                <Select
+                  value={watch('tipo_bem') || ''}
+                  onValueChange={(value) => setValue('tipo_bem', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="automovel">Automóvel</SelectItem>
+                    <SelectItem value="imovel">Imóvel</SelectItem>
+                    <SelectItem value="motocicleta">Motocicleta</SelectItem>
+                    <SelectItem value="servico">Serviço</SelectItem>
+                    <SelectItem value="bens_moveis">Bens Móveis</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="taxa_adm">Taxa de ADM (%)</Label>
+                <Input
+                  id="taxa_adm"
+                  type="number"
+                  step="0.1"
+                  {...register('taxa_adm')}
+                  placeholder="0,00"
+                />
+              </div>
+
               <div>
                 <Label>Status</Label>
                 <Select
