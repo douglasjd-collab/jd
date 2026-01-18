@@ -44,9 +44,57 @@ export default function ComissoesPagar() {
     }
   };
 
+  // Sincronizar RecebimentoComissao -> ComissaoAPagar automaticamente
+  const sincronizarComissoes = async () => {
+    try {
+      // Buscar todos os recebimentos
+      const recebimentos = await base44.entities.RecebimentoComissao.filter({});
+      
+      // Buscar comissões a pagar existentes
+      const comissoesExistentes = await base44.entities.ComissaoAPagar.filter({});
+      const recebimentosJaProcessados = new Set(comissoesExistentes.map(c => c.recebimento_id));
+      
+      // Criar ComissaoAPagar para recebimentos que não têm
+      const novosRegistros = recebimentos.filter(r => !recebimentosJaProcessados.has(r.id));
+      
+      for (const rec of novosRegistros) {
+        const valorAPagar = rec.valor_recebido * (rec.percentual_comissao || 100) / 100;
+        
+        await base44.entities.ComissaoAPagar.create({
+          empresa_id: rec.empresa_id,
+          recebimento_id: rec.id,
+          venda_id: rec.venda_id,
+          cliente_id: rec.cliente_id,
+          cliente_nome: rec.cliente_nome,
+          vendedor_id: rec.vendedor_id,
+          vendedor_nome: rec.vendedor_nome,
+          administradora_id: rec.administradora_id,
+          administradora_nome: rec.administradora_nome,
+          grupo: rec.grupo,
+          cota: rec.cota,
+          contrato: rec.contrato,
+          parcela_numero: rec.parcela_informada,
+          data_recebimento: rec.data_recebimento,
+          valor_recebido: rec.valor_recebido,
+          percentual_comissao: rec.percentual_comissao || 100,
+          valor_a_pagar: valorAPagar,
+          status_pagamento: rec.status_pagamento || 'a_pagar'
+        });
+      }
+      
+      if (novosRegistros.length > 0) {
+        console.log(`${novosRegistros.length} comissões sincronizadas`);
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar comissões:', error);
+    }
+  };
+
   const { data: comissoes = [], isLoading } = useQuery({
     queryKey: ['comissoes-a-pagar'],
     queryFn: async () => {
+      // Sincronizar antes de buscar
+      await sincronizarComissoes();
       return await base44.entities.ComissaoAPagar.filter({});
     },
     enabled: !!user,
