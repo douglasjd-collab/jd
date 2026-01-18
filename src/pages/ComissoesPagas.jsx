@@ -134,20 +134,13 @@ export default function ComissoesPagas() {
     );
   }
 
-  const columns = [
-    { key: 'data_pagamento', label: 'Data Pagamento' },
-    { key: 'vendedor_nome', label: 'Vendedor' },
-    { key: 'cliente_nome', label: 'Cliente' },
-    { key: 'grupo', label: 'Grupo' },
-    { key: 'cota', label: 'Cota' },
-    { key: 'parcela_numero', label: 'Parcela' },
-    { key: 'valor_recebido', label: 'Valor Recebido' },
-    { key: 'percentual_comissao', label: '% Comissão' },
-    { key: 'valor_a_pagar', label: 'Valor Pago' },
-    { key: 'forma_pagamento', label: 'Forma Pagamento' },
-    { key: 'lote_id', label: 'Lote' },
-    { key: 'actions', label: 'Ações' },
-  ];
+  // Separar comissões programadas (sem data_pagamento) e quitadas (com data_pagamento)
+  const comissoesProgramadas = comissoesPagas.filter(c => !c.data_pagamento);
+  const comissoesQuitadas = dadosFiltrados.filter(c => c.data_pagamento);
+
+  // Calcular totais
+  const totalProgramado = comissoesProgramadas.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+  const totalQuitado = comissoesQuitadas.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
