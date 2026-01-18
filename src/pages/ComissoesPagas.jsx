@@ -248,7 +248,6 @@ export default function ComissoesPagas() {
               <thead>
                 <tr className="border-b bg-slate-700 text-white">
                   <th className="px-4 py-3 text-left text-sm font-semibold">Nº PROTOCOLO</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">DATA PROGRAMADA</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">DATA QUITAÇÃO</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold">VALOR COMISSÃO</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold">ACRÉSCIMOS</th>
