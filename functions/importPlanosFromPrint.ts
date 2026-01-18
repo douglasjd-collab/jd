@@ -46,6 +46,36 @@ Deno.serve(async (req) => {
     const updated = [];
     const errors = [];
 
+    // Mapa de taxas por prazo para automóvel
+    const taxasPorPrazo = {
+      96: 20.8,
+      86: 19.8,
+      76: 18.8,
+      66: 16.8,
+      56: 15.8,
+      46: 13.8,
+      36: 12.8
+    };
+
+    // Determinar tipo_bem baseado no produto
+    const getTipoBem = (produto) => {
+      const prod = (produto || '').toLowerCase();
+      if (prod.includes('automóvel') || prod.includes('automovel')) return 'automovel';
+      if (prod.includes('imóvel') || prod.includes('imovel')) return 'imovel';
+      if (prod.includes('motocicleta')) return 'motocicleta';
+      if (prod.includes('serviço') || prod.includes('servico')) return 'servico';
+      return 'bens_moveis';
+    };
+
+    const tipoBem = getTipoBem(produto);
+
+    // Obter taxa de ADM baseado no prazo para automóvel
+    const getTaxaAdm = (prazo, tipoBem, valor) => {
+      if (tipoBem !== 'automovel') return undefined;
+      if (valor && (valor < 25000 || valor > 50000)) return undefined;
+      return taxasPorPrazo[prazo] || undefined;
+    };
+
     for (const item of itens) {
       try {
         const { prazo_meses, primeira_parcela } = item;
@@ -90,7 +120,8 @@ Deno.serve(async (req) => {
           created.push(`${prazo_meses} meses - R$ ${primeira_parcela.toFixed(2)}`);
         }
 
-        // Também salvar em PlanoConsorcio
+        // Também salvar em PlanoConsorcio com taxa_adm
+        const taxaAdm = getTaxaAdm(prazo_meses, tipoBem, valor_bem);
         const planoConsorcioData = {
           empresa_id,
           nome: `${plano} - ${nome_bem}`,
@@ -98,8 +129,14 @@ Deno.serve(async (req) => {
           grupo: grupo_cota || '',
           prazo: prazo_meses,
           valor_carta: valor_bem || 0,
+          tipo_bem: tipoBem,
           status: 'ativo',
         };
+
+        // Incluir taxa_adm se aplicável
+        if (taxaAdm) {
+          planoConsorcioData.taxa_adm = taxaAdm;
+        }
 
         const existingConsorcio = await base44.asServiceRole.entities.PlanoConsorcio.filter({
           empresa_id,
