@@ -83,15 +83,26 @@ Deno.serve(async (req) => {
       // Converter valor e parcela
       let valor = 0;
       let parcela = 0;
+      let errors = [];
       
       try {
         // Limpar valor: remover R$, pontos de milhares, trocar vírgula por ponto
         const valorLimpo = valorStr.replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.');
         valor = parseFloat(valorLimpo) || 0;
         
-        parcela = parseInt(parcelaStr) || 0;
+        // Normalizar parcela: remover espaços, extrair apenas dígitos
+        const parcelaLimpa = parcelaStr.trim().replace(/[^\d]/g, '');
+        parcela = parseInt(parcelaLimpa);
+        
+        // Validar parcela
+        if (!parcela || isNaN(parcela)) {
+          errors.push(`Linha ${i + 1}: Parcela inválida`);
+          continue;
+        }
       } catch (e) {
         console.log(`Erro ao converter valores na linha ${i + 1}:`, e.message);
+        errors.push(`Linha ${i + 1}: ${e.message}`);
+        continue;
       }
       
       items.push({
