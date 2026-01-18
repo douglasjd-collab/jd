@@ -45,11 +45,11 @@ Deno.serve(async (req) => {
       const valor = plano.valor_carta || 0;
       const prazo = plano.prazo;
 
-      // Verificar se está entre 25k e 50k e encontrar taxa apropriada
-      if (valor >= 25000 && valor <= 50000 && !plano.taxa_adm) {
+      // Verificar se está entre 25k e 50k e aplicar taxa apropriada (mesmo se já tiver taxa)
+      if (valor >= 25000 && valor <= 50000) {
         const taxa = taxasPorPrazo[prazo] || encontrarTaxaMaisPróxima(prazo);
         
-        if (taxa) {
+        if (taxa && (!plano.taxa_adm || plano.taxa_adm === 0)) {
           try {
             await base44.asServiceRole.entities.PlanoConsorcio.update(plano.id, {
               taxa_adm: taxa
