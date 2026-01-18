@@ -132,9 +132,9 @@ export default function IntegracaoCanopus() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['config-canopus'] });
-      setConfigOpen(false);
       toast.success('Configurações salvas com sucesso');
+      setConfigOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['config-canopus'] });
     },
     onError: () => {
       toast.error('Erro ao salvar configurações');
