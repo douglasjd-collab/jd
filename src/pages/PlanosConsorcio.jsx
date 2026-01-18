@@ -454,6 +454,19 @@ export default function PlanosConsorcio() {
         }}
       />
 
+      {/* Import Print Modal */}
+      <Dialog open={importPrintOpen} onOpenChange={setImportPrintOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Importar Planos com Print</DialogTitle>
+          </DialogHeader>
+          <ImportacaoPlanosPrint onSuccess={() => {
+            setImportPrintOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['planos-consorcio'] });
+          }} />
+        </DialogContent>
+      </Dialog>
+
       {/* Plans Detail Modal */}
       <Dialog open={!!modalGroupName} onOpenChange={() => {
         setModalGroupName(null);
