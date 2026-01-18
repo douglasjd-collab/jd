@@ -4,6 +4,7 @@ import Clientes from './pages/Clientes';
 import ComissaoPagar from './pages/ComissaoPagar';
 import Comissoes from './pages/Comissoes';
 import ComissoesPagar from './pages/ComissoesPagar';
+import ComissoesPagas from './pages/ComissoesPagas';
 import ComissoesRecebidas from './pages/ComissoesRecebidas';
 import ConfiguracaoFunil from './pages/ConfiguracaoFunil';
 import Configuracoes from './pages/Configuracoes';
@@ -29,7 +30,6 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import ComissoesPagas from './pages/ComissoesPagas';
 import __Layout from './Layout.jsx';
 
 
@@ -40,6 +40,7 @@ export const PAGES = {
     "ComissaoPagar": ComissaoPagar,
     "Comissoes": Comissoes,
     "ComissoesPagar": ComissoesPagar,
+    "ComissoesPagas": ComissoesPagas,
     "ComissoesRecebidas": ComissoesRecebidas,
     "ConfiguracaoFunil": ConfiguracaoFunil,
     "Configuracoes": Configuracoes,
@@ -65,7 +66,6 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "ComissoesPagas": ComissoesPagas,
 }
 
 export const pagesConfig = {
