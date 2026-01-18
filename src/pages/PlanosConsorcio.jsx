@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -46,7 +46,12 @@ export default function PlanosConsorcio() {
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [syncLoading, setSyncLoading] = useState(false);
+  const [user, setUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => setUser(null));
+  }, []);
 
   const { register, handleSubmit, setValue, watch, reset } = useForm();
 
@@ -138,7 +143,7 @@ export default function PlanosConsorcio() {
     setSyncLoading(true);
     try {
       const response = await base44.functions.invoke('syncPlanosCanopus', {
-        empresa_id: null
+        empresa_id: user?.empresa_id
       });
       
       toast.success(`Sincronização concluída: ${response.data.summary.successCount} criados, ${response.data.summary.updatedCount} atualizados`);
