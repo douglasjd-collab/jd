@@ -163,60 +163,15 @@ export default function Importacao() {
         const contrato = String(item.contrato || '').trim();
         const grupo = String(item.grupo || '').trim();
         const cota = String(item.cota || '').trim();
-        const numeroParcela = parseInt(item.parcela) || 1;
+        const parcelaInformada = parseInt(item.parcela) || null;
         const valorRecebido = parseFloat(item.valor) || 0;
         const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
 
-        // VALIDAÇÃO ANTI-DUPLICIDADE (bloquear import repetido)
-        // Verifica se já existe comissão com: contrato + grupo + cota + parcela
-        const comissoesExistentes = await base44.entities.Comissao.filter({
-          tipo_comissao: 'parcela'
-        });
-        
-        let jaImportado = false;
-        for (const comissao of comissoesExistentes) {
-          const vendaComissao = vendas.find(v => v.id === comissao.venda_id);
-          if (!vendaComissao) continue;
-          
-          // Verificar se já existe com o mesmo contrato+grupo+cota+parcela
-          const contratoMatch = vendaComissao.contrato === contrato;
-          const grupoMatch = vendaComissao.grupo === grupo;
-          const cotaMatch = vendaComissao.cota === cota;
-          
-          if (contratoMatch && grupoMatch && cotaMatch && comissao.parcela_id) {
-            const parcelaComissao = parcelas.find(p => p.id === comissao.parcela_id);
-            if (parcelaComissao && parcelaComissao.numero_parcela === numeroParcela) {
-              jaImportado = true;
-              break;
-            }
-          }
-        }
-
-        if (jaImportado) {
-          const itemImportacao = {
-            importacao_id: importacao.id,
-            linha: previewData.items.indexOf(item) + 1,
-            cpf: '',
-            contrato,
-            grupo,
-            cota,
-            parcela: numeroParcela,
-            valor_recebido: valorRecebido,
-            venda_id: null,
-            parcela_id: null,
-            status: 'divergencia',
-            motivo_divergencia: `Comissão já importada: contrato ${contrato}, grupo ${grupo}, cota ${cota}, parcela ${numeroParcela}`
-          };
-          itensParaCriar.push(itemImportacao);
-          divergencias++;
-          continue;
-        }
-
-        // NOVAS REGRAS DE IDENTIFICAÇÃO
         let vendaEncontrada = null;
         let motivoDivergencia = '';
 
-        // REGRA 1 - PRIORIDADE CONTRATO
+        // ===== IDENTIFICAÇÃO DA VENDA =====
+        // REGRA 1: Se CONTRATO preenchido -> buscar por (contrato + administradora)
         if (contrato) {
           const vendasMatch = vendas.filter(v => 
             v.contrato === contrato &&
@@ -231,7 +186,7 @@ export default function Importacao() {
             motivoDivergencia = 'Venda não encontrada para o contrato informado';
           }
         }
-        // REGRA 2 - PRIORIDADE GRUPO + COTA
+        // REGRA 2: Se GRUPO + COTA -> buscar por (grupo + cota + administradora)
         else if (grupo && cota) {
           const vendasMatch = vendas.filter(v => 
             String(v.grupo).trim() === grupo &&
@@ -244,36 +199,27 @@ export default function Importacao() {
           } else if (vendasMatch.length > 1) {
             motivoDivergencia = 'Múltiplas vendas encontradas para Grupo + Cota + Administradora';
           } else {
-            motivoDivergencia = 'Venda não encontrada para o Grupo e Cota informados';
+            motivoDivergencia = 'Venda não encontrada para Grupo + Cota informados';
           }
         }
-        // REGRA DE SEGURANÇA - Dados insuficientes
         else {
           motivoDivergencia = 'Dados insuficientes: informe Contrato OU (Grupo + Cota)';
         }
 
-        // Verificar parcela
-        let parcelaEncontrada = null;
+        // ===== VERIFICAÇÃO DE DUPLICIDADE =====
         if (vendaEncontrada) {
-          const parcelasVenda = parcelas.filter(p => 
-            p.venda_id === vendaEncontrada.id && 
-            p.numero_parcela === numeroParcela
-          );
-
-          if (parcelasVenda.length === 1) {
-            parcelaEncontrada = parcelasVenda[0];
-            
-            if (parcelaEncontrada.status === 'recebida') {
-              motivoDivergencia = 'Parcela já baixada anteriormente';
-              vendaEncontrada = null;
-            }
-          } else if (parcelasVenda.length === 0) {
-            motivoDivergencia = 'Parcela não encontrada';
+          const hashDuplicidade = `${vendaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
+          const recebimentosExistentes = await base44.entities.RecebimentoComissao.filter({
+            hash_duplicidade: hashDuplicidade
+          });
+          
+          if (recebimentosExistentes.length > 0) {
+            motivoDivergencia = 'Recebimento duplicado (já importado anteriormente)';
             vendaEncontrada = null;
           }
         }
 
-        // Criar item de importação
+        // ===== CRIAR ITEM DE IMPORTAÇÃO =====
         const itemImportacao = {
           importacao_id: importacao.id,
           linha: previewData.items.indexOf(item) + 1,
@@ -281,57 +227,58 @@ export default function Importacao() {
           contrato,
           grupo,
           cota,
-          parcela: numeroParcela,
+          parcela: parcelaInformada || 0,
           valor_recebido: valorRecebido,
           venda_id: vendaEncontrada?.id,
-          parcela_id: parcelaEncontrada?.id,
+          parcela_id: null,
           status: vendaEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
           motivo_divergencia: motivoDivergencia || null
         };
 
         itensParaCriar.push(itemImportacao);
 
+        // ===== PROCESSAR RECEBIMENTO (SEM EXIGIR PARCELA) =====
         if (vendaEncontrada && !motivoDivergencia) {
-          // Baixar parcela
-          await base44.entities.Parcela.update(parcelaEncontrada.id, {
-            status: 'recebida',
-            valor_recebido: valorRecebido,
+          const hashDuplicidade = `${vendaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
+          
+          // Buscar configuração de percentual (padrão: 100% se não configurado)
+          const configVendedor = await base44.entities.ConfiguracaoComissao.filter({ 
+            tipo: 'vendedor', 
+            status: 'ativo' 
+          });
+          const percentualPadrao = configVendedor.length > 0 ? configVendedor[0].percentual : 100;
+          const valorAPagar = valorRecebido * (percentualPadrao / 100);
+
+          // Criar RecebimentoComissao
+          await base44.entities.RecebimentoComissao.create({
+            empresa_id: vendaEncontrada.empresa_id,
+            venda_id: vendaEncontrada.id,
+            cliente_id: vendaEncontrada.cliente_id,
+            cliente_nome: vendaEncontrada.cliente_nome,
+            vendedor_id: vendaEncontrada.vendedor_id,
+            vendedor_nome: vendaEncontrada.vendedor_nome,
+            administradora_id: selectedAdmin,
+            administradora_nome: admin.nome_fantasia || admin.razao_social,
+            grupo: vendaEncontrada.grupo,
+            cota: vendaEncontrada.cota,
+            contrato: vendaEncontrada.contrato,
             data_recebimento: dataRecebimento,
-            importacao_id: importacao.id
+            valor_recebido: valorRecebido,
+            parcela_informada: parcelaInformada,
+            origem_importacao_id: importacao.id,
+            linha_importacao: previewData.items.indexOf(item) + 1,
+            hash_duplicidade: hashDuplicidade,
+            percentual_comissao: percentualPadrao,
+            valor_a_pagar: valorAPagar,
+            status_recebimento: 'recebida',
+            status_pagamento: 'a_pagar'
           });
 
-          // Atualizar comissão recebida na venda
+          // Atualizar comissão total recebida na venda
           const novoValorRecebido = (vendaEncontrada.comissao_total_recebida || 0) + valorRecebido;
           await base44.entities.Venda.update(vendaEncontrada.id, {
             comissao_total_recebida: novoValorRecebido
           });
-
-          // GERAR COMISSÃO PARA O VENDEDOR (adiciona ao saldo)
-          if (vendaEncontrada.vendedor_id) {
-            // Buscar vendedor
-            const vendedores = await base44.entities.User.filter({ id: vendaEncontrada.vendedor_id });
-            if (vendedores.length > 0) {
-              const vendedor = vendedores[0];
-              const novoSaldo = (vendedor.saldo_comissao || 0) + valorRecebido;
-              
-              // Atualizar saldo do vendedor
-              await base44.entities.User.update(vendedor.id, {
-                saldo_comissao: novoSaldo
-              });
-
-              // Criar registro de comissão
-              await base44.entities.Comissao.create({
-                venda_id: vendaEncontrada.id,
-                parcela_id: parcelaEncontrada.id,
-                usuario_id: vendedor.id,
-                usuario_nome: vendedor.full_name,
-                usuario_perfil: vendedor.perfil,
-                tipo: 'receber',
-                valor: valorRecebido,
-                status: 'confirmada'
-              });
-            }
-          }
 
           processados++;
           valorTotal += valorRecebido;
@@ -595,15 +542,18 @@ export default function Importacao() {
               <CardContent className="p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div className="text-sm text-amber-800">
-                <p className="font-medium">Regras de identificação:</p>
+                <p className="font-medium">Nova Lógica - Recebimento SEM depender de parcela:</p>
                 <ol className="list-decimal ml-4 mt-2 space-y-1">
-                  <li><strong>Se Contrato informado:</strong> Busca por Contrato + Administradora (Grupo e Cota não obrigatórios)</li>
-                  <li><strong>Se Grupo e Cota informados:</strong> Busca por Grupo + Cota + Administradora (Contrato não obrigatório)</li>
+                  <li><strong>Identificação:</strong> Contrato OU (Grupo + Cota) + Administradora</li>
+                  <li><strong>Duplicidade:</strong> Verifica venda + data + valor (não permite reimportar)</li>
+                  <li><strong>Recebimento:</strong> Cria registro mesmo sem parcela cadastrada</li>
+                  <li><strong>Disponível:</strong> Entra em "Comissões a Pagar" (percentual editável)</li>
                 </ol>
                 <p className="mt-2 font-medium">⚠️ Divergências:</p>
                 <ul className="list-disc ml-4 mt-1 space-y-1">
                   <li>Múltiplas vendas encontradas</li>
-                  <li>Parcela já baixada</li>
+                  <li>Venda não encontrada</li>
+                  <li>Recebimento duplicado</li>
                   <li>Dados insuficientes</li>
                 </ul>
                 </div>
