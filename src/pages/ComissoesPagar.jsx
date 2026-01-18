@@ -131,18 +131,115 @@ export default function ComissoesPagar() {
   });
 
   const pagarMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
-      return await base44.entities.ComissaoAPagar.update(id, data);
+    mutationFn: async ({ id, data, valorCarta }) => {
+      // Atualizar status de pagamento
+      const result = await base44.entities.ComissaoAPagar.update(id, data);
+      
+      // Gerar relatório
+      await gerarRelatorio(id, valorCarta);
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['comissoes-a-pagar']);
-      toast.success('Comissão paga com sucesso!');
+      toast.success('Comissão paga com sucesso! Relatório gerado.');
       setPagarModal(false);
       setSelectedComissao(null);
       setFormaPagamento('PIX');
       setObservacao('');
     },
   });
+
+  const gerarRelatorio = async (comissaoId, valorCarta) => {
+    try {
+      const comissoes = await base44.entities.ComissaoAPagar.filter({ id: comissaoId });
+      if (comissoes.length === 0) return;
+      
+      const comissao = comissoes[0];
+      
+      // Criar HTML do relatório
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Relatório de Pagamento de Comissão</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { color: #10353C; margin-bottom: 5px; }
+            .info { margin-bottom: 20px; }
+            .info-item { margin: 5px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #10353C; color: white; }
+            .total { font-weight: bold; background-color: #f0f0f0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Relatório de Pagamento de Comissão</h1>
+          </div>
+          
+          <div class="info">
+            <div class="info-item"><strong>Vendedor:</strong> ${comissao.vendedor_nome}</div>
+            <div class="info-item"><strong>Data do Pagamento:</strong> ${moment(comissao.data_pagamento).format('DD/MM/YYYY')}</div>
+            <div class="info-item"><strong>Forma de Pagamento:</strong> ${comissao.forma_pagamento}</div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Administradora</th>
+                <th>Grupo/Cota</th>
+                <th>Parcela</th>
+                <th>Valor da Carta</th>
+                <th>Data Rec.</th>
+                <th>Valor Recebido</th>
+                <th>%</th>
+                <th>Valor Pago</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${comissao.cliente_nome || '-'}</td>
+                <td>${comissao.administradora_nome || '-'}</td>
+                <td>${comissao.grupo && comissao.cota ? `${comissao.grupo}/${comissao.cota}` : comissao.contrato || '-'}</td>
+                <td>${comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}</td>
+                <td>${valorCarta ? valorCarta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Valor da Carta não informado'}</td>
+                <td>${comissao.data_recebimento ? moment(comissao.data_recebimento).format('DD/MM/YYYY') : '-'}</td>
+                <td>${(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>${comissao.percentual_comissao}%</td>
+                <td>${(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+              </tr>
+              <tr class="total">
+                <td colspan="8" style="text-align: right;"><strong>Total Pago:</strong></td>
+                <td><strong>${(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+          
+          ${comissao.observacao ? `<div class="info"><strong>Observação:</strong> ${comissao.observacao}</div>` : ''}
+          
+          <div class="footer">
+            Gerado automaticamente pelo sistema em ${moment().format('DD/MM/YYYY HH:mm')}
+          </div>
+        </body>
+        </html>
+      `;
+      
+      // Abrir relatório em nova janela
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      }
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+    }
+  };
 
   const handleVerRecebimento = async (comissao) => {
     if (comissao.recebimento_id) {
@@ -189,8 +286,22 @@ export default function ComissoesPagar() {
     }
   };
 
-  const handlePagar = () => {
+  const handlePagar = async () => {
     if (!selectedComissao) return;
+    
+    // Buscar valor_carta da venda
+    let valorCarta = null;
+    if (selectedComissao.venda_id) {
+      try {
+        const vendas = await base44.entities.Venda.filter({ id: selectedComissao.venda_id });
+        if (vendas.length > 0) {
+          valorCarta = vendas[0].valorCredito || null;
+        }
+      } catch (error) {
+        console.error('Erro ao buscar valor da carta:', error);
+      }
+    }
+    
     pagarMutation.mutate({
       id: selectedComissao.id,
       data: {
@@ -199,6 +310,7 @@ export default function ComissoesPagar() {
         forma_pagamento: formaPagamento,
         observacao: observacao,
       },
+      valorCarta,
     });
   };
 
@@ -336,6 +448,7 @@ export default function ComissoesPagar() {
                 <th className="text-left p-4 font-semibold text-slate-700">Cliente</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Grupo/Cota</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Parcela</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Valor da Carta</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Data Rec.</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Valor Recebido</th>
                 <th className="text-left p-4 font-semibold text-slate-700">% Comissão</th>
@@ -347,32 +460,50 @@ export default function ComissoesPagar() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="p-8 text-center text-slate-500">
+                  <td colSpan={11} className="p-8 text-center text-slate-500">
                     Carregando...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-8 text-center text-slate-500">
+                  <td colSpan={11} className="p-8 text-center text-slate-500">
                     Nenhuma comissão encontrada
                   </td>
                 </tr>
               ) : (
-                filtered.map((comissao) => (
-                  <tr key={comissao.id} className="border-b hover:bg-slate-50">
-                    <td className="p-4">{comissao.vendedor_nome}</td>
-                    <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
-                    <td className="p-4 text-sm">
-                      {comissao.grupo && comissao.cota ? `${comissao.grupo}/${comissao.cota}` : comissao.contrato || '-'}
-                    </td>
-                    <td className="p-4 text-sm">
-                      {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
-                    </td>
-                    <td className="p-4 text-sm">
-                      {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
-                        ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
-                        : '-'}
-                    </td>
+                filtered.map((comissao) => {
+                  const [valorCarta, setValorCarta] = React.useState(null);
+                  
+                  React.useEffect(() => {
+                    if (comissao.venda_id) {
+                      base44.entities.Venda.filter({ id: comissao.venda_id })
+                        .then(vendas => {
+                          if (vendas.length > 0) {
+                            setValorCarta(vendas[0].valorCredito);
+                          }
+                        })
+                        .catch(() => setValorCarta(null));
+                    }
+                  }, [comissao.venda_id]);
+                  
+                  return (
+                    <tr key={comissao.id} className="border-b hover:bg-slate-50">
+                      <td className="p-4">{comissao.vendedor_nome}</td>
+                      <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
+                      <td className="p-4 text-sm">
+                        {comissao.grupo && comissao.cota ? `${comissao.grupo}/${comissao.cota}` : comissao.contrato || '-'}
+                      </td>
+                      <td className="p-4 text-sm">
+                        {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
+                      </td>
+                      <td className="p-4 text-sm text-purple-600 font-medium">
+                        {valorCarta ? valorCarta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                      </td>
+                      <td className="p-4 text-sm">
+                        {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
+                          ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
+                          : '-'}
+                      </td>
                     <td className="p-4 font-semibold text-blue-600">
                       {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
@@ -448,7 +579,8 @@ export default function ComissoesPagar() {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
