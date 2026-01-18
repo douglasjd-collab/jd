@@ -31,36 +31,36 @@ export default function ComissoesRecebidas() {
     }
   };
 
-  const { data: comissoes = [], isLoading } = useQuery({
-    queryKey: ['comissoes-recebidas'],
+  const { data: recebimentos = [], isLoading } = useQuery({
+    queryKey: ['recebimentos-comissao'],
     queryFn: async () => {
-      const filter = { tipo_comissao: 'parcela', tipo: 'pagar', status: 'paga' };
-      return await base44.entities.Comissao.filter(filter);
+      return await base44.entities.RecebimentoComissao.filter({ status_recebimento: 'recebida' });
     },
     enabled: !!user,
   });
 
-  const filtered = comissoes.filter((c) => {
-    if (user?.perfil === 'vendedor' && c.usuario_id !== user?.id) {
+  const filtered = recebimentos.filter((r) => {
+    if (user?.perfil === 'vendedor' && r.vendedor_id !== user?.id) {
       return false;
     }
 
-    if (mesFilter !== 'todos' && c.data_pagamento) {
-      const mes = moment(c.data_pagamento).format('YYYY-MM');
+    if (mesFilter !== 'todos' && r.data_recebimento) {
+      const mes = moment(r.data_recebimento).format('YYYY-MM');
       if (mes !== mesFilter) return false;
     }
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      return c.usuario_nome?.toLowerCase().includes(term);
+      return r.vendedor_nome?.toLowerCase().includes(term) || 
+             r.cliente_nome?.toLowerCase().includes(term);
     }
     return true;
   });
 
-  const totalRecebido = filtered.reduce((acc, c) => acc + (c.valor || 0), 0);
+  const totalRecebido = filtered.reduce((acc, r) => acc + (r.valor_recebido || 0), 0);
 
-  const mesesDisponiveis = [...new Set(comissoes.map((c) => 
-    c.data_pagamento ? moment(c.data_pagamento).format('YYYY-MM') : null
+  const mesesDisponiveis = [...new Set(recebimentos.map((r) => 
+    r.data_recebimento ? moment(r.data_recebimento).format('YYYY-MM') : null
   ).filter(Boolean))].sort().reverse();
 
   if (!user) {
@@ -121,40 +121,44 @@ export default function ComissoesRecebidas() {
           <table className="w-full">
             <thead className="bg-slate-50 border-b">
               <tr>
+                <th className="text-left p-4 font-semibold text-slate-700">Data Recebimento</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Cliente</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Vendedor</th>
-                <th className="text-left p-4 font-semibold text-slate-700">Valor</th>
-                <th className="text-left p-4 font-semibold text-slate-700">Data Pagamento</th>
-                <th className="text-left p-4 font-semibold text-slate-700">Forma Pagamento</th>
-                <th className="text-left p-4 font-semibold text-slate-700">Observação</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Grupo/Cota</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Valor Recebido</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Administradora</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                  <td colSpan={6} className="p-8 text-center text-slate-500">
                     Carregando...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">
+                  <td colSpan={6} className="p-8 text-center text-slate-500">
                     Nenhuma comissão recebida encontrada
                   </td>
                 </tr>
               ) : (
-                filtered.map((comissao) => (
-                  <tr key={comissao.id} className="border-b hover:bg-slate-50">
-                    <td className="p-4">{comissao.usuario_nome}</td>
+                filtered.map((recebimento) => (
+                  <tr key={recebimento.id} className="border-b hover:bg-slate-50">
+                    <td className="p-4">
+                      {recebimento.data_recebimento ? moment(recebimento.data_recebimento).format('DD/MM/YYYY') : '-'}
+                    </td>
+                    <td className="p-4">{recebimento.cliente_nome || '-'}</td>
+                    <td className="p-4">{recebimento.vendedor_nome || '-'}</td>
+                    <td className="p-4">
+                      {recebimento.grupo && recebimento.cota ? `${recebimento.grupo}/${recebimento.cota}` : recebimento.contrato || '-'}
+                    </td>
                     <td className="p-4 font-semibold text-green-600">
-                      {(comissao.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {(recebimento.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
                     <td className="p-4">
-                      {comissao.data_pagamento ? moment(comissao.data_pagamento).format('DD/MM/YYYY') : '-'}
+                      <Badge variant="outline">{recebimento.administradora_nome || '-'}</Badge>
                     </td>
-                    <td className="p-4">
-                      <Badge variant="outline">{comissao.forma_pagamento || '-'}</Badge>
-                    </td>
-                    <td className="p-4 text-sm text-slate-600">{comissao.observacoes || '-'}</td>
                   </tr>
                 ))
               )}
