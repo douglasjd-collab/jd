@@ -500,6 +500,19 @@ export default function Usuarios() {
         currentUser={currentUser}
         inviteSuccess={inviteSuccess}
       />
+
+      {/* Vincular Modal */}
+      <VincularUsuarioModal
+        open={vincularOpen}
+        onOpenChange={setVincularOpen}
+        usuario={usuarioToVincular}
+        empresas={empresas}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+          setVincularOpen(false);
+          setUsuarioToVincular(null);
+        }}
+      />
     </div>
   );
 }
