@@ -379,29 +379,37 @@ export default function ComissoesPagar() {
                     <td className="p-4">
                       {editingId === comissao.id ? (
                         <div className="flex flex-col gap-1">
-                          <Input
-                            type="number"
-                            value={editingValue}
-                            onChange={(e) => setEditingValue(e.target.value)}
-                            onBlur={() => saveEditing(comissao.id)}
-                            onKeyDown={(e) => handleKeyDown(e, comissao.id)}
-                            autoFocus
-                            onFocus={(e) => e.target.select()}
-                            className="w-20 h-8 text-sm"
-                            min="0"
-                            max="100"
-                          />
+                          <div className={`inline-flex items-center bg-white rounded-md border ${editingError ? 'border-red-500' : 'border-slate-300'} px-2 py-1`}>
+                            <Input
+                              type="number"
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              onBlur={() => saveEditing(comissao.id)}
+                              onKeyDown={(e) => handleKeyDown(e, comissao.id)}
+                              autoFocus
+                              onFocus={(e) => e.target.select()}
+                              className="w-12 h-6 text-sm border-0 p-0 focus-visible:ring-0"
+                              min="0"
+                              max="100"
+                            />
+                            <span className="text-sm font-medium text-slate-600 ml-1">%</span>
+                          </div>
                           {editingError && (
                             <span className="text-xs text-red-600">{editingError}</span>
                           )}
                         </div>
                       ) : (
-                        <span 
-                          className={`font-medium ${comissao.status_pagamento === 'a_pagar' && isAdmin ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
+                        <div 
+                          className={`inline-flex items-center rounded-md border px-2 py-1 min-w-[60px] ${
+                            comissao.status_pagamento === 'a_pagar' && isAdmin
+                              ? 'bg-white border-slate-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors'
+                              : 'bg-slate-100 border-slate-200 cursor-default'
+                          }`}
                           onClick={() => comissao.status_pagamento === 'a_pagar' && isAdmin && startEditing(comissao)}
+                          title={comissao.status_pagamento === 'a_pagar' && isAdmin ? 'Clique para editar o percentual de comissão' : ''}
                         >
-                          {comissao.percentual_comissao || 0}%
-                        </span>
+                          <span className="font-medium text-sm">{comissao.percentual_comissao || 0}%</span>
+                        </div>
                       )}
                     </td>
                     <td className="p-4 font-bold text-green-600">
