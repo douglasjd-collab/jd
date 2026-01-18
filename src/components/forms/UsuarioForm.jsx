@@ -195,6 +195,18 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
             </div>
             
             <div className="col-span-2">
+              <Label htmlFor="usuario_canopus">Usuário Canopus</Label>
+              <Input
+                id="usuario_canopus"
+                {...register('usuario_canopus')}
+                placeholder="Ex: 0000022393"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Código do usuário no sistema Canopus para sincronização de propostas
+              </p>
+            </div>
+            
+            <div className="col-span-2">
               <Label htmlFor="codigo_vendedor">Código Vendedor</Label>
               <Input
                 id="codigo_vendedor"
