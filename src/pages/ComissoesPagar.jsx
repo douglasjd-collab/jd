@@ -17,20 +17,6 @@ import moment from 'moment';
 
 // Componente separado para cada linha da tabela
 function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerRecebimento, editingId, editingValue, editingError, onStartEditing, onSaveEditing, onKeyDown, onEditingValueChange }) {
-  const [valorCarta, setValorCarta] = useState(null);
-  
-  useEffect(() => {
-    if (comissao.venda_id) {
-      base44.entities.Venda.filter({ id: comissao.venda_id })
-        .then(vendas => {
-          if (vendas.length > 0) {
-            setValorCarta(vendas[0].valorCredito);
-          }
-        })
-        .catch(() => setValorCarta(null));
-    }
-  }, [comissao.venda_id]);
-  
   const isPagar = comissao.status_pagamento === 'a_pagar';
   
   return (
@@ -45,24 +31,23 @@ function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerReceb
           <div className="w-4" />
         )}
       </td>
+      <td className="p-4 text-sm">
+        {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
+          ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
+          : '-'}
+      </td>
       <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
+      <td className="p-4 text-sm">{comissao.vendedor_nome || '-'}</td>
       <td className="p-4 text-sm">
         {comissao.grupo && comissao.cota ? `${comissao.grupo}/${comissao.cota}` : comissao.contrato || '-'}
       </td>
       <td className="p-4 text-sm">
         {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
       </td>
-      <td className="p-4 text-sm text-purple-600 font-medium">
-        {valorCarta ? valorCarta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-      </td>
-      <td className="p-4 text-sm">
-        {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
-          ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
-          : '-'}
-      </td>
-      <td className="p-4 font-semibold text-blue-600">
+      <td className="p-4 font-semibold text-green-600">
         {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
       </td>
+      <td className="p-4 text-sm">{comissao.administradora_nome || '-'}</td>
       <td className="p-4">
         {editingId === comissao.id ? (
           <div className="flex flex-col gap-1">
@@ -99,7 +84,7 @@ function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerReceb
           </div>
         )}
       </td>
-      <td className="p-4 font-bold text-green-600">
+      <td className="p-4 font-bold text-blue-600">
         {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
       </td>
       <td className="p-4">
@@ -706,12 +691,13 @@ export default function ComissoesPagar() {
                         />
                       )}
                     </th>
+                    <th className="text-left p-4 font-semibold text-slate-700">Data Recebimento</th>
                     <th className="text-left p-4 font-semibold text-slate-700">Cliente</th>
+                    <th className="text-left p-4 font-semibold text-slate-700">Vendedor</th>
                     <th className="text-left p-4 font-semibold text-slate-700">Grupo/Cota</th>
                     <th className="text-left p-4 font-semibold text-slate-700">Parcela</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Valor da Carta</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Data Rec.</th>
                     <th className="text-left p-4 font-semibold text-slate-700">Valor Recebido</th>
+                    <th className="text-left p-4 font-semibold text-slate-700">Administradora</th>
                     <th className="text-left p-4 font-semibold text-slate-700">% Comissão</th>
                     <th className="text-left p-4 font-semibold text-slate-700">Valor a Pagar</th>
                     <th className="text-left p-4 font-semibold text-slate-700">Status</th>
@@ -721,13 +707,13 @@ export default function ComissoesPagar() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={11} className="p-8 text-center text-slate-500">
+                      <td colSpan={12} className="p-8 text-center text-slate-500">
                         Carregando...
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="p-8 text-center text-slate-500">
+                      <td colSpan={12} className="p-8 text-center text-slate-500">
                         Nenhuma comissão encontrada
                       </td>
                     </tr>
