@@ -125,6 +125,7 @@ export default function ComissoesRecebidas() {
                 <th className="text-left p-4 font-semibold text-slate-700">Cliente</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Vendedor</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Grupo/Cota</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Parcela</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Valor Recebido</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Administradora</th>
               </tr>
@@ -132,13 +133,13 @@ export default function ComissoesRecebidas() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
                     Carregando...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={7} className="p-8 text-center text-slate-500">
                     Nenhuma comissão recebida encontrada
                   </td>
                 </tr>
@@ -156,6 +157,9 @@ export default function ComissoesRecebidas() {
                       <td className="p-4">{recebimento.vendedor_nome || '-'}</td>
                       <td className="p-4">
                         {recebimento.grupo && recebimento.cota ? `${recebimento.grupo}/${recebimento.cota}` : recebimento.contrato || '-'}
+                      </td>
+                      <td className="p-4">
+                        {recebimento.parcela_informada ? `${recebimento.parcela_informada}º` : '-'}
                       </td>
                       <td className="p-4 font-semibold text-green-600">
                         {(recebimento.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
