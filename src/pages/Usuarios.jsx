@@ -380,6 +380,15 @@ export default function Usuarios() {
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => {
+                setUsuarioToVincular(row);
+                setVincularOpen(true);
+              }}
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Vincular a Empresa
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => {
                 if (confirm(`Tem certeza que deseja excluir o usuário "${row.nome}"?`)) {
                   deleteMutation.mutate(row.id);
                 }
