@@ -499,6 +499,7 @@ export default function PlanosConsorcio() {
                 className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                   selectedModalPlano?.id === item.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'
                 }`}
+                onClick={() => setSelectedModalPlano(item)}
               >
                 <input
                   type="radio"
@@ -506,6 +507,7 @@ export default function PlanosConsorcio() {
                   checked={selectedModalPlano?.id === item.id}
                   onChange={() => setSelectedModalPlano(item)}
                   className="w-4 h-4 cursor-pointer accent-blue-600"
+                  onClick={(e) => e.stopPropagation()}
                 />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-900">
