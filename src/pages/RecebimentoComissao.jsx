@@ -1769,6 +1769,92 @@ export default function RecebimentoComissao() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir comissão?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação é permanente e não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {comissaoParaExcluir && (
+            <div className="my-4 p-4 bg-slate-50 rounded-lg space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Venda:</span>
+                <span className="font-medium">{getVendaInfo(comissaoParaExcluir.venda_id)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Administradora:</span>
+                <span className="font-medium">{getAdminNome(comissaoParaExcluir.administradora_id)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Vendedor:</span>
+                <span className="font-medium">{comissaoParaExcluir.vendedor_nome}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Parcela:</span>
+                <span className="font-medium">{comissaoParaExcluir.parcela}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-slate-600">Grupo / Cota:</span>
+                <span className="font-medium">
+                  {vendas.find(v => v.id === comissaoParaExcluir.venda_id)?.grupo || '-'} / 
+                  {vendas.find(v => v.id === comissaoParaExcluir.venda_id)?.cota || '-'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Contrato:</span>
+                <span className="font-medium">
+                  {vendas.find(v => v.id === comissaoParaExcluir.venda_id)?.contrato || '-'}
+                </span>
+              </div>
+              {comissaoParaExcluir.recebido && (
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-blue-700">Valor Recebido ADM:</span>
+                  <span className="font-bold text-blue-700">{formatCurrency(comissaoParaExcluir.recebido.valor)}</span>
+                </div>
+              )}
+              {comissaoParaExcluir.pagar && (
+                <div className="flex justify-between">
+                  <span className="text-emerald-700">Valor a Pagar Vendedor:</span>
+                  <span className="font-bold text-emerald-700">{formatCurrency(comissaoParaExcluir.pagar.valor)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-slate-600">Data:</span>
+                <span className="font-medium">{format(new Date(comissaoParaExcluir.data), 'dd/MM/yyyy')}</span>
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluirComissaoMutation.isPending}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (comissaoParaExcluir) {
+                  excluirComissaoMutation.mutate({
+                    recebidoId: comissaoParaExcluir.recebido?.id,
+                    pagarId: comissaoParaExcluir.pagar?.id,
+                    vendaId: comissaoParaExcluir.venda_id
+                  });
+                }
+              }}
+              disabled={excluirComissaoMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {excluirComissaoMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Modal de Pagamento em Lote */}
       <Dialog open={pagarFormOpen} onOpenChange={setPagarFormOpen}>
         <DialogContent className="max-w-lg">
