@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { DollarSign, TrendingUp, TrendingDown, Wallet, FileText } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Wallet, FileText, AlertCircle } from 'lucide-react';
 import moment from 'moment';
 
 export default function RelatoriosFinanceiros() {
@@ -32,10 +32,29 @@ export default function RelatoriosFinanceiros() {
     }
   };
 
-  const { data: comissoes = [] } = useQuery({
-    queryKey: ['comissoes-relatorio'],
+  // Buscar Comissões Recebidas
+  const { data: comissoesRecebidas = [] } = useQuery({
+    queryKey: ['comissoes-recebidas-relatorio'],
     queryFn: async () => {
-      return await base44.entities.Comissao.filter({ tipo_comissao: 'parcela' });
+      return await base44.entities.RecebimentoComissao.filter({});
+    },
+    enabled: !!user,
+  });
+
+  // Buscar Comissões a Pagar
+  const { data: comissoesAPagar = [] } = useQuery({
+    queryKey: ['comissoes-a-pagar-relatorio'],
+    queryFn: async () => {
+      return await base44.entities.ComissaoAPagar.filter({});
+    },
+    enabled: !!user,
+  });
+
+  // Buscar Comissões Pagas
+  const { data: comissoesPagasLote = [] } = useQuery({
+    queryKey: ['pagamentos-comissao-lote-relatorio'],
+    queryFn: async () => {
+      return await base44.entities.PagamentoComissaoLote.filter({});
     },
     enabled: !!user,
   });
@@ -63,35 +82,39 @@ export default function RelatoriosFinanceiros() {
     return itemDate.isBetween(dataInicio, dataFim, 'day', '[]');
   };
 
-  // Comissões recebidas (status: confirmada ou paga, tipo: receber)
-  const comissoesRecebidas = comissoes.filter(
-    (c) =>
-      c.tipo === 'receber' &&
-      (c.status === 'confirmada' || c.status === 'paga') &&
-      filterByPeriod(c, 'data_recebimento')
-  );
+  // Converter string para number se necessário
+  const toNumber = (value) => {
+    if (typeof value === 'string') {
+      const num = parseFloat(value);
+      return isNaN(num) ? 0 : num;
+    }
+    return value || 0;
+  };
 
-  // Comissões pagas (status: paga, tipo: pagar)
-  const comissoesPagas = comissoes.filter(
-    (c) => c.tipo === 'pagar' && c.status === 'paga' && filterByPeriod(c, 'data_pagamento')
-  );
+  // Comissões Recebidas (filtrar por data_recebimento)
+  const comissoesRecebdasPeriodo = comissoesRecebidas.filter((c) => filterByPeriod(c, 'data_recebimento'));
+  const totalComissoesRecebidas = comissoesRecebdasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
+  const recebidas_count = comissoesRecebdasPeriodo.length;
 
-  // Comissões a pagar (status: prevista ou confirmada, tipo: pagar)
-  const comissoesAPagar = comissoes.filter(
-    (c) =>
-      c.tipo === 'pagar' &&
-      (c.status === 'prevista' || c.status === 'confirmada') &&
-      filterByPeriod(c, 'data_recebimento')
-  );
+  // Comissões a Pagar (filtrar por data_recebimento - quando a comissão foi recebida)
+  const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => c.status_pagamento === 'a_pagar' && filterByPeriod(c, 'data_recebimento'));
+  const totalComissoesAPagar = comissoesAPagarPeriodo.reduce((acc, c) => acc + toNumber(c.valor_a_pagar), 0);
+  const a_pagar_count = comissoesAPagarPeriodo.length;
 
+  // Comissões Pagas (filtrar por data_pagamento)
+  const comissoesPagasPeriodo = comissoesAPagar.filter((c) => c.status_pagamento === 'paga' && filterByPeriod(c, 'data_pagamento'));
+  const totalComissoesPagas = comissoesPagasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_a_pagar), 0);
+  const pagas_count = comissoesPagasPeriodo.length;
+
+  // Receitas (filtrar por data)
   const receitasPeriodo = receitas.filter((r) => filterByPeriod(r, 'data'));
-  const despesasPeriodo = despesas.filter((d) => filterByPeriod(d, 'data'));
+  const totalReceitas = receitasPeriodo.reduce((acc, r) => acc + toNumber(r.valor), 0);
+  const receitas_count = receitasPeriodo.length;
 
-  const totalComissoesRecebidas = comissoesRecebidas.reduce((acc, c) => acc + (c.valor || 0), 0);
-  const totalComissoesPagas = comissoesPagas.reduce((acc, c) => acc + (c.valor || 0), 0);
-  const totalComissoesAPagar = comissoesAPagar.reduce((acc, c) => acc + (c.valor || 0), 0);
-  const totalReceitas = receitasPeriodo.reduce((acc, r) => acc + (r.valor || 0), 0);
-  const totalDespesas = despesasPeriodo.reduce((acc, d) => acc + (d.valor || 0), 0);
+  // Despesas (filtrar por data)
+  const despesasPeriodo = despesas.filter((d) => filterByPeriod(d, 'data'));
+  const totalDespesas = despesasPeriodo.reduce((acc, d) => acc + toNumber(d.valor), 0);
+  const despesas_count = despesasPeriodo.length;
 
   // Resultado Final = (Comissões Recebidas + Receitas) - (Comissões Pagas + Despesas)
   const resultadoFinal = totalComissoesRecebidas + totalReceitas - (totalComissoesPagas + totalDespesas);
@@ -253,7 +276,7 @@ export default function RelatoriosFinanceiros() {
             {['Bônus', 'Repasse', 'Ajuste', 'Outros'].map((cat) => {
               const total = receitasPeriodo
                 .filter((r) => r.categoria === cat)
-                .reduce((acc, r) => acc + (r.valor || 0), 0);
+                .reduce((acc, r) => acc + toNumber(r.valor), 0);
               if (total === 0) return null;
               return (
                 <div key={cat} className="flex justify-between py-2 border-b last:border-0">
@@ -286,7 +309,7 @@ export default function RelatoriosFinanceiros() {
             ].map((cat) => {
               const total = despesasPeriodo
                 .filter((d) => d.categoria === cat)
-                .reduce((acc, d) => acc + (d.valor || 0), 0);
+                .reduce((acc, d) => acc + toNumber(d.valor), 0);
               if (total === 0) return null;
               return (
                 <div key={cat} className="flex justify-between py-2 border-b last:border-0">
@@ -300,6 +323,40 @@ export default function RelatoriosFinanceiros() {
           </div>
         </Card>
       </div>
-    </div>
-  );
-}
+
+      {/* Diagnóstico (somente ADM) */}
+      {user?.perfil === 'super_admin' && (
+        <Card className="p-6 mt-6 bg-amber-50 border-amber-200">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900 mb-3">Diagnóstico (ADM)</h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <div>
+                  <p className="text-amber-700">Recebidas</p>
+                  <p className="font-bold text-lg text-amber-900">{recebidas_count}</p>
+                </div>
+                <div>
+                  <p className="text-amber-700">A Pagar</p>
+                  <p className="font-bold text-lg text-amber-900">{a_pagar_count}</p>
+                </div>
+                <div>
+                  <p className="text-amber-700">Pagas</p>
+                  <p className="font-bold text-lg text-amber-900">{pagas_count}</p>
+                </div>
+                <div>
+                  <p className="text-amber-700">Receitas</p>
+                  <p className="font-bold text-lg text-amber-900">{receitas_count}</p>
+                </div>
+                <div>
+                  <p className="text-amber-700">Despesas</p>
+                  <p className="font-bold text-lg text-amber-900">{despesas_count}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+      </div>
+      );
+      }
