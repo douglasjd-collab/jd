@@ -87,6 +87,7 @@ export default function RecebimentoComissao() {
   };
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'admin';
+  const podeExcluir = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin' || currentUser?.perfil === 'gerente';
 
   // Buscar comissões previstas
   const { data: comissoes = [], isLoading } = useQuery({
