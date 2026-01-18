@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Search, DollarSign, CheckCircle2, Eye, Edit2 } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 
@@ -25,6 +25,9 @@ export default function ComissoesPagar() {
   const [recebimentoDetalhes, setRecebimentoDetalhes] = useState(null);
   const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [observacao, setObservacao] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [editingError, setEditingError] = useState('');
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -155,15 +158,34 @@ export default function ComissoesPagar() {
     }
   };
 
-  const handleEditPercentual = (comissao) => {
-    const novoPercentual = prompt(`Percentual atual: ${comissao.percentual_comissao}%\n\nDigite o novo percentual (0-100):`, comissao.percentual_comissao);
-    if (novoPercentual !== null) {
-      const percentual = parseFloat(novoPercentual);
-      if (percentual >= 0 && percentual <= 100) {
-        updatePercentualMutation.mutate({ id: comissao.id, percentual });
-      } else {
-        toast.error('Percentual deve ser entre 0 e 100');
-      }
+  const startEditing = (comissao) => {
+    setEditingId(comissao.id);
+    setEditingValue(String(comissao.percentual_comissao || 0));
+    setEditingError('');
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditingValue('');
+    setEditingError('');
+  };
+
+  const saveEditing = (comissaoId) => {
+    const percentual = parseFloat(editingValue);
+    if (isNaN(percentual) || percentual < 0 || percentual > 100) {
+      setEditingError('Percentual inválido (0–100)');
+      return;
+    }
+    updatePercentualMutation.mutate({ id: comissaoId, percentual });
+    cancelEditing();
+  };
+
+  const handleKeyDown = (e, comissaoId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEditing(comissaoId);
+    } else if (e.key === 'Escape') {
+      cancelEditing();
     }
   };
 
@@ -355,19 +377,32 @@ export default function ComissoesPagar() {
                       {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{comissao.percentual_comissao || 0}%</span>
-                        {comissao.status_pagamento === 'a_pagar' && isAdmin && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEditPercentual(comissao)}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
+                      {editingId === comissao.id ? (
+                        <div className="flex flex-col gap-1">
+                          <Input
+                            type="number"
+                            value={editingValue}
+                            onChange={(e) => setEditingValue(e.target.value)}
+                            onBlur={() => saveEditing(comissao.id)}
+                            onKeyDown={(e) => handleKeyDown(e, comissao.id)}
+                            autoFocus
+                            onFocus={(e) => e.target.select()}
+                            className="w-20 h-8 text-sm"
+                            min="0"
+                            max="100"
+                          />
+                          {editingError && (
+                            <span className="text-xs text-red-600">{editingError}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span 
+                          className={`font-medium ${comissao.status_pagamento === 'a_pagar' && isAdmin ? 'cursor-pointer hover:text-blue-600 hover:underline' : ''}`}
+                          onClick={() => comissao.status_pagamento === 'a_pagar' && isAdmin && startEditing(comissao)}
+                        >
+                          {comissao.percentual_comissao || 0}%
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 font-bold text-green-600">
                       {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
