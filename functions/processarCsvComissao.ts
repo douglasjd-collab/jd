@@ -93,8 +93,8 @@ Deno.serve(async (req) => {
         continue;
       }
       
-      // Mapeamento exato: Data, Contratro (typo), Grupo, Cota, Nº Parcela, Valor
-      const [data_recebimento, contrato, grupo, cota, parcelaStr, valorStr] = values;
+      // Mapeamento exato: Data, Contratro (typo), Grupo, Cota, Valor, Nº Parcela
+      const [data_recebimento, contrato, grupo, cota, valorStr, parcelaStr] = values;
       
       // Validar se não é linha vazia
       if (!contrato.trim() && !grupo.trim()) {
