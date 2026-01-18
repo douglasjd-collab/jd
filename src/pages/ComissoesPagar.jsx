@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,115 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Search, DollarSign, CheckCircle2, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
+
+// Componente separado para cada linha da tabela
+function ComissaoRow({ comissao, isAdmin, onVerRecebimento, onPagar, onEditPercentual, editingId, editingValue, editingError, onStartEditing, onSaveEditing, onCancelEditing, onKeyDown, onEditingValueChange }) {
+  const [valorCarta, setValorCarta] = useState(null);
+  
+  useEffect(() => {
+    if (comissao.venda_id) {
+      base44.entities.Venda.filter({ id: comissao.venda_id })
+        .then(vendas => {
+          if (vendas.length > 0) {
+            setValorCarta(vendas[0].valorCredito);
+          }
+        })
+        .catch(() => setValorCarta(null));
+    }
+  }, [comissao.venda_id]);
+  
+  return (
+    <tr className="border-b hover:bg-slate-50">
+      <td className="p-4">{comissao.vendedor_nome}</td>
+      <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
+      <td className="p-4 text-sm">
+        {comissao.grupo && comissao.cota ? `${comissao.grupo}/${comissao.cota}` : comissao.contrato || '-'}
+      </td>
+      <td className="p-4 text-sm">
+        {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
+      </td>
+      <td className="p-4 text-sm text-purple-600 font-medium">
+        {valorCarta ? valorCarta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+      </td>
+      <td className="p-4 text-sm">
+        {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
+          ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
+          : '-'}
+      </td>
+      <td className="p-4 font-semibold text-blue-600">
+        {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+      </td>
+      <td className="p-4">
+        {editingId === comissao.id ? (
+          <div className="flex flex-col gap-1">
+            <div className={`inline-flex items-center bg-white rounded-md border ${editingError ? 'border-red-500' : 'border-slate-300'} px-2 py-1`}>
+              <Input
+                type="number"
+                value={editingValue}
+                onChange={(e) => onEditingValueChange(e.target.value)}
+                onBlur={() => onSaveEditing(comissao.id)}
+                onKeyDown={(e) => onKeyDown(e, comissao.id)}
+                autoFocus
+                onFocus={(e) => e.target.select()}
+                className="w-12 h-6 text-sm border-0 p-0 focus-visible:ring-0"
+                min="0"
+                max="100"
+              />
+              <span className="text-sm font-medium text-slate-600 ml-1">%</span>
+            </div>
+            {editingError && (
+              <span className="text-xs text-red-600">{editingError}</span>
+            )}
+          </div>
+        ) : (
+          <div 
+            className={`inline-flex items-center rounded-md border px-2 py-1 min-w-[60px] ${
+              comissao.status_pagamento === 'a_pagar' && isAdmin
+                ? 'bg-white border-slate-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors'
+                : 'bg-slate-100 border-slate-200 cursor-default'
+            }`}
+            onClick={() => comissao.status_pagamento === 'a_pagar' && isAdmin && onStartEditing(comissao)}
+            title={comissao.status_pagamento === 'a_pagar' && isAdmin ? 'Clique para editar o percentual de comissão' : ''}
+          >
+            <span className="font-medium text-sm">{comissao.percentual_comissao || 0}%</span>
+          </div>
+        )}
+      </td>
+      <td className="p-4 font-bold text-green-600">
+        {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+      </td>
+      <td className="p-4">
+        {comissao.status_pagamento === 'paga' ? (
+          <Badge className="bg-green-100 text-green-800">Paga</Badge>
+        ) : (
+          <Badge className="bg-orange-100 text-orange-800">A Pagar</Badge>
+        )}
+      </td>
+      <td className="p-4">
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onVerRecebimento(comissao)}
+            title="Ver recebimento original"
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          {comissao.status_pagamento === 'a_pagar' && isAdmin && (
+            <Button
+              size="sm"
+              onClick={() => onPagar(comissao)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-1" />
+              Pagar
+            </Button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export default function ComissoesPagar() {
   const [user, setUser] = useState(null);
@@ -471,116 +580,26 @@ export default function ComissoesPagar() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((comissao) => {
-                  const [valorCarta, setValorCarta] = React.useState(null);
-                  
-                  React.useEffect(() => {
-                    if (comissao.venda_id) {
-                      base44.entities.Venda.filter({ id: comissao.venda_id })
-                        .then(vendas => {
-                          if (vendas.length > 0) {
-                            setValorCarta(vendas[0].valorCredito);
-                          }
-                        })
-                        .catch(() => setValorCarta(null));
-                    }
-                  }, [comissao.venda_id]);
-                  
-                  return (
-                    <tr key={comissao.id} className="border-b hover:bg-slate-50">
-                      <td className="p-4">{comissao.vendedor_nome}</td>
-                      <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
-                      <td className="p-4 text-sm">
-                        {comissao.grupo && comissao.cota ? `${comissao.grupo}/${comissao.cota}` : comissao.contrato || '-'}
-                      </td>
-                      <td className="p-4 text-sm">
-                        {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
-                      </td>
-                      <td className="p-4 text-sm text-purple-600 font-medium">
-                        {valorCarta ? valorCarta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                      </td>
-                      <td className="p-4 text-sm">
-                        {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
-                          ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
-                          : '-'}
-                      </td>
-                    <td className="p-4 font-semibold text-blue-600">
-                      {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </td>
-                    <td className="p-4">
-                      {editingId === comissao.id ? (
-                        <div className="flex flex-col gap-1">
-                          <div className={`inline-flex items-center bg-white rounded-md border ${editingError ? 'border-red-500' : 'border-slate-300'} px-2 py-1`}>
-                            <Input
-                              type="number"
-                              value={editingValue}
-                              onChange={(e) => setEditingValue(e.target.value)}
-                              onBlur={() => saveEditing(comissao.id)}
-                              onKeyDown={(e) => handleKeyDown(e, comissao.id)}
-                              autoFocus
-                              onFocus={(e) => e.target.select()}
-                              className="w-12 h-6 text-sm border-0 p-0 focus-visible:ring-0"
-                              min="0"
-                              max="100"
-                            />
-                            <span className="text-sm font-medium text-slate-600 ml-1">%</span>
-                          </div>
-                          {editingError && (
-                            <span className="text-xs text-red-600">{editingError}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <div 
-                          className={`inline-flex items-center rounded-md border px-2 py-1 min-w-[60px] ${
-                            comissao.status_pagamento === 'a_pagar' && isAdmin
-                              ? 'bg-white border-slate-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors'
-                              : 'bg-slate-100 border-slate-200 cursor-default'
-                          }`}
-                          onClick={() => comissao.status_pagamento === 'a_pagar' && isAdmin && startEditing(comissao)}
-                          title={comissao.status_pagamento === 'a_pagar' && isAdmin ? 'Clique para editar o percentual de comissão' : ''}
-                        >
-                          <span className="font-medium text-sm">{comissao.percentual_comissao || 0}%</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-4 font-bold text-green-600">
-                      {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </td>
-                    <td className="p-4">
-                      {comissao.status_pagamento === 'paga' ? (
-                        <Badge className="bg-green-100 text-green-800">Paga</Badge>
-                      ) : (
-                        <Badge className="bg-orange-100 text-orange-800">A Pagar</Badge>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleVerRecebimento(comissao)}
-                          title="Ver recebimento original"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {comissao.status_pagamento === 'a_pagar' && isAdmin && (
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setSelectedComissao(comissao);
-                              setPagarModal(true);
-                            }}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-1" />
-                            Pagar
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })
+                filtered.map((comissao) => (
+                  <ComissaoRow
+                    key={comissao.id}
+                    comissao={comissao}
+                    isAdmin={isAdmin}
+                    onVerRecebimento={handleVerRecebimento}
+                    onPagar={(c) => {
+                      setSelectedComissao(c);
+                      setPagarModal(true);
+                    }}
+                    editingId={editingId}
+                    editingValue={editingValue}
+                    editingError={editingError}
+                    onStartEditing={startEditing}
+                    onSaveEditing={saveEditing}
+                    onCancelEditing={cancelEditing}
+                    onKeyDown={handleKeyDown}
+                    onEditingValueChange={setEditingValue}
+                  />
+                ))
               )}
             </tbody>
           </table>
