@@ -147,20 +147,30 @@ export default function Importacao() {
         const valorRecebido = parseFloat(item.valor) || 0;
         const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
 
-        // VALIDAÇÃO ANTI-DUPLICIDADE (crítica)
+        // VALIDAÇÃO ANTI-DUPLICIDADE (bloquear import repetido)
+        // Verifica se já existe comissão com: contrato + grupo + cota + parcela
         const comissoesExistentes = await base44.entities.Comissao.filter({
           tipo_comissao: 'parcela'
         });
         
-        const jaImportado = comissoesExistentes.find(c => {
-          const vendaComissao = vendas.find(v => v.id === c.venda_id);
-          if (!vendaComissao) return false;
+        let jaImportado = false;
+        for (const comissao of comissoesExistentes) {
+          const vendaComissao = vendas.find(v => v.id === comissao.venda_id);
+          if (!vendaComissao) continue;
           
-          return vendaComissao.contrato === contrato &&
-                 vendaComissao.grupo === grupo &&
-                 vendaComissao.cota === cota &&
-                 c.parcela_id && parcelas.find(p => p.id === c.parcela_id && p.numero_parcela === numeroParcela);
-        });
+          // Verificar se já existe com o mesmo contrato+grupo+cota+parcela
+          const contratoMatch = vendaComissao.contrato === contrato;
+          const grupoMatch = vendaComissao.grupo === grupo;
+          const cotaMatch = vendaComissao.cota === cota;
+          
+          if (contratoMatch && grupoMatch && cotaMatch && comissao.parcela_id) {
+            const parcelaComissao = parcelas.find(p => p.id === comissao.parcela_id);
+            if (parcelaComissao && parcelaComissao.numero_parcela === numeroParcela) {
+              jaImportado = true;
+              break;
+            }
+          }
+        }
 
         if (jaImportado) {
           const itemImportacao = {
