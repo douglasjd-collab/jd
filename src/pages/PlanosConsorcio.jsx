@@ -5,6 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ImportarPlanosCSV from '@/components/planos/ImportarPlanosCSV';
+import ImportacaoPlanosPrint from '@/components/planos/ImportacaoPlanosPrint';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
