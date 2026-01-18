@@ -66,14 +66,14 @@ Deno.serve(async (req) => {
       }
       values.push(currentValue.trim());
       
-      // Validar se tem pelo menos 7 colunas
-      if (values.length < 7) {
+      // Validar se tem pelo menos 6 colunas (Data;Contrato;Grupo;Cota;Nº Parcela;Valor)
+      if (values.length < 6) {
         console.log(`Linha ${i + 1} ignorada: apenas ${values.length} colunas`);
         continue;
       }
       
-      // Extrair dados
-      const [data_recebimento, contrato, grupo, cota, valorStr, parcelaStr, administradora] = values;
+      // Extrair dados (ordem: Data, Contrato, Grupo, Cota, Nº Parcela, Valor)
+      const [data_recebimento, contrato, grupo, cota, parcelaStr, valorStr] = values;
       
       // Validar se não é linha vazia ou inválida
       if (!contrato.trim() && !grupo.trim()) {
