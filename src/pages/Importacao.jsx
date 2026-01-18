@@ -97,26 +97,32 @@ export default function Importacao() {
       const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url,
         json_schema: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              data_recebimento: { type: "string" },
-              contrato: { type: "string" },
-              grupo: { type: "string" },
-              cota: { type: "string" },
-              valor: { type: "number" },
-              parcela: { type: "number" },
-              administradora: { type: "string" }
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  data_recebimento: { type: "string" },
+                  contrato: { type: "string" },
+                  grupo: { type: "string" },
+                  cota: { type: "string" },
+                  valor: { type: "number" },
+                  parcela: { type: "number" },
+                  administradora: { type: "string" }
+                }
+              }
             }
           }
         }
       });
 
       if (result.status === 'success' && result.output) {
+        const items = result.output.items || (Array.isArray(result.output) ? result.output : [result.output]);
         setPreviewData({
           file_url,
-          items: Array.isArray(result.output) ? result.output : [result.output]
+          items
         });
       } else {
         toast.error('Erro ao processar arquivo: ' + (result.details || 'Formato inválido'));
