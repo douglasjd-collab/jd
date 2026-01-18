@@ -234,7 +234,7 @@ export default function PlanosConsorcio() {
                     Importar CSV
                   </Button>
                   <Button
-                    onClick={() => {}}
+                    onClick={() => setImportPrintOpen(true)}
                     className="bg-purple-600 hover:bg-purple-700 gap-2"
                   >
                     <Camera className="w-4 h-4" />
