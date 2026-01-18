@@ -215,46 +215,78 @@ export default function PlanosConsorcio() {
             {/* Expanded Items */}
             {isExpanded && (
               <div className="bg-white divide-y">
-                {items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 p-4 hover:bg-slate-50">
-                    <div className="w-5" />
-                    <div className="flex-1">
-                      <p className="text-sm text-slate-600">{item.prazo} meses</p>
-                      {item.taxa_adm && <p className="text-xs text-blue-600 font-medium">Taxa ADM: {item.taxa_adm}%</p>}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-slate-600">{item.grupo || '-'}</p>
-                    </div>
-                    <div className="text-right min-w-[120px]">
-                      <p className="text-sm">{formatCurrency(item.valor_carta)}</p>
-                    </div>
-                    <div className="text-right min-w-[80px]">
-                      <StatusBadge status={item.status} />
-                    </div>
-                    <div className="w-12">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openForm(item)}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => setDeleteId(item.id)}
-                            className="text-red-600"
+                {items.map((item) => {
+                  const isSelected = selectedPlanoId === item.id;
+                  return (
+                    <div key={item.id} className={`p-4 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="radio"
+                          name="plano-selection"
+                          value={item.id}
+                          checked={isSelected}
+                          onChange={() => setSelectedPlanoId(item.id)}
+                          className="w-5 h-5 cursor-pointer accent-blue-600"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm text-slate-600">{item.prazo} meses</p>
+                          {item.taxa_adm && <p className="text-xs text-blue-600 font-medium">Taxa ADM: {item.taxa_adm}%</p>}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-slate-600">{item.grupo || '-'}</p>
+                        </div>
+                        <div className="text-right min-w-[120px]">
+                          <p className="text-sm">{formatCurrency(item.valor_carta)}</p>
+                        </div>
+                        <div className="text-right min-w-[80px]">
+                          <StatusBadge status={item.status} />
+                        </div>
+                        <div className="w-12">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openForm(item)}>
+                                <Pencil className="w-4 h-4 mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => setDeleteId(item.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      
+                      {/* Selected Plan Details */}
+                      {isSelected && (
+                        <div className="mt-4 p-3 bg-white border border-blue-200 rounded-lg flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">Taxa de ADM: <span className="text-blue-600">{item.taxa_adm || 'N/A'}%</span></p>
+                            <p className="text-xs text-slate-500">Cód. Grupo: {item.grupo}</p>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              // Aqui você pode redirecionar para criar uma venda ou abrir modal
+                              console.log('Iniciar nova venda com plano:', item);
+                            }}
+                            className="bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2"
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <ShoppingCart className="w-4 h-4" />
+                            Nova Venda
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
