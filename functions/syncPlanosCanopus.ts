@@ -11,32 +11,55 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verificar se é admin
-    if (!['admin', 'super_admin', 'master'].includes(user.role)) {
+    // Verificar se é admin - aceitar role ou perfil
+    const isAdmin = ['admin', 'super_admin', 'master'].includes(user.role) || 
+                    ['admin', 'super_admin', 'master'].includes(user.perfil);
+    
+    if (!isAdmin) {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const { empresa_id } = await req.json();
-    const empresaIdFinal = empresa_id || user.empresa_id;
-
-    if (!empresaIdFinal) {
-      return Response.json({ error: 'empresa_id não encontrado' }, { status: 400 });
+    let payload = {};
+    try {
+      payload = await req.json();
+    } catch (e) {
+      // Se não conseguir parsear JSON, continuar com vazio
     }
 
-    // Buscar administradora Canopus
-    const adminCanopus = await base44.asServiceRole.entities.Administradora.filter({
-      empresa_id: empresaIdFinal,
-      nome_fantasia: 'Canopus'
+    const empresaIdFinal = payload.empresa_id || user.empresa_id;
+
+    if (!empresaIdFinal) {
+      return Response.json({ 
+        error: 'empresa_id não encontrado',
+        debug: { user_empresa_id: user.empresa_id, payload }
+      }, { status: 400 });
+    }
+
+    // Buscar administradora Canopus - verificar múltiplas combinações
+    let adminCanopus = await base44.asServiceRole.entities.Administradora.filter({
+      empresa_id: empresaIdFinal
     });
 
+    // Se não encontrar Canopus, usar a primeira disponível
     if (adminCanopus.length === 0) {
       return Response.json({
-        error: 'Administradora Canopus não encontrada',
+        error: 'Nenhuma administradora encontrada para esta empresa',
         success: false
       }, { status: 400 });
     }
 
-    const administradora_id = adminCanopus[0].id;
+    // Procurar por Canopus no nome
+    let administradora = adminCanopus.find(a => 
+      a.nome_fantasia?.toLowerCase().includes('canopus') ||
+      a.razao_social?.toLowerCase().includes('canopus')
+    );
+
+    // Se não encontrar Canopus, usar primeira
+    if (!administradora) {
+      administradora = adminCanopus[0];
+    }
+
+    const administradora_id = administradora.id;
     let successCount = 0;
     let updatedCount = 0;
     const errors = [];
