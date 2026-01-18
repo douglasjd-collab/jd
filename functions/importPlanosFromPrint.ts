@@ -89,6 +89,29 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.PlanoCanopus.create(planData);
           created.push(`${prazo_meses} meses - R$ ${primeira_parcela.toFixed(2)}`);
         }
+
+        // Também salvar em PlanoConsorcio
+        const planoConsorcioData = {
+          empresa_id,
+          nome: `${plano} - ${nome_bem}`,
+          administradora_id: '', // opcional
+          grupo: grupo_cota || '',
+          prazo: prazo_meses,
+          valor_carta: valor_bem || 0,
+          status: 'ativo',
+        };
+
+        const existingConsorcio = await base44.asServiceRole.entities.PlanoConsorcio.filter({
+          empresa_id,
+          nome: planoConsorcioData.nome,
+          prazo: prazo_meses,
+        });
+
+        if (existingConsorcio && existingConsorcio.length > 0) {
+          await base44.asServiceRole.entities.PlanoConsorcio.update(existingConsorcio[0].id, planoConsorcioData);
+        } else {
+          await base44.asServiceRole.entities.PlanoConsorcio.create(planoConsorcioData);
+        }
       } catch (e) {
         errors.push(`Erro ao processar item ${item.prazo_meses}m: ${e.message}`);
       }
