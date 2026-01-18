@@ -259,13 +259,13 @@ export default function ComissoesPagas() {
               <tbody>
                 {loadingComissoes ? (
                   <tr>
-                    <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan="7" className="px-4 py-8 text-center text-slate-500">
                       Carregando...
                     </td>
                   </tr>
                 ) : comissoesQuitadas.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan="7" className="px-4 py-8 text-center text-slate-500">
                       Nenhuma comissão quitada encontrada
                     </td>
                   </tr>
