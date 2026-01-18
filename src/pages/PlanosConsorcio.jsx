@@ -146,9 +146,10 @@ export default function PlanosConsorcio() {
         empresa_id: user?.empresa_id
       });
       
-      toast.success(`Sincronização concluída: ${response.data.summary.successCount} criados, ${response.data.summary.updatedCount} atualizados`);
+      toast.success(`Sincronização concluída: ${response.data.lidos} lidos, ${response.data.criados} criados, ${response.data.atualizados} atualizados`);
       queryClient.invalidateQueries({ queryKey: ['planos-consorcio'] });
     } catch (error) {
+      console.error('Erro de sincronização:', error);
       toast.error('Erro ao sincronizar: ' + (error.response?.data?.error || error.message));
     } finally {
       setSyncLoading(false);
