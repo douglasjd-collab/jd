@@ -165,6 +165,18 @@ export default function PlanosConsorcio() {
     getAdminNome(p.administradora_id).toLowerCase().includes(search.toLowerCase())
   );
 
+  // Agrupar planos por nome
+  const groupedPlanos = filteredPlanos.reduce((acc, plano) => {
+    const key = plano.nome || `Grupo ${plano.grupo}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(plano);
+    return acc;
+  }, {});
+
+  const toggleGroup = (groupName) => {
+    setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
+
   const columns = [
     {
       header: 'Plano',
