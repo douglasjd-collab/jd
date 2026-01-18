@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
         
         if (char === '"') {
           insideQuotes = !insideQuotes;
-        } else if (char === ',' && !insideQuotes) {
+        } else if (char === ';' && !insideQuotes) {
           values.push(currentValue.trim());
           currentValue = '';
         } else {
