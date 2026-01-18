@@ -52,6 +52,8 @@ export default function Usuarios() {
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [vincularOpen, setVincularOpen] = useState(false);
+  const [usuarioToVincular, setUsuarioToVincular] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
