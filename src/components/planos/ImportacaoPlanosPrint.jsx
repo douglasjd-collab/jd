@@ -35,7 +35,7 @@ function parseCanopusModalText(raw) {
   const text = normalizeSpaces(raw);
 
   // plano e nome_bem do cabeçalho: "CR4072 - AUTOMÓVEL LEVE R$ 25.000,00" ou "CR4301 - AUTOMÓVEL LEVE 50% - R$ 30.000,00"
-  const cabecalhoMatch = text.match(/^(\w+)\s*-\s*([A-ZÇÃÕÁÉÍÓÚ %]{3,}?)\s*-?\s*R\$/);
+  const cabecalhoMatch = text.match(/(\w+)\s*-\s*([A-ZÇÃÕÁÉÍÓÚ %\-]{3,}?)\s*-?\s*R\$/);
   const plano = cabecalhoMatch ? cabecalhoMatch[1] : "";
   const nome_bem = cabecalhoMatch ? normalizeSpaces(cabecalhoMatch[2].replace(/\s*-\s*$/, "")) : "";
 
