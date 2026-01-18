@@ -152,6 +152,7 @@ export default function Layout({ children, currentPageName }) {
       roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
       submenu: [
         { name: 'Comissões a Pagar', page: 'ComissoesPagar' },
+        { name: 'Comissões Pagas', page: 'ComissoesPagas' },
         { name: 'Comissões Recebidas', page: 'ComissoesRecebidas' },
         { name: 'Lançamento de Receitas', page: 'LancamentoReceitas' },
         { name: 'Lançamento de Despesas', page: 'LancamentoDespesas' },
