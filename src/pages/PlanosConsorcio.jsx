@@ -49,8 +49,8 @@ export default function PlanosConsorcio() {
   const [syncLoading, setSyncLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [expandedGroups, setExpandedGroups] = useState({});
   const [selectedPlanoId, setSelectedPlanoId] = useState(null);
+  const [modalGroupName, setModalGroupName] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -174,121 +174,33 @@ export default function PlanosConsorcio() {
     return acc;
   }, {});
 
-  const toggleGroup = (groupName) => {
-    setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
-  };
+  const modalItems = modalGroupName ? groupedPlanos[modalGroupName] || [] : [];
 
   const renderGroupedTable = () => (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden divide-y">
       {Object.entries(groupedPlanos).map(([groupName, items]) => {
-        const isExpanded = expandedGroups[groupName];
         const firstItem = items[0];
 
         return (
-          <div key={groupName}>
-            {/* Header/Summary Row */}
-            <div className="border-b bg-slate-50 hover:bg-slate-100 transition-colors">
-              <div className="flex items-center gap-4 p-4 cursor-pointer" onClick={() => toggleGroup(groupName)}>
-                <button className="flex-shrink-0">
-                  <ChevronDown 
-                    className={`w-5 h-5 transition-transform text-slate-600 ${isExpanded ? 'rotate-180' : ''}`}
-                  />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-slate-900">{groupName}</p>
-                  <p className="text-sm text-slate-500">{getAdminNome(firstItem?.administradora_id)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-slate-900">{firstItem?.grupo || '-'}</p>
-                  <p className="text-xs text-slate-500">{items.length} plano(s)</p>
-                </div>
-                <div className="text-right min-w-[120px]">
-                  <p className="text-sm font-medium">{formatCurrency(firstItem?.valor_carta)}</p>
-                </div>
-                <div className="text-right min-w-[80px]">
-                  <StatusBadge status={firstItem?.status} />
-                </div>
-                <div className="w-12" />
-              </div>
+          <div 
+            key={groupName}
+            className="flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+            onClick={() => setModalGroupName(groupName)}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-slate-900">{groupName}</p>
+              <p className="text-sm text-slate-500">{getAdminNome(firstItem?.administradora_id)}</p>
             </div>
-
-            {/* Expanded Items */}
-            {isExpanded && (
-              <div className="bg-white divide-y">
-                {items.map((item) => {
-                  const isSelected = selectedPlanoId === item.id;
-                  return (
-                    <div key={item.id} className={`p-4 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="radio"
-                          name="plano-selection"
-                          value={item.id}
-                          checked={isSelected}
-                          onChange={() => setSelectedPlanoId(item.id)}
-                          className="w-5 h-5 cursor-pointer accent-blue-600"
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm text-slate-600">{item.prazo} meses | de {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))}</p>
-                          {item.taxa_adm && <p className="text-xs text-blue-600 font-medium mt-1">Taxa ADM: {item.taxa_adm}%</p>}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-slate-600">{item.grupo || '-'}</p>
-                        </div>
-                        <div className="text-right min-w-[120px]">
-                          <p className="text-sm">{formatCurrency(item.valor_carta)}</p>
-                        </div>
-                        <div className="text-right min-w-[80px]">
-                          <StatusBadge status={item.status} />
-                        </div>
-                        <div className="w-12">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openForm(item)}>
-                                <Pencil className="w-4 h-4 mr-2" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => setDeleteId(item.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                      
-                      {/* Selected Plan Details */}
-                      {isSelected && (
-                        <div className="mt-4 p-3 bg-white border border-blue-200 rounded-lg flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-slate-900">Taxa de ADM: <span className="text-blue-600">{item.taxa_adm ? `${item.taxa_adm}%` : 'Sem taxa'}</span></p>
-                            <p className="text-xs text-slate-500">Cód. Grupo: {item.grupo} • Parcela: {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))}</p>
-                          </div>
-                          <Button
-                            onClick={() => {
-                              // Aqui você pode redirecionar para criar uma venda ou abrir modal
-                              console.log('Iniciar nova venda com plano:', item);
-                            }}
-                            className="bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            Nova Venda
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <div className="text-right">
+              <p className="text-sm font-medium text-slate-900">{firstItem?.grupo || '-'}</p>
+              <p className="text-xs text-slate-500">{items.length} plano(s)</p>
+            </div>
+            <div className="text-right min-w-[120px]">
+              <p className="text-sm font-medium">{formatCurrency(firstItem?.valor_carta)}</p>
+            </div>
+            <div className="text-right min-w-[80px]">
+              <StatusBadge status={firstItem?.status} />
+            </div>
           </div>
         );
       })}
@@ -543,6 +455,50 @@ export default function PlanosConsorcio() {
           }
         }}
       />
+
+      {/* Plans Detail Modal */}
+      <Dialog open={!!modalGroupName} onOpenChange={() => setModalGroupName(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{modalGroupName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {modalItems.map((item) => (
+              <div key={item.id} className="p-4 border rounded-lg hover:bg-slate-50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-900">{item.prazo} meses</p>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Valor: {formatCurrency(item.valor_carta)} | Parcela: {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))}
+                    </p>
+                    {item.taxa_adm && (
+                      <p className="text-xs text-blue-600 font-medium mt-1">Taxa ADM: {item.taxa_adm}%</p>
+                    )}
+                    <p className="text-xs text-slate-500 mt-2">Cód. Grupo: {item.grupo}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openForm(item)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setDeleteId(item.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
