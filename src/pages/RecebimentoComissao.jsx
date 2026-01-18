@@ -72,6 +72,8 @@ export default function RecebimentoComissao() {
     data_pagamento: format(new Date(), 'yyyy-MM-dd'),
     observacoes: ''
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [comissaoParaExcluir, setComissaoParaExcluir] = useState(null);
 
   const queryClient = useQueryClient();
 
