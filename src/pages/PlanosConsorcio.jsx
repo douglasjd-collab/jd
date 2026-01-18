@@ -229,9 +229,8 @@ export default function PlanosConsorcio() {
                           className="w-5 h-5 cursor-pointer accent-blue-600"
                         />
                         <div className="flex-1">
-                          <p className="text-sm text-slate-600">{item.prazo} meses</p>
-                          {item.taxa_adm && <p className="text-xs text-blue-600 font-medium">Taxa ADM: {item.taxa_adm}%</p>}
-                          <p className="text-xs text-slate-500 mt-1">Parcela: {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))}</p>
+                          <p className="text-sm text-slate-600">{item.prazo} meses | de {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))}</p>
+                          {item.taxa_adm && <p className="text-xs text-blue-600 font-medium mt-1">Taxa ADM: {item.taxa_adm}%</p>}
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-slate-600">{item.grupo || '-'}</p>
