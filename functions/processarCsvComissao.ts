@@ -60,14 +60,14 @@ Deno.serve(async (req) => {
       startIndex = 1; // Pular cabeçalho
     }
     
-    // Processar linhas de dados
+    // Processar linhas de dados (ignore_errors: true, allow_multiline: true)
     for (let i = startIndex; i < lines.length; i++) {
       const line = lines[i];
       
       // Pular linhas vazias
       if (!line.trim()) continue;
       
-      // Parse CSV com delimiter ";" e quote "\""
+      // Parse CSV com delimiter ";" e quote "\"" - permite multiline
       const values = [];
       let currentValue = '';
       let insideQuotes = false;
@@ -78,78 +78,97 @@ Deno.serve(async (req) => {
         if (char === '"') {
           insideQuotes = !insideQuotes;
         } else if (char === ';' && !insideQuotes) {
-          values.push(currentValue.trim());
+          values.push(currentValue);
           currentValue = '';
         } else {
           currentValue += char;
         }
       }
-      values.push(currentValue.trim());
+      values.push(currentValue);
       
-      console.log(`Linha ${i + 1}: ${values.length} colunas - [${values.join(', ')}]`);
+      // Remover aspas e trim
+      const cleanedValues = values.map(v => v.replace(/^"|"$/g, '').trim());
+      
+      console.log(`Linha ${i + 1}: ${cleanedValues.length} colunas - [${cleanedValues.slice(0, 6).join(' | ')}]`);
       
       // Validar se não é linha completamente vazia
-      if (values.every(v => !v)) {
-        console.log(`Linha ${i + 1} ignorada: vazia`);
+      if (cleanedValues.every(v => !v)) {
         continue;
       }
       
-      // Aceitar linhas com 6 ou mais colunas (strict_mode: false)
-      if (values.length < 6) {
-        console.log(`Linha ${i + 1} ignorada: apenas ${values.length} colunas`);
-        continue;
-      }
-      
+      // strict_mode: false - aceitar qualquer quantidade de colunas
       // Mapeamento: Data, Contrato, Grupo, Cota, Valor, Nº Parcela
-      const data_recebimento = values[0] || '';
-      const contrato = values[1] || '';
-      const grupo = values[2] || '';
-      const cota = values[3] || '';
-      const valorStr = values[4] || '';
-      const parcelaStr = values[5] || '';
+      const data_recebimento = cleanedValues[0] || '';
+      const contrato = cleanedValues[1] || '';
+      const grupo = cleanedValues[2] || '';
+      const cota = cleanedValues[3] || '';
+      const valorStr = cleanedValues[4] || '';
+      const parcelaStr = cleanedValues[5] || '';
       
-      // Validar se tem dados mínimos
+      // Validar dados mínimos (ignore_errors: true - não bloqueia processamento)
       if (!contrato && !grupo) {
-        console.log(`Linha ${i + 1} ignorada: sem contrato nem grupo`);
+        errors.push(`Linha ${i + 1}: Sem contrato nem grupo - dados: ${cleanedValues.slice(0, 6).join(', ')}`);
+        // Adicionar mesmo assim para mostrar na pré-visualização
+        items.push({
+          data_recebimento,
+          contrato,
+          grupo,
+          cota,
+          valor: 0,
+          parcela: 1,
+          _error: 'Sem contrato nem grupo'
+        });
         continue;
       }
       
-      // NORMALIZAÇÃO DE VALOR
+      // NORMALIZAÇÃO DE VALOR (tolerar erros)
       let valor = 0;
+      let valorError = null;
       try {
-        const valorLimpo = String(valorStr).trim().replace(',', '.');
+        let valorLimpo = String(valorStr).trim();
+        // Remover R$, espaços, etc
+        valorLimpo = valorLimpo.replace(/[R$\s]/g, '');
+        // Aceitar vírgula ou ponto
+        valorLimpo = valorLimpo.replace(',', '.');
         valor = parseFloat(valorLimpo);
 
         if (isNaN(valor) || valor <= 0) {
-          errors.push(`Linha ${i + 1}: Valor inválido - "${valorStr}"`);
-          continue;
+          valorError = `Valor inválido: "${valorStr}"`;
+          valor = 0;
         }
       } catch (e) {
-        errors.push(`Linha ${i + 1}: Erro ao processar valor - ${e.message}`);
-        continue;
+        valorError = `Erro ao processar valor: ${e.message}`;
+        valor = 0;
       }
       
-      // NORMALIZAÇÃO DE PARCELA
+      // NORMALIZAÇÃO DE PARCELA (tolerar erros)
       let parcela = 1;
       try {
         const parcelaLimpa = String(parcelaStr).trim().replace(/[^\d]/g, '');
-        parcela = parseInt(parcelaLimpa, 10);
-
-        if (!parcela || isNaN(parcela) || parcela <= 0) {
-          parcela = 1;
+        const parcelaNum = parseInt(parcelaLimpa, 10);
+        if (parcelaNum && !isNaN(parcelaNum) && parcelaNum > 0) {
+          parcela = parcelaNum;
         }
       } catch (e) {
-        parcela = 1;
+        // Usar padrão 1
       }
       
-      items.push({
-        data_recebimento: data_recebimento.trim(),
-        contrato: contrato.trim(),
-        grupo: grupo.trim(),
-        cota: cota.trim(),
+      const item = {
+        data_recebimento,
+        contrato,
+        grupo,
+        cota,
         valor,
         parcela
-      });
+      };
+      
+      // Marcar erro se houver
+      if (valorError) {
+        item._error = valorError;
+        errors.push(`Linha ${i + 1}: ${valorError}`);
+      }
+      
+      items.push(item);
     }
 
     return Response.json({
