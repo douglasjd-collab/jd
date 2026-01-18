@@ -27,28 +27,48 @@ Deno.serve(async (req) => {
     const decoder = new TextDecoder('ISO-8859-1');
     const csvContent = decoder.decode(arrayBuffer);
 
-    // Processar CSV linha por linha
+    // Processar CSV linha por linha com encoding ISO-8859-1, delimiter ";"
     const lines = csvContent.split(/\r?\n/);
     
     const items = [];
     const errors = [];
+    let headers = [];
     let startIndex = 0;
     
-    // Detectar se primeira linha é cabeçalho
+    // HEADER = TRUE: Primeira linha sempre é cabeçalho
     if (lines.length > 0) {
-      const firstLine = lines[0].toLowerCase();
-      if (firstLine.includes('data') || firstLine.includes('contrato') || firstLine.includes('grupo')) {
-        startIndex = 1; // Pular cabeçalho
+      const firstLine = lines[0];
+      // Parse header
+      const headerValues = [];
+      let currentValue = '';
+      let insideQuotes = false;
+      
+      for (let j = 0; j < firstLine.length; j++) {
+        const char = firstLine[j];
+        if (char === '"') {
+          insideQuotes = !insideQuotes;
+        } else if (char === ';' && !insideQuotes) {
+          headerValues.push(currentValue.trim());
+          currentValue = '';
+        } else {
+          currentValue += char;
+        }
       }
+      headerValues.push(currentValue.trim());
+      
+      headers = headerValues;
+      startIndex = 1; // Pular cabeçalho
     }
     
+    // Processar linhas de dados
     for (let i = startIndex; i < lines.length; i++) {
       const line = lines[i];
       
       // Pular linhas vazias
       if (!line.trim()) continue;
       
-      // Parse CSV considerando aspas
+      // Parse CSV com delimiter ";" e quote "\""
+      // strict_mode: false, ignore_errors: false
       const values = [];
       let currentValue = '';
       let insideQuotes = false;
@@ -67,16 +87,16 @@ Deno.serve(async (req) => {
       }
       values.push(currentValue.trim());
       
-      // Validar se tem pelo menos 6 colunas (Data;Contrato;Grupo;Cota;Nº Parcela;Valor)
+      // Validar se tem pelo menos 6 colunas
       if (values.length < 6) {
         console.log(`Linha ${i + 1} ignorada: apenas ${values.length} colunas`);
         continue;
       }
       
-      // Extrair dados (ordem: Data, Contrato, Grupo, Cota, Nº Parcela, Valor)
+      // Mapeamento exato: Data, Contratro (typo), Grupo, Cota, Nº Parcela, Valor
       const [data_recebimento, contrato, grupo, cota, parcelaStr, valorStr] = values;
       
-      // Validar se não é linha vazia ou inválida
+      // Validar se não é linha vazia
       if (!contrato.trim() && !grupo.trim()) {
         continue;
       }
