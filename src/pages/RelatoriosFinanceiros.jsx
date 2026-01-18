@@ -92,9 +92,14 @@ export default function RelatoriosFinanceiros() {
   };
 
   // Comissões Recebidas (filtrar por data_recebimento)
-  const comissoesRecebdasPeriodo = comissoesRecebidas.filter((c) => filterByPeriod(c, 'data_recebimento'));
+  const comissoesRecebdasPeriodo = comissoesRecebidas.filter((c) => {
+    if (!c.data_recebimento) return false;
+    const itemDate = moment(c.data_recebimento);
+    if (!itemDate.isValid()) return false;
+    return itemDate.isBetween(dataInicio, dataFim, 'day', '[]');
+  });
   const totalComissoesRecebidas = comissoesRecebdasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
-  const recebidas_count = comissoesRecebdasPeriodo.length;
+  const recebidas_count = comissoesRecebidas.length;
 
   // Comissões a Pagar (filtrar por data_recebimento - quando a comissão foi recebida)
   const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => c.status_pagamento === 'a_pagar' && filterByPeriod(c, 'data_recebimento'));
@@ -331,10 +336,14 @@ export default function RelatoriosFinanceiros() {
             <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
             <div className="flex-1">
               <h3 className="font-semibold text-amber-900 mb-3">Diagnóstico (ADM)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mb-4">
                 <div>
-                  <p className="text-amber-700">Recebidas</p>
-                  <p className="font-bold text-lg text-amber-900">{recebidas_count}</p>
+                  <p className="text-amber-700">Total Recebidas (all)</p>
+                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidas.length}</p>
+                </div>
+                <div>
+                  <p className="text-amber-700">Recebidas (period)</p>
+                  <p className="font-bold text-lg text-amber-900">{comissoesRecebdasPeriodo.length}</p>
                 </div>
                 <div>
                   <p className="text-amber-700">A Pagar</p>
@@ -348,11 +357,13 @@ export default function RelatoriosFinanceiros() {
                   <p className="text-amber-700">Receitas</p>
                   <p className="font-bold text-lg text-amber-900">{receitas_count}</p>
                 </div>
-                <div>
-                  <p className="text-amber-700">Despesas</p>
-                  <p className="font-bold text-lg text-amber-900">{despesas_count}</p>
-                </div>
               </div>
+              {comissoesRecebidas.length > 0 && (
+                <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto">
+                  <p className="font-mono text-amber-900">Primeira data_recebimento: {comissoesRecebidas[0]?.data_recebimento}</p>
+                  <p className="font-mono text-amber-700 mt-1">Filtro: {dataInicio} até {dataFim}</p>
+                </div>
+              )}
             </div>
           </div>
         </Card>
