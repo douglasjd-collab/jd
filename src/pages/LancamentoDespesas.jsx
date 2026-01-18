@@ -180,7 +180,7 @@ export default function LancamentoDespesas() {
         title="Lançamento de Despesas"
         subtitle="Registrar despesas operacionais"
         actionLabel="Nova Despesa"
-        actionHandler={() => setModalOpen(true)}
+        onAction={() => setModalOpen(true)}
       />
 
       {/* Stats */}

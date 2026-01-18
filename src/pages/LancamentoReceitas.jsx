@@ -145,7 +145,7 @@ export default function LancamentoReceitas() {
         title="Lançamento de Receitas"
         subtitle="Receitas que não são comissões (bônus, repasses, ajustes)"
         actionLabel="Nova Receita"
-        actionHandler={() => setModalOpen(true)}
+        onAction={() => setModalOpen(true)}
       />
 
       {/* Stats */}
