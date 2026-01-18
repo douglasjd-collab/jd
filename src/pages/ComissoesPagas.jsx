@@ -273,7 +273,6 @@ export default function ComissoesPagas() {
                   comissoesQuitadas.map((c) => (
                     <tr key={c.id} className="border-b hover:bg-slate-50">
                       <td className="px-4 py-3 text-sm">{c.recebimento_id}</td>
-                      <td className="px-4 py-3 text-sm">{moment(c.data_recebimento).format('DD/MM/YYYY')}</td>
                       <td className="px-4 py-3 text-sm">{moment(c.data_pagamento).format('DD/MM/YYYY')}</td>
                       <td className="px-4 py-3 text-sm text-right font-mono">
                         {(c.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
