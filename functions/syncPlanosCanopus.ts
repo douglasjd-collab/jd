@@ -277,8 +277,17 @@ Deno.serve(async (req) => {
       message: `Sincronização concluída. Lidos: ${coletados.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
     });
   } catch (error) {
+    const message = error?.message || String(error);
+    let helpText = '';
+    
+    if (message.includes('Connection reset') || message.includes('ECONNRESET')) {
+      helpText = ' | O servidor Canopus pode estar rejeitando a requisição. Tente novamente em alguns minutos ou contate o suporte Canopus.';
+    } else if (message.includes('timeout')) {
+      helpText = ' | Timeout ao conectar. Verifique sua conexão ou tente novamente.';
+    }
+    
     return Response.json(
-      { success: false, error: error?.message || String(error) },
+      { success: false, error: message + helpText },
       { status: 500 }
     );
   }
