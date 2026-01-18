@@ -439,7 +439,7 @@ export default function Importacao() {
           <DialogHeader>
             <DialogTitle>Nova Importação</DialogTitle>
             <DialogDescription>
-              Selecione a administradora e faça o upload do arquivo Excel/CSV
+              Selecione a administradora e faça o upload do arquivo CSV (exporte do Excel como CSV)
             </DialogDescription>
           </DialogHeader>
 
@@ -463,11 +463,11 @@ export default function Importacao() {
 
             {/* Upload */}
             <div>
-              <Label>Arquivo (Excel ou CSV)</Label>
+              <Label>Arquivo CSV *</Label>
               <div className="mt-2 border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-slate-300 transition-colors">
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.csv"
+                  accept=".csv"
                   onChange={handleFileUpload}
                   className="hidden"
                   id="file-upload"
@@ -483,7 +483,10 @@ export default function Importacao() {
                     <div className="flex flex-col items-center gap-2">
                       <Upload className="w-8 h-8 text-slate-400" />
                       <span className="text-slate-500">
-                        {file ? file.name : 'Clique para selecionar arquivo'}
+                        {file ? file.name : 'Clique para selecionar arquivo CSV'}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        ⚠️ Apenas arquivos CSV são suportados (não Excel)
                       </span>
                       <span className="text-xs text-slate-400">
                         Colunas: A=Data Recebimento, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela, G=Administradora
