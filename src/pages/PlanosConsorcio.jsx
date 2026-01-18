@@ -298,40 +298,63 @@ export default function PlanosConsorcio() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Planos de Consórcio</h1>
-          <p className="text-slate-500 mt-1">{planos.length} planos cadastrados</p>
-        </div>
-        <div className="flex flex-col gap-3">
-           <Button 
-            onClick={() => openForm()}
-            className="bg-[#23BE84] hover:bg-[#1da570]"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Plano
-          </Button>
-          <Button
-            onClick={() => setImportOpen(true)}
-            variant="outline"
-            className="gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Importar CSV
-          </Button>
-          <Button
-            onClick={handleSyncPlanos}
-            disabled={syncLoading}
-            className="bg-blue-600 hover:bg-blue-700 gap-2"
-          >
-            {syncLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Zap className="w-4 h-4" />
-            )}
-            Sincronizar com Canopus
-          </Button>
-        </div>
-      </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900">Planos de Consórcio</h1>
+                  <p className="text-slate-500 mt-1">{planos.length} planos cadastrados</p>
+                </div>
+                <div className="flex flex-col gap-3">
+                   <Button 
+                    onClick={() => openForm()}
+                    className="bg-[#23BE84] hover:bg-[#1da570]"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Plano
+                  </Button>
+                  <Button
+                    onClick={() => setImportOpen(true)}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Importar CSV
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      setSyncLoading(true);
+                      try {
+                        await base44.functions.invoke('aplicarTaxasAdmAutomoveisConsorcio');
+                        toast.success('Taxas de ADM aplicadas com sucesso!');
+                        queryClient.invalidateQueries({ queryKey: ['planos-consorcio'] });
+                      } catch (error) {
+                        toast.error('Erro ao aplicar taxas');
+                      } finally {
+                        setSyncLoading(false);
+                      }
+                    }}
+                    disabled={syncLoading}
+                    className="bg-purple-600 hover:bg-purple-700 gap-2"
+                  >
+                    {syncLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4" />
+                    )}
+                    Aplicar Taxas ADM
+                  </Button>
+                  <Button
+                    onClick={handleSyncPlanos}
+                    disabled={syncLoading}
+                    className="bg-blue-600 hover:bg-blue-700 gap-2"
+                  >
+                    {syncLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4" />
+                    )}
+                    Sincronizar com Canopus
+                  </Button>
+                </div>
+              </div>
 
       {/* Search */}
       <div className="relative max-w-md">
