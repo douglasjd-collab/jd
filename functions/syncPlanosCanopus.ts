@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import puppeteer from 'npm:puppeteer@21.0.0';
 
 Deno.serve(async (req) => {
+  let browser = null;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -18,57 +20,7 @@ Deno.serve(async (req) => {
     const empresaIdFinal = empresa_id || user.empresa_id;
 
     if (!empresaIdFinal) {
-      return Response.json({ 
-        error: 'empresa_id não encontrado' 
-      }, { status: 400 });
-    }
-
-    const startedAt = new Date().toISOString();
-    const errors = [];
-    let successCount = 0;
-    let updatedCount = 0;
-
-    // Buscar integração Canopus
-    const integracoes = await base44.asServiceRole.entities.IntegracaoCanopus.filter({
-      empresa_id: empresaIdFinal,
-      status: 'ativa'
-    });
-
-    if (integracoes.length === 0) {
-      return Response.json({
-        error: 'Integração Canopus não configurada para esta empresa',
-        success: false
-      }, { status: 400 });
-    }
-
-    const integracao = integracoes[0];
-    const apiUrl = integracao.url_api || 'https://api.canopus.com.br';
-    const apiKey = integracao.api_key;
-
-    if (!apiKey) {
-      return Response.json({
-        error: 'API Key não configurada',
-        success: false
-      }, { status: 400 });
-    }
-
-    // Chamar API Canopus para obter planos
-    const response = await fetch(`${apiUrl}/v1/planos`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erro ao conectar API Canopus: ${response.statusText}`);
-    }
-
-    const planos = await response.json();
-
-    if (!Array.isArray(planos)) {
-      throw new Error('Resposta inválida da API Canopus');
+      return Response.json({ error: 'empresa_id não encontrado' }, { status: 400 });
     }
 
     // Buscar administradora Canopus
@@ -77,100 +29,162 @@ Deno.serve(async (req) => {
       nome_fantasia: 'Canopus'
     });
 
-    let administradora_id = adminCanopus.length > 0 ? adminCanopus[0].id : null;
-
-    // Se não encontrar, usar a primeira administradora ativa
-    if (!administradora_id) {
-      const admins = await base44.asServiceRole.entities.Administradora.filter({
-        empresa_id: empresaIdFinal,
-        status: 'ativa'
-      });
-      if (admins.length > 0) {
-        administradora_id = admins[0].id;
-      }
-    }
-
-    if (!administradora_id) {
+    if (adminCanopus.length === 0) {
       return Response.json({
-        error: 'Nenhuma administradora encontrada para vincular os planos',
+        error: 'Administradora Canopus não encontrada',
         success: false
       }, { status: 400 });
     }
 
-    // Processar planos
-    for (let i = 0; i < planos.length; i++) {
-      const plano = planos[i];
+    const administradora_id = adminCanopus[0].id;
+    let successCount = 0;
+    let updatedCount = 0;
+    const errors = [];
+
+    // Iniciar Puppeteer
+    browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    page.setDefaultTimeout(30000);
+
+    // Acessar site AFV
+    console.log('Acessando AFV...');
+    await page.goto('https://afv.consorciocanopus.com.br/Sistema/', { waitUntil: 'networkidle2' });
+
+    // Fazer login
+    console.log('Realizando login...');
+    await page.type('input[name="login"]', '0000022393', { delay: 50 });
+    await page.type('input[name="senha"]', 'Canopus24@', { delay: 50 });
+    await page.click('button[type="submit"]');
+    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+    // Acessar página de planos
+    console.log('Acessando página de planos...');
+    await page.goto('https://afv.consorciocanopus.com.br/Sistema/planos/listagem_planos.php', { waitUntil: 'networkidle2' });
+
+    // Configurações de filtros
+    const filtros = [
+      { produto: 'AUTOMÓVEIS', reajuste: 'IPCA', nome_produto: 'Automóvel' },
+      { produto: 'IMÓVEIS', reajuste: 'INCC', nome_produto: 'Imóvel' }
+    ];
+
+    for (const filtro of filtros) {
+      console.log(`Processando ${filtro.nome_produto}...`);
+
+      // Resetar página
+      await page.goto('https://afv.consorciocanopus.com.br/Sistema/planos/listagem_planos.php', { waitUntil: 'networkidle2' });
 
       try {
-        // Validações
-        if (!plano.nome || !plano.prazo_meses || !plano.parcela) {
-          errors.push({
-            index: i,
-            nome: plano.nome,
-            message: 'Campos obrigatórios ausentes (nome, prazo_meses, parcela)',
-            raw_data: plano
-          });
-          continue;
+        // Selecionar produto
+        await page.select('select[name="produto"]', filtro.produto);
+        await page.waitForTimeout(500);
+
+        // Selecionar reajuste
+        const reajusteRadio = await page.$(`input[value="${filtro.reajuste}"]`);
+        if (reajusteRadio) {
+          await reajusteRadio.click();
+          await page.waitForTimeout(500);
         }
 
-        // Gerar hash para upsert
-        const hashChave = `${empresa_id}|${plano.nome}|${plano.produto || ''}|${plano.nome_bem || ''}|${plano.prazo_meses}|${plano.reajuste_tipo || 'IPCA'}|${plano.sem_reserva ? 'sim' : 'nao'}`;
+        // Selecionar "Sem reserva"
+        const semReservaRadio = await page.$('input[value="Sem reserva"]');
+        if (semReservaRadio) {
+          await semReservaRadio.click();
+          await page.waitForTimeout(500);
+        }
 
-        // Verificar se já existe
-        const existente = await base44.asServiceRole.entities.PlanoCanopus.filter({
-          hash_chave: hashChave
+        // Clicar em Filtrar
+        await page.click('button:contains("Filtrar")');
+        await page.waitForTimeout(1000);
+
+        // Extrair planos da tabela
+        const planos = await page.evaluate(() => {
+          const rows = document.querySelectorAll('table tbody tr');
+          const planosList = [];
+
+          rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+              planosList.push({
+                nome: cells[0]?.textContent?.trim() || '',
+                nome_bem: cells[1]?.textContent?.trim() || '',
+                prazo_meses: parseInt(cells[2]?.textContent?.trim()) || 0,
+                valor_bem: parseFloat(cells[3]?.textContent?.trim().replace('R$', '').replace(/\./g, '').replace(',', '.')) || 0,
+                parcela: parseFloat(cells[4]?.textContent?.trim().replace('R$', '').replace(/\./g, '').replace(',', '.')) || 0
+              });
+            }
+          });
+
+          return planosList;
         });
 
-        const planoData = {
-          empresa_id: empresaIdFinal,
-          origem: 'CANOPUS',
-          plano: plano.nome,
-          produto: plano.produto || '',
-          nome_bem: plano.nome_bem || '',
-          reajuste_tipo: plano.reajuste_tipo || 'IPCA',
-          sem_reserva: plano.sem_reserva || false,
-          valor_bem: parseFloat(plano.valor_bem || 0),
-          prazo_meses: parseInt(plano.prazo_meses),
-          parcela: parseFloat(plano.parcela),
-          status: 'ativo',
-          hash_chave: hashChave,
-          ultima_sincronizacao: new Date().toISOString()
-        };
+        // Processar cada plano
+        for (const plano of planos) {
+          if (!plano.nome || plano.prazo_meses === 0) continue;
 
-        if (existente.length > 0) {
-          await base44.asServiceRole.entities.PlanoCanopus.update(existente[0].id, planoData);
-          updatedCount++;
-        } else {
-          await base44.asServiceRole.entities.PlanoCanopus.create(planoData);
-          successCount++;
+          try {
+            const hashChave = `${empresaIdFinal}|${plano.nome}|${filtro.nome_produto}|${plano.nome_bem}|${plano.prazo_meses}|${filtro.reajuste}|sem_reserva`;
+
+            const existente = await base44.asServiceRole.entities.PlanoCanopus.filter({
+              hash_chave: hashChave
+            });
+
+            const planoData = {
+              empresa_id: empresaIdFinal,
+              origem: 'CANOPUS',
+              plano: plano.nome,
+              produto: filtro.nome_produto,
+              nome_bem: plano.nome_bem,
+              reajuste_tipo: filtro.reajuste,
+              sem_reserva: true,
+              valor_bem: plano.valor_bem,
+              prazo_meses: plano.prazo_meses,
+              parcela: plano.parcela,
+              status: 'ativo',
+              hash_chave: hashChave,
+              ultima_sincronizacao: new Date().toISOString()
+            };
+
+            if (existente.length > 0) {
+              await base44.asServiceRole.entities.PlanoCanopus.update(existente[0].id, planoData);
+              updatedCount++;
+            } else {
+              await base44.asServiceRole.entities.PlanoCanopus.create(planoData);
+              successCount++;
+            }
+          } catch (error) {
+            errors.push({
+              plano: plano.nome,
+              message: error.message
+            });
+          }
         }
       } catch (error) {
         errors.push({
-          index: i,
-          nome: plano.nome,
-          message: error.message || 'Erro ao processar plano',
-          raw_data: plano
+          filtro: filtro.nome_produto,
+          message: error.message
         });
       }
     }
 
-    const finishedAt = new Date().toISOString();
-    const total = planos.length;
-    const failed = errors.length;
+    await browser.close();
 
     return Response.json({
       success: true,
       summary: {
-        total,
+        total: successCount + updatedCount,
         successCount,
         updatedCount,
-        errorCount: failed
+        errorCount: errors.length
       },
       errors: errors.length > 0 ? errors : undefined,
-      message: `Sincronização concluída: ${successCount} criados, ${updatedCount} atualizados, ${failed} erros`
+      message: `Sincronização concluída: ${successCount} criados, ${updatedCount} atualizados`
     });
 
   } catch (error) {
+    if (browser) await browser.close();
     return Response.json({
       error: error.message || 'Erro ao sincronizar planos',
       success: false
