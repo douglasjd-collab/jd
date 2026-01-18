@@ -29,7 +29,19 @@ Deno.serve(async (req) => {
       console.log('Payload parse error:', e.message);
     }
 
-    const empresaIdFinal = payload.empresa_id || user.empresa_id;
+    let empresaIdFinal = payload.empresa_id || user.empresa_id;
+
+    // Se não tiver empresa_id, buscar do Colaborador
+    if (!empresaIdFinal) {
+      const colabs = await base44.asServiceRole.entities.Colaborador.filter({
+        user_id: user.id,
+        status: 'ativo'
+      });
+      
+      if (colabs.length > 0) {
+        empresaIdFinal = colabs[0].empresa_id;
+      }
+    }
 
     if (!empresaIdFinal) {
       console.error('Erro: empresa_id não encontrado. User:', user);
