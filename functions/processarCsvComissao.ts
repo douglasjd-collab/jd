@@ -117,53 +117,15 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // NORMALIZAÇÃO DE VALOR MONETÁRIO
-      // Ex: R$ 600,00 -> 600.00 | R$ 840,00 -> 840.00 | R$ 1.000,00 -> 1000.00
+      // NORMALIZAÇÃO DE VALOR
+      // Formato CSV: 600.00, 840.00, 1000.00 (já vem como número com ponto decimal)
       let valor = 0;
       try {
-        // Converter para string e limpar
-        let valorLimpo = String(valorStr).trim();
-        
-        // Log do valor original para debug
-        console.log(`Linha ${i + 1} - Valor original: "${valorStr}"`);
-
-        // Remover R$ e variações
-        valorLimpo = valorLimpo.replace(/R\$/gi, '').replace(/\$/gi, '');
-        
-        // Remover espaços
-        valorLimpo = valorLimpo.replace(/\s+/g, '');
-        
-        // Remover aspas
-        valorLimpo = valorLimpo.replace(/["']/g, '');
-
-        // Remover APENAS pontos que são separadores de milhar
-        // Mantém o último ponto/vírgula como separador decimal
-        // Ex: "1.000,00" -> "1000,00"
-        const lastComma = valorLimpo.lastIndexOf(',');
-        const lastDot = valorLimpo.lastIndexOf('.');
-        
-        if (lastComma > lastDot) {
-          // Vírgula é o separador decimal
-          // Remove todos os pontos (são de milhar)
-          valorLimpo = valorLimpo.replace(/\./g, '');
-          // Substitui vírgula por ponto
-          valorLimpo = valorLimpo.replace(',', '.');
-        } else if (lastDot > lastComma) {
-          // Ponto é o separador decimal
-          // Remove vírgulas (são de milhar)
-          valorLimpo = valorLimpo.replace(/,/g, '');
-          // Ponto já está correto
-        } else {
-          // Sem separador decimal ou só um deles
-          valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
-        }
-
+        const valorLimpo = String(valorStr).trim();
         valor = parseFloat(valorLimpo);
-        
-        console.log(`Linha ${i + 1} - Valor processado: ${valor}`);
 
         if (isNaN(valor) || valor <= 0) {
-          errors.push(`Linha ${i + 1}: Valor inválido - valor original: "${valorStr}", processado: "${valorLimpo}"`);
+          errors.push(`Linha ${i + 1}: Valor inválido - "${valorStr}"`);
           continue;
         }
       } catch (e) {
