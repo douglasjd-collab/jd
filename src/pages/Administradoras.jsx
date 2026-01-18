@@ -220,30 +220,27 @@ export default function Administradoras() {
 
   // Verificar permissão
   const [currentUser, setCurrentUser] = React.useState(null);
+  const [checkingPermission, setCheckingPermission] = React.useState(true);
   
   React.useEffect(() => {
     const checkUser = async () => {
       try {
-        const colabs = await base44.entities.Colaborador.filter(
-          { status: 'ativo' },
-          '-created_date',
-          1
-        );
-        
-        if (colabs && colabs.length > 0) {
-          const colab = colabs[0];
-          setCurrentUser({ perfil: colab.perfil });
+        const me = await base44.auth.me();
+        if (me) {
+          setCurrentUser({ perfil: me.role });
         }
       } catch (error) {
         console.error('Erro ao verificar usuário:', error);
+      } finally {
+        setCheckingPermission(false);
       }
     };
     checkUser();
   }, []);
 
-  const hasAccess = currentUser && ['master', 'super_admin', 'admin'].includes(currentUser.perfil);
+  const hasAccess = !currentUser || ['master', 'super_admin', 'admin'].includes(currentUser.perfil);
 
-  if (currentUser && !hasAccess) {
+  if (!checkingPermission && !hasAccess) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
@@ -253,6 +250,14 @@ export default function Administradoras() {
         <p className="text-slate-500 text-center max-w-md">
           Você não tem permissão para acessar esta página. Entre em contato com o administrador.
         </p>
+      </div>
+    );
+  }
+
+  if (checkingPermission) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-slate-500">Carregando...</p>
       </div>
     );
   }
