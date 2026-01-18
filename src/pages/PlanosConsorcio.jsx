@@ -27,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Pencil, Trash2, Loader2, Zap, Plus, Upload, ChevronDown } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Loader2, Zap, Plus, Upload, ChevronDown, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import {
