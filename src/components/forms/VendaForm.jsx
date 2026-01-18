@@ -123,55 +123,62 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   });
 
   useEffect(() => {
-    if (open) {
-      if (venda) {
-        // Modo edição - preencher todos os campos
-        Object.keys(venda).forEach(key => {
-          setValue(key, venda[key]);
-        });
-        // Se houver cliente, carregar dados
-        if (venda.cliente_id) {
-          const cliente = clientes.find(c => c.id === venda.cliente_id);
-          if (cliente) {
-            setClienteSelecionado(cliente);
-          }
-        }
-      } else {
-        // Modo criação - valores padrão
-        reset({
-          cliente_id: oportunidade?.cliente_id || '',
-          administradora_id: '',
-          tabela_id: '',
-          tipo: 'automovel',
-          grupo: '',
-          cota: '',
-          contrato: '',
-          valorCredito: oportunidade?.valor_estimado || 0,
-          taxaAdministracao: 0,
-          vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
-          gerente_id: currentUser?.gerente_id || '',
-          data_venda: format(new Date(), 'yyyy-MM-dd'),
-          status: 'ativa'
-        });
-        
-        // Se oportunidade tem cliente, carregar
-        if (oportunidade?.cliente_id) {
-          const cliente = clientes.find(c => c.id === oportunidade.cliente_id);
-          if (cliente) {
-            setClienteSelecionado(cliente);
-          }
-        } else {
-          setClienteSelecionado(null);
+    if (!open) {
+      // Limpa estado ao fechar
+      setClienteSelecionado(null);
+      setTabelas([]);
+      return;
+    }
+
+    if (venda) {
+      // Modo edição - preencher todos os campos
+      Object.keys(venda).forEach(key => {
+        setValue(key, venda[key]);
+      });
+      // Se houver cliente, carregar dados
+      if (venda.cliente_id && clientes.length > 0) {
+        const cliente = clientes.find(c => c.id === venda.cliente_id);
+        if (cliente) {
+          setClienteSelecionado(cliente);
         }
       }
+    } else {
+      // Modo criação - valores padrão
+      reset({
+        cliente_id: oportunidade?.cliente_id || '',
+        administradora_id: '',
+        tabela_id: '',
+        tipo: 'automovel',
+        grupo: '',
+        cota: '',
+        contrato: '',
+        valorCredito: oportunidade?.valor_estimado || 0,
+        taxaAdministracao: 0,
+        vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
+        gerente_id: currentUser?.gerente_id || '',
+        data_venda: format(new Date(), 'yyyy-MM-dd'),
+        status: 'ativa'
+      });
+      
+      // Se oportunidade tem cliente, carregar
+      if (oportunidade?.cliente_id && clientes.length > 0) {
+        const cliente = clientes.find(c => c.id === oportunidade.cliente_id);
+        if (cliente) {
+          setClienteSelecionado(cliente);
+        }
+      } else {
+        setClienteSelecionado(null);
+      }
     }
-  }, [open, venda, oportunidade, setValue, reset, currentUser, clientes]);
+  }, [open]);
 
   useEffect(() => {
-    if (administradoraId) {
+    if (administradoraId && open) {
       loadTabelas(administradoraId);
+    } else {
+      setTabelas([]);
     }
-  }, [administradoraId]);
+  }, [administradoraId, open]);
 
   useEffect(() => {
     if (tabelaId && tabelas.length > 0) {
@@ -211,11 +218,16 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   }, [vendedorId, vendedores, setValue]);
 
   const loadTabelas = async (adminId) => {
-    const data = await base44.entities.TabelaConsorcio.filter({ 
-      administradora_id: adminId, 
-      status: 'ativa' 
-    });
-    setTabelas(data);
+    try {
+      const data = await base44.entities.TabelaConsorcio.filter({ 
+        administradora_id: adminId, 
+        status: 'ativa' 
+      });
+      setTabelas(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar tabelas:', error);
+      setTabelas([]);
+    }
   };
 
 
