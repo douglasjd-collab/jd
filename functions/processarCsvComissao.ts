@@ -81,22 +81,41 @@ Deno.serve(async (req) => {
         continue;
       }
       
-      // Converter valor e parcela
+      // Converter valor monetário e parcela
       let valor = 0;
       let parcela = 0;
-      
+
       try {
-        // Limpar valor: remover R$, pontos de milhares, trocar vírgula por ponto
-        const valorLimpo = valorStr.replace(/R\$\s*/g, '').replace(/\./g, '').replace(',', '.');
-        valor = parseFloat(valorLimpo) || 0;
-        
-        // Normalizar parcela: remover espaços, extrair apenas dígitos
+        // TRATAMENTO ROBUSTO DE VALOR MONETÁRIO
+        // Remove R$, espaços, aspas
+        let valorLimpo = valorStr
+          .replace(/R\$\s*/gi, '')  // Remove R$ e espaços após
+          .replace(/["']/g, '')      // Remove aspas
+          .trim();                   // Remove espaços extras
+
+        // Remove pontos de milhar (.) mas preserva vírgula decimal
+        // Ex: "1.234,56" -> "1234,56"
+        valorLimpo = valorLimpo.replace(/\./g, '');
+
+        // Substitui vírgula decimal por ponto
+        // Ex: "1234,56" -> "1234.56"
+        valorLimpo = valorLimpo.replace(',', '.');
+
+        // Converte para número
+        valor = parseFloat(valorLimpo);
+
+        if (isNaN(valor) || valor <= 0) {
+          errors.push(`Linha ${i + 1}: Valor inválido (${valorStr})`);
+          continue;
+        }
+
+        // TRATAMENTO ROBUSTO DE PARCELA
+        // Extrai apenas dígitos
         const parcelaLimpa = parcelaStr.trim().replace(/[^\d]/g, '');
-        parcela = parseInt(parcelaLimpa);
-        
-        // Validar parcela
-        if (!parcela || isNaN(parcela)) {
-          errors.push(`Linha ${i + 1}: Parcela inválida`);
+        parcela = parseInt(parcelaLimpa, 10);
+
+        if (!parcela || isNaN(parcela) || parcela <= 0) {
+          errors.push(`Linha ${i + 1}: Parcela inválida (${parcelaStr})`);
           continue;
         }
       } catch (e) {
