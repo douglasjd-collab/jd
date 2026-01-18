@@ -75,13 +75,6 @@ export default function RelatoriosFinanceiros() {
     enabled: !!user,
   });
 
-  // Filtrar por período
-  const filterByPeriod = (item, dateField) => {
-    if (!item[dateField]) return false;
-    const itemDate = moment(item[dateField]);
-    return itemDate.isBetween(dataInicio, dataFim, 'day', '[]');
-  };
-
   // Converter string para number se necessário
   const toNumber = (value) => {
     if (typeof value === 'string') {
@@ -91,33 +84,60 @@ export default function RelatoriosFinanceiros() {
     return value || 0;
   };
 
+  // Normalizar data para comparação (YYYY-MM-DD)
+  const normalizeDate = (date) => {
+    if (!date) return null;
+    const m = moment(date);
+    return m.isValid() ? m.format('YYYY-MM-DD') : null;
+  };
+
   // Comissões Recebidas (filtrar por data_recebimento)
   const comissoesRecebdasPeriodo = comissoesRecebidas.filter((c) => {
     if (!c.data_recebimento) return false;
-    const itemDate = moment(c.data_recebimento);
-    if (!itemDate.isValid()) return false;
-    return itemDate.isBetween(dataInicio, dataFim, 'day', '[]');
+    const normalized = normalizeDate(c.data_recebimento);
+    if (!normalized) return false;
+    return normalized >= dataInicio && normalized <= dataFim;
   });
   const totalComissoesRecebidas = comissoesRecebdasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
   const recebidas_count = comissoesRecebidas.length;
 
   // Comissões a Pagar (filtrar por data_recebimento - quando a comissão foi recebida)
-  const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => c.status_pagamento === 'a_pagar' && filterByPeriod(c, 'data_recebimento'));
+  const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => {
+    if (c.status_pagamento !== 'a_pagar' || !c.data_recebimento) return false;
+    const normalized = normalizeDate(c.data_recebimento);
+    if (!normalized) return false;
+    return normalized >= dataInicio && normalized <= dataFim;
+  });
   const totalComissoesAPagar = comissoesAPagarPeriodo.reduce((acc, c) => acc + toNumber(c.valor_a_pagar), 0);
   const a_pagar_count = comissoesAPagarPeriodo.length;
 
   // Comissões Pagas (filtrar por data_pagamento)
-  const comissoesPagasPeriodo = comissoesAPagar.filter((c) => c.status_pagamento === 'paga' && filterByPeriod(c, 'data_pagamento'));
+  const comissoesPagasPeriodo = comissoesAPagar.filter((c) => {
+    if (c.status_pagamento !== 'paga' || !c.data_pagamento) return false;
+    const normalized = normalizeDate(c.data_pagamento);
+    if (!normalized) return false;
+    return normalized >= dataInicio && normalized <= dataFim;
+  });
   const totalComissoesPagas = comissoesPagasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_a_pagar), 0);
   const pagas_count = comissoesPagasPeriodo.length;
 
   // Receitas (filtrar por data)
-  const receitasPeriodo = receitas.filter((r) => filterByPeriod(r, 'data'));
+  const receitasPeriodo = receitas.filter((r) => {
+    if (!r.data) return false;
+    const normalized = normalizeDate(r.data);
+    if (!normalized) return false;
+    return normalized >= dataInicio && normalized <= dataFim;
+  });
   const totalReceitas = receitasPeriodo.reduce((acc, r) => acc + toNumber(r.valor), 0);
   const receitas_count = receitasPeriodo.length;
 
   // Despesas (filtrar por data)
-  const despesasPeriodo = despesas.filter((d) => filterByPeriod(d, 'data'));
+  const despesasPeriodo = despesas.filter((d) => {
+    if (!d.data) return false;
+    const normalized = normalizeDate(d.data);
+    if (!normalized) return false;
+    return normalized >= dataInicio && normalized <= dataFim;
+  });
   const totalDespesas = despesasPeriodo.reduce((acc, d) => acc + toNumber(d.valor), 0);
   const despesas_count = despesasPeriodo.length;
 
