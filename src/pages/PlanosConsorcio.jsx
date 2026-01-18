@@ -188,7 +188,7 @@ export default function PlanosConsorcio() {
             onClick={() => setModalGroupName(groupName)}
           >
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-slate-900">{groupName}</p>
+              <p className="font-medium text-slate-900">{groupName} {formatCurrency(firstItem?.valor_carta)}</p>
               <p className="text-sm text-slate-500">{getAdminNome(firstItem?.administradora_id)}</p>
             </div>
             <div className="text-right">
