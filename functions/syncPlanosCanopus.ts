@@ -134,8 +134,11 @@ Deno.serve(async (req) => {
         }
 
         // Clicar em Filtrar
-        await page.click('button:contains("Filtrar")');
-        await page.waitForTimeout(1000);
+        const filtrarBtn = await page.$x("//button[contains(., 'Filtrar')]");
+        if (filtrarBtn.length > 0) {
+          await filtrarBtn[0].click();
+          await page.waitForTimeout(2000);
+        }
 
         // Extrair planos da tabela
         const planos = await page.evaluate(() => {
