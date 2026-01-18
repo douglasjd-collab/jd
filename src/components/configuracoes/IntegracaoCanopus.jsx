@@ -41,31 +41,41 @@ export default function IntegracaoCanopus() {
     usuario: '',
     senha: ''
   });
+  const [user, setUser] = useState(null);
 
   const queryClient = useQueryClient();
 
+  // Carregar usuário
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const me = await base44.auth.me();
+        setUser(me);
+      } catch (error) {
+        console.error('Erro ao carregar usuário:', error);
+      }
+    };
+    loadUser();
+  }, []);
+
   // Buscar configurações
   const { data: config } = useQuery({
-    queryKey: ['config-canopus'],
+    queryKey: ['config-canopus', user?.id],
     queryFn: async () => {
       try {
-        const configs = await base44.entities.ConfiguracaoSistema.filter({ 
-          chave: 'canopus_config' 
+        if (!user?.empresa_id) return null;
+        const integracoes = await base44.entities.IntegracaoCanopus.filter({ 
+          empresa_id: user.empresa_id,
+          origem: 'CANOPUS'
         });
-        if (configs.length > 0 && configs[0].valor) {
-          try {
-            return JSON.parse(configs[0].valor);
-          } catch {
-            return null;
-          }
-        }
-        return null;
+        return integracoes.length > 0 ? integracoes[0] : null;
       } catch (error) {
         console.error('Erro ao buscar config:', error);
         return null;
       }
     },
-    retry: false
+    retry: false,
+    enabled: !!user?.empresa_id
   });
 
   // Buscar última execução
