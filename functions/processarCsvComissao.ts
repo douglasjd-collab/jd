@@ -101,24 +101,44 @@ Deno.serve(async (req) => {
         continue;
       }
       
-      // Converter valor monetário e parcela
-      let valor = 0;
+      // NORMALIZAÇÃO DE PARCELA (obrigatória)
       let parcela = 0;
-
       try {
-        // TRATAMENTO ROBUSTO DE VALOR MONETÁRIO
-        // Remove R$, espaços, aspas
-        let valorLimpo = valorStr
-          .replace(/R\$\s*/gi, '')  // Remove R$ e espaços após
-          .replace(/["']/g, '')      // Remove aspas
-          .trim();                   // Remove espaços extras
+        // 1. trim (remover espaços)
+        // 2. extrair somente dígitos
+        // 3. converter para inteiro
+        const parcelaLimpa = parcelaStr.trim().replace(/[^\d]/g, '');
+        parcela = parseInt(parcelaLimpa, 10);
 
-        // Remove pontos de milhar (.) mas preserva vírgula decimal
+        if (!parcela || isNaN(parcela) || parcela <= 0) {
+          errors.push(`Linha ${i + 1}: Parcela inválida (${parcelaStr})`);
+          continue;
+        }
+      } catch (e) {
+        errors.push(`Linha ${i + 1}: Erro ao processar parcela - ${e.message}`);
+        continue;
+      }
+
+      // NORMALIZAÇÃO DE VALOR (obrigatória)
+      let valor = 0;
+      try {
+        // 1. ler como texto primeiro
+        // 2. remover "R$" e espaços
+        // 3. remover pontos de milhar "."
+        // 4. trocar vírgula "," por ponto "."
+        // 5. converter para número
+        let valorLimpo = String(valorStr)
+          .trim()                    // Remove espaços nas pontas
+          .replace(/R\$\s*/gi, '')  // Remove R$ e espaços após
+          .replace(/["']/g, '')      // Remove aspas (segurança)
+          .replace(/\s+/g, '');      // Remove todos espaços
+
+        // Remove pontos de milhar mas preserva vírgula decimal
         // Ex: "1.234,56" -> "1234,56"
         valorLimpo = valorLimpo.replace(/\./g, '');
 
         // Substitui vírgula decimal por ponto
-        // Ex: "1234,56" -> "1234.56"
+        // Ex: "1234,56" -> "1234.56" ou "600,00" -> "600.00"
         valorLimpo = valorLimpo.replace(',', '.');
 
         // Converte para número
@@ -128,19 +148,8 @@ Deno.serve(async (req) => {
           errors.push(`Linha ${i + 1}: Valor inválido (${valorStr})`);
           continue;
         }
-
-        // TRATAMENTO ROBUSTO DE PARCELA
-        // Extrai apenas dígitos
-        const parcelaLimpa = parcelaStr.trim().replace(/[^\d]/g, '');
-        parcela = parseInt(parcelaLimpa, 10);
-
-        if (!parcela || isNaN(parcela) || parcela <= 0) {
-          errors.push(`Linha ${i + 1}: Parcela inválida (${parcelaStr})`);
-          continue;
-        }
       } catch (e) {
-        console.log(`Erro ao converter valores na linha ${i + 1}:`, e.message);
-        errors.push(`Linha ${i + 1}: ${e.message}`);
+        errors.push(`Linha ${i + 1}: Erro ao processar valor - ${e.message}`);
         continue;
       }
       
