@@ -504,42 +504,96 @@ export default function RecebimentoComissao() {
   };
 
   const excluirComissaoMutation = useMutation({
-    mutationFn: async (comissaoId) => {
-      const comissao = comissoesRecebidas.find(c => c.id === comissaoId);
-      if (!comissao) throw new Error('Comissão não encontrada');
+    mutationFn: async ({ recebidoId, pagarId, vendaId }) => {
+      const comissoes = [];
+      
+      // Buscar comissões para logs/auditoria
+      if (recebidoId) {
+        const recebido = comissoesRecebidas.find(c => c.id === recebidoId);
+        if (recebido) comissoes.push(recebido);
+      }
+      if (pagarId) {
+        const pagar = comissoesRecebidas.find(c => c.id === pagarId);
+        if (pagar) comissoes.push(pagar);
+      }
 
-      // Reverter saldo apenas se for tipo 'pagar'
-      if (comissao.tipo === 'pagar') {
-        const usuarioData = await base44.entities.User.filter({ id: comissao.usuario_id });
-        if (usuarioData.length > 0) {
-          const saldoAtual = usuarioData[0].saldo_comissao || 0;
-          await base44.entities.User.update(comissao.usuario_id, {
-            saldo_comissao: saldoAtual - parseFloat(comissao.valor)
+      // Excluir comissões
+      if (recebidoId) {
+        await base44.entities.Comissao.delete(recebidoId);
+      }
+      if (pagarId) {
+        const comissaoPagar = comissoesRecebidas.find(c => c.id === pagarId);
+        
+        // Reverter saldo do vendedor
+        if (comissaoPagar) {
+          const usuarioData = await base44.entities.User.filter({ id: comissaoPagar.usuario_id });
+          if (usuarioData.length > 0) {
+            const saldoAtual = usuarioData[0].saldo_comissao || 0;
+            await base44.entities.User.update(comissaoPagar.usuario_id, {
+              saldo_comissao: saldoAtual - parseFloat(comissaoPagar.valor)
+            });
+          }
+        }
+        
+        await base44.entities.Comissao.delete(pagarId);
+      }
+
+      // Reverter status da parcela se existir
+      if (comissoes.length > 0 && comissoes[0].parcela_id) {
+        try {
+          await base44.entities.Parcela.update(comissoes[0].parcela_id, {
+            status: 'pendente',
+            valor_recebido: null,
+            data_recebimento: null,
+            importacao_id: null
           });
+        } catch (e) {
+          console.log('Erro ao reverter parcela:', e);
         }
       }
 
-      // Excluir comissão
-      await base44.entities.Comissao.delete(comissaoId);
+      // Atualizar total recebido na venda
+      if (vendaId) {
+        try {
+          const comissoesVenda = await base44.entities.Comissao.filter({ 
+            venda_id: vendaId,
+            status: 'confirmada'
+          });
+          const totalRecebido = comissoesVenda
+            .filter(c => !comissoes.find(del => del.id === c.id))
+            .reduce((acc, c) => acc + parseFloat(c.valor), 0);
+          
+          await base44.entities.Venda.update(vendaId, {
+            comissao_total_recebida: totalRecebido
+          });
+        } catch (e) {
+          console.log('Erro ao atualizar total recebido:', e);
+        }
+      }
 
       // Auditoria
       const user = await base44.auth.me();
-      await base44.entities.LogAuditoria.create({
-        usuario_id: user.id,
-        usuario_nome: user.full_name,
-        acao: `Exclusão de ${comissao.tipo === 'receber' ? 'recebimento da ADM' : 'pagamento ao vendedor'}`,
-        entidade: 'Comissao',
-        entidade_id: comissaoId,
-        dados_anteriores: JSON.stringify(comissao),
-        tipo: 'exclusao'
-      });
+      for (const comissao of comissoes) {
+        await base44.entities.LogAuditoria.create({
+          usuario_id: user.id,
+          usuario_nome: user.full_name,
+          acao: `Exclusão de comissão importada - ${comissao.tipo === 'receber' ? 'Recebimento ADM' : 'Pagamento Vendedor'}`,
+          entidade: 'Comissao',
+          entidade_id: comissao.id,
+          dados_anteriores: JSON.stringify(comissao),
+          tipo: 'exclusao'
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comissoes-recebidas'] });
-      toast.success('Excluído com sucesso');
+      queryClient.invalidateQueries({ queryKey: ['parcelas'] });
+      setDeleteDialogOpen(false);
+      setComissaoParaExcluir(null);
+      toast.success('Comissão excluída com sucesso');
     },
     onError: (error) => {
-      toast.error(error.message || 'Erro ao excluir');
+      toast.error(error.message || 'Erro ao excluir comissão');
     }
   });
 
