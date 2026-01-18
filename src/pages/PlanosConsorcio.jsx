@@ -499,7 +499,7 @@ export default function PlanosConsorcio() {
                 />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-900">
-                    Plano de {item.prazo} meses / 1ª parcela de {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))} | Grupo: {item.grupo}
+                    Plano de {item.prazo} meses de {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))} | Grupo: {item.grupo}
                   </p>
                 </div>
                 {selectedModalPlano?.id === item.id && (
