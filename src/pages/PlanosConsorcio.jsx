@@ -50,6 +50,7 @@ export default function PlanosConsorcio() {
   const [importOpen, setImportOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [selectedPlanoId, setSelectedPlanoId] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
