@@ -81,7 +81,19 @@ Deno.serve(async (req) => {
 
     // Iniciar Puppeteer
     browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+        "--no-zygote",
+        "--disable-renderer-backgrounding",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--window-size=1920,1080"
+      ]
     });
 
     const page = await browser.newPage();
@@ -142,7 +154,7 @@ Deno.serve(async (req) => {
 
         // Extrair planos da tabela
         const planos = await page.evaluate(() => {
-          const rows = document.querySelectorAll('table tbody tr');
+          const rows = document.querySelectorAll('table.table tbody tr');
           const planosList = [];
 
           rows.forEach(row => {
