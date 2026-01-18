@@ -335,7 +335,9 @@ export default function ComissoesPagar() {
                       {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
                     </td>
                     <td className="p-4 text-sm">
-                      {comissao.data_recebimento ? moment(comissao.data_recebimento).format('DD/MM/YYYY') : '-'}
+                      {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
+                        ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
+                        : '-'}
                     </td>
                     <td className="p-4 font-semibold text-blue-600">
                       {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -428,7 +430,9 @@ export default function ComissoesPagar() {
                 <div>
                   <Label className="text-slate-500">Data Recebimento</Label>
                   <p className="font-medium">
-                    {moment(recebimentoDetalhes.data_recebimento).format('DD/MM/YYYY')}
+                    {recebimentoDetalhes.data_recebimento && moment(recebimentoDetalhes.data_recebimento).isValid()
+                      ? moment(recebimentoDetalhes.data_recebimento).format('DD/MM/YYYY')
+                      : '-'}
                   </p>
                 </div>
                 <div>
