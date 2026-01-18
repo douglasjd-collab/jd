@@ -124,30 +124,37 @@ export default function IntegracaoCanopus() {
   // Salvar configurações
   const salvarConfigMutation = useMutation({
     mutationFn: async (data) => {
-      const configs = await base44.entities.ConfiguracaoSistema.filter({ 
-        chave: 'canopus_config' 
+      if (!user?.empresa_id) {
+        throw new Error('Empresa não encontrada');
+      }
+
+      const integracoes = await base44.entities.IntegracaoCanopus.filter({ 
+        empresa_id: user.empresa_id,
+        origem: 'CANOPUS'
       });
 
-      const configData = {
-        chave: 'canopus_config',
-        valor: JSON.stringify(data),
-        descricao: 'Configurações de integração Canopus',
-        tipo: 'texto'
+      const integracao = {
+        empresa_id: user.empresa_id,
+        origem: 'CANOPUS',
+        usuario: data.usuario,
+        senha: data.senha,
+        url: 'https://afv.consorciocanopus.com.br/Sistema/',
+        status: 'ativo'
       };
 
-      if (configs.length > 0) {
-        await base44.entities.ConfiguracaoSistema.update(configs[0].id, configData);
+      if (integracoes.length > 0) {
+        await base44.entities.IntegracaoCanopus.update(integracoes[0].id, integracao);
       } else {
-        await base44.entities.ConfiguracaoSistema.create(configData);
+        await base44.entities.IntegracaoCanopus.create(integracao);
       }
     },
     onSuccess: () => {
       toast.success('Configurações salvas com sucesso');
       setConfigOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['config-canopus'] });
+      queryClient.invalidateQueries({ queryKey: ['config-canopus', user?.id] });
     },
-    onError: () => {
-      toast.error('Erro ao salvar configurações');
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao salvar configurações');
     }
   });
 
