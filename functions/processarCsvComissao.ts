@@ -121,15 +121,20 @@ Deno.serve(async (req) => {
         continue;
       }
       
-      // NORMALIZAÇÃO DE VALOR (tolerar erros)
+      // NORMALIZAÇÃO DE VALOR (formato brasileiro: R$ 1.000,00)
       let valor = 0;
       let valorError = null;
       try {
         let valorLimpo = String(valorStr).trim();
-        // Remover R$, espaços, etc
-        valorLimpo = valorLimpo.replace(/[R$\s]/g, '');
-        // Aceitar vírgula ou ponto
+        // 1. Remover "R$"
+        valorLimpo = valorLimpo.replace(/R\$/g, '');
+        // 2. Remover espaços
+        valorLimpo = valorLimpo.replace(/\s/g, '');
+        // 3. Remover pontos de milhar "."
+        valorLimpo = valorLimpo.replace(/\./g, '');
+        // 4. Substituir vírgula "," por ponto "."
         valorLimpo = valorLimpo.replace(',', '.');
+        // 5. Converter para número (float)
         valor = parseFloat(valorLimpo);
 
         if (isNaN(valor) || valor <= 0) {
