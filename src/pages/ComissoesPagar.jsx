@@ -10,16 +10,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Search, DollarSign, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, Eye, Edit2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 
 export default function ComissoesPagar() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('todos');
+  const [statusFilter, setStatusFilter] = useState('a_pagar');
+  const [mesFilter, setMesFilter] = useState('todos');
   const [pagarModal, setPagarModal] = useState(false);
+  const [verRecebimentoModal, setVerRecebimentoModal] = useState(false);
   const [selectedComissao, setSelectedComissao] = useState(null);
+  const [recebimentoDetalhes, setRecebimentoDetalhes] = useState(null);
   const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [observacao, setObservacao] = useState('');
   const queryClient = useQueryClient();
@@ -36,27 +39,40 @@ export default function ComissoesPagar() {
       const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
       if (colabs.length > 0) {
         const colab = colabs[0];
-        setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id });
+        setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id, id: me.id });
       }
     }
   };
 
   const { data: comissoes = [], isLoading } = useQuery({
-    queryKey: ['comissoes-pagar'],
+    queryKey: ['comissoes-a-pagar'],
     queryFn: async () => {
-      const filter = { tipo_comissao: 'parcela', tipo: 'pagar' };
-      const all = await base44.entities.Comissao.filter(filter);
-      return all;
+      return await base44.entities.ComissaoAPagar.filter({});
     },
     enabled: !!user,
   });
 
-  const pagarMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
-      return await base44.entities.Comissao.update(id, data);
+  const updatePercentualMutation = useMutation({
+    mutationFn: async ({ id, percentual }) => {
+      const comissao = comissoes.find(c => c.id === id);
+      const novoValor = (comissao.valor_recebido * percentual) / 100;
+      return await base44.entities.ComissaoAPagar.update(id, {
+        percentual_comissao: percentual,
+        valor_a_pagar: novoValor
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['comissoes-pagar']);
+      queryClient.invalidateQueries(['comissoes-a-pagar']);
+      toast.success('Percentual atualizado!');
+    },
+  });
+
+  const pagarMutation = useMutation({
+    mutationFn: async ({ id, data }) => {
+      return await base44.entities.ComissaoAPagar.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['comissoes-a-pagar']);
       toast.success('Comissão paga com sucesso!');
       setPagarModal(false);
       setSelectedComissao(null);
@@ -65,68 +81,91 @@ export default function ComissoesPagar() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id) => {
-      return await base44.entities.Comissao.delete(id);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['comissoes-pagar']);
-      toast.success('Comissão excluída com sucesso!');
-    },
-  });
+  const handleVerRecebimento = async (comissao) => {
+    if (comissao.recebimento_id) {
+      try {
+        const recebimentos = await base44.entities.RecebimentoComissao.filter({ id: comissao.recebimento_id });
+        if (recebimentos.length > 0) {
+          setRecebimentoDetalhes(recebimentos[0]);
+          setVerRecebimentoModal(true);
+        }
+      } catch (e) {
+        toast.error('Erro ao carregar recebimento');
+      }
+    }
+  };
+
+  const handleEditPercentual = (comissao) => {
+    const novoPercentual = prompt(`Percentual atual: ${comissao.percentual_comissao}%\n\nDigite o novo percentual (0-100):`, comissao.percentual_comissao);
+    if (novoPercentual !== null) {
+      const percentual = parseFloat(novoPercentual);
+      if (percentual >= 0 && percentual <= 100) {
+        updatePercentualMutation.mutate({ id: comissao.id, percentual });
+      } else {
+        toast.error('Percentual deve ser entre 0 e 100');
+      }
+    }
+  };
 
   const handlePagar = () => {
     if (!selectedComissao) return;
     pagarMutation.mutate({
       id: selectedComissao.id,
       data: {
-        status: 'paga',
+        status_pagamento: 'paga',
         data_pagamento: moment().format('YYYY-MM-DD'),
         forma_pagamento: formaPagamento,
-        observacoes: observacao,
+        observacao: observacao,
       },
     });
   };
 
-  const handleExcluir = (comissao) => {
-    if (!['master', 'super_admin', 'admin'].includes(user?.perfil)) {
-      toast.error('Apenas administradores podem excluir comissões');
-      return;
-    }
-    if (confirm(`Excluir comissão de ${comissao.usuario_nome}?`)) {
-      deleteMutation.mutate(comissao.id);
-    }
-  };
-
   const filtered = comissoes.filter((c) => {
-    // Filtro por vendedor (se não for admin/gerente)
-    if (user?.perfil === 'vendedor' && c.usuario_id !== user?.id) {
+    // Filtro por vendedor (se vendedor, só vê suas comissões)
+    if (user?.perfil === 'vendedor' && c.vendedor_id !== user?.id) {
+      return false;
+    }
+
+    // Filtro por empresa
+    if (user?.empresa_id && c.empresa_id !== user?.empresa_id) {
       return false;
     }
 
     // Filtro por status
-    if (statusFilter !== 'todos' && c.status !== statusFilter) {
+    if (statusFilter !== 'todos' && c.status_pagamento !== statusFilter) {
       return false;
+    }
+
+    // Filtro por mês
+    if (mesFilter !== 'todos' && c.data_recebimento) {
+      const mes = moment(c.data_recebimento).format('YYYY-MM');
+      if (mes !== mesFilter) return false;
     }
 
     // Filtro por busca
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return (
-        c.usuario_nome?.toLowerCase().includes(term) ||
-        c.venda_id?.toLowerCase().includes(term)
+        c.vendedor_nome?.toLowerCase().includes(term) ||
+        c.cliente_nome?.toLowerCase().includes(term) ||
+        c.grupo?.toLowerCase().includes(term) ||
+        c.cota?.toLowerCase().includes(term)
       );
     }
     return true;
   });
 
   const totalAPagar = filtered
-    .filter((c) => c.status === 'prevista' || c.status === 'confirmada')
-    .reduce((acc, c) => acc + (c.valor || 0), 0);
+    .filter((c) => c.status_pagamento === 'a_pagar')
+    .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
   const totalPago = filtered
-    .filter((c) => c.status === 'paga')
-    .reduce((acc, c) => acc + (c.valor || 0), 0);
+    .filter((c) => c.status_pagamento === 'paga')
+    .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+
+  const mesesDisponiveis = [...new Set(comissoes.map((c) => 
+    c.data_recebimento ? moment(c.data_recebimento).format('YYYY-MM') : null
+  ).filter(Boolean))].sort().reverse();
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
@@ -138,7 +177,7 @@ export default function ComissoesPagar() {
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
         title="Comissões a Pagar"
-        subtitle="Gerenciar comissões de vendedores"
+        subtitle="Gerenciar pagamento de comissões aos vendedores"
       />
 
       {/* Stats */}
@@ -173,7 +212,7 @@ export default function ComissoesPagar() {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Buscar por vendedor..."
+              placeholder="Buscar por vendedor, cliente, grupo ou cota..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -185,9 +224,21 @@ export default function ComissoesPagar() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="prevista">A Pagar</SelectItem>
-              <SelectItem value="confirmada">Confirmada</SelectItem>
+              <SelectItem value="a_pagar">A Pagar</SelectItem>
               <SelectItem value="paga">Paga</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={mesFilter} onValueChange={setMesFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os meses</SelectItem>
+              {mesesDisponiveis.map((mes) => (
+                <SelectItem key={mes} value={mes}>
+                  {moment(mes).format('MMMM/YYYY')}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -200,9 +251,13 @@ export default function ComissoesPagar() {
             <thead className="bg-slate-50 border-b">
               <tr>
                 <th className="text-left p-4 font-semibold text-slate-700">Vendedor</th>
-                <th className="text-left p-4 font-semibold text-slate-700">Grupo/Cota/Parcela</th>
-                <th className="text-left p-4 font-semibold text-slate-700">Valor</th>
-                <th className="text-left p-4 font-semibold text-slate-700">Data Recebimento</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Cliente</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Grupo/Cota</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Parcela</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Data Rec.</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Valor Recebido</th>
+                <th className="text-left p-4 font-semibold text-slate-700">% Comissão</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Valor a Pagar</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Status</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Ações</th>
               </tr>
@@ -210,32 +265,53 @@ export default function ComissoesPagar() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={10} className="p-8 text-center text-slate-500">
                     Carregando...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                  <td colSpan={10} className="p-8 text-center text-slate-500">
                     Nenhuma comissão encontrada
                   </td>
                 </tr>
               ) : (
                 filtered.map((comissao) => (
                   <tr key={comissao.id} className="border-b hover:bg-slate-50">
-                    <td className="p-4">{comissao.usuario_nome}</td>
-                    <td className="p-4 text-sm text-slate-600">
-                      {/* Buscar grupo/cota/parcela da venda */}
-                      Venda: {comissao.venda_id?.slice(0, 8)}...
+                    <td className="p-4">{comissao.vendedor_nome}</td>
+                    <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
+                    <td className="p-4 text-sm">
+                      {comissao.grupo && comissao.cota ? `${comissao.grupo}/${comissao.cota}` : comissao.contrato || '-'}
                     </td>
-                    <td className="p-4 font-semibold">
-                      {(comissao.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    <td className="p-4 text-sm">
+                      {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
                     </td>
                     <td className="p-4 text-sm">
                       {comissao.data_recebimento ? moment(comissao.data_recebimento).format('DD/MM/YYYY') : '-'}
                     </td>
+                    <td className="p-4 font-semibold text-blue-600">
+                      {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </td>
                     <td className="p-4">
-                      {comissao.status === 'paga' ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{comissao.percentual_comissao || 0}%</span>
+                        {comissao.status_pagamento === 'a_pagar' && isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditPercentual(comissao)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 font-bold text-green-600">
+                      {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </td>
+                    <td className="p-4">
+                      {comissao.status_pagamento === 'paga' ? (
                         <Badge className="bg-green-100 text-green-800">Paga</Badge>
                       ) : (
                         <Badge className="bg-orange-100 text-orange-800">A Pagar</Badge>
@@ -243,25 +319,25 @@ export default function ComissoesPagar() {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
-                        {comissao.status !== 'paga' && isAdmin && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleVerRecebimento(comissao)}
+                          title="Ver recebimento original"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {comissao.status_pagamento === 'a_pagar' && isAdmin && (
                           <Button
                             size="sm"
                             onClick={() => {
                               setSelectedComissao(comissao);
                               setPagarModal(true);
                             }}
+                            className="bg-green-600 hover:bg-green-700"
                           >
                             <CheckCircle2 className="w-4 h-4 mr-1" />
                             Pagar
-                          </Button>
-                        )}
-                        {['master', 'super_admin', 'admin'].includes(user?.perfil) && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleExcluir(comissao)}
-                          >
-                            <Trash2 className="w-4 h-4" />
                           </Button>
                         )}
                       </div>
@@ -274,27 +350,108 @@ export default function ComissoesPagar() {
         </div>
       </Card>
 
+      {/* Modal Ver Recebimento */}
+      <Dialog open={verRecebimentoModal} onOpenChange={setVerRecebimentoModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Recebimento Original</DialogTitle>
+          </DialogHeader>
+          {recebimentoDetalhes && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-slate-500">Cliente</Label>
+                  <p className="font-medium">{recebimentoDetalhes.cliente_nome}</p>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Vendedor</Label>
+                  <p className="font-medium">{recebimentoDetalhes.vendedor_nome}</p>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Administradora</Label>
+                  <p className="font-medium">{recebimentoDetalhes.administradora_nome}</p>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Grupo/Cota</Label>
+                  <p className="font-medium">
+                    {recebimentoDetalhes.grupo}/{recebimentoDetalhes.cota}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Data Recebimento</Label>
+                  <p className="font-medium">
+                    {moment(recebimentoDetalhes.data_recebimento).format('DD/MM/YYYY')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Valor Recebido</Label>
+                  <p className="font-bold text-blue-600">
+                    {(recebimentoDetalhes.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Parcela</Label>
+                  <p className="font-medium">{recebimentoDetalhes.parcela_informada || '-'}º</p>
+                </div>
+                <div>
+                  <Label className="text-slate-500">Status</Label>
+                  <Badge className="bg-green-100 text-green-800">{recebimentoDetalhes.status_recebimento}</Badge>
+                </div>
+              </div>
+              {recebimentoDetalhes.observacoes && (
+                <div>
+                  <Label className="text-slate-500">Observações</Label>
+                  <p className="text-sm">{recebimentoDetalhes.observacoes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setVerRecebimentoModal(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Pagar */}
       <Dialog open={pagarModal} onOpenChange={setPagarModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Pagar Comissão</DialogTitle>
+            <DialogTitle>Confirmar Pagamento de Comissão</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Vendedor</Label>
-              <Input value={selectedComissao?.usuario_nome || ''} disabled />
+            <div className="bg-slate-50 p-4 rounded-lg space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Vendedor:</span>
+                <span className="font-semibold">{selectedComissao?.vendedor_nome}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Cliente:</span>
+                <span className="font-medium">{selectedComissao?.cliente_nome}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Grupo/Cota:</span>
+                <span className="font-medium">
+                  {selectedComissao?.grupo}/{selectedComissao?.cota}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Valor Recebido:</span>
+                <span className="font-semibold text-blue-600">
+                  {(selectedComissao?.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Percentual:</span>
+                <span className="font-semibold">{selectedComissao?.percentual_comissao}%</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 mt-2">
+                <span className="text-slate-600 font-semibold">Valor a Pagar:</span>
+                <span className="font-bold text-green-600 text-lg">
+                  {(selectedComissao?.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
             </div>
-            <div>
-              <Label>Valor</Label>
-              <Input
-                value={(selectedComissao?.valor || 0).toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                })}
-                disabled
-              />
-            </div>
+
             <div>
               <Label>Forma de Pagamento *</Label>
               <Select value={formaPagamento} onValueChange={setFormaPagamento}>
@@ -304,7 +461,8 @@ export default function ComissoesPagar() {
                 <SelectContent>
                   <SelectItem value="PIX">PIX</SelectItem>
                   <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="Transferência">Transferência</SelectItem>
+                  <SelectItem value="Transferência Bancária">Transferência Bancária</SelectItem>
+                  <SelectItem value="TED">TED</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -314,6 +472,7 @@ export default function ComissoesPagar() {
                 value={observacao}
                 onChange={(e) => setObservacao(e.target.value)}
                 rows={3}
+                placeholder="Informações adicionais sobre o pagamento..."
               />
             </div>
           </div>
@@ -321,7 +480,9 @@ export default function ComissoesPagar() {
             <Button variant="outline" onClick={() => setPagarModal(false)}>
               Cancelar
             </Button>
-            <Button onClick={handlePagar}>Confirmar Pagamento</Button>
+            <Button onClick={handlePagar} className="bg-green-600 hover:bg-green-700">
+              Confirmar Pagamento
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
