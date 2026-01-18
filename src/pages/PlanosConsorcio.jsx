@@ -270,8 +270,8 @@ export default function PlanosConsorcio() {
                       {isSelected && (
                         <div className="mt-4 p-3 bg-white border border-blue-200 rounded-lg flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-slate-900">Taxa de ADM: <span className="text-blue-600">{item.taxa_adm || 'N/A'}%</span></p>
-                            <p className="text-xs text-slate-500">Cód. Grupo: {item.grupo}</p>
+                            <p className="text-sm font-medium text-slate-900">Taxa de ADM: <span className="text-blue-600">{item.taxa_adm ? `${item.taxa_adm}%` : 'Sem taxa'}</span></p>
+                            <p className="text-xs text-slate-500">Cód. Grupo: {item.grupo} • Parcela: {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))}</p>
                           </div>
                           <Button
                             onClick={() => {
