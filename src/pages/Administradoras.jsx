@@ -84,30 +84,29 @@ export default function Administradoras() {
 
   const handleSubmit = async (data) => {
     try {
-      const user = await base44.auth.me();
+      const isAuth = await base44.auth.isAuthenticated();
       
-      if (!user) {
+      if (!isAuth) {
         toast.error('Sessão expirada. Faça login novamente.');
         return;
       }
-      
-      let empresa_id = user.empresa_id || null;
 
-      // Buscar Colaborador se não for super_admin
-      if (user.role !== 'super_admin') {
-        const colabs = await base44.entities.Colaborador.filter(
-          { user_id: user.id, status: 'ativo' },
-          '-created_date'
-        );
-        
-        if (colabs && colabs.length > 0) {
-          const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
-          const colab = byEmpresa || colabs[0];
-          empresa_id = colab.empresa_id || empresa_id;
-        }
+      // Buscar o Colaborador do usuário atual
+      const colabs = await base44.entities.Colaborador.filter(
+        { status: 'ativo' },
+        '-created_date',
+        1
+      );
+      
+      if (!colabs || colabs.length === 0) {
+        toast.error('Colaborador não encontrado. Verifique seu cadastro.');
+        return;
       }
 
-      // Garantir que empresa_id seja sempre uma string válida
+      const colab = colabs[0];
+      const empresa_id = colab.empresa_id;
+
+      // Garantir que empresa_id seja válido
       if (!empresa_id || typeof empresa_id !== 'string') {
         toast.error('Empresa não identificada. Verifique seu cadastro de colaborador.');
         return;
@@ -217,15 +216,10 @@ export default function Administradoras() {
   React.useEffect(() => {
     const checkUser = async () => {
       try {
-        const me = await base44.auth.me();
-        if (me.role === 'super_admin') {
-          setCurrentUser({ perfil: 'super_admin' });
-          return;
-        }
-        
         const colabs = await base44.entities.Colaborador.filter(
-          { user_id: me.id, status: 'ativo' },
-          '-created_date'
+          { status: 'ativo' },
+          '-created_date',
+          1
         );
         
         if (colabs && colabs.length > 0) {
