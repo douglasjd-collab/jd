@@ -7,8 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { DataTable } from '@/components/ui/DataTable';
-import { Download, Eye } from 'lucide-react';
+import { Download } from 'lucide-react';
 import moment from 'moment';
 
 export default function ComissoesPagas() {
