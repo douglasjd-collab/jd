@@ -212,8 +212,12 @@ export default function ComissoesPagas() {
                     </td>
                   </tr>
                   {comissoesProgramadas.map((c) => (
-                            <tr key={c.id} className="border-b hover:bg-slate-50">
-                              <td className="px-4 py-3 text-sm">{moment(c.data_recebimento).format('DD/MM/YYYY')}</td>
+                             <tr key={c.id} className="border-b hover:bg-slate-50">
+                               <td className="px-4 py-3 text-sm">
+                                 {c.data_recebimento && moment(c.data_recebimento).isValid() 
+                                   ? moment(c.data_recebimento).format('DD/MM/YYYY') 
+                                   : '-'}
+                               </td>
                               <td className="px-4 py-3 text-sm">{c.cliente_nome || '-'}</td>
                               <td className="px-4 py-3 text-sm">{c.vendedor_nome || '-'}</td>
                               <td className="px-4 py-3 text-sm">
