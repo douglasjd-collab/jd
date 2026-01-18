@@ -26,6 +26,8 @@ import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
 import ComissoesPagar from './pages/ComissoesPagar';
 import ComissoesRecebidas from './pages/ComissoesRecebidas';
+import LancamentoReceitas from './pages/LancamentoReceitas';
+import LancamentoDespesas from './pages/LancamentoDespesas';
 import __Layout from './Layout.jsx';
 
 
@@ -58,6 +60,8 @@ export const PAGES = {
     "Vendas": Vendas,
     "ComissoesPagar": ComissoesPagar,
     "ComissoesRecebidas": ComissoesRecebidas,
+    "LancamentoReceitas": LancamentoReceitas,
+    "LancamentoDespesas": LancamentoDespesas,
 }
 
 export const pagesConfig = {
