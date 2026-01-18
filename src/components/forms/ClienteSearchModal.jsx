@@ -28,13 +28,16 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
   // Filtrar clientes em tempo real
   const resultados = busca.trim() ? todosClientes.filter(c => {
     const cpfLimpo = busca.replace(/\D/g, '');
+    const cnpjLimpo = busca.replace(/\D/g, '');
     const buscaLower = busca.toLowerCase().trim();
     
     const cpfMatch = cpfLimpo && c.cpf?.replace(/\D/g, '').includes(cpfLimpo);
-    const nomeMatch = c.nome?.toLowerCase().includes(buscaLower);
-    const apelidoMatch = c.apelido?.toLowerCase().includes(buscaLower);
+    const cnpjMatch = cnpjLimpo && c.pj_cnpj?.replace(/\D/g, '').includes(cnpjLimpo);
+    const nomeCompletoMatch = c.nome_completo?.toLowerCase().includes(buscaLower);
+    const razaoSocialMatch = c.pj_razao_social?.toLowerCase().includes(buscaLower);
+    const nomeFantasiaMatch = c.pj_nome_fantasia?.toLowerCase().includes(buscaLower);
     
-    return cpfMatch || nomeMatch || apelidoMatch;
+    return cpfMatch || cnpjMatch || nomeCompletoMatch || razaoSocialMatch || nomeFantasiaMatch;
   }) : [];
 
   // Limpar busca ao abrir
@@ -109,15 +112,21 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-slate-900 truncate">
-                            {cliente.nome}
-                            {cliente.apelido && (
-                              <span className="text-sm text-slate-500 ml-2">({cliente.apelido})</span>
+                            {cliente.nome_completo || cliente.pj_razao_social || 'Cliente sem nome'}
+                            {cliente.pj_nome_fantasia && cliente.pj_razao_social && (
+                              <span className="text-sm text-slate-500 ml-2">({cliente.pj_nome_fantasia})</span>
                             )}
                           </h4>
                           <div className="text-sm text-slate-600 mt-1 space-y-0.5">
-                            <p className="font-mono">CPF: {cliente.cpf}</p>
-                            {cliente.telefone && <p>📞 {cliente.telefone}</p>}
-                            {cliente.email && <p className="truncate">✉️ {cliente.email}</p>}
+                            <p className="font-mono">
+                              {cliente.tipo_pessoa === 'Física' ? 'CPF' : 'CNPJ'}: {cliente.cpf || cliente.pj_cnpj || '-'}
+                            </p>
+                            {(cliente.celular || cliente.pj_celular) && (
+                              <p>📞 {cliente.celular || cliente.pj_celular}</p>
+                            )}
+                            {(cliente.email || cliente.pj_email) && (
+                              <p className="truncate">✉️ {cliente.email || cliente.pj_email}</p>
+                            )}
                           </div>
                         </div>
                         <Button
