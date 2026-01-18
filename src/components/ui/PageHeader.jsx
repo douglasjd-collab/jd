@@ -4,7 +4,7 @@ import { Plus, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
-export default function PageHeader({ 
+export function PageHeader({ 
   title, 
   subtitle, 
   actionLabel, 
