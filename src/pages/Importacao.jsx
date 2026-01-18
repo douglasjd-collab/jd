@@ -93,39 +93,19 @@ export default function Importacao() {
       // Upload do arquivo
       const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
 
-      // Extrair dados do arquivo
-      const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url,
-        json_schema: {
-          type: "object",
-          properties: {
-            items: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  data_recebimento: { type: "string" },
-                  contrato: { type: "string" },
-                  grupo: { type: "string" },
-                  cota: { type: "string" },
-                  valor: { type: "number" },
-                  parcela: { type: "number" },
-                  administradora: { type: "string" }
-                }
-              }
-            }
-          }
-        }
+      // Processar CSV com encoding correto
+      const result = await base44.functions.invoke('processarCsvComissao', {
+        file_url
       });
 
-      if (result.status === 'success' && result.output) {
-        const items = result.output.items || (Array.isArray(result.output) ? result.output : [result.output]);
+      if (result.data.status === 'success' && result.data.items) {
         setPreviewData({
           file_url,
-          items
+          items: result.data.items
         });
+        toast.success(`${result.data.total} registros encontrados no arquivo`);
       } else {
-        toast.error('Erro ao processar arquivo: ' + (result.details || 'Formato inválido'));
+        toast.error('Erro ao processar arquivo: ' + (result.data.error || 'Formato inválido'));
       }
     } catch (error) {
       toast.error('Erro ao fazer upload do arquivo');
