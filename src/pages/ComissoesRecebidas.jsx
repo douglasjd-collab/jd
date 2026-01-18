@@ -143,24 +143,30 @@ export default function ComissoesRecebidas() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((recebimento) => (
-                  <tr key={recebimento.id} className="border-b hover:bg-slate-50">
-                    <td className="p-4">
-                      {recebimento.data_recebimento ? moment(recebimento.data_recebimento).format('DD/MM/YYYY') : '-'}
-                    </td>
-                    <td className="p-4">{recebimento.cliente_nome || '-'}</td>
-                    <td className="p-4">{recebimento.vendedor_nome || '-'}</td>
-                    <td className="p-4">
-                      {recebimento.grupo && recebimento.cota ? `${recebimento.grupo}/${recebimento.cota}` : recebimento.contrato || '-'}
-                    </td>
-                    <td className="p-4 font-semibold text-green-600">
-                      {(recebimento.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </td>
-                    <td className="p-4">
-                      <Badge variant="outline">{recebimento.administradora_nome || '-'}</Badge>
-                    </td>
-                  </tr>
-                ))
+                filtered.map((recebimento) => {
+                  const dataRecebimento = recebimento.data_recebimento ? 
+                    moment(recebimento.data_recebimento, ['YYYY-MM-DD', 'DD/MM/YYYY', moment.ISO_8601], true) : null;
+                  
+                  return (
+                    <tr key={recebimento.id} className="border-b hover:bg-slate-50">
+                      <td className="p-4">
+                        {dataRecebimento && dataRecebimento.isValid() ? dataRecebimento.format('DD/MM/YYYY') : '-'}
+                      </td>
+                      <td className="p-4">{recebimento.cliente_nome || '-'}</td>
+                      <td className="p-4">{recebimento.vendedor_nome || '-'}</td>
+                      <td className="p-4">
+                        {recebimento.grupo && recebimento.cota ? `${recebimento.grupo}/${recebimento.cota}` : recebimento.contrato || '-'}
+                      </td>
+                      <td className="p-4 font-semibold text-green-600">
+                        {(recebimento.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline">{recebimento.administradora_nome || '-'}</Badge>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
               )}
             </tbody>
           </table>
