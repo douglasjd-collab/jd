@@ -311,12 +311,17 @@ export default function PlanosConsorcio() {
       </div>
 
       {/* Table */}
-      <DataTable
-        columns={columns}
-        data={filteredPlanos}
-        isLoading={isLoading}
-        emptyMessage="Nenhum plano encontrado"
-      />
+      {isLoading ? (
+        <div className="border rounded-lg p-8 text-center text-slate-500">
+          Carregando planos...
+        </div>
+      ) : Object.keys(groupedPlanos).length === 0 ? (
+        <div className="border rounded-lg p-8 text-center text-slate-500">
+          Nenhum plano encontrado
+        </div>
+      ) : (
+        renderGroupedTable()
+      )}
 
       {/* Form Modal */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
