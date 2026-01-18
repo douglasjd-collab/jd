@@ -226,12 +226,20 @@ export default function PlanosConsorcio() {
           <p className="text-slate-500 mt-1">{planos.length} planos cadastrados</p>
         </div>
         <div className="flex flex-col gap-3">
-          <Button 
+           <Button 
             onClick={() => openForm()}
             className="bg-[#23BE84] hover:bg-[#1da570]"
           >
             <Plus className="w-4 h-4 mr-2" />
             Novo Plano
+          </Button>
+          <Button
+            onClick={() => setImportOpen(true)}
+            variant="outline"
+            className="gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Importar CSV
           </Button>
           <Button
             onClick={handleSyncPlanos}
