@@ -49,8 +49,8 @@ export default function PlanosConsorcio() {
   const [syncLoading, setSyncLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [selectedPlanoId, setSelectedPlanoId] = useState(null);
   const [modalGroupName, setModalGroupName] = useState(null);
+  const [selectedModalPlano, setSelectedModalPlano] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -175,6 +175,7 @@ export default function PlanosConsorcio() {
   }, {});
 
   const modalItems = modalGroupName ? groupedPlanos[modalGroupName] || [] : [];
+  const firstModalItem = modalItems[0];
 
   const renderGroupedTable = () => (
     <div className="border rounded-lg overflow-hidden divide-y">
@@ -457,46 +458,77 @@ export default function PlanosConsorcio() {
       />
 
       {/* Plans Detail Modal */}
-      <Dialog open={!!modalGroupName} onOpenChange={() => setModalGroupName(null)}>
-        <DialogContent className="max-w-3xl">
+      <Dialog open={!!modalGroupName} onOpenChange={() => {
+        setModalGroupName(null);
+        setSelectedModalPlano(null);
+      }}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{modalGroupName}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          
+          {/* Header Info */}
+          <div className="border-b pb-4 mb-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{formatCurrency(firstModalItem?.valor_carta)}</p>
+                <p className="text-sm text-slate-600 mt-1">{getAdminNome(firstModalItem?.administradora_id)}</p>
+              </div>
+              <div className="text-right text-sm text-slate-600">
+                <p className="font-medium">{firstModalItem?.grupo} - GRUPO {firstModalItem?.grupo} PARTICIPANTES</p>
+                <p className="text-xs mt-1">114 - LINEAR</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Plans List */}
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
             {modalItems.map((item) => (
-              <div key={item.id} className="p-4 border rounded-lg hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900">{item.prazo} meses</p>
-                    <p className="text-sm text-slate-600 mt-1">
-                      Valor: {formatCurrency(item.valor_carta)} | Parcela: {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))}
-                    </p>
-                    {item.taxa_adm && (
-                      <p className="text-xs text-blue-600 font-medium mt-1">Taxa ADM: {item.taxa_adm}%</p>
-                    )}
-                    <p className="text-xs text-slate-500 mt-2">Cód. Grupo: {item.grupo}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openForm(item)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setDeleteId(item.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+              <div 
+                key={item.id} 
+                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                  selectedModalPlano?.id === item.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="modal-plano"
+                  checked={selectedModalPlano?.id === item.id}
+                  onChange={() => setSelectedModalPlano(item)}
+                  className="w-4 h-4 cursor-pointer accent-blue-600"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">
+                    Plano de {item.prazo} meses / 1ª parcela de {formatCurrency((item.valor_carta || 0) / (item.prazo || 1))} | Grupo: {item.grupo}
+                  </p>
                 </div>
+                {selectedModalPlano?.id === item.id && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>
+
+          {/* Details when selected */}
+          {selectedModalPlano && (
+            <div className="border-t pt-4 mt-4 space-y-3">
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm text-slate-600">
+                  <span className="font-medium">Taxa de ADM:</span> {selectedModalPlano.taxa_adm ? `${selectedModalPlano.taxa_adm}%` : 'Sem taxa'}
+                </p>
+              </div>
+              <Button className="w-full bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2">
+                <ShoppingCart className="w-4 h-4" />
+                Comprar
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
