@@ -13,6 +13,8 @@ export default function ComissoesRecebidas() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [mesFilter, setMesFilter] = useState('todos');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
 
   React.useEffect(() => {
     loadUser();
@@ -44,7 +46,14 @@ export default function ComissoesRecebidas() {
       return false;
     }
 
-    if (mesFilter !== 'todos' && r.data_recebimento) {
+    // Filtro por período personalizado tem prioridade
+    if (dataInicio || dataFim) {
+      if (r.data_recebimento) {
+        const dataRec = moment(r.data_recebimento, ['YYYY-MM-DD', 'DD/MM/YYYY', moment.ISO_8601], true);
+        if (dataInicio && dataRec.isBefore(moment(dataInicio), 'day')) return false;
+        if (dataFim && dataRec.isAfter(moment(dataFim), 'day')) return false;
+      }
+    } else if (mesFilter !== 'todos' && r.data_recebimento) {
       const mes = moment(r.data_recebimento).format('YYYY-MM');
       if (mes !== mesFilter) return false;
     }
@@ -89,29 +98,79 @@ export default function ComissoesRecebidas() {
 
       {/* Filters */}
       <Card className="p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por vendedor..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por vendedor ou cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={mesFilter} onValueChange={(val) => {
+              setMesFilter(val);
+              if (val !== 'todos') {
+                setDataInicio('');
+                setDataFim('');
+              }
+            }}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os meses</SelectItem>
+                {mesesDisponiveis.map((mes) => (
+                  <SelectItem key={mes} value={mes}>
+                    {moment(mes).format('MMMM/YYYY')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={mesFilter} onValueChange={setMesFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Mês" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os meses</SelectItem>
-              {mesesDisponiveis.map((mes) => (
-                <SelectItem key={mes} value={mes}>
-                  {moment(mes).format('MMMM/YYYY')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1">
+              <label className="text-sm font-medium text-slate-700 block mb-2">
+                Período Personalizado
+              </label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => {
+                    setDataInicio(e.target.value);
+                    if (e.target.value) setMesFilter('todos');
+                  }}
+                  placeholder="Data Início"
+                  className="flex-1"
+                />
+                <span className="text-slate-500">até</span>
+                <Input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => {
+                    setDataFim(e.target.value);
+                    if (e.target.value) setMesFilter('todos');
+                  }}
+                  placeholder="Data Fim"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+            {(dataInicio || dataFim) && (
+              <button
+                onClick={() => {
+                  setDataInicio('');
+                  setDataFim('');
+                }}
+                className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap"
+              >
+                Limpar período
+              </button>
+            )}
+          </div>
         </div>
       </Card>
 
