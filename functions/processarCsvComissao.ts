@@ -68,7 +68,6 @@ Deno.serve(async (req) => {
       if (!line.trim()) continue;
       
       // Parse CSV com delimiter ";" e quote "\""
-      // strict_mode: false, ignore_errors: false
       const values = [];
       let currentValue = '';
       let insideQuotes = false;
@@ -87,41 +86,38 @@ Deno.serve(async (req) => {
       }
       values.push(currentValue.trim());
       
-      // Validar se tem pelo menos 6 colunas
+      console.log(`Linha ${i + 1}: ${values.length} colunas - [${values.join(', ')}]`);
+      
+      // Validar se não é linha completamente vazia
+      if (values.every(v => !v)) {
+        console.log(`Linha ${i + 1} ignorada: vazia`);
+        continue;
+      }
+      
+      // Aceitar linhas com 6 ou mais colunas (strict_mode: false)
       if (values.length < 6) {
         console.log(`Linha ${i + 1} ignorada: apenas ${values.length} colunas`);
         continue;
       }
       
-      // Mapeamento exato: Data, Contratro (typo), Grupo, Cota, Valor, Nº Parcela
-      const [data_recebimento, contrato, grupo, cota, valorStr, parcelaStr] = values;
+      // Mapeamento: Data, Contrato, Grupo, Cota, Valor, Nº Parcela
+      const data_recebimento = values[0] || '';
+      const contrato = values[1] || '';
+      const grupo = values[2] || '';
+      const cota = values[3] || '';
+      const valorStr = values[4] || '';
+      const parcelaStr = values[5] || '';
       
-      // Validar se não é linha vazia
-      if (!contrato.trim() && !grupo.trim()) {
+      // Validar se tem dados mínimos
+      if (!contrato && !grupo) {
+        console.log(`Linha ${i + 1} ignorada: sem contrato nem grupo`);
         continue;
       }
       
-      // NORMALIZAÇÃO DE PARCELA
-      // Número da parcela recebida em numeral: 1, 2, 3, 4, 5, 800, 12
-      let parcela = 0;
-      try {
-        const parcelaLimpa = parcelaStr.trim().replace(/[^\d]/g, '');
-        parcela = parseInt(parcelaLimpa, 10);
-
-        if (!parcela || isNaN(parcela) || parcela <= 0) {
-          errors.push(`Linha ${i + 1}: Parcela inválida - valor original: "${parcelaStr}"`);
-          continue;
-        }
-      } catch (e) {
-        errors.push(`Linha ${i + 1}: Erro ao processar parcela - ${e.message}`);
-        continue;
-      }
-
       // NORMALIZAÇÃO DE VALOR
-      // Formato CSV: 600.00, 840.00, 1000.00 (já vem como número com ponto decimal)
       let valor = 0;
       try {
-        const valorLimpo = String(valorStr).trim();
+        const valorLimpo = String(valorStr).trim().replace(',', '.');
         valor = parseFloat(valorLimpo);
 
         if (isNaN(valor) || valor <= 0) {
@@ -131,6 +127,19 @@ Deno.serve(async (req) => {
       } catch (e) {
         errors.push(`Linha ${i + 1}: Erro ao processar valor - ${e.message}`);
         continue;
+      }
+      
+      // NORMALIZAÇÃO DE PARCELA
+      let parcela = 1;
+      try {
+        const parcelaLimpa = String(parcelaStr).trim().replace(/[^\d]/g, '');
+        parcela = parseInt(parcelaLimpa, 10);
+
+        if (!parcela || isNaN(parcela) || parcela <= 0) {
+          parcela = 1;
+        }
+      } catch (e) {
+        parcela = 1;
       }
       
       items.push({
