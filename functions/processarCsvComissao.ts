@@ -101,17 +101,15 @@ Deno.serve(async (req) => {
         continue;
       }
       
-      // NORMALIZAÇÃO DE PARCELA (obrigatória)
+      // NORMALIZAÇÃO DE PARCELA
+      // Número da parcela recebida em numeral: 1, 2, 3, 4, 5, 800, 12
       let parcela = 0;
       try {
-        // 1. trim (remover espaços)
-        // 2. extrair somente dígitos
-        // 3. converter para inteiro
         const parcelaLimpa = parcelaStr.trim().replace(/[^\d]/g, '');
         parcela = parseInt(parcelaLimpa, 10);
 
         if (!parcela || isNaN(parcela) || parcela <= 0) {
-          errors.push(`Linha ${i + 1}: Parcela inválida (${parcelaStr})`);
+          errors.push(`Linha ${i + 1}: Parcela inválida - valor original: "${parcelaStr}"`);
           continue;
         }
       } catch (e) {
@@ -119,33 +117,53 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // NORMALIZAÇÃO DE VALOR (obrigatória)
+      // NORMALIZAÇÃO DE VALOR MONETÁRIO
+      // Ex: R$ 600,00 -> 600.00 | R$ 840,00 -> 840.00 | R$ 1.000,00 -> 1000.00
       let valor = 0;
       try {
-        // 1. ler como texto primeiro
-        // 2. remover "R$" e espaços
-        // 3. remover pontos de milhar "."
-        // 4. trocar vírgula "," por ponto "."
-        // 5. converter para número
-        let valorLimpo = String(valorStr)
-          .trim()                    // Remove espaços nas pontas
-          .replace(/R\$\s*/gi, '')  // Remove R$ e espaços após
-          .replace(/["']/g, '')      // Remove aspas (segurança)
-          .replace(/\s+/g, '');      // Remove todos espaços
+        // Converter para string e limpar
+        let valorLimpo = String(valorStr).trim();
+        
+        // Log do valor original para debug
+        console.log(`Linha ${i + 1} - Valor original: "${valorStr}"`);
 
-        // Remove pontos de milhar mas preserva vírgula decimal
-        // Ex: "1.234,56" -> "1234,56"
-        valorLimpo = valorLimpo.replace(/\./g, '');
+        // Remover R$ e variações
+        valorLimpo = valorLimpo.replace(/R\$/gi, '').replace(/\$/gi, '');
+        
+        // Remover espaços
+        valorLimpo = valorLimpo.replace(/\s+/g, '');
+        
+        // Remover aspas
+        valorLimpo = valorLimpo.replace(/["']/g, '');
 
-        // Substitui vírgula decimal por ponto
-        // Ex: "1234,56" -> "1234.56" ou "600,00" -> "600.00"
-        valorLimpo = valorLimpo.replace(',', '.');
+        // Remover APENAS pontos que são separadores de milhar
+        // Mantém o último ponto/vírgula como separador decimal
+        // Ex: "1.000,00" -> "1000,00"
+        const lastComma = valorLimpo.lastIndexOf(',');
+        const lastDot = valorLimpo.lastIndexOf('.');
+        
+        if (lastComma > lastDot) {
+          // Vírgula é o separador decimal
+          // Remove todos os pontos (são de milhar)
+          valorLimpo = valorLimpo.replace(/\./g, '');
+          // Substitui vírgula por ponto
+          valorLimpo = valorLimpo.replace(',', '.');
+        } else if (lastDot > lastComma) {
+          // Ponto é o separador decimal
+          // Remove vírgulas (são de milhar)
+          valorLimpo = valorLimpo.replace(/,/g, '');
+          // Ponto já está correto
+        } else {
+          // Sem separador decimal ou só um deles
+          valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
+        }
 
-        // Converte para número
         valor = parseFloat(valorLimpo);
+        
+        console.log(`Linha ${i + 1} - Valor processado: ${valor}`);
 
         if (isNaN(valor) || valor <= 0) {
-          errors.push(`Linha ${i + 1}: Valor inválido (${valorStr})`);
+          errors.push(`Linha ${i + 1}: Valor inválido - valor original: "${valorStr}", processado: "${valorLimpo}"`);
           continue;
         }
       } catch (e) {
