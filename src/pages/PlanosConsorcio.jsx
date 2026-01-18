@@ -503,13 +503,10 @@ export default function PlanosConsorcio() {
                   </p>
                 </div>
                 {selectedModalPlano?.id === item.id && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
+                  <div className="text-right text-sm">
+                    <p className="font-medium text-slate-900">Taxa ADM:</p>
+                    <p className="text-blue-600 font-semibold">{item.taxa_adm ? `${item.taxa_adm}%` : 'Sem taxa'}</p>
+                  </div>
                 )}
               </div>
             ))}
