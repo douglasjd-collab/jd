@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const UA =
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
 
-    async function http(url, init = {}) {
+    async function http(url, init = {}, retryCount = 0) {
       const headers = new Headers(init.headers || {});
       headers.set("User-Agent", UA);
       headers.set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
@@ -78,19 +78,28 @@ Deno.serve(async (req) => {
       const cookieStr = await jar.getCookieString(url);
       if (cookieStr) headers.set("Cookie", cookieStr);
 
-      const res = await fetch(url, { ...init, headers, redirect: "follow" });
+      try {
+        const res = await fetch(url, { ...init, headers, redirect: "follow", signal: AbortSignal.timeout(30000) });
 
-      const sc = res.headers.get("set-cookie");
-      if (sc) {
-        const parts = sc.split(/,(?=\s*[A-Za-z0-9_\-]+=)/g);
-        for (const c of parts) {
-          try {
-            await jar.setCookie(c, url);
-          } catch (_) {}
+        const sc = res.headers.get("set-cookie");
+        if (sc) {
+          const parts = sc.split(/,(?=\s*[A-Za-z0-9_\-]+=)/g);
+          for (const c of parts) {
+            try {
+              await jar.setCookie(c, url);
+            } catch (_) {}
+          }
         }
-      }
 
-      return res;
+        return res;
+      } catch (err) {
+        if (retryCount < 2 && (err.message?.includes("Connection reset") || err.message?.includes("ECONNRESET"))) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          await new Promise(r => setTimeout(r, delay));
+          return http(url, init, retryCount + 1);
+        }
+        throw err;
+      }
     }
 
     function isLoginHtml(html) {
