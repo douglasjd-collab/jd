@@ -60,6 +60,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
         cpf_cnpj: '',
         telefone: '',
         codigo_vendedor: '',
+        usuario_canopus: '',
         perfil: 'vendedor',
         gerente_id: '',
         empresa_id: '',
