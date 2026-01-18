@@ -21,17 +21,20 @@ Deno.serve(async (req) => {
 
     let payload = {};
     try {
-      payload = await req.json();
+      const body = await req.text();
+      if (body) {
+        payload = JSON.parse(body);
+      }
     } catch (e) {
-      // Se não conseguir parsear JSON, continuar com vazio
+      console.log('Payload parse error:', e.message);
     }
 
     const empresaIdFinal = payload.empresa_id || user.empresa_id;
 
     if (!empresaIdFinal) {
+      console.error('Erro: empresa_id não encontrado. User:', user);
       return Response.json({ 
-        error: 'empresa_id não encontrado',
-        debug: { user_empresa_id: user.empresa_id, payload }
+        error: 'empresa_id não encontrado. Vincule o usuário a uma empresa.',
       }, { status: 400 });
     }
 
@@ -208,9 +211,11 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     if (browser) await browser.close();
+    console.error('Erro na sincronização:', error);
     return Response.json({
       error: error.message || 'Erro ao sincronizar planos',
-      success: false
+      success: false,
+      stack: error.stack
     }, { status: 500 });
   }
 });
