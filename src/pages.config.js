@@ -28,6 +28,7 @@ import ComissoesPagar from './pages/ComissoesPagar';
 import ComissoesRecebidas from './pages/ComissoesRecebidas';
 import LancamentoReceitas from './pages/LancamentoReceitas';
 import LancamentoDespesas from './pages/LancamentoDespesas';
+import RelatoriosFinanceiros from './pages/RelatoriosFinanceiros';
 import __Layout from './Layout.jsx';
 
 
@@ -62,6 +63,7 @@ export const PAGES = {
     "ComissoesRecebidas": ComissoesRecebidas,
     "LancamentoReceitas": LancamentoReceitas,
     "LancamentoDespesas": LancamentoDespesas,
+    "RelatoriosFinanceiros": RelatoriosFinanceiros,
 }
 
 export const pagesConfig = {
