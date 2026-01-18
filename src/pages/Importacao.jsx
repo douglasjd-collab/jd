@@ -147,6 +147,41 @@ export default function Importacao() {
         const valorRecebido = parseFloat(item.valor) || 0;
         const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
 
+        // VALIDAÇÃO ANTI-DUPLICIDADE (crítica)
+        const comissoesExistentes = await base44.entities.Comissao.filter({
+          tipo_comissao: 'parcela'
+        });
+        
+        const jaImportado = comissoesExistentes.find(c => {
+          const vendaComissao = vendas.find(v => v.id === c.venda_id);
+          if (!vendaComissao) return false;
+          
+          return vendaComissao.contrato === contrato &&
+                 vendaComissao.grupo === grupo &&
+                 vendaComissao.cota === cota &&
+                 c.parcela_id && parcelas.find(p => p.id === c.parcela_id && p.numero_parcela === numeroParcela);
+        });
+
+        if (jaImportado) {
+          const itemImportacao = {
+            importacao_id: importacao.id,
+            linha: previewData.items.indexOf(item) + 1,
+            cpf: '',
+            contrato,
+            grupo,
+            cota,
+            parcela: numeroParcela,
+            valor_recebido: valorRecebido,
+            venda_id: null,
+            parcela_id: null,
+            status: 'divergencia',
+            motivo_divergencia: `Comissão já importada: contrato ${contrato}, grupo ${grupo}, cota ${cota}, parcela ${numeroParcela}`
+          };
+          itensParaCriar.push(itemImportacao);
+          divergencias++;
+          continue;
+        }
+
         // NOVAS REGRAS DE IDENTIFICAÇÃO
         let vendaEncontrada = null;
         let motivoDivergencia = '';
