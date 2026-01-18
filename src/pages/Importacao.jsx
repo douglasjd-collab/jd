@@ -37,7 +37,8 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -60,6 +61,25 @@ export default function Importacao() {
   const loadUser = async () => {
     const user = await base44.auth.me();
     setCurrentUser(user);
+  };
+
+  const deleteImportMutation = useMutation({
+    mutationFn: async (importId) => {
+      await base44.entities.Importacao.delete(importId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['importacoes']);
+      toast.success('Importação excluída com sucesso');
+    },
+    onError: () => {
+      toast.error('Erro ao excluir importação');
+    }
+  });
+
+  const handleDelete = (importacao) => {
+    if (confirm('Tem certeza que deseja excluir esta importação? Esta ação não pode ser desfeita.')) {
+      deleteImportMutation.mutate(importacao.id);
+    }
   };
 
   const { data: importacoes = [], isLoading } = useQuery({
@@ -390,13 +410,23 @@ export default function Importacao() {
     },
     {
       header: '',
-      className: 'w-12',
+      className: 'w-24',
       cell: (row) => (
-        <Link to={createPageUrl(`ImportacaoDetalhes?id=${row.id}`)}>
-          <Button variant="ghost" size="icon">
-            <Eye className="w-4 h-4" />
+        <div className="flex items-center gap-1">
+          <Link to={createPageUrl(`ImportacaoDetalhes?id=${row.id}`)}>
+            <Button variant="ghost" size="icon">
+              <Eye className="w-4 h-4" />
+            </Button>
+          </Link>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => handleDelete(row)}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="w-4 h-4" />
           </Button>
-        </Link>
+        </div>
       )
     }
   ];
