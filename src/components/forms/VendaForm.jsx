@@ -649,6 +649,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   <SelectContent>
                     <SelectItem value="ativa">Ativa</SelectItem>
                     <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
                     <SelectItem value="cancelada">Cancelada</SelectItem>
                     <SelectItem value="em_atraso">Em Atraso</SelectItem>
                     <SelectItem value="contemplada">Contemplada</SelectItem>
