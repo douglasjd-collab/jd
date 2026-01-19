@@ -224,12 +224,18 @@ export default function VendaDetalhes() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recebimentos.sort((a, b) => new Date(b.data_recebimento) - new Date(a.data_recebimento)).map((r) => (
+                    {recebimentos.sort((a, b) => {
+                      const dateA = a.data_recebimento ? new Date(a.data_recebimento) : new Date(0);
+                      const dateB = b.data_recebimento ? new Date(b.data_recebimento) : new Date(0);
+                      return dateB - dateA;
+                    }).map((r) => (
                       <TableRow key={r.id}>
                         <TableCell className="font-medium">
                           {r.parcela_informada || '-'}
                         </TableCell>
-                        <TableCell>{format(new Date(r.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell>
+                          {r.data_recebimento ? format(new Date(r.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
+                        </TableCell>
                         <TableCell className="font-semibold text-green-600">
                           {formatCurrency(r.valor_recebido)}
                         </TableCell>
