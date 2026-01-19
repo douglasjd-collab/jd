@@ -231,7 +231,6 @@ export default function ComissoesRecebidas() {
                   );
                 })
               )}
-              )}
             </tbody>
           </table>
         </div>
