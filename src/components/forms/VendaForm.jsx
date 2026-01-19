@@ -191,29 +191,43 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     if (tabelaId && tabelas.length > 0) {
       const tabela = tabelas.find(t => t.id === tabelaId);
       if (tabela) {
-        setValue('tipoEmpresa', tabela.tipoEmpresa);
         setValue('tabela_nome', tabela.nomeTabela);
       }
     }
   }, [tabelaId, tabelas, setValue]);
 
-  // Calcular comissão automaticamente
+  // Calcular comissão automaticamente baseado no tipo de empresa
   useEffect(() => {
-    const credito = parseFloat(valorCredito) || 0;
-    const taxa = parseFloat(taxaAdministracao) || 0;
-    
-    if (credito > 0 && taxa > 0 && tipoEmpresa) {
-      const fator = tipoEmpresa === 'MEI' ? 0.25 : (tipoEmpresa === 'ME' || tipoEmpresa === 'LTDA') ? 0.30 : 0;
-      const percentualComissao = taxa * fator;
-      const valorComissao = credito * (percentualComissao / 100);
+    const calcularComissao = async () => {
+      const credito = parseFloat(valorCredito) || 0;
+      const taxa = parseFloat(taxaAdministracao) || 0;
+      const empresaIdValue = watch('empresa_id') || empresaId;
       
-      setValue('percentualComissao', percentualComissao);
-      setValue('valorComissao', valorComissao);
-    } else {
-      setValue('percentualComissao', 0);
-      setValue('valorComissao', 0);
-    }
-  }, [valorCredito, taxaAdministracao, tipoEmpresa, setValue]);
+      if (credito > 0 && taxa > 0 && empresaIdValue) {
+        try {
+          // Buscar tipo da empresa
+          const empresas = await base44.entities.Empresa.filter({ id: empresaIdValue });
+          const empresa = empresas[0];
+          
+          const fator = empresa?.tipo_empresa === 'MEI' ? 0.25 : 0.30;
+          const percentualComissao = taxa * fator;
+          const valorComissao = credito * (percentualComissao / 100);
+          
+          setValue('percentualComissao', percentualComissao);
+          setValue('valorComissao', valorComissao);
+        } catch (error) {
+          console.error('Erro ao calcular comissão:', error);
+          setValue('percentualComissao', 0);
+          setValue('valorComissao', 0);
+        }
+      } else {
+        setValue('percentualComissao', 0);
+        setValue('valorComissao', 0);
+      }
+    };
+    
+    calcularComissao();
+  }, [valorCredito, taxaAdministracao, watch('empresa_id'), empresaId, setValue]);
 
   useEffect(() => {
     if (vendedorId && vendedores.length > 0) {
@@ -447,11 +461,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   </SelectTrigger>
                   <SelectContent>
                     {tabelas.length > 0 ? (
-                      tabelas.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.nomeTabela} ({t.tipoEmpresa})
-                        </SelectItem>
-                      ))
+                    tabelas.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.nomeTabela}
+                      </SelectItem>
+                    ))
                     ) : (
                       <div className="p-4 text-center text-sm text-slate-500">
                         {administradoraId ? 'Nenhuma tabela cadastrada' : 'Selecione uma administradora'}
@@ -514,14 +528,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 />
               </div>
               
-              <div>
-                <Label>Tipo Empresa</Label>
-                <Input
-                  value={tipoEmpresa || '-'}
-                  disabled
-                  className="bg-slate-100"
-                />
-              </div>
+
             </div>
           </div>
             
