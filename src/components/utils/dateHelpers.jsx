@@ -21,9 +21,20 @@ export function safeParseDate(value) {
     const d1 = parseISO(s);
     if (isValid(d1)) return d1;
 
+    // tenta formato brasileiro dd/MM/yyyy
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        const d2 = parseISO(isoDate);
+        if (isValid(d2)) return d2;
+      }
+    }
+
     // fallback: tenta Date nativo
-    const d2 = new Date(s);
-    return isValid(d2) ? d2 : null;
+    const d3 = new Date(s);
+    return isValid(d3) ? d3 : null;
   }
 
   return null;
