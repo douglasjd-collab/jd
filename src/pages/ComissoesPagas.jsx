@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Download, Eye, Printer } from 'lucide-react';
 import moment from 'moment';
-import { formatDateBR } from '@/utils/dateHelpers';
+import { formatDateBR } from '@/components/utils/dateHelpers';
 
 export default function ComissoesPagas() {
   const [user, setUser] = useState(null);

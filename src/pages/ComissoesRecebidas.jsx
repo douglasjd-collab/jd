@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Search, DollarSign } from 'lucide-react';
 import moment from 'moment';
-import { formatDateBR, safeParseDate } from '@/utils/dateHelpers';
+import { formatDateBR, safeParseDate } from '@/components/utils/dateHelpers';
 
 export default function ComissoesRecebidas() {
   const [user, setUser] = useState(null);

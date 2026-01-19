@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Search, DollarSign, CheckCircle2, Eye, Receipt } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
-import { formatDateBR } from '@/utils/dateHelpers';
+import { formatDateBR } from '@/components/utils/dateHelpers';
 
 // Componente separado para cada linha da tabela
 function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerRecebimento, editingId, editingValue, editingError, onStartEditing, onSaveEditing, onKeyDown, onEditingValueChange }) {

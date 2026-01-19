@@ -24,7 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { formatDateBR } from '@/utils/dateHelpers';
+import { formatDateBR } from '@/components/utils/dateHelpers';
 import { toast } from 'sonner';
 
 export default function VendaDetalhes() {
