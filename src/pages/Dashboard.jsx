@@ -635,18 +635,19 @@ export default function Dashboard() {
             </div>
             <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
               <div className="space-y-3">
-                {vendas.filter(v => {
-                  if (v.status !== selectedStatus) return false;
-                  if (isAdmin) return true;
-                  if (isGerente) return v.gerente_id === user?.colaborador_id || v.vendedor_id === user?.colaborador_id;
-                  return v.vendedor_id === user?.colaborador_id;
-                }).length > 0 ? (
-                  vendas.filter(v => {
+                {(() => {
+                  const vendasFiltradas = vendas.filter(v => {
                     if (v.status !== selectedStatus) return false;
                     if (isAdmin) return true;
                     if (isGerente) return v.gerente_id === user?.colaborador_id || v.vendedor_id === user?.colaborador_id;
                     return v.vendedor_id === user?.colaborador_id;
-                  }).map((v) => (
+                  });
+
+                  if (vendasFiltradas.length === 0) {
+                    return <p className="text-center text-slate-500 py-8">Nenhuma venda encontrada</p>;
+                  }
+
+                  return vendasFiltradas.map((v) => (
                     <div key={v.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
                       <div className="flex-1">
                         <p className="font-medium text-slate-900">{v.cliente_nome}</p>
@@ -664,10 +665,8 @@ export default function Dashboard() {
                         <StatusBadge status={v.status} className="mt-1" />
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-center text-slate-500 py-8">Nenhuma venda encontrada</p>
-                )}
+                  ));
+                })()}
               </div>
             </div>
             <div className="p-4 border-t flex justify-end">
