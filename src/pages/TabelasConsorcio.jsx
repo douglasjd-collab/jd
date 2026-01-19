@@ -97,7 +97,6 @@ export default function TabelasConsorcio() {
       reset({
         nomeTabela: '',
         administradora_id: '',
-        tipoEmpresa: '',
         status: 'ativa'
       });
       setSelectedTabela(null);
@@ -107,7 +106,7 @@ export default function TabelasConsorcio() {
 
   const onSubmit = async (data) => {
     // Validações
-    if (!data.nomeTabela || !data.administradora_id || !data.tipoEmpresa) {
+    if (!data.nomeTabela || !data.administradora_id) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -160,8 +159,7 @@ export default function TabelasConsorcio() {
 
   const filteredTabelas = tabelas.filter(t => 
     t.nomeTabela?.toLowerCase().includes(search.toLowerCase()) ||
-    getAdminNome(t.administradora_id).toLowerCase().includes(search.toLowerCase()) ||
-    t.tipoEmpresa?.toLowerCase().includes(search.toLowerCase())
+    getAdminNome(t.administradora_id).toLowerCase().includes(search.toLowerCase())
   );
 
   const columns = [
@@ -174,14 +172,7 @@ export default function TabelasConsorcio() {
         </div>
       )
     },
-    {
-      header: 'Tipo Empresa',
-      cell: (row) => (
-        <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm font-medium inline-block">
-          {row.tipoEmpresa}
-        </div>
-      )
-    },
+
     {
       header: 'Status',
       cell: (row) => <StatusBadge status={row.status} />
@@ -264,13 +255,7 @@ export default function TabelasConsorcio() {
                 <Label>Administradora *</Label>
                 <Select
                  value={watch('administradora_id') || ''}
-                 onValueChange={(value) => {
-                   setValue('administradora_id', value);
-                   const admin = administradoras.find(a => a.id === value);
-                   if (admin) {
-                     setValue('tipoEmpresa', admin.tipoEmpresa || '');
-                   }
-                 }}
+                 onValueChange={(value) => setValue('administradora_id', value)}
                 >
                  <SelectTrigger>
                    <SelectValue placeholder="Selecione a administradora" />
@@ -284,36 +269,15 @@ export default function TabelasConsorcio() {
                  </SelectContent>
                 </Select>
                 {errors.administradora_id && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
-                </div>
-
-                <div>
-                <Label>Tipo de Empresa *</Label>
-                <Select
-                 value={watch('tipoEmpresa') || ''}
-                 onValueChange={(value) => setValue('tipoEmpresa', value)}
-                >
-                 <SelectTrigger>
-                   <SelectValue placeholder="Selecione o tipo" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="MEI">MEI</SelectItem>
-                   <SelectItem value="ME">ME</SelectItem>
-                   <SelectItem value="LTDA">LTDA</SelectItem>
-                 </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-500 mt-1">
-                 Valor padrão herdado da administradora, mas pode ser alterado
-                </p>
-                </div>
+              </div>
 
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-900">
-                  <strong>Tipo de Empresa:</strong> Define o fator de cálculo da comissão na venda.
+                  <strong>ℹ️ Cálculo de Comissão:</strong> O percentual será calculado automaticamente com base no tipo de empresa cadastrado no sistema.
                 </p>
                 <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4 list-disc">
                   <li>MEI: percentualComissão = taxaAdministração × 0.25</li>
-                  <li>ME: percentualComissão = taxaAdministração × 0.30</li>
-                  <li>LTDA: percentualComissão = taxaAdministração × 0.30</li>
+                  <li>ME ou LTDA: percentualComissão = taxaAdministração × 0.30</li>
                 </ul>
               </div>
 
