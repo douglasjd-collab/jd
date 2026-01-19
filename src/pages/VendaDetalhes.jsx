@@ -46,6 +46,12 @@ export default function VendaDetalhes() {
     enabled: !!vendaId
   });
 
+  const { data: recebimentos = [] } = useQuery({
+    queryKey: ['recebimentos-comissao', vendaId],
+    queryFn: () => base44.entities.RecebimentoComissao.filter({ venda_id: vendaId }),
+    enabled: !!vendaId
+  });
+
   const { data: comissoes = [] } = useQuery({
     queryKey: ['comissoes', vendaId],
     queryFn: () => base44.entities.Comissao.filter({ venda_id: vendaId }),
@@ -73,11 +79,9 @@ export default function VendaDetalhes() {
     );
   }
 
-  const parcelasRecebidas = parcelas.filter(p => p.status === 'recebida').length;
+  const parcelasRecebidas = recebimentos.length;
   const totalParcelas = parcelas.length;
-  const valorRecebido = parcelas
-    .filter(p => p.status === 'recebida')
-    .reduce((acc, p) => acc + (p.valor_recebido || p.valor_previsto || 0), 0);
+  const valorRecebido = recebimentos.reduce((acc, r) => acc + (r.valor_recebido || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -202,30 +206,36 @@ export default function VendaDetalhes() {
           </CardContent>
         </Card>
 
-        {/* Parcelas */}
+        {/* Parcelas de Comissão Recebidas */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle>Parcelas de Comissão</CardTitle>
           </CardHeader>
           <CardContent>
-            {parcelas.length > 0 ? (
+            {recebimentos.length > 0 ? (
               <div className="max-h-96 overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Parcela</TableHead>
-                      <TableHead>Previsto</TableHead>
-                      <TableHead>Recebido</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Data Recebimento</TableHead>
+                      <TableHead>Valor Recebido</TableHead>
+                      <TableHead>Status Pagamento</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {parcelas.sort((a, b) => a.numero_parcela - b.numero_parcela).map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{p.numero_parcela}</TableCell>
-                        <TableCell>{formatCurrency(p.valor_previsto)}</TableCell>
-                        <TableCell>{p.valor_recebido ? formatCurrency(p.valor_recebido) : '-'}</TableCell>
-                        <TableCell><StatusBadge status={p.status} /></TableCell>
+                    {recebimentos.sort((a, b) => new Date(b.data_recebimento) - new Date(a.data_recebimento)).map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">
+                          {r.parcela_informada || '-'}
+                        </TableCell>
+                        <TableCell>{format(new Date(r.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="font-semibold text-green-600">
+                          {formatCurrency(r.valor_recebido)}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={r.status_pagamento} />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
