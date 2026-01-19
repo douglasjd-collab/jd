@@ -24,6 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatDateBR } from '@/utils/dateHelpers';
 import { toast } from 'sonner';
 
 export default function VendaDetalhes() {
@@ -234,7 +235,7 @@ export default function VendaDetalhes() {
                           {r.parcela_informada || '-'}
                         </TableCell>
                         <TableCell>
-                          {r.data_recebimento ? format(new Date(r.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
+                          {formatDateBR(r.data_recebimento)}
                         </TableCell>
                         <TableCell className="font-semibold text-green-600">
                           {formatCurrency(r.valor_recebido)}

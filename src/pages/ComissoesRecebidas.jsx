@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Search, DollarSign } from 'lucide-react';
 import moment from 'moment';
+import { formatDateBR, safeParseDate } from '@/utils/dateHelpers';
 
 export default function ComissoesRecebidas() {
   const [user, setUser] = useState(null);
@@ -49,9 +50,12 @@ export default function ComissoesRecebidas() {
     // Filtro por período personalizado tem prioridade
     if (dataInicio || dataFim) {
       if (r.data_recebimento) {
-        const dataRec = moment(r.data_recebimento, ['YYYY-MM-DD', 'DD/MM/YYYY', moment.ISO_8601], true);
-        if (dataInicio && dataRec.isBefore(moment(dataInicio), 'day')) return false;
-        if (dataFim && dataRec.isAfter(moment(dataFim), 'day')) return false;
+        const dataRec = safeParseDate(r.data_recebimento);
+        if (!dataRec) return false;
+        const inicio = dataInicio ? safeParseDate(dataInicio) : null;
+        const fim = dataFim ? safeParseDate(dataFim) : null;
+        if (inicio && dataRec < inicio) return false;
+        if (fim && dataRec > fim) return false;
       }
     } else if (mesFilter !== 'todos' && r.data_recebimento) {
       const mes = moment(r.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM');
@@ -204,13 +208,10 @@ export default function ComissoesRecebidas() {
                 </tr>
               ) : (
                 filtered.map((recebimento) => {
-                  const dataRecebimento = recebimento.data_recebimento ? 
-                    moment(recebimento.data_recebimento, ['YYYY-MM-DD', 'DD/MM/YYYY', moment.ISO_8601], true) : null;
-                  
                   return (
                     <tr key={recebimento.id} className="border-b hover:bg-slate-50">
                       <td className="p-4">
-                        {dataRecebimento && dataRecebimento.isValid() ? dataRecebimento.format('DD/MM/YYYY') : '-'}
+                        {formatDateBR(recebimento.data_recebimento)}
                       </td>
                       <td className="p-4">{recebimento.cliente_nome || '-'}</td>
                       <td className="p-4">{recebimento.vendedor_nome || '-'}</td>

@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Search, DollarSign, CheckCircle2, Eye, Receipt } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
+import { formatDateBR } from '@/utils/dateHelpers';
 
 // Componente separado para cada linha da tabela
 function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerRecebimento, editingId, editingValue, editingError, onStartEditing, onSaveEditing, onKeyDown, onEditingValueChange }) {
@@ -32,7 +33,7 @@ function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerReceb
         )}
       </td>
       <td className="p-4 text-sm">
-        {comissao.data_recebimento ? moment(comissao.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : '-'}
+        {formatDateBR(comissao.data_recebimento)}
       </td>
       <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
       <td className="p-4 text-sm">{comissao.vendedor_nome || '-'}</td>
@@ -771,9 +772,7 @@ export default function ComissoesPagar() {
                 <div>
                   <Label className="text-slate-500">Data Recebimento</Label>
                   <p className="font-medium">
-                    {recebimentoDetalhes.data_recebimento
-                      ? moment(recebimentoDetalhes.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY')
-                      : '-'}
+                    {formatDateBR(recebimentoDetalhes.data_recebimento)}
                   </p>
                 </div>
                 <div>

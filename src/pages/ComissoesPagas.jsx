@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Download, Eye, Printer } from 'lucide-react';
 import moment from 'moment';
+import { formatDateBR } from '@/utils/dateHelpers';
 
 export default function ComissoesPagas() {
   const [user, setUser] = useState(null);
@@ -214,9 +215,7 @@ export default function ComissoesPagas() {
                   {comissoesProgramadas.map((c) => (
                              <tr key={c.id} className="border-b hover:bg-slate-50">
                                <td className="px-4 py-3 text-sm">
-                                 {c.data_pagamento 
-                                   ? moment(c.data_pagamento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') 
-                                   : '-'}
+                                 {formatDateBR(c.data_pagamento)}
                                </td>
                               <td className="px-4 py-3 text-sm">{c.cliente_nome || '-'}</td>
                               <td className="px-4 py-3 text-sm">{c.vendedor_nome || '-'}</td>
@@ -274,11 +273,7 @@ export default function ComissoesPagas() {
                    comissoesQuitadas.map((c) => (
                      <tr key={c.id} className="border-b hover:bg-slate-50">
                        <td className="px-4 py-3 text-sm">
-                         {c.data_pagamento
-                           ? moment(c.data_pagamento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') 
-                           : c.data_recebimento
-                           ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY')
-                           : '-'}
+                         {formatDateBR(c.data_pagamento) !== '-' ? formatDateBR(c.data_pagamento) : formatDateBR(c.data_recebimento)}
                        </td>
                        <td className="px-4 py-3 text-sm">{c.cliente_nome || '-'}</td>
                        <td className="px-4 py-3 text-sm">{c.vendedor_nome || '-'}</td>
