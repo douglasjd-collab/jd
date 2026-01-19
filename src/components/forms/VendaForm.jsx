@@ -71,8 +71,12 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   // React Query - Administradoras
   const { data: administradoras = [] } = useQuery({
     queryKey: ['administradoras-venda-form', empresaId],
-    enabled: open && (!!empresaId || isMaster),
-    queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
+    enabled: open,
+    queryFn: async () => {
+      const result = await base44.entities.Administradora.filter({ status: 'ativa' });
+      if (isMaster || !empresaId) return result;
+      return result.filter(a => a.empresa_id === empresaId);
+    },
   });
 
   // React Query - Vendedores
