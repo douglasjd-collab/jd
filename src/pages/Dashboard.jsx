@@ -635,8 +635,18 @@ export default function Dashboard() {
             </div>
             <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
               <div className="space-y-3">
-                {vendas.filter(v => v.status === selectedStatus).length > 0 ? (
-                  vendas.filter(v => v.status === selectedStatus).map((v) => (
+                {vendas.filter(v => {
+                  if (v.status !== selectedStatus) return false;
+                  if (isAdmin) return true;
+                  if (isGerente) return v.gerente_id === user?.colaborador_id || v.vendedor_id === user?.colaborador_id;
+                  return v.vendedor_id === user?.colaborador_id;
+                }).length > 0 ? (
+                  vendas.filter(v => {
+                    if (v.status !== selectedStatus) return false;
+                    if (isAdmin) return true;
+                    if (isGerente) return v.gerente_id === user?.colaborador_id || v.vendedor_id === user?.colaborador_id;
+                    return v.vendedor_id === user?.colaborador_id;
+                  }).map((v) => (
                     <div key={v.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
                       <div className="flex-1">
                         <p className="font-medium text-slate-900">{v.cliente_nome}</p>
