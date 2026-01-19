@@ -12,9 +12,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
-  Building2
+  Building2,
+  Cake,
+  AlertCircle
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart,
@@ -156,6 +158,11 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao', 100),
   });
 
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes-dashboard'],
+    queryFn: () => base44.entities.Cliente.filter({ status: 'ativo' }),
+  });
+
   // Filtrar dados por perfil (excluir vendas canceladas)
   const filteredVendas = vendas.filter(v => {
     // Não contar vendas canceladas
@@ -222,14 +229,16 @@ export default function Dashboard() {
   }, [filteredVendas]);
 
   const vendasPorStatus = React.useMemo(() => {
-    const statusCount = { ativa: 0, cancelada: 0, contemplada: 0 };
-    filteredVendas.forEach(v => {
-      statusCount[v.status] = (statusCount[v.status] || 0) + 1;
+    const statusCount = { ativa: 0, pendente: 0, aguardando_aprovacao: 0, cancelada: 0, em_atraso: 0, contemplada: 0 };
+    vendas.forEach(v => {
+      if (isAdmin || (isGerente && (v.gerente_id === user?.colaborador_id || v.vendedor_id === user?.colaborador_id)) || v.vendedor_id === user?.colaborador_id) {
+        statusCount[v.status] = (statusCount[v.status] || 0) + 1;
+      }
     });
     return Object.entries(statusCount)
       .filter(([_, value]) => value > 0)
       .map(([name, value]) => ({ name, value }));
-  }, [filteredVendas]);
+  }, [vendas, isAdmin, isGerente, user]);
 
   const rankingVendedores = React.useMemo(() => {
     const vendedorCount = {};
@@ -244,6 +253,36 @@ export default function Dashboard() {
   }, [vendasMes]);
 
   const vendasRecentes = filteredVendas.slice(0, 5);
+
+  // Aniversariantes da semana e do dia
+  const aniversariantesSemana = React.useMemo(() => {
+    const hoje = new Date();
+    const inicioSemana = startOfWeek(hoje, { weekStartsOn: 0 });
+    const fimSemana = endOfWeek(hoje, { weekStartsOn: 0 });
+    
+    return clientes.filter(c => {
+      if (!c.data_nascimento) return false;
+      const nascimento = new Date(c.data_nascimento + 'T12:00:00');
+      const aniversarioEsteAno = new Date(hoje.getFullYear(), nascimento.getMonth(), nascimento.getDate());
+      return aniversarioEsteAno >= inicioSemana && aniversarioEsteAno <= fimSemana;
+    }).sort((a, b) => {
+      const dateA = new Date(a.data_nascimento + 'T12:00:00');
+      const dateB = new Date(b.data_nascimento + 'T12:00:00');
+      return dateA.getMonth() * 100 + dateA.getDate() - (dateB.getMonth() * 100 + dateB.getDate());
+    });
+  }, [clientes]);
+
+  const aniversariantesHoje = React.useMemo(() => {
+    const hoje = new Date();
+    return clientes.filter(c => {
+      if (!c.data_nascimento) return false;
+      const nascimento = new Date(c.data_nascimento + 'T12:00:00');
+      return nascimento.getDate() === hoje.getDate() && nascimento.getMonth() === hoje.getMonth();
+    });
+  }, [clientes]);
+
+  const [statusModalOpen, setStatusModalOpen] = React.useState(false);
+  const [selectedStatus, setSelectedStatus] = React.useState(null);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -272,8 +311,29 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Alerta Aniversariantes do Dia */}
+      {aniversariantesHoje.length > 0 && (
+        <Card className="border-l-4 border-l-amber-500 bg-amber-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-amber-900">🎉 Aniversariantes de Hoje!</h3>
+                <div className="mt-2 space-y-1">
+                  {aniversariantesHoje.map(c => (
+                    <p key={c.id} className="text-sm text-amber-800">
+                      • {c.nome_completo || c.pj_razao_social} {c.celular && `- ${c.celular}`}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Vendas do Mês"
           value={totalVendasMes}
@@ -293,6 +353,13 @@ export default function Dashboard() {
           value={parcelasAtrasadas}
           icon={Calendar}
           color={parcelasAtrasadas > 0 ? 'red' : 'green'}
+        />
+        <StatsCard
+          title="Aniversariantes da Semana"
+          value={aniversariantesSemana.length}
+          subtitle={aniversariantesHoje.length > 0 ? `${aniversariantesHoje.length} hoje!` : 'Nenhum hoje'}
+          icon={Cake}
+          color={aniversariantesHoje.length > 0 ? 'amber' : 'blue'}
         />
       </div>
 
@@ -345,6 +412,11 @@ export default function Dashboard() {
                     outerRadius={90}
                     paddingAngle={5}
                     dataKey="value"
+                    onClick={(entry) => {
+                      setSelectedStatus(entry.name);
+                      setStatusModalOpen(true);
+                    }}
+                    style={{ cursor: 'pointer' }}
                   >
                     {vendasPorStatus.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -353,15 +425,22 @@ export default function Dashboard() {
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex justify-center gap-4 mt-4">
+              <div className="flex justify-center gap-4 mt-4 flex-wrap">
                 {vendasPorStatus.map((entry, index) => (
-                  <div key={entry.name} className="flex items-center gap-2">
+                  <button
+                    key={entry.name}
+                    onClick={() => {
+                      setSelectedStatus(entry.name);
+                      setStatusModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                  >
                     <div 
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     />
-                    <span className="text-sm text-slate-600 capitalize">{entry.name}</span>
-                  </div>
+                    <span className="text-sm text-slate-600 capitalize">{entry.name.replace('_', ' ')}</span>
+                  </button>
                 ))}
               </div>
           </CardContent>
@@ -443,43 +522,150 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Oportunidades Recentes */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Oportunidades em Aberto</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).length > 0 ? (
-              filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).map((op) => (
-                <div key={op.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-purple-600" />
+      {/* Bottom Row 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Oportunidades Recentes */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Oportunidades em Aberto</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).length > 0 ? (
+                filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).map((op) => (
+                  <div key={op.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900">{op.titulo}</p>
+                        <p className="text-sm text-slate-500">
+                          {op.etapa_nome} • {op.vendedor_nome}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-slate-900">{op.titulo}</p>
-                      <p className="text-sm text-slate-500">
-                        {op.etapa_nome} • {op.vendedor_nome}
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">
+                        {formatCurrency(op.valor_estimado || 0)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {op.data_cadastro_lead ? format(new Date(op.data_cadastro_lead + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-slate-900">
-                      {formatCurrency(op.valor_estimado || 0)}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {op.data_cadastro_lead ? format(new Date(op.data_cadastro_lead + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-slate-500 py-8">Nenhuma oportunidade em aberto</p>
-            )}
+                ))
+              ) : (
+                <p className="text-center text-slate-500 py-8">Nenhuma oportunidade em aberto</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Aniversariantes da Semana */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Cake className="w-5 h-5 text-pink-500" />
+              Aniversariantes da Semana
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {aniversariantesSemana.length > 0 ? (
+                aniversariantesSemana.map((cliente) => {
+                  const nascimento = new Date(cliente.data_nascimento + 'T12:00:00');
+                  const hoje = new Date();
+                  const ehHoje = nascimento.getDate() === hoje.getDate() && nascimento.getMonth() === hoje.getMonth();
+                  
+                  return (
+                    <div 
+                      key={cliente.id} 
+                      className={`flex items-center justify-between p-3 rounded-xl ${
+                        ehHoje ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          ehHoje ? 'bg-amber-500 text-white' : 'bg-pink-100 text-pink-600'
+                        }`}>
+                          <Cake className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {cliente.nome_completo || cliente.pj_razao_social}
+                            {ehHoje && <span className="ml-2 text-amber-600 font-bold">🎉 HOJE</span>}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {format(nascimento, 'dd/MM')}
+                            {cliente.celular && ` • ${cliente.celular}`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-center text-slate-500 py-8">Nenhum aniversariante esta semana</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Modal de Vendas por Status */}
+      {statusModalOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setStatusModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold text-slate-900 capitalize">
+                Vendas - {selectedStatus?.replace('_', ' ')}
+              </h2>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+              <div className="space-y-3">
+                {vendas.filter(v => v.status === selectedStatus).length > 0 ? (
+                  vendas.filter(v => v.status === selectedStatus).map((v) => (
+                    <div key={v.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-900">{v.cliente_nome}</p>
+                        <p className="text-sm text-slate-500">
+                          Grupo {v.grupo} • Cota {v.cota || 'Pendente'} • {v.vendedor_nome}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {v.data_venda ? format(new Date(v.data_venda + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-900">
+                          {formatCurrency(v.valorCredito || 0)}
+                        </p>
+                        <StatusBadge status={v.status} className="mt-1" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-slate-500 py-8">Nenhuma venda encontrada</p>
+                )}
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end">
+              <button
+                onClick={() => setStatusModalOpen(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-medium transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 }
