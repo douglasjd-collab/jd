@@ -204,6 +204,14 @@ export default function Empresas() {
       )
     },
     {
+      header: 'Tipo',
+      cell: (row) => row.tipo_empresa ? (
+        <div className="px-2 py-1 bg-purple-100 text-purple-700 rounded-md text-sm font-medium inline-block">
+          {row.tipo_empresa}
+        </div>
+      ) : '-'
+    },
+    {
       header: 'Contato',
       cell: (row) => (
         <div>
@@ -322,6 +330,24 @@ export default function Empresas() {
                 placeholder="Nome da empresa"
               />
               {errors.nome && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="tipo_empresa">Tipo da Empresa *</Label>
+              <Select
+                value={watch('tipo_empresa') || ''}
+                onValueChange={(value) => setValue('tipo_empresa', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MEI">MEI - Microempreendedor Individual</SelectItem>
+                  <SelectItem value="ME">ME - Microempresa</SelectItem>
+                  <SelectItem value="LTDA">LTDA - Sociedade Limitada</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.tipo_empresa && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
