@@ -214,8 +214,8 @@ export default function ComissoesPagas() {
                   {comissoesProgramadas.map((c) => (
                              <tr key={c.id} className="border-b hover:bg-slate-50">
                                <td className="px-4 py-3 text-sm">
-                                 {c.data_pagamento && moment(c.data_pagamento).isValid() 
-                                   ? moment(c.data_pagamento).format('DD/MM/YYYY') 
+                                 {c.data_pagamento 
+                                   ? moment(c.data_pagamento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') 
                                    : '-'}
                                </td>
                               <td className="px-4 py-3 text-sm">{c.cliente_nome || '-'}</td>
@@ -274,10 +274,10 @@ export default function ComissoesPagas() {
                    comissoesQuitadas.map((c) => (
                      <tr key={c.id} className="border-b hover:bg-slate-50">
                        <td className="px-4 py-3 text-sm">
-                         {c.data_pagamento && moment(c.data_pagamento).isValid() 
-                           ? moment(c.data_pagamento).format('DD/MM/YYYY') 
-                           : c.data_recebimento && moment(c.data_recebimento).isValid()
-                           ? moment(c.data_recebimento).format('DD/MM/YYYY')
+                         {c.data_pagamento
+                           ? moment(c.data_pagamento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') 
+                           : c.data_recebimento
+                           ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY')
                            : '-'}
                        </td>
                        <td className="px-4 py-3 text-sm">{c.cliente_nome || '-'}</td>

@@ -54,7 +54,7 @@ export default function ComissoesRecebidas() {
         if (dataFim && dataRec.isAfter(moment(dataFim), 'day')) return false;
       }
     } else if (mesFilter !== 'todos' && r.data_recebimento) {
-      const mes = moment(r.data_recebimento).format('YYYY-MM');
+      const mes = moment(r.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM');
       if (mes !== mesFilter) return false;
     }
 
@@ -69,7 +69,7 @@ export default function ComissoesRecebidas() {
   const totalRecebido = filtered.reduce((acc, r) => acc + (r.valor_recebido || 0), 0);
 
   const mesesDisponiveis = [...new Set(recebimentos.map((r) => 
-    r.data_recebimento ? moment(r.data_recebimento).format('YYYY-MM') : null
+    r.data_recebimento ? moment(r.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM') : null
   ).filter(Boolean))].sort().reverse();
 
   if (!user) {
