@@ -241,14 +241,18 @@ export default function Dashboard() {
   }, [vendas, isAdmin, isGerente, user]);
 
   const rankingVendedores = React.useMemo(() => {
-    const vendedorCount = {};
+    const vendedorStats = {};
     vendasMes.forEach(v => {
       const nome = v.vendedor_nome || 'Sem vendedor';
-      vendedorCount[nome] = (vendedorCount[nome] || 0) + 1;
+      if (!vendedorStats[nome]) {
+        vendedorStats[nome] = { vendas: 0, valor: 0 };
+      }
+      vendedorStats[nome].vendas += 1;
+      vendedorStats[nome].valor += (v.valorCredito || 0);
     });
-    return Object.entries(vendedorCount)
-      .map(([nome, vendas]) => ({ nome, vendas }))
-      .sort((a, b) => b.vendas - a.vendas)
+    return Object.entries(vendedorStats)
+      .map(([nome, stats]) => ({ nome, vendas: stats.vendas, valor: stats.valor }))
+      .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
   }, [vendasMes]);
 
@@ -466,13 +470,14 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-slate-900">{v.nome}</p>
-                      <p className="text-sm text-slate-500">{v.vendas} vendas</p>
+                      <p className="text-sm text-slate-500">{v.vendas} vendas • {formatCurrency(v.valor)}</p>
                     </div>
                     <div className="text-right">
+                      <p className="text-sm font-semibold text-[#1e3a5f] mb-1">{formatCurrency(v.valor)}</p>
                       <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-[#1e3a5f] rounded-full"
-                          style={{ width: `${(v.vendas / (rankingVendedores[0]?.vendas || 1)) * 100}%` }}
+                          style={{ width: `${(v.valor / (rankingVendedores[0]?.valor || 1)) * 100}%` }}
                         />
                       </div>
                     </div>
