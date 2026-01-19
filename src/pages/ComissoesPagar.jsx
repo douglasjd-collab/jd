@@ -32,9 +32,7 @@ function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerReceb
         )}
       </td>
       <td className="p-4 text-sm">
-        {comissao.data_recebimento && moment(comissao.data_recebimento).isValid() 
-          ? moment(comissao.data_recebimento).format('DD/MM/YYYY') 
-          : '-'}
+        {comissao.data_recebimento ? moment(comissao.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : '-'}
       </td>
       <td className="p-4 text-sm">{comissao.cliente_nome || '-'}</td>
       <td className="p-4 text-sm">{comissao.vendedor_nome || '-'}</td>
@@ -395,7 +393,7 @@ export default function ComissoesPagar() {
                 <td>${c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-'}</td>
                 <td>${c.parcela_numero ? `${c.parcela_numero}º` : '-'}</td>
                 <td>${c.valorCarta ? c.valorCarta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</td>
-                <td>${c.data_recebimento ? moment(c.data_recebimento).format('DD/MM/YYYY') : '-'}</td>
+                <td>${c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : '-'}</td>
                 <td>${(c.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>${c.percentual_comissao}%</td>
                 <td>${(c.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
@@ -515,7 +513,7 @@ export default function ComissoesPagar() {
 
     // Filtro por mês
     if (mesFilter !== 'todos' && c.data_recebimento) {
-      const mes = moment(c.data_recebimento).format('YYYY-MM');
+      const mes = moment(c.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM');
       if (mes !== mesFilter) return false;
     }
 
@@ -541,7 +539,7 @@ export default function ComissoesPagar() {
     .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
   const mesesDisponiveis = [...new Set(comissoes.map((c) => 
-    c.data_recebimento ? moment(c.data_recebimento).format('YYYY-MM') : null
+    c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM') : null
   ).filter(Boolean))].sort().reverse();
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
@@ -773,8 +771,8 @@ export default function ComissoesPagar() {
                 <div>
                   <Label className="text-slate-500">Data Recebimento</Label>
                   <p className="font-medium">
-                    {recebimentoDetalhes.data_recebimento && moment(recebimentoDetalhes.data_recebimento).isValid()
-                      ? moment(recebimentoDetalhes.data_recebimento).format('DD/MM/YYYY')
+                    {recebimentoDetalhes.data_recebimento
+                      ? moment(recebimentoDetalhes.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY')
                       : '-'}
                   </p>
                 </div>
