@@ -69,13 +69,18 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
   });
 
   // React Query - Administradoras
-  const { data: administradoras = [] } = useQuery({
+  const { data: administradoras = [], isLoading: adminLoading } = useQuery({
     queryKey: ['administradoras-venda-form', empresaId],
     enabled: open,
     queryFn: async () => {
-      const result = await base44.entities.Administradora.filter({ status: 'ativa' });
-      if (isMaster || !empresaId) return result;
-      return result.filter(a => a.empresa_id === empresaId);
+      try {
+        const result = await base44.entities.Administradora.filter({ status: 'ativa' });
+        if (isMaster || !empresaId) return result;
+        return result.filter(a => a.empresa_id === empresaId);
+      } catch (error) {
+        console.error('Erro ao carregar administradoras:', error);
+        return [];
+      }
     },
   });
 
@@ -412,7 +417,12 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {administradoras.length > 0 ? (
+                    {adminLoading ? (
+                      <div className="p-4 text-center text-sm text-slate-500">
+                        <Loader2 className="w-4 h-4 animate-spin inline-block mr-2" />
+                        Carregando...
+                      </div>
+                    ) : administradoras.length > 0 ? (
                       administradoras.map((a) => (
                         <SelectItem key={a.id} value={a.id}>
                           {a.nome_fantasia || a.razao_social}
@@ -420,7 +430,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-slate-500">
-                        Nenhuma administradora disponível
+                        Nenhuma administradora cadastrada
                       </div>
                     )}
                   </SelectContent>
