@@ -70,13 +70,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
   // React Query - Administradoras
   const { data: administradoras = [], isLoading: adminLoading } = useQuery({
-    queryKey: ['administradoras-venda-form', empresaId],
+    queryKey: ['administradoras-venda-form'],
     enabled: open,
     queryFn: async () => {
       try {
-        const result = await base44.entities.Administradora.filter({ status: 'ativa' });
-        if (isMaster || !empresaId) return result;
-        return result.filter(a => a.empresa_id === empresaId);
+        return await base44.entities.Administradora.filter({ status: 'ativa' });
       } catch (error) {
         console.error('Erro ao carregar administradoras:', error);
         return [];
