@@ -398,7 +398,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
               <div>
                 <Label>Administradora *</Label>
                 <Select
-                  value={watch('administradora_id')}
+                  value={watch('administradora_id') || ''}
                   onValueChange={(value) => {
                     setValue('administradora_id', value);
                     setValue('tabela_id', '');
@@ -412,11 +412,17 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {administradoras.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.nome_fantasia || a.razao_social}
-                      </SelectItem>
-                    ))}
+                    {administradoras.length > 0 ? (
+                      administradoras.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.nome_fantasia || a.razao_social}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-sm text-slate-500">
+                        Nenhuma administradora disponível
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -424,7 +430,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
               <div>
                 <Label>Tabela de Consórcio *</Label>
                 <Select
-                  value={watch('tabela_id')}
+                  value={watch('tabela_id') || ''}
                   onValueChange={(value) => setValue('tabela_id', value)}
                   disabled={!administradoraId}
                 >
@@ -432,11 +438,17 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tabelas.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.nomeTabela} ({t.tipoEmpresa})
-                      </SelectItem>
-                    ))}
+                    {tabelas.length > 0 ? (
+                      tabelas.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.nomeTabela} ({t.tipoEmpresa})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-sm text-slate-500">
+                        {administradoraId ? 'Nenhuma tabela cadastrada' : 'Selecione uma administradora'}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
