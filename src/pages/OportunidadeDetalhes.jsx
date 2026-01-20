@@ -376,25 +376,33 @@ export default function OportunidadeDetalhes() {
                            .text-purple-700 { color: #7e22ce; }
                            .text-white { color: #ffffff !important; }
                            .opacity-90 { opacity: 0.9; }
-                           .h-10 { height: 2rem; }
+                           .h-10 { height: 1.8rem; }
                            .w-auto { width: auto; }
                            .object-contain { object-fit: contain; }
-                           img { display: block; max-width: 100%; height: auto; }
+                           img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+                           strong { font-weight: 600; }
                            @media print {
                              @page { 
-                               margin: 1cm;
+                               margin: 0.8cm;
                                size: A4 portrait;
                              }
-                             body { margin: 0; }
+                             body { 
+                               margin: 0 !important; 
+                               padding: 5px !important;
+                               font-size: 10px !important;
+                             }
+                             .space-y-4 > * + * { margin-top: 0.4rem !important; }
+                             .p-4 { padding: 0.5rem !important; }
                              .bg-gradient-to-r { 
-                               -webkit-print-color-adjust: exact;
-                               print-color-adjust: exact;
-                               color-adjust: exact;
+                               -webkit-print-color-adjust: exact !important;
+                               print-color-adjust: exact !important;
+                               color-adjust: exact !important;
                              }
                              .bg-slate-50, .bg-blue-50, .bg-emerald-50 {
-                               -webkit-print-color-adjust: exact;
-                               print-color-adjust: exact;
+                               -webkit-print-color-adjust: exact !important;
+                               print-color-adjust: exact !important;
                              }
+                             .text-white { color: #ffffff !important; }
                            }
                           </style>
                         </head>
