@@ -301,19 +301,22 @@ export default function OportunidadeDetalhes() {
                            * { box-sizing: border-box; margin: 0; padding: 0; }
                            body { 
                              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-                             margin: 15px;
+                             margin: 10px;
+                             padding: 10px;
                              color: #1e293b;
                              background: white;
-                             line-height: 1.4;
-                             font-size: 12px;
+                             line-height: 1.3;
+                             font-size: 11px;
+                             max-width: 800px;
                            }
-                           .space-y-4 > * + * { margin-top: 0.75rem; }
-                           .space-y-2 > * + * { margin-top: 0.4rem; }
-                           .space-y-1 > * + * { margin-top: 0.2rem; }
+                           #print-area { max-width: 100%; }
+                           .space-y-4 > * + * { margin-top: 0.6rem; }
+                           .space-y-2 > * + * { margin-top: 0.3rem; }
+                           .space-y-1 > * + * { margin-top: 0.15rem; }
                            .grid { display: grid; }
                            .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-                           .gap-4 { gap: 0.75rem; }
-                           .gap-2 { gap: 0.4rem; }
+                           .gap-4 { gap: 0.6rem; }
+                           .gap-2 { gap: 0.3rem; }
                            .flex { display: flex; }
                            .justify-between { justify-content: space-between; }
                            .justify-center { justify-content: center; }
@@ -321,25 +324,25 @@ export default function OportunidadeDetalhes() {
                            .text-center { text-align: center; }
                            .font-bold { font-weight: 700; }
                            .font-semibold { font-weight: 600; }
-                           .text-2xl { font-size: 1.25rem; line-height: 1.6rem; }
-                           .text-3xl { font-size: 1.5rem; line-height: 1.8rem; }
-                           .text-xl { font-size: 1rem; line-height: 1.4rem; }
-                           .text-lg { font-size: 0.95rem; line-height: 1.3rem; }
-                           .text-sm { font-size: 0.8rem; line-height: 1.1rem; }
-                           .text-xs { font-size: 0.7rem; line-height: 0.9rem; }
-                           .mb-1 { margin-bottom: 0.2rem; }
-                           .mb-2 { margin-bottom: 0.4rem; }
-                           .mb-3 { margin-bottom: 0.6rem; }
-                           .mb-4 { margin-bottom: 0.8rem; }
-                           .mt-1 { margin-top: 0.2rem; }
-                           .mt-2 { margin-top: 0.4rem; }
-                           .p-2 { padding: 0.4rem; }
-                           .p-3 { padding: 0.6rem; }
-                           .p-4 { padding: 0.8rem; }
-                           .pb-2 { padding-bottom: 0.4rem; }
-                           .pb-4 { padding-bottom: 0.8rem; }
-                           .pt-2 { padding-top: 0.4rem; }
-                           .pt-3 { padding-top: 0.6rem; }
+                           .text-2xl { font-size: 1.1rem; line-height: 1.4rem; }
+                           .text-3xl { font-size: 1.3rem; line-height: 1.6rem; }
+                           .text-xl { font-size: 0.95rem; line-height: 1.3rem; }
+                           .text-lg { font-size: 0.9rem; line-height: 1.2rem; }
+                           .text-sm { font-size: 0.75rem; line-height: 1rem; }
+                           .text-xs { font-size: 0.65rem; line-height: 0.85rem; }
+                           .mb-1 { margin-bottom: 0.15rem; }
+                           .mb-2 { margin-bottom: 0.3rem; }
+                           .mb-3 { margin-bottom: 0.5rem; }
+                           .mb-4 { margin-bottom: 0.7rem; }
+                           .mt-1 { margin-top: 0.15rem; }
+                           .mt-2 { margin-top: 0.3rem; }
+                           .p-2 { padding: 0.35rem; }
+                           .p-3 { padding: 0.5rem; }
+                           .p-4 { padding: 0.65rem; }
+                           .pb-2 { padding-bottom: 0.3rem; }
+                           .pb-4 { padding-bottom: 0.65rem; }
+                           .pt-2 { padding-top: 0.3rem; }
+                           .pt-3 { padding-top: 0.5rem; }
                            .rounded { border-radius: 0.25rem; }
                            .rounded-lg { border-radius: 0.35rem; }
                            .border { border: 1px solid; }
