@@ -311,20 +311,29 @@ function ConteudoSimulacao({ simulacao }) {
   }
 
   const handleImprimir = () => {
-    window.print();
+    const conteudo = document.getElementById('print-area').innerHTML;
+    const janelaImpressao = window.open('', '', 'width=800,height=600');
+    janelaImpressao.document.write(`
+      <html>
+        <head>
+          <title>Simulação de Consórcio</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; margin: 20px; }
+            @media print {
+              @page { margin: 1cm; }
+            }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          ${conteudo}
+        </body>
+      </html>
+    `);
+    janelaImpressao.document.close();
   };
 
   return (
-    <>
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #print-area, #print-area * { visibility: visible; }
-          #print-area { position: absolute; left: 0; top: 0; width: 100%; }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
+    <div className="space-y-4">
       <div id="print-area" className="space-y-4">
         {/* Botão Imprimir - não aparece na impressão */}
         <div className="no-print flex justify-end mb-4">
