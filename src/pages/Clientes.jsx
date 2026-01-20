@@ -251,15 +251,15 @@ export default function Clientes() {
 
       {/* Form Modal */}
       <ClienteForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        cliente={selectedCliente}
+        open={openForm}
+        onOpenChange={(v) => { setOpenForm(v); if (!v) setClienteParaEditar(null); }}
+        cliente={clienteParaEditar}
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
@@ -268,9 +268,9 @@ export default function Clientes() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setClienteParaExcluir(null)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate(deleteId)}
+              onClick={() => deleteMutation.mutate(clienteParaExcluir?.id)}
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
