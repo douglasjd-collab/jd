@@ -281,6 +281,208 @@ export default function OportunidadeDetalhes() {
           emptyMessage="Nenhuma movimentação registrada"
         />
       </Card>
+
+      {/* Modal de Impressão */}
+      <Dialog open={!!simulacaoSelecionada} onOpenChange={() => setSimulacaoSelecionada(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Simulação de Consórcio</DialogTitle>
+          </DialogHeader>
+          {simulacaoSelecionada && <ConteudoSimulacao simulacao={simulacaoSelecionada} />}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function ConteudoSimulacao({ simulacao }) {
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  let cartas = [];
+  try {
+    cartas = JSON.parse(simulacao.cartas || '[]');
+  } catch (e) {
+    cartas = [];
+  }
+
+  const handleImprimir = () => {
+    window.print();
+  };
+
+  return (
+    <>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #print-area, #print-area * { visibility: visible; }
+          #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
+      <div id="print-area" className="space-y-4">
+        {/* Botão Imprimir - não aparece na impressão */}
+        <div className="no-print flex justify-end mb-4">
+          <Button onClick={handleImprimir} className="gap-2 bg-[#23BE84] hover:bg-[#1da570]">
+            <Printer className="w-4 h-4" />
+            Imprimir
+          </Button>
+        </div>
+
+        {/* Cabeçalho */}
+        <div className="text-center pb-4 border-b-2 border-slate-800">
+          <div className="flex justify-center mb-2">
+            <img 
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
+              alt="JD Promotora" 
+              className="h-10 w-auto object-contain"
+            />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Simulação de Consórcio</h2>
+          <p className="text-sm text-slate-600">
+            {new Date(simulacao.created_date).toLocaleDateString('pt-BR')} às {new Date(simulacao.created_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+          </p>
+        </div>
+
+        {/* Dados do Cliente */}
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
+            📋 Dados do Cliente
+          </h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div><span className="font-semibold">Nome:</span> {simulacao.cliente_nome}</div>
+            <div><span className="font-semibold">Telefone:</span> {simulacao.telefone}</div>
+          </div>
+        </div>
+
+        {/* Cartas de Crédito */}
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
+            💳 Cartas de Crédito
+          </h3>
+          <div className="space-y-2 mb-3">
+            {cartas.map((carta, i) => (
+              <div key={i} className="text-sm bg-slate-50 p-2 rounded">
+                <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} • Parcela {formatCurrency(parseFloat(carta.parcela))} • {carta.prazo} Meses
+              </div>
+            ))}
+          </div>
+          <div className="bg-blue-50 p-3 rounded">
+            <div className="flex justify-between mb-1">
+              <span className="font-semibold">💰 Crédito Total:</span>
+              <span className="text-lg font-bold text-blue-900">{formatCurrency(simulacao.credito_total)}</span>
+            </div>
+            <div className="flex justify-between mb-1">
+              <span className="font-semibold">📅 Parcela Total:</span>
+              <span className="text-lg font-bold text-blue-900">{formatCurrency(simulacao.parcela_total)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold">⏱️ Prazo:</span>
+              <span className="text-lg font-bold text-blue-900">{simulacao.prazo_original} Meses</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Lances */}
+        {simulacao.lance_total > 0 && (
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
+              🎯 Lances
+            </h3>
+            <div className="space-y-2">
+              {simulacao.lance_embutido_ativo && (
+                <div className="flex justify-between text-sm">
+                  <span>Lance Embutido ({simulacao.lance_embutido_percentual}%):</span>
+                  <span className="font-semibold">{formatCurrency(simulacao.lance_embutido_valor)}</span>
+                </div>
+              )}
+              {simulacao.lance_proprio_ativo && (
+                <div className="flex justify-between text-sm">
+                  <span>Lance Próprio:</span>
+                  <span className="font-semibold">{formatCurrency(simulacao.lance_proprio_valor)}</span>
+                </div>
+              )}
+              <div className="flex justify-between bg-emerald-50 p-2 rounded border-t border-emerald-200">
+                <span className="font-bold">🏆 Lance Total:</span>
+                <span className="text-lg font-bold text-emerald-900">{formatCurrency(simulacao.lance_total)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Valor a Receber */}
+        <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
+          <h3 className="text-sm font-bold mb-1">💰 Valor que o Cliente Recebe</h3>
+          <p className="text-3xl font-bold">
+            {formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}
+          </p>
+          <p className="text-xs opacity-90 mt-1">
+            (Crédito {formatCurrency(simulacao.credito_total)}
+            {simulacao.lance_embutido_valor > 0 && ` - Lance Emb. ${formatCurrency(simulacao.lance_embutido_valor)}`})
+          </p>
+        </div>
+
+        {/* Cálculos */}
+        <div>
+          <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
+            🧮 Cálculos
+          </h3>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span>Total do Plano:</span>
+              <span className="font-semibold">{formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>(-) Lance:</span>
+              <span className="font-semibold">{formatCurrency(simulacao.lance_total)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>(-) 1ª Parcela (no ato):</span>
+              <span className="font-semibold">{formatCurrency(simulacao.parcela_total)}</span>
+            </div>
+            <div className="flex justify-between bg-blue-50 p-2 rounded border-t border-blue-200">
+              <span className="font-bold">Saldo Devedor:</span>
+              <span className="text-lg font-bold text-blue-900">{formatCurrency(simulacao.saldo_apos_contemplacao)}</span>
+            </div>
+            {simulacao.opcao_pos_contemplacao === 'prazo' && (
+              <p className="text-xs text-slate-600 italic mt-2">⏱️ Carência 3 meses reduz prazo</p>
+            )}
+          </div>
+        </div>
+
+        {/* Resultado Final */}
+        <div className="bg-gradient-to-r from-purple-100 to-purple-50 border-2 border-purple-300 rounded-lg p-4">
+          <h3 className="text-lg font-bold text-purple-900 mb-3 text-center">
+            ✨ Resultado Final
+          </h3>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-purple-800">Novo Prazo:</span>
+              <span className="text-xl font-bold text-purple-900">{simulacao.novo_prazo} meses</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-purple-800">Nova Parcela:</span>
+              <span className="text-xl font-bold text-purple-900">{formatCurrency(simulacao.nova_parcela)}</span>
+            </div>
+            {simulacao.opcao_pos_contemplacao === 'prazo' && (
+              <div className="pt-2 border-t border-purple-200 text-sm text-purple-700">
+                ✓ 3 meses de carência após contemplação
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Rodapé */}
+        <div className="pt-3 border-t border-slate-300 text-center text-xs text-slate-500">
+          <p>Vendedor: {simulacao.usuario_nome}</p>
+          <p className="mt-1">Simulação sujeita a alterações conforme condições da administradora.</p>
+        </div>
+      </div>
+    </>
   );
 }
