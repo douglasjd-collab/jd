@@ -340,12 +340,12 @@ export default function OportunidadeDetalhes() {
                            .pb-4 { padding-bottom: 0.8rem; }
                            .pt-2 { padding-top: 0.4rem; }
                            .pt-3 { padding-top: 0.6rem; }
-                           .rounded { border-radius: 0.375rem; }
-                           .rounded-lg { border-radius: 0.5rem; }
+                           .rounded { border-radius: 0.25rem; }
+                           .rounded-lg { border-radius: 0.35rem; }
                            .border { border: 1px solid; }
-                           .border-2 { border: 2px solid; }
+                           .border-2 { border: 1.5px solid; }
                            .border-b { border-bottom: 1px solid; }
-                           .border-b-2 { border-bottom: 2px solid; }
+                           .border-b-2 { border-bottom: 1.5px solid; }
                            .border-t { border-top: 1px solid; }
                            .border-slate-800 { border-color: #1e293b; }
                            .border-slate-300 { border-color: #cbd5e1; }
