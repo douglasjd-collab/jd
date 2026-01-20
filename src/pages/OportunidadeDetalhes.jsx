@@ -412,8 +412,8 @@ function ConteudoSimulacao({ simulacao }) {
 
   return (
     <div id="print-area" className="space-y-4">
-        {/* Cabeçalho */}
-        <div className="text-center pb-4 border-b-2 border-slate-800">
+      {/* Cabeçalho */}
+      <div className="text-center pb-4 border-b-2 border-slate-800">
           <div className="flex justify-center mb-2">
             <img 
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
