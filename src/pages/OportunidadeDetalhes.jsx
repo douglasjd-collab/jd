@@ -6,8 +6,10 @@ import { Card } from '@/components/ui/card';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, User, DollarSign, Calendar, TrendingUp, History, Calculator } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, User, DollarSign, Calendar, TrendingUp, History, Calculator, Printer } from 'lucide-react';
 import { format } from 'date-fns';
+import { createPageUrl } from '@/utils';
 
 export default function OportunidadeDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
