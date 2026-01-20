@@ -323,6 +323,7 @@ export default function Dashboard() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="space-y-8">
       {/* Header */}
       <div>
