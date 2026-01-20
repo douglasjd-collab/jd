@@ -50,7 +50,8 @@ export default function Administradoras() {
     mutationFn: (data) => base44.entities.Administradora.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['administradoras'] });
-      setFormOpen(false);
+      setOpenForm(false);
+      setAdminParaEditar(null);
       toast.success('Administradora cadastrada com sucesso!');
     },
   });
@@ -59,8 +60,8 @@ export default function Administradoras() {
     mutationFn: ({ id, data }) => base44.entities.Administradora.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['administradoras'] });
-      setFormOpen(false);
-      setSelectedAdmin(null);
+      setOpenForm(false);
+      setAdminParaEditar(null);
       toast.success('Administradora atualizada com sucesso!');
     },
   });
@@ -69,7 +70,8 @@ export default function Administradoras() {
     mutationFn: (id) => base44.entities.Administradora.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['administradoras'] });
-      setDeleteId(null);
+      setOpenDelete(false);
+      setAdminParaExcluir(null);
       toast.success('Administradora excluída com sucesso!');
     },
   });
