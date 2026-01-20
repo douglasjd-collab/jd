@@ -44,7 +44,89 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadUser();
+    let isMounted = true;
+    
+    const init = async () => {
+      try {
+        const me = await base44.auth.me();
+        if (!isMounted) return;
+        
+        if (!me) {
+          setUser(null);
+          return;
+        }
+
+        if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+          setUser({
+            ...me,
+            auth_id: me.id,
+            colaborador_id: null,
+            empresa_id: null,
+            perfil: 'super_admin',
+            nome_perfil: me.full_name,
+            gerente_id: null,
+          });
+          return;
+        }
+
+        const colabs = await base44.entities.Colaborador.filter(
+          { user_id: me.id, status: 'ativo' },
+          '-created_date'
+        );
+        if (!isMounted) return;
+
+        if (!colabs || colabs.length === 0) {
+          setUser({
+            ...me,
+            auth_id: me.id,
+            colaborador_id: null,
+            empresa_id: null,
+            perfil: 'vendedor',
+            nome_perfil: me.full_name || '',
+            gerente_id: null,
+          });
+          return;
+        }
+
+        const colab = colabs[0];
+
+        if (colab?.perfil === 'super_admin' || colab?.perfil === 'master') {
+          setUser({
+            ...me,
+            auth_id: me.id,
+            colaborador_id: colab.id,
+            empresa_id: null,
+            perfil: 'super_admin',
+            nome_perfil: colab.nome || me.full_name || '',
+            gerente_id: null,
+          });
+          return;
+        }
+
+        const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
+        const colabFinal = byEmpresa || colab;
+
+        setUser({
+          ...me,
+          auth_id: me.id,
+          colaborador_id: colabFinal.id,
+          empresa_id: colabFinal.empresa_id || null,
+          perfil: colabFinal.perfil || 'vendedor',
+          nome_perfil: colabFinal.nome || me.full_name || '',
+          gerente_id: colabFinal.gerente_id || null,
+        });
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Erro ao carregar usuário:', error);
+        setError(error.message);
+      }
+    };
+    
+    init();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const loadUser = async () => {
