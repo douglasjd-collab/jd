@@ -532,10 +532,36 @@ export default function PlanosConsorcio() {
                   <span className="font-medium">Taxa de ADM:</span> {selectedModalPlano.taxa_adm ? `${selectedModalPlano.taxa_adm}%` : 'Sem taxa'}
                 </p>
               </div>
-              <Button className="w-full bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2">
-                <ShoppingCart className="w-4 h-4" />
-                Comprar
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 gap-2"
+                  onClick={() => {
+                    const planoData = {
+                      nome: selectedModalPlano.nome,
+                      administradora_id: selectedModalPlano.administradora_id,
+                      grupo: selectedModalPlano.grupo,
+                      prazo: selectedModalPlano.prazo,
+                      valor_carta: selectedModalPlano.valor_carta,
+                      tipo_bem: selectedModalPlano.tipo_bem,
+                      taxa_adm: selectedModalPlano.taxa_adm,
+                      status: 'ativo'
+                    };
+                    Object.keys(planoData).forEach(key => setValue(key, planoData[key]));
+                    setSelectedPlano(null);
+                    setModalGroupName(null);
+                    setSelectedModalPlano(null);
+                    setFormOpen(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Duplicar
+                </Button>
+                <Button className="flex-1 bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2">
+                  <ShoppingCart className="w-4 h-4" />
+                  Comprar
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
