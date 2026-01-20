@@ -286,7 +286,107 @@ export default function OportunidadeDetalhes() {
       <Dialog open={!!simulacaoSelecionada} onOpenChange={() => setSimulacaoSelecionada(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Simulação de Consórcio</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Simulação de Consórcio</DialogTitle>
+              {simulacaoSelecionada && (
+                <Button 
+                  onClick={() => {
+                    const conteudo = document.getElementById('print-area').innerHTML;
+                    const janelaImpressao = window.open('', '', 'width=800,height=600');
+                    janelaImpressao.document.write(`
+                      <html>
+                        <head>
+                          <title>Simulação de Consórcio</title>
+                          <style>
+                            body { 
+                              font-family: system-ui, -apple-system, sans-serif; 
+                              margin: 20px;
+                              color: #1e293b;
+                            }
+                            .space-y-4 > * + * { margin-top: 1rem; }
+                            .space-y-2 > * + * { margin-top: 0.5rem; }
+                            .space-y-1 > * + * { margin-top: 0.25rem; }
+                            .grid { display: grid; }
+                            .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                            .gap-4 { gap: 1rem; }
+                            .gap-2 { gap: 0.5rem; }
+                            .flex { display: flex; }
+                            .justify-between { justify-content: space-between; }
+                            .items-center { align-items: center; }
+                            .text-center { text-align: center; }
+                            .font-bold { font-weight: 700; }
+                            .font-semibold { font-weight: 600; }
+                            .text-2xl { font-size: 1.5rem; line-height: 2rem; }
+                            .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+                            .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+                            .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+                            .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+                            .text-xs { font-size: 0.75rem; line-height: 1rem; }
+                            .mb-1 { margin-bottom: 0.25rem; }
+                            .mb-2 { margin-bottom: 0.5rem; }
+                            .mb-3 { margin-bottom: 0.75rem; }
+                            .mb-4 { margin-bottom: 1rem; }
+                            .mt-1 { margin-top: 0.25rem; }
+                            .mt-2 { margin-top: 0.5rem; }
+                            .p-2 { padding: 0.5rem; }
+                            .p-3 { padding: 0.75rem; }
+                            .p-4 { padding: 1rem; }
+                            .pb-2 { padding-bottom: 0.5rem; }
+                            .pb-4 { padding-bottom: 1rem; }
+                            .pt-2 { padding-top: 0.5rem; }
+                            .pt-3 { padding-top: 0.75rem; }
+                            .rounded { border-radius: 0.25rem; }
+                            .rounded-lg { border-radius: 0.5rem; }
+                            .border { border-width: 1px; }
+                            .border-2 { border-width: 2px; }
+                            .border-b { border-bottom-width: 1px; }
+                            .border-b-2 { border-bottom-width: 2px; }
+                            .border-t { border-top-width: 1px; }
+                            .border-slate-800 { border-color: #1e293b; }
+                            .border-slate-300 { border-color: #cbd5e1; }
+                            .border-blue-200 { border-color: #bfdbfe; }
+                            .border-emerald-200 { border-color: #a7f3d0; }
+                            .border-purple-200 { border-color: #e9d5ff; }
+                            .border-purple-300 { border-color: #d8b4fe; }
+                            .bg-slate-50 { background-color: #f8fafc; }
+                            .bg-blue-50 { background-color: #eff6ff; }
+                            .bg-emerald-50 { background-color: #ecfdf5; }
+                            .bg-gradient-to-r { background-image: linear-gradient(to right, var(--tw-gradient-stops)); }
+                            .from-blue-500 { --tw-gradient-from: #3b82f6; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(59, 130, 246, 0)); }
+                            .to-blue-600 { --tw-gradient-to: #2563eb; }
+                            .from-purple-100 { --tw-gradient-from: #f3e8ff; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(243, 232, 255, 0)); }
+                            .to-purple-50 { --tw-gradient-to: #faf5ff; }
+                            .text-slate-900 { color: #0f172a; }
+                            .text-slate-600 { color: #475569; }
+                            .text-slate-500 { color: #64748b; }
+                            .text-blue-900 { color: #1e3a8a; }
+                            .text-emerald-900 { color: #064e3b; }
+                            .text-purple-900 { color: #581c87; }
+                            .text-purple-800 { color: #6b21a8; }
+                            .text-purple-700 { color: #7e22ce; }
+                            .text-white { color: #ffffff; }
+                            .opacity-90 { opacity: 0.9; }
+                            img { height: 40px; width: auto; object-fit: contain; }
+                            @media print {
+                              @page { margin: 1cm; }
+                            }
+                          </style>
+                        </head>
+                        <body onload="window.print(); window.close();">
+                          ${conteudo}
+                        </body>
+                      </html>
+                    `);
+                    janelaImpressao.document.close();
+                  }}
+                  className="gap-2 bg-[#23BE84] hover:bg-[#1da570]"
+                  size="sm"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           {simulacaoSelecionada && <ConteudoSimulacao simulacao={simulacaoSelecionada} />}
         </DialogContent>
