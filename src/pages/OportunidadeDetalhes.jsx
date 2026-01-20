@@ -223,7 +223,7 @@ export default function OportunidadeDetalhes() {
                         size="sm"
                         variant="outline"
                         className="gap-2 h-7 text-xs"
-                        onClick={() => window.open(createPageUrl('ImprimirSimulacao') + `?id=${sim.id}`, '_blank')}
+                        onClick={() => setSimulacaoSelecionada(sim)}
                       >
                         <Printer className="w-3 h-3" />
                         Imprimir 2ª Via
