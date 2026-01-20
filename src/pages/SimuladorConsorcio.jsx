@@ -23,6 +23,7 @@ export default function SimuladorEmbutido() {
   const [currentUser, setCurrentUser] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
   const [administradora, setAdministradora] = useState('');
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(30);
@@ -150,7 +151,7 @@ export default function SimuladorEmbutido() {
         empresa_id: empresaId,
         cliente_nome: clienteNome,
         telefone: telefone,
-        tipo_grupo: 'automovel',
+        tipo_grupo: tipoGrupo,
         cartas: JSON.stringify(cartas),
         credito_total: creditoAReceber,
         parcela_total: parcelaTotal,
@@ -373,6 +374,20 @@ export default function SimuladorEmbutido() {
                   <Label>Telefone *</Label>
                   <Input value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" />
                 </div>
+              </div>
+              <div>
+                <Label className="mb-2 block">Tipo do Consórcio *</Label>
+                <Select value={tipoGrupo} onValueChange={setTipoGrupo}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="automovel">Automóvel</SelectItem>
+                    <SelectItem value="imovel">Imóvel</SelectItem>
+                    <SelectItem value="motocicleta">Motocicleta</SelectItem>
+                    <SelectItem value="servico">Serviço</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
