@@ -119,8 +119,8 @@ export default function Administradoras() {
         empresa_id
       };
 
-      if (selectedAdmin) {
-        updateMutation.mutate({ id: selectedAdmin.id, data: adminData });
+      if (adminParaEditar) {
+        updateMutation.mutate({ id: adminParaEditar.id, data: adminData });
       } else {
         createMutation.mutate(adminData);
       }
@@ -128,11 +128,6 @@ export default function Administradoras() {
       console.error('Erro ao salvar administradora:', error);
       toast.error('Erro ao salvar administradora: ' + error.message);
     }
-  };
-
-  const handleEdit = (admin) => {
-    setSelectedAdmin(admin);
-    setFormOpen(true);
   };
 
   const filteredAdmins = administradoras.filter(a => 
