@@ -553,14 +553,13 @@ function ConteudoSimulacao({ simulacao }) {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Rodapé */}
-        <div className="pt-3 border-t border-slate-300 text-center text-xs text-slate-500">
-          <p>Vendedor: {simulacao.usuario_nome}</p>
-          <p className="mt-1">Simulação sujeita a alterações conforme condições da administradora.</p>
-        </div>
       </div>
-    </>
+
+      {/* Rodapé */}
+      <div className="pt-3 border-t border-slate-300 text-center text-xs text-slate-500">
+        <p>Vendedor: {simulacao.usuario_nome}</p>
+        <p className="mt-1">Simulação sujeita a alterações conforme condições da administradora.</p>
+      </div>
+    </div>
   );
 }
