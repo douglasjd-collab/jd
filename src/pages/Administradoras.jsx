@@ -27,20 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Administradoras() {
-  const [formOpen, setFormOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [adminParaEditar, setAdminParaEditar] = useState(null);
+  const [adminParaExcluir, setAdminParaExcluir] = useState(null);
+  const [openForm, setOpenForm] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
   const [search, setSearch] = useState('');
-  const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
-
-  // Limpa estados ao desmontar
-  React.useEffect(() => {
-    return () => {
-      setFormOpen(false);
-      setDeleteId(null);
-      setSelectedAdmin(null);
-    };
-  }, []);
 
   const { data: administradoras = [], isLoading, error } = useQuery({
     queryKey: ['administradoras'],
