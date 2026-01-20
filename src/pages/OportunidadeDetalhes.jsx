@@ -436,10 +436,10 @@ function ConteudoSimulacao({ simulacao }) {
             <div><span className="font-semibold">Nome:</span> {simulacao.cliente_nome}</div>
             <div><span className="font-semibold">Telefone:</span> {simulacao.telefone}</div>
           </div>
-        </div>
+      </div>
 
-        {/* Cartas de Crédito */}
-        <div>
+      {/* Cartas de Crédito */}
+      <div>
           <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
             💳 Cartas de Crédito
           </h3>
