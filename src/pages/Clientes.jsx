@@ -30,10 +30,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Clientes() {
-  const [formOpen, setFormOpen] = useState(false);
-  const [selectedCliente, setSelectedCliente] = useState(null);
+  const [clienteParaEditar, setClienteParaEditar] = useState(null);
+  const [clienteParaExcluir, setClienteParaExcluir] = useState(null);
+  const [openForm, setOpenForm] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
   const [search, setSearch] = useState('');
-  const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: clientes = [], isLoading } = useQuery({
