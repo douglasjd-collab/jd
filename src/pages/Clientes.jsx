@@ -46,8 +46,8 @@ export default function Clientes() {
     mutationFn: (data) => base44.entities.Cliente.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      setFormOpen(false);
-      setSelectedCliente(null);
+      setOpenForm(false);
+      setClienteParaEditar(null);
       toast.success('Cliente cadastrado com sucesso!');
     },
     onError: (error) => {
@@ -60,8 +60,8 @@ export default function Clientes() {
     mutationFn: ({ id, data }) => base44.entities.Cliente.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      setFormOpen(false);
-      setSelectedCliente(null);
+      setOpenForm(false);
+      setClienteParaEditar(null);
       toast.success('Cliente atualizado com sucesso!');
     },
     onError: (error) => {
@@ -74,13 +74,15 @@ export default function Clientes() {
     mutationFn: (id) => base44.entities.Cliente.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      setDeleteId(null);
+      setOpenDelete(false);
+      setClienteParaExcluir(null);
       toast.success('Cliente excluído com sucesso!');
     },
     onError: (error) => {
       console.error('Erro ao excluir cliente:', error);
       toast.error('Erro ao excluir cliente');
-      setDeleteId(null);
+      setOpenDelete(false);
+      setClienteParaExcluir(null);
     }
   });
 
