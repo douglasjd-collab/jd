@@ -225,8 +225,8 @@ export default function Clientes() {
         subtitle={`${clientes.length} clientes cadastrados`}
         actionLabel="Novo Cliente"
         onAction={() => {
-          setSelectedCliente(null);
-          setFormOpen(true);
+          setClienteParaEditar(null);
+          setOpenForm(true);
         }}
       />
 
