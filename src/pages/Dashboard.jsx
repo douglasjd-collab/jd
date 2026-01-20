@@ -41,6 +41,7 @@ export default function Dashboard() {
     start: startOfMonth(new Date()),
     end: endOfMonth(new Date())
   });
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadUser();
