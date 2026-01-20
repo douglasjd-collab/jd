@@ -136,41 +136,52 @@ export default function Dashboard() {
     queryKey: ['colaboradores-dashboard'],
     enabled: !!user,
     queryFn: () => base44.entities.Colaborador.list(),
+    staleTime: 30000,
   });
 
   const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
   const isGerente = user?.perfil === 'gerente';
 
-  // Queries
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
     queryKey: ['vendas-dashboard'],
+    enabled: !!user,
     queryFn: () => base44.entities.Venda.list('-created_date', 100),
+    staleTime: 30000,
   });
 
   const { data: comissoes = [], isLoading: loadingComissoes } = useQuery({
     queryKey: ['comissoes-dashboard'],
+    enabled: !!user,
     queryFn: () => base44.entities.Comissao.list('-created_date', 200),
+    staleTime: 30000,
   });
 
   const { data: parcelas = [], isLoading: loadingParcelas } = useQuery({
     queryKey: ['parcelas-dashboard'],
+    enabled: !!user,
     queryFn: () => base44.entities.Parcela.list('-created_date', 500),
+    staleTime: 30000,
   });
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios-dashboard'],
     enabled: !!user && isAdmin,
     queryFn: () => base44.entities.Colaborador.filter({ status: 'ativo' }),
+    staleTime: 30000,
   });
 
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
     queryKey: ['oportunidades-dashboard'],
+    enabled: !!user,
     queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao', 100),
+    staleTime: 30000,
   });
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-dashboard'],
+    enabled: !!user,
     queryFn: () => base44.entities.Cliente.filter({ status: 'ativo' }),
+    staleTime: 30000,
   });
 
   // Filtrar dados por perfil (excluir vendas canceladas)
