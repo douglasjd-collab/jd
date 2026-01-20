@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X } from 'lucide-react';
+import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 
@@ -87,6 +87,12 @@ export default function SimuladorConsorcio() {
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
+  };
+
+  const duplicarCarta = (index) => {
+    const cartaOriginal = cartas[index];
+    setCartas([...cartas, { ...cartaOriginal }]);
+    toast.success('Carta duplicada!');
   };
 
   const removerCarta = (index) => {
@@ -697,16 +703,28 @@ export default function SimuladorConsorcio() {
             <CardContent className="space-y-3">
               {cartas.map((carta, index) => (
                 <div key={index} className="relative p-4 bg-slate-50 rounded-lg border">
-                  {cartas.length > 1 && (
+                  <div className="absolute top-2 right-2 flex gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => removerCarta(index)}
-                      className="absolute top-2 right-2 h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => duplicarCarta(index)}
+                      className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      title="Duplicar carta"
                     >
-                      <X className="w-4 h-4" />
+                      <Copy className="w-4 h-4" />
                     </Button>
-                  )}
+                    {cartas.length > 1 && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => removerCarta(index)}
+                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Remover carta"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
