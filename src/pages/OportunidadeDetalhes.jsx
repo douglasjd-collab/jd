@@ -425,10 +425,10 @@ function ConteudoSimulacao({ simulacao }) {
           <p className="text-sm text-slate-600">
             {new Date(simulacao.created_date).toLocaleDateString('pt-BR')} às {new Date(simulacao.created_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
           </p>
-        </div>
+      </div>
 
-        {/* Dados do Cliente */}
-        <div>
+      {/* Dados do Cliente */}
+      <div>
           <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
             📋 Dados do Cliente
           </h3>
