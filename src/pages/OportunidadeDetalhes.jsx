@@ -531,10 +531,10 @@ function ConteudoSimulacao({ simulacao }) {
               <p className="text-xs text-slate-600 italic mt-2">⏱️ Carência 3 meses reduz prazo</p>
             )}
           </div>
-        </div>
+      </div>
 
-        {/* Resultado Final */}
-        <div className="bg-gradient-to-r from-purple-100 to-purple-50 border-2 border-purple-300 rounded-lg p-4">
+      {/* Resultado Final */}
+      <div className="bg-gradient-to-r from-purple-100 to-purple-50 border-2 border-purple-300 rounded-lg p-4">
           <h3 className="text-lg font-bold text-purple-900 mb-3 text-center">
             ✨ Resultado Final
           </h3>
