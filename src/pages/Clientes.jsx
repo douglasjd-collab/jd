@@ -128,8 +128,8 @@ export default function Clientes() {
         clienteData.empresa_id = empresa_id;
       }
 
-      if (selectedCliente) {
-        updateMutation.mutate({ id: selectedCliente.id, data: clienteData });
+      if (clienteParaEditar) {
+        updateMutation.mutate({ id: clienteParaEditar.id, data: clienteData });
       } else {
         createMutation.mutate(clienteData);
       }
@@ -137,11 +137,6 @@ export default function Clientes() {
       console.error('Erro ao salvar cliente:', error);
       toast.error('Erro ao salvar cliente: ' + error.message);
     }
-  };
-
-  const handleEdit = (cliente) => {
-    setSelectedCliente(cliente);
-    setFormOpen(true);
   };
 
   const filteredClientes = clientes.filter(c => 
