@@ -56,7 +56,6 @@ export default function Dashboard() {
         return;
       }
 
-      // Primeiro: tenta reconhecer super_admin pelo próprio auth
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
         setUser({
           ...me,
@@ -70,7 +69,6 @@ export default function Dashboard() {
         return;
       }
 
-      // Depois: busca Colaborador e se o perfil dele for super_admin, também vira super_admin
       const colabs = await base44.entities.Colaborador.filter(
         { user_id: me.id, status: 'ativo' },
         '-created_date'
@@ -119,6 +117,7 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
+      setError(error.message);
       setUser(null);
     }
   };
