@@ -1,14 +1,15 @@
 import { useEffect } from "react";
 
-export default function AntiTranslateGuard() {
-  useEffect(() => {
-    // 1) Sinalizações padrão contra translate
+function setNoTranslate() {
+  try {
     document.documentElement.setAttribute("translate", "no");
     document.documentElement.classList.add("notranslate");
-    document.body.setAttribute("translate", "no");
-    document.body.classList.add("notranslate");
+    if (document.body) {
+      document.body.setAttribute("translate", "no");
+      document.body.classList.add("notranslate");
+    }
 
-    // meta tags "notranslate"
+    // meta notranslate
     const ensureMeta = (name, content) => {
       let meta = document.querySelector(`meta[name="${name}"]`);
       if (!meta) {
@@ -18,52 +19,58 @@ export default function AntiTranslateGuard() {
       }
       meta.content = content;
     };
-
     ensureMeta("google", "notranslate");
     ensureMeta("googlebot", "notranslate");
+  } catch {}
+}
 
-    // 2) Remover <font> tags de forma mais agressiva
-    const unwrapFonts = () => {
-      try {
-        const fonts = document.querySelectorAll("font");
-        fonts.forEach((f) => {
-          const parent = f.parentNode;
-          if (!parent) return;
-          
-          // Move todos os filhos para fora do <font>
-          const fragment = document.createDocumentFragment();
-          while (f.firstChild) {
-            fragment.appendChild(f.firstChild);
-          }
-          
-          // Substitui <font> pelo fragment
-          parent.replaceChild(fragment, f);
-        });
-      } catch (e) {
-        console.warn("Erro ao remover <font>:", e);
+function unwrapFonts(root) {
+  if (!root || !root.querySelectorAll) return;
+  const fonts = root.querySelectorAll("font");
+  if (!fonts.length) return;
+
+  fonts.forEach((f) => {
+    const p = f.parentNode;
+    if (!p) return;
+
+    while (f.firstChild) p.insertBefore(f.firstChild, f);
+    p.removeChild(f);
+  });
+}
+
+export default function AntiTranslateGuard() {
+  useEffect(() => {
+    // roda imediatamente e em intervalos curtos no começo
+    setNoTranslate();
+    unwrapFonts(document.body);
+
+    const t = setInterval(() => {
+      setNoTranslate();
+      unwrapFonts(document.body);
+    }, 300);
+
+    // depois de 6s, para o intervalo (já estabilizou)
+    const stop = setTimeout(() => clearInterval(t), 6000);
+
+    // observa mudanças e remove <font> assim que aparecer
+    const obs = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === "childList") {
+          m.addedNodes?.forEach((n) => {
+            if (n?.nodeType === 1) {
+              if (n.tagName === "FONT") unwrapFonts(n.parentNode);
+              else unwrapFonts(n);
+            }
+          });
+        }
       }
-    };
-
-    // 3) Executar imediatamente e repetir
-    unwrapFonts();
-    
-    // Verificar a cada 50ms se apareceram novas tags <font>
-    const intervalId = setInterval(unwrapFonts, 50);
-
-    // 4) MutationObserver para capturar mudanças em tempo real
-    const obs = new MutationObserver(() => {
-      unwrapFonts();
     });
 
-    obs.observe(document.body, { 
-      childList: true, 
-      subtree: true,
-      characterData: true,
-      attributes: true
-    });
+    if (document.body) obs.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      clearInterval(intervalId);
+      clearInterval(t);
+      clearTimeout(stop);
       obs.disconnect();
     };
   }, []);
