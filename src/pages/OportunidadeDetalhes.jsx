@@ -215,7 +215,18 @@ export default function OportunidadeDetalhes() {
                   </div>
 
                   <div className="mt-3 pt-3 border-t border-slate-200">
-                    <p className="text-xs text-slate-500 mb-2">✨ Após Contemplação:</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-slate-500">✨ Após Contemplação:</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 h-7 text-xs"
+                        onClick={() => window.open(createPageUrl('ImprimirSimulacao') + `?id=${sim.id}`, '_blank')}
+                      >
+                        <Printer className="w-3 h-3" />
+                        Imprimir 2ª Via
+                      </Button>
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="text-slate-500 text-xs">💵 Nova Parcela</p>
