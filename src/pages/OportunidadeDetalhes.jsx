@@ -335,14 +335,6 @@ function ConteudoSimulacao({ simulacao }) {
   return (
     <div className="space-y-4">
       <div id="print-area" className="space-y-4">
-        {/* Botão Imprimir - não aparece na impressão */}
-        <div className="no-print flex justify-end mb-4">
-          <Button onClick={handleImprimir} className="gap-2 bg-[#23BE84] hover:bg-[#1da570]">
-            <Printer className="w-4 h-4" />
-            Imprimir
-          </Button>
-        </div>
-
         {/* Cabeçalho */}
         <div className="text-center pb-4 border-b-2 border-slate-800">
           <div className="flex justify-center mb-2">
