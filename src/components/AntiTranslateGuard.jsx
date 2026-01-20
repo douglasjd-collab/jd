@@ -22,48 +22,50 @@ export default function AntiTranslateGuard() {
     ensureMeta("google", "notranslate");
     ensureMeta("googlebot", "notranslate");
 
-    // 2) Se o tradutor injetar <font>, removemos mantendo o texto
-    const unwrapFonts = (root) => {
-      if (!root) return;
-      const fonts = root.querySelectorAll?.("font");
-      if (!fonts || fonts.length === 0) return;
-
-      fonts.forEach((f) => {
-        // troca <font>texto</font> por "texto" (preserva conteúdo)
-        const parent = f.parentNode;
-        if (!parent) return;
-
-        while (f.firstChild) {
-          parent.insertBefore(f.firstChild, f);
-        }
-        parent.removeChild(f);
-      });
+    // 2) Remover <font> tags de forma mais agressiva
+    const unwrapFonts = () => {
+      try {
+        const fonts = document.querySelectorAll("font");
+        fonts.forEach((f) => {
+          const parent = f.parentNode;
+          if (!parent) return;
+          
+          // Move todos os filhos para fora do <font>
+          const fragment = document.createDocumentFragment();
+          while (f.firstChild) {
+            fragment.appendChild(f.firstChild);
+          }
+          
+          // Substitui <font> pelo fragment
+          parent.replaceChild(fragment, f);
+        });
+      } catch (e) {
+        console.warn("Erro ao remover <font>:", e);
+      }
     };
 
-    // Rodar uma vez no carregamento
-    unwrapFonts(document.body);
+    // 3) Executar imediatamente e repetir
+    unwrapFonts();
+    
+    // Verificar a cada 50ms se apareceram novas tags <font>
+    const intervalId = setInterval(unwrapFonts, 50);
 
-    // 3) Observar mudanças: se aparecer <font>, remove na hora
-    const obs = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.type === "childList") {
-          m.addedNodes?.forEach((n) => {
-            if (n.nodeType === 1) {
-              // Element
-              if (n.tagName === "FONT") {
-                unwrapFonts(n.parentNode);
-              } else {
-                unwrapFonts(n);
-              }
-            }
-          });
-        }
-      }
+    // 4) MutationObserver para capturar mudanças em tempo real
+    const obs = new MutationObserver(() => {
+      unwrapFonts();
     });
 
-    obs.observe(document.body, { childList: true, subtree: true });
+    obs.observe(document.body, { 
+      childList: true, 
+      subtree: true,
+      characterData: true,
+      attributes: true
+    });
 
-    return () => obs.disconnect();
+    return () => {
+      clearInterval(intervalId);
+      obs.disconnect();
+    };
   }, []);
 
   return null;
