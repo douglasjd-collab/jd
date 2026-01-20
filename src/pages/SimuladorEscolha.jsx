@@ -27,7 +27,7 @@ export default function SimuladorEscolha() {
           {/* Simulação Com Embutido */}
           <Card 
             className="border-2 border-[#23BE84] hover:shadow-xl transition-all cursor-pointer group"
-            onClick={() => navigate(createPageUrl('SimuladorEmbutido'))}
+            onClick={() => navigate(createPageUrl('SimuladorConsorcio'))}
           >
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
@@ -35,11 +35,11 @@ export default function SimuladorEscolha() {
                   <Sparkles className="w-8 h-8 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-2xl text-slate-900">Com Embutido</CardTitle>
+              <CardTitle className="text-2xl text-slate-900">Simulação com Lance Embutido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-slate-600 text-center">
-                Simulação com lance embutido, parcela reduzida e opções de administradoras
+                Simulação com lance embutido de administradoras
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
                 <li className="flex items-start gap-2">
@@ -48,11 +48,11 @@ export default function SimuladorEscolha() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#23BE84] font-bold">✓</span>
-                  <span>Lance fixo (30% ou 50%)</span>
+                  <span>Percentual configurável</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#23BE84] font-bold">✓</span>
-                  <span>Parcela reduzida</span>
+                  <span>Cálculo automático</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#23BE84] font-bold">✓</span>

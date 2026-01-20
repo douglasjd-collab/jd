@@ -23,24 +23,9 @@ export default function SimuladorEmbutido() {
   const [currentUser, setCurrentUser] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
-  const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
-
-  const [lanceFixoAtivo, setLanceFixoAtivo] = useState(false);
-  const [lanceFixoPercentual, setLanceFixoPercentual] = useState(''); // 30 | 50
-
-  const [lanceEmbutidoAtivo, setLanceEmbutidoAtivo] = useState(false);
-  const [administradora, setAdministradora] = useState(''); // canopus | itau | outra
-  const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(25);
-  const [parcelaReduzida, setParcelaReduzida] = useState(false);
-  const [percentualReducao, setPercentualReducao] = useState(30);
-  const [tipoLanceReduzida, setTipoLanceReduzida] = useState(''); // lance_livre | lance_limitado | fixo_50 | fixo_30
-
-  const [lanceProprioAtivo, setLanceProprioAtivo] = useState(false);
-  const [lanceProprio, setLanceProprio] = useState('');
-  const [lanceLimitado, setLanceLimitado] = useState('');
-
-  const [opcaoPos, setOpcaoPos] = useState('prazo');
+  const [administradora, setAdministradora] = useState('');
+  const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(30);
   const [resultado, setResultado] = useState(null);
 
   useEffect(() => {
@@ -52,38 +37,16 @@ export default function SimuladorEmbutido() {
     setCurrentUser(user);
   };
 
-  // Buscar etapas do funil
   const { data: etapas = [] } = useQuery({
     queryKey: ['etapas-funil'],
     queryFn: () => base44.entities.EtapaFunil.filter({ status: 'ativa' }, 'ordem')
   });
 
-  // Regras do embutido por administradora
   useEffect(() => {
-    if (!lanceEmbutidoAtivo) {
-      setAdministradora('');
-      return;
-    }
-
-    // Canopus: apenas 30% ou 50%
     if (administradora === 'canopus' && ![30, 50].includes(lanceEmbutidoPercentual)) {
       setLanceEmbutidoPercentual(30);
     }
-  }, [lanceEmbutidoAtivo, administradora, lanceEmbutidoPercentual]);
-
-  // Regra: Motocicleta NÃO tem carência (força modelo simples)
-  useEffect(() => {
-    if (tipoGrupo === 'motocicleta') {
-      setOpcaoPos('parcela');
-    }
-  }, [tipoGrupo]);
-
-  // Regra: Itaú também não tem carência (força modelo simples)
-  useEffect(() => {
-    if (administradora === 'itau') {
-      setOpcaoPos('parcela');
-    }
-  }, [administradora]);
+  }, [administradora, lanceEmbutidoPercentual]);
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
@@ -109,36 +72,11 @@ export default function SimuladorEmbutido() {
     setCartas(novasCartas);
   };
 
-  // Cálculos automáticos
-  const creditoTotal = cartas.reduce((acc, carta) => {
-    const credito = parseFloat(carta.credito) || 0;
-    return acc + credito;
-  }, 0);
-
-  const parcelaTotal = cartas.reduce((acc, carta) => {
-    const parcela = parseFloat(carta.parcela) || 0;
-    return acc + parcela;
-  }, 0);
-
-  // Prazo original é o da primeira carta com prazo preenchido
+  const creditoTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.credito) || 0), 0);
+  const parcelaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcela) || 0), 0);
   const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
-
-  const lanceEmbutidoValor = lanceEmbutidoAtivo 
-    ? creditoTotal * (lanceEmbutidoPercentual / 100) 
-    : 0;
-
-  const lanceProprioValor = lanceProprioAtivo 
-    ? (parseFloat(lanceProprio) || 0) 
-    : 0;
-
-  // Calcular lance fixo se ativo
-  const lanceFixoValor = lanceFixoAtivo && lanceFixoPercentual
-    ? creditoTotal * (parseFloat(lanceFixoPercentual) / 100)
-    : 0;
-
-  const lanceTotal = lanceFixoAtivo 
-    ? lanceFixoValor 
-    : (lanceEmbutidoValor + lanceProprioValor);
+  const lanceEmbutidoValor = creditoTotal * (lanceEmbutidoPercentual / 100);
+  const creditoAReceber = creditoTotal - lanceEmbutidoValor;
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
@@ -156,229 +94,29 @@ export default function SimuladorEmbutido() {
       return;
     }
 
-    if (lanceFixoAtivo && !lanceFixoPercentual) {
-      toast.error('Selecione o percentual do lance fixo (30% ou 50%)');
+    if (!administradora) {
+      toast.error('Selecione a administradora');
       return;
     }
 
-    if (lanceEmbutidoAtivo && !administradora) {
-      toast.error('Selecione a administradora do lance embutido');
-      return;
-    }
-
-    if (parcelaReduzida && !tipoLanceReduzida) {
-      toast.error('Selecione o tipo de lance para parcela reduzida');
-      return;
-    }
-
-    // 🧮 CÁLCULO
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = prazoNum * parcelaTotal;
-
-    // ✅ REGRA: LANCE FIXO (50% ou 30%)
-    if (lanceFixoAtivo && lanceFixoPercentual) {
-      const percentual = parseFloat(lanceFixoPercentual) / 100;
-      const valorLanceFixo = creditoTotal * percentual;
-      const creditoAReceber = creditoTotal - valorLanceFixo; // Lance fixo desconta do crédito
-      
-      // Calcular parcela (considerando redução se aplicável)
-      let parcelaFinal = parcelaTotal;
-      if (parcelaReduzida) {
-        const reducao = percentualReducao / 100;
-        parcelaFinal = parcelaTotal * (1 - reducao);
-      }
-      
-      const novoPrazo = prazoNum - 1; // Apenas -1 da parcela no ato
-      const novaParcela = parcelaFinal; // Parcela permanece igual (ou reduzida)
-
-      setResultado({
-        creditoTotal: creditoAReceber,
-        creditoOriginal: creditoTotal,
-        parcelaTotal: parcelaFinal,
-        totalPlano,
-        tipoGrupo,
-        lanceFixo: true,
-        lanceFixoPercentual: parseFloat(lanceFixoPercentual),
-        lanceEmbutidoValor: valorLanceFixo,
-        lanceProprioValor: 0,
-        lanceLimitadoValor: 0,
-        lanceTotal: valorLanceFixo,
-        parcelaReduzida,
-        percentualReducao: parcelaReduzida ? percentualReducao : null,
-        saldoBase: totalPlano,
-        saldoAposAto: totalPlano - parcelaFinal,
-        saldoFinal: totalPlano - parcelaFinal,
-        prazoOriginal: prazoNum,
-        opcaoPos: 'parcela',
-        novoPrazo,
-        novaParcela
-      });
-      return;
-    }
-
-    // ✅ REGRA ESPECIAL: PARCELA REDUZIDA
-    if (parcelaReduzida && !lanceFixoAtivo) {
-      let valorLanceEmbutido = 0;
-      let valorLanceProprio = lanceProprioAtivo ? (parseFloat(lanceProprio) || 0) : 0;
-
-      // Calcular lance baseado no tipo de lance
-      if (tipoLanceReduzida === 'lance_livre') {
-        // Lance livre usa o percentual de redução escolhido
-        const percentual = percentualReducao / 100;
-        valorLanceEmbutido = creditoTotal * percentual;
-      }
-      
-      // Lance embutido desconta do crédito a receber
-      const creditoAReceber = creditoTotal - valorLanceEmbutido;
-
-      const lanceTotalCalculado = valorLanceEmbutido + valorLanceProprio;
-
-      // Para lance_livre e lance_limitado: aplicar carência
-      // Saldo devedor inicial = Total do plano
-      let saldoDevedor = totalPlano;
-
-      // Descontar primeira parcela (no ato)
-      saldoDevedor = saldoDevedor - parcelaTotal;
-
-      // Se houver lance limitado, descontar do saldo devedor
-      const lanceLimitadoValor = (tipoLanceReduzida === 'lance_limitado' && lanceLimitado) 
-        ? parseFloat(lanceLimitado) 
-        : 0;
-
-      if (lanceLimitadoValor > 0) {
-        saldoDevedor = saldoDevedor - lanceLimitadoValor;
-      }
-
-      // Se houver lance próprio em qualquer tipo, descontar do saldo devedor
-      if (valorLanceProprio > 0) {
-        saldoDevedor = saldoDevedor - valorLanceProprio;
-      }
-
-      // Nova parcela = saldo devedor / (prazo - 1 - 3 carência)
-      // Carência de 3 meses diminui apenas o prazo, não mexe no saldo
-      const novoPrazo = prazoNum - 1 - 3; // -1 no ato, -3 carência
-      const novaParcela = saldoDevedor / novoPrazo;
-
-      setResultado({
-        creditoTotal: creditoAReceber,
-        creditoOriginal: creditoTotal,
-        parcelaTotal,
-        totalPlano,
-        tipoGrupo,
-        parcelaReduzida: true,
-        tipoLanceReduzida,
-        lanceEmbutidoValor: valorLanceEmbutido,
-        lanceProprioValor: valorLanceProprio,
-        lanceLimitadoValor,
-        lanceTotal: lanceTotalCalculado,
-        saldoBase: totalPlano,
-        saldoAposAto: totalPlano - parcelaTotal,
-        saldoFinal: saldoDevedor,
-        prazoOriginal: prazoNum,
-        opcaoPos: 'parcela',
-        novoPrazo,
-        novaParcela
-      });
-      return;
-    }
-
-    const semCarenciaPorAdm = administradora === 'itau';
-
-    let saldoBase;
-    let saldoAposAto;
-    let saldoFinal;
-
-    // ✅ REGRA ESPECIAL: Motocicleta + Canopus + Embutido + Parcela cheia
-    // O embutido QUITA meses (reduz prazo), não reduz saldo
-    const regraMotoCanopusEmbutidoParcelaCheia =
-      tipoGrupo === 'motocicleta' &&
-      administradora === 'canopus' &&
-      lanceEmbutidoAtivo &&
-      parcelaReduzida === false;
-
-    if (regraMotoCanopusEmbutidoParcelaCheia) {
-      const mesesQuitadosEmbutido = Math.max(
-        0,
-        Math.floor((lanceEmbutidoValor || 0) / (parcelaTotal || 1))
-      );
-
-      const valorQuitadoEmbutido = mesesQuitadosEmbutido * parcelaTotal;
-
-      saldoFinal = totalPlano - parcelaTotal - lanceProprioValor - valorQuitadoEmbutido;
-      saldoBase = totalPlano - (lanceProprioValor + valorQuitadoEmbutido);
-      saldoAposAto = saldoFinal;
-
-      const novoPrazoForcado = Math.max(1, prazoNum - 1 - mesesQuitadosEmbutido);
-      const novaParcelaForcada = saldoFinal / novoPrazoForcado;
-
-      // Lance embutido desconta do crédito a receber
-      const creditoAReceberMoto = creditoTotal - lanceEmbutidoValor;
-      
-      setResultado({
-        creditoTotal: creditoAReceberMoto,
-        creditoOriginal: creditoTotal,
-        parcelaTotal,
-        totalPlano,
-        administradora,
-        tipoGrupo,
-        parcelaReduzida,
-        lanceEmbutidoValor,
-        lanceProprioValor,
-        lanceTotal,
-        lanceConsideradoNoSaldo: lanceProprioValor,
-        saldoBase,
-        saldoAposAto,
-        saldoFinal,
-        prazoOriginal: prazoNum,
-        opcaoPos: 'parcela',
-        novoPrazo: novoPrazoForcado,
-        novaParcela: novaParcelaForcada
-      });
-      return;
-    }
-
-    // ✅ REGRA GERAL
-    // Lance embutido desconta do crédito a receber E do saldo devedor
-    const creditoAReceber = creditoTotal - lanceEmbutidoValor;
-    // Lance total (embutido + próprio) desconta do saldo devedor
-    saldoBase = totalPlano;
-    saldoAposAto = saldoBase - parcelaTotal - lanceTotal;
-    saldoFinal = saldoAposAto;
-
-    let novoPrazo = null;
-    let novaParcela = null;
-
-    const semCarencia = tipoGrupo === 'motocicleta' || semCarenciaPorAdm;
-    
-    if (!semCarencia && opcaoPos === 'prazo') {
-      novoPrazo = prazoNum - 4;
-      saldoFinal = saldoAposAto;
-      novaParcela = saldoFinal / novoPrazo;
-    } else {
-      novoPrazo = prazoNum - 1;
-      saldoFinal = saldoAposAto;
-      novaParcela = saldoFinal / novoPrazo;
-    }
+    const saldoDevedor = totalPlano - parcelaTotal - lanceEmbutidoValor;
+    const novoPrazo = prazoNum - 1;
+    const novaParcela = saldoDevedor / novoPrazo;
 
     setResultado({
-      creditoTotal: creditoAReceber, // Cliente recebe crédito - lance embutido
+      creditoTotal: creditoAReceber,
       creditoOriginal: creditoTotal,
       parcelaTotal,
       totalPlano,
-      tipoGrupo,
-      administradora: lanceEmbutidoAtivo ? administradora : null,
-      lanceTotal,
-      lanceConsideradoNoSaldo: lanceTotal, // Lance total desconta do saldo
-      parcelaReduzida,
       lanceEmbutidoValor,
-      lanceProprioValor,
-      saldoBase,
-      saldoAposAto,
-      saldoFinal,
+      administradora,
+      lanceEmbutidoPercentual,
       prazoOriginal: prazoNum,
-      opcaoPos: semCarencia ? 'parcela' : opcaoPos,
       novoPrazo,
-      novaParcela
+      novaParcela,
+      saldoDevedor
     });
   };
 
@@ -412,33 +150,19 @@ export default function SimuladorEmbutido() {
         empresa_id: empresaId,
         cliente_nome: clienteNome,
         telefone: telefone,
-        tipo_grupo: tipoGrupo,
+        tipo_grupo: 'automovel',
         cartas: JSON.stringify(cartas),
-        credito_total: creditoTotal,
+        credito_total: creditoAReceber,
         parcela_total: parcelaTotal,
-
-        lance_embutido_ativo: lanceEmbutidoAtivo,
-        administradora: lanceEmbutidoAtivo ? administradora : null,
-        lance_embutido_percentual: lanceEmbutidoAtivo ? lanceEmbutidoPercentual : null,
+        lance_embutido_ativo: true,
+        administradora: administradora,
+        lance_embutido_percentual: lanceEmbutidoPercentual,
         lance_embutido_valor: lanceEmbutidoValor,
-
-        parcela_reduzida: parcelaReduzida,
-        percentual_reducao: parcelaReduzida ? percentualReducao : null,
-        tipo_lance_reduzida: parcelaReduzida ? tipoLanceReduzida : null,
-        lance_limitado_valor: (parcelaReduzida && tipoLanceReduzida === 'lance_limitado') ? parseFloat(lanceLimitado || 0) : null,
-
-        lance_proprio_ativo: lanceProprioAtivo,
-        lance_proprio_valor: lanceProprioValor,
-
-        lance_total: lanceTotal,
-        lance_considerado_no_saldo: resultado.lanceConsideradoNoSaldo || resultado.lanceTotal,
-
-        opcao_pos_contemplacao: opcaoPos,
+        lance_total: lanceEmbutidoValor,
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
-        saldo_apos_contemplacao: resultado.saldoFinal,
-
+        saldo_apos_contemplacao: resultado.saldoDevedor,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
@@ -466,10 +190,10 @@ export default function SimuladorEmbutido() {
         const observacoesAtuais = oportunidadeDuplicada.observacoes || '';
         const novaSimulacaoInfo =
           `\n\n🔄 Nova Simulação (${new Date().toLocaleDateString('pt-BR')}):` +
-          `\nCrédito: ${formatCurrency(creditoTotal)}` +
+          `\nCrédito: ${formatCurrency(creditoAReceber)}` +
           `\nParcela: ${formatCurrency(parcelaTotal)}` +
-          `\nLance: ${formatCurrency(lanceTotal)}` +
-          (lanceEmbutidoAtivo ? `\nAdministradora: ${administradora}` : '');
+          `\nLance Embutido: ${formatCurrency(lanceEmbutidoValor)}` +
+          `\nAdministradora: ${administradora}`;
         
         await base44.entities.Oportunidade.update(oportunidadeDuplicada.id, {
           empresa_id: oportunidadeDuplicada.empresa_id || empresaId,
@@ -477,7 +201,7 @@ export default function SimuladorEmbutido() {
           etapa_id: oportunidadeDuplicada.etapa_id,
           vendedor_id: oportunidadeDuplicada.vendedor_id,
           observacoes: observacoesAtuais + novaSimulacaoInfo,
-          valor_estimado: creditoTotal,
+          valor_estimado: creditoAReceber,
           data_ultima_movimentacao: new Date().toISOString()
         });
 
@@ -511,19 +235,19 @@ export default function SimuladorEmbutido() {
           cliente_nome: clienteNome,
           cliente_telefone: telefone,
           telefone_lead: telefone,
-          valor_estimado: creditoTotal,
+          valor_estimado: creditoAReceber,
           etapa_id: etapaSimulacao.id,
           etapa_nome: etapaSimulacao.nome,
           vendedor_id: currentUser.id,
           vendedor_nome: colab.nome || currentUser.full_name,
           gerente_id: colab.perfil === 'vendedor' ? colab.gerente_id : currentUser.id,
-          origem: 'Simulador',
+          origem: 'Simulador com Lance Embutido',
           observacoes:
             `Simulação gerada automaticamente.` +
-            `\n\nCrédito: ${formatCurrency(creditoTotal)}` +
+            `\n\nCrédito a Receber: ${formatCurrency(creditoAReceber)}` +
             `\nParcela: ${formatCurrency(parcelaTotal)}` +
-            `\nLance: ${formatCurrency(lanceTotal)}` +
-            (lanceEmbutidoAtivo ? `\nAdministradora: ${administradora}` : ''),
+            `\nLance Embutido: ${formatCurrency(lanceEmbutidoValor)}` +
+            `\nAdministradora: ${administradora}`,
           status: 'aberta',
           data_ultima_movimentacao: new Date().toISOString()
         });
@@ -625,8 +349,8 @@ export default function SimuladorEmbutido() {
             className="h-12 w-auto object-contain"
           />
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulador de Consórcio</h1>
-        <p className="text-slate-500">Simule contemplação com multi-cotas e lances</p>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulação com Lance Embutido</h1>
+        <p className="text-slate-500">Simulação com lance embutido de administradoras</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -642,42 +366,13 @@ export default function SimuladorEmbutido() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="cliente_nome">Nome do Cliente *</Label>
-                  <Input
-                    id="cliente_nome"
-                    value={clienteNome}
-                    onChange={(e) => setClienteNome(e.target.value)}
-                    placeholder="Nome completo"
-                  />
+                  <Label>Nome do Cliente *</Label>
+                  <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome completo" />
                 </div>
                 <div>
-                  <Label htmlFor="telefone">Telefone *</Label>
-                  <Input
-                    id="telefone"
-                    value={telefone}
-                    onChange={(e) => setTelefone(formatPhone(e.target.value))}
-                    placeholder="(00) 00000-0000"
-                  />
+                  <Label>Telefone *</Label>
+                  <Input value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" />
                 </div>
-              </div>
-
-              <div>
-                <Label className="mb-2 block">Tipo do Grupo *</Label>
-                <Select value={tipoGrupo} onValueChange={setTipoGrupo}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="automovel">Automóvel</SelectItem>
-                    <SelectItem value="imovel">Imóvel</SelectItem>
-                    <SelectItem value="motocicleta">Motocicleta</SelectItem>
-                  </SelectContent>
-                </Select>
-                {tipoGrupo === 'motocicleta' && (
-                  <p className="text-xs text-slate-600 mt-1">
-                    ⚠️ Motocicleta: sem carência de 3 meses (simulação simples).
-                  </p>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -794,15 +489,12 @@ export default function SimuladorEmbutido() {
             </CardContent>
           </Card>
 
-          {/* Lances */}
+          {/* Lance Embutido */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                🎯 Lances
+                🎯 Lance Embutido
               </CardTitle>
-              <p className="text-sm text-slate-600 mt-2">
-                O cliente deseja usar lance na simulação?
-              </p>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Lance Fixo - Pergunta Inicial */}
