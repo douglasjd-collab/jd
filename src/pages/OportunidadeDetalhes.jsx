@@ -490,11 +490,11 @@ function ConteudoSimulacao({ simulacao }) {
                 <span className="text-lg font-bold text-emerald-900">{formatCurrency(simulacao.lance_total)}</span>
               </div>
             </div>
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Valor a Receber */}
-        <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
+      {/* Valor a Receber */}
+      <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
           <h3 className="text-sm font-bold mb-1">💰 Valor que o Cliente Recebe</h3>
           <p className="text-3xl font-bold">
             {formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}
