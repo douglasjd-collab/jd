@@ -260,8 +260,8 @@ export default function Administradoras() {
         subtitle={`${administradoras.length} administradoras cadastradas`}
         actionLabel="Nova Administradora"
         onAction={() => {
-          setSelectedAdmin(null);
-          setFormOpen(true);
+          setAdminParaEditar(null);
+          setOpenForm(true);
         }}
       />
 
