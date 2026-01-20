@@ -464,11 +464,11 @@ function ConteudoSimulacao({ simulacao }) {
               <span className="text-lg font-bold text-blue-900">{simulacao.prazo_original} Meses</span>
             </div>
           </div>
-        </div>
+      </div>
 
-        {/* Lances */}
-        {simulacao.lance_total > 0 && (
-          <div>
+      {/* Lances */}
+      {simulacao.lance_total > 0 && (
+        <div>
             <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
               🎯 Lances
             </h3>
