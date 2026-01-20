@@ -7,6 +7,7 @@ import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, User, DollarSign, Calendar, TrendingUp, History, Calculator, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
@@ -14,6 +15,7 @@ import { createPageUrl } from '@/utils';
 export default function OportunidadeDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
   const oportunidadeId = urlParams.get('id');
+  const [simulacaoSelecionada, setSimulacaoSelecionada] = useState(null);
 
   const { data: oportunidade, isLoading } = useQuery({
     queryKey: ['oportunidade', oportunidadeId],
