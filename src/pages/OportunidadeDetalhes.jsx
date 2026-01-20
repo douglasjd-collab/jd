@@ -503,10 +503,10 @@ function ConteudoSimulacao({ simulacao }) {
             (Crédito {formatCurrency(simulacao.credito_total)}
             {simulacao.lance_embutido_valor > 0 && ` - Lance Emb. ${formatCurrency(simulacao.lance_embutido_valor)}`})
           </p>
-        </div>
+      </div>
 
-        {/* Cálculos */}
-        <div>
+      {/* Cálculos */}
+      <div>
           <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
             🧮 Cálculos
           </h3>
