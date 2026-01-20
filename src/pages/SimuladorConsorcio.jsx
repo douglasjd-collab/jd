@@ -497,321 +497,65 @@ export default function SimuladorEmbutido() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Lance Fixo - Pergunta Inicial */}
-              <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border-2 border-yellow-300">
-                <div className="flex items-center justify-between mb-3">
-                  <Label htmlFor="lance_fixo" className="font-semibold text-lg">💎 Ofertar Lance Fixo?</Label>
-                  <Switch
-                    id="lance_fixo"
-                    checked={lanceFixoAtivo}
-                    onCheckedChange={(checked) => {
-                      setLanceFixoAtivo(checked);
-                      if (checked) {
-                        // Desativar outros lances (exceto parcela reduzida)
-                        setLanceEmbutidoAtivo(false);
-                        setLanceProprioAtivo(false);
-                        setLanceFixoPercentual('');
-                      }
-                    }}
-                  />
-                </div>
-
-                {lanceFixoAtivo && (
-                  <div className="space-y-3">
-                    <Label className="text-sm">Escolha o percentual do lance fixo:</Label>
-                    <RadioGroup value={lanceFixoPercentual} onValueChange={setLanceFixoPercentual}>
-                      <div className="flex items-center space-x-2 p-3 bg-white rounded-lg border-2 border-orange-300 cursor-pointer hover:bg-orange-50">
-                        <RadioGroupItem value="50" id="fixo_50" />
-                        <Label htmlFor="fixo_50" className="cursor-pointer flex-1">
-                          <span className="font-semibold text-base">Lance Fixo de 50%</span>
-                          <p className="text-xs text-slate-600 mt-1">Cliente recebe 50% do crédito total</p>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2 p-3 bg-white rounded-lg border-2 border-yellow-300 cursor-pointer hover:bg-yellow-50">
-                        <RadioGroupItem value="30" id="fixo_30" />
-                        <Label htmlFor="fixo_30" className="cursor-pointer flex-1">
-                          <span className="font-semibold text-base">Lance Fixo de 30%</span>
-                          <p className="text-xs text-slate-600 mt-1">Cliente recebe 70% do crédito total</p>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-
-                    {/* Pergunta sobre Parcela Reduzida */}
-                    <div className="mt-4 pt-4 border-t border-yellow-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <Label htmlFor="parcela_reduzida_fixo" className="font-semibold">A parcela está reduzida?</Label>
-                        <Switch
-                          id="parcela_reduzida_fixo"
-                          checked={parcelaReduzida}
-                          onCheckedChange={setParcelaReduzida}
-                        />
-                      </div>
-
-                      {parcelaReduzida && (
-                        <div className="space-y-2">
-                          <Label className="text-xs">Percentual de redução da parcela:</Label>
-                          <Select
-                            value={percentualReducao.toString()}
-                            onValueChange={(value) => setPercentualReducao(parseFloat(value))}
-                          >
-                            <SelectTrigger className="bg-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="30">30% de redução</SelectItem>
-                              <SelectItem value="50">50% de redução</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-slate-500 mt-1">
-                            A parcela mensal será reduzida neste percentual
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+              <div>
+                <Label className="text-xs">Administradora *</Label>
+                <Select value={administradora} onValueChange={setAdministradora}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a administradora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="canopus">Canopus</SelectItem>
+                    <SelectItem value="itau">Itaú Consórcio</SelectItem>
+                    <SelectItem value="outra">Outra</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Lance Embutido */}
-              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <Label htmlFor="lance_embutido" className="font-semibold">Lance Embutido</Label>
-                  <Switch
-                    id="lance_embutido"
-                    checked={lanceEmbutidoAtivo}
-                    onCheckedChange={(checked) => {
-                      setLanceEmbutidoAtivo(checked);
-                      if (!checked) {
-                        setAdministradora('');
-                        setLanceEmbutidoPercentual(25);
-                      }
-                    }}
-                    disabled={lanceFixoAtivo}
-                  />
-                </div>
-
-                {lanceEmbutidoAtivo && (
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-xs">Administradora *</Label>
-                      <Select value={administradora} onValueChange={setAdministradora}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a administradora" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="canopus">Canopus</SelectItem>
-                          <SelectItem value="itau">Itaú Consórcio</SelectItem>
-                          <SelectItem value="outra">Outra</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {administradora === 'canopus' && (
-                        <p className="text-xs text-slate-600 mt-1">
-                          Na Canopus, a parcela já vem com o lance embutido descontado.
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label className="text-xs">Percentual (%)</Label>
-                      <Select
-                        value={lanceEmbutidoPercentual.toString()}
-                        onValueChange={(value) => setLanceEmbutidoPercentual(parseFloat(value))}
-                        disabled={!administradora}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={!administradora ? "Selecione a administradora" : undefined} />
-                        </SelectTrigger>
-
-                        <SelectContent>
-                          {administradora === 'canopus' ? (
-                            <>
-                              <SelectItem value="30">30%</SelectItem>
-                              <SelectItem value="50">50%</SelectItem>
-                            </>
-                          ) : (
-                            <>
-                              <SelectItem value="25">25%</SelectItem>
-                              <SelectItem value="30">30%</SelectItem>
-                              <SelectItem value="35">35%</SelectItem>
-                              <SelectItem value="40">40%</SelectItem>
-                              <SelectItem value="45">45%</SelectItem>
-                              <SelectItem value="50">50%</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-slate-600">Valor do Lance Embutido:</p>
-                      <p className="text-lg font-bold text-emerald-600">{formatCurrency(lanceEmbutidoValor)}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Parcela Reduzida (apenas quando NÃO for lance fixo) */}
-              {!lanceFixoAtivo && (
-                <div className="p-4 bg-slate-50 rounded-lg border">
-                  <div className="flex items-center justify-between mb-3">
-                    <Label htmlFor="parcela_reduzida" className="font-semibold">Parcela Reduzida?</Label>
-                    <Switch
-                      id="parcela_reduzida"
-                      checked={parcelaReduzida}
-                      onCheckedChange={(checked) => {
-                        setParcelaReduzida(checked);
-                        if (!checked) {
-                          setTipoLanceReduzida('');
-                          setLanceLimitado('');
-                        }
-                      }}
-                    />
-                  </div>
-
-                {parcelaReduzida && (
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-xs">Percentual de Redução (%)</Label>
-                      <Select
-                        value={percentualReducao.toString()}
-                        onValueChange={(value) => setPercentualReducao(parseFloat(value))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="30">30%</SelectItem>
-                          <SelectItem value="50">50%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs">Tipo de Lance *</Label>
-                      <Select
-                        value={tipoLanceReduzida}
-                        onValueChange={setTipoLanceReduzida}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo de lance" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="lance_livre">Lance Livre</SelectItem>
-                          <SelectItem value="lance_limitado">Lance Limitado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {tipoLanceReduzida === 'lance_limitado' && (
-                      <div>
-                        <Label className="text-xs">Valor do Lance Limitado (R$)</Label>
-                        <Input
-                          type="text"
-                          value={lanceLimitado ? formatarParaExibicao(lanceLimitado) : ''}
-                          onChange={(e) => {
-                            const valorNumerico = handleMoedaInput(e.target.value);
-                            setLanceLimitado(valorNumerico > 0 ? valorNumerico.toString() : '');
-                          }}
-                          placeholder="0,00"
-                        />
-                        <p className="text-xs text-slate-600 mt-1">
-                          Este valor será abatido do saldo devedor
-                        </p>
-                      </div>
+              <div>
+                <Label className="text-xs">Percentual do Lance (%)</Label>
+                <Select
+                  value={lanceEmbutidoPercentual.toString()}
+                  onValueChange={(value) => setLanceEmbutidoPercentual(parseFloat(value))}
+                  disabled={!administradora}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={!administradora ? "Selecione a administradora" : undefined} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {administradora === 'canopus' ? (
+                      <>
+                        <SelectItem value="30">30%</SelectItem>
+                        <SelectItem value="50">50%</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="25">25%</SelectItem>
+                        <SelectItem value="30">30%</SelectItem>
+                        <SelectItem value="35">35%</SelectItem>
+                        <SelectItem value="40">40%</SelectItem>
+                        <SelectItem value="45">45%</SelectItem>
+                        <SelectItem value="50">50%</SelectItem>
+                      </>
                     )}
-                  </div>
-                )}
-                </div>
-              )}
-
-              {/* Lance Próprio */}
-              <div className={`p-4 bg-slate-50 rounded-lg border ${lanceFixoAtivo ? 'opacity-40 pointer-events-none' : ''}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <Label htmlFor="lance_proprio" className="font-semibold">Lance Próprio</Label>
-                  <Switch
-                    id="lance_proprio"
-                    checked={lanceProprioAtivo}
-                    onCheckedChange={(checked) => {
-                      setLanceProprioAtivo(checked);
-                      if (!checked) {
-                        setLanceProprio('');
-                      }
-                    }}
-                    disabled={lanceFixoAtivo}
-                  />
-                </div>
-
-                {lanceProprioAtivo && (
-                  <div>
-                    <Label className="text-xs">Valor (R$)</Label>
-                    <Input
-                      type="text"
-                      value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
-                      onChange={(e) => {
-                        const valorNumerico = handleMoedaInput(e.target.value);
-                        setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
-                      }}
-                      placeholder="0,00"
-                    />
-                  </div>
-                )}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Total Lance */}
-              {lanceTotal > 0 && (
+              {lanceEmbutidoValor > 0 && (
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <p className="text-xs text-emerald-700">🏆 Lance Total</p>
-                      <p className="text-2xl font-bold text-emerald-900">{formatCurrency(lanceTotal)}</p>
-                    </div>
-                    {creditoTotal > 0 && (
-                      <div className="flex flex-col items-center justify-center bg-emerald-600 rounded-lg px-3 py-2 min-w-[70px]">
-                        <span className="text-white font-bold text-2xl">
-                          {((lanceTotal / creditoTotal) * 100).toFixed(0)}%
-                        </span>
-                        <p className="text-xs text-emerald-100">do crédito</p>
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-xs text-emerald-700">🏆 Valor do Lance Embutido</p>
+                  <p className="text-2xl font-bold text-emerald-900">{formatCurrency(lanceEmbutidoValor)}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Pós-Contemplação */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                📊 Simulação Pós-Contemplação
-              </CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">📊 Calcular</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="mb-3 block">Escolha o modelo de cálculo:</Label>
-                <RadioGroup value={opcaoPos} onValueChange={setOpcaoPos}>
-                  <div className={`flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border ${tipoGrupo === 'motocicleta' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100'}`}>
-                    <RadioGroupItem value="prazo" id="opcao_prazo" disabled={tipoGrupo === 'motocicleta'} />
-                    <Label htmlFor="opcao_prazo" className={`flex-1 ${tipoGrupo === 'motocicleta' ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                      <span className="font-semibold">Modelo Canopus (Recomendado)</span>
-                      <p className="text-xs text-slate-600 mt-1">1 parcela no ato + 3 de carência = novo prazo e parcela</p>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 bg-slate-50 rounded-lg border cursor-pointer hover:bg-slate-100">
-                    <RadioGroupItem value="parcela" id="opcao_parcela" />
-                    <Label htmlFor="opcao_parcela" className="cursor-pointer flex-1">
-                      <span className="font-semibold">Modelo Simples</span>
-                      <p className="text-xs text-slate-600 mt-1">Apenas 1 parcela no ato, sem carência</p>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <Button
-                onClick={calcularSimulacao}
-                className="w-full bg-[#23BE84] hover:bg-[#1da570] gap-2"
-              >
+            <CardContent>
+              <Button onClick={calcularSimulacao} className="w-full bg-[#23BE84] hover:bg-[#1da570] gap-2">
                 <Calculator className="w-4 h-4" />
                 Calcular Simulação
               </Button>
@@ -836,92 +580,22 @@ export default function SimuladorEmbutido() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Antes da Contemplação */}
-                  <div className="p-3 bg-slate-50 rounded-lg">
-                    <p className="text-xs text-slate-600 font-semibold mb-2">Dados do Plano</p>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Prazo:</span>
-                        <span className="font-semibold">{resultado.prazoOriginal} meses</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Parcela:</span>
-                        <span className="font-semibold">{formatCurrency(resultado.parcelaTotal)}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-1">
-                        <span className="text-slate-600">Total do Plano:</span>
-                        <span className="font-bold">{formatCurrency(resultado.totalPlano)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lance */}
-                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <p className="text-xs text-emerald-700 font-semibold mb-2">🎯 Lance Ofertado</p>
-                    <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceTotal)}</p>
-                    <div className="mt-2 pt-2 border-t border-emerald-200">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-emerald-700">Lance Embutido:</span>
-                        <span className="font-semibold text-emerald-900">
-                          {formatCurrency(resultado.lanceEmbutidoValor || 0)}
-                        </span>
-                      </div>
-                    </div>
-                    {resultado.administradora && (
-                      <p className="text-xs text-emerald-800 mt-2">
-                        Administradora: <span className="font-semibold capitalize">{resultado.administradora}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Valor a Receber */}
-                  <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
-                    <p className="text-xs font-semibold mb-1">💰 Valor que o Cliente Recebe</p>
-                    <p className="text-3xl font-bold">
-                      {formatCurrency(resultado.creditoTotal)}
+                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <p className="text-xs text-emerald-700 font-semibold mb-2">🎯 Lance Embutido</p>
+                    <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceEmbutidoValor)}</p>
+                    <p className="text-xs text-emerald-800 mt-2">
+                      {resultado.lanceEmbutidoPercentual}% • {resultado.administradora}
                     </p>
-                    {resultado.creditoOriginal && resultado.creditoOriginal !== resultado.creditoTotal && (
-                      <p className="text-xs mt-1 opacity-90">
-                        Crédito original: {formatCurrency(resultado.creditoOriginal)}
-                      </p>
-                    )}
                   </div>
 
-                  {/* Cálculos Intermediários */}
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
-                    <p className="text-xs text-blue-700 font-semibold">Cálculos</p>
-                    <div className="space-y-1 text-xs">
-                     <div className="flex justify-between">
-                       <span className="text-blue-700">Saldo Base:</span>
-                       <span className="font-semibold">{formatCurrency(resultado.saldoBase)}</span>
-                     </div>
-
-                     <div className="flex justify-between">
-                       <span className="text-blue-700">(-) Lance considerado:</span>
-                       <span className="font-semibold">
-                         -{formatCurrency(resultado.lanceConsideradoNoSaldo ?? resultado.lanceTotal)}
-                       </span>
-                     </div>
-
-                     <div className="flex justify-between">
-                       <span className="text-blue-700">(-) 1ª parcela (ato):</span>
-                       <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
-                     </div>
-
-                     <div className="flex justify-between border-t pt-1">
-                       <span className="text-blue-900 font-semibold">Saldo Devedor:</span>
-                       <span className="font-bold">{formatCurrency(resultado.saldoFinal)}</span>
-                     </div>
-
-                     {resultado.opcaoPos === 'prazo' && (
-                       <div className="text-xs text-blue-600 pt-1 border-t">
-                         ⏱️ Carência de 3 meses reduz apenas o prazo (não altera saldo)
-                       </div>
-                     )}
-                    </div>
+                  <div className="p-4 bg-gradient-to-r from-[#23BE84] to-[#1da570] rounded-lg text-white">
+                    <p className="text-xs font-semibold mb-1">💰 Valor a Receber</p>
+                    <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
+                    <p className="text-xs mt-1 opacity-90">
+                      Crédito original: {formatCurrency(resultado.creditoOriginal)}
+                    </p>
                   </div>
 
-                  {/* Depois da Contemplação */}
                   <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
                     <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
                     <div className="space-y-2">
@@ -933,12 +607,6 @@ export default function SimuladorEmbutido() {
                         <span className="text-purple-700 text-sm">Nova Parcela:</span>
                         <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
                       </div>
-                      {resultado.opcaoPos === 'prazo' && (
-                        <div className="text-xs text-purple-600 pt-2 border-t border-purple-200">
-                          ✓ 1 parcela paga no ato<br />
-                          ✓ 3 parcelas de carência descontadas
-                        </div>
-                      )}
                     </div>
                   </div>
 
