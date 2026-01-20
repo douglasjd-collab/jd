@@ -301,18 +301,19 @@ export default function OportunidadeDetalhes() {
                            * { box-sizing: border-box; margin: 0; padding: 0; }
                            body { 
                              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-                             margin: 20px;
+                             margin: 15px;
                              color: #1e293b;
                              background: white;
-                             line-height: 1.5;
+                             line-height: 1.4;
+                             font-size: 12px;
                            }
-                           .space-y-4 > * + * { margin-top: 1rem; }
-                           .space-y-2 > * + * { margin-top: 0.5rem; }
-                           .space-y-1 > * + * { margin-top: 0.25rem; }
+                           .space-y-4 > * + * { margin-top: 0.75rem; }
+                           .space-y-2 > * + * { margin-top: 0.4rem; }
+                           .space-y-1 > * + * { margin-top: 0.2rem; }
                            .grid { display: grid; }
                            .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-                           .gap-4 { gap: 1rem; }
-                           .gap-2 { gap: 0.5rem; }
+                           .gap-4 { gap: 0.75rem; }
+                           .gap-2 { gap: 0.4rem; }
                            .flex { display: flex; }
                            .justify-between { justify-content: space-between; }
                            .justify-center { justify-content: center; }
@@ -320,25 +321,25 @@ export default function OportunidadeDetalhes() {
                            .text-center { text-align: center; }
                            .font-bold { font-weight: 700; }
                            .font-semibold { font-weight: 600; }
-                           .text-2xl { font-size: 1.5rem; line-height: 2rem; }
-                           .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
-                           .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
-                           .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
-                           .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
-                           .text-xs { font-size: 0.75rem; line-height: 1rem; }
-                           .mb-1 { margin-bottom: 0.25rem; }
-                           .mb-2 { margin-bottom: 0.5rem; }
-                           .mb-3 { margin-bottom: 0.75rem; }
-                           .mb-4 { margin-bottom: 1rem; }
-                           .mt-1 { margin-top: 0.25rem; }
-                           .mt-2 { margin-top: 0.5rem; }
-                           .p-2 { padding: 0.5rem; }
-                           .p-3 { padding: 0.75rem; }
-                           .p-4 { padding: 1rem; }
-                           .pb-2 { padding-bottom: 0.5rem; }
-                           .pb-4 { padding-bottom: 1rem; }
-                           .pt-2 { padding-top: 0.5rem; }
-                           .pt-3 { padding-top: 0.75rem; }
+                           .text-2xl { font-size: 1.25rem; line-height: 1.6rem; }
+                           .text-3xl { font-size: 1.5rem; line-height: 1.8rem; }
+                           .text-xl { font-size: 1rem; line-height: 1.4rem; }
+                           .text-lg { font-size: 0.95rem; line-height: 1.3rem; }
+                           .text-sm { font-size: 0.8rem; line-height: 1.1rem; }
+                           .text-xs { font-size: 0.7rem; line-height: 0.9rem; }
+                           .mb-1 { margin-bottom: 0.2rem; }
+                           .mb-2 { margin-bottom: 0.4rem; }
+                           .mb-3 { margin-bottom: 0.6rem; }
+                           .mb-4 { margin-bottom: 0.8rem; }
+                           .mt-1 { margin-top: 0.2rem; }
+                           .mt-2 { margin-top: 0.4rem; }
+                           .p-2 { padding: 0.4rem; }
+                           .p-3 { padding: 0.6rem; }
+                           .p-4 { padding: 0.8rem; }
+                           .pb-2 { padding-bottom: 0.4rem; }
+                           .pb-4 { padding-bottom: 0.8rem; }
+                           .pt-2 { padding-top: 0.4rem; }
+                           .pt-3 { padding-top: 0.6rem; }
                            .rounded { border-radius: 0.375rem; }
                            .rounded-lg { border-radius: 0.5rem; }
                            .border { border: 1px solid; }
