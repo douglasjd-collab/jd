@@ -1,0 +1,361 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Calculator, Plus, Download, Loader2, TrendingUp, X, Copy } from 'lucide-react';
+import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
+
+export default function SimuladorNormal() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [clienteNome, setClienteNome] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
+  const [resultado, setResultado] = useState(null);
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const user = await base44.auth.me();
+    setCurrentUser(user);
+  };
+
+  const { data: etapas = [] } = useQuery({
+    queryKey: ['etapas-funil'],
+    queryFn: () => base44.entities.EtapaFunil.filter({ status: 'ativa' }, 'ordem')
+  });
+
+  const adicionarCarta = () => {
+    setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
+  };
+
+  const duplicarCarta = (index) => {
+    const cartaOriginal = cartas[index];
+    setCartas([...cartas, { ...cartaOriginal }]);
+    toast.success('Carta duplicada!');
+  };
+
+  const removerCarta = (index) => {
+    if (cartas.length === 1) {
+      toast.error('Deve haver pelo menos uma carta');
+      return;
+    }
+    setCartas(cartas.filter((_, i) => i !== index));
+  };
+
+  const atualizarCarta = (index, field, value) => {
+    const novasCartas = [...cartas];
+    novasCartas[index][field] = value;
+    setCartas(novasCartas);
+  };
+
+  const creditoTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.credito) || 0), 0);
+  const parcelaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcela) || 0), 0);
+  const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
+
+  const calcularSimulacao = () => {
+    if (!clienteNome || !telefone) {
+      toast.error('Preencha nome e telefone do cliente');
+      return;
+    }
+
+    if (creditoTotal === 0 || parcelaTotal === 0) {
+      toast.error('Informe pelo menos uma carta válida');
+      return;
+    }
+
+    if (!prazoOriginal || parseFloat(prazoOriginal) <= 0) {
+      toast.error('Informe o prazo original');
+      return;
+    }
+
+    const prazoNum = parseFloat(prazoOriginal);
+    const totalPlano = prazoNum * parcelaTotal;
+    const novoPrazo = prazoNum - 1;
+    const novaParcela = (totalPlano - parcelaTotal) / novoPrazo;
+
+    setResultado({
+      creditoTotal,
+      parcelaTotal,
+      totalPlano,
+      prazoOriginal: prazoNum,
+      novoPrazo,
+      novaParcela
+    });
+  };
+
+  const gerarSimulacaoMutation = useMutation({
+    mutationFn: async () => {
+      if (!resultado) throw new Error('Calcule a simulação primeiro');
+      if (!currentUser) throw new Error('Usuário não autenticado');
+
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: currentUser.id, status: 'ativo' },
+        '-created_date'
+      );
+      
+      const colab = colabs?.[0];
+      if (!colab || !colab.empresa_id) throw new Error('Usuário não vinculado a empresa');
+
+      const simulacao = await base44.entities.Simulacao.create({
+        empresa_id: colab.empresa_id,
+        cliente_nome: clienteNome,
+        telefone: telefone,
+        tipo_grupo: 'automovel',
+        cartas: JSON.stringify(cartas),
+        credito_total: creditoTotal,
+        parcela_total: parcelaTotal,
+        prazo_original: resultado.prazoOriginal,
+        novo_prazo: resultado.novoPrazo,
+        nova_parcela: resultado.novaParcela,
+        usuario_id: currentUser.id,
+        usuario_nome: colab.nome || currentUser.full_name,
+        status: 'ativa'
+      });
+
+      await base44.entities.Simulacao.update(simulacao.id, {
+        pdf_url: `#simulacao-impressao-${simulacao.id}`
+      });
+
+      const etapaSimulacao = etapas.find(e => 
+        e.nome.toLowerCase().includes('simulação') || 
+        e.nome.toLowerCase().includes('simulacao')
+      ) || etapas[0];
+
+      const oportunidade = await base44.entities.Oportunidade.create({
+        empresa_id: colab.empresa_id,
+        titulo: clienteNome,
+        cliente_nome: clienteNome,
+        telefone_lead: telefone,
+        valor_estimado: creditoTotal,
+        etapa_id: etapaSimulacao.id,
+        etapa_nome: etapaSimulacao.nome,
+        vendedor_id: currentUser.id,
+        vendedor_nome: colab.nome || currentUser.full_name,
+        origem: 'Simulador Normal',
+        status: 'aberta',
+        data_ultima_movimentacao: new Date().toISOString()
+      });
+
+      await base44.entities.Simulacao.update(simulacao.id, {
+        oportunidade_id: oportunidade.id
+      });
+
+      return { simulacao };
+    },
+    onSuccess: ({ simulacao }) => {
+      toast.success('Simulação gerada com sucesso!');
+      setTimeout(() => {
+        window.location.href = createPageUrl('ImprimirSimulacao') + `?id=${simulacao.id}`;
+      }, 300);
+    }
+  });
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+  };
+
+  const formatPhone = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 10) {
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    }
+    return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  };
+
+  const handleMoedaInput = (value) => {
+    const numeros = value.replace(/\D/g, '');
+    return parseFloat(numeros) / 100;
+  };
+
+  const formatarParaExibicao = (valor) => {
+    if (!valor) return '';
+    const num = parseFloat(valor);
+    if (isNaN(num)) return '';
+    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <div className="flex justify-center mb-4">
+          <img 
+            src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
+            alt="JD Promotora" 
+            className="h-12 w-auto object-contain"
+          />
+        </div>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulação Normal</h1>
+        <p className="text-slate-500">Simulação simplificada sem lance embutido</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">📋 Dados do Cliente</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Nome do Cliente *</Label>
+                  <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome completo" />
+                </div>
+                <div>
+                  <Label>Telefone *</Label>
+                  <Input value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">💳 Cartas de Crédito</CardTitle>
+                <Button onClick={adicionarCarta} size="sm" variant="outline" className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Adicionar Carta
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {cartas.map((carta, index) => (
+                <div key={index} className="relative p-4 bg-slate-50 rounded-lg border">
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => duplicarCarta(index)} className="h-6 w-6 text-blue-600 hover:bg-blue-50">
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    {cartas.length > 1 && (
+                      <Button size="icon" variant="ghost" onClick={() => removerCarta(index)} className="h-6 w-6 text-red-600 hover:bg-red-50">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs">Crédito (R$) *</Label>
+                      <Input
+                        type="text"
+                        value={carta.credito ? formatarParaExibicao(carta.credito) : ''}
+                        onChange={(e) => {
+                          const val = handleMoedaInput(e.target.value);
+                          atualizarCarta(index, 'credito', val > 0 ? val.toString() : '');
+                        }}
+                        placeholder="0,00"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Parcela (R$) *</Label>
+                      <Input
+                        type="text"
+                        value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''}
+                        onChange={(e) => {
+                          const val = handleMoedaInput(e.target.value);
+                          atualizarCarta(index, 'parcela', val > 0 ? val.toString() : '');
+                        }}
+                        placeholder="0,00"
+                        className="h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Prazo (meses) *</Label>
+                      <Input type="number" value={carta.prazo} onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)} placeholder="120" className="h-9" />
+                    </div>
+                  </div>
+                  {carta.credito && carta.parcela && carta.prazo && (
+                    <div className="mt-2 text-xs text-slate-600 pt-2 border-t">
+                      <span className="font-semibold">
+                        {formatCurrency(parseFloat(carta.credito))} • {formatCurrency(parseFloat(carta.parcela))}/mês • {carta.prazo} meses
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-blue-700">💰 Crédito Total</p>
+                    <p className="text-xl font-bold text-blue-900">{formatCurrency(creditoTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-700">📅 Parcela Total/mês</p>
+                    <p className="text-xl font-bold text-blue-900">{formatCurrency(parcelaTotal)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">📊 Calcular</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={calcularSimulacao} className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
+                <Calculator className="w-4 h-4" />
+                Calcular Simulação
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-1">
+          <Card className="border-0 shadow-sm sticky top-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Resultado
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!resultado ? (
+                <div className="text-center py-12 text-slate-500">
+                  <Calculator className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                  <p className="text-sm">Calcule a simulação</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
+                    <p className="text-xs font-semibold mb-1">💰 Valor a Receber</p>
+                    <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
+                    <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-purple-700 text-sm">Novo Prazo:</span>
+                        <span className="font-bold text-purple-900 text-xl">{resultado.novoPrazo} meses</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-purple-700 text-sm">Nova Parcela:</span>
+                        <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => gerarSimulacaoMutation.mutate()}
+                    disabled={gerarSimulacaoMutation.isPending}
+                    className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+                  >
+                    {gerarSimulacaoMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" />Gerando...</>
+                    ) : (
+                      <><Download className="w-4 h-4" />Gerar e Enviar ao Funil</>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -32,7 +32,7 @@ import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
 import SimuladorEscolha from './pages/SimuladorEscolha';
-import SimuladorEmbutido from './pages/SimuladorEmbutido';
+import SimuladorNormal from './pages/SimuladorNormal';
 import __Layout from './Layout.jsx';
 
 
@@ -71,7 +71,7 @@ export const PAGES = {
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
     "SimuladorEscolha": SimuladorEscolha,
-    "SimuladorEmbutido": SimuladorEmbutido,
+    "SimuladorNormal": SimuladorNormal,
 }
 
 export const pagesConfig = {
