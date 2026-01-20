@@ -701,5 +701,6 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
