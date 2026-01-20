@@ -410,31 +410,8 @@ function ConteudoSimulacao({ simulacao }) {
     cartas = [];
   }
 
-  const handleImprimir = () => {
-    const conteudo = document.getElementById('print-area').innerHTML;
-    const janelaImpressao = window.open('', '', 'width=800,height=600');
-    janelaImpressao.document.write(`
-      <html>
-        <head>
-          <title>Simulação de Consórcio</title>
-          <style>
-            body { font-family: system-ui, -apple-system, sans-serif; margin: 20px; }
-            @media print {
-              @page { margin: 1cm; }
-            }
-          </style>
-        </head>
-        <body onload="window.print(); window.close();">
-          ${conteudo}
-        </body>
-      </html>
-    `);
-    janelaImpressao.document.close();
-  };
-
   return (
-    <div className="space-y-4">
-      <div id="print-area" className="space-y-4">
+    <div id="print-area" className="space-y-4">
         {/* Cabeçalho */}
         <div className="text-center pb-4 border-b-2 border-slate-800">
           <div className="flex justify-center mb-2">
