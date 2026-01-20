@@ -185,7 +185,8 @@ export default function Administradoras() {
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
-                handleEdit(row);
+                setAdminParaEditar(row);
+                setOpenForm(true);
               }}
             >
               <Pencil className="w-4 h-4 mr-2" />
@@ -194,7 +195,8 @@ export default function Administradoras() {
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
-                setDeleteId(row.id);
+                setAdminParaExcluir(row);
+                setOpenDelete(true);
               }}
               className="text-red-600"
             >
