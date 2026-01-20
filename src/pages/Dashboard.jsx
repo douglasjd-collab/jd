@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatsCard from '@/components/ui/StatsCard';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { 
   ShoppingCart, 
   Wallet, 
