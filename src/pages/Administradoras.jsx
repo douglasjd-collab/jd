@@ -286,20 +286,15 @@ export default function Administradoras() {
 
       {/* Form Modal */}
       <AdministradoraForm
-        open={formOpen}
-        onOpenChange={(isOpen) => {
-          setFormOpen(isOpen);
-          if (!isOpen) {
-            setSelectedAdmin(null);
-          }
-        }}
-        administradora={selectedAdmin}
+        open={openForm}
+        onOpenChange={(v) => { setOpenForm(v); if (!v) setAdminParaEditar(null); }}
+        administradora={adminParaEditar}
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir administradora?</AlertDialogTitle>
@@ -308,9 +303,9 @@ export default function Administradoras() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setAdminParaExcluir(null)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate(deleteId)}
+              onClick={() => deleteMutation.mutate(adminParaExcluir?.id)}
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
