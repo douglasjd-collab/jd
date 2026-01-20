@@ -19,7 +19,7 @@ import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X, Copy } from
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 
-export default function SimuladorEmbutido() {
+export default function SimuladorConsorcio() {
   const [currentUser, setCurrentUser] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');

@@ -26,13 +26,13 @@ import Relatorios from './pages/Relatorios';
 import RelatoriosFinanceiros from './pages/RelatoriosFinanceiros';
 import Saques from './pages/Saques';
 import SimuladorConsorcio from './pages/SimuladorConsorcio';
+import SimuladorEscolha from './pages/SimuladorEscolha';
+import SimuladorNormal from './pages/SimuladorNormal';
 import SyncTests from './pages/SyncTests';
 import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import SimuladorEscolha from './pages/SimuladorEscolha';
-import SimuladorNormal from './pages/SimuladorNormal';
 import __Layout from './Layout.jsx';
 
 
@@ -65,13 +65,13 @@ export const PAGES = {
     "RelatoriosFinanceiros": RelatoriosFinanceiros,
     "Saques": Saques,
     "SimuladorConsorcio": SimuladorConsorcio,
+    "SimuladorEscolha": SimuladorEscolha,
+    "SimuladorNormal": SimuladorNormal,
     "SyncTests": SyncTests,
     "TabelasConsorcio": TabelasConsorcio,
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "SimuladorEscolha": SimuladorEscolha,
-    "SimuladorNormal": SimuladorNormal,
 }
 
 export const pagesConfig = {
