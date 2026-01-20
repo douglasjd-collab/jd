@@ -295,6 +295,15 @@ export default function Dashboard() {
     }).format(value);
   };
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-red-500 font-semibold">Erro ao carregar dashboard</p>
+        <p className="text-slate-500 text-sm">{error}</p>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
