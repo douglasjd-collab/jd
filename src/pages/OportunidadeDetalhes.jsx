@@ -373,10 +373,10 @@ export default function OportunidadeDetalhes() {
                            .text-purple-700 { color: #7e22ce; }
                            .text-white { color: #ffffff !important; }
                            .opacity-90 { opacity: 0.9; }
-                           .h-10 { height: 2.5rem; }
+                           .h-10 { height: 2rem; }
                            .w-auto { width: auto; }
                            .object-contain { object-fit: contain; }
-                           img { display: block; max-width: 100%; }
+                           img { display: block; max-width: 100%; height: auto; }
                            @media print {
                              @page { 
                                margin: 1cm;
