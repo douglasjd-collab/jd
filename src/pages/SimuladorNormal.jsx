@@ -137,7 +137,7 @@ export default function SimuladorNormal() {
         etapa_nome: etapaSimulacao.nome,
         vendedor_id: currentUser.id,
         vendedor_nome: colab.nome || currentUser.full_name,
-        origem: 'Simulador Normal',
+        origem: 'Simulador com Recursos Próprios',
         status: 'aberta',
         data_ultima_movimentacao: new Date().toISOString()
       });
@@ -190,7 +190,7 @@ export default function SimuladorNormal() {
             className="h-12 w-auto object-contain"
           />
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulação Normal</h1>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulação com Recursos Próprios</h1>
         <p className="text-slate-500">Simulação simplificada sem lance embutido</p>
       </div>
 

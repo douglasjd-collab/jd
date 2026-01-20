@@ -76,7 +76,7 @@ export default function SimuladorEscolha() {
                   <Calculator className="w-8 h-8 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-2xl text-slate-900">Simulação Normal</CardTitle>
+              <CardTitle className="text-2xl text-slate-900">Simulação com Recursos Próprios</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-slate-600 text-center">
