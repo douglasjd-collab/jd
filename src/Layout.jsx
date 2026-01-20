@@ -33,7 +33,7 @@ import {
 import LogoUploader from '@/components/ui/LogoUploader';
 import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import DisableTranslate from '@/components/utils/DisableTranslate';
+import AntiTranslateGuard from '@/components/AntiTranslateGuard';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -189,7 +189,7 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <DisableTranslate />
+      <AntiTranslateGuard />
       <style>{`
         :root {
           --primary: 180 84% 38%;
