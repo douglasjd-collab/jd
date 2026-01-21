@@ -1090,10 +1090,13 @@ export default function FunilVendas() {
                 <Label htmlFor="valor_estimado">Valor Estimado (R$)</Label>
                 <Input
                   id="valor_estimado"
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_estimado}
-                  onChange={(e) => setFormData({ ...formData, valor_estimado: e.target.value })}
+                  type="text"
+                  value={formData.valor_estimado ? parseFloat(formData.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                  onChange={(e) => {
+                    const numeros = e.target.value.replace(/\D/g, '');
+                    const valorNumerico = parseFloat(numeros) / 100;
+                    setFormData({ ...formData, valor_estimado: valorNumerico > 0 ? valorNumerico.toString() : '' });
+                  }}
                   placeholder="0,00"
                 />
               </div>
