@@ -142,8 +142,8 @@ export default function SimuladorConsorcio() {
     }
 
     setResultado({
-      creditoTotal: creditoAReceber,
-      creditoOriginal: creditoTotal,
+      creditoTotal: creditoTotal,
+      creditoAReceber: creditoAReceber,
       parcelaTotal,
       totalPlano,
       lanceEmbutidoValor,
@@ -200,7 +200,7 @@ export default function SimuladorConsorcio() {
         telefone: telefone,
         tipo_grupo: tipoGrupo,
         cartas: JSON.stringify(cartas),
-        credito_total: creditoAReceber,
+        credito_total: resultado.creditoTotal,
         parcela_total: parcelaTotal,
         lance_embutido_ativo: true,
         administradora: administradora,
@@ -240,7 +240,7 @@ export default function SimuladorConsorcio() {
         const observacoesAtuais = oportunidadeDuplicada.observacoes || '';
         const novaSimulacaoInfo =
           `\n\n🔄 Nova Simulação (${new Date().toLocaleDateString('pt-BR')}):` +
-          `\nCrédito: ${formatCurrency(creditoAReceber)}` +
+          `\nCrédito: ${formatCurrency(resultado.creditoTotal)}` +
           `\nParcela: ${formatCurrency(resultado.usarLanceProprio ? resultado.novaParcela : parcelaTotal)}` +
           `\nLance Embutido: ${formatCurrency(lanceEmbutidoValor)}` +
           (resultado.usarLanceProprio ? `\nLance Próprio: ${formatCurrency(resultado.lanceProprio)}` : '') +
@@ -295,7 +295,7 @@ export default function SimuladorConsorcio() {
           origem: 'Simulador com Lance Embutido',
           observacoes:
             `Simulação gerada automaticamente.` +
-            `\n\nCrédito a Receber: ${formatCurrency(creditoAReceber)}` +
+            `\n\nCrédito a Receber: ${formatCurrency(resultado.creditoTotal)}` +
             `\nParcela: ${formatCurrency(resultado.usarLanceProprio ? resultado.novaParcela : parcelaTotal)}` +
             `\nLance Embutido: ${formatCurrency(lanceEmbutidoValor)}` +
             (resultado.usarLanceProprio ? `\nLance Próprio: ${formatCurrency(resultado.lanceProprio)}` : '') +
@@ -738,9 +738,11 @@ export default function SimuladorConsorcio() {
                   <div className="p-4 bg-gradient-to-r from-[#23BE84] to-[#1da570] rounded-lg text-white">
                     <p className="text-xs font-semibold mb-1">💰 Valor a Receber</p>
                     <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
-                    <p className="text-xs mt-1 opacity-90">
-                      Crédito original: {formatCurrency(resultado.creditoOriginal)}
-                    </p>
+                    {resultado.creditoAReceber !== resultado.creditoTotal && (
+                      <p className="text-xs mt-1 opacity-90">
+                        Líquido após lance: {formatCurrency(resultado.creditoAReceber)}
+                      </p>
+                    )}
                   </div>
 
                   {resultado.usarLanceProprio && (
