@@ -307,19 +307,18 @@ export default function Usuarios() {
           throw new Error(data.error);
         }
 
-        // Marcar sucesso
-        setInviteSuccess(true);
-
         // Atualizar lista
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-        
-        // Limpar formulário
-        if (resetForm) resetForm();
         
         // Mostrar mensagem de sucesso
         toast.success('✅ Convite enviado com sucesso!', { 
           duration: 4000
         });
+        
+        // Limpar formulário completamente
+        if (resetForm) resetForm();
+        setInviteSuccess(false);
+        setFormKey(k => k + 1);
         
         // Fechar modal
         safeCloseForm();
