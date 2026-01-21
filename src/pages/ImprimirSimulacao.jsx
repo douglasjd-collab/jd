@@ -189,9 +189,6 @@ export default function ImprimirSimulacao() {
               {cartas.map((carta, i) => (
                 <div key={i} className="text-xs bg-slate-50 p-1.5 rounded">
                   <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} • Parcela {formatCurrency(parseFloat(carta.parcela))} • {carta.prazo} Meses
-                  {carta.parcelaReduzida && parseFloat(carta.parcelaReduzida) > 0 && (
-                    <span className="text-orange-700"> • 1ª Parc. Reduzida: {formatCurrency(parseFloat(carta.parcelaReduzida))}</span>
-                  )}
                 </div>
               ))}
             </div>
@@ -208,14 +205,6 @@ export default function ImprimirSimulacao() {
                   {formatCurrency(simulacao.parcela_total)}
                 </span>
               </div>
-              {simulacao.valorParcelaReduzida && parseFloat(simulacao.valorParcelaReduzida) !== parseFloat(simulacao.parcela_total) && (
-                <div className="flex justify-between">
-                  <span className="font-semibold text-orange-700">📉 1ª Parcela Reduzida:</span>
-                  <span className="text-base font-bold text-orange-900">
-                    {formatCurrency(simulacao.valorParcelaReduzida)}
-                  </span>
-                </div>
-              )}
               <div className="flex justify-between">
                 <span className="font-semibold">⏱️ Prazo:</span>
                 <span className="text-base font-bold text-blue-900">
