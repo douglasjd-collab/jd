@@ -102,6 +102,12 @@ export default function ImprimirSimulacao() {
   }
   const modelo = simulacao.opcao_pos_contemplacao === 'prazo' ? 'Canopus (Recomendado)' : 'Simples';
 
+  // Lógica da parcela reduzida
+  const isParcelaReduzida = !!simulacao?.parcela_reduzida;
+  const parcelaNormal = Number(simulacao?.parcela_total ?? 0);
+  const valorParcelaReduzida = Number(simulacao?.valorParcelaReduzida ?? 0);
+  const primeiraParcelaNoAto = (isParcelaReduzida && valorParcelaReduzida > 0) ? valorParcelaReduzida : parcelaNormal;
+
   return (
     <>
       <style>{`
@@ -286,11 +292,9 @@ export default function ImprimirSimulacao() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>(-) 1ª Parcela (no ato){simulacao.parcela_reduzida ? ' - Reduzida' : ''}:</span>
+                <span>(-) 1ª Parcela (no ato){isParcelaReduzida ? ' - Reduzida' : ''}:</span>
                 <span className="font-semibold">
-                  {formatCurrency(simulacao.parcela_reduzida && simulacao.valorParcelaReduzida 
-                    ? simulacao.valorParcelaReduzida 
-                    : simulacao.parcela_total)}
+                  {formatCurrency(primeiraParcelaNoAto)}
                 </span>
               </div>
               <div className="card-section flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-1.5 rounded">
