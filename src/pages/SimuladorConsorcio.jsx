@@ -178,11 +178,18 @@ export default function SimuladorConsorcio() {
         
         const colab = colabs?.[0];
         
-        if (!colab || !colab.empresa_id) {
-          throw new Error('Usuário não está vinculado a uma empresa');
+        // Super admin e master podem não ter empresa_id
+        let empresaId = colab?.empresa_id || null;
+        
+        // Se não tiver empresa_id e não for super_admin/master, buscar primeira empresa disponível
+        if (!empresaId && (!colab || !['super_admin', 'master'].includes(colab.perfil))) {
+          const empresas = await base44.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 1);
+          if (empresas.length > 0) {
+            empresaId = empresas[0].id;
+          } else {
+            throw new Error('Nenhuma empresa encontrada. Configure uma empresa primeiro.');
+          }
         }
-
-        const empresaId = colab.empresa_id;
 
       // 1. Salvar simulação
       const lanceTotal = lanceEmbutidoValor + (resultado.usarLanceProprio ? resultado.lanceProprio : 0);
