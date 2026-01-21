@@ -104,19 +104,9 @@ export default function ImprimirSimulacao() {
 
   // Lógica da parcela reduzida
   const isParcelaReduzida = !!simulacao?.parcela_reduzida;
+  const valorParcelaReduzidaDB = Number(simulacao?.valorParcelaReduzida ?? 0);
   const parcelaNormal = Number(simulacao?.parcela_total ?? 0);
-  const valorParcelaReduzida = Number(simulacao?.valorParcelaReduzida ?? 0);
-  const primeiraParcelaNoAto = (isParcelaReduzida && valorParcelaReduzida > 0) ? valorParcelaReduzida : parcelaNormal;
-  
-  // Debug - remover após confirmar
-  console.log('Debug Parcela:', { 
-    isParcelaReduzida, 
-    parcelaNormal, 
-    valorParcelaReduzida, 
-    primeiraParcelaNoAto,
-    simulacao_parcela_reduzida: simulacao?.parcela_reduzida,
-    simulacao_valorParcelaReduzida: simulacao?.valorParcelaReduzida
-  });
+  const primeiraParcelaNoAto = (isParcelaReduzida && valorParcelaReduzidaDB > 0) ? valorParcelaReduzidaDB : parcelaNormal;
 
   return (
     <>
