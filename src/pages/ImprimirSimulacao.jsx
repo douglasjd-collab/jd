@@ -77,76 +77,32 @@ export default function ImprimirSimulacao() {
   };
 
   const calcularPrimeiraParcelaNoAto = () => {
-    // true/false confiável
-    const isParcelaReduzida =
-      simulacao?.parcela_reduzida === true ||
-      simulacao?.parcela_reduzida === "true" ||
-      simulacao?.isParcelaReduzida === true ||
-      simulacao?.isParcelaReduzida === "true";
+    const cartasData = simulacao?.cartas || simulacao?.multiCotas || simulacao?.cotas || [];
 
-    // parcelas totais (cheias)
-    const parcelaTotalCheia =
-      normalizeMoney(simulacao?.parcela_total) ||
-      normalizeMoney(simulacao?.parcelaTotal) ||
-      0;
+    // ✅ soma correta: 393,15 + 393,15 = 786,30
+    const primeiraParcelaReduzidaTotal = Array.isArray(cartasData)
+      ? cartasData.reduce((acc, c) => {
+          // tenta achar o campo correto da carta (ajuste se o seu nome for outro)
+          const v =
+            c?.primeira_parcela_reduzida ??
+            c?.primeiraParcelaReduzida ??
+            c?.parcela_reduzida ??
+            c?.parcelaReduzida;
 
-    // ✅ 1) TENTA PEGAR A REDUZIDA TOTAL PRONTA (se você já salva isso no resultado)
-    const parcelaTotalReduzidaPronta =
-      normalizeMoney(simulacao?.valorParcelaReduzida) ||
-      normalizeMoney(simulacao?.parcela_total_reduzida) ||
-      normalizeMoney(simulacao?.parcelaReduzidaTotal) ||
-      normalizeMoney(simulacao?.primeira_parcela_reduzida_total) ||
-      0;
+          return acc + normalizeMoney(v);
+        }, 0)
+      : 0;
 
-    // ✅ 2) SE FOR MULTI-COTAS: SOMA A REDUZIDA DE CADA CARTA
-    const cartasArray = Array.isArray(cartas) && cartas.length > 0 ? cartas : [];
-    
-    const somaReducidaDasCartas = cartasArray.reduce((acc, c) => {
-      // tenta achar o campo correto da carta (todos os possíveis nomes)
-      const v =
-        c?.primeira_parcela_reduzida ??
-        c?.primeiraParcelaReduzida ??
-        c?.parcela_reduzida ??
-        c?.parcelaReduzida;
+    // ✅ valor final para imprimir na linha "1ª Parcela (no ato) - Reduzida"
+    const primeiraParcelaNoAto = primeiraParcelaReduzidaTotal;
 
-      const pr = normalizeMoney(v) || 0;
-
-      // se não existir, calcula a reduzida por carta a partir da parcela cheia + percentual
-      const parcelaCheiaCarta = normalizeMoney(c?.parcela) || 0;
-      const perc = toNumberBR(c?.percentual_reducao) || toNumberBR(simulacao?.percentual_reducao) || 50;
-
-      const calc = parcelaCheiaCarta > 0 ? (parcelaCheiaCarta * (perc / 100)) : 0;
-
-      return acc + (pr > 0 ? pr : calc);
-    }, 0);
-
-    // ✅ 3) FALLBACK FINAL: se não tiver cartas nem total reduzido pronto, calcula 1x só
-    const percentualReducao =
-      toNumberBR(simulacao?.percentual_reducao) ||
-      toNumberBR(simulacao?.percentualReducao) ||
-      50;
-
-    const parcelaTotalReduzidaCalculada = parcelaTotalCheia * (percentualReducao / 100);
-
-    // ✅ VALOR CORRETO PRA IMPRIMIR NA LINHA "1ª Parcela (no ato) - Reduzida"
-    const primeiraParcelaNoAto = isParcelaReduzida
-      ? (
-          // prioridade: total reduzido pronto
-          (parcelaTotalReduzidaPronta > 0 ? parcelaTotalReduzidaPronta : 0) ||
-          // depois: soma das cartas
-          (somaReducidaDasCartas > 0 ? somaReducidaDasCartas : 0) ||
-          // fallback: calcula 1 vez
-          parcelaTotalReduzidaCalculada
-        )
-      : parcelaTotalCheia;
+    const isParcelaReduzida = primeiraParcelaReduzidaTotal > 0;
 
     console.log('🔍 Debug Impressão:', {
-      isParcelaReduzida,
-      parcelaTotalCheia,
-      parcelaTotalReduzidaPronta,
-      somaReducidaDasCartas,
-      parcelaTotalReduzidaCalculada,
-      primeiraParcelaNoAto
+      cartasData,
+      primeiraParcelaReduzidaTotal,
+      primeiraParcelaNoAto,
+      isParcelaReduzida
     });
 
     return { primeiraParcelaNoAto, isParcelaReduzida };
