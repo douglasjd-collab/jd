@@ -26,6 +26,8 @@ export default function SimuladorNormal() {
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(false);
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
+  const [usarLanceProprio, setUsarLanceProprio] = useState(false);
+  const [lanceProprio, setLanceProprio] = useState('');
   const [resultado, setResultado] = useState(null);
 
   useEffect(() => {
@@ -89,9 +91,22 @@ export default function SimuladorNormal() {
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = prazoNum * parcelaTotal;
     
+    let lanceProprioValor = 0;
+    let saldoDevedorTotal = totalPlano;
+    
+    // Aplicar lance próprio se ativo
+    if (usarLanceProprio && lanceProprio) {
+      lanceProprioValor = parseFloat(lanceProprio);
+      if (lanceProprioValor > totalPlano) {
+        lanceProprioValor = totalPlano;
+        toast.warning('Lance próprio ajustado para o valor máximo do plano');
+      }
+      saldoDevedorTotal = totalPlano - lanceProprioValor;
+    }
+    
     let mesesCobrados = prazoNum;
     let novoPrazo = prazoNum - 1;
-    let novaParcela = (totalPlano - parcelaTotal) / novoPrazo;
+    let novaParcelaCalculada = (saldoDevedorTotal - parcelaTotal) / novoPrazo;
 
     // Aplicar regra Canopus se ativado
     if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
@@ -100,7 +115,7 @@ export default function SimuladorNormal() {
       if (mesesCobrados < 1) mesesCobrados = 1;
       
       novoPrazo = mesesCobrados;
-      novaParcela = (totalPlano - parcelaTotal) / mesesCobrados;
+      novaParcelaCalculada = (saldoDevedorTotal - parcelaTotal) / mesesCobrados;
     }
 
     setResultado({
@@ -109,9 +124,12 @@ export default function SimuladorNormal() {
       totalPlano,
       prazoOriginal: prazoNum,
       novoPrazo,
-      novaParcela,
+      novaParcela: novaParcelaCalculada,
       mesesCobrados,
-      aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')
+      aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel'),
+      usarLanceProprio,
+      lanceProprio: lanceProprioValor,
+      saldoDevedor: saldoDevedorTotal
     });
   };
 
@@ -139,7 +157,10 @@ export default function SimuladorNormal() {
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
-        saldo_apos_contemplacao: resultado.totalPlano - parcelaTotal,
+        saldo_apos_contemplacao: resultado.saldoDevedor - parcelaTotal,
+        lance_proprio_ativo: resultado.usarLanceProprio || false,
+        lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
+        lance_total: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
@@ -336,6 +357,42 @@ export default function SimuladorNormal() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">💰 Lance Próprio (Opcional)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">Deseja ofertar Recurso Próprio?</Label>
+                  <p className="text-xs text-slate-500 mt-1">Oferece um valor adicional para reduzir as parcelas</p>
+                </div>
+                <Switch checked={usarLanceProprio} onCheckedChange={setUsarLanceProprio} />
+              </div>
+
+              {usarLanceProprio && (
+                <div>
+                  <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                  <Input
+                    type="text"
+                    value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                    onChange={(e) => {
+                      const valorNumerico = handleMoedaInput(e.target.value);
+                      setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                    }}
+                    placeholder="0,00"
+                  />
+                  {lanceProprio && parseFloat(lanceProprio) > 0 && (
+                    <div className="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-xs text-purple-700">💎 Lance Próprio</p>
+                      <p className="text-xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">⚙️ Opções de Pagamento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -417,7 +474,15 @@ export default function SimuladorNormal() {
                     <p className="text-xs font-semibold mb-1">💰 Valor a Receber</p>
                     <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
                   </div>
-                  {resultado.aplicarRegraCanopus && (
+
+                  {resultado.usarLanceProprio && (
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
+                      <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
+                    </div>
+                  )}
+
+                  {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio) && (
                     <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-600">Total do Plano:</span>
