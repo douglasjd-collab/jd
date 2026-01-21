@@ -261,7 +261,6 @@ export default function Usuarios() {
     } else {
       // Novo usuário - chamar função backend
       setIsSubmitting(true);
-      setInviteSuccess(false);
       
       try {
         const response = await base44.functions.invoke('inviteUser', normalizedData);
@@ -270,11 +269,14 @@ export default function Usuarios() {
           throw new Error(response.data.error);
         }
 
-        await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-        
-        // Mostrar sucesso e fechar formulário
-        toast.success('Convite enviado com sucesso!');
+        // Fechar modal primeiro
         safeCloseForm();
+        
+        // Aguardar um momento e então mostrar toast e atualizar lista
+        setTimeout(async () => {
+          await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+          toast.success('✅ Convite enviado com sucesso!', { duration: 3000 });
+        }, 300);
       } catch (error) {
         console.error('Erro detalhado:', error);
         toast.error(error.message || 'Erro ao enviar convite');
