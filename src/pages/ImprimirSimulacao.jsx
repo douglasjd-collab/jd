@@ -286,8 +286,12 @@ export default function ImprimirSimulacao() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>(-) 1ª Parcela (no ato):</span>
-                <span className="font-semibold">{formatCurrency(simulacao.parcela_total)}</span>
+                <span>(-) 1ª Parcela (no ato){simulacao.parcela_reduzida ? ' - Reduzida' : ''}:</span>
+                <span className="font-semibold">
+                  {formatCurrency(simulacao.parcela_reduzida && simulacao.valorParcelaReduzida 
+                    ? simulacao.valorParcelaReduzida 
+                    : simulacao.parcela_total)}
+                </span>
               </div>
               <div className="card-section flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-1.5 rounded">
                 <span className="font-bold">Saldo Devedor:</span>

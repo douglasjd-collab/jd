@@ -167,10 +167,12 @@ export default function SimuladorNormal() {
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
-        saldo_apos_contemplacao: resultado.saldoDevedor - parcelaTotal,
+        saldo_apos_contemplacao: resultado.saldoDevedor - resultado.valorParcelaReduzida,
         lance_proprio_ativo: resultado.usarLanceProprio || false,
         lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         lance_total: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
+        parcela_reduzida: resultado.parcelaReduzida || false,
+        valorParcelaReduzida: resultado.valorParcelaReduzida,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
