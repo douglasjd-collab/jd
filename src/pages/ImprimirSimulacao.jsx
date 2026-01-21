@@ -248,11 +248,11 @@ export default function ImprimirSimulacao() {
           <div className="section card-section mb-2 p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
             <h2 className="text-sm font-bold mb-1">💰 Valor que o Cliente Recebe</h2>
             <p className="text-2xl font-bold mb-0.5">
-              {formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}
+              {formatCurrency(simulacao.credito_total - (simulacao.lance_total || 0))}
             </p>
             <p className="text-xs opacity-90">
               (Crédito {formatCurrency(simulacao.credito_total)}
-              {simulacao.lance_embutido_valor > 0 && ` - Lance Emb. ${formatCurrency(simulacao.lance_embutido_valor)}`})
+              {simulacao.lance_total > 0 && ` - Lance ${formatCurrency(simulacao.lance_total)}`})
             </p>
           </div>
 
