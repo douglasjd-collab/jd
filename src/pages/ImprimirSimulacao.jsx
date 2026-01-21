@@ -102,8 +102,14 @@ export default function ImprimirSimulacao() {
     const cartasArray = Array.isArray(cartas) && cartas.length > 0 ? cartas : [];
     
     const somaReducidaDasCartas = cartasArray.reduce((acc, c) => {
-      // tente primeiro um campo já reduzido por carta:
-      const pr = normalizeMoney(c?.parcelaReduzida) || normalizeMoney(c?.parcela_reduzida) || 0;
+      // tenta achar o campo correto da carta (todos os possíveis nomes)
+      const v =
+        c?.primeira_parcela_reduzida ??
+        c?.primeiraParcelaReduzida ??
+        c?.parcela_reduzida ??
+        c?.parcelaReduzida;
+
+      const pr = normalizeMoney(v) || 0;
 
       // se não existir, calcula a reduzida por carta a partir da parcela cheia + percentual
       const parcelaCheiaCarta = normalizeMoney(c?.parcela) || 0;
