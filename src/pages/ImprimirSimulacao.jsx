@@ -77,30 +77,12 @@ export default function ImprimirSimulacao() {
   };
 
   const calcularPrimeiraParcelaNoAto = () => {
-    const cartasData = simulacao?.cartas || simulacao?.multiCotas || simulacao?.cotas || [];
-
-    // ✅ soma correta: 393,15 + 393,15 = 786,30
-    const primeiraParcelaReduzidaTotal = Array.isArray(cartasData)
-      ? cartasData.reduce((acc, c) => {
-          // tenta achar o campo correto da carta (ajuste se o seu nome for outro)
-          const v =
-            c?.primeira_parcela_reduzida ??
-            c?.primeiraParcelaReduzida ??
-            c?.parcela_reduzida ??
-            c?.parcelaReduzida;
-
-          return acc + normalizeMoney(v);
-        }, 0)
-      : 0;
-
-    // ✅ valor final para imprimir na linha "1ª Parcela (no ato) - Reduzida"
-    const primeiraParcelaNoAto = primeiraParcelaReduzidaTotal;
-
-    const isParcelaReduzida = primeiraParcelaReduzidaTotal > 0;
+    // Prioriza o campo primeiraParcelaReduzidaTotal salvo na simulação
+    const primeiraParcelaNoAto = Number(simulacao?.primeiraParcelaReduzidaTotal ?? 0);
+    const isParcelaReduzida = primeiraParcelaNoAto > 0;
 
     console.log('🔍 Debug Impressão:', {
-      cartasData,
-      primeiraParcelaReduzidaTotal,
+      primeiraParcelaReduzidaTotal: simulacao?.primeiraParcelaReduzidaTotal,
       primeiraParcelaNoAto,
       isParcelaReduzida
     });

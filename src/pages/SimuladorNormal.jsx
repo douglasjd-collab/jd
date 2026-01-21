@@ -175,7 +175,7 @@ export default function SimuladorNormal() {
         lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         lance_total: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         parcela_reduzida: resultado.parcelaReduzida || false,
-        valorParcelaReduzida: primeiraParcelaReduzidaTotal > 0 ? primeiraParcelaReduzidaTotal : resultado.valorParcelaReduzida,
+        primeiraParcelaReduzidaTotal: primeiraParcelaReduzidaTotal,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
