@@ -269,14 +269,23 @@ export default function Usuarios() {
           throw new Error(response.data.error);
         }
 
-        // Fechar modal primeiro
-        safeCloseForm();
+        // Atualizar lista
+        await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         
-        // Aguardar um momento e então mostrar toast e atualizar lista
-        setTimeout(async () => {
-          await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-          toast.success('✅ Convite enviado com sucesso!', { duration: 3000 });
-        }, 300);
+        // Limpar formulário
+        if (resetForm) resetForm();
+        
+        // Mostrar mensagem de sucesso
+        toast.success('✅ Convite enviado com sucesso!', { 
+          duration: 4000,
+          style: {
+            background: '#10B981',
+            color: 'white',
+          }
+        });
+        
+        // Fechar modal
+        safeCloseForm();
       } catch (error) {
         console.error('Erro detalhado:', error);
         toast.error(error.message || 'Erro ao enviar convite');
