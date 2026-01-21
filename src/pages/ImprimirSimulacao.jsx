@@ -42,6 +42,18 @@ export default function ImprimirSimulacao() {
     }
   };
 
+  const toNumberBR = (v) => {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === "number") return v;
+    const s = String(v)
+      .trim()
+      .replace(/\s/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".");
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -102,11 +114,25 @@ export default function ImprimirSimulacao() {
   }
   const modelo = simulacao.opcao_pos_contemplacao === 'prazo' ? 'Canopus (Recomendado)' : 'Simples';
 
-  // Lógica da parcela reduzida
+  // Lógica da parcela reduzida com conversão robusta
   const isParcelaReduzida = !!simulacao?.parcela_reduzida;
-  const valorParcelaReduzidaDB = Number(simulacao?.valorParcelaReduzida ?? 0);
-  const parcelaNormal = Number(simulacao?.parcela_total ?? 0);
-  const primeiraParcelaNoAto = (isParcelaReduzida && valorParcelaReduzidaDB > 0) ? valorParcelaReduzidaDB : parcelaNormal;
+  const parcelaNormal = toNumberBR(simulacao?.parcela_total);
+  
+  // Procura o valor em múltiplos campos possíveis
+  const valorParcelaReduzidaDB = 
+    toNumberBR(simulacao?.valorParcelaReduzida) ||
+    toNumberBR(simulacao?.parcela_reduzida_valor) ||
+    toNumberBR(simulacao?.valor_parcela_reduzida) ||
+    0;
+  
+  // Se não encontrou valor pronto, calcula pelo percentual
+  const percentualReducao = toNumberBR(simulacao?.percentual_reducao) || 50;
+  const parcelaReduzidaCalculada = parcelaNormal * (percentualReducao / 100);
+  
+  // Prioridade: valor do DB > calculado > normal
+  const primeiraParcelaNoAto = isParcelaReduzida
+    ? (valorParcelaReduzidaDB > 0 ? valorParcelaReduzidaDB : parcelaReduzidaCalculada)
+    : parcelaNormal;
 
   return (
     <>
