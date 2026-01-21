@@ -195,10 +195,15 @@ export default function SimuladorConsorcio() {
       const lanceTotal = lanceEmbutidoValor + (resultado.usarLanceProprio ? resultado.lanceProprio : 0);
       
       // Calcula o total da primeira parcela reduzida somando todas as cartas
-      const primeiraParcelaReduzidaTotal = cartas.reduce(
+      const primeira_parcela_reduzida_total = cartas.reduce(
         (acc, c) => acc + Number(c.parcelaReduzida || 0), 
         0
       );
+
+      // Se houver reduzida, o "no ato" deve ser a soma das reduzidas.
+      // Senão, deve ser a parcela total cheia.
+      const primeira_parcela_no_ato =
+        primeira_parcela_reduzida_total > 0 ? primeira_parcela_reduzida_total : parcelaTotal;
       
       const simulacao = await base44.entities.Simulacao.create({
         empresa_id: empresaId,
@@ -218,8 +223,10 @@ export default function SimuladorConsorcio() {
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.usarLanceProprio ? resultado.mesesCobrados : resultado.prazoOriginal,
         nova_parcela: resultado.novaParcela,
+        parcela_reduzida: primeira_parcela_reduzida_total > 0,
+        primeira_parcela_reduzida_total: primeira_parcela_reduzida_total,
+        primeira_parcela_no_ato: primeira_parcela_no_ato,
         saldo_apos_contemplacao: resultado.saldoDevedor,
-        primeiraParcelaReduzidaTotal: primeiraParcelaReduzidaTotal,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'

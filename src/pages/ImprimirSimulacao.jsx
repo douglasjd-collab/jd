@@ -77,12 +77,14 @@ export default function ImprimirSimulacao() {
   };
 
   const calcularPrimeiraParcelaNoAto = () => {
-    // Prioriza o campo primeiraParcelaReduzidaTotal salvo na simulação
-    const primeiraParcelaNoAto = Number(simulacao?.primeiraParcelaReduzidaTotal ?? 0);
-    const isParcelaReduzida = primeiraParcelaNoAto > 0;
+    // Prioriza o campo primeira_parcela_no_ato salvo na simulação (snake_case)
+    const primeiraParcelaNoAto = Number(simulacao?.primeira_parcela_no_ato ?? 0);
+    const isParcelaReduzida = simulacao?.parcela_reduzida === true;
 
     console.log('🔍 Debug Impressão:', {
-      primeiraParcelaReduzidaTotal: simulacao?.primeiraParcelaReduzidaTotal,
+      primeira_parcela_no_ato: simulacao?.primeira_parcela_no_ato,
+      primeira_parcela_reduzida_total: simulacao?.primeira_parcela_reduzida_total,
+      parcela_reduzida: simulacao?.parcela_reduzida,
       primeiraParcelaNoAto,
       isParcelaReduzida
     });
