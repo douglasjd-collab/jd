@@ -263,6 +263,32 @@ export default function Usuarios() {
       setIsSubmitting(true);
       
       try {
+        // Validações antes de enviar
+        if (!normalizedData.email) {
+          toast.error('Email é obrigatório');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (!normalizedData.nome) {
+          toast.error('Nome é obrigatório');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (!normalizedData.perfil) {
+          toast.error('Perfil é obrigatório');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Se o convite precisa de empresa (exceto master/super_admin)
+        if (!normalizedData.empresa_id && !['master', 'super_admin'].includes(normalizedData.perfil)) {
+          toast.error('Selecione uma empresa para enviar o convite');
+          setIsSubmitting(false);
+          return;
+        }
+        
         console.log('[INVITE] payload:', normalizedData);
         toast.message('Enviando convite...');
 
@@ -298,8 +324,20 @@ export default function Usuarios() {
         // Fechar modal
         safeCloseForm();
       } catch (error) {
-        console.error('[INVITE] erro:', error);
-        toast.error(error?.message || 'Erro ao enviar convite');
+        // Capturar detalhes completos do erro
+        const status = error?.response?.status;
+        const data = error?.response?.data;
+        const msg =
+          data?.error ||
+          data?.message ||
+          error?.message ||
+          'Erro ao enviar convite';
+
+        console.error('[INVITE] status:', status);
+        console.error('[INVITE] data:', data);
+        console.error('[INVITE] full error:', error);
+
+        toast.error(`Erro${status ? ` (${status})` : ''}: ${msg}`);
       } finally {
         setIsSubmitting(false);
       }
