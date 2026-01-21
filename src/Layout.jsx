@@ -34,6 +34,7 @@ import LogoUploader from '@/components/ui/LogoUploader';
 import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import AntiTranslateGuard from '@/components/AntiTranslateGuard';
+import { Toaster } from 'sonner';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
