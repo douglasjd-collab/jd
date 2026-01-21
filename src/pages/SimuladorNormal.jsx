@@ -153,6 +153,12 @@ export default function SimuladorNormal() {
       const colab = colabs?.[0];
       if (!colab || !colab.empresa_id) throw new Error('Usuário não vinculado a empresa');
 
+      // Calcula o total da primeira parcela reduzida somando todas as cartas
+      const primeiraParcelaReduzidaTotal = cartas.reduce(
+        (acc, c) => acc + Number(c.parcelaReduzida || 0), 
+        0
+      );
+
       const simulacao = await base44.entities.Simulacao.create({
         empresa_id: colab.empresa_id,
         cliente_nome: clienteNome,
@@ -169,7 +175,7 @@ export default function SimuladorNormal() {
         lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         lance_total: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         parcela_reduzida: resultado.parcelaReduzida || false,
-        valorParcelaReduzida: resultado.valorParcelaReduzida,
+        valorParcelaReduzida: primeiraParcelaReduzidaTotal > 0 ? primeiraParcelaReduzidaTotal : resultado.valorParcelaReduzida,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
