@@ -22,14 +22,12 @@ export default function SimuladorNormal() {
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
-  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
+  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', parcelaReduzida: '' }]);
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(false);
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
-  const [parcelaReduzida, setParcelaReduzida] = useState(false);
-  const [valorParcelaReduzida, setValorParcelaReduzida] = useState('');
   const [resultado, setResultado] = useState(null);
 
   useEffect(() => {
@@ -47,7 +45,7 @@ export default function SimuladorNormal() {
   });
 
   const adicionarCarta = () => {
-    setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
+    setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '' }]);
   };
 
   const duplicarCarta = (index) => {
@@ -72,6 +70,7 @@ export default function SimuladorNormal() {
 
   const creditoTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.credito) || 0), 0);
   const parcelaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcela) || 0), 0);
+  const parcelaReduzidaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcelaReduzida) || 0), 0);
   const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
 
   const calcularSimulacao = () => {
@@ -109,10 +108,8 @@ export default function SimuladorNormal() {
     let mesesCobrados = prazoNum;
     let novoPrazo = prazoNum - 1;
     
-    // Usar parcela reduzida se ativo, senão usar parcela total
-    const parcelaADescontar = parcelaReduzida && valorParcelaReduzida 
-      ? parseFloat(valorParcelaReduzida) 
-      : parcelaTotal;
+    // Usar soma das parcelas reduzidas se houver, senão usar parcela total
+    const parcelaADescontar = parcelaReduzidaTotal > 0 ? parcelaReduzidaTotal : parcelaTotal;
     
     let novaParcelaCalculada = (saldoDevedorTotal - parcelaADescontar) / novoPrazo;
 
@@ -138,8 +135,8 @@ export default function SimuladorNormal() {
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
       saldoDevedor: saldoDevedorTotal,
-      parcelaReduzida,
-      valorParcelaReduzida: parcelaReduzida ? parcelaADescontar : parcelaTotal
+      parcelaReduzida: parcelaReduzidaTotal > 0,
+      valorParcelaReduzida: parcelaADescontar
     });
   };
 
@@ -311,7 +308,7 @@ export default function SimuladorNormal() {
                       </Button>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
                       <Label className="text-xs">Crédito (R$) *</Label>
                       <Input
@@ -342,18 +339,32 @@ export default function SimuladorNormal() {
                       <Label className="text-xs">Prazo (meses) *</Label>
                       <Input type="number" value={carta.prazo} onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)} placeholder="120" className="h-9" />
                     </div>
+                    <div>
+                      <Label className="text-xs">1ª Parcela Reduzida</Label>
+                      <Input
+                        type="text"
+                        value={carta.parcelaReduzida ? formatarParaExibicao(carta.parcelaReduzida) : ''}
+                        onChange={(e) => {
+                          const val = handleMoedaInput(e.target.value);
+                          atualizarCarta(index, 'parcelaReduzida', val > 0 ? val.toString() : '');
+                        }}
+                        placeholder="0,00"
+                        className="h-9"
+                      />
+                    </div>
                   </div>
                   {carta.credito && carta.parcela && carta.prazo && (
                     <div className="mt-2 text-xs text-slate-600 pt-2 border-t">
                       <span className="font-semibold">
                         {formatCurrency(parseFloat(carta.credito))} • {formatCurrency(parseFloat(carta.parcela))}/mês • {carta.prazo} meses
+                        {carta.parcelaReduzida && ` • 1ª Parc. Reduzida: ${formatCurrency(parseFloat(carta.parcelaReduzida))}`}
                       </span>
                     </div>
                   )}
                 </div>
               ))}
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-xs text-blue-700">💰 Crédito Total</p>
                     <p className="text-xl font-bold text-blue-900">{formatCurrency(creditoTotal)}</p>
@@ -362,6 +373,12 @@ export default function SimuladorNormal() {
                     <p className="text-xs text-blue-700">📅 Parcela Total/mês</p>
                     <p className="text-xl font-bold text-blue-900">{formatCurrency(parcelaTotal)}</p>
                   </div>
+                  {parcelaReduzidaTotal > 0 && (
+                    <div>
+                      <p className="text-xs text-orange-700">📉 1ª Parc. Reduzida</p>
+                      <p className="text-xl font-bold text-orange-900">{formatCurrency(parcelaReduzidaTotal)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -396,42 +413,6 @@ export default function SimuladorNormal() {
                     <div className="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
                       <p className="text-xs text-purple-700">💎 Lance Próprio</p>
                       <p className="text-xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">📉 Parcela Reduzida (Opcional)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <div>
-                  <Label className="text-sm font-medium">Usar Parcela Reduzida na 1ª Parcela?</Label>
-                  <p className="text-xs text-slate-500 mt-1">A 1ª parcela será menor e descontada do saldo</p>
-                </div>
-                <Switch checked={parcelaReduzida} onCheckedChange={setParcelaReduzida} />
-              </div>
-
-              {parcelaReduzida && (
-                <div>
-                  <Label className="text-xs">Valor da 1ª Parcela Reduzida (R$) *</Label>
-                  <Input
-                    type="text"
-                    value={valorParcelaReduzida ? formatarParaExibicao(valorParcelaReduzida) : ''}
-                    onChange={(e) => {
-                      const valorNumerico = handleMoedaInput(e.target.value);
-                      setValorParcelaReduzida(valorNumerico > 0 ? valorNumerico.toString() : '');
-                    }}
-                    placeholder="0,00"
-                  />
-                  {valorParcelaReduzida && parseFloat(valorParcelaReduzida) > 0 && (
-                    <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                      <p className="text-xs text-orange-700">📉 1ª Parcela Reduzida</p>
-                      <p className="text-xl font-bold text-orange-900">{formatCurrency(parseFloat(valorParcelaReduzida))}</p>
                     </div>
                   )}
                 </div>
