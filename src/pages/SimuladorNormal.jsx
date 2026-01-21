@@ -72,6 +72,9 @@ export default function SimuladorNormal() {
   const parcelaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcela) || 0), 0);
   const parcelaReduzidaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcelaReduzida) || 0), 0);
   const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
+  
+  // Define qual parcela usar no ato: reduzida (se houver) ou normal
+  const primeiraParcelaNoAto = parcelaReduzidaTotal > 0 ? parcelaReduzidaTotal : parcelaTotal;
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
@@ -108,10 +111,7 @@ export default function SimuladorNormal() {
     let mesesCobrados = prazoNum;
     let novoPrazo = prazoNum - 1;
     
-    // Usar soma das parcelas reduzidas se houver, senão usar parcela total
-    const parcelaADescontar = parcelaReduzidaTotal > 0 ? parcelaReduzidaTotal : parcelaTotal;
-    
-    let novaParcelaCalculada = (saldoDevedorTotal - parcelaADescontar) / novoPrazo;
+    let novaParcelaCalculada = (saldoDevedorTotal - primeiraParcelaNoAto) / novoPrazo;
 
     // Aplicar regra Canopus se ativado
     if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
@@ -120,7 +120,7 @@ export default function SimuladorNormal() {
       if (mesesCobrados < 1) mesesCobrados = 1;
       
       novoPrazo = mesesCobrados;
-      novaParcelaCalculada = (saldoDevedorTotal - parcelaADescontar) / mesesCobrados;
+      novaParcelaCalculada = (saldoDevedorTotal - primeiraParcelaNoAto) / mesesCobrados;
     }
 
     setResultado({
@@ -136,7 +136,7 @@ export default function SimuladorNormal() {
       lanceProprio: lanceProprioValor,
       saldoDevedor: saldoDevedorTotal,
       parcelaReduzida: parcelaReduzidaTotal > 0,
-      valorParcelaReduzida: parcelaADescontar
+      valorParcelaReduzida: primeiraParcelaNoAto
     });
   };
 
@@ -164,7 +164,7 @@ export default function SimuladorNormal() {
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
-        saldo_apos_contemplacao: resultado.saldoDevedor - resultado.valorParcelaReduzida,
+        saldo_apos_contemplacao: resultado.saldoDevedor - primeiraParcelaNoAto,
         lance_proprio_ativo: resultado.usarLanceProprio || false,
         lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         lance_total: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
