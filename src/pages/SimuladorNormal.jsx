@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select.jsx';
+import { Switch } from '@/components/ui/switch';
 import { Calculator, Plus, Download, Loader2, TrendingUp, X, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
@@ -22,6 +23,9 @@ export default function SimuladorNormal() {
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
+  const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(false);
+  const [parcelasCarencia, setParcelasCarencia] = useState(3);
+  const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [resultado, setResultado] = useState(null);
 
   useEffect(() => {
@@ -84,8 +88,20 @@ export default function SimuladorNormal() {
 
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = prazoNum * parcelaTotal;
-    const novoPrazo = prazoNum - 1;
-    const novaParcela = (totalPlano - parcelaTotal) / novoPrazo;
+    
+    let mesesCobrados = prazoNum;
+    let novoPrazo = prazoNum - 1;
+    let novaParcela = (totalPlano - parcelaTotal) / novoPrazo;
+
+    // Aplicar regra Canopus se ativado
+    if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
+      const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
+      mesesCobrados = prazoNum - mesesNaoCobrados;
+      if (mesesCobrados < 1) mesesCobrados = 1;
+      
+      novoPrazo = mesesCobrados;
+      novaParcela = (totalPlano - parcelaTotal) / mesesCobrados;
+    }
 
     setResultado({
       creditoTotal,
@@ -93,7 +109,9 @@ export default function SimuladorNormal() {
       totalPlano,
       prazoOriginal: prazoNum,
       novoPrazo,
-      novaParcela
+      novaParcela,
+      mesesCobrados,
+      aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')
     });
   };
 
@@ -121,6 +139,7 @@ export default function SimuladorNormal() {
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
+        saldo_apos_contemplacao: resultado.totalPlano - parcelaTotal,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
@@ -317,6 +336,56 @@ export default function SimuladorNormal() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">⚙️ Opções de Pagamento</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(tipoGrupo === 'automovel' || tipoGrupo === 'imovel') && (
+                <>
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div>
+                      <Label className="text-sm font-medium">Aplicar regra Canopus?</Label>
+                      <p className="text-xs text-blue-600 mt-1">Carência de 3 parcelas + 1 parcela no ato</p>
+                    </div>
+                    <Switch checked={aplicarRegraCanopus} onCheckedChange={setAplicarRegraCanopus} />
+                  </div>
+
+                  {aplicarRegraCanopus && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Parcelas de Carência</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={parcelasCarencia}
+                          onChange={(e) => setParcelasCarencia(parseInt(e.target.value) || 0)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Parcela no Ato</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={parcelaAtoContratacao}
+                          onChange={(e) => setParcelaAtoContratacao(parseInt(e.target.value) || 0)}
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {tipoGrupo !== 'automovel' && tipoGrupo !== 'imovel' && (
+                <p className="text-xs text-slate-500 text-center py-2">
+                  Regra Canopus disponível apenas para Automóvel e Imóvel
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">📊 Calcular</CardTitle>
             </CardHeader>
             <CardContent>
@@ -348,6 +417,21 @@ export default function SimuladorNormal() {
                     <p className="text-xs font-semibold mb-1">💰 Valor a Receber</p>
                     <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
                   </div>
+                  {resultado.aplicarRegraCanopus && (
+                    <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Total do Plano:</span>
+                        <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Meses Cobrados:</span>
+                        <span className="font-semibold">
+                          {resultado.mesesCobrados} (prazo - 1 no ato - 3 carência)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
                     <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
                     <div className="space-y-2">
