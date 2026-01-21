@@ -968,9 +968,9 @@ export default function FunilVendas() {
                                 )}
 
                                 <div className="flex items-center justify-between text-xs mb-2">
-                                  <span className="font-semibold text-emerald-600">
-                                    {formatCurrency(oport.valor_estimado)}
-                                  </span>
+                                 <span className="font-semibold text-emerald-600">
+                                   {formatCurrency(oport.valor_estimado || 0)}
+                                 </span>
                                   <div className="flex items-center gap-2">
                                     <Button
                                       size="icon"
