@@ -45,13 +45,35 @@ export default function ImprimirSimulacao() {
   const toNumberBR = (v) => {
     if (v === null || v === undefined) return 0;
     if (typeof v === "number") return v;
+
+    // remove R$, espaços, etc.
     const s = String(v)
+      .replace(/[^\d.,-]/g, "")
       .trim()
-      .replace(/\s/g, "")
       .replace(/\./g, "")
       .replace(",", ".");
+
     const n = Number(s);
     return Number.isFinite(n) ? n : 0;
+  };
+
+  // ✅ Se vier em centavos (ex.: 39315), converte para reais (393.15)
+  const normalizeMoney = (v) => {
+    const n = toNumberBR(v);
+
+    // Se o valor original era string com vírgula/ponto, já está em reais.
+    if (typeof v === "string" && (v.includes(",") || v.includes("."))) return n;
+
+    // Se for inteiro "grande", é muito provável que seja centavos.
+    // Ex.: 39315 -> 393.15 | 78630 -> 786.30
+    if (Number.isInteger(n) && n >= 1000) return n / 100;
+
+    return n;
+  };
+
+  const formatMoney = (value) => {
+    const n = Number(value ?? 0);
+    return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   };
 
   const calcularPrimeiraParcelaNoAto = () => {
@@ -64,16 +86,16 @@ export default function ImprimirSimulacao() {
 
     // parcelas totais (cheias)
     const parcelaTotalCheia =
-      toNumberBR(simulacao?.parcela_total) ||
-      toNumberBR(simulacao?.parcelaTotal) ||
+      normalizeMoney(simulacao?.parcela_total) ||
+      normalizeMoney(simulacao?.parcelaTotal) ||
       0;
 
     // ✅ 1) TENTA PEGAR A REDUZIDA TOTAL PRONTA (se você já salva isso no resultado)
     const parcelaTotalReduzidaPronta =
-      toNumberBR(simulacao?.valorParcelaReduzida) ||
-      toNumberBR(simulacao?.parcela_total_reduzida) ||
-      toNumberBR(simulacao?.parcelaReduzidaTotal) ||
-      toNumberBR(simulacao?.primeira_parcela_reduzida_total) ||
+      normalizeMoney(simulacao?.valorParcelaReduzida) ||
+      normalizeMoney(simulacao?.parcela_total_reduzida) ||
+      normalizeMoney(simulacao?.parcelaReduzidaTotal) ||
+      normalizeMoney(simulacao?.primeira_parcela_reduzida_total) ||
       0;
 
     // ✅ 2) SE FOR MULTI-COTAS: SOMA A REDUZIDA DE CADA CARTA
@@ -81,10 +103,10 @@ export default function ImprimirSimulacao() {
     
     const somaReducidaDasCartas = cartasArray.reduce((acc, c) => {
       // tente primeiro um campo já reduzido por carta:
-      const pr = toNumberBR(c?.parcelaReduzida) || toNumberBR(c?.parcela_reduzida) || 0;
+      const pr = normalizeMoney(c?.parcelaReduzida) || normalizeMoney(c?.parcela_reduzida) || 0;
 
       // se não existir, calcula a reduzida por carta a partir da parcela cheia + percentual
-      const parcelaCheiaCarta = toNumberBR(c?.parcela) || 0;
+      const parcelaCheiaCarta = normalizeMoney(c?.parcela) || 0;
       const perc = toNumberBR(c?.percentual_reducao) || toNumberBR(simulacao?.percentual_reducao) || 50;
 
       const calc = parcelaCheiaCarta > 0 ? (parcelaCheiaCarta * (perc / 100)) : 0;
