@@ -191,6 +191,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <AntiTranslateGuard />
+      <Toaster richColors position="top-right" />
       <style>{`
         :root {
           --primary: 180 84% 38%;
