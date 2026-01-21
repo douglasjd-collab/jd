@@ -55,49 +55,69 @@ export default function ImprimirSimulacao() {
   };
 
   const calcularPrimeiraParcelaNoAto = () => {
-    // Flags
+    // true/false confiável
     const isParcelaReduzida =
-      simulacao.parcela_reduzida === true ||
-      simulacao.parcela_reduzida === "true" ||
-      simulacao.isParcelaReduzida === true ||
-      simulacao.isParcelaReduzida === "true";
+      simulacao?.parcela_reduzida === true ||
+      simulacao?.parcela_reduzida === "true" ||
+      simulacao?.isParcelaReduzida === true ||
+      simulacao?.isParcelaReduzida === "true";
 
-    // Parcelas
-    const parcelaNormal =
-      toNumberBR(simulacao.parcela_total) ||
-      toNumberBR(simulacao.parcelaNormal) ||
-      toNumberBR(simulacao.parcela_normal) ||
+    // parcelas totais (cheias)
+    const parcelaTotalCheia =
+      toNumberBR(simulacao?.parcela_total) ||
+      toNumberBR(simulacao?.parcelaTotal) ||
       0;
 
-    // Valor reduzido pode vir pronto em algum campo:
-    const parcelaReduzidaValor =
-      toNumberBR(simulacao.valorParcelaReduzida) ||
-      toNumberBR(simulacao.parcela_reduzida_valor) ||
-      toNumberBR(simulacao.parcelaReduzida) ||
-      toNumberBR(simulacao.valor_parcela_reduzida) ||
+    // ✅ 1) TENTA PEGAR A REDUZIDA TOTAL PRONTA (se você já salva isso no resultado)
+    const parcelaTotalReduzidaPronta =
+      toNumberBR(simulacao?.valorParcelaReduzida) ||
+      toNumberBR(simulacao?.parcela_total_reduzida) ||
+      toNumberBR(simulacao?.parcelaReduzidaTotal) ||
+      toNumberBR(simulacao?.primeira_parcela_reduzida_total) ||
       0;
 
-    // Percentual (se não vier valor pronto)
+    // ✅ 2) SE FOR MULTI-COTAS: SOMA A REDUZIDA DE CADA CARTA
+    const cartasArray = Array.isArray(cartas) && cartas.length > 0 ? cartas : [];
+    
+    const somaReducidaDasCartas = cartasArray.reduce((acc, c) => {
+      // tente primeiro um campo já reduzido por carta:
+      const pr = toNumberBR(c?.parcelaReduzida) || toNumberBR(c?.parcela_reduzida) || 0;
+
+      // se não existir, calcula a reduzida por carta a partir da parcela cheia + percentual
+      const parcelaCheiaCarta = toNumberBR(c?.parcela) || 0;
+      const perc = toNumberBR(c?.percentual_reducao) || toNumberBR(simulacao?.percentual_reducao) || 50;
+
+      const calc = parcelaCheiaCarta > 0 ? (parcelaCheiaCarta * (perc / 100)) : 0;
+
+      return acc + (pr > 0 ? pr : calc);
+    }, 0);
+
+    // ✅ 3) FALLBACK FINAL: se não tiver cartas nem total reduzido pronto, calcula 1x só
     const percentualReducao =
-      toNumberBR(simulacao.percentual_reducao) ||
-      toNumberBR(simulacao.percentualReducao) ||
-      toNumberBR(simulacao.percentual_parcela_reduzida) ||
+      toNumberBR(simulacao?.percentual_reducao) ||
+      toNumberBR(simulacao?.percentualReducao) ||
       50;
 
-    // Se não veio "parcela_reduzida_valor", calcula pela % (ex.: 50%)
-    const parcelaReduzidaCalculada = parcelaNormal * (percentualReducao / 100);
+    const parcelaTotalReduzidaCalculada = parcelaTotalCheia * (percentualReducao / 100);
 
-    // A "1ª parcela (no ato)" deve ser a reduzida quando estiver no modo reduzido
+    // ✅ VALOR CORRETO PRA IMPRIMIR NA LINHA "1ª Parcela (no ato) - Reduzida"
     const primeiraParcelaNoAto = isParcelaReduzida
-      ? (parcelaReduzidaValor > 0 ? parcelaReduzidaValor : parcelaReduzidaCalculada)
-      : parcelaNormal;
+      ? (
+          // prioridade: total reduzido pronto
+          (parcelaTotalReduzidaPronta > 0 ? parcelaTotalReduzidaPronta : 0) ||
+          // depois: soma das cartas
+          (somaReducidaDasCartas > 0 ? somaReducidaDasCartas : 0) ||
+          // fallback: calcula 1 vez
+          parcelaTotalReduzidaCalculada
+        )
+      : parcelaTotalCheia;
 
     console.log('🔍 Debug Impressão:', {
       isParcelaReduzida,
-      parcelaNormal,
-      parcelaReduzidaValor,
-      percentualReducao,
-      parcelaReduzidaCalculada,
+      parcelaTotalCheia,
+      parcelaTotalReduzidaPronta,
+      somaReducidaDasCartas,
+      parcelaTotalReduzidaCalculada,
       primeiraParcelaNoAto
     });
 
