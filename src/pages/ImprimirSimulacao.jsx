@@ -114,25 +114,25 @@ export default function ImprimirSimulacao() {
   }
   const modelo = simulacao.opcao_pos_contemplacao === 'prazo' ? 'Canopus (Recomendado)' : 'Simples';
 
-  // Lógica da parcela reduzida com conversão robusta
+  // Lógica da parcela reduzida - sempre usa o valor salvo no banco
   const isParcelaReduzida = !!simulacao?.parcela_reduzida;
   const parcelaNormal = toNumberBR(simulacao?.parcela_total);
   
-  // Procura o valor em múltiplos campos possíveis
-  const valorParcelaReduzidaDB = 
-    toNumberBR(simulacao?.valorParcelaReduzida) ||
-    toNumberBR(simulacao?.parcela_reduzida_valor) ||
-    toNumberBR(simulacao?.valor_parcela_reduzida) ||
-    0;
+  // Usa SOMENTE o valor que foi salvo no banco (valorParcelaReduzida)
+  const valorParcelaReduzidaDB = toNumberBR(simulacao?.valorParcelaReduzida);
   
-  // Se não encontrou valor pronto, calcula pelo percentual
-  const percentualReducao = toNumberBR(simulacao?.percentual_reducao) || 50;
-  const parcelaReduzidaCalculada = parcelaNormal * (percentualReducao / 100);
-  
-  // Prioridade: valor do DB > calculado > normal
-  const primeiraParcelaNoAto = isParcelaReduzida
-    ? (valorParcelaReduzidaDB > 0 ? valorParcelaReduzidaDB : parcelaReduzidaCalculada)
+  // A primeira parcela no ato é sempre o valor reduzido se estiver ativo, senão a normal
+  const primeiraParcelaNoAto = (isParcelaReduzida && valorParcelaReduzidaDB > 0) 
+    ? valorParcelaReduzidaDB 
     : parcelaNormal;
+  
+  console.log('🔍 Debug Impressão:', {
+    isParcelaReduzida,
+    valorParcelaReduzidaDB,
+    parcelaNormal,
+    primeiraParcelaNoAto,
+    simulacao_valorParcelaReduzida: simulacao?.valorParcelaReduzida
+  });
 
   return (
     <>
