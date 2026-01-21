@@ -33,13 +33,29 @@ Deno.serve(async (req) => {
                 throw new Error('Erro ao enviar convite: ' + inviteError.message);
             }
 
-            // Aguardar e buscar usuário criado
-            await new Promise(r => setTimeout(r, 2000));
-            const createdUsers = await base44.asServiceRole.entities.User.filter({ email });
-            if (!createdUsers?.length) {
-                throw new Error('Usuário não foi encontrado após convite. Verifique se o email está correto.');
+            // Aguardar e buscar usuário criado com retry
+            const maxRetries = 5;
+            let found = false;
+            
+            for (let i = 0; i < maxRetries; i++) {
+                await new Promise(r => setTimeout(r, 800));
+                const createdUsers = await base44.asServiceRole.entities.User.filter({ email });
+                if (createdUsers?.length) {
+                    invitedUser = createdUsers[0];
+                    found = true;
+                    break;
+                }
             }
-            invitedUser = createdUsers[0];
+            
+            // Se não encontrou após retry, retornar sucesso parcial
+            if (!found) {
+                return Response.json({ 
+                    success: true,
+                    invited: true,
+                    userLinked: false,
+                    message: 'Convite enviado! O usuário aparecerá no sistema após aceitar o convite.'
+                });
+            }
         }
         
         // Criar dados do Colaborador
