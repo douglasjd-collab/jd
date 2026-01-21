@@ -28,6 +28,8 @@ export default function SimuladorNormal() {
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
+  const [parcelaReduzida, setParcelaReduzida] = useState(false);
+  const [valorParcelaReduzida, setValorParcelaReduzida] = useState('');
   const [resultado, setResultado] = useState(null);
 
   useEffect(() => {
@@ -106,7 +108,13 @@ export default function SimuladorNormal() {
     
     let mesesCobrados = prazoNum;
     let novoPrazo = prazoNum - 1;
-    let novaParcelaCalculada = (saldoDevedorTotal - parcelaTotal) / novoPrazo;
+    
+    // Usar parcela reduzida se ativo, senão usar parcela total
+    const parcelaADescontar = parcelaReduzida && valorParcelaReduzida 
+      ? parseFloat(valorParcelaReduzida) 
+      : parcelaTotal;
+    
+    let novaParcelaCalculada = (saldoDevedorTotal - parcelaADescontar) / novoPrazo;
 
     // Aplicar regra Canopus se ativado
     if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
@@ -115,7 +123,7 @@ export default function SimuladorNormal() {
       if (mesesCobrados < 1) mesesCobrados = 1;
       
       novoPrazo = mesesCobrados;
-      novaParcelaCalculada = (saldoDevedorTotal - parcelaTotal) / mesesCobrados;
+      novaParcelaCalculada = (saldoDevedorTotal - parcelaADescontar) / mesesCobrados;
     }
 
     setResultado({
@@ -129,7 +137,9 @@ export default function SimuladorNormal() {
       aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel'),
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
-      saldoDevedor: saldoDevedorTotal
+      saldoDevedor: saldoDevedorTotal,
+      parcelaReduzida,
+      valorParcelaReduzida: parcelaReduzida ? parcelaADescontar : parcelaTotal
     });
   };
 
@@ -393,6 +403,42 @@ export default function SimuladorNormal() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">📉 Parcela Reduzida (Opcional)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">Usar Parcela Reduzida na 1ª Parcela?</Label>
+                  <p className="text-xs text-slate-500 mt-1">A 1ª parcela será menor e descontada do saldo</p>
+                </div>
+                <Switch checked={parcelaReduzida} onCheckedChange={setParcelaReduzida} />
+              </div>
+
+              {parcelaReduzida && (
+                <div>
+                  <Label className="text-xs">Valor da 1ª Parcela Reduzida (R$) *</Label>
+                  <Input
+                    type="text"
+                    value={valorParcelaReduzida ? formatarParaExibicao(valorParcelaReduzida) : ''}
+                    onChange={(e) => {
+                      const valorNumerico = handleMoedaInput(e.target.value);
+                      setValorParcelaReduzida(valorNumerico > 0 ? valorNumerico.toString() : '');
+                    }}
+                    placeholder="0,00"
+                  />
+                  {valorParcelaReduzida && parseFloat(valorParcelaReduzida) > 0 && (
+                    <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <p className="text-xs text-orange-700">📉 1ª Parcela Reduzida</p>
+                      <p className="text-xl font-bold text-orange-900">{formatCurrency(parseFloat(valorParcelaReduzida))}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">⚙️ Opções de Pagamento</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -492,6 +538,12 @@ export default function SimuladorNormal() {
                        <div className="flex justify-between">
                          <span className="text-slate-600">Saldo Devedor após Lance:</span>
                          <span className="font-semibold">{formatCurrency(resultado.saldoDevedor)}</span>
+                       </div>
+                     )}
+                     {resultado.parcelaReduzida && (
+                       <div className="flex justify-between">
+                         <span className="text-slate-600">1ª Parcela Reduzida:</span>
+                         <span className="font-semibold">{formatCurrency(resultado.valorParcelaReduzida)}</span>
                        </div>
                      )}
                      {resultado.aplicarRegraCanopus && (
