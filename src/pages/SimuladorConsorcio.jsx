@@ -27,6 +27,11 @@ export default function SimuladorConsorcio() {
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
   const [administradora, setAdministradora] = useState('');
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(30);
+  const [usarLanceProprio, setUsarLanceProprio] = useState(false);
+  const [lanceProprio, setLanceProprio] = useState('');
+  const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(true);
+  const [parcelasCarencia, setParcelasCarencia] = useState(3);
+  const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [resultado, setResultado] = useState(null);
 
   useEffect(() => {
@@ -100,11 +105,41 @@ export default function SimuladorConsorcio() {
       return;
     }
 
+    if (usarLanceProprio && (!lanceProprio || parseFloat(lanceProprio) <= 0)) {
+      toast.error('Informe o valor do lance próprio');
+      return;
+    }
+
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = prazoNum * parcelaTotal;
-    const saldoDevedor = totalPlano - parcelaTotal - lanceEmbutidoValor;
-    const novoPrazo = prazoNum - 1;
-    const novaParcela = saldoDevedor / novoPrazo;
+
+    let novaParcelaCalculada = parcelaTotal;
+    let mesesCobrados = prazoNum;
+    let saldoDevedorTotal = totalPlano;
+    let lanceProprioValor = 0;
+
+    if (usarLanceProprio) {
+      lanceProprioValor = parseFloat(lanceProprio);
+      
+      // Validar se lance próprio não é maior que o total do plano
+      if (lanceProprioValor > totalPlano) {
+        lanceProprioValor = totalPlano;
+        toast.warning('Lance próprio ajustado para o valor máximo do plano');
+      }
+
+      // Aplicar amortização
+      saldoDevedorTotal = totalPlano - lanceProprioValor;
+
+      // Calcular meses cobrados
+      if (aplicarRegraCanopus && administradora === 'canopus') {
+        const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
+        mesesCobrados = prazoNum - mesesNaoCobrados;
+        if (mesesCobrados < 1) mesesCobrados = 1;
+      }
+
+      // Calcular nova parcela
+      novaParcelaCalculada = saldoDevedorTotal / mesesCobrados;
+    }
 
     setResultado({
       creditoTotal: creditoAReceber,
@@ -115,9 +150,12 @@ export default function SimuladorConsorcio() {
       administradora,
       lanceEmbutidoPercentual,
       prazoOriginal: prazoNum,
-      novoPrazo,
-      novaParcela,
-      saldoDevedor
+      novaParcela: novaParcelaCalculada,
+      saldoDevedor: saldoDevedorTotal,
+      usarLanceProprio,
+      lanceProprio: lanceProprioValor,
+      mesesCobrados,
+      aplicarRegraCanopus: aplicarRegraCanopus && administradora === 'canopus'
     });
   };
 
@@ -147,6 +185,8 @@ export default function SimuladorConsorcio() {
         const empresaId = colab.empresa_id;
 
       // 1. Salvar simulação
+      const lanceTotal = lanceEmbutidoValor + (resultado.usarLanceProprio ? resultado.lanceProprio : 0);
+      
       const simulacao = await base44.entities.Simulacao.create({
         empresa_id: empresaId,
         cliente_nome: clienteNome,
@@ -159,9 +199,11 @@ export default function SimuladorConsorcio() {
         administradora: administradora,
         lance_embutido_percentual: lanceEmbutidoPercentual,
         lance_embutido_valor: lanceEmbutidoValor,
-        lance_total: lanceEmbutidoValor,
+        lance_proprio_ativo: resultado.usarLanceProprio || false,
+        lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
+        lance_total: lanceTotal,
         prazo_original: resultado.prazoOriginal,
-        novo_prazo: resultado.novoPrazo,
+        novo_prazo: resultado.usarLanceProprio ? resultado.mesesCobrados : resultado.prazoOriginal,
         nova_parcela: resultado.novaParcela,
         saldo_apos_contemplacao: resultado.saldoDevedor,
         usuario_id: currentUser.id,
@@ -192,8 +234,9 @@ export default function SimuladorConsorcio() {
         const novaSimulacaoInfo =
           `\n\n🔄 Nova Simulação (${new Date().toLocaleDateString('pt-BR')}):` +
           `\nCrédito: ${formatCurrency(creditoAReceber)}` +
-          `\nParcela: ${formatCurrency(parcelaTotal)}` +
+          `\nParcela: ${formatCurrency(resultado.usarLanceProprio ? resultado.novaParcela : parcelaTotal)}` +
           `\nLance Embutido: ${formatCurrency(lanceEmbutidoValor)}` +
+          (resultado.usarLanceProprio ? `\nLance Próprio: ${formatCurrency(resultado.lanceProprio)}` : '') +
           `\nAdministradora: ${administradora}`;
         
         await base44.entities.Oportunidade.update(oportunidadeDuplicada.id, {
@@ -246,8 +289,9 @@ export default function SimuladorConsorcio() {
           observacoes:
             `Simulação gerada automaticamente.` +
             `\n\nCrédito a Receber: ${formatCurrency(creditoAReceber)}` +
-            `\nParcela: ${formatCurrency(parcelaTotal)}` +
+            `\nParcela: ${formatCurrency(resultado.usarLanceProprio ? resultado.novaParcela : parcelaTotal)}` +
             `\nLance Embutido: ${formatCurrency(lanceEmbutidoValor)}` +
+            (resultado.usarLanceProprio ? `\nLance Próprio: ${formatCurrency(resultado.lanceProprio)}` : '') +
             `\nAdministradora: ${administradora}`,
           status: 'aberta',
           data_ultima_movimentacao: new Date().toISOString()
@@ -565,6 +609,87 @@ export default function SimuladorConsorcio() {
             </CardContent>
           </Card>
 
+          {/* Lance Próprio (Recurso Próprio) */}
+          {lanceEmbutidoPercentual > 0 && (
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  💰 Lance Próprio (Recurso Próprio)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div>
+                    <Label className="text-sm font-medium">Deseja ofertar Recurso Próprio junto com o Lance Embutido?</Label>
+                    <p className="text-xs text-slate-500 mt-1">Oferece um valor adicional para reduzir as parcelas</p>
+                  </div>
+                  <Switch checked={usarLanceProprio} onCheckedChange={setUsarLanceProprio} />
+                </div>
+
+                {usarLanceProprio && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                      <Input
+                        type="text"
+                        value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                        onChange={(e) => {
+                          const valorNumerico = handleMoedaInput(e.target.value);
+                          setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                        }}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    {administradora === 'canopus' && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel') && (
+                      <>
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div>
+                            <Label className="text-sm font-medium">Aplicar regra Canopus?</Label>
+                            <p className="text-xs text-blue-600 mt-1">Carência de 3 parcelas + 1 parcela no ato</p>
+                          </div>
+                          <Switch checked={aplicarRegraCanopus} onCheckedChange={setAplicarRegraCanopus} />
+                        </div>
+
+                        {aplicarRegraCanopus && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Parcelas de Carência</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={parcelasCarencia}
+                                onChange={(e) => setParcelasCarencia(parseInt(e.target.value) || 0)}
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Parcela no Ato</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={parcelaAtoContratacao}
+                                onChange={(e) => setParcelaAtoContratacao(parseInt(e.target.value) || 0)}
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {lanceProprio && parseFloat(lanceProprio) > 0 && (
+                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-xs text-purple-700">💎 Lance Próprio</p>
+                        <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">📊 Calcular</CardTitle>
@@ -611,17 +736,59 @@ export default function SimuladorConsorcio() {
                     </p>
                   </div>
 
+                  {resultado.usarLanceProprio && (
+                    <>
+                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
+                        <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Total do Plano:</span>
+                          <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Saldo Devedor após Lance:</span>
+                          <span className="font-semibold">{formatCurrency(resultado.saldoDevedor)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Meses Cobrados:</span>
+                          <span className="font-semibold">
+                            {resultado.mesesCobrados} 
+                            {resultado.aplicarRegraCanopus && ' (prazo - 1 no ato - 3 carência)'}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
                     <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-purple-700 text-sm">Novo Prazo:</span>
-                        <span className="font-bold text-purple-900 text-xl">{resultado.novoPrazo} meses</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-purple-700 text-sm">Nova Parcela:</span>
-                        <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
-                      </div>
+                      {resultado.usarLanceProprio ? (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-700 text-sm">Parcelas:</span>
+                            <span className="font-bold text-purple-900 text-xl">{resultado.mesesCobrados}x</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-700 text-sm">Nova Parcela:</span>
+                            <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-700 text-sm">Prazo:</span>
+                            <span className="font-bold text-purple-900 text-xl">{resultado.prazoOriginal} meses</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-700 text-sm">Parcela:</span>
+                            <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.parcelaTotal)}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
