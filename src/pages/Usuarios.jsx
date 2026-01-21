@@ -365,6 +365,7 @@ export default function Usuarios() {
     window.setTimeout(() => {
       setSelectedUsuario(null);
       setInviteSuccess(false);
+      setFormKey(k => k + 1);
     }, 200);
   };
 
