@@ -483,18 +483,26 @@ export default function SimuladorNormal() {
                   )}
 
                   {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio) && (
-                    <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Total do Plano:</span>
-                        <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Meses Cobrados:</span>
-                        <span className="font-semibold">
-                          {resultado.mesesCobrados} (prazo - 1 no ato - 3 carência)
-                        </span>
-                      </div>
-                    </div>
+                   <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
+                     <div className="flex justify-between">
+                       <span className="text-slate-600">Total do Plano:</span>
+                       <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
+                     </div>
+                     {resultado.usarLanceProprio && (
+                       <div className="flex justify-between">
+                         <span className="text-slate-600">Saldo Devedor após Lance:</span>
+                         <span className="font-semibold">{formatCurrency(resultado.saldoDevedor)}</span>
+                       </div>
+                     )}
+                     {resultado.aplicarRegraCanopus && (
+                       <div className="flex justify-between">
+                         <span className="text-slate-600">Meses Cobrados:</span>
+                         <span className="font-semibold">
+                           {resultado.mesesCobrados} (prazo - 1 no ato - 3 carência)
+                         </span>
+                       </div>
+                     )}
+                   </div>
                   )}
 
                   <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
