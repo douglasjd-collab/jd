@@ -337,6 +337,21 @@ export default function Usuarios() {
         console.error('[INVITE] data:', data);
         console.error('[INVITE] full error:', error);
 
+        // Se o erro é sobre usuário não encontrado após convite, tratar como sucesso parcial
+        if (msg.includes('Usuário não foi encontrado após convite') || 
+            msg.includes('não foi encontrado') ||
+            msg.includes('User not found')) {
+          toast.success('✅ Convite enviado! O usuário aparecerá após aceitar e acessar o sistema.', {
+            duration: 5000
+          });
+          
+          // Atualizar lista mesmo assim
+          await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+          
+          safeCloseForm();
+          return;
+        }
+
         toast.error(`Erro${status ? ` (${status})` : ''}: ${msg}`);
       } finally {
         setIsSubmitting(false);
