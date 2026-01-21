@@ -252,7 +252,7 @@ export default function SimuladorConsorcio() {
           etapa_id: oportunidadeDuplicada.etapa_id,
           vendedor_id: oportunidadeDuplicada.vendedor_id,
           observacoes: observacoesAtuais + novaSimulacaoInfo,
-          valor_estimado: creditoAReceber,
+          valor_estimado: resultado.creditoTotal,
           data_ultima_movimentacao: new Date().toISOString()
         });
 
@@ -286,7 +286,7 @@ export default function SimuladorConsorcio() {
           cliente_nome: clienteNome,
           cliente_telefone: telefone,
           telefone_lead: telefone,
-          valor_estimado: creditoAReceber,
+          valor_estimado: resultado.creditoTotal,
           etapa_id: etapaSimulacao.id,
           etapa_nome: etapaSimulacao.nome,
           vendedor_id: currentUser.id,
