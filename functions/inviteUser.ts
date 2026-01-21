@@ -25,25 +25,19 @@ Deno.serve(async (req) => {
 
         // Convidar usuário se não existir
         if (!invitedUser) {
-            // Criar convite através da API base44
-            const inviteResponse = await fetch(`${Deno.env.get('BASE44_API_URL')}/apps/${Deno.env.get('BASE44_APP_ID')}/users/invite`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${Deno.env.get('BASE44_SERVICE_ROLE_KEY')}`
-                },
-                body: JSON.stringify({ email, role: requestedRole })
-            });
-
-            if (!inviteResponse.ok) {
-                throw new Error('Erro ao enviar convite');
+            // Enviar convite usando o método correto do SDK
+            try {
+                await base44.users.inviteUser(email, requestedRole);
+            } catch (inviteError) {
+                console.error('Erro ao enviar convite:', inviteError);
+                throw new Error('Erro ao enviar convite: ' + inviteError.message);
             }
 
             // Aguardar e buscar usuário criado
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 2000));
             const createdUsers = await base44.asServiceRole.entities.User.filter({ email });
             if (!createdUsers?.length) {
-                throw new Error('Usuário não foi encontrado após convite');
+                throw new Error('Usuário não foi encontrado após convite. Verifique se o email está correto.');
             }
             invitedUser = createdUsers[0];
         }
