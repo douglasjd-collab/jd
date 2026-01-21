@@ -263,11 +263,26 @@ export default function Usuarios() {
       setIsSubmitting(true);
       
       try {
-        const response = await base44.functions.invoke('inviteUser', normalizedData);
+        console.log('[INVITE] payload:', normalizedData);
+        toast.message('Enviando convite...');
+
+        const res = await base44.functions.invoke('inviteUser', normalizedData);
         
-        if (response.data.error) {
-          throw new Error(response.data.error);
+        const data = res?.data ?? null;
+        const err = res?.error ?? null;
+
+        console.log('[INVITE] response:', res);
+
+        if (err) {
+          throw new Error(err.message || 'Erro ao enviar convite (invoke error)');
         }
+
+        if (data?.error) {
+          throw new Error(data.error);
+        }
+
+        // Marcar sucesso
+        setInviteSuccess(true);
 
         // Atualizar lista
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
@@ -277,18 +292,14 @@ export default function Usuarios() {
         
         // Mostrar mensagem de sucesso
         toast.success('✅ Convite enviado com sucesso!', { 
-          duration: 4000,
-          style: {
-            background: '#10B981',
-            color: 'white',
-          }
+          duration: 4000
         });
         
         // Fechar modal
         safeCloseForm();
       } catch (error) {
-        console.error('Erro detalhado:', error);
-        toast.error(error.message || 'Erro ao enviar convite');
+        console.error('[INVITE] erro:', error);
+        toast.error(error?.message || 'Erro ao enviar convite');
       } finally {
         setIsSubmitting(false);
       }
