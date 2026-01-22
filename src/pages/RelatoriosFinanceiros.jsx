@@ -32,9 +32,7 @@ export default function RelatoriosFinanceiros() {
     }
   };
 
-  // Nota: Não buscar RecebimentoComissao aqui, pois já está contabilizado em ComissaoAPagar
-
-  // Buscar Comissões a Pagar
+  // Buscar Comissões a Pagar (contém tanto recebidas quanto a pagar/pagas)
   const { data: comissoesAPagar = [] } = useQuery({
     queryKey: ['comissoes-a-pagar-relatorio'],
     queryFn: async () => {
