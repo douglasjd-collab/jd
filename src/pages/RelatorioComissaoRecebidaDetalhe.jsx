@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { createPageUrl } from "@/utils";
-import { Link } from "react-router-dom";
 
 import PageHeader from "@/components/ui/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,26 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft, Download, Calendar, DollarSign } from "lucide-react";
-
-const formatBR = (isoOrDate) => {
-  if (!isoOrDate) return "";
-  const d = typeof isoOrDate === "string" ? new Date(isoOrDate) : isoOrDate;
-  if (Number.isNaN(d.getTime())) return String(isoOrDate);
-  return d.toLocaleDateString("pt-BR");
-};
-
-const toNumber = (v) => {
-  if (typeof v === "number") return v;
-  if (!v) return 0;
-  const s = String(v)
-    .replace(/\s/g, "")
-    .replace("R$", "")
-    .replace(/\./g, "")
-    .replace(",", ".");
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
-};
+import { Loader2, Download, Calendar, DollarSign, FileText } from "lucide-react";
+import { format } from "date-fns";
 
 const moneyBR = (n) =>
   (Number(n) || 0).toLocaleString("pt-BR", {
@@ -46,76 +27,79 @@ const moneyBR = (n) =>
 
 export default function RelatorioComissaoRecebidaDetalhe() {
   const params = new URLSearchParams(window.location.search);
-  const dataKey = params.get("data") || "sem-data";
+  const relatorioId = params.get("id");
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["comissao-recebida-detalhe", dataKey],
+  const { data: relatorio, isLoading: loadingRelatorio, error: errorRelatorio } = useQuery({
+    queryKey: ["relatorio-recebimento", relatorioId],
     queryFn: async () => {
+      if (!relatorioId) return null;
+      const res = await base44.entities.RelatorioRecebimento.filter({ id: relatorioId });
+      return res?.[0] || null;
+    },
+    enabled: !!relatorioId,
+  });
+
+  const { data: itens = [], isLoading: loadingItens } = useQuery({
+    queryKey: ["recebimentos-relatorio", relatorioId],
+    queryFn: async () => {
+      if (!relatorioId) return [];
       const res = await base44.entities.RecebimentoComissao.filter(
-        { status_recebimento: 'recebida' },
-        '-data_recebimento'
+        { relatorio_recebimento_id: relatorioId },
+        '-created_date'
       );
       return res || [];
     },
+    enabled: !!relatorioId,
   });
-
-  const filtrado = useMemo(() => {
-    const rows = Array.isArray(data) ? data : [];
-    
-    if (dataKey === "sem-data") {
-      return rows.filter((r) => !r?.data_recebimento);
-    }
-
-    return rows.filter((r) => {
-      if (!r?.data_recebimento) return false;
-      const rowDate = new Date(r.data_recebimento).toISOString().slice(0, 10);
-      return rowDate === dataKey;
-    });
-  }, [data, dataKey]);
-
-  const totais = useMemo(() => {
-    return filtrado.reduce(
-      (acc, r) => ({
-        totalValor: acc.totalValor + toNumber(r?.valor_recebido),
-        totalAPagar: acc.totalAPagar + toNumber(r?.valor_a_pagar),
-        qtd: acc.qtd + 1,
-      }),
-      { totalValor: 0, totalAPagar: 0, qtd: 0 }
-    );
-  }, [filtrado]);
 
   const baixarPdf = async () => {
     try {
-      toast.info("Gerando PDF do relatório...");
-      
-      // TODO: Implementar função backend para gerar PDF
-      // const resp = await base44.functions.invoke('gerarPdfComissaoRecebidaDetalhe', { 
-      //   data: dataKey,
-      //   itens: filtrado 
-      // });
-      // if (resp?.data?.url) window.open(resp.data.url, "_blank");
-      
-      toast.success("Recurso de PDF em desenvolvimento");
+      if (relatorio?.pdf_url) {
+        window.open(relatorio.pdf_url, "_blank");
+      } else {
+        toast.info("Gerando PDF do relatório...");
+        // TODO: Implementar função backend para gerar PDF
+        // const resp = await base44.functions.invoke('gerarPdfRelatorioRecebimento', { 
+        //   relatorioId: relatorioId,
+        //   itens: itens 
+        // });
+        // if (resp?.data?.url) window.open(resp.data.url, "_blank");
+        
+        toast.success("Recurso de PDF em desenvolvimento");
+      }
     } catch (e) {
       console.error(e);
       toast.error("Erro ao gerar PDF");
     }
   };
 
-  const dataLabel = dataKey === "sem-data" 
-    ? "Sem data de recebimento" 
-    : formatBR(dataKey);
+  if (!relatorioId) {
+    return (
+      <div className="p-8">
+        <div className="text-center text-red-600">
+          Nenhum relatório selecionado. ID inválido.
+        </div>
+      </div>
+    );
+  }
+
+  const isLoading = loadingRelatorio || loadingItens;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Relatório - ${dataLabel}`}
-        subtitle="Detalhes das comissões recebidas nesta data"
+        title={relatorio ? `Relatório ${relatorio.protocolo}` : "Carregando..."}
+        subtitle={
+          relatorio?.data_recebimento
+            ? `Recebimento de ${format(new Date(relatorio.data_recebimento), 'dd/MM/yyyy')}`
+            : ""
+        }
         backTo={createPageUrl("RelatoriosComissaoRecebida")}
       >
         <Button 
           onClick={baixarPdf}
           className="bg-[#10353C] hover:bg-[#1a4a56]"
+          disabled={!relatorio}
         >
           <Download className="w-4 h-4 mr-2" />
           Baixar PDF
@@ -127,10 +111,12 @@ export default function RelatorioComissaoRecebidaDetalhe() {
         <Card className="border-0 shadow-sm bg-blue-50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Calendar className="w-8 h-8 text-blue-600" />
+              <FileText className="w-8 h-8 text-blue-600" />
               <div>
-                <p className="text-sm text-blue-700">Total de Recebimentos</p>
-                <p className="text-2xl font-bold text-blue-800">{totais.qtd}</p>
+                <p className="text-sm text-blue-700">Total de Itens</p>
+                <p className="text-2xl font-bold text-blue-800">
+                  {isLoading ? "..." : (relatorio?.qtd_itens || 0)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -143,7 +129,7 @@ export default function RelatorioComissaoRecebidaDetalhe() {
               <div>
                 <p className="text-sm text-emerald-700">Valor Recebido</p>
                 <p className="text-2xl font-bold text-emerald-800">
-                  {moneyBR(totais.totalValor)}
+                  {isLoading ? "..." : moneyBR(relatorio?.total_recebido_adm || 0)}
                 </p>
               </div>
             </div>
@@ -157,7 +143,7 @@ export default function RelatorioComissaoRecebidaDetalhe() {
               <div>
                 <p className="text-sm text-purple-700">A Pagar aos Vendedores</p>
                 <p className="text-2xl font-bold text-purple-800">
-                  {moneyBR(totais.totalAPagar)}
+                  {isLoading ? "..." : moneyBR(relatorio?.total_a_pagar || 0)}
                 </p>
               </div>
             </div>
@@ -165,10 +151,58 @@ export default function RelatorioComissaoRecebidaDetalhe() {
         </Card>
       </div>
 
-      {/* Tabela de Detalhes */}
+      {/* Informações do Relatório */}
+      {relatorio && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações do Relatório</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex gap-4 flex-wrap text-sm">
+              <div>
+                <span className="text-slate-600">Protocolo:</span>
+                <span className="ml-2 font-semibold">{relatorio.protocolo}</span>
+              </div>
+              <div>
+                <span className="text-slate-600">Data:</span>
+                <span className="ml-2 font-semibold">
+                  {relatorio.data_recebimento
+                    ? format(new Date(relatorio.data_recebimento), 'dd/MM/yyyy')
+                    : '-'}
+                </span>
+              </div>
+              {relatorio.administradora_nome && (
+                <div>
+                  <span className="text-slate-600">Administradora:</span>
+                  <span className="ml-2 font-semibold">{relatorio.administradora_nome}</span>
+                </div>
+              )}
+              <div>
+                <Badge 
+                  className={
+                    relatorio.origem === 'importacao'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-green-100 text-green-700'
+                  }
+                >
+                  {relatorio.origem === 'importacao' ? 'Importação' : 'Manual'}
+                </Badge>
+              </div>
+            </div>
+            {relatorio.observacoes && (
+              <div className="text-sm">
+                <span className="text-slate-600">Observações:</span>
+                <p className="mt-1 text-slate-700 italic">{relatorio.observacoes}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tabela de Recebimentos */}
       <Card>
         <CardHeader>
-          <CardTitle>Recebimentos do Dia</CardTitle>
+          <CardTitle>Recebimentos Incluídos</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading && (
@@ -178,19 +212,19 @@ export default function RelatorioComissaoRecebidaDetalhe() {
             </div>
           )}
 
-          {error && (
+          {errorRelatorio && (
             <div className="text-sm text-red-600">
-              Erro ao carregar dados. Verifique o console.
+              Erro ao carregar relatório. Verifique o console.
             </div>
           )}
 
-          {!isLoading && !filtrado.length && (
+          {!isLoading && !itens.length && (
             <div className="text-sm opacity-70">
-              Nenhum recebimento encontrado para esta data.
+              Nenhum recebimento vinculado a este relatório.
             </div>
           )}
 
-          {!isLoading && filtrado.length > 0 && (
+          {!isLoading && itens.length > 0 && (
             <div className="border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
@@ -199,7 +233,6 @@ export default function RelatorioComissaoRecebidaDetalhe() {
                     <TableHead>Grupo/Cota</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Vendedor</TableHead>
-                    <TableHead>Administradora</TableHead>
                     <TableHead className="text-right">Valor Recebido</TableHead>
                     <TableHead className="text-right">% Comissão</TableHead>
                     <TableHead className="text-right">A Pagar</TableHead>
@@ -207,7 +240,7 @@ export default function RelatorioComissaoRecebidaDetalhe() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtrado.map((r) => (
+                  {itens.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.contrato || '-'}</TableCell>
                       <TableCell>
@@ -215,7 +248,6 @@ export default function RelatorioComissaoRecebidaDetalhe() {
                       </TableCell>
                       <TableCell>{r.cliente_nome || '-'}</TableCell>
                       <TableCell>{r.vendedor_nome || '-'}</TableCell>
-                      <TableCell>{r.administradora_nome || '-'}</TableCell>
                       <TableCell className="text-right font-medium">
                         {moneyBR(r.valor_recebido)}
                       </TableCell>
@@ -241,15 +273,15 @@ export default function RelatorioComissaoRecebidaDetalhe() {
                   
                   {/* Linha de Totais */}
                   <TableRow className="bg-slate-50 font-medium">
-                    <TableCell colSpan={5} className="text-right">
+                    <TableCell colSpan={4} className="text-right">
                       <strong>TOTAIS:</strong>
                     </TableCell>
                     <TableCell className="text-right">
-                      <strong>{moneyBR(totais.totalValor)}</strong>
+                      <strong>{moneyBR(relatorio?.total_recebido_adm || 0)}</strong>
                     </TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-right text-emerald-600">
-                      <strong>{moneyBR(totais.totalAPagar)}</strong>
+                      <strong>{moneyBR(relatorio?.total_a_pagar || 0)}</strong>
                     </TableCell>
                     <TableCell></TableCell>
                   </TableRow>
@@ -259,24 +291,6 @@ export default function RelatorioComissaoRecebidaDetalhe() {
           )}
         </CardContent>
       </Card>
-
-      {/* Botões de Ação */}
-      <div className="flex justify-between">
-        <Link to={createPageUrl("RelatoriosComissaoRecebida")}>
-          <Button variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar para Relatórios
-          </Button>
-        </Link>
-        
-        <Button 
-          onClick={baixarPdf}
-          className="bg-[#10353C] hover:bg-[#1a4a56]"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Baixar este Relatório (PDF)
-        </Button>
-      </div>
     </div>
   );
 }
