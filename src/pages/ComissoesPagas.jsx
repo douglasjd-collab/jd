@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Download, Eye, Printer, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Download, Eye, Printer, ChevronDown, ChevronUp, FileText, User } from 'lucide-react';
 import moment from 'moment';
 import { formatDateBR } from '@/components/utils/dateHelpers';
 import { toast } from 'react-hot-toast';
@@ -18,7 +18,7 @@ export default function ComissoesPagas() {
   const [filtroMes, setFiltroMes] = useState('todos');
   const [filtroDataInicio, setFiltroDataInicio] = useState('');
   const [filtroDataFim, setFiltroDataFim] = useState('');
-  const [expandedDates, setExpandedDates] = useState({});
+  const [expandedVendedores, setExpandedVendedores] = useState({});
 
   useEffect(() => {
     loadUser();
@@ -102,34 +102,38 @@ export default function ComissoesPagas() {
     return true;
   });
 
-  // Agrupar por data de pagamento
-  const groupedByDate = dadosFiltrados.reduce((acc, c) => {
-    const dateKey = c.data_pagamento || 'sem-data';
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
+  // Agrupar por vendedor
+  const groupedByVendedor = dadosFiltrados.reduce((acc, c) => {
+    const key = c.vendedor_id || 'sem-vendedor';
+    if (!acc[key]) {
+      acc[key] = {
+        vendedor_id: c.vendedor_id,
+        vendedor_nome: c.vendedor_nome || 'Sem vendedor',
+        comissoes: []
+      };
     }
-    acc[dateKey].push(c);
+    acc[key].comissoes.push(c);
     return acc;
   }, {});
 
-  // Ordenar datas (mais recente primeiro)
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
-    if (a === 'sem-data') return 1;
-    if (b === 'sem-data') return -1;
-    return moment(b).valueOf() - moment(a).valueOf();
-  });
+  const vendedoresComComissoes = Object.values(groupedByVendedor);
 
-  const toggleDate = (date) => {
-    setExpandedDates(prev => ({ ...prev, [date]: !prev[date] }));
+  const toggleVendedor = (vendedorId) => {
+    setExpandedVendedores(prev => ({ ...prev, [vendedorId]: !prev[vendedorId] }));
   };
 
-  const gerarPdfData = async (data, comissoes) => {
+  const gerarPdfVendedor = async (vendedor) => {
     try {
       toast.loading('Gerando PDF...');
       
+      // Usar a data mais recente de pagamento do vendedor
+      const dataMaisRecente = vendedor.comissoes
+        .filter(c => c.data_pagamento)
+        .sort((a, b) => moment(b.data_pagamento).valueOf() - moment(a.data_pagamento).valueOf())[0]?.data_pagamento;
+      
       const response = await base44.functions.invoke('gerarPdfComissaoPaga', {
-        data: data,
-        itens: comissoes
+        data: dataMaisRecente || new Date().toISOString().split('T')[0],
+        itens: vendedor.comissoes
       });
 
       toast.dismiss();
@@ -139,7 +143,7 @@ export default function ComissoesPagas() {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Comissoes_Pagas_${moment(data).format('DD-MM-YYYY')}.pdf`;
+        link.download = `Comissoes_Pagas_${vendedor.vendedor_nome.replace(/\s+/g, '_')}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -250,70 +254,72 @@ export default function ComissoesPagas() {
         </div>
       </Card>
 
-      {/* Lista de Pagamentos Agrupados por Data */}
+      {/* Lista de Vendedores */}
       {loadingComissoes ? (
         <Card className="p-8">
           <div className="text-center text-slate-500">Carregando...</div>
         </Card>
-      ) : sortedDates.length === 0 ? (
+      ) : vendedoresComComissoes.length === 0 ? (
         <Card className="p-8">
           <div className="text-center text-slate-500">Nenhuma comissão paga encontrada</div>
         </Card>
       ) : (
         <div className="space-y-4">
-          {sortedDates.map((date) => {
-            const comissoes = groupedByDate[date];
-            const totalData = comissoes.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
-            const isExpanded = expandedDates[date];
-            const dataFormatada = date === 'sem-data' ? 'Sem Data de Pagamento' : formatDateBR(date);
+          {vendedoresComComissoes.map((vendedor) => {
+            const totalPago = vendedor.comissoes.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+            const isExpanded = expandedVendedores[vendedor.vendedor_id];
+            
+            // Obter datas de pagamento únicas
+            const datasUnicas = [...new Set(
+              vendedor.comissoes
+                .filter(c => c.data_pagamento)
+                .map(c => formatDateBR(c.data_pagamento))
+            )].join(', ');
 
             return (
-              <Card key={date} className="overflow-hidden">
-                {/* Header da Data */}
-                <div 
-                  className="bg-[#10353C] text-white p-4 cursor-pointer hover:bg-[#0d2a30] transition-colors"
-                  onClick={() => toggleDate(date)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-bold text-lg">{dataFormatada}</h3>
-                        <Badge className="bg-white/20 text-white border-0">
-                          {comissoes.length} pagamento(s)
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-white/80 mt-1">
-                        Total: <span className="font-semibold">
-                          {totalData.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              <Card key={vendedor.vendedor_id} className="overflow-hidden">
+                {/* Header do Vendedor */}
+                <div className="bg-[#10353C] text-white p-4 flex items-center justify-between">
+                  <div className="flex-1 flex items-center gap-3">
+                    <User className="w-6 h-6" />
+                    <div>
+                      <h3 className="font-bold text-lg">{vendedor.vendedor_nome}</h3>
+                      <div className="text-sm text-white/80 flex gap-4 mt-1">
+                        <span>{vendedor.comissoes.length} comissão(ões)</span>
+                        <span>•</span>
+                        <span className="font-semibold">
+                          {totalPago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
+                        {datasUnicas && (
+                          <>
+                            <span>•</span>
+                            <span>Pago em: {datasUnicas}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      {date !== 'sem-data' && (
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            gerarPdfData(date, comissoes);
-                          }}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Baixar PDF
-                        </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => gerarPdfVendedor(vendedor)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Baixar PDF
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => toggleVendedor(vendedor.vendedor_id)}
+                      className="text-white hover:bg-white/10"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
                       )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-white hover:bg-white/10"
-                      >
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5" />
-                        )}
-                      </Button>
-                    </div>
+                    </Button>
                   </div>
                 </div>
 
@@ -323,8 +329,8 @@ export default function ComissoesPagas() {
                     <table className="w-full">
                       <thead className="bg-slate-50 border-b">
                         <tr>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Data Pgto</th>
                           <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Vendedor</th>
                           <th className="text-left p-3 font-semibold text-slate-700 text-sm">Administradora</th>
                           <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
                           <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
@@ -335,10 +341,10 @@ export default function ComissoesPagas() {
                         </tr>
                       </thead>
                       <tbody>
-                        {comissoes.map((c) => (
+                        {vendedor.comissoes.map((c) => (
                           <tr key={c.id} className="border-b hover:bg-slate-50">
+                            <td className="p-3 text-sm">{formatDateBR(c.data_pagamento)}</td>
                             <td className="p-3 text-sm">{c.cliente_nome || '-'}</td>
-                            <td className="p-3 text-sm">{c.vendedor_nome || '-'}</td>
                             <td className="p-3 text-sm">{c.administradora_nome || '-'}</td>
                             <td className="p-3 text-sm">
                               {c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-'}
