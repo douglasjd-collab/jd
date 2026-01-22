@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Search, DollarSign, CheckCircle2, Eye, Receipt } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, Eye, Receipt, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 import { formatDateBR } from '@/components/utils/dateHelpers';
@@ -112,8 +112,9 @@ export default function ComissoesPagar() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('a_pagar');
   const [mesFilter, setMesFilter] = useState('todos');
-  const [vendedorSelecionado, setVendedorSelecionado] = useState(null);
+  const [expandedVendedores, setExpandedVendedores] = useState({});
   const [itensSelecionados, setItensSelecionados] = useState(new Set());
+  const [vendedorPagamento, setVendedorPagamento] = useState(null);
   const [pagarLoteModal, setPagarLoteModal] = useState(false);
   const [verRecebimentoModal, setVerRecebimentoModal] = useState(false);
   const [recebimentoDetalhes, setRecebimentoDetalhes] = useState(null);
@@ -138,11 +139,6 @@ export default function ComissoesPagar() {
         const colab = colabs[0];
         const userData = { ...me, perfil: colab.perfil, empresa_id: colab.empresa_id, colaborador_id: colab.id, id: me.id };
         setUser(userData);
-        
-        // Auto-select vendedor if user is vendedor
-        if (colab.perfil === 'vendedor') {
-          setVendedorSelecionado({ id: me.id, nome: colab.nome, email: colab.email });
-        }
       }
     }
   };
@@ -229,6 +225,10 @@ export default function ComissoesPagar() {
       const avisos = [];
       const pagasAgora = [];
 
+      if (comissoesParaPagar.length === 0) {
+        throw new Error('Nenhuma comissão válida para pagar');
+      }
+
       // Gerar código do lote
       const lotes = await base44.entities.PagamentoComissaoLote.filter({ empresa_id: user.empresa_id });
       const loteCode = `EMPAY${String(lotes.length + 1).padStart(4, '0')}`;
@@ -269,7 +269,7 @@ export default function ComissoesPagar() {
       );
 
       // Gerar relatório HTML
-      const relatorioHtml = gerarRelatorioHtml(comissoesComValorCarta, vendedorSelecionado, data_pagamento, forma_pagamento, user);
+      const relatorioHtml = gerarRelatorioHtml(comissoesComValorCarta, vendedorPagamento, data_pagamento, forma_pagamento, user);
 
       // Registrar o lote
       const totalPago = pagasAgora.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
@@ -277,8 +277,8 @@ export default function ComissoesPagar() {
       await base44.entities.PagamentoComissaoLote.create({
         empresa_id: user.empresa_id,
         lote_code: loteCode,
-        vendedor_id: vendedorSelecionado.id,
-        vendedor_nome: vendedorSelecionado.nome,
+        vendedor_id: vendedorPagamento.vendedor_id,
+        vendedor_nome: vendedorPagamento.vendedor_nome,
         data_pagamento,
         forma_pagamento,
         total_itens: pagasAgora.length,
@@ -289,14 +289,19 @@ export default function ComissoesPagar() {
         comissoes_ids: JSON.stringify(pagasAgora.map(c => c.id)),
         relatorio_html: relatorioHtml,
         email_enviado: false,
-        email_vendedor: vendedorSelecionado.email || null,
+        email_vendedor: null,
       });
 
+      // Buscar email do vendedor
+      const vendedorEmail = await base44.entities.Colaborador.filter({ 
+        id: vendedorPagamento.vendedor_id 
+      }).then(v => v.length > 0 ? v[0].email : null);
+
       // Enviar e-mail ao vendedor
-      if (vendedorSelecionado.email) {
+      if (vendedorEmail) {
         try {
           await base44.integrations.Core.SendEmail({
-            to: vendedorSelecionado.email,
+            to: vendedorEmail,
             subject: `Pagamento de comissão - ${moment(data_pagamento).format('DD/MM/YYYY')}`,
             body: relatorioHtml,
           });
@@ -334,12 +339,13 @@ export default function ComissoesPagar() {
       
       setPagarLoteModal(false);
       setItensSelecionados(new Set());
+      setVendedorPagamento(null);
       setFormaPagamento('PIX');
       setObservacao('');
     },
   });
 
-  const gerarRelatorioHtml = (comissoes, vendedor, dataPagamento, formaPagamento, geradoPor) => {
+  const gerarRelatorioHtml = (comissoes, vendedorInfo, dataPagamento, formaPagamento, geradoPor) => {
     const totalPago = comissoes.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
     
     return `
@@ -367,7 +373,7 @@ export default function ComissoesPagar() {
         </div>
         
         <div class="info">
-          <div class="info-item"><strong>Vendedor:</strong> ${vendedor.nome}</div>
+          <div class="info-item"><strong>Vendedor:</strong> ${vendedorInfo.vendedor_nome}</div>
           <div class="info-item"><strong>Data do Pagamento:</strong> ${moment(dataPagamento).format('DD/MM/YYYY')}</div>
           <div class="info-item"><strong>Forma de Pagamento:</strong> ${formaPagamento}</div>
           <div class="info-item"><strong>Quantidade de itens:</strong> ${comissoes.length}</div>
@@ -462,7 +468,7 @@ export default function ComissoesPagar() {
   };
 
   const handlePagarLote = () => {
-    if (itensSelecionados.size === 0) return;
+    if (itensSelecionados.size === 0 || !vendedorPagamento) return;
     
     pagarLoteMutation.mutate({
       comissoesIds: Array.from(itensSelecionados),
@@ -470,6 +476,17 @@ export default function ComissoesPagar() {
       forma_pagamento: formaPagamento,
       observacao,
     });
+  };
+
+  const toggleVendedor = (vendedorId) => {
+    setExpandedVendedores(prev => ({ ...prev, [vendedorId]: !prev[vendedorId] }));
+  };
+
+  const handleIniciarPagamento = (vendedor) => {
+    const comissoesVendedor = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar');
+    setItensSelecionados(new Set(comissoesVendedor.map(c => c.id)));
+    setVendedorPagamento(vendedor);
+    setPagarLoteModal(true);
   };
 
   const toggleSelectItem = (id) => {
@@ -492,11 +509,6 @@ export default function ComissoesPagar() {
   };
 
   const filtered = comissoes.filter((c) => {
-    // Filtro por vendedor selecionado
-    if (vendedorSelecionado && c.vendedor_id !== vendedorSelecionado.id) {
-      return false;
-    }
-
     // Se é vendedor, só vê suas comissões
     if (user?.perfil === 'vendedor' && c.vendedor_id !== user?.id) {
       return false;
@@ -523,6 +535,7 @@ export default function ComissoesPagar() {
       const term = searchTerm.toLowerCase();
       return (
         c.cliente_nome?.toLowerCase().includes(term) ||
+        c.vendedor_nome?.toLowerCase().includes(term) ||
         c.grupo?.toLowerCase().includes(term) ||
         c.cota?.toLowerCase().includes(term)
       );
@@ -530,22 +543,27 @@ export default function ComissoesPagar() {
     return true;
   });
 
-  const totalAPagar = filtered
-    .filter((c) => c.status_pagamento === 'a_pagar')
-    .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+  // Agrupar por vendedor
+  const groupedByVendedor = filtered.reduce((acc, c) => {
+    const key = c.vendedor_id || 'sem-vendedor';
+    if (!acc[key]) {
+      acc[key] = {
+        vendedor_id: c.vendedor_id,
+        vendedor_nome: c.vendedor_nome || 'Sem vendedor',
+        comissoes: []
+      };
+    }
+    acc[key].comissoes.push(c);
+    return acc;
+  }, {});
 
-  const totalSelecionado = Array.from(itensSelecionados)
-    .map(id => comissoes.find(c => c.id === id))
-    .filter(Boolean)
-    .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+  const vendedoresComComissoes = Object.values(groupedByVendedor);
 
   const mesesDisponiveis = [...new Set(comissoes.map((c) => 
     c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM') : null
   ).filter(Boolean))].sort().reverse();
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
-  const aPagarVisiveis = filtered.filter(c => c.status_pagamento === 'a_pagar');
-  const allSelected = aPagarVisiveis.length > 0 && itensSelecionados.size === aPagarVisiveis.length;
 
   if (!user) {
     return <div className="p-6">Carregando...</div>;
@@ -558,188 +576,220 @@ export default function ComissoesPagar() {
         subtitle="Gerenciar pagamento de comissões aos vendedores"
       />
 
-      {/* Seletor de Vendedor (obrigatório) */}
-      {isAdmin && (
-        <Card className="p-6 mb-6 bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="space-y-4">
-            <div>
-              <Label className="text-lg font-semibold mb-2 block">Vendedor *</Label>
-              <Select 
-                value={vendedorSelecionado?.id || ''} 
-                onValueChange={(id) => {
-                  const v = vendedores.find(ven => ven.id === id);
-                  setVendedorSelecionado(v);
-                  setItensSelecionados(new Set());
-                }}
-              >
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Selecione um vendedor para visualizar comissões" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendedores.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {vendedorSelecionado && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div className="bg-white p-4 rounded-lg shadow-sm border">
-                  <p className="text-sm text-slate-500 mb-1">Total Selecionado</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {totalSelecionado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">{itensSelecionados.size} item(ns) selecionado(s)</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm border">
-                  <p className="text-sm text-slate-500 mb-1">Total a Pagar</p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">{aPagarVisiveis.length} comissão(ões) pendente(s)</p>
-                </div>
-              </div>
-            )}
+      {/* Filters */}
+      <Card className="p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por vendedor, cliente, grupo ou cota..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="a_pagar">A Pagar</SelectItem>
+              <SelectItem value="paga">Paga</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={mesFilter} onValueChange={setMesFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Mês" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os meses</SelectItem>
+              {mesesDisponiveis.map((mes) => (
+                <SelectItem key={mes} value={mes}>
+                  {moment(mes).format('MMMM/YYYY')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
+      {/* Lista de Vendedores */}
+      {isLoading ? (
+        <Card className="p-8">
+          <div className="text-center text-slate-500">Carregando...</div>
         </Card>
-      )}
-
-      {!vendedorSelecionado && isAdmin && (
-        <Card className="p-8 text-center">
-          <p className="text-slate-500">Selecione um vendedor para visualizar as comissões</p>
+      ) : vendedoresComComissoes.length === 0 ? (
+        <Card className="p-8">
+          <div className="text-center text-slate-500">Nenhuma comissão encontrada</div>
         </Card>
-      )}
+      ) : (
+        <div className="space-y-4">
+          {vendedoresComComissoes.map((vendedor) => {
+            const totalAPagar = vendedor.comissoes
+              .filter(c => c.status_pagamento === 'a_pagar')
+              .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+            const qtdAPagar = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar').length;
+            const isExpanded = expandedVendedores[vendedor.vendedor_id];
 
-      {vendedorSelecionado && (
-        <>
-          {/* Botão Gerar Pagamento */}
-          {itensSelecionados.size > 0 && isAdmin && (
-            <Card className="p-4 mb-6 bg-green-50 border-green-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-green-900">
-                    {itensSelecionados.size} item(ns) selecionado(s)
-                  </p>
-                  <p className="text-sm text-green-700">
-                    Total: {totalSelecionado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </p>
-                </div>
-                <Button 
-                  onClick={() => setPagarLoteModal(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Receipt className="w-4 h-4 mr-2" />
-                  Gerar Pagamento
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {/* Filters */}
-          <Card className="p-4 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar por cliente, grupo ou cota..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="a_pagar">A Pagar</SelectItem>
-                  <SelectItem value="paga">Paga</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={mesFilter} onValueChange={setMesFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Mês" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os meses</SelectItem>
-                  {mesesDisponiveis.map((mes) => (
-                    <SelectItem key={mes} value={mes}>
-                      {moment(mes).format('MMMM/YYYY')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
-
-          {/* Table */}
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b">
-                  <tr>
-                    <th className="text-left p-4 font-semibold text-slate-700">
-                      {isAdmin && aPagarVisiveis.length > 0 && (
-                        <Checkbox 
-                          checked={allSelected}
-                          onCheckedChange={toggleSelectAll}
-                        />
+            return (
+              <Card key={vendedor.vendedor_id} className="overflow-hidden">
+                {/* Header do Vendedor */}
+                <div className="bg-[#10353C] text-white p-4 flex items-center justify-between">
+                  <div className="flex-1 flex items-center gap-3">
+                    <User className="w-6 h-6" />
+                    <div>
+                      <h3 className="font-bold text-lg">{vendedor.vendedor_nome}</h3>
+                      <div className="text-sm text-white/80 flex gap-4 mt-1">
+                        <span>{vendedor.comissoes.length} comissão(ões)</span>
+                        {qtdAPagar > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{qtdAPagar} pendente(s)</span>
+                            <span>•</span>
+                            <span className="font-semibold">
+                              {totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {qtdAPagar > 0 && isAdmin && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleIniciarPagamento(vendedor)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Pagar Comissões
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => toggleVendedor(vendedor.vendedor_id)}
+                      className="text-white hover:bg-white/10"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
                       )}
-                    </th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Data Recebimento</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Cliente</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Vendedor</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Grupo/Cota</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Parcela</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Valor Recebido</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Administradora</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">% Comissão</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Valor a Pagar</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Status</th>
-                    <th className="text-left p-4 font-semibold text-slate-700">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={12} className="p-8 text-center text-slate-500">
-                        Carregando...
-                      </td>
-                    </tr>
-                  ) : filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} className="p-8 text-center text-slate-500">
-                        Nenhuma comissão encontrada
-                      </td>
-                    </tr>
-                  ) : (
-                    filtered.map((comissao) => (
-                      <ComissaoRow
-                        key={comissao.id}
-                        comissao={comissao}
-                        isAdmin={isAdmin}
-                        isSelected={itensSelecionados.has(comissao.id)}
-                        onToggleSelect={toggleSelectItem}
-                        onVerRecebimento={handleVerRecebimento}
-                        editingId={editingId}
-                        editingValue={editingValue}
-                        editingError={editingError}
-                        onStartEditing={startEditing}
-                        onSaveEditing={saveEditing}
-                        onKeyDown={handleKeyDown}
-                        onEditingValueChange={setEditingValue}
-                      />
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tabela de Comissões */}
+                {isExpanded && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b">
+                        <tr>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Data Rec.</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Valor Recebido</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Administradora</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">% Com.</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">A Pagar</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Status</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vendedor.comissoes.map((comissao) => (
+                          <tr key={comissao.id} className="border-b hover:bg-slate-50">
+                            <td className="p-3 text-sm">
+                              {formatDateBR(comissao.data_recebimento)}
+                            </td>
+                            <td className="p-3 text-sm">{comissao.cliente_nome || '-'}</td>
+                            <td className="p-3 text-sm">
+                              {comissao.grupo && comissao.cota 
+                                ? `${comissao.grupo}/${comissao.cota}` 
+                                : comissao.contrato || '-'}
+                            </td>
+                            <td className="p-3 text-sm">
+                              {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
+                            </td>
+                            <td className="p-3 font-semibold text-green-600 text-sm">
+                              {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { 
+                                style: 'currency', 
+                                currency: 'BRL' 
+                              })}
+                            </td>
+                            <td className="p-3 text-sm">{comissao.administradora_nome || '-'}</td>
+                            <td className="p-3 text-sm">
+                              {editingId === comissao.id ? (
+                                <div className="flex flex-col gap-1">
+                                  <div className={`inline-flex items-center bg-white rounded-md border ${editingError ? 'border-red-500' : 'border-slate-300'} px-2 py-1`}>
+                                    <Input
+                                      type="number"
+                                      value={editingValue}
+                                      onChange={(e) => setEditingValue(e.target.value)}
+                                      onBlur={() => saveEditing(comissao.id)}
+                                      onKeyDown={(e) => handleKeyDown(e, comissao.id)}
+                                      autoFocus
+                                      onFocus={(e) => e.target.select()}
+                                      className="w-12 h-6 text-sm border-0 p-0 focus-visible:ring-0"
+                                      min="0"
+                                      max="100"
+                                    />
+                                    <span className="text-sm font-medium text-slate-600 ml-1">%</span>
+                                  </div>
+                                  {editingError && (
+                                    <span className="text-xs text-red-600">{editingError}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div 
+                                  className={`inline-flex items-center rounded-md border px-2 py-1 min-w-[60px] ${
+                                    comissao.status_pagamento === 'a_pagar' && isAdmin
+                                      ? 'bg-white border-slate-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors'
+                                      : 'bg-slate-100 border-slate-200 cursor-default'
+                                  }`}
+                                  onClick={() => comissao.status_pagamento === 'a_pagar' && isAdmin && startEditing(comissao)}
+                                  title={comissao.status_pagamento === 'a_pagar' && isAdmin ? 'Clique para editar' : ''}
+                                >
+                                  <span className="font-medium text-sm">{comissao.percentual_comissao || 0}%</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3 font-bold text-blue-600 text-sm">
+                              {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { 
+                                style: 'currency', 
+                                currency: 'BRL' 
+                              })}
+                            </td>
+                            <td className="p-3">
+                              {comissao.status_pagamento === 'paga' ? (
+                                <Badge className="bg-green-100 text-green-800 text-xs">Paga</Badge>
+                              ) : (
+                                <Badge className="bg-orange-100 text-orange-800 text-xs">A Pagar</Badge>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleVerRecebimento(comissao)}
+                                title="Ver recebimento original"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       {/* Modal Ver Recebimento */}
@@ -800,7 +850,7 @@ export default function ComissoesPagar() {
             <div className="bg-slate-50 p-4 rounded-lg space-y-2">
               <div className="flex justify-between">
                 <span className="text-slate-600">Vendedor:</span>
-                <span className="font-semibold">{vendedorSelecionado?.nome}</span>
+                <span className="font-semibold">{vendedorPagamento?.vendedor_nome}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Quantidade de itens:</span>
@@ -809,7 +859,11 @@ export default function ComissoesPagar() {
               <div className="flex justify-between border-t pt-2 mt-2">
                 <span className="text-slate-600 font-semibold">Total a Pagar:</span>
                 <span className="font-bold text-green-600 text-lg">
-                  {totalSelecionado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {Array.from(itensSelecionados)
+                    .map(id => comissoes.find(c => c.id === id))
+                    .filter(Boolean)
+                    .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0)
+                    .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               </div>
             </div>
