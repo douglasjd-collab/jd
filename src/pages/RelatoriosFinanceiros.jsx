@@ -83,25 +83,15 @@ export default function RelatoriosFinanceiros() {
   };
 
   // Comissões Recebidas = todas as comissões em ComissaoAPagar dentro do período
-  // (independente se já foram pagas ou ainda estão a pagar)
-  const comissoesRecebdasPeriodo = comissoesAPagar.filter((c) => {
+  const comissoesRecebidas = comissoesAPagar.filter((c) => {
     if (!c.data_recebimento) return false;
     const normalized = normalizeDate(c.data_recebimento);
     if (!normalized) return false;
     return normalized >= dataInicio && normalized <= dataFim;
   });
   
-  console.log('=== DEBUG Comissões Recebidas ===');
-  console.log('Total comissoesAPagar:', comissoesAPagar.length);
-  console.log('Filtradas no período:', comissoesRecebdasPeriodo.length);
-  console.log('Período:', dataInicio, 'até', dataFim);
-  if (comissoesRecebdasPeriodo.length > 0) {
-    console.log('Primeira comissão:', comissoesRecebdasPeriodo[0]);
-    console.log('valor_recebido:', comissoesRecebdasPeriodo[0].valor_recebido);
-  }
-  
-  const totalComissoesRecebidas = comissoesRecebdasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
-  const recebidas_count = comissoesRecebdasPeriodo.length;
+  const totalComissoesRecebidas = comissoesRecebidas.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
+  const recebidas_count = comissoesRecebidas.length;
 
   // Comissões a Pagar (filtrar por data_recebimento - quando a comissão foi recebida)
   const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => {
@@ -377,7 +367,7 @@ export default function RelatoriosFinanceiros() {
                 </div>
                 <div>
                   <p className="text-amber-700">Recebidas (period)</p>
-                  <p className="font-bold text-lg text-amber-900">{comissoesRecebdasPeriodo.length}</p>
+                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidas.length}</p>
                 </div>
                 <div>
                   <p className="text-amber-700">A Pagar</p>
