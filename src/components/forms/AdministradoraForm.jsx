@@ -31,9 +31,12 @@ export default function AdministradoraForm({ open, onOpenChange, administradora,
   });
 
   React.useEffect(() => {
+    if (!open) return;
+    
     if (administradora) {
-      Object.keys(administradora).forEach(key => {
-        setValue(key, administradora[key]);
+      reset({
+        ...administradora,
+        status: administradora.status || 'ativa'
       });
     } else {
       reset({
@@ -45,7 +48,7 @@ export default function AdministradoraForm({ open, onOpenChange, administradora,
         status: 'ativa'
       });
     }
-  }, [administradora, setValue, reset]);
+  }, [open, administradora, reset]);
 
   const formatCNPJ = (value) => {
     return value
