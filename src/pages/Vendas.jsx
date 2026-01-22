@@ -407,19 +407,44 @@ export default function Vendas() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'ativa' })}>
+            <DropdownMenuItem 
+              onSelect={(e) => {
+                e.preventDefault();
+                updateStatusMutation.mutate({ id: row.id, status: 'ativa' });
+              }}
+            >
               Ativa
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'pendente' })}>
+            <DropdownMenuItem 
+              onSelect={(e) => {
+                e.preventDefault();
+                updateStatusMutation.mutate({ id: row.id, status: 'pendente' });
+              }}
+            >
               Pendente
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'cancelada' })}>
+            <DropdownMenuItem 
+              onSelect={(e) => {
+                e.preventDefault();
+                updateStatusMutation.mutate({ id: row.id, status: 'cancelada' });
+              }}
+            >
               Cancelada
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' })}>
+            <DropdownMenuItem 
+              onSelect={(e) => {
+                e.preventDefault();
+                updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' });
+              }}
+            >
               Em Atraso
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'contemplada' })}>
+            <DropdownMenuItem 
+              onSelect={(e) => {
+                e.preventDefault();
+                updateStatusMutation.mutate({ id: row.id, status: 'contemplada' });
+              }}
+            >
               Contemplada
             </DropdownMenuItem>
           </DropdownMenuContent>
