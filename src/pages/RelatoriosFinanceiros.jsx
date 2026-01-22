@@ -90,6 +90,16 @@ export default function RelatoriosFinanceiros() {
     if (!normalized) return false;
     return normalized >= dataInicio && normalized <= dataFim;
   });
+  
+  console.log('=== DEBUG Comissões Recebidas ===');
+  console.log('Total comissoesAPagar:', comissoesAPagar.length);
+  console.log('Filtradas no período:', comissoesRecebdasPeriodo.length);
+  console.log('Período:', dataInicio, 'até', dataFim);
+  if (comissoesRecebdasPeriodo.length > 0) {
+    console.log('Primeira comissão:', comissoesRecebdasPeriodo[0]);
+    console.log('valor_recebido:', comissoesRecebdasPeriodo[0].valor_recebido);
+  }
+  
   const totalComissoesRecebidas = comissoesRecebdasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
   const recebidas_count = comissoesRecebdasPeriodo.length;
 
