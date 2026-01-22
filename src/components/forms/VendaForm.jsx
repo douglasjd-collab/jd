@@ -140,9 +140,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
 
     if (venda) {
       // Modo edição - preencher todos os campos
-      Object.keys(venda).forEach(key => {
-        setValue(key, venda[key]);
+      reset({
+        ...venda,
+        data_venda: venda.data_venda || format(new Date(), 'yyyy-MM-dd')
       });
+      
       // Se houver cliente, carregar dados
       if (venda.cliente_id && clientes.length > 0) {
         const cliente = clientes.find(c => c.id === venda.cliente_id);
@@ -179,7 +181,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         setClienteSelecionado(null);
       }
     }
-  }, [open]);
+  }, [open, venda, clientes.length]);
 
   useEffect(() => {
     if (administradoraId && open) {
