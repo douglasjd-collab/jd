@@ -32,14 +32,7 @@ export default function RelatoriosFinanceiros() {
     }
   };
 
-  // Buscar Comissões Recebidas
-  const { data: comissoesRecebidas = [] } = useQuery({
-    queryKey: ['comissoes-recebidas-relatorio'],
-    queryFn: async () => {
-      return await base44.entities.RecebimentoComissao.filter({});
-    },
-    enabled: !!user,
-  });
+  // Nota: Não buscar RecebimentoComissao aqui, pois já está contabilizado em ComissaoAPagar
 
   // Buscar Comissões a Pagar
   const { data: comissoesAPagar = [] } = useQuery({
