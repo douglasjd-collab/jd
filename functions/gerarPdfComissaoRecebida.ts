@@ -2,6 +2,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { jsPDF } from 'npm:jspdf@2.5.2';
 import 'npm:jspdf-autotable@3.8.4';
 
+// Função para remover acentos e caracteres especiais
+function removerAcentos(str) {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -63,20 +69,20 @@ Deno.serve(async (req) => {
     // Resumo financeiro
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Total Recebido: ' + totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 200, 27);
+    doc.text('Total Recebido: R$ ' + totalRecebido.toFixed(2).replace('.', ','), 200, 27);
 
-    // Preparar dados da tabela
+    // Preparar dados da tabela (removendo acentos)
     const tableData = recebimentos.map(r => [
-      r.cliente_nome || '-',
-      r.vendedor_nome || '-',
-      r.administradora_nome || '-',
-      r.grupo && r.cota ? `${r.grupo}/${r.cota}` : (r.contrato || '-'),
-      r.parcela_informada ? `${r.parcela_informada}º` : '-',
-      (r.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      `${r.percentual_comissao || 100}%`,
-      (r.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      removerAcentos(r.cliente_nome) || '-',
+      removerAcentos(r.vendedor_nome) || '-',
+      removerAcentos(r.administradora_nome) || '-',
+      r.grupo && r.cota ? r.grupo + '/' + r.cota : (r.contrato || '-'),
+      r.parcela_informada ? r.parcela_informada + 'a' : '-',
+      'R$ ' + (r.valor_recebido || 0).toFixed(2).replace('.', ','),
+      (r.percentual_comissao || 100) + '%',
+      'R$ ' + (r.valor_a_pagar || 0).toFixed(2).replace('.', ','),
       r.status_pagamento === 'paga' ? 'Paga' : 'A Pagar',
-      r.observacoes || '-'
+      removerAcentos(r.observacoes) || '-'
     ]);
 
     // Criar tabela com autoTable
@@ -140,8 +146,8 @@ Deno.serve(async (req) => {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0);
-    doc.text('TOTAL RECEBIDO: ' + totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 14, finalY + 10);
-    doc.text('TOTAL A PAGAR: ' + totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 14, finalY + 17);
+    doc.text('TOTAL RECEBIDO: R$ ' + totalRecebido.toFixed(2).replace('.', ','), 14, finalY + 10);
+    doc.text('TOTAL A PAGAR: R$ ' + totalAPagar.toFixed(2).replace('.', ','), 14, finalY + 17);
 
     // Gerar PDF como ArrayBuffer
     const pdfBytes = doc.output('arraybuffer');
