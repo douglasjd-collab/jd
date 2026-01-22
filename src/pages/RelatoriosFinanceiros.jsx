@@ -364,8 +364,8 @@ export default function RelatoriosFinanceiros() {
               <h3 className="font-semibold text-amber-900 mb-3">Diagnóstico (ADM)</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mb-4">
                 <div>
-                  <p className="text-amber-700">Total Recebidas (all)</p>
-                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidas.length}</p>
+                  <p className="text-amber-700">Total ComissaoAPagar (all)</p>
+                  <p className="font-bold text-lg text-amber-900">{comissoesAPagar.length}</p>
                 </div>
                 <div>
                   <p className="text-amber-700">Recebidas (period)</p>
