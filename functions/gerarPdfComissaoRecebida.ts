@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { jsPDF } from 'npm:jspdf@2.5.2';
+import 'npm:jspdf-autotable@3.8.4';
 
 Deno.serve(async (req) => {
   try {
@@ -39,74 +40,104 @@ Deno.serve(async (req) => {
     const totalRecebido = recebimentos.reduce((sum, r) => sum + (r.valor_recebido || 0), 0);
     const totalAPagar = recebimentos.reduce((sum, r) => sum + (r.valor_a_pagar || 0), 0);
 
-    // Criar PDF
-    const doc = new jsPDF();
+    // Criar PDF em paisagem para caber mais colunas
+    const doc = new jsPDF({ orientation: 'landscape' });
     
     // Título
-    doc.setFontSize(18);
-    doc.text('Relatório de Comissão Recebida', 14, 20);
-    
-    doc.setFontSize(11);
-    const dataFormatada = data === 'sem-data' ? 'Sem data' : new Date(data).toLocaleDateString('pt-BR');
-    doc.text(`Data: ${dataFormatada}`, 14, 28);
-    doc.text(`Total de Recebimentos: ${recebimentos.length}`, 14, 34);
-    
-    doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 40);
-
-    // Resumo
-    doc.setFontSize(12);
-    doc.text('Resumo:', 14, 50);
-    doc.setFontSize(10);
-    doc.text(`Total Recebido: ${totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 56);
-    doc.text(`Total a Pagar: ${totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 62);
-
-    // Cabeçalho da tabela
-    let y = 75;
-    doc.setFontSize(9);
+    doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
-    doc.text('Cliente', 14, y);
-    doc.text('Vendedor', 70, y);
-    doc.text('Grupo/Cota', 120, y);
-    doc.text('Valor Recebido', 155, y);
-
-    // Linha divisória
-    y += 2;
-    doc.line(14, y, 200, y);
-    y += 5;
-
-    // Dados
+    doc.text('Relatório de Comissões Recebidas', 14, 15);
+    
+    // Informações do cabeçalho
+    doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
-    recebimentos.forEach((r, idx) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
+    const dataFormatada = data === 'sem-data' ? 'Sem data' : new Date(data).toLocaleDateString('pt-BR');
+    doc.text(`Data do Recebimento: ${dataFormatada}`, 14, 22);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 27);
+    doc.text(`Total de Registros: ${recebimentos.length}`, 200, 22);
+    
+    // Resumo financeiro
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Total Recebido: ${totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 200, 27);
+
+    // Preparar dados da tabela
+    const tableData = recebimentos.map(r => [
+      r.cliente_nome || '-',
+      r.vendedor_nome || '-',
+      r.administradora_nome || '-',
+      r.grupo && r.cota ? `${r.grupo}/${r.cota}` : (r.contrato || '-'),
+      r.parcela_informada ? `${r.parcela_informada}º` : '-',
+      (r.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      `${r.percentual_comissao || 100}%`,
+      (r.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      r.status_pagamento === 'paga' ? 'Paga' : 'A Pagar',
+      r.observacoes || '-'
+    ]);
+
+    // Criar tabela com autoTable
+    doc.autoTable({
+      startY: 35,
+      head: [[
+        'Cliente',
+        'Vendedor', 
+        'Administradora',
+        'Grupo/Cota',
+        'Parcela',
+        'Valor Recebido',
+        '% Com.',
+        'A Pagar',
+        'Status',
+        'Observações'
+      ]],
+      body: tableData,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1
+      },
+      headStyles: {
+        fillColor: [16, 53, 60],
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'left'
+      },
+      columnStyles: {
+        0: { cellWidth: 35 },  // Cliente
+        1: { cellWidth: 30 },  // Vendedor
+        2: { cellWidth: 30 },  // Administradora
+        3: { cellWidth: 25 },  // Grupo/Cota
+        4: { cellWidth: 15, halign: 'center' },  // Parcela
+        5: { cellWidth: 25, halign: 'right', fontStyle: 'bold', textColor: [0, 128, 0] },  // Valor Recebido
+        6: { cellWidth: 15, halign: 'center' },  // % Com.
+        7: { cellWidth: 25, halign: 'right', fontStyle: 'bold', textColor: [0, 0, 255] },  // A Pagar
+        8: { cellWidth: 20, halign: 'center' },  // Status
+        9: { cellWidth: 35 }   // Observações
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      margin: { top: 35, left: 14, right: 14 },
+      didDrawPage: (data) => {
+        // Rodapé em cada página
+        doc.setFontSize(8);
+        doc.setTextColor(128);
+        doc.text(
+          `Página ${data.pageNumber}`,
+          data.settings.margin.left,
+          doc.internal.pageSize.height - 10
+        );
       }
-
-      const cliente = (r.cliente_nome || '-').substring(0, 25);
-      const vendedor = (r.vendedor_nome || '-').substring(0, 20);
-      const grupoCota = r.grupo && r.cota ? `${r.grupo}/${r.cota}` : (r.contrato || '-');
-      const valor = (r.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-      doc.text(cliente, 14, y);
-      doc.text(vendedor, 70, y);
-      doc.text(grupoCota.substring(0, 15), 120, y);
-      doc.text(valor, 155, y);
-
-      y += 7;
     });
 
-    // Totais no final
-    y += 5;
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.line(14, y, 200, y);
-    y += 7;
+    // Adicionar totais após a tabela
+    const finalY = doc.lastAutoTable.finalY || 35;
+    doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
-    doc.text('TOTAIS:', 120, y);
-    doc.text(totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 155, y);
+    doc.setTextColor(0);
+    doc.text(`TOTAL RECEBIDO: ${totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, finalY + 10);
+    doc.text(`TOTAL A PAGAR: ${totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, finalY + 17);
 
     // Gerar PDF como ArrayBuffer
     const pdfBytes = doc.output('arraybuffer');
