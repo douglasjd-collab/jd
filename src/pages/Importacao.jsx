@@ -200,11 +200,26 @@ export default function Importacao() {
         status: 'processando'
       });
 
+      // ===== CARREGAR DADOS UMA VEZ =====
+      const configVendedor = await base44.entities.ConfiguracaoComissao.filter({ 
+        tipo: 'vendedor', 
+        status: 'ativo' 
+      });
+      const percentualPadrao = configVendedor.length > 0 ? configVendedor[0].percentual : 100;
+
+      // Buscar recebimentos existentes de uma vez
+      const recebimentosExistentes = await base44.entities.RecebimentoComissao.list();
+      const hashesExistentes = new Set(recebimentosExistentes.map(r => r.hash_duplicidade));
+
       let processados = 0;
       let divergencias = 0;
       let valorTotal = 0;
       const itensParaCriar = [];
+      const recebimentosParaCriar = [];
+      const comissoesParaCriar = [];
+      const vendasParaAtualizar = {};
 
+      // ===== PROCESSAR TODOS OS ITENS =====
       for (const item of previewData.items) {
         const contrato = String(item.contrato || '').trim();
         const grupo = String(item.grupo || '').trim();
@@ -216,57 +231,38 @@ export default function Importacao() {
         let vendaEncontrada = null;
         let motivoDivergencia = '';
 
-        // ===== IDENTIFICAÇÃO DA VENDA =====
-        // REGRA 1: Se CONTRATO preenchido -> buscar por (contrato + administradora)
+        // IDENTIFICAÇÃO DA VENDA
         if (contrato) {
           const vendasMatch = vendas.filter(v => 
-            v.contrato === contrato &&
-            v.administradora_id === selectedAdmin
+            v.contrato === contrato && v.administradora_id === selectedAdmin
           );
-          
-          if (vendasMatch.length === 1) {
-            vendaEncontrada = vendasMatch[0];
-          } else if (vendasMatch.length > 1) {
-            motivoDivergencia = 'Múltiplas vendas encontradas para Contrato + Administradora';
-          } else {
-            motivoDivergencia = 'Venda não encontrada para o contrato informado';
-          }
-        }
-        // REGRA 2: Se GRUPO + COTA -> buscar por (grupo + cota + administradora)
-        else if (grupo && cota) {
+          if (vendasMatch.length === 1) vendaEncontrada = vendasMatch[0];
+          else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
+          else motivoDivergencia = 'Venda não encontrada';
+        } else if (grupo && cota) {
           const vendasMatch = vendas.filter(v => 
             String(v.grupo).trim() === grupo &&
             String(v.cota).trim() === cota &&
             v.administradora_id === selectedAdmin
           );
-          
-          if (vendasMatch.length === 1) {
-            vendaEncontrada = vendasMatch[0];
-          } else if (vendasMatch.length > 1) {
-            motivoDivergencia = 'Múltiplas vendas encontradas para Grupo + Cota + Administradora';
-          } else {
-            motivoDivergencia = 'Venda não encontrada para Grupo + Cota informados';
-          }
-        }
-        else {
-          motivoDivergencia = 'Dados insuficientes: informe Contrato OU (Grupo + Cota)';
+          if (vendasMatch.length === 1) vendaEncontrada = vendasMatch[0];
+          else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
+          else motivoDivergencia = 'Venda não encontrada';
+        } else {
+          motivoDivergencia = 'Dados insuficientes';
         }
 
-        // ===== VERIFICAÇÃO DE DUPLICIDADE =====
+        // VERIFICAÇÃO DE DUPLICIDADE
         if (vendaEncontrada) {
           const hashDuplicidade = `${vendaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
-          const recebimentosExistentes = await base44.entities.RecebimentoComissao.filter({
-            hash_duplicidade: hashDuplicidade
-          });
-          
-          if (recebimentosExistentes.length > 0) {
-            motivoDivergencia = 'Recebimento duplicado (já importado anteriormente)';
+          if (hashesExistentes.has(hashDuplicidade)) {
+            motivoDivergencia = 'Recebimento duplicado';
             vendaEncontrada = null;
           }
         }
 
-        // ===== CRIAR ITEM DE IMPORTAÇÃO =====
-        const itemImportacao = {
+        // CRIAR ITEM DE IMPORTAÇÃO
+        itensParaCriar.push({
           importacao_id: importacao.id,
           linha: previewData.items.indexOf(item) + 1,
           cpf: '',
@@ -279,24 +275,17 @@ export default function Importacao() {
           parcela_id: null,
           status: vendaEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
           motivo_divergencia: motivoDivergencia || null
-        };
+        });
 
-        itensParaCriar.push(itemImportacao);
-
-        // ===== PROCESSAR RECEBIMENTO (SEM EXIGIR PARCELA) =====
+        // PREPARAR RECEBIMENTO E COMISSÃO
         if (vendaEncontrada && !motivoDivergencia) {
           const hashDuplicidade = `${vendaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
-          
-          // Buscar configuração de percentual (padrão: 100% se não configurado)
-          const configVendedor = await base44.entities.ConfiguracaoComissao.filter({ 
-            tipo: 'vendedor', 
-            status: 'ativo' 
-          });
-          const percentualPadrao = configVendedor.length > 0 ? configVendedor[0].percentual : 100;
           const valorAPagar = valorRecebido * (percentualPadrao / 100);
-
-          // Criar RecebimentoComissao
-          const recebimento = await base44.entities.RecebimentoComissao.create({
+          
+          const recebimentoId = `temp_${previewData.items.indexOf(item)}`;
+          
+          recebimentosParaCriar.push({
+            _tempId: recebimentoId,
             empresa_id: vendaEncontrada.empresa_id,
             venda_id: vendaEncontrada.id,
             cliente_id: vendaEncontrada.cliente_id,
@@ -320,39 +309,34 @@ export default function Importacao() {
             status_pagamento: 'a_pagar'
           });
 
-          // Criar ComissaoAPagar automaticamente
-          const jaExisteComissao = await base44.entities.ComissaoAPagar.filter({
-            recebimento_id: recebimento.id
+          comissoesParaCriar.push({
+            _recebimentoTempId: recebimentoId,
+            empresa_id: vendaEncontrada.empresa_id,
+            venda_id: vendaEncontrada.id,
+            cliente_id: vendaEncontrada.cliente_id,
+            cliente_nome: vendaEncontrada.cliente_nome,
+            vendedor_id: vendaEncontrada.vendedor_id,
+            vendedor_nome: vendaEncontrada.vendedor_nome,
+            administradora_id: selectedAdmin,
+            administradora_nome: admin.nome_fantasia || admin.razao_social,
+            grupo: vendaEncontrada.grupo,
+            cota: vendaEncontrada.cota,
+            contrato: vendaEncontrada.contrato,
+            parcela_numero: parcelaInformada,
+            data_recebimento: dataRecebimento,
+            valor_recebido: valorRecebido,
+            percentual_comissao: percentualPadrao,
+            valor_a_pagar: valorAPagar,
+            status_pagamento: 'a_pagar'
           });
 
-          if (jaExisteComissao.length === 0) {
-            await base44.entities.ComissaoAPagar.create({
-              empresa_id: vendaEncontrada.empresa_id,
-              recebimento_id: recebimento.id,
-              venda_id: vendaEncontrada.id,
-              cliente_id: vendaEncontrada.cliente_id,
-              cliente_nome: vendaEncontrada.cliente_nome,
-              vendedor_id: vendaEncontrada.vendedor_id,
-              vendedor_nome: vendaEncontrada.vendedor_nome,
-              administradora_id: selectedAdmin,
-              administradora_nome: admin.nome_fantasia || admin.razao_social,
-              grupo: vendaEncontrada.grupo,
-              cota: vendaEncontrada.cota,
-              contrato: vendaEncontrada.contrato,
-              parcela_numero: parcelaInformada,
-              data_recebimento: dataRecebimento,
-              valor_recebido: valorRecebido,
-              percentual_comissao: percentualPadrao,
-              valor_a_pagar: valorAPagar,
-              status_pagamento: 'a_pagar'
-            });
+          // Agrupar updates de vendas
+          if (!vendasParaAtualizar[vendaEncontrada.id]) {
+            vendasParaAtualizar[vendaEncontrada.id] = {
+              comissao_total_recebida: vendaEncontrada.comissao_total_recebida || 0
+            };
           }
-
-          // Atualizar comissão total recebida na venda
-          const novoValorRecebido = (vendaEncontrada.comissao_total_recebida || 0) + valorRecebido;
-          await base44.entities.Venda.update(vendaEncontrada.id, {
-            comissao_total_recebida: novoValorRecebido
-          });
+          vendasParaAtualizar[vendaEncontrada.id].comissao_total_recebida += valorRecebido;
 
           processados++;
           valorTotal += valorRecebido;
@@ -361,9 +345,35 @@ export default function Importacao() {
         }
       }
 
-      // Criar itens em lote
+      // ===== CRIAR EM LOTE =====
       if (itensParaCriar.length > 0) {
         await base44.entities.ImportacaoItem.bulkCreate(itensParaCriar);
+      }
+
+      if (recebimentosParaCriar.length > 0) {
+        const recebimentosData = recebimentosParaCriar.map(r => {
+          const { _tempId, ...data } = r;
+          return data;
+        });
+        const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosData);
+        
+        // Mapear IDs temporários para IDs reais
+        const comissoesData = comissoesParaCriar.map((c, idx) => {
+          const { _recebimentoTempId, ...data } = c;
+          return {
+            ...data,
+            recebimento_id: recebimentosCriados[idx].id
+          };
+        });
+        
+        if (comissoesData.length > 0) {
+          await base44.entities.ComissaoAPagar.bulkCreate(comissoesData);
+        }
+      }
+
+      // Atualizar vendas em lote
+      for (const [vendaId, updateData] of Object.entries(vendasParaAtualizar)) {
+        await base44.entities.Venda.update(vendaId, updateData);
       }
 
       // Atualizar importação
@@ -380,7 +390,7 @@ export default function Importacao() {
       setFile(null);
       setSelectedAdmin('');
       
-      toast.success(`Importação concluída: ${processados} processados, ${divergencias} divergências`);
+      toast.success(`✅ Importação concluída: ${processados} processados, ${divergencias} divergências`);
     } catch (error) {
       toast.error('Erro ao processar importação');
       console.error(error);
