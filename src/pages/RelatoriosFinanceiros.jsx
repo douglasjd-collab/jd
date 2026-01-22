@@ -384,19 +384,19 @@ export default function RelatoriosFinanceiros() {
                   <p className="font-bold text-lg text-amber-900">{receitas_count}</p>
                 </div>
               </div>
-              {comissoesRecebidas.length > 0 && (
-                <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
-                  <p className="font-mono text-amber-900">Raw data_recebimento: {comissoesRecebidas[0]?.data_recebimento}</p>
-                  <p className="font-mono text-amber-700">
-                    Normalized: {normalizeDate(comissoesRecebidas[0]?.data_recebimento)}
-                  </p>
-                  <p className="font-mono text-amber-700">
-                    Filtro: {dataInicio} até {dataFim}
-                  </p>
-                  <p className="font-mono text-amber-700">
-                    valor_recebido (raw): {comissoesRecebidas[0]?.valor_recebido} (type: {typeof comissoesRecebidas[0]?.valor_recebido})
-                  </p>
-                </div>
+              {comissoesAPagar.length > 0 && (
+               <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
+                 <p className="font-mono text-amber-900">Raw data_recebimento: {comissoesAPagar[0]?.data_recebimento}</p>
+                 <p className="font-mono text-amber-700">
+                   Normalized: {normalizeDate(comissoesAPagar[0]?.data_recebimento)}
+                 </p>
+                 <p className="font-mono text-amber-700">
+                   Filtro: {dataInicio} até {dataFim}
+                 </p>
+                 <p className="font-mono text-amber-700">
+                   valor_recebido (raw): {comissoesAPagar[0]?.valor_recebido} (type: {typeof comissoesAPagar[0]?.valor_recebido})
+                 </p>
+               </div>
               )}
             </div>
           </div>
