@@ -253,13 +253,29 @@ export default function Vendas() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.Venda.update(id, { status }),
+    mutationFn: async ({ venda, status }) => {
+      // GARANTE prazo (obrigatório no backend)
+      const prazoSeguro =
+        venda?.prazo ??
+        venda?.prazo_meses ??
+        venda?.tabela_prazo ??
+        0;
+
+      if (!prazoSeguro || Number(prazoSeguro) <= 0) {
+        throw new Error("Esta venda está sem PRAZO. Edite a venda e informe o prazo antes de mudar o status.");
+      }
+
+      return base44.entities.Venda.update(venda.id, {
+        status,
+        prazo: Number(prazoSeguro),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
       toast.success('Status atualizado com sucesso!');
     },
-    onError: () => {
-      toast.error('Erro ao atualizar status');
+    onError: (err) => {
+      toast.error(err.message || 'Erro ao atualizar status');
     }
   });
 
@@ -291,9 +307,10 @@ export default function Vendas() {
     try {
       console.log('📝 Dados brutos do form:', formData);
       
-      // Garantir que valorCredito e data_venda estejam corretos
+      // Garantir que valorCredito, prazo e data_venda estejam corretos
       const data = {
         ...formData,
+        prazo: Number(formData.prazo || 0),
         valorCredito: parseFloat(formData.valorCredito) || 0,
         taxaAdministracao: parseFloat(formData.taxaAdministracao) || 0,
         data_venda: formData.data_venda || format(new Date(), 'yyyy-MM-dd')
@@ -410,7 +427,7 @@ export default function Vendas() {
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
-                updateStatusMutation.mutate({ id: row.id, status: 'ativa' });
+                updateStatusMutation.mutate({ venda: row, status: 'ativa' });
               }}
             >
               Ativa
@@ -418,7 +435,7 @@ export default function Vendas() {
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
-                updateStatusMutation.mutate({ id: row.id, status: 'pendente' });
+                updateStatusMutation.mutate({ venda: row, status: 'pendente' });
               }}
             >
               Pendente
@@ -426,7 +443,7 @@ export default function Vendas() {
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
-                updateStatusMutation.mutate({ id: row.id, status: 'cancelada' });
+                updateStatusMutation.mutate({ venda: row, status: 'cancelada' });
               }}
             >
               Cancelada
@@ -434,7 +451,7 @@ export default function Vendas() {
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
-                updateStatusMutation.mutate({ id: row.id, status: 'em_atraso' });
+                updateStatusMutation.mutate({ venda: row, status: 'em_atraso' });
               }}
             >
               Em Atraso
@@ -442,7 +459,7 @@ export default function Vendas() {
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
-                updateStatusMutation.mutate({ id: row.id, status: 'contemplada' });
+                updateStatusMutation.mutate({ venda: row, status: 'contemplada' });
               }}
             >
               Contemplada
