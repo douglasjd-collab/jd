@@ -33,6 +33,8 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
+import RelatoriosComissaoRecebida from './pages/RelatoriosComissaoRecebida';
+import RelatorioComissaoRecebidaDetalhe from './pages/RelatorioComissaoRecebidaDetalhe';
 import __Layout from './Layout.jsx';
 
 
@@ -72,6 +74,8 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
+    "RelatoriosComissaoRecebida": RelatoriosComissaoRecebida,
+    "RelatorioComissaoRecebidaDetalhe": RelatorioComissaoRecebidaDetalhe,
 }
 
 export const pagesConfig = {
