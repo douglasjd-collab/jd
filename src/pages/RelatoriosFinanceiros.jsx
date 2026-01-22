@@ -84,15 +84,16 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Comissões Recebidas (filtrar por data_recebimento)
-  const comissoesRecebdasPeriodo = comissoesRecebidas.filter((c) => {
+  // Comissões Recebidas = todas as comissões em ComissaoAPagar dentro do período
+  // (independente se já foram pagas ou ainda estão a pagar)
+  const comissoesRecebdasPeriodo = comissoesAPagar.filter((c) => {
     if (!c.data_recebimento) return false;
     const normalized = normalizeDate(c.data_recebimento);
     if (!normalized) return false;
     return normalized >= dataInicio && normalized <= dataFim;
   });
   const totalComissoesRecebidas = comissoesRecebdasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
-  const recebidas_count = comissoesRecebidas.length;
+  const recebidas_count = comissoesRecebdasPeriodo.length;
 
   // Comissões a Pagar (filtrar por data_recebimento - quando a comissão foi recebida)
   const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => {
