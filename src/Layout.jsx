@@ -156,6 +156,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Comissões a Pagar', page: 'ComissoesPagar' },
         { name: 'Comissões Pagas', page: 'ComissoesPagas' },
         { name: 'Comissões Recebidas', page: 'ComissoesRecebidas' },
+        { name: 'Relatórios Comissão Recebida', page: 'RelatoriosComissaoRecebida' },
         { name: 'Lançamento de Receitas', page: 'LancamentoReceitas' },
         { name: 'Lançamento de Despesas', page: 'LancamentoDespesas' },
         { name: 'Relatórios Financeiros', page: 'RelatoriosFinanceiros' },
