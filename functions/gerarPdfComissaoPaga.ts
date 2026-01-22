@@ -26,8 +26,13 @@ Deno.serve(async (req) => {
     // Calcular totais
     const totalPago = itens.reduce((acc, item) => acc + (item.valor_a_pagar || 0), 0);
 
-    // Obter vendedor único (assumindo que todos os itens são do mesmo vendedor)
-    const vendedorNome = itens.length > 0 ? itens[0].vendedor_nome : '';
+    // Obter vendedores únicos
+    const vendedoresUnicos = [...new Set(itens.map(i => i.vendedor_nome).filter(Boolean))];
+    const vendedorInfo = vendedoresUnicos.length === 1 
+      ? vendedoresUnicos[0] 
+      : vendedoresUnicos.length > 1 
+        ? 'Multiplos Vendedores' 
+        : 'Nao Informado';
 
     // Criar PDF em paisagem (landscape)
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -41,8 +46,13 @@ Deno.serve(async (req) => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text('Data de Pagamento: ' + new Date(data).toLocaleDateString('pt-BR'), 14, 22);
-    doc.text('Vendedor: ' + removerAcentos(vendedorNome), 14, 27);
-    doc.text('Total Pago: R$ ' + totalPago.toFixed(2).replace('.', ','), 200, 27);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Vendedor: ' + removerAcentos(vendedorInfo), 14, 28);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Total de Registros: ' + itens.length, 14, 33);
+    doc.text('Total Pago: R$ ' + totalPago.toFixed(2).replace('.', ','), 200, 28);
 
     // Preparar dados da tabela (removendo acentos)
     const tableData = itens.map(r => [
@@ -71,7 +81,7 @@ Deno.serve(async (req) => {
         'Forma Pgto'
       ]],
       body: tableData,
-      startY: 35,
+      startY: 40,
       styles: {
         fontSize: 8,
         cellPadding: 2,
@@ -84,12 +94,12 @@ Deno.serve(async (req) => {
       alternateRowStyles: {
         fillColor: [245, 245, 245],
       },
-      margin: { top: 35, left: 14, right: 14 },
+      margin: { top: 40, left: 14, right: 14 },
     });
 
     // Adicionar totais após a tabela
-    const finalY = doc.lastAutoTable.finalY || 35;
-    doc.setFontSize(11);
+    const finalY = doc.lastAutoTable.finalY || 40;
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0);
     doc.text('TOTAL PAGO: R$ ' + totalPago.toFixed(2).replace('.', ','), 14, finalY + 10);
@@ -99,7 +109,6 @@ Deno.serve(async (req) => {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
     doc.text('Gerado em: ' + new Date().toLocaleString('pt-BR'), 14, finalY + 20);
-    doc.text('Total de Registros: ' + itens.length, 200, finalY + 20);
 
     // Retornar PDF
     const pdfBytes = doc.output('arraybuffer');
