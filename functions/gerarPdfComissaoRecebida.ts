@@ -41,25 +41,29 @@ Deno.serve(async (req) => {
     const totalAPagar = recebimentos.reduce((sum, r) => sum + (r.valor_a_pagar || 0), 0);
 
     // Criar PDF em paisagem para caber mais colunas
-    const doc = new jsPDF({ orientation: 'landscape' });
+    const doc = new jsPDF({ 
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
     
     // Título
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
-    doc.text('Relatório de Comissões Recebidas', 14, 15);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Relatorio de Comissoes Recebidas', 14, 15);
     
     // Informações do cabeçalho
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     const dataFormatada = data === 'sem-data' ? 'Sem data' : new Date(data).toLocaleDateString('pt-BR');
-    doc.text(`Data do Recebimento: ${dataFormatada}`, 14, 22);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 27);
-    doc.text(`Total de Registros: ${recebimentos.length}`, 200, 22);
+    doc.text('Data do Recebimento: ' + dataFormatada, 14, 22);
+    doc.text('Gerado em: ' + new Date().toLocaleString('pt-BR'), 14, 27);
+    doc.text('Total de Registros: ' + recebimentos.length, 200, 22);
     
     // Resumo financeiro
     doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
-    doc.text(`Total Recebido: ${totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 200, 27);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total Recebido: ' + totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 200, 27);
 
     // Preparar dados da tabela
     const tableData = recebimentos.map(r => [
@@ -88,7 +92,7 @@ Deno.serve(async (req) => {
         '% Com.',
         'A Pagar',
         'Status',
-        'Observações'
+        'Observacoes'
       ]],
       body: tableData,
       styles: {
@@ -124,7 +128,7 @@ Deno.serve(async (req) => {
         doc.setFontSize(8);
         doc.setTextColor(128);
         doc.text(
-          `Página ${data.pageNumber}`,
+          'Pagina ' + data.pageNumber,
           data.settings.margin.left,
           doc.internal.pageSize.height - 10
         );
@@ -134,10 +138,10 @@ Deno.serve(async (req) => {
     // Adicionar totais após a tabela
     const finalY = doc.lastAutoTable.finalY || 35;
     doc.setFontSize(11);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(0);
-    doc.text(`TOTAL RECEBIDO: ${totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, finalY + 10);
-    doc.text(`TOTAL A PAGAR: ${totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, finalY + 17);
+    doc.text('TOTAL RECEBIDO: ' + totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 14, finalY + 10);
+    doc.text('TOTAL A PAGAR: ' + totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 14, finalY + 17);
 
     // Gerar PDF como ArrayBuffer
     const pdfBytes = doc.output('arraybuffer');
