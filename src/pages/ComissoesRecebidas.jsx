@@ -103,13 +103,24 @@ export default function ComissoesRecebidas() {
   const gerarPdfRelatorio = async (data, itens) => {
     try {
       toast.info('Gerando PDF do relatório...');
-      // TODO: Implementar função backend para gerar PDF
-      // const resp = await base44.functions.invoke('gerarPdfComissaoRecebida', { 
-      //   data, 
-      //   itens: itens.map(i => ({ ...i }))
-      // });
-      // if (resp?.data?.url) window.open(resp.data.url, '_blank');
-      toast.success('Funcionalidade em desenvolvimento');
+      
+      const resp = await base44.functions.invoke('gerarPdfComissaoRecebida', { 
+        data, 
+        itens
+      });
+
+      // Criar blob e fazer download
+      const blob = new Blob([resp.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `comissao-recebida-${data}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('PDF gerado com sucesso!');
     } catch (e) {
       console.error(e);
       toast.error('Erro ao gerar PDF');
