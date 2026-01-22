@@ -7,16 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Download, Eye, Printer } from 'lucide-react';
+import { Download, Eye, Printer, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import moment from 'moment';
 import { formatDateBR } from '@/components/utils/dateHelpers';
+import { toast } from 'react-hot-toast';
 
 export default function ComissoesPagas() {
   const [user, setUser] = useState(null);
   const [filtroVendedor, setFiltroVendedor] = useState('');
-  const [filtroDataInicio, setFiltroDataInicio] = useState(moment().startOf('month').format('YYYY-MM-DD'));
-  const [filtroDataFim, setFiltroDataFim] = useState(moment().endOf('month').format('YYYY-MM-DD'));
-  const [filtroLote, setFiltroLote] = useState('');
+  const [filtroMes, setFiltroMes] = useState('todos');
+  const [filtroDataInicio, setFiltroDataInicio] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [expandedDates, setExpandedDates] = useState({});
 
   useEffect(() => {
     loadUser();
@@ -67,7 +69,7 @@ export default function ComissoesPagas() {
   // Filtrar dados
   const dadosFiltrados = comissoesPagas.filter((c) => {
     // Filtro vendedor (somente seus dados se for vendedor)
-    if (user?.perfil === 'vendedor' && c.vendedor_id !== user.colaborador_id) {
+    if (user?.perfil === 'vendedor' && c.vendedor_id !== user.id) {
       return false;
     }
 
@@ -76,42 +78,86 @@ export default function ComissoesPagas() {
       return false;
     }
 
-    // Filtro período
-    if (c.data_pagamento) {
+    // Filtro por mês
+    if (filtroMes !== 'todos' && c.data_pagamento) {
+      const mes = moment(c.data_pagamento).format('YYYY-MM');
+      if (mes !== filtroMes) return false;
+    }
+
+    // Filtro por data customizada
+    if (filtroDataInicio && c.data_pagamento) {
       const normalized = normalizeDate(c.data_pagamento);
-      if (!normalized || normalized < filtroDataInicio || normalized > filtroDataFim) {
+      if (!normalized || normalized < filtroDataInicio) {
         return false;
       }
     }
 
-    // Filtro lote
-    if (filtroLote && c.lote_id !== filtroLote) {
-      return false;
+    if (filtroDataFim && c.data_pagamento) {
+      const normalized = normalizeDate(c.data_pagamento);
+      if (!normalized || normalized > filtroDataFim) {
+        return false;
+      }
     }
 
     return true;
   });
 
-  const handleBaixarRelatorio = async (comissao) => {
+  // Agrupar por data de pagamento
+  const groupedByDate = dadosFiltrados.reduce((acc, c) => {
+    const dateKey = c.data_pagamento || 'sem-data';
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(c);
+    return acc;
+  }, {});
+
+  // Ordenar datas (mais recente primeiro)
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+    if (a === 'sem-data') return 1;
+    if (b === 'sem-data') return -1;
+    return moment(b).valueOf() - moment(a).valueOf();
+  });
+
+  const toggleDate = (date) => {
+    setExpandedDates(prev => ({ ...prev, [date]: !prev[date] }));
+  };
+
+  const gerarPdfData = async (data, comissoes) => {
     try {
-      if (comissao.lote_id) {
-        // Buscar o lote e obter relatorio_url
-        const lotes = await base44.entities.PagamentoComissaoLote.filter({ lote_code: comissao.lote_id });
-        if (lotes.length > 0 && lotes[0].relatorio_html) {
-          // Abrir/baixar relatório
-          const element = document.createElement('a');
-          const file = new Blob([lotes[0].relatorio_html], { type: 'text/html' });
-          element.href = URL.createObjectURL(file);
-          element.download = `Relatorio_Pagamento_${comissao.lote_id}.html`;
-          document.body.appendChild(element);
-          element.click();
-          document.body.removeChild(element);
-        }
+      toast.loading('Gerando PDF...');
+      
+      const response = await base44.functions.invoke('gerarPdfComissaoPaga', {
+        data: data,
+        itens: comissoes
+      });
+
+      toast.dismiss();
+
+      if (response.data) {
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Comissoes_Pagas_${moment(data).format('DD-MM-YYYY')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('PDF gerado com sucesso!');
       }
-    } catch (e) {
-      console.error('Erro ao baixar relatório:', e);
+    } catch (error) {
+      toast.dismiss();
+      toast.error('Erro ao gerar PDF');
+      console.error('Erro ao gerar PDF:', error);
     }
   };
+
+  const mesesDisponiveis = [...new Set(dadosFiltrados
+    .filter(c => c.data_pagamento)
+    .map(c => moment(c.data_pagamento).format('YYYY-MM'))
+  )].sort().reverse();
 
   if (!user) {
     return (
@@ -135,13 +181,8 @@ export default function ComissoesPagas() {
     );
   }
 
-  // Separar comissões programadas (sem data_pagamento) e quitadas (com data_pagamento)
-  const comissoesProgramadas = comissoesPagas.filter(c => !c.data_pagamento);
-  const comissoesQuitadas = dadosFiltrados.filter(c => c.data_pagamento);
-
   // Calcular totais
-  const totalProgramado = comissoesProgramadas.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
-  const totalQuitado = comissoesQuitadas.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+  const totalPago = dadosFiltrados.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -150,9 +191,23 @@ export default function ComissoesPagas() {
         subtitle="Histórico de pagamentos realizados"
       />
 
+      {/* Resumo */}
+      <Card className="p-6 mb-6 bg-gradient-to-r from-green-50 to-emerald-50">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-slate-600 mb-1">Total de Comissões Pagas</p>
+            <p className="text-3xl font-bold text-green-600">
+              {totalPago.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">{dadosFiltrados.length} pagamento(s)</p>
+          </div>
+          <FileText className="w-12 h-12 text-green-600 opacity-20" />
+        </div>
+      </Card>
+
       {/* Filtros */}
-      <Card className="p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Card className="p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <Label>Vendedor</Label>
             <Input
@@ -162,7 +217,22 @@ export default function ComissoesPagas() {
             />
           </div>
           <div>
-            <Label>Data Início</Label>
+            <Label>Mês</Label>
+            <select
+              className="w-full h-10 px-3 border border-slate-200 rounded-md text-sm"
+              value={filtroMes}
+              onChange={(e) => setFiltroMes(e.target.value)}
+            >
+              <option value="todos">Todos os meses</option>
+              {mesesDisponiveis.map((mes) => (
+                <option key={mes} value={mes}>
+                  {moment(mes).format('MMMM/YYYY')}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label>Data Início (customizada)</Label>
             <Input
               type="date"
               value={filtroDataInicio}
@@ -170,153 +240,139 @@ export default function ComissoesPagas() {
             />
           </div>
           <div>
-            <Label>Data Fim</Label>
+            <Label>Data Fim (customizada)</Label>
             <Input
               type="date"
               value={filtroDataFim}
               onChange={(e) => setFiltroDataFim(e.target.value)}
             />
           </div>
-          <div>
-            <Label>Lote</Label>
-            <Input
-              placeholder="Filtrar por lote"
-              value={filtroLote}
-              onChange={(e) => setFiltroLote(e.target.value)}
-            />
-          </div>
         </div>
       </Card>
 
-      {/* Comissões Programadas */}
-      {comissoesProgramadas.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Comissões Programadas</h2>
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                    <tr className="border-b bg-slate-700 text-white">
-                      <th className="px-4 py-3 text-left text-sm font-semibold">DATA RECEBIMENTO</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">CLIENTE</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">VENDEDOR</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">GRUPO/COTA</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold">PARCELA</th>
-                      <th className="px-4 py-3 text-right text-sm font-semibold">VALOR RECEBIDO</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold">ADMINISTRADORA</th>
-                    </tr>
-                  </thead>
-                <tbody>
-                  <tr className="bg-slate-100 border-b">
-                    <td colSpan="7" className="px-4 py-2 text-sm">
-                      <span className="font-semibold text-slate-700">Total: {comissoesProgramadas.length}</span>
-                    </td>
-                  </tr>
-                  {comissoesProgramadas.map((c) => (
-                             <tr key={c.id} className="border-b hover:bg-slate-50">
-                               <td className="px-4 py-3 text-sm">
-                                 {formatDateBR(c.data_pagamento)}
-                               </td>
-                              <td className="px-4 py-3 text-sm">{c.cliente_nome || '-'}</td>
-                              <td className="px-4 py-3 text-sm">{c.vendedor_nome || '-'}</td>
-                              <td className="px-4 py-3 text-sm">
-                                {c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-center">
-                                {c.parcela_numero ? `${c.parcela_numero}º` : '-'}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right font-mono font-semibold text-blue-600">
-                                {(c.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </td>
-                              <td className="px-4 py-3 text-sm">{c.administradora_nome || '-'}</td>
-                            </tr>
-                          ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+      {/* Lista de Pagamentos Agrupados por Data */}
+      {loadingComissoes ? (
+        <Card className="p-8">
+          <div className="text-center text-slate-500">Carregando...</div>
+        </Card>
+      ) : sortedDates.length === 0 ? (
+        <Card className="p-8">
+          <div className="text-center text-slate-500">Nenhuma comissão paga encontrada</div>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {sortedDates.map((date) => {
+            const comissoes = groupedByDate[date];
+            const totalData = comissoes.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+            const isExpanded = expandedDates[date];
+            const dataFormatada = date === 'sem-data' ? 'Sem Data de Pagamento' : formatDateBR(date);
+
+            return (
+              <Card key={date} className="overflow-hidden">
+                {/* Header da Data */}
+                <div 
+                  className="bg-[#10353C] text-white p-4 cursor-pointer hover:bg-[#0d2a30] transition-colors"
+                  onClick={() => toggleDate(date)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-lg">{dataFormatada}</h3>
+                        <Badge className="bg-white/20 text-white border-0">
+                          {comissoes.length} pagamento(s)
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-white/80 mt-1">
+                        Total: <span className="font-semibold">
+                          {totalData.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {date !== 'sem-data' && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            gerarPdfData(date, comissoes);
+                          }}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Baixar PDF
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-white hover:bg-white/10"
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-5 h-5" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tabela de Comissões */}
+                {isExpanded && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b">
+                        <tr>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Vendedor</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Administradora</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
+                          <th className="text-right p-3 font-semibold text-slate-700 text-sm">Valor Recebido</th>
+                          <th className="text-center p-3 font-semibold text-slate-700 text-sm">% Com.</th>
+                          <th className="text-right p-3 font-semibold text-slate-700 text-sm">Valor Pago</th>
+                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Forma Pgto</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {comissoes.map((c) => (
+                          <tr key={c.id} className="border-b hover:bg-slate-50">
+                            <td className="p-3 text-sm">{c.cliente_nome || '-'}</td>
+                            <td className="p-3 text-sm">{c.vendedor_nome || '-'}</td>
+                            <td className="p-3 text-sm">{c.administradora_nome || '-'}</td>
+                            <td className="p-3 text-sm">
+                              {c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-'}
+                            </td>
+                            <td className="p-3 text-sm">
+                              {c.parcela_numero ? `${c.parcela_numero}º` : '-'}
+                            </td>
+                            <td className="p-3 text-sm text-right font-semibold text-green-600">
+                              {(c.valor_recebido || 0).toLocaleString('pt-BR', { 
+                                style: 'currency', 
+                                currency: 'BRL' 
+                              })}
+                            </td>
+                            <td className="p-3 text-sm text-center">
+                              {c.percentual_comissao || 100}%
+                            </td>
+                            <td className="p-3 text-sm text-right font-bold text-blue-600">
+                              {(c.valor_a_pagar || 0).toLocaleString('pt-BR', { 
+                                style: 'currency', 
+                                currency: 'BRL' 
+                              })}
+                            </td>
+                            <td className="p-3 text-sm">{c.forma_pagamento || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
-
-      {/* Comissões Quitadas */}
-       <div>
-         <h2 className="text-lg font-semibold text-slate-800 mb-4">Comissões Quitadas</h2>
-         <Card>
-           <div className="overflow-x-auto">
-             <table className="w-full">
-               <thead>
-                 <tr className="border-b bg-slate-700 text-white">
-                   <th className="px-4 py-3 text-left text-sm font-semibold">DATA RECEBIMENTO</th>
-                   <th className="px-4 py-3 text-left text-sm font-semibold">CLIENTE</th>
-                   <th className="px-4 py-3 text-left text-sm font-semibold">VENDEDOR</th>
-                   <th className="px-4 py-3 text-left text-sm font-semibold">GRUPO/COTA</th>
-                   <th className="px-4 py-3 text-center text-sm font-semibold">PARCELA</th>
-                   <th className="px-4 py-3 text-right text-sm font-semibold">VALOR RECEBIDO</th>
-                   <th className="px-4 py-3 text-left text-sm font-semibold">ADMINISTRADORA</th>
-                   <th className="px-4 py-3 text-center text-sm font-semibold">AÇÕES</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {loadingComissoes ? (
-                   <tr>
-                     <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
-                       Carregando...
-                     </td>
-                   </tr>
-                 ) : comissoesQuitadas.length === 0 ? (
-                   <tr>
-                     <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
-                       Nenhuma comissão quitada encontrada
-                     </td>
-                   </tr>
-                 ) : (
-                   comissoesQuitadas.map((c) => (
-                     <tr key={c.id} className="border-b hover:bg-slate-50">
-                       <td className="px-4 py-3 text-sm">
-                         {formatDateBR(c.data_pagamento) !== '-' ? formatDateBR(c.data_pagamento) : formatDateBR(c.data_recebimento)}
-                       </td>
-                       <td className="px-4 py-3 text-sm">{c.cliente_nome || '-'}</td>
-                       <td className="px-4 py-3 text-sm">{c.vendedor_nome || '-'}</td>
-                       <td className="px-4 py-3 text-sm">
-                         {c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-'}
-                       </td>
-                       <td className="px-4 py-3 text-sm text-center">
-                         {c.parcela_numero ? `${c.parcela_numero}º` : '-'}
-                       </td>
-                       <td className="px-4 py-3 text-sm text-right font-mono font-semibold text-green-600">
-                         {(c.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                       </td>
-                       <td className="px-4 py-3 text-sm">{c.administradora_nome || '-'}</td>
-                       <td className="px-4 py-3 text-center">
-                         <div className="flex gap-2 justify-center">
-                           <Button
-                             size="sm"
-                             variant="ghost"
-                             title="Visualizar"
-                             className="text-slate-600 hover:text-slate-900"
-                           >
-                             <Eye className="w-4 h-4" />
-                           </Button>
-                           <Button
-                             size="sm"
-                             variant="ghost"
-                             onClick={() => handleBaixarRelatorio(c)}
-                             disabled={!c.lote_id}
-                             title={c.lote_id ? 'Imprimir' : 'Sem lote'}
-                             className="text-slate-600 hover:text-slate-900"
-                           >
-                             <Printer className="w-4 h-4" />
-                           </Button>
-                         </div>
-                       </td>
-                     </tr>
-                   ))
-                 )}
-               </tbody>
-             </table>
-           </div>
-         </Card>
-       </div>
     </div>
   );
 }
