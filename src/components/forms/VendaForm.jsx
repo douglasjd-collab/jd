@@ -38,6 +38,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       grupo: '',
       cota: '',
       contrato: '',
+      prazo: '',
       valorCredito: oportunidade?.valor_estimado || 0,
       taxaAdministracao: 0,
       vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
@@ -159,6 +160,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         grupo: '',
         cota: '',
         contrato: '',
+        prazo: '',
         valorCredito: oportunidade?.valor_estimado || 0,
         taxaAdministracao: 0,
         vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
@@ -528,6 +530,16 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 />
               </div>
               
+              <div>
+                <Label htmlFor="prazo">Prazo Contratado (meses) *</Label>
+                <Input
+                  id="prazo"
+                  type="number"
+                  {...register('prazo', { required: true, min: 1 })}
+                  placeholder="Ex: 60"
+                />
+                {errors.prazo && <p className="text-sm text-red-500 mt-1">Prazo é obrigatório</p>}
+              </div>
 
             </div>
           </div>
@@ -665,7 +677,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             </Button>
             <Button 
               type="submit" 
-              disabled={isLoading || (isMaster && !watch('empresa_id')) || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || !watch('vendedor_id') || parseFloat(watch('valorCredito') || 0) <= 0 || parseFloat(watch('taxaAdministracao') || 0) <= 0} 
+              disabled={isLoading || (isMaster && !watch('empresa_id')) || !watch('cliente_id') || !watch('administradora_id') || !watch('tabela_id') || !watch('grupo') || !watch('prazo') || !watch('vendedor_id') || parseFloat(watch('valorCredito') || 0) <= 0 || parseFloat(watch('taxaAdministracao') || 0) <= 0} 
               className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
             >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
