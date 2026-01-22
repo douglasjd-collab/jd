@@ -65,22 +65,31 @@ export default function Importacao() {
 
   const deleteImportMutation = useMutation({
     mutationFn: async (importId) => {
+      toast.message('Excluindo importação...');
+      
       // Excluir RecebimentoComissao relacionados
       const recebimentos = await base44.entities.RecebimentoComissao.filter({
         origem_importacao_id: importId
       });
       
-      for (const rec of recebimentos) {
-        // Excluir ComissaoAPagar relacionada
-        const comissoesAPagar = await base44.entities.ComissaoAPagar.filter({
-          recebimento_id: rec.id
-        });
-        for (const com of comissoesAPagar) {
-          await base44.entities.ComissaoAPagar.delete(com.id);
+      if (recebimentos.length > 0) {
+        toast.message(`Excluindo ${recebimentos.length} recebimentos...`);
+        for (const rec of recebimentos) {
+          try {
+            // Excluir ComissaoAPagar relacionada
+            const comissoesAPagar = await base44.entities.ComissaoAPagar.filter({
+              recebimento_id: rec.id
+            });
+            for (const com of comissoesAPagar) {
+              await base44.entities.ComissaoAPagar.delete(com.id);
+            }
+            
+            // Excluir RecebimentoComissao
+            await base44.entities.RecebimentoComissao.delete(rec.id);
+          } catch (e) {
+            console.error('Erro ao excluir recebimento:', e);
+          }
         }
-        
-        // Excluir RecebimentoComissao
-        await base44.entities.RecebimentoComissao.delete(rec.id);
       }
       
       // Excluir itens de importação
@@ -88,8 +97,15 @@ export default function Importacao() {
         importacao_id: importId
       });
       
-      for (const item of itens) {
-        await base44.entities.ImportacaoItem.delete(item.id);
+      if (itens.length > 0) {
+        toast.message(`Excluindo ${itens.length} itens...`);
+        for (const item of itens) {
+          try {
+            await base44.entities.ImportacaoItem.delete(item.id);
+          } catch (e) {
+            console.error('Erro ao excluir item:', e);
+          }
+        }
       }
       
       // Excluir importação
@@ -98,15 +114,16 @@ export default function Importacao() {
     onSuccess: () => {
       queryClient.invalidateQueries(['importacoes']);
       queryClient.invalidateQueries(['recebimentos']);
-      toast.success('Importação excluída com sucesso');
+      toast.success('✅ Importação excluída com sucesso');
     },
-    onError: () => {
-      toast.error('Erro ao excluir importação');
+    onError: (error) => {
+      console.error('Erro ao excluir:', error);
+      toast.error('Erro ao excluir importação: ' + (error?.message || 'Erro desconhecido'));
     }
   });
 
   const handleDelete = (importacao) => {
-    if (confirm('Tem certeza que deseja excluir esta importação? Esta ação não pode ser desfeita.')) {
+    if (confirm(`Tem certeza que deseja excluir esta importação?\n\n${importacao.registros_processados || 0} recebimentos serão excluídos.\nEsta ação não pode ser desfeita.`)) {
       deleteImportMutation.mutate(importacao.id);
     }
   };
@@ -426,9 +443,14 @@ export default function Importacao() {
             variant="ghost" 
             size="icon"
             onClick={() => handleDelete(row)}
+            disabled={deleteImportMutation.isPending}
             className="text-red-600 hover:text-red-700 hover:bg-red-50"
           >
-            <Trash2 className="w-4 h-4" />
+            {deleteImportMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
           </Button>
         </div>
       )
