@@ -10,8 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { TrendingDown, Search, Trash2, Upload, Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
+import { TrendingDown, Search, Trash2, Upload, Calendar as CalendarIcon, ChevronDown, CheckCircle, Repeat } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 import { format } from 'date-fns';
@@ -32,6 +33,11 @@ export default function LancamentoDespesas() {
     responsavel_nome: '',
     comprovante_url: '',
     observacao: '',
+    foiPaga: true,
+    despesaFixa: false,
+    repetir: false,
+    repeticoes: 2,
+    unidadeRepeticao: 'meses',
   });
 
   const queryClient = useQueryClient();
@@ -101,6 +107,11 @@ export default function LancamentoDespesas() {
       responsavel_nome: '',
       comprovante_url: '',
       observacao: '',
+      foiPaga: true,
+      despesaFixa: false,
+      repetir: false,
+      repeticoes: 2,
+      unidadeRepeticao: 'meses',
     });
     setMostrarDetalhes(true);
   };
@@ -307,6 +318,18 @@ export default function LancamentoDespesas() {
                 )}
               </div>
 
+              {/* Foi paga */}
+              <div className="flex items-center justify-between border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-slate-400" />
+                  <span>Foi paga</span>
+                </div>
+                <Switch
+                  checked={formData.foiPaga}
+                  onCheckedChange={(v) => setFormData({ ...formData, foiPaga: v })}
+                />
+              </div>
+
               {/* Data */}
               <div className="border-b border-slate-700 pb-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -474,6 +497,58 @@ export default function LancamentoDespesas() {
                   className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0 resize-none"
                 />
               </div>
+
+              {mostrarDetalhes && (
+                <>
+                  {/* Despesa fixa */}
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-4">
+                    <div className="flex items-center gap-3">
+                      <Repeat className="w-5 h-5 text-slate-400" />
+                      <span>Despesa fixa</span>
+                    </div>
+                    <Switch
+                      checked={formData.despesaFixa}
+                      onCheckedChange={(v) => setFormData({ ...formData, despesaFixa: v })}
+                    />
+                  </div>
+
+                  {/* Repetir */}
+                  <div className="border-b border-slate-700 pb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <Repeat className="w-5 h-5 text-slate-400" />
+                        <span>Repetir</span>
+                      </div>
+                      <Switch
+                        checked={formData.repetir}
+                        onCheckedChange={(v) => setFormData({ ...formData, repetir: v })}
+                      />
+                    </div>
+                    {formData.repetir && (
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          value={formData.repeticoes}
+                          onChange={(e) => setFormData({ ...formData, repeticoes: parseInt(e.target.value) || 2 })}
+                          className="w-20 bg-slate-700 border-slate-600 text-white"
+                        />
+                        <Select
+                          value={formData.unidadeRepeticao}
+                          onValueChange={(v) => setFormData({ ...formData, unidadeRepeticao: v })}
+                        >
+                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700">
+                            <SelectItem value="vezes">vezes</SelectItem>
+                            <SelectItem value="meses">Meses</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
