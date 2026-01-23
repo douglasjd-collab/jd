@@ -91,16 +91,18 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Comissões Recebidas (ADM) - status confirmada, tipo receber
+  // Comissões Recebidas (ADM) - tipo=receber (não filtrar status, pega todas recebidas)
   const comissoesRecebidasPeriodo = comissoes.filter((c) => {
-    if (c.status !== 'confirmada' || c.tipo !== 'receber') return false;
-    if (!c.data_recebimento) return false;
-    const normalized = normalizeDate(c.data_recebimento);
+    if (c.tipo !== 'receber') return false;
+    // Usar data_recebimento se disponível, senão data_pagamento
+    const dataRef = c.data_recebimento || c.data_pagamento;
+    if (!dataRef) return false;
+    const normalized = normalizeDate(dataRef);
     if (!normalized) return false;
     return normalized >= dataInicio && normalized <= dataFim;
   });
   
-  const totalComissoesRecebidas = comissoesRecebidasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido || c.valor), 0);
+  const totalComissoesRecebidas = comissoesRecebidasPeriodo.reduce((acc, c) => acc + toNumber(c.valor), 0);
   const recebidas_count = comissoesRecebidasPeriodo.length;
 
   // Comissões a Pagar (filtrar por data_recebimento)
@@ -394,20 +396,16 @@ export default function RelatoriosFinanceiros() {
               </div>
               {comissoes.length > 0 && (
               <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
-                <p className="font-mono text-amber-900">Fonte: Comissao (status=confirmada, tipo=receber)</p>
-                <p className="font-mono text-amber-900">Raw data_recebimento: {comissoes[0]?.data_recebimento}</p>
-                <p className="font-mono text-amber-700">
-                  Normalized: {normalizeDate(comissoes[0]?.data_recebimento)}
-                </p>
-                <p className="font-mono text-amber-700">
-                  Filtro: {dataInicio} até {dataFim}
-                </p>
-                <p className="font-mono text-amber-700">
-                  valor_recebido (raw): {comissoes[0]?.valor_recebido} (type: {typeof comissoes[0]?.valor_recebido})
-                </p>
-                <p className="font-mono text-amber-700">
-                  valor (raw): {comissoes[0]?.valor} (type: {typeof comissoes[0]?.valor})
-                </p>
+                <p className="font-mono text-amber-900">Total Comissao: {comissoes.length}</p>
+                <p className="font-mono text-amber-900">Filtradas (tipo=receber): {comissoes.filter(c => c.tipo === 'receber').length}</p>
+                <p className="font-mono text-amber-700">Primeiro registro:</p>
+                <p className="font-mono text-amber-700">- tipo: {comissoes[0]?.tipo}</p>
+                <p className="font-mono text-amber-700">- status: {comissoes[0]?.status}</p>
+                <p className="font-mono text-amber-700">- data_recebimento: {comissoes[0]?.data_recebimento}</p>
+                <p className="font-mono text-amber-700">- data_pagamento: {comissoes[0]?.data_pagamento}</p>
+                <p className="font-mono text-amber-700">- valor: {comissoes[0]?.valor} (type: {typeof comissoes[0]?.valor})</p>
+                <p className="font-mono text-amber-700">Período: {dataInicio} até {dataFim}</p>
+                <p className="font-mono text-amber-700">Recebidas no período: {recebidas_count}</p>
               </div>
               )}
             </div>
