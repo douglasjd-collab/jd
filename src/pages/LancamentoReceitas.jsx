@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { TrendingUp, Search, Trash2 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
 import moment from 'moment';
 
 export default function LancamentoReceitas() {
@@ -18,13 +19,20 @@ export default function LancamentoReceitas() {
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    descricao: '',
-    categoria: 'Bônus',
     valor: '',
-    data: moment().format('YYYY-MM-DD'),
-    origem: '',
+    foiRecebida: true,
+    tipoData: 'hoje',
+    dataCustom: moment().format('YYYY-MM-DD'),
+    descricao: '',
     observacao: '',
+    receitaFixa: false,
+    repetir: false,
+    repeticoes: 2,
+    unidadeRepeticao: 'meses',
+    categoria: 'Bônus',
+    origem: '',
   });
+  const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
 
   const queryClient = useQueryClient();
 
@@ -77,18 +85,25 @@ export default function LancamentoReceitas() {
 
   const resetForm = () => {
     setFormData({
-      descricao: '',
-      categoria: 'Bônus',
       valor: '',
-      data: moment().format('YYYY-MM-DD'),
-      origem: '',
+      foiRecebida: true,
+      tipoData: 'hoje',
+      dataCustom: moment().format('YYYY-MM-DD'),
+      descricao: '',
       observacao: '',
+      receitaFixa: false,
+      repetir: false,
+      repeticoes: 2,
+      unidadeRepeticao: 'meses',
+      categoria: 'Bônus',
+      origem: '',
     });
+    setMostrarDetalhes(true);
   };
 
   const handleSubmit = () => {
-    if (!formData.descricao || !formData.valor) {
-      toast.error('Preencha os campos obrigatórios');
+    if (!formData.categoria || !formData.valor) {
+      toast.error('Preencha categoria e valor');
       return;
     }
 
@@ -98,17 +113,33 @@ export default function LancamentoReceitas() {
       return;
     }
 
+    let dataFinal = moment().format('YYYY-MM-DD');
+    if (formData.tipoData === 'hoje') {
+      dataFinal = moment().format('YYYY-MM-DD');
+    } else if (formData.tipoData === 'ontem') {
+      dataFinal = moment().subtract(1, 'day').format('YYYY-MM-DD');
+    } else {
+      dataFinal = formData.dataCustom;
+    }
+
     createMutation.mutate({
       empresa_id: user.empresa_id,
       descricao: formData.descricao,
       categoria: formData.categoria,
       valor,
-      data: formData.data,
+      data: dataFinal,
       origem: formData.origem,
       observacao: formData.observacao,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
     });
+  };
+
+  const formatarValor = (val) => {
+    const num = val.replace(/\D/g, '');
+    if (!num) return '';
+    const valor = parseFloat(num) / 100;
+    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const handleExcluir = (id) => {
@@ -234,74 +265,240 @@ export default function LancamentoReceitas() {
 
       {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#2a2d35] text-white border-none">
           <DialogHeader>
-            <DialogTitle>Nova Receita</DialogTitle>
+            <DialogTitle className="text-white">Nova receita</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Descrição *</Label>
-              <Input
-                value={formData.descricao}
-                onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                placeholder="Ex: Bônus de produtividade"
+          
+          <div className="space-y-6">
+            {/* Valor */}
+            <div className="border-b border-slate-600 pb-4">
+              <div className="flex items-center gap-3">
+                <Calculator className="w-6 h-6 text-slate-400" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl font-bold text-green-400">R$</span>
+                    <Input
+                      value={formData.valor}
+                      onChange={(e) => setFormData({ ...formData, valor: formatarValor(e.target.value) })}
+                      placeholder="0,00"
+                      className="text-3xl font-bold bg-transparent border-none text-green-400 h-auto p-0 focus-visible:ring-0"
+                    />
+                    <span className="text-sm text-slate-400">BRL</span>
+                  </div>
+                  {!formData.valor && (
+                    <p className="text-xs text-orange-400 mt-1">Deve ter um valor diferente de 0</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Foi recebida */}
+            <div className="flex items-center justify-between border-b border-slate-600 pb-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-slate-400" />
+                <span>Foi recebida</span>
+              </div>
+              <Switch
+                checked={formData.foiRecebida}
+                onCheckedChange={(v) => setFormData({ ...formData, foiRecebida: v })}
               />
             </div>
-            <div>
-              <Label>Categoria *</Label>
-              <Select
-                value={formData.categoria}
-                onValueChange={(v) => setFormData({ ...formData, categoria: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Bônus">Bônus</SelectItem>
-                  <SelectItem value="Repasse">Repasse</SelectItem>
-                  <SelectItem value="Ajuste">Ajuste</SelectItem>
-                  <SelectItem value="Outros">Outros</SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* Tipo de data */}
+            <div className="border-b border-slate-600 pb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <FileText className="w-5 h-5 text-slate-400" />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={formData.tipoData === 'hoje' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, tipoData: 'hoje' })}
+                    className={formData.tipoData === 'hoje' ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-700 hover:bg-slate-600 text-white'}
+                  >
+                    Hoje
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={formData.tipoData === 'ontem' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, tipoData: 'ontem' })}
+                    className={formData.tipoData === 'ontem' ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-700 hover:bg-slate-600 text-white'}
+                  >
+                    Ontem
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={formData.tipoData === 'outro' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, tipoData: 'outro' })}
+                    className={formData.tipoData === 'outro' ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-700 hover:bg-slate-600 text-white'}
+                  >
+                    Outros...
+                  </Button>
+                </div>
+              </div>
+              {formData.tipoData === 'outro' && (
+                <Input
+                  type="date"
+                  value={formData.dataCustom}
+                  onChange={(e) => setFormData({ ...formData, dataCustom: e.target.value })}
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
+              )}
             </div>
-            <div>
-              <Label>Valor *</Label>
-              <Input
-                value={formData.valor}
-                onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
-                placeholder="Ex: 500,00"
-              />
+
+            {/* Descrição */}
+            <div className="border-b border-slate-600 pb-4">
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-slate-400" />
+                <Input
+                  value={formData.descricao}
+                  onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                  placeholder="Descrição"
+                  className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0"
+                />
+              </div>
             </div>
-            <div>
-              <Label>Data *</Label>
-              <Input
-                type="date"
-                value={formData.data}
-                onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-              />
+
+            {/* Observação */}
+            <div className="border-b border-slate-600 pb-4">
+              <div className="flex items-center gap-3">
+                <Tag className="w-5 h-5 text-slate-400" />
+                <Input
+                  value={formData.observacao}
+                  onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
+                  placeholder="Observação"
+                  className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0"
+                />
+              </div>
             </div>
-            <div>
-              <Label>Origem</Label>
-              <Input
-                value={formData.origem}
-                onChange={(e) => setFormData({ ...formData, origem: e.target.value })}
-                placeholder="Ex: Canopus"
-              />
-            </div>
-            <div>
-              <Label>Observação</Label>
-              <Textarea
-                value={formData.observacao}
-                onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                rows={3}
-              />
-            </div>
+
+            {mostrarDetalhes && (
+              <>
+                {/* Receita fixa */}
+                <div className="flex items-center justify-between border-b border-slate-600 pb-4">
+                  <div className="flex items-center gap-3">
+                    <Repeat className="w-5 h-5 text-slate-400" />
+                    <span>Receita fixa</span>
+                  </div>
+                  <Switch
+                    checked={formData.receitaFixa}
+                    onCheckedChange={(v) => setFormData({ ...formData, receitaFixa: v })}
+                  />
+                </div>
+
+                {/* Repetir */}
+                <div className="border-b border-slate-600 pb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <Repeat className="w-5 h-5 text-slate-400" />
+                      <span>Repetir</span>
+                    </div>
+                    <Switch
+                      checked={formData.repetir}
+                      onCheckedChange={(v) => setFormData({ ...formData, repetir: v })}
+                    />
+                  </div>
+                  {formData.repetir && (
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={formData.repeticoes}
+                        onChange={(e) => setFormData({ ...formData, repeticoes: parseInt(e.target.value) || 2 })}
+                        className="w-20 bg-slate-700 border-slate-600 text-white"
+                      />
+                      <Select
+                        value={formData.unidadeRepeticao}
+                        onValueChange={(v) => setFormData({ ...formData, unidadeRepeticao: v })}
+                      >
+                        <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="vezes">vezes</SelectItem>
+                          <SelectItem value="meses">Meses</SelectItem>
+                          <SelectItem value="anos">Anos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Categoria */}
+                <div className="border-b border-slate-600 pb-4">
+                  <div className="flex items-center gap-3">
+                    <Tag className="w-5 h-5 text-slate-400" />
+                    <div className="flex-1">
+                      <Select
+                        value={formData.categoria}
+                        onValueChange={(v) => setFormData({ ...formData, categoria: v })}
+                      >
+                        <SelectTrigger className="bg-transparent border-none text-white focus:ring-0">
+                          <SelectValue placeholder="Categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Bônus">Bônus</SelectItem>
+                          <SelectItem value="Repasse">Repasse</SelectItem>
+                          <SelectItem value="Ajuste">Ajuste</SelectItem>
+                          <SelectItem value="Outros">Outros</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {!formData.categoria && (
+                        <p className="text-xs text-orange-400 mt-1">Campo obrigatório</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Origem (Conta) */}
+                <div className="border-b border-slate-600 pb-4">
+                  <div className="flex items-center gap-3">
+                    <Calculator className="w-5 h-5 text-slate-400" />
+                    <Input
+                      value={formData.origem}
+                      onChange={(e) => setFormData({ ...formData, origem: e.target.value })}
+                      placeholder="Conta/Origem"
+                      className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0"
+                    />
+                  </div>
+                </div>
+
+                {/* Anexar Arquivo */}
+                <div className="border-b border-slate-600 pb-4">
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <Paperclip className="w-5 h-5" />
+                    <span>Anexar Arquivo</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Toggle Detalhes */}
+            <button
+              onClick={() => setMostrarDetalhes(!mostrarDetalhes)}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              {mostrarDetalhes ? 'Menos detalhes' : 'Mais detalhes'}
+              <ChevronDown className={`w-4 h-4 transition-transform ${mostrarDetalhes ? 'rotate-180' : ''}`} />
+            </button>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>
+
+          <DialogFooter className="mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setModalOpen(false);
+                resetForm();
+              }}
+              className="bg-slate-700 hover:bg-slate-600 text-white border-none"
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSubmit}>Lançar Receita</Button>
+            <Button 
+              onClick={handleSubmit}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Lançar Receita
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
