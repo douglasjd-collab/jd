@@ -338,11 +338,20 @@ export default function RecebimentoComissao() {
 
       // Verificar duplicidade
       if (venda && !errors.length) {
+        const parseMoneyBR = (val) => {
+          if (val === null || val === undefined || val === '') return 0;
+          if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+          const s = String(val).trim();
+          const normalized = s.replace(/\./g, '').replace(',', '.');
+          const n = Number(normalized);
+          return Number.isFinite(n) ? n : 0;
+        };
+
         const isDuplicate = comissoes.some(c => 
           c.venda_id === venda.id &&
           c.observacoes?.includes(`Parcela ${row['Nº Parcela']}`) &&
-          parseFloat(c.valor) === parseFloat(row['Valor Recebido']) &&
-          c.status === 'confirmada'
+          parseMoneyBR(c.valor_recebido) === parseMoneyBR(row['Valor Recebido']) &&
+          String(c.status || '').toLowerCase() === 'confirmada'
         );
         if (isDuplicate) {
           errors.push('Recebimento duplicado');
