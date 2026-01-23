@@ -32,11 +32,11 @@ export default function RelatoriosFinanceiros() {
     }
   };
 
-  // Buscar Comissões Recebidas (da administradora)
-  const { data: comissoesRecebidas = [] } = useQuery({
-    queryKey: ['comissoes-recebidas-relatorio'],
+  // Buscar Comissões (entidade correta para recebimentos/importação)
+  const { data: comissoes = [] } = useQuery({
+    queryKey: ['comissoes-relatorio-financeiro'],
     queryFn: async () => {
-      return await base44.entities.RecebimentoComissao.filter({ status_recebimento: 'recebida' });
+      return await base44.entities.Comissao.filter({}, '-created_date', 500);
     },
     enabled: !!user,
   });
@@ -91,15 +91,16 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Comissões Recebidas (ADM) - igual à página "Comissões Recebidas"
-  const comissoesRecebidasPeriodo = comissoesRecebidas.filter((c) => {
+  // Comissões Recebidas (ADM) - status confirmada, tipo receber
+  const comissoesRecebidasPeriodo = comissoes.filter((c) => {
+    if (c.status !== 'confirmada' || c.tipo !== 'receber') return false;
     if (!c.data_recebimento) return false;
     const normalized = normalizeDate(c.data_recebimento);
     if (!normalized) return false;
     return normalized >= dataInicio && normalized <= dataFim;
   });
   
-  const totalComissoesRecebidas = comissoesRecebidasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
+  const totalComissoesRecebidas = comissoesRecebidasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido || c.valor), 0);
   const recebidas_count = comissoesRecebidasPeriodo.length;
 
   // Comissões a Pagar (filtrar por data_recebimento)
@@ -391,18 +392,21 @@ export default function RelatoriosFinanceiros() {
                   <p className="font-bold text-lg text-amber-900">{receitas_count}</p>
                 </div>
               </div>
-              {comissoesRecebidas.length > 0 && (
+              {comissoes.length > 0 && (
               <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
-                <p className="font-mono text-amber-900">Fonte: RecebimentoComissao</p>
-                <p className="font-mono text-amber-900">Raw data_recebimento: {comissoesRecebidas[0]?.data_recebimento}</p>
+                <p className="font-mono text-amber-900">Fonte: Comissao (status=confirmada, tipo=receber)</p>
+                <p className="font-mono text-amber-900">Raw data_recebimento: {comissoes[0]?.data_recebimento}</p>
                 <p className="font-mono text-amber-700">
-                  Normalized: {normalizeDate(comissoesRecebidas[0]?.data_recebimento)}
+                  Normalized: {normalizeDate(comissoes[0]?.data_recebimento)}
                 </p>
                 <p className="font-mono text-amber-700">
                   Filtro: {dataInicio} até {dataFim}
                 </p>
                 <p className="font-mono text-amber-700">
-                  valor_recebido (raw): {comissoesRecebidas[0]?.valor_recebido} (type: {typeof comissoesRecebidas[0]?.valor_recebido})
+                  valor_recebido (raw): {comissoes[0]?.valor_recebido} (type: {typeof comissoes[0]?.valor_recebido})
+                </p>
+                <p className="font-mono text-amber-700">
+                  valor (raw): {comissoes[0]?.valor} (type: {typeof comissoes[0]?.valor})
                 </p>
               </div>
               )}
