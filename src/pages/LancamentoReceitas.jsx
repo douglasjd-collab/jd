@@ -282,7 +282,7 @@ export default function LancamentoReceitas() {
                       value={formData.valor}
                       onChange={(e) => setFormData({ ...formData, valor: formatarValor(e.target.value) })}
                       placeholder="0,00"
-                      className="text-4xl font-bold bg-transparent border-none text-green-400 h-auto p-0 focus-visible:ring-0"
+                      className="text-5xl font-bold bg-transparent border-none text-green-400 h-auto p-0 focus-visible:ring-0"
                     />
                     <span className="text-sm text-slate-400">BRL</span>
                   </div>
