@@ -269,79 +269,106 @@ export default function LancamentoDespesas() {
 
       {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-2xl bg-white">
-          <DialogHeader className="border-b pb-6">
-            <DialogTitle className="text-2xl font-bold">Nova despesa</DialogTitle>
+        <DialogContent className="max-w-4xl bg-[#2A2A2A] text-white border-0">
+          <DialogHeader className="border-b border-slate-700 pb-4">
+            <DialogTitle className="text-xl font-semibold">Nova Despesa</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            {/* Valor Principal */}
-            <Card className="p-6 bg-white border-2">
-              <div className="space-y-3">
-                <Label className="text-sm text-slate-600">Valor da despesa</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-red-400">R$</span>
+          <div className="grid grid-cols-2 gap-6 py-4">
+            {/* Coluna Esquerda */}
+            <div className="space-y-4">
+              {/* Valor */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 border-b border-slate-700 pb-3">
+                  <TrendingDown className="w-5 h-5 text-slate-400" />
                   <Input
                     value={formData.valor}
                     onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
                     placeholder="0,00"
-                    className="text-2xl font-bold bg-transparent border-none text-red-400 h-auto p-0 focus-visible:ring-0"
+                    className="text-2xl font-bold bg-transparent border-none text-red-400 h-auto p-0 focus-visible:ring-0 flex-1"
                   />
-                  <span className="text-sm text-slate-400">BRL</span>
+                </div>
+                {(!formData.valor || parseFloat(formData.valor.replace(/[^\d,.-]/g, '').replace(',', '.')) === 0) && (
+                  <p className="text-xs text-orange-400">Deve ter um valor diferente de 0</p>
+                )}
+              </div>
+
+              {/* Data */}
+              <div className="border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm text-slate-400">Data</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={formData.data === moment().format('YYYY-MM-DD') ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, data: moment().format('YYYY-MM-DD') })}
+                    className={formData.data === moment().format('YYYY-MM-DD') ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600 text-white'}
+                  >
+                    Hoje
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={formData.data === moment().subtract(1, 'day').format('YYYY-MM-DD') ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, data: moment().subtract(1, 'day').format('YYYY-MM-DD') })}
+                    className={formData.data === moment().subtract(1, 'day').format('YYYY-MM-DD') ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600 text-white'}
+                  >
+                    Ontem
+                  </Button>
+                  <Input
+                    type="date"
+                    value={formData.data}
+                    onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                    className="bg-slate-700 border-slate-600 text-white flex-1"
+                  />
                 </div>
               </div>
-            </Card>
 
-            {/* Informações Básicas */}
-            <Card className="p-6 bg-white">
-              <div className="space-y-4">
-                <div>
-                  <Label>Descrição *</Label>
+              {/* Descrição */}
+              <div className="border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">📝</span>
                   <Input
                     value={formData.descricao}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    placeholder="Ex: Almoço com cliente"
-                    className="mt-1.5"
+                    placeholder="Descrição"
+                    className="bg-transparent border-none text-white focus-visible:ring-0 flex-1"
                   />
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Categoria *</Label>
-                    <Select
-                      value={formData.categoria}
-                      onValueChange={(v) => setFormData({ ...formData, categoria: v })}
-                    >
-                      <SelectTrigger className="mt-1.5">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Almoço">Almoço</SelectItem>
-                        <SelectItem value="Reunião">Reunião</SelectItem>
-                        <SelectItem value="Visita externa">Visita externa</SelectItem>
-                        <SelectItem value="Adiantamento">Adiantamento</SelectItem>
-                        <SelectItem value="Pagamento de salários">Pagamento de salários</SelectItem>
-                        <SelectItem value="Combustível">Combustível</SelectItem>
-                        <SelectItem value="Escritório">Escritório</SelectItem>
-                        <SelectItem value="Marketing">Marketing</SelectItem>
-                        <SelectItem value="Outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Data *</Label>
-                    <Input
-                      type="date"
-                      value={formData.data}
-                      onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-                      className="mt-1.5"
-                    />
-                  </div>
+              {/* Categoria */}
+              <div className="border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">🏷️</span>
+                  <Select
+                    value={formData.categoria}
+                    onValueChange={(v) => setFormData({ ...formData, categoria: v })}
+                  >
+                    <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectItem value="Almoço">Almoço</SelectItem>
+                      <SelectItem value="Reunião">Reunião</SelectItem>
+                      <SelectItem value="Visita externa">Visita externa</SelectItem>
+                      <SelectItem value="Adiantamento">Adiantamento</SelectItem>
+                      <SelectItem value="Pagamento de salários">Pagamento de salários</SelectItem>
+                      <SelectItem value="Combustível">Combustível</SelectItem>
+                      <SelectItem value="Escritório">Escritório</SelectItem>
+                      <SelectItem value="Marketing">Marketing</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
 
-                <div>
-                  <Label>Responsável *</Label>
+              {/* Responsável */}
+              <div className="border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">👤</span>
                   <Select
                     value={formData.responsavel_id}
                     onValueChange={(v) => {
@@ -353,10 +380,10 @@ export default function LancamentoDespesas() {
                       });
                     }}
                   >
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Selecione o responsável" />
+                    <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
+                      <SelectValue placeholder="Responsável" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-slate-800 border-slate-700">
                       {colaboradores.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.nome}
@@ -366,43 +393,76 @@ export default function LancamentoDespesas() {
                   </Select>
                 </div>
               </div>
-            </Card>
 
-            {/* Comprovante e Observações */}
-            <Card className="p-6 bg-white">
-              <div className="space-y-4">
-                <div>
-                  <Label>Comprovante (opcional)</Label>
-                  <div className="flex gap-2 mt-1.5">
-                    <Input type="file" onChange={handleFileUpload} disabled={uploading} />
-                    {uploading && <span className="text-sm text-slate-500">Enviando...</span>}
-                  </div>
-                  {formData.comprovante_url && (
-                    <p className="text-xs text-green-600 mt-2">✓ Comprovante enviado</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Observação</Label>
-                  <Textarea
-                    value={formData.observacao}
-                    onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                    rows={3}
-                    placeholder="Adicione observações sobre esta despesa..."
-                    className="mt-1.5"
+              {/* Anexar Arquivo */}
+              <div className="border-b border-slate-700 pb-4">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">Anexar Arquivo</span>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    onChange={handleFileUpload} 
+                    disabled={uploading}
                   />
-                </div>
+                </label>
+                {uploading && <span className="text-xs text-slate-400 mt-1">Enviando...</span>}
+                {formData.comprovante_url && (
+                  <p className="text-xs text-green-400 mt-1">✓ Comprovante enviado</p>
+                )}
               </div>
-            </Card>
+            </div>
+
+            {/* Coluna Direita */}
+            <div className="space-y-4">
+              {/* BRL */}
+              <div className="border-b border-slate-700 pb-4">
+                <Select defaultValue="BRL" disabled>
+                  <SelectTrigger className="bg-transparent border-none text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BRL">BRL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Observação */}
+              <div className="border-b border-slate-700 pb-4">
+                <Textarea
+                  value={formData.observacao}
+                  onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
+                  placeholder="Observação"
+                  rows={3}
+                  className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0 resize-none"
+                />
+              </div>
+            </div>
           </div>
 
-          <DialogFooter className="border-t pt-6">
-            <Button variant="outline" onClick={() => setModalOpen(false)}>
-              Cancelar
+          <DialogFooter className="border-t border-slate-700 pt-4 flex justify-between items-center">
+            <Button 
+              variant="ghost" 
+              className="text-slate-400 hover:text-white"
+              onClick={() => setModalOpen(false)}
+            >
+              Menos detalhes &lt;
             </Button>
-            <Button onClick={handleSubmit} className="bg-[#23BE84] hover:bg-[#1da570]">
-              Lançar Despesa
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setModalOpen(false)}
+                className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                className="bg-red-500 hover:bg-red-600 text-white"
+              >
+                Lançar Despesa
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
