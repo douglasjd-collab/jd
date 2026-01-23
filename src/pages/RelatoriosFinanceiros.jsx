@@ -32,7 +32,16 @@ export default function RelatoriosFinanceiros() {
     }
   };
 
-  // Buscar Comissões a Pagar (contém tanto recebidas quanto a pagar/pagas)
+  // Buscar Comissões Recebidas (da administradora)
+  const { data: comissoesRecebidas = [] } = useQuery({
+    queryKey: ['comissoes-recebidas-relatorio'],
+    queryFn: async () => {
+      return await base44.entities.RecebimentoComissao.filter({ status_recebimento: 'recebida' });
+    },
+    enabled: !!user,
+  });
+
+  // Buscar Comissões a Pagar/Pagas (aos vendedores)
   const { data: comissoesAPagar = [] } = useQuery({
     queryKey: ['comissoes-a-pagar-relatorio'],
     queryFn: async () => {
@@ -82,16 +91,16 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Comissões Recebidas = todas as comissões em ComissaoAPagar dentro do período
-  const comissoesRecebidas = comissoesAPagar.filter((c) => {
+  // Comissões Recebidas (ADM) - igual à página "Comissões Recebidas"
+  const comissoesRecebidasPeriodo = comissoesRecebidas.filter((c) => {
     if (!c.data_recebimento) return false;
     const normalized = normalizeDate(c.data_recebimento);
     if (!normalized) return false;
     return normalized >= dataInicio && normalized <= dataFim;
   });
   
-  const totalComissoesRecebidas = comissoesRecebidas.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
-  const recebidas_count = comissoesRecebidas.length;
+  const totalComissoesRecebidas = comissoesRecebidasPeriodo.reduce((acc, c) => acc + toNumber(c.valor_recebido), 0);
+  const recebidas_count = comissoesRecebidasPeriodo.length;
 
   // Comissões a Pagar (filtrar por data_recebimento)
   const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => {
@@ -367,7 +376,7 @@ export default function RelatoriosFinanceiros() {
                 </div>
                 <div>
                   <p className="text-amber-700">Recebidas (period)</p>
-                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidas.length}</p>
+                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidasPeriodo.length}</p>
                 </div>
                 <div>
                   <p className="text-amber-700">A Pagar</p>
@@ -382,17 +391,18 @@ export default function RelatoriosFinanceiros() {
                   <p className="font-bold text-lg text-amber-900">{receitas_count}</p>
                 </div>
               </div>
-              {comissoesAPagar.length > 0 && (
+              {comissoesRecebidas.length > 0 && (
               <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
-                <p className="font-mono text-amber-900">Raw data_recebimento: {comissoesAPagar[0]?.data_recebimento}</p>
+                <p className="font-mono text-amber-900">Fonte: RecebimentoComissao</p>
+                <p className="font-mono text-amber-900">Raw data_recebimento: {comissoesRecebidas[0]?.data_recebimento}</p>
                 <p className="font-mono text-amber-700">
-                  Normalized: {normalizeDate(comissoesAPagar[0]?.data_recebimento)}
+                  Normalized: {normalizeDate(comissoesRecebidas[0]?.data_recebimento)}
                 </p>
                 <p className="font-mono text-amber-700">
                   Filtro: {dataInicio} até {dataFim}
                 </p>
                 <p className="font-mono text-amber-700">
-                  valor_recebido (raw): {comissoesAPagar[0]?.valor_recebido} (type: {typeof comissoesAPagar[0]?.valor_recebido})
+                  valor_recebido (raw): {comissoesRecebidas[0]?.valor_recebido} (type: {typeof comissoesRecebidas[0]?.valor_recebido})
                 </p>
               </div>
               )}
