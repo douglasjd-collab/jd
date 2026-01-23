@@ -342,7 +342,7 @@ export default function LancamentoDespesas() {
                     size="sm"
                     variant={formData.data === moment().format('YYYY-MM-DD') ? 'default' : 'outline'}
                     onClick={() => setFormData({ ...formData, data: moment().format('YYYY-MM-DD') })}
-                    className={`text-xs h-7 ${formData.data === moment().format('YYYY-MM-DD') ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                    className={formData.data === moment().format('YYYY-MM-DD') ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600 text-white'}
                   >
                     Hoje
                   </Button>
@@ -351,18 +351,17 @@ export default function LancamentoDespesas() {
                     size="sm"
                     variant={formData.data === moment().subtract(1, 'day').format('YYYY-MM-DD') ? 'default' : 'outline'}
                     onClick={() => setFormData({ ...formData, data: moment().subtract(1, 'day').format('YYYY-MM-DD') })}
-                    className={`text-xs h-7 ${formData.data === moment().subtract(1, 'day').format('YYYY-MM-DD') ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}
+                    className={formData.data === moment().subtract(1, 'day').format('YYYY-MM-DD') ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-700 hover:bg-slate-600 text-white'}
                   >
                     Ontem
                   </Button>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        size="sm"
                         variant="outline"
-                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white border-slate-600 justify-start text-xs h-7"
+                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white border-slate-600 justify-start"
                       >
-                        <CalendarIcon className="w-3 h-3 mr-2" />
+                        <CalendarIcon className="w-4 h-4 mr-2" />
                         {formData.data ? format(new Date(formData.data), 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
                       </Button>
                     </PopoverTrigger>
