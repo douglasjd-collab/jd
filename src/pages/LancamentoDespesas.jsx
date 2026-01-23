@@ -321,7 +321,7 @@ export default function LancamentoDespesas() {
               {/* Foi paga */}
               <div className="flex items-center justify-between border-b border-slate-700 pb-4">
                 <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-slate-400" />
+                  <CheckCircle className={`w-5 h-5 ${formData.foiPaga ? 'text-green-500' : 'text-slate-400'}`} />
                   <span>Foi paga</span>
                 </div>
                 <Switch
