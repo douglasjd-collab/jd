@@ -475,18 +475,6 @@ export default function LancamentoDespesas() {
 
             {/* Coluna Direita */}
             <div className="space-y-4">
-              {/* BRL */}
-              <div className="border-b border-slate-700 pb-4">
-                <Select defaultValue="BRL" disabled>
-                  <SelectTrigger className="bg-transparent border-none text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BRL">BRL</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Observação */}
               <div className="border-b border-slate-700 pb-4">
                 <Textarea
