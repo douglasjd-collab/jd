@@ -1052,7 +1052,7 @@ export default function FunilVendas() {
 
       {/* Form Modal */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedOportunidade ? 'Editar Oportunidade' : 'Nova Oportunidade'}</DialogTitle>
           </DialogHeader>
@@ -1130,9 +1130,9 @@ export default function FunilVendas() {
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[200px]">
                       {vendedores.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>{v.razao_social || v.full_name}</SelectItem>
+                        <SelectItem key={v.id} value={v.id}>{v.nome || v.razao_social || v.full_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
