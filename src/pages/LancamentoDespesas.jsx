@@ -12,7 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { TrendingDown, Search, Trash2, Upload, Calendar as CalendarIcon, ChevronDown, CheckCircle, Repeat } from 'lucide-react';
+import GerenciarCategoriasModal from '@/components/forms/GerenciarCategoriasModal';
+import { TrendingDown, Search, Trash2, Upload, Calendar as CalendarIcon, ChevronDown, CheckCircle, Repeat, Settings } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 import { format } from 'date-fns';
@@ -22,6 +23,7 @@ export default function LancamentoDespesas() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [gerenciarCategoriasOpen, setGerenciarCategoriasOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
   const [formData, setFormData] = useState({
@@ -65,6 +67,19 @@ export default function LancamentoDespesas() {
       return await base44.entities.Colaborador.filter({ status: 'ativo' });
     },
     enabled: !!user,
+  });
+
+  const { data: categoriasPersonalizadas = [] } = useQuery({
+    queryKey: ['categorias-despesa', user?.empresa_id],
+    queryFn: async () => {
+      if (!user?.empresa_id) return [];
+      const cats = await base44.entities.CategoriaDespesa.filter({ 
+        empresa_id: user.empresa_id,
+        status: 'ativa' 
+      });
+      return cats.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    },
+    enabled: !!user?.empresa_id,
   });
 
   const { data: despesas = [], isLoading } = useQuery({
@@ -401,21 +416,44 @@ export default function LancamentoDespesas() {
                   <span className="text-slate-400">🏷️</span>
                   <Select
                     value={formData.categoria}
-                    onValueChange={(v) => setFormData({ ...formData, categoria: v })}
+                    onValueChange={(v) => {
+                      if (v === '__gerenciar__') {
+                        setGerenciarCategoriasOpen(true);
+                      } else {
+                        setFormData({ ...formData, categoria: v });
+                      }
+                    }}
                   >
                     <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-800 border-slate-700">
-                      <SelectItem value="Almoço">Almoço</SelectItem>
-                      <SelectItem value="Reunião">Reunião</SelectItem>
-                      <SelectItem value="Visita externa">Visita externa</SelectItem>
-                      <SelectItem value="Adiantamento">Adiantamento</SelectItem>
-                      <SelectItem value="Pagamento de salários">Pagamento de salários</SelectItem>
-                      <SelectItem value="Combustível">Combustível</SelectItem>
-                      <SelectItem value="Escritório">Escritório</SelectItem>
-                      <SelectItem value="Marketing">Marketing</SelectItem>
-                      <SelectItem value="Outros">Outros</SelectItem>
+                      {categoriasPersonalizadas.length > 0 && (
+                        <>
+                          {categoriasPersonalizadas.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.nome}>
+                              {cat.icone} {cat.nome}
+                            </SelectItem>
+                          ))}
+                          <div className="h-px bg-slate-600 my-1" />
+                        </>
+                      )}
+                      <SelectItem value="Almoço">🍽️ Almoço</SelectItem>
+                      <SelectItem value="Reunião">👥 Reunião</SelectItem>
+                      <SelectItem value="Visita externa">🚗 Visita externa</SelectItem>
+                      <SelectItem value="Adiantamento">💵 Adiantamento</SelectItem>
+                      <SelectItem value="Pagamento de salários">💰 Pagamento de salários</SelectItem>
+                      <SelectItem value="Combustível">⛽ Combustível</SelectItem>
+                      <SelectItem value="Escritório">🏢 Escritório</SelectItem>
+                      <SelectItem value="Marketing">📢 Marketing</SelectItem>
+                      <SelectItem value="Outros">📦 Outros</SelectItem>
+                      <div className="h-px bg-slate-600 my-1" />
+                      <SelectItem value="__gerenciar__" className="text-blue-400 font-semibold">
+                        <div className="flex items-center gap-2">
+                          <Settings className="w-4 h-4" />
+                          Gerenciar categorias
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -569,6 +607,13 @@ export default function LancamentoDespesas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Gerenciar Categorias */}
+      <GerenciarCategoriasModal
+        open={gerenciarCategoriasOpen}
+        onOpenChange={setGerenciarCategoriasOpen}
+        empresaId={user?.empresa_id}
+      />
     </div>
   );
 }
