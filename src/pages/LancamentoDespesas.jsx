@@ -8,16 +8,21 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { TrendingDown, Search, Trash2, Upload } from 'lucide-react';
+import { TrendingDown, Search, Trash2, Upload, Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function LancamentoDespesas() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
   const [formData, setFormData] = useState({
     descricao: '',
     categoria: 'Almoço',
@@ -97,6 +102,14 @@ export default function LancamentoDespesas() {
       comprovante_url: '',
       observacao: '',
     });
+    setMostrarDetalhes(true);
+  };
+
+  const formatarValor = (val) => {
+    const num = val.replace(/\D/g, '');
+    if (!num) return '';
+    const valor = parseFloat(num) / 100;
+    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const handleFileUpload = async (e) => {
@@ -281,9 +294,10 @@ export default function LancamentoDespesas() {
               <div className="space-y-2">
                 <div className="flex items-center gap-3 border-b border-slate-700 pb-3">
                   <TrendingDown className="w-5 h-5 text-slate-400" />
+                  <span className="text-xl font-bold text-red-400">R$</span>
                   <Input
                     value={formData.valor}
-                    onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, valor: formatarValor(e.target.value) })}
                     placeholder="0,00"
                     className="text-2xl font-bold bg-transparent border-none text-red-400 h-auto p-0 focus-visible:ring-0 flex-1"
                   />
@@ -296,6 +310,7 @@ export default function LancamentoDespesas() {
               {/* Data */}
               <div className="border-b border-slate-700 pb-4">
                 <div className="flex items-center gap-2 mb-2">
+                  <CalendarIcon className="w-4 h-4 text-slate-400" />
                   <span className="text-sm text-slate-400">Data</span>
                 </div>
                 <div className="flex gap-2">
@@ -317,12 +332,30 @@ export default function LancamentoDespesas() {
                   >
                     Ontem
                   </Button>
-                  <Input
-                    type="date"
-                    value={formData.data}
-                    onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-                    className="bg-slate-700 border-slate-600 text-white flex-1"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white border-slate-600 justify-start"
+                      >
+                        <CalendarIcon className="w-4 h-4 mr-2" />
+                        {formData.data ? format(new Date(formData.data), 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                      <Calendar
+                        mode="single"
+                        selected={formData.data ? new Date(formData.data) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            setFormData({ ...formData, data: format(date, 'yyyy-MM-dd') });
+                          }
+                        }}
+                        locale={ptBR}
+                        className="bg-slate-800 text-white"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
@@ -394,23 +427,27 @@ export default function LancamentoDespesas() {
                 </div>
               </div>
 
-              {/* Anexar Arquivo */}
-              <div className="border-b border-slate-700 pb-4">
-                <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
-                  <Upload className="w-4 h-4" />
-                  <span className="text-sm">Anexar Arquivo</span>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    onChange={handleFileUpload} 
-                    disabled={uploading}
-                  />
-                </label>
-                {uploading && <span className="text-xs text-slate-400 mt-1">Enviando...</span>}
-                {formData.comprovante_url && (
-                  <p className="text-xs text-green-400 mt-1">✓ Comprovante enviado</p>
-                )}
-              </div>
+              {mostrarDetalhes && (
+                <>
+                  {/* Anexar Arquivo */}
+                  <div className="border-b border-slate-700 pb-4">
+                    <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+                      <Upload className="w-4 h-4" />
+                      <span className="text-sm">Anexar Arquivo</span>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        onChange={handleFileUpload} 
+                        disabled={uploading}
+                      />
+                    </label>
+                    {uploading && <span className="text-xs text-slate-400 mt-1">Enviando...</span>}
+                    {formData.comprovante_url && (
+                      <p className="text-xs text-green-400 mt-1">✓ Comprovante enviado</p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Coluna Direita */}
@@ -441,17 +478,20 @@ export default function LancamentoDespesas() {
           </div>
 
           <DialogFooter className="border-t border-slate-700 pt-4 flex justify-between items-center">
-            <Button 
-              variant="ghost" 
-              className="text-slate-400 hover:text-white"
-              onClick={() => setModalOpen(false)}
+            <button
+              onClick={() => setMostrarDetalhes(!mostrarDetalhes)}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
             >
-              Menos detalhes &lt;
-            </Button>
+              {mostrarDetalhes ? 'Menos detalhes' : 'Mais detalhes'}
+              <ChevronDown className={`w-4 h-4 transition-transform ${mostrarDetalhes ? 'rotate-180' : ''}`} />
+            </button>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={() => setModalOpen(false)}
+                onClick={() => {
+                  setModalOpen(false);
+                  resetForm();
+                }}
                 className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
               >
                 Cancelar
