@@ -75,13 +75,19 @@ export default function RelatoriosFinanceiros() {
     enabled: !!user,
   });
 
-  // Converter string para number se necessário
+  // Converter string para number (parse BR)
   const toNumber = (value) => {
-    if (typeof value === 'string') {
-      const num = parseFloat(value);
-      return isNaN(num) ? 0 : num;
-    }
-    return value || 0;
+    if (value === null || value === undefined || value === '') return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+
+    const s = String(value)
+      .replace(/\s/g, '')
+      .replace('R$', '')
+      .replace(/\./g, '')
+      .replace(',', '.');
+
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
   };
 
   // Normalizar data para comparação (YYYY-MM-DD)
@@ -91,19 +97,23 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Comissões Recebidas (ADM) - tipo=receber (não filtrar status, pega todas recebidas)
-  const comissoesRecebidasPeriodo = comissoes.filter((c) => {
+  // Comissões Recebidas = Comissao(tipo='receber', status='confirmada') no período (data_recebimento)
+  const comissoesRecebidas = comissoes.filter((c) => {
     if (c.tipo !== 'receber') return false;
-    // Usar data_recebimento se disponível, senão data_pagamento
-    const dataRef = c.data_recebimento || c.data_pagamento;
-    if (!dataRef) return false;
-    const normalized = normalizeDate(dataRef);
-    if (!normalized) return false;
-    return normalized >= dataInicio && normalized <= dataFim;
+    if (c.status !== 'confirmada') return false;
+
+    const d = normalizeDate(c.data_recebimento || c.created_date);
+    if (!d) return false;
+
+    return d >= dataInicio && d <= dataFim;
   });
+
+  // pega valor_recebido se existir, senão valor
+  const totalComissoesRecebidas = comissoesRecebidas.reduce((acc, c) => {
+    return acc + toNumber(c.valor_recebido ?? c.valor);
+  }, 0);
   
-  const totalComissoesRecebidas = comissoesRecebidasPeriodo.reduce((acc, c) => acc + toNumber(c.valor), 0);
-  const recebidas_count = comissoesRecebidasPeriodo.length;
+  const recebidas_count = comissoesRecebidas.length;
 
   // Comissões a Pagar (filtrar por data_recebimento)
   const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => {
@@ -379,7 +389,7 @@ export default function RelatoriosFinanceiros() {
                 </div>
                 <div>
                   <p className="text-amber-700">Recebidas (period)</p>
-                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidasPeriodo.length}</p>
+                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidas.length}</p>
                 </div>
                 <div>
                   <p className="text-amber-700">A Pagar</p>
