@@ -277,12 +277,12 @@ export default function LancamentoReceitas() {
                 <Calculator className="w-6 h-6 text-slate-400" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-5xl font-bold text-green-400">R$</span>
+                    <span className="text-[80px] font-bold text-green-400 leading-none">R$</span>
                     <Input
                       value={formData.valor}
                       onChange={(e) => setFormData({ ...formData, valor: formatarValor(e.target.value) })}
                       placeholder="0,00"
-                      className="text-5xl font-bold bg-transparent border-none text-green-400 h-auto p-0 focus-visible:ring-0"
+                      className="text-[80px] font-bold bg-transparent border-none text-green-400 h-auto p-0 focus-visible:ring-0 leading-none"
                     />
                     <span className="text-sm text-slate-400">BRL</span>
                   </div>
