@@ -269,106 +269,140 @@ export default function LancamentoDespesas() {
 
       {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nova Despesa</DialogTitle>
+        <DialogContent className="max-w-2xl bg-white">
+          <DialogHeader className="border-b pb-6">
+            <DialogTitle className="text-2xl font-bold">Nova despesa</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Descrição *</Label>
-              <Input
-                value={formData.descricao}
-                onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                placeholder="Ex: Almoço com cliente"
-              />
-            </div>
-            <div>
-              <Label>Categoria *</Label>
-              <Select
-                value={formData.categoria}
-                onValueChange={(v) => setFormData({ ...formData, categoria: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Almoço">Almoço</SelectItem>
-                  <SelectItem value="Reunião">Reunião</SelectItem>
-                  <SelectItem value="Visita externa">Visita externa</SelectItem>
-                  <SelectItem value="Adiantamento">Adiantamento</SelectItem>
-                  <SelectItem value="Pagamento de salários">Pagamento de salários</SelectItem>
-                  <SelectItem value="Combustível">Combustível</SelectItem>
-                  <SelectItem value="Escritório">Escritório</SelectItem>
-                  <SelectItem value="Marketing">Marketing</SelectItem>
-                  <SelectItem value="Outros">Outros</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Valor *</Label>
-              <Input
-                value={formData.valor}
-                onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
-                placeholder="Ex: 50,00"
-              />
-            </div>
-            <div>
-              <Label>Data *</Label>
-              <Input
-                type="date"
-                value={formData.data}
-                onChange={(e) => setFormData({ ...formData, data: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Responsável *</Label>
-              <Select
-                value={formData.responsavel_id}
-                onValueChange={(v) => {
-                  const colab = colaboradores.find((c) => c.id === v);
-                  setFormData({
-                    ...formData,
-                    responsavel_id: v,
-                    responsavel_nome: colab?.nome || '',
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {colaboradores.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Comprovante (opcional)</Label>
-              <div className="flex gap-2">
-                <Input type="file" onChange={handleFileUpload} disabled={uploading} />
-                {uploading && <span className="text-sm text-slate-500">Enviando...</span>}
+
+          <div className="space-y-6 py-4">
+            {/* Valor Principal */}
+            <Card className="p-6 bg-white border-2">
+              <div className="space-y-3">
+                <Label className="text-sm text-slate-600">Valor da despesa</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold text-red-400">R$</span>
+                  <Input
+                    value={formData.valor}
+                    onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+                    placeholder="0,00"
+                    className="text-2xl font-bold bg-transparent border-none text-red-400 h-auto p-0 focus-visible:ring-0"
+                  />
+                  <span className="text-sm text-slate-400">BRL</span>
+                </div>
               </div>
-              {formData.comprovante_url && (
-                <p className="text-xs text-green-600 mt-1">✓ Comprovante enviado</p>
-              )}
-            </div>
-            <div>
-              <Label>Observação</Label>
-              <Textarea
-                value={formData.observacao}
-                onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                rows={3}
-              />
-            </div>
+            </Card>
+
+            {/* Informações Básicas */}
+            <Card className="p-6 bg-white">
+              <div className="space-y-4">
+                <div>
+                  <Label>Descrição *</Label>
+                  <Input
+                    value={formData.descricao}
+                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                    placeholder="Ex: Almoço com cliente"
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Categoria *</Label>
+                    <Select
+                      value={formData.categoria}
+                      onValueChange={(v) => setFormData({ ...formData, categoria: v })}
+                    >
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Almoço">Almoço</SelectItem>
+                        <SelectItem value="Reunião">Reunião</SelectItem>
+                        <SelectItem value="Visita externa">Visita externa</SelectItem>
+                        <SelectItem value="Adiantamento">Adiantamento</SelectItem>
+                        <SelectItem value="Pagamento de salários">Pagamento de salários</SelectItem>
+                        <SelectItem value="Combustível">Combustível</SelectItem>
+                        <SelectItem value="Escritório">Escritório</SelectItem>
+                        <SelectItem value="Marketing">Marketing</SelectItem>
+                        <SelectItem value="Outros">Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Data *</Label>
+                    <Input
+                      type="date"
+                      value={formData.data}
+                      onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                      className="mt-1.5"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Responsável *</Label>
+                  <Select
+                    value={formData.responsavel_id}
+                    onValueChange={(v) => {
+                      const colab = colaboradores.find((c) => c.id === v);
+                      setFormData({
+                        ...formData,
+                        responsavel_id: v,
+                        responsavel_nome: colab?.nome || '',
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Selecione o responsável" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colaboradores.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </Card>
+
+            {/* Comprovante e Observações */}
+            <Card className="p-6 bg-white">
+              <div className="space-y-4">
+                <div>
+                  <Label>Comprovante (opcional)</Label>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input type="file" onChange={handleFileUpload} disabled={uploading} />
+                    {uploading && <span className="text-sm text-slate-500">Enviando...</span>}
+                  </div>
+                  {formData.comprovante_url && (
+                    <p className="text-xs text-green-600 mt-2">✓ Comprovante enviado</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Observação</Label>
+                  <Textarea
+                    value={formData.observacao}
+                    onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
+                    rows={3}
+                    placeholder="Adicione observações sobre esta despesa..."
+                    className="mt-1.5"
+                  />
+                </div>
+              </div>
+            </Card>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="border-t pt-6">
             <Button variant="outline" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit}>Lançar Despesa</Button>
+            <Button onClick={handleSubmit} className="bg-[#23BE84] hover:bg-[#1da570]">
+              Lançar Despesa
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
