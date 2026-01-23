@@ -97,10 +97,9 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Comissões Recebidas = Comissao(tipo='receber', status='confirmada') no período (data_recebimento)
+  // Comissões Recebidas = Comissao(tipo='receber') no período (data_recebimento)
   const comissoesRecebidas = comissoes.filter((c) => {
     if (c.tipo !== 'receber') return false;
-    if (c.status !== 'confirmada') return false;
 
     const d = normalizeDate(c.data_recebimento || c.created_date);
     if (!d) return false;
