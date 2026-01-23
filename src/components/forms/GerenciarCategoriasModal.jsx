@@ -30,7 +30,7 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
       return await base44.entities.CategoriaDespesa.create(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['categorias-despesa']);
+      queryClient.invalidateQueries({ queryKey: ['categorias-despesa'] });
       toast.success('Categoria criada!');
       setNovaCategoria({ nome: '', icone: '🏷️' });
     },
@@ -41,7 +41,7 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
       return await base44.entities.CategoriaDespesa.update(id, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['categorias-despesa']);
+      queryClient.invalidateQueries({ queryKey: ['categorias-despesa'] });
       toast.success('Categoria atualizada!');
       setEditingId(null);
     },
@@ -52,7 +52,7 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
       return await base44.entities.CategoriaDespesa.delete(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['categorias-despesa']);
+      queryClient.invalidateQueries({ queryKey: ['categorias-despesa'] });
       toast.success('Categoria excluída!');
     },
   });
