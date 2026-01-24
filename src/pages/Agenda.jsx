@@ -99,44 +99,33 @@ export default function AgendaPage() {
 
   // Buscar compromissos
   const { data: compromissos = [], isLoading } = useQuery({
-    queryKey: ['agenda', user?.empresa_id, user?.auth_id, user?.telegram_chat_id],
+    queryKey: ['agenda', user?.empresa_id, user?.auth_id],
     queryFn: async () => {
       if (!user) return [];
       
-      // Buscar TODOS os compromissos da empresa (incluindo os do Telegram)
-      const items = await base44.entities.Agenda.list('-inicio');
-      
-      // Filtrar pelo que o usuário pode ver:
-      // 1. Se tiver empresa_id, ver compromissos da empresa
-      // 2. Ver compromissos do próprio usuário (usuario_id)
-      // 3. Ver compromissos do Telegram associados ao usuário (telegram_chat_id)
-      const filtered = items.filter(item => {
-        // Permitir se for da empresa do usuário
-        if (user.empresa_id && item.empresa_id === user.empresa_id) {
-          return true;
+      try {
+        // Buscar compromissos da empresa ou do usuário
+        let items = [];
+        
+        if (user.empresa_id) {
+          // Buscar por empresa_id
+          items = await base44.entities.Agenda.filter(
+            { empresa_id: user.empresa_id },
+            '-inicio'
+          );
+        } else if (user.auth_id) {
+          // Buscar por usuario_id
+          items = await base44.entities.Agenda.filter(
+            { usuario_id: user.auth_id },
+            '-inicio'
+          );
         }
         
-        // Permitir se for do próprio usuário
-        if (user.auth_id && item.usuario_id === user.auth_id) {
-          return true;
-        }
-        
-        // Permitir se o telegram_chat_id do usuário bater
-        if (user.telegram_chat_id && item.telegram_chat_id === user.telegram_chat_id) {
-          return true;
-        }
-        
-        // Permitir se for do Telegram mas sem vínculo ainda
-        if (item.empresa_id === 'TELEGRAM_BOT') {
-          return true;
-        }
-        
-        return false;
-      });
-      
-      return filtered.sort((a, b) => 
-        new Date(b.inicio) - new Date(a.inicio)
-      );
+        return items;
+      } catch (error) {
+        console.error('Erro ao buscar compromissos:', error);
+        return [];
+      }
     },
     enabled: !!user,
   });
