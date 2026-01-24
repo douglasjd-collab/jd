@@ -99,44 +99,42 @@ export default function AgendaPage() {
 
   // Buscar compromissos
   const { data: compromissos = [], isLoading } = useQuery({
-    queryKey: ['agenda', user?.empresa_id, user?.auth_id],
+    queryKey: ['agenda', user?.empresa_id, user?.auth_id, user?.telegram_chat_id],
     queryFn: async () => {
       if (!user) return [];
       
-      const allItems = [];
+      // Buscar TODOS os compromissos da empresa (incluindo os do Telegram)
+      const items = await base44.entities.Agenda.list('-inicio');
       
-      // Buscar por empresa_id
-      if (user.empresa_id) {
-        const empresaItems = await base44.entities.Agenda.filter(
-          { empresa_id: user.empresa_id },
-          '-inicio'
-        );
-        allItems.push(...empresaItems);
-      }
+      // Filtrar pelo que o usuário pode ver:
+      // 1. Se tiver empresa_id, ver compromissos da empresa
+      // 2. Ver compromissos do próprio usuário (usuario_id)
+      // 3. Ver compromissos do Telegram associados ao usuário (telegram_chat_id)
+      const filtered = items.filter(item => {
+        // Permitir se for da empresa do usuário
+        if (user.empresa_id && item.empresa_id === user.empresa_id) {
+          return true;
+        }
+        
+        // Permitir se for do próprio usuário
+        if (user.auth_id && item.usuario_id === user.auth_id) {
+          return true;
+        }
+        
+        // Permitir se o telegram_chat_id do usuário bater
+        if (user.telegram_chat_id && item.telegram_chat_id === user.telegram_chat_id) {
+          return true;
+        }
+        
+        // Permitir se for do Telegram mas sem vínculo ainda
+        if (item.empresa_id === 'TELEGRAM_BOT') {
+          return true;
+        }
+        
+        return false;
+      });
       
-      // Buscar por usuario_id (compromissos criados pelo bot com vínculo)
-      if (user.auth_id) {
-        const userItems = await base44.entities.Agenda.filter(
-          { usuario_id: user.auth_id },
-          '-inicio'
-        );
-        allItems.push(...userItems);
-      }
-      
-      // Buscar por telegram_chat_id (compromissos do bot pelo Telegram)
-      const chatId = Deno.env?.get?.('TELEGRAM_CHAT_ID') || '8565597617';
-      const telegramItems = await base44.entities.Agenda.filter(
-        { telegram_chat_id: chatId },
-        '-inicio'
-      );
-      allItems.push(...telegramItems);
-      
-      // Remover duplicatas
-      const uniqueItems = Array.from(
-        new Map(allItems.map(item => [item.id, item])).values()
-      );
-      
-      return uniqueItems.sort((a, b) => 
+      return filtered.sort((a, b) => 
         new Date(b.inicio) - new Date(a.inicio)
       );
     },
