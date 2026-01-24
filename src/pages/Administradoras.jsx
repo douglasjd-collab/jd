@@ -218,7 +218,17 @@ export default function Administradoras() {
       try {
         const me = await base44.auth.me();
         if (me) {
-          setCurrentUser({ perfil: me.role });
+          // Buscar Colaborador para obter perfil
+          const colabs = await base44.entities.Colaborador.filter(
+            { user_id: me.id, status: 'ativo' },
+            '-created_date',
+            1
+          );
+          if (colabs && colabs.length > 0) {
+            setCurrentUser({ perfil: colabs[0].perfil });
+          } else {
+            setCurrentUser({ perfil: 'vendedor' });
+          }
         }
       } catch (error) {
         console.error('Erro ao verificar usuário:', error);
