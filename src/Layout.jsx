@@ -20,7 +20,8 @@ import {
   Image as ImageIcon,
   TrendingUp,
   Camera,
-  Calculator
+  Calculator,
+  Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -143,6 +144,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Simulador', icon: Calculator, page: 'SimuladorEscolha', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
