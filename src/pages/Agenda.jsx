@@ -322,13 +322,7 @@ export default function AgendaPage() {
     return <div className="p-6">Carregando...</div>;
   }
 
-  if (!user.empresa_id) {
-    return (
-      <div className="p-6">
-        <p className="text-red-500">Você precisa estar vinculado a uma empresa para acessar a agenda.</p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="space-y-6">
