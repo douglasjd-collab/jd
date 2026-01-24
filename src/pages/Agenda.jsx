@@ -103,32 +103,42 @@ export default function AgendaPage() {
     queryFn: async () => {
       if (!user) return [];
       
-      // Buscar por empresa_id OU por usuario_id (para compromissos criados pelo bot)
-      const filter = user.empresa_id 
-        ? { empresa_id: user.empresa_id }
-        : { usuario_id: user.auth_id };
+      const allItems = [];
       
-      const items = await base44.entities.Agenda.filter(filter, '-inicio');
+      // Buscar por empresa_id
+      if (user.empresa_id) {
+        const empresaItems = await base44.entities.Agenda.filter(
+          { empresa_id: user.empresa_id },
+          '-inicio'
+        );
+        allItems.push(...empresaItems);
+      }
       
-      // Também buscar compromissos do Telegram do usuário
+      // Buscar por usuario_id (compromissos criados pelo bot com vínculo)
       if (user.auth_id) {
-        const telegramItems = await base44.entities.Agenda.filter(
+        const userItems = await base44.entities.Agenda.filter(
           { usuario_id: user.auth_id },
           '-inicio'
         );
-        
-        // Mesclar e remover duplicatas
-        const allItems = [...items, ...telegramItems];
-        const uniqueItems = Array.from(
-          new Map(allItems.map(item => [item.id, item])).values()
-        );
-        
-        return uniqueItems.sort((a, b) => 
-          new Date(b.inicio) - new Date(a.inicio)
-        );
+        allItems.push(...userItems);
       }
       
-      return items;
+      // Buscar por telegram_chat_id (compromissos do bot pelo Telegram)
+      const chatId = Deno.env?.get?.('TELEGRAM_CHAT_ID') || '8565597617';
+      const telegramItems = await base44.entities.Agenda.filter(
+        { telegram_chat_id: chatId },
+        '-inicio'
+      );
+      allItems.push(...telegramItems);
+      
+      // Remover duplicatas
+      const uniqueItems = Array.from(
+        new Map(allItems.map(item => [item.id, item])).values()
+      );
+      
+      return uniqueItems.sort((a, b) => 
+        new Date(b.inicio) - new Date(a.inicio)
+      );
     },
     enabled: !!user,
   });
