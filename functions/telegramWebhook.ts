@@ -267,13 +267,34 @@ Deno.serve(async (req) => {
 
       const tipo = cmd === 'agenda' ? 'reuniao' : cmd;
 
+      // Buscar o usuário pelo chat_id do Telegram
+      let usuarioId = null;
+      let empresaId = 'TELEGRAM_BOT';
+      
+      try {
+        const colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
+          { telegram_chat_id: chatId, status: 'ativo' },
+          '-created_date',
+          1
+        );
+        
+        if (colaboradores && colaboradores.length > 0) {
+          usuarioId = colaboradores[0].user_id;
+          empresaId = colaboradores[0].empresa_id || 'TELEGRAM_BOT';
+        }
+      } catch (err) {
+        console.error('Erro ao buscar colaborador:', err);
+      }
+
       const created = await base44.asServiceRole.entities.Agenda.create({
-        empresa_id: 'TELEGRAM_BOT',
+        empresa_id: empresaId,
         titulo: title || '(Sem título)',
         tipo,
         inicio: dt.toISOString(),
         status: 'agendado',
         telegram_chat_id: chatId,
+        usuario_id: usuarioId,
+        usuario_nome: null,
         lembrete_30_enviado_em: null,
         lembrete_10_enviado_em: null,
       });
