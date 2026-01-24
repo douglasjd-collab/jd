@@ -99,15 +99,38 @@ export default function AgendaPage() {
 
   // Buscar compromissos
   const { data: compromissos = [], isLoading } = useQuery({
-    queryKey: ['agenda', user?.empresa_id],
+    queryKey: ['agenda', user?.empresa_id, user?.auth_id],
     queryFn: async () => {
-      if (!user?.empresa_id) return [];
-      return await base44.entities.Agenda.filter(
-        { empresa_id: user.empresa_id },
-        '-inicio'
-      );
+      if (!user) return [];
+      
+      // Buscar por empresa_id OU por usuario_id (para compromissos criados pelo bot)
+      const filter = user.empresa_id 
+        ? { empresa_id: user.empresa_id }
+        : { usuario_id: user.auth_id };
+      
+      const items = await base44.entities.Agenda.filter(filter, '-inicio');
+      
+      // Também buscar compromissos do Telegram do usuário
+      if (user.auth_id) {
+        const telegramItems = await base44.entities.Agenda.filter(
+          { usuario_id: user.auth_id },
+          '-inicio'
+        );
+        
+        // Mesclar e remover duplicatas
+        const allItems = [...items, ...telegramItems];
+        const uniqueItems = Array.from(
+          new Map(allItems.map(item => [item.id, item])).values()
+        );
+        
+        return uniqueItems.sort((a, b) => 
+          new Date(b.inicio) - new Date(a.inicio)
+        );
+      }
+      
+      return items;
     },
-    enabled: !!user?.empresa_id,
+    enabled: !!user,
   });
 
   // Criar compromisso
