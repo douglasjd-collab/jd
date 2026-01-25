@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -158,18 +159,35 @@ export default function IntegracaoCanopus() {
     }
   });
 
-  // Executar integração manualmente (placeholder)
+  // Executar integração manualmente
   const executarIntegracaoMutation = useMutation({
     mutationFn: async () => {
-      const user = await base44.auth.me();
+      if (!config) {
+        throw new Error('Configure as credenciais do Canopus antes de executar');
+      }
 
-      // Criar registro de execução
+      const userAuth = await base44.auth.me();
+      
+      if (!userAuth?.empresa_id) {
+        throw new Error('Usuário sem empresa vinculada');
+      }
+
+      // Criar registro de execução com TODOS os campos obrigatórios
       const integracao = await base44.entities.IntegracaoCanopus.create({
+        empresa_id: userAuth.empresa_id,
+        origem: 'CANOPUS',
+        usuario: config.usuario,
+        senha: config.senha,
+        url: config.url || 'https://afv.consorciocanopus.com.br/Sistema/',
         tipo_execucao: 'manual',
-        status: 'aguardando',
+        status: 'ativo',
         data_execucao: new Date().toISOString(),
-        usuario_id: user.id,
-        usuario_nome: user.full_name
+        usuario_id: userAuth.id,
+        usuario_nome: userAuth.full_name,
+        total_clientes_lidos: 0,
+        total_criados: 0,
+        total_atualizados: 0,
+        total_erros: 0
       });
 
       // Placeholder - quando backend functions estiver ativo, aqui chamará o robô
@@ -321,6 +339,9 @@ export default function IntegracaoCanopus() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Configurar Integração Canopus</DialogTitle>
+            <DialogDescription>
+              Insira suas credenciais de acesso ao sistema Canopus
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -379,6 +400,9 @@ export default function IntegracaoCanopus() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Histórico de Execuções</DialogTitle>
+            <DialogDescription>
+              Visualize o histórico de sincronizações com o sistema Canopus
+            </DialogDescription>
           </DialogHeader>
 
           <Table>
