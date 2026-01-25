@@ -31,6 +31,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
+import SincronizacaoCanopus from '@/components/configuracoes/SincronizacaoCanopus';
 
 
 export default function Configuracoes() {
@@ -202,7 +203,8 @@ export default function Configuracoes() {
         </CardContent>
       </Card>
 
-
+      {/* Sincronização Canopus */}
+      <SincronizacaoCanopus />
 
       {/* Configuração de Comissões */}
       <Card className="border-0 shadow-sm">
