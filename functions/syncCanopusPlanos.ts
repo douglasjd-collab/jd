@@ -1,226 +1,179 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
 
-function firstCookiePart(setCookie) {
-  // "NAME=VALUE; Path=/; ..." -> "NAME=VALUE"
-  return setCookie.split(";")[0]?.trim();
+function extractHidden(html: string, name: string): string | null {
+  const re1 = new RegExp(`name=["']${name}["'][^>]*value=["']([^"']+)["']`, "i");
+  const re2 = new RegExp(`value=["']([^"']+)["'][^>]*name=["']${name}["']`, "i");
+  return html.match(re1)?.[1] ?? html.match(re2)?.[1] ?? null;
 }
 
-function getSetCookies(resp) {
-  // Deno/Fetch nem sempre expõe getSetCookie() em todos ambientes,
-  // então coletamos manualmente.
-  const cookies = [];
-  for (const [k, v] of resp.headers.entries()) {
-    if (k.toLowerCase() === "set-cookie" && v) cookies.push(v);
-  }
-  // alguns runtimes juntam múltiplos cookies em uma string — tenta separar com cuidado
-  if (cookies.length === 0) {
-    const sc = resp.headers.get("set-cookie");
-    if (sc) cookies.push(sc);
-  }
-  return cookies;
-}
-
-function toNumber(v) {
+function toNumber(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-
-function extractHidden(html, name) {
-  // procura <input ... name="as_sfid" value="...">
-  const re = new RegExp(
-    `name=["']${name}["'][^>]*value=["']([^"']+)["']`,
-    "i",
-  );
-  const m = html.match(re);
-  return m?.[1] ?? null;
 }
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
-  // Permissão (evita 403 em entidades sensíveis)
-  const me = await base44.auth.me();
-  if (!me || !["admin", "super_admin", "master"].includes(me.perfil)) {
-    return Response.json({ error: "Acesso negado." }, { status: 403 });
-  }
+  let step = "start";
+  try {
+    step = "auth.me";
+    const me = await base44.auth.me();
+    if (!me || !["admin", "super_admin", "master"].includes(me.perfil)) {
+      return Response.json({ ok: false, step, error: "Acesso negado." }, { status: 403 });
+    }
 
-  const body = await req.json().catch(() => ({}));
-  const id_tipo_produto = String(body?.id_tipo_produto ?? "101"); // 101 = automóveis (exemplo)
-  const permite_reserva = String(body?.permite_reserva ?? "N");   // N = sem reserva, S = com reserva
-  const start = String(body?.start ?? "0");
-  const length = String(body?.length ?? "200"); // puxa mais por chamada
+    step = "read.body";
+    const body = await req.json().catch(() => ({}));
+    const id_tipo_produto = String(body?.id_tipo_produto ?? "101");
+    const permite_reserva = String(body?.permite_reserva ?? "N");
+    const start = String(body?.start ?? "0");
+    const length = String(body?.length ?? "200");
 
-  const user = Deno.env.get("CANOPUS_USER");
-  const pass = Deno.env.get("CANOPUS_PASS");
-  if (!user || !pass) {
-    return Response.json(
-      { error: "Secrets CANOPUS_USER/CANOPUS_PASS não configurados." },
-      { status: 500 },
-    );
-  }
+    step = "env.secrets";
+    const user = Deno.env.get("CANOPUS_USER");
+    const pass = Deno.env.get("CANOPUS_PASS");
+    if (!user || !pass) {
+      return Response.json(
+        { ok: false, step, error: "Secrets CANOPUS_USER/CANOPUS_PASS não configurados neste ambiente." },
+        { status: 500 },
+      );
+    }
 
-  // 1) GET login page para capturar tokens hidden as_sfid/as_fid
-  const loginPageUrl = "https://afv.consorciocanopus.com.br/Sistema/";
-  const r0 = await fetch(loginPageUrl, { method: "GET" });
-  const html = await r0.text();
+    step = "fetch.login.get";
+    const loginUrl = "https://afv.consorciocanopus.com.br/Sistema/";
+    const r0 = await fetch(loginUrl, { method: "GET" });
+    const html = await r0.text();
 
-  const as_sfid = extractHidden(html, "as_sfid");
-  const as_fid = extractHidden(html, "as_fid");
+    step = "extract.tokens";
+    const as_sfid = extractHidden(html, "as_sfid");
+    const as_fid = extractHidden(html, "as_fid");
+    if (!as_sfid || !as_fid) {
+      return Response.json(
+        { ok: false, step, error: "Não achei as_sfid/as_fid no HTML do login.", html_head: html.slice(0, 1000) },
+        { status: 500 },
+      );
+    }
 
-  if (!as_sfid || !as_fid) {
-    return Response.json(
-      {
-        error: "Não consegui localizar as_sfid/as_fid na página de login.",
-        hint: "Pode ter mudado o HTML do AFV. Me envie um print do HTML (só a parte do form) se acontecer.",
+    step = "fetch.login.post";
+    const form = new URLSearchParams();
+    form.set("login", user);
+    form.set("senha", pass);
+    form.set("as_sfid", as_sfid);
+    form.set("as_fid", as_fid);
+
+    const r1 = await fetch(loginUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "origin": "https://afv.consorciocanopus.com.br",
+        "referer": loginUrl,
       },
-      { status: 500 },
-    );
-  }
+      body: form.toString(),
+      redirect: "manual",
+    });
 
-  // cookies iniciais (se houver)
-  const c0 = getSetCookies(r0).map(firstCookiePart).filter(Boolean);
+    // ⚠️ Alguns runtimes não expõem Set-Cookie. Então vamos usar cookie de fallback temporário.
+    // Crie um secret CANOPUS_COOKIE_FALLBACK com pelo menos AFVCanopus=...
+    step = "cookie.fallback";
+    const cookie = Deno.env.get("CANOPUS_COOKIE_FALLBACK");
+    if (!cookie) {
+      return Response.json(
+        { ok: false, step, error: "Crie o secret CANOPUS_COOKIE_FALLBACK (ex.: AFVCanopus=...)." },
+        { status: 500 },
+      );
+    }
 
-  // 2) POST login
-  const form = new URLSearchParams();
-  form.set("login", user);
-  form.set("senha", pass);
-  form.set("as_sfid", as_sfid);
-  form.set("as_fid", as_fid);
+    step = "fetch.planos";
+    const planosUrl = new URL("https://afv.consorciocanopus.com.br/Sistema/planos/acoes/datatable_reload_planos.php");
+    planosUrl.searchParams.set("checkbox", "false");
+    planosUrl.searchParams.set("draw", "1");
+    planosUrl.searchParams.set("start", start);
+    planosUrl.searchParams.set("length", length);
+    planosUrl.searchParams.set("search[value]", "");
+    planosUrl.searchParams.set("search[regex]", "false");
+    planosUrl.searchParams.set("order[0][column]", "2");
+    planosUrl.searchParams.set("order[0][dir]", "asc");
 
-  const r1 = await fetch(loginPageUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-      "origin": "https://afv.consorciocanopus.com.br",
-      "referer": loginPageUrl,
-      ...(c0.length ? { cookie: c0.join("; ") } : {}),
-    },
-    body: form.toString(),
-    redirect: "manual", // normalmente volta 302 -> timeline/timeline
-  });
+    for (let i = 0; i <= 7; i++) {
+      planosUrl.searchParams.set(`columns[${i}][data]`, String(i));
+      planosUrl.searchParams.set(`columns[${i}][name]`, "");
+      planosUrl.searchParams.set(`columns[${i}][searchable]`, "true");
+      planosUrl.searchParams.set(`columns[${i}][orderable]`, i === 7 ? "false" : "true");
+      planosUrl.searchParams.set(`columns[${i}][search][value]`, "");
+      planosUrl.searchParams.set(`columns[${i}][search][regex]`, "false");
+    }
 
-  const c1 = getSetCookies(r1).map(firstCookiePart).filter(Boolean);
-  const cookieJar = [...c0, ...c1].filter(Boolean);
+    planosUrl.searchParams.set("id_tipo_produto", id_tipo_produto);
+    planosUrl.searchParams.set("valor_bem_parcela", "bem");
+    planosUrl.searchParams.set("valor_minimo", "");
+    planosUrl.searchParams.set("valor_maximo", "");
+    planosUrl.searchParams.set("id_marca", "");
+    planosUrl.searchParams.set("id_modelo", "");
+    planosUrl.searchParams.set("reajuste", "IPCA");
+    planosUrl.searchParams.set("permite_reserva", permite_reserva);
+    planosUrl.searchParams.set("select_grupos", "");
 
-  // Se vier 302, segue o Location pra "assentar" a sessão
-  const loc = r1.headers.get("location");
-  if (loc) {
-    const timelineUrl = new URL(loc, loginPageUrl).toString();
-    const r2 = await fetch(timelineUrl, {
+    const rPlanos = await fetch(planosUrl.toString(), {
       method: "GET",
       headers: {
-        cookie: cookieJar.join("; "),
-        referer: loginPageUrl,
+        "accept": "application/json, text/javascript, */*; q=0.01",
+        "x-requested-with": "XMLHttpRequest",
+        "referer": "https://afv.consorciocanopus.com.br/Sistema/planos/listagem_planos.php",
+        "cookie": cookie,
       },
     });
-    const c2 = getSetCookies(r2).map(firstCookiePart).filter(Boolean);
-    cookieJar.push(...c2);
-  }
 
-  // 3) Buscar planos (endpoint que você capturou)
-  const planosUrl = new URL(
-    "https://afv.consorciocanopus.com.br/Sistema/planos/acoes/datatable_reload_planos.php",
-  );
+    const planosText = await rPlanos.text();
+    step = "parse.planos";
+    let parsed: any;
+    try {
+      parsed = JSON.parse(planosText);
+    } catch {
+      return Response.json(
+        { ok: false, step, error: "Planos não retornou JSON (provável HTML/login).", body_head: planosText.slice(0, 500) },
+        { status: 500 },
+      );
+    }
 
-  // DataTables (mínimo necessário)
-  planosUrl.searchParams.set("checkbox", "false");
-  planosUrl.searchParams.set("draw", "1");
-  planosUrl.searchParams.set("start", start);
-  planosUrl.searchParams.set("length", length);
-  planosUrl.searchParams.set("search[value]", "");
-  planosUrl.searchParams.set("search[regex]", "false");
-  planosUrl.searchParams.set("order[0][column]", "2");
-  planosUrl.searchParams.set("order[0][dir]", "asc");
+    const rows = Array.isArray(parsed?.data) ? parsed.data : [];
+    step = "save.base44";
 
-  for (let i = 0; i <= 7; i++) {
-    planosUrl.searchParams.set(`columns[${i}][data]`, String(i));
-    planosUrl.searchParams.set(`columns[${i}][name]`, "");
-    planosUrl.searchParams.set(`columns[${i}][searchable]`, "true");
-    planosUrl.searchParams.set(`columns[${i}][orderable]`, i === 7 ? "false" : "true");
-    planosUrl.searchParams.set(`columns[${i}][search][value]`, "");
-    planosUrl.searchParams.set(`columns[${i}][search][regex]`, "false");
-  }
+    // ⚠️ Aqui costuma quebrar se a entidade tiver outro nome, ou schema diferente.
+    const empresa_id = me.empresa_id;
+    let saved = 0;
 
-  // Filtros AFV
-  planosUrl.searchParams.set("id_tipo_produto", id_tipo_produto);
-  planosUrl.searchParams.set("valor_bem_parcela", "bem");
-  planosUrl.searchParams.set("valor_minimo", "");
-  planosUrl.searchParams.set("valor_maximo", "");
-  planosUrl.searchParams.set("id_marca", "");
-  planosUrl.searchParams.set("id_modelo", "");
-  planosUrl.searchParams.set("reajuste", "IPCA");
-  planosUrl.searchParams.set("permite_reserva", permite_reserva);
-  planosUrl.searchParams.set("select_grupos", "");
+    for (const r of rows) {
+      const payload = {
+        empresa_id,
+        external_hash: r[0],
+        produto_id: id_tipo_produto,
+        permite_reserva,
+        nome: r[1],
+        valor: toNumber(r[2]),
+        prazo: toNumber(r[3]),
+        primeira_parcela: toNumber(r[4]),
+        plano: r[5],
+        tipo_venda: r[6],
+      };
 
-  const rPlanos = await fetch(planosUrl.toString(), {
-    method: "GET",
-    headers: {
-      "accept": "application/json, text/javascript, */*; q=0.01",
-      "x-requested-with": "XMLHttpRequest",
-      "referer": "https://afv.consorciocanopus.com.br/Sistema/planos/listagem_planos.php",
-      cookie: cookieJar.join("; "),
-    },
-  });
+      // tente findMany (mais compatível)
+      const list = await base44.entities.CanopusPlanos.findMany({
+        filter: { empresa_id, external_hash: r[0] },
+        limit: 1,
+      });
+      const existing = Array.isArray(list) ? list[0] : (list?.items?.[0] ?? null);
 
-  if (!rPlanos.ok) {
-    const t = await rPlanos.text().catch(() => "");
+      if (existing?.id) await base44.entities.CanopusPlanos.update(existing.id, payload);
+      else await base44.entities.CanopusPlanos.create(payload);
+
+      saved++;
+    }
+
+    return Response.json({ ok: true, step: "done", total: rows.length, saved }, { status: 200 });
+  } catch (e: any) {
     return Response.json(
-      { error: "Falha ao buscar planos", status: rPlanos.status, body: t.slice(0, 500) },
+      { ok: false, step, error: String(e?.message ?? e), stack: String(e?.stack ?? "") },
       { status: 500 },
     );
   }
-
-  const json = await rPlanos.json();
-  const rows = Array.isArray(json?.data) ? json.data : [];
-
-  // 4) Salvar no Base44 (upsert por external_hash)
-  const empresa_id = me.empresa_id;
-  let created = 0;
-  let updated = 0;
-
-  for (const r of rows) {
-    const external_hash = r[0];
-    const nome = r[1];
-    const valor = toNumber(r[2]);
-    const prazo = toNumber(r[3]);
-    const primeira_parcela = toNumber(r[4]);
-    const plano = r[5];
-    const tipo_venda = r[6];
-
-    const payload = {
-      empresa_id,
-      external_hash,
-      produto_id: id_tipo_produto,
-      permite_reserva,
-      nome,
-      valor,
-      prazo,
-      primeira_parcela,
-      plano,
-      tipo_venda,
-      raw: JSON.stringify(r),
-    };
-
-    const existing = await base44.asServiceRole.entities.CanopusPlanos.filter({
-      empresa_id,
-      external_hash,
-    });
-
-    if (existing.length > 0) {
-      await base44.asServiceRole.entities.CanopusPlanos.update(existing[0].id, payload);
-      updated++;
-    } else {
-      await base44.asServiceRole.entities.CanopusPlanos.create(payload);
-      created++;
-    }
-  }
-
-  return Response.json({
-    ok: true,
-    produto_id: id_tipo_produto,
-    permite_reserva,
-    total: rows.length,
-    created,
-    updated,
-  });
 });
