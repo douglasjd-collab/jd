@@ -1,9 +1,20 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
+import cheerio from "npm:cheerio@1.0.0-rc.12";
 
 function extractHidden(html: string, name: string): string | null {
   const re1 = new RegExp(`name=["']${name}["'][^>]*value=["']([^"']+)["']`, "i");
   const re2 = new RegExp(`value=["']([^"']+)["'][^>]*name=["']${name}["']`, "i");
   return html.match(re1)?.[1] ?? html.match(re2)?.[1] ?? null;
+}
+
+function splitSetCookie(sc: string): string[] {
+  // separa múltiplos set-cookie (quando vem "grudado")
+  return sc.split(/,(?=\s*[A-Za-z0-9_\-]+=)/g).map(s => s.trim()).filter(Boolean);
+}
+
+function cookieKV(setCookieLine: string): string {
+  // "NAME=VALUE; Path=/; ..." -> "NAME=VALUE"
+  return setCookieLine.split(";")[0].trim();
 }
 
 function toNumber(v: unknown): number | null {
@@ -14,77 +25,118 @@ function toNumber(v: unknown): number | null {
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
-  let step = "start";
   try {
-    step = "auth.me";
     const me = await base44.auth.me();
-    if (!me || !["admin", "super_admin", "master"].includes(me.perfil)) {
-      return Response.json({ ok: false, step, error: "Acesso negado." }, { status: 403 });
+    if (!me) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+    const perfil = (me as any).perfil ?? (me as any).role ?? "";
+    if (!["admin", "super_admin", "master"].includes(perfil)) {
+      return Response.json({ error: "Forbidden: Admin access required" }, { status: 403 });
     }
 
-    step = "read.body";
     const body = await req.json().catch(() => ({}));
-    const id_tipo_produto = String(body?.id_tipo_produto ?? "101");
-    const permite_reserva = String(body?.permite_reserva ?? "N");
+    const id_tipo_produto = String(body?.id_tipo_produto ?? "101"); // 101 automóveis
+    const permite_reserva = String(body?.permite_reserva ?? "N");   // N/S
     const start = String(body?.start ?? "0");
     const length = String(body?.length ?? "200");
 
-    step = "env.secrets";
-    const user = Deno.env.get("CANOPUS_USER");
-    const pass = Deno.env.get("CANOPUS_PASS");
-    if (!user || !pass) {
-      return Response.json(
-        { ok: false, step, error: "Secrets CANOPUS_USER/CANOPUS_PASS não configurados neste ambiente." },
-        { status: 500 },
-      );
+    // empresa_id
+    let empresaId = (me as any).empresa_id;
+    if (!empresaId) {
+      // se você usa Colaborador, busque com list({filter})
+      const colabsRes = await base44.asServiceRole.entities.Colaborador.list({
+        filter: { user_id: (me as any).id, status: "ativo" },
+        limit: 1,
+      });
+      const colabs = Array.isArray(colabsRes) ? colabsRes : (colabsRes?.items ?? []);
+      if (colabs?.length) empresaId = colabs[0].empresa_id;
+    }
+    if (!empresaId) {
+      return Response.json({ error: "empresa_id não encontrado. Vincule o usuário a uma empresa." }, { status: 400 });
     }
 
-    step = "fetch.login.get";
-    const loginUrl = "https://afv.consorciocanopus.com.br/Sistema/";
-    const r0 = await fetch(loginUrl, { method: "GET" });
-    const html = await r0.text();
+    // IntegracaoCanopus (com usuario/senha)
+    const integRes = await base44.asServiceRole.entities.IntegracaoCanopus.list({
+      filter: { empresa_id: empresaId, origem: "CANOPUS", status: "ativo" },
+      limit: 1,
+    });
+    const integracoes = Array.isArray(integRes) ? integRes : (integRes?.items ?? []);
+    if (!integracoes?.length) {
+      return Response.json({ error: "Integração Canopus não configurada (sem credenciais ativas)." }, { status: 400 });
+    }
 
-    step = "extract.tokens";
-    const as_sfid = extractHidden(html, "as_sfid");
-    const as_fid = extractHidden(html, "as_fid");
+    const integracao = integracoes[0];
+    const baseUrl = String(integracao.url || "https://afv.consorciocanopus.com.br/Sistema/").replace(/\/+$/, "/");
+    const usuario = integracao.usuario;
+    const senha = integracao.senha;
+
+    if (!usuario || !senha) {
+      return Response.json({ error: "Credenciais Canopus incompletas. Preencha usuário e senha na Integração." }, { status: 400 });
+    }
+
+    // ---- 1) GET login page pra capturar tokens ----
+    const r0 = await fetch(baseUrl, { method: "GET" });
+    const html0 = await r0.text();
+
+    const as_sfid = extractHidden(html0, "as_sfid");
+    const as_fid = extractHidden(html0, "as_fid");
+
     if (!as_sfid || !as_fid) {
-      return Response.json(
-        { ok: false, step, error: "Não achei as_sfid/as_fid no HTML do login.", html_head: html.slice(0, 1000) },
-        { status: 500 },
-      );
+      return Response.json({
+        error: "Não consegui localizar as_sfid/as_fid no HTML do login.",
+        hint: "O AFV pode ter mudado o form. Me mande um print do HTML do form (sem senha).",
+      }, { status: 500 });
     }
 
-    step = "fetch.login.post";
+    // cookies iniciais (se existirem)
+    const jar: string[] = [];
+    const sc0 = r0.headers.get("set-cookie");
+    if (sc0) splitSetCookie(sc0).forEach(c => jar.push(cookieKV(c)));
+
+    // ---- 2) POST login correto (no /Sistema/) ----
     const form = new URLSearchParams();
-    form.set("login", user);
-    form.set("senha", pass);
+    form.set("login", String(usuario));
+    form.set("senha", String(senha));
     form.set("as_sfid", as_sfid);
     form.set("as_fid", as_fid);
 
-    const r1 = await fetch(loginUrl, {
+    const r1 = await fetch(baseUrl, {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
         "origin": "https://afv.consorciocanopus.com.br",
-        "referer": loginUrl,
+        "referer": baseUrl,
+        ...(jar.length ? { cookie: jar.join("; ") } : {}),
       },
       body: form.toString(),
       redirect: "manual",
     });
 
-    // ⚠️ Alguns runtimes não expõem Set-Cookie. Então vamos usar cookie de fallback temporário.
-    // Crie um secret CANOPUS_COOKIE_FALLBACK com pelo menos AFVCanopus=...
-    step = "cookie.fallback";
-    const cookie = Deno.env.get("CANOPUS_COOKIE_FALLBACK");
-    if (!cookie) {
-      return Response.json(
-        { ok: false, step, error: "Crie o secret CANOPUS_COOKIE_FALLBACK (ex.: AFVCanopus=...)." },
-        { status: 500 },
-      );
+    const sc1 = r1.headers.get("set-cookie");
+    if (sc1) splitSetCookie(sc1).forEach(c => jar.push(cookieKV(c)));
+
+    // segue redirect (normalmente 302 -> timeline/timeline)
+    const loc = r1.headers.get("location");
+    if (loc) {
+      const timelineUrl = new URL(loc, baseUrl).toString();
+      const r2 = await fetch(timelineUrl, {
+        method: "GET",
+        headers: { cookie: jar.join("; "), referer: baseUrl },
+      });
+      const sc2 = r2.headers.get("set-cookie");
+      if (sc2) splitSetCookie(sc2).forEach(c => jar.push(cookieKV(c)));
     }
 
-    step = "fetch.planos";
-    const planosUrl = new URL("https://afv.consorciocanopus.com.br/Sistema/planos/acoes/datatable_reload_planos.php");
+    if (!jar.join("; ").includes("AFVCanopus=")) {
+      return Response.json({
+        error: "Login não gerou cookie AFVCanopus (sessão não foi criada).",
+        hint: "Pode haver validação extra/bloqueio. Teste login manual e confirme que não há CAPTCHA/2FA.",
+      }, { status: 400 });
+    }
+
+    // ---- 3) Buscar planos (DataTables JSON) ----
+    const planosUrl = new URL(baseUrl + "planos/acoes/datatable_reload_planos.php");
+
     planosUrl.searchParams.set("checkbox", "false");
     planosUrl.searchParams.set("draw", "1");
     planosUrl.searchParams.set("start", start);
@@ -118,61 +170,76 @@ Deno.serve(async (req) => {
       headers: {
         "accept": "application/json, text/javascript, */*; q=0.01",
         "x-requested-with": "XMLHttpRequest",
-        "referer": "https://afv.consorciocanopus.com.br/Sistema/planos/listagem_planos.php",
-        "cookie": cookie,
+        "referer": baseUrl + "planos/listagem_planos.php",
+        "cookie": jar.join("; "),
       },
     });
 
-    const planosText = await rPlanos.text();
-    step = "parse.planos";
+    const text = await rPlanos.text();
+    if (!rPlanos.ok) {
+      return Response.json({ error: "Falha ao buscar planos", status: rPlanos.status, body_head: text.slice(0, 300) }, { status: 500 });
+    }
+
     let parsed: any;
-    try {
-      parsed = JSON.parse(planosText);
-    } catch {
-      return Response.json(
-        { ok: false, step, error: "Planos não retornou JSON (provável HTML/login).", body_head: planosText.slice(0, 500) },
-        { status: 500 },
-      );
+    try { parsed = JSON.parse(text); } catch {
+      return Response.json({
+        error: "Retorno dos planos não é JSON (provável HTML/login).",
+        body_head: text.slice(0, 300),
+      }, { status: 500 });
     }
 
     const rows = Array.isArray(parsed?.data) ? parsed.data : [];
-    step = "save.base44";
-
-    // ⚠️ Aqui costuma quebrar se a entidade tiver outro nome, ou schema diferente.
-    const empresa_id = me.empresa_id;
-    let saved = 0;
-
-    for (const r of rows) {
-      const payload = {
-        empresa_id,
-        external_hash: r[0],
-        produto_id: id_tipo_produto,
-        permite_reserva,
-        nome: r[1],
-        valor: toNumber(r[2]),
-        prazo: toNumber(r[3]),
-        primeira_parcela: toNumber(r[4]),
-        plano: r[5],
-        tipo_venda: r[6],
-      };
-
-      // tente findMany (mais compatível)
-      const list = await base44.entities.CanopusPlanos.findMany({
-        filter: { empresa_id, external_hash: r[0] },
-        limit: 1,
-      });
-      const existing = Array.isArray(list) ? list[0] : (list?.items?.[0] ?? null);
-
-      if (existing?.id) await base44.entities.CanopusPlanos.update(existing.id, payload);
-      else await base44.entities.CanopusPlanos.create(payload);
-
-      saved++;
+    if (!rows.length) {
+      return Response.json({ success: true, lidos: 0, criados: 0, atualizados: 0, message: "0 planos retornados." });
     }
 
-    return Response.json({ ok: true, step: "done", total: rows.length, saved }, { status: 200 });
+    // ---- 4) Salvar no Base44 (UPsert) ----
+    let criados = 0;
+    let atualizados = 0;
+
+    for (const r of rows) {
+      const external_hash = String(r[0]);
+      const dados = {
+        empresa_id: empresaId,
+        origem: "CANOPUS",
+        produto_id: id_tipo_produto,
+        permite_reserva,
+        external_hash,
+        nome_bem: String(r[1] ?? ""),
+        valor_bem: toNumber(r[2]),
+        prazo_meses: toNumber(r[3]),
+        parcela: toNumber(r[4]),
+        plano: String(r[5] ?? ""),
+        tipo_venda: String(r[6] ?? ""),
+        status: "ativo",
+        ultima_sincronizacao: new Date().toISOString(),
+      };
+
+      const existingRes = await base44.asServiceRole.entities.PlanoCanopus.list({
+        filter: { empresa_id: empresaId, external_hash },
+        limit: 1,
+      });
+      const existing = Array.isArray(existingRes) ? existingRes[0] : (existingRes?.items?.[0] ?? null);
+
+      if (existing?.id) {
+        await base44.asServiceRole.entities.PlanoCanopus.update(existing.id, dados);
+        atualizados++;
+      } else {
+        await base44.asServiceRole.entities.PlanoCanopus.create(dados);
+        criados++;
+      }
+    }
+
+    return Response.json({
+      success: true,
+      lidos: rows.length,
+      criados,
+      atualizados,
+      message: `Sincronização concluída. Lidos: ${rows.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
+    });
   } catch (e: any) {
     return Response.json(
-      { ok: false, step, error: String(e?.message ?? e), stack: String(e?.stack ?? "") },
+      { success: false, error: String(e?.message ?? e), stack: String(e?.stack ?? "") },
       { status: 500 },
     );
   }
