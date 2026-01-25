@@ -27,8 +27,11 @@ export default function SincronizacaoCanopus() {
 
   // Buscar total de planos
   const { data: planos = [] } = useQuery({
-    queryKey: ['canopus-planos'],
-    queryFn: () => base44.entities.CanopusPlanos.list(),
+    queryKey: ['plano-canopus'],
+    queryFn: async () => {
+      const res = await base44.entities.PlanoCanopus.list({ limit: 1000 });
+      return Array.isArray(res) ? res : (res?.items ?? []);
+    },
   });
 
   // Sincronizar
@@ -41,9 +44,9 @@ export default function SincronizacaoCanopus() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['canopus-planos'] });
+      queryClient.invalidateQueries({ queryKey: ['plano-canopus'] });
       toast.success(
-        `Sincronização concluída! ${data.created} criados, ${data.updated} atualizados`
+        `Sincronização concluída! ${data.criados ?? 0} criados, ${data.atualizados ?? 0} atualizados`
       );
     },
     onError: (error) => {
