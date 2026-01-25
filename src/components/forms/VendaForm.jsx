@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Loader2, Search } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -292,6 +293,9 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{venda ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
+          <DialogDescription>
+            Preencha os dados da venda de consórcio
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Campos hidden para dados denormalizados */}

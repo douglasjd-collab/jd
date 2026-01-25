@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 
@@ -65,6 +66,9 @@ export default function AdministradoraForm({ open, onOpenChange, administradora,
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{administradora ? 'Editar Administradora' : 'Nova Administradora'}</DialogTitle>
+          <DialogDescription>
+            Preencha os dados da administradora de consórcio
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
