@@ -38,12 +38,14 @@ import {
   XCircle,
   Loader2,
   Eye,
-  Trash2
+  Trash2,
+  FileUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import ImportarPlanosCanopusPDF from '@/components/planos/ImportarPlanosCanopusPDF';
 
 export default function Importacao() {
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -52,6 +54,7 @@ export default function Importacao() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [importPlanosOpen, setImportPlanosOpen] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -470,12 +473,40 @@ export default function Importacao() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Importação de Comissões"
-        subtitle="Importe arquivos de comissões recebidas das administradoras"
-        actionLabel="Nova Importação"
-        actionIcon={Upload}
-        onAction={() => setUploadOpen(true)}
+        title="Importação"
+        subtitle="Importe comissões e planos de consórcio"
       />
+
+      {/* Ações de Importação */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => setUploadOpen(true)}>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-blue-50 rounded-xl">
+                <Upload className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg text-slate-900 mb-1">Importar Comissões</h3>
+                <p className="text-sm text-slate-600">Importe arquivos CSV de comissões recebidas das administradoras</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => setImportPlanosOpen(true)}>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-emerald-50 rounded-xl">
+                <FileUp className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg text-slate-900 mb-1">Importar Planos</h3>
+                <p className="text-sm text-slate-600">Importe planos de consórcio via PDF com extração automática</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -670,6 +701,12 @@ export default function Importacao() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Importar Planos */}
+      <ImportarPlanosCanopusPDF
+        open={importPlanosOpen}
+        onOpenChange={setImportPlanosOpen}
+      />
     </div>
   );
 }
