@@ -34,24 +34,76 @@ export default function SincronizacaoCanopus() {
     },
   });
 
+  // helper para extrair erro do Base44/Axios
+  function getErrorInfo(err) {
+    const e = err || {};
+    const status = e?.response?.status;
+    const data = e?.response?.data;
+
+    // Se vier texto puro (ex: "Internal Server Error")
+    if (typeof data === "string") {
+      return { status, text: data };
+    }
+
+    // Se vier JSON
+    if (data && typeof data === "object") {
+      const message =
+        data.message ||
+        data.error ||
+        data.detail ||
+        (Array.isArray(data.errors) ? data.errors.map(x => x?.message || JSON.stringify(x)).join(" | ") : null);
+
+      return {
+        status,
+        text: message ? String(message) : JSON.stringify(data),
+        data,
+      };
+    }
+
+    // fallback
+    return {
+      status,
+      text: e.message || "Erro desconhecido",
+    };
+  }
+
   // Sincronizar
   const sincronizarMutation = useMutation({
     mutationFn: async () => {
-      const response = await base44.functions.invoke('syncCanopusPlanos', {
-        id_tipo_produto: tipoProduto,
-        permite_reserva: permiteReserva
-      });
-      return response.data;
+      // dica: loga o payload para confirmar
+      const payload = { id_tipo_produto: tipoProduto, permite_reserva: permiteReserva };
+      console.log("[Canopus Sync] payload:", payload);
+
+      const response = await base44.functions.invoke("syncCanopusPlanos", payload);
+
+      // loga resposta em caso de sucesso
+      console.log("[Canopus Sync] response:", response);
+
+      return response?.data ?? response;
     },
+
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['plano-canopus'] });
-      toast.success(
-        `Sincronização concluída! ${data.criados ?? 0} criados, ${data.atualizados ?? 0} atualizados`
+      queryClient.invalidateQueries({ queryKey: ["plano-canopus"] });
+
+      const criados = data?.criados ?? 0;
+      const atualizados = data?.atualizados ?? 0;
+
+      toast.success(`Sincronização concluída! ${criados} criados, ${atualizados} atualizados`);
+    },
+
+    onError: (err) => {
+      const info = getErrorInfo(err);
+
+      // imprime tudo no console (isso aqui vai ajudar MUITO)
+      console.error("[Canopus Sync] ERROR RAW:", err);
+      console.error("[Canopus Sync] ERROR INFO:", info);
+
+      toast.error(
+        info.status
+          ? `Erro ${info.status}: ${info.text}`
+          : `Erro: ${info.text}`
       );
     },
-    onError: (error) => {
-      toast.error(error.message || 'Erro ao sincronizar planos');
-    }
   });
 
   return (
