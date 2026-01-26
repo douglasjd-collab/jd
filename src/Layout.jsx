@@ -172,11 +172,17 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Administradoras', page: 'Administradoras' },
         { name: 'Tabelas de Consórcio', page: 'TabelasConsorcio' },
         { name: 'Planos de Consórcio', page: 'PlanosConsorcio' },
-        { name: 'Planos Canopus', page: 'PlanosCanopus' },
-        { name: 'Importar Planos (Print)', page: 'ImportarPlanosPrint' },
       ]
     },
-    { name: 'Importação', icon: Upload, page: 'Importacao', roles: ['master', 'super_admin', 'admin'] },
+    { 
+      name: 'Importação', 
+      icon: Upload, 
+      roles: ['master', 'super_admin', 'admin'],
+      submenu: [
+        { name: 'Planos Canopus', page: 'PlanosCanopus' },
+        { name: 'Recebimento de Comissão', page: 'RecebimentoComissao' },
+      ]
+    },
     { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor'] },
     { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente'] },
