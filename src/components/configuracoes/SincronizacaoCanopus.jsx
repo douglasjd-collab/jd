@@ -150,20 +150,34 @@ export default function SincronizacaoCanopus() {
   // Salvar credenciais
   const salvarCredenciaisMutation = useMutation({
     mutationFn: async () => {
-      if (!empresaId) throw new Error('empresa_id não encontrado');
       if (!usuario || !senha) throw new Error('Usuário e senha são obrigatórios');
 
-      const integs = await base44.entities.IntegracaoCanopus.filter({ empresa_id: empresaId, origem: 'CANOPUS' });
+      // Garantir empresa_id atualizado
+      const user = await base44.auth.me();
+      let empId = user?.empresa_id;
+      
+      if (!empId) {
+        const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: 'ativo' });
+        if (colabs?.length) empId = colabs[0].empresa_id;
+      }
+
+      if (!empId) throw new Error('Empresa não encontrada. Verifique seu vínculo de colaborador.');
+
+      console.log('Salvando credenciais para empresa:', empId);
+
+      const integs = await base44.entities.IntegracaoCanopus.filter({ empresa_id: empId, origem: 'CANOPUS' });
       
       if (integs?.length) {
+        console.log('Atualizando integração existente:', integs[0].id);
         await base44.entities.IntegracaoCanopus.update(integs[0].id, {
           usuario,
           senha,
           status: 'ativo'
         });
       } else {
+        console.log('Criando nova integração');
         await base44.entities.IntegracaoCanopus.create({
-          empresa_id: empresaId,
+          empresa_id: empId,
           origem: 'CANOPUS',
           usuario,
           senha,
@@ -171,12 +185,15 @@ export default function SincronizacaoCanopus() {
           status: 'ativo'
         });
       }
+
+      setEmpresaId(empId);
     },
     onSuccess: () => {
       toast.success('Credenciais salvas com sucesso!');
       setModalOpen(false);
     },
     onError: (err) => {
+      console.error('Erro ao salvar credenciais:', err);
       toast.error(err.message || 'Erro ao salvar credenciais');
     }
   });
