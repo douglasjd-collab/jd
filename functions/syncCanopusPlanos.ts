@@ -8,12 +8,10 @@ function extractHidden(html: string, name: string): string | null {
 }
 
 function splitSetCookie(sc: string): string[] {
-  // separa múltiplos set-cookie (quando vem "grudado")
   return sc.split(/,(?=\s*[A-Za-z0-9_\-]+=)/g).map(s => s.trim()).filter(Boolean);
 }
 
 function cookieKV(setCookieLine: string): string {
-  // "NAME=VALUE; Path=/; ..." -> "NAME=VALUE"
   return setCookieLine.split(";")[0].trim();
 }
 
@@ -23,27 +21,38 @@ function toNumber(v: unknown): number | null {
 }
 
 Deno.serve(async (req) => {
-  const base44 = createClientFromRequest(req);
+  const startedAt = Date.now();
+  let step = "init";
 
   try {
-    const me = await base44.auth.me();
-    if (!me) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    step = "base44_client";
+    const base44 = createClientFromRequest(req);
 
-    const perfil = (me as any).perfil ?? (me as any).role ?? "";
-    if (!["admin", "super_admin", "master"].includes(perfil)) {
-      return Response.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+    step = "auth_me";
+    const me = await base44.auth.me();
+    if (!me) {
+      return Response.json({ error: "Unauthorized", step }, { status: 401 });
     }
 
+    step = "check_admin_role";
+    const perfil = (me as any).perfil ?? (me as any).role ?? "";
+    if (!["admin", "super_admin", "master"].includes(perfil)) {
+      return Response.json(
+        { error: "Acesso negado. Apenas admin.", perfil, step },
+        { status: 403 }
+      );
+    }
+
+    step = "parse_body";
     const body = await req.json().catch(() => ({}));
-    const id_tipo_produto = String(body?.id_tipo_produto ?? "101"); // 101 automóveis
-    const permite_reserva = String(body?.permite_reserva ?? "N");   // N/S
+    const id_tipo_produto = String(body?.id_tipo_produto ?? "101");
+    const permite_reserva = String(body?.permite_reserva ?? "N");
     const start = String(body?.start ?? "0");
     const length = String(body?.length ?? "200");
 
-    // empresa_id
+    step = "get_empresa_id";
     let empresaId = (me as any).empresa_id;
     if (!empresaId) {
-      // se você usa Colaborador, busque com list({filter})
       const colabsRes = await base44.asServiceRole.entities.Colaborador.list({
         filter: { user_id: (me as any).id, status: "ativo" },
         limit: 1,
@@ -52,17 +61,23 @@ Deno.serve(async (req) => {
       if (colabs?.length) empresaId = colabs[0].empresa_id;
     }
     if (!empresaId) {
-      return Response.json({ error: "empresa_id não encontrado. Vincule o usuário a uma empresa." }, { status: 400 });
+      return Response.json(
+        { error: "empresa_id não encontrado. Vincule o usuário a uma empresa.", step },
+        { status: 400 }
+      );
     }
 
-    // IntegracaoCanopus (com usuario/senha)
+    step = "get_integracao_canopus";
     const integRes = await base44.asServiceRole.entities.IntegracaoCanopus.list({
       filter: { empresa_id: empresaId, origem: "CANOPUS", status: "ativo" },
       limit: 1,
     });
     const integracoes = Array.isArray(integRes) ? integRes : (integRes?.items ?? []);
     if (!integracoes?.length) {
-      return Response.json({ error: "Integração Canopus não configurada (sem credenciais ativas)." }, { status: 400 });
+      return Response.json(
+        { error: "Integração Canopus não configurada (sem credenciais ativas).", step },
+        { status: 400 }
+      );
     }
 
     const integracao = integracoes[0];
@@ -71,29 +86,35 @@ Deno.serve(async (req) => {
     const senha = integracao.senha;
 
     if (!usuario || !senha) {
-      return Response.json({ error: "Credenciais Canopus incompletas. Preencha usuário e senha na Integração." }, { status: 400 });
+      return Response.json(
+        { error: "Credenciais Canopus incompletas. Preencha usuário e senha na Integração.", step },
+        { status: 400 }
+      );
     }
 
-    // ---- 1) GET login page pra capturar tokens ----
+    // ---- LOGIN ----
+    step = "fetch_login_page";
     const r0 = await fetch(baseUrl, { method: "GET" });
     const html0 = await r0.text();
 
+    step = "extract_tokens";
     const as_sfid = extractHidden(html0, "as_sfid");
     const as_fid = extractHidden(html0, "as_fid");
 
     if (!as_sfid || !as_fid) {
       return Response.json({
         error: "Não consegui localizar as_sfid/as_fid no HTML do login.",
-        hint: "O AFV pode ter mudado o form. Me mande um print do HTML do form (sem senha).",
+        step,
+        html_preview: html0.slice(0, 800),
       }, { status: 500 });
     }
 
-    // cookies iniciais (se existirem)
+    step = "collect_initial_cookies";
     const jar: string[] = [];
     const sc0 = r0.headers.get("set-cookie");
     if (sc0) splitSetCookie(sc0).forEach(c => jar.push(cookieKV(c)));
 
-    // ---- 2) POST login correto (no /Sistema/) ----
+    step = "post_login";
     const form = new URLSearchParams();
     form.set("login", String(usuario));
     form.set("senha", String(senha));
@@ -112,10 +133,11 @@ Deno.serve(async (req) => {
       redirect: "manual",
     });
 
+    step = "collect_login_cookies";
     const sc1 = r1.headers.get("set-cookie");
     if (sc1) splitSetCookie(sc1).forEach(c => jar.push(cookieKV(c)));
 
-    // segue redirect (normalmente 302 -> timeline/timeline)
+    step = "follow_redirect";
     const loc = r1.headers.get("location");
     if (loc) {
       const timelineUrl = new URL(loc, baseUrl).toString();
@@ -127,14 +149,17 @@ Deno.serve(async (req) => {
       if (sc2) splitSetCookie(sc2).forEach(c => jar.push(cookieKV(c)));
     }
 
+    step = "validate_session_cookie";
     if (!jar.join("; ").includes("AFVCanopus=")) {
       return Response.json({
         error: "Login não gerou cookie AFVCanopus (sessão não foi criada).",
+        step,
         hint: "Pode haver validação extra/bloqueio. Teste login manual e confirme que não há CAPTCHA/2FA.",
       }, { status: 400 });
     }
 
-    // ---- 3) Buscar planos (DataTables JSON) ----
+    // ---- FETCH PLANOS ----
+    step = "build_planos_url";
     const planosUrl = new URL(baseUrl + "planos/acoes/datatable_reload_planos.php");
 
     planosUrl.searchParams.set("checkbox", "false");
@@ -165,6 +190,7 @@ Deno.serve(async (req) => {
     planosUrl.searchParams.set("permite_reserva", permite_reserva);
     planosUrl.searchParams.set("select_grupos", "");
 
+    step = "fetch_planos";
     const rPlanos = await fetch(planosUrl.toString(), {
       method: "GET",
       headers: {
@@ -175,25 +201,50 @@ Deno.serve(async (req) => {
       },
     });
 
+    step = "read_planos_response";
     const text = await rPlanos.text();
+    const status = rPlanos.status;
+    const contentType = rPlanos.headers.get("content-type") || "";
+
     if (!rPlanos.ok) {
-      return Response.json({ error: "Falha ao buscar planos", status: rPlanos.status, body_head: text.slice(0, 300) }, { status: 500 });
+      return Response.json({
+        error: "Falha ao buscar planos",
+        step,
+        http_status: status,
+        contentType,
+        body_preview: text.slice(0, 800),
+      }, { status: 502 });
     }
 
+    step = "parse_planos_json";
     let parsed: any;
-    try { parsed = JSON.parse(text); } catch {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
       return Response.json({
         error: "Retorno dos planos não é JSON (provável HTML/login).",
-        body_head: text.slice(0, 300),
-      }, { status: 500 });
+        step,
+        contentType,
+        body_preview: text.slice(0, 1200),
+      }, { status: 422 });
     }
 
+    step = "extract_rows";
     const rows = Array.isArray(parsed?.data) ? parsed.data : [];
     if (!rows.length) {
-      return Response.json({ success: true, lidos: 0, criados: 0, atualizados: 0, message: "0 planos retornados." });
+      return Response.json({
+        success: true,
+        lidos: 0,
+        criados: 0,
+        atualizados: 0,
+        message: "0 planos retornados.",
+        step,
+        elapsed_ms: Date.now() - startedAt,
+      });
     }
 
-    // ---- 4) Salvar no Base44 (UPsert) ----
+    // ---- UPSERT NO BASE44 ----
+    step = "save_to_base44";
     let criados = 0;
     let atualizados = 0;
 
@@ -230,17 +281,30 @@ Deno.serve(async (req) => {
       }
     }
 
+    step = "done";
     return Response.json({
       success: true,
       lidos: rows.length,
       criados,
       atualizados,
       message: `Sincronização concluída. Lidos: ${rows.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
+      step,
+      elapsed_ms: Date.now() - startedAt,
     });
-  } catch (e: any) {
+
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+
     return Response.json(
-      { success: false, error: String(e?.message ?? e), stack: String(e?.stack ?? "") },
-      { status: 500 },
+      {
+        error: "Internal Server Error",
+        step,
+        message,
+        stack,
+        elapsed_ms: Date.now() - startedAt,
+      },
+      { status: 500 }
     );
   }
 });
