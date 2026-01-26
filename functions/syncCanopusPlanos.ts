@@ -1,5 +1,4 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
-import cheerio from "npm:cheerio@1.0.0-rc.12";
 
 function extractHidden(html: string, name: string): string | null {
   const re1 = new RegExp(`name=["']${name}["'][^>]*value=["']([^"']+)["']`, "i");
@@ -21,49 +20,65 @@ function toNumber(v: unknown): number | null {
 }
 
 Deno.serve(async (req) => {
-  const startedAt = Date.now();
   let step = "init";
+  const startedAt = Date.now();
+
+  const safeJson = async () => {
+    try {
+      const txt = await req.text();
+      if (!txt) return {};
+      return JSON.parse(txt);
+    } catch {
+      return {};
+    }
+  };
 
   try {
     step = "base44_client";
     const base44 = createClientFromRequest(req);
 
     step = "auth_me";
-    const me = await base44.auth.me();
-    if (!me) {
-      return Response.json({ error: "Unauthorized", step }, { status: 401 });
+    const user = await base44.auth.me();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized", step }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      });
     }
 
     step = "check_admin_role";
-    const perfil = (me as any).perfil ?? (me as any).role ?? "";
-    if (!["admin", "super_admin", "master"].includes(perfil)) {
-      return Response.json(
-        { error: "Acesso negado. Apenas admin.", perfil, step },
-        { status: 403 }
-      );
+    const role = String((user as any).role ?? (user as any).perfil ?? "");
+    if (!["admin", "super_admin", "master"].includes(role)) {
+      return new Response(JSON.stringify({ error: "Acesso negado", role, step }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      });
     }
 
-    step = "parse_body";
-    const body = await req.json().catch(() => ({}));
+    step = "read_body";
+    const body = await safeJson();
     const id_tipo_produto = String(body?.id_tipo_produto ?? "101");
     const permite_reserva = String(body?.permite_reserva ?? "N");
     const start = String(body?.start ?? "0");
     const length = String(body?.length ?? "200");
 
     step = "get_empresa_id";
-    let empresaId = (me as any).empresa_id;
+    let empresaId = (user as any).empresa_id;
     if (!empresaId) {
       const colabsRes = await base44.asServiceRole.entities.Colaborador.list({
-        filter: { user_id: (me as any).id, status: "ativo" },
+        filter: { user_id: (user as any).id, status: "ativo" },
         limit: 1,
       });
       const colabs = Array.isArray(colabsRes) ? colabsRes : (colabsRes?.items ?? []);
       if (colabs?.length) empresaId = colabs[0].empresa_id;
     }
     if (!empresaId) {
-      return Response.json(
-        { error: "empresa_id não encontrado. Vincule o usuário a uma empresa.", step },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({
+          error: "empresa_id não encontrado. Vincule o usuário a uma empresa.",
+          step,
+        }),
+        { status: 400, headers: { "content-type": "application/json" } }
       );
     }
 
@@ -74,21 +89,29 @@ Deno.serve(async (req) => {
     });
     const integracoes = Array.isArray(integRes) ? integRes : (integRes?.items ?? []);
     if (!integracoes?.length) {
-      return Response.json(
-        { error: "Integração Canopus não configurada (sem credenciais ativas).", step },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({
+          error: "Integração Canopus não configurada (sem credenciais ativas).",
+          step,
+        }),
+        { status: 400, headers: { "content-type": "application/json" } }
       );
     }
 
     const integracao = integracoes[0];
-    const baseUrl = String(integracao.url || "https://afv.consorciocanopus.com.br/Sistema/").replace(/\/+$/, "/");
+    const baseUrl = String(
+      integracao.url || "https://afv.consorciocanopus.com.br/Sistema/"
+    ).replace(/\/+$/, "/");
     const usuario = integracao.usuario;
     const senha = integracao.senha;
 
     if (!usuario || !senha) {
-      return Response.json(
-        { error: "Credenciais Canopus incompletas. Preencha usuário e senha na Integração.", step },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({
+          error: "Credenciais Canopus incompletas. Preencha usuário e senha na Integração.",
+          step,
+        }),
+        { status: 400, headers: { "content-type": "application/json" } }
       );
     }
 
@@ -102,17 +125,20 @@ Deno.serve(async (req) => {
     const as_fid = extractHidden(html0, "as_fid");
 
     if (!as_sfid || !as_fid) {
-      return Response.json({
-        error: "Não consegui localizar as_sfid/as_fid no HTML do login.",
-        step,
-        html_preview: html0.slice(0, 800),
-      }, { status: 500 });
+      return new Response(
+        JSON.stringify({
+          error: "Não consegui localizar as_sfid/as_fid no HTML do login.",
+          step,
+          html_preview: html0.slice(0, 800),
+        }),
+        { status: 500, headers: { "content-type": "application/json" } }
+      );
     }
 
     step = "collect_initial_cookies";
     const jar: string[] = [];
     const sc0 = r0.headers.get("set-cookie");
-    if (sc0) splitSetCookie(sc0).forEach(c => jar.push(cookieKV(c)));
+    if (sc0) splitSetCookie(sc0).forEach((c) => jar.push(cookieKV(c)));
 
     step = "post_login";
     const form = new URLSearchParams();
@@ -135,7 +161,7 @@ Deno.serve(async (req) => {
 
     step = "collect_login_cookies";
     const sc1 = r1.headers.get("set-cookie");
-    if (sc1) splitSetCookie(sc1).forEach(c => jar.push(cookieKV(c)));
+    if (sc1) splitSetCookie(sc1).forEach((c) => jar.push(cookieKV(c)));
 
     step = "follow_redirect";
     const loc = r1.headers.get("location");
@@ -146,16 +172,21 @@ Deno.serve(async (req) => {
         headers: { cookie: jar.join("; "), referer: baseUrl },
       });
       const sc2 = r2.headers.get("set-cookie");
-      if (sc2) splitSetCookie(sc2).forEach(c => jar.push(cookieKV(c)));
+      if (sc2) splitSetCookie(sc2).forEach((c) => jar.push(cookieKV(c)));
     }
 
     step = "validate_session_cookie";
-    if (!jar.join("; ").includes("AFVCanopus=")) {
-      return Response.json({
-        error: "Login não gerou cookie AFVCanopus (sessão não foi criada).",
-        step,
-        hint: "Pode haver validação extra/bloqueio. Teste login manual e confirme que não há CAPTCHA/2FA.",
-      }, { status: 400 });
+    const cookieString = jar.join("; ");
+    if (!cookieString.includes("AFVCanopus=")) {
+      return new Response(
+        JSON.stringify({
+          error: "Login não gerou cookie AFVCanopus (sessão não foi criada).",
+          step,
+          hint: "Pode haver validação extra/bloqueio. Teste login manual e confirme que não há CAPTCHA/2FA.",
+          cookies_received: cookieString,
+        }),
+        { status: 400, headers: { "content-type": "application/json" } }
+      );
     }
 
     // ---- FETCH PLANOS ----
@@ -197,7 +228,7 @@ Deno.serve(async (req) => {
         "accept": "application/json, text/javascript, */*; q=0.01",
         "x-requested-with": "XMLHttpRequest",
         "referer": baseUrl + "planos/listagem_planos.php",
-        "cookie": jar.join("; "),
+        "cookie": cookieString,
       },
     });
 
@@ -207,13 +238,16 @@ Deno.serve(async (req) => {
     const contentType = rPlanos.headers.get("content-type") || "";
 
     if (!rPlanos.ok) {
-      return Response.json({
-        error: "Falha ao buscar planos",
-        step,
-        http_status: status,
-        contentType,
-        body_preview: text.slice(0, 800),
-      }, { status: 502 });
+      return new Response(
+        JSON.stringify({
+          error: "Falha ao buscar planos",
+          step,
+          http_status: status,
+          contentType,
+          body_preview: text.slice(0, 800),
+        }),
+        { status: 502, headers: { "content-type": "application/json" } }
+      );
     }
 
     step = "parse_planos_json";
@@ -221,26 +255,32 @@ Deno.serve(async (req) => {
     try {
       parsed = JSON.parse(text);
     } catch {
-      return Response.json({
-        error: "Retorno dos planos não é JSON (provável HTML/login).",
-        step,
-        contentType,
-        body_preview: text.slice(0, 1200),
-      }, { status: 422 });
+      return new Response(
+        JSON.stringify({
+          error: "Retorno dos planos não é JSON (provável HTML/login).",
+          step,
+          contentType,
+          body_preview: text.slice(0, 1200),
+        }),
+        { status: 422, headers: { "content-type": "application/json" } }
+      );
     }
 
     step = "extract_rows";
     const rows = Array.isArray(parsed?.data) ? parsed.data : [];
     if (!rows.length) {
-      return Response.json({
-        success: true,
-        lidos: 0,
-        criados: 0,
-        atualizados: 0,
-        message: "0 planos retornados.",
-        step,
-        elapsed_ms: Date.now() - startedAt,
-      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          lidos: 0,
+          criados: 0,
+          atualizados: 0,
+          message: "0 planos retornados.",
+          step,
+          elapsed_ms: Date.now() - startedAt,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      );
     }
 
     // ---- UPSERT NO BASE44 ----
@@ -270,7 +310,9 @@ Deno.serve(async (req) => {
         filter: { empresa_id: empresaId, external_hash },
         limit: 1,
       });
-      const existing = Array.isArray(existingRes) ? existingRes[0] : (existingRes?.items?.[0] ?? null);
+      const existing = Array.isArray(existingRes)
+        ? existingRes[0]
+        : (existingRes?.items?.[0] ?? null);
 
       if (existing?.id) {
         await base44.asServiceRole.entities.PlanoCanopus.update(existing.id, dados);
@@ -282,29 +324,31 @@ Deno.serve(async (req) => {
     }
 
     step = "done";
-    return Response.json({
-      success: true,
-      lidos: rows.length,
-      criados,
-      atualizados,
-      message: `Sincronização concluída. Lidos: ${rows.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
-      step,
-      elapsed_ms: Date.now() - startedAt,
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        lidos: rows.length,
+        criados,
+        atualizados,
+        message: `Sincronização concluída. Lidos: ${rows.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
+        step,
+        elapsed_ms: Date.now() - startedAt,
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
 
-    return Response.json(
-      {
+    return new Response(
+      JSON.stringify({
         error: "Internal Server Error",
         step,
         message,
         stack,
         elapsed_ms: Date.now() - startedAt,
-      },
-      { status: 500 }
+      }),
+      { status: 500, headers: { "content-type": "application/json" } }
     );
   }
 });
