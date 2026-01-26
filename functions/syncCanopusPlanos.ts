@@ -43,12 +43,25 @@ Deno.serve(async (req) => {
 
     const { usuario, senha, url = "https://afv.consorciocanopus.com.br/Sistema/" } = integs[0];
 
+    // Headers realistas para evitar bloqueio
+    const browserHeaders = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Connection": "keep-alive",
+      "Upgrade-Insecure-Requests": "1",
+    };
+
     // Login no Canopus
     step = "login_canopus";
     const loginRes = await fetch(`${url}login`, {
       method: "POST",
       headers: {
+        ...browserHeaders,
         "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": url,
+        "Origin": url.replace(/\/$/, ""),
       },
       body: new URLSearchParams({
         usuario,
@@ -59,7 +72,7 @@ Deno.serve(async (req) => {
 
     const cookies = loginRes.headers.get("set-cookie") || "";
     if (!cookies) {
-      return Response.json({ error: "Falha no login - sem cookies" }, { status: 400 });
+      return Response.json({ error: "Falha no login - sem cookies", status: loginRes.status }, { status: 400 });
     }
 
     // Buscar planos
@@ -68,7 +81,9 @@ Deno.serve(async (req) => {
       `${url}planos?id_tipo_produto=${id_tipo_produto}&permite_reserva=${permite_reserva}`,
       {
         headers: {
-          Cookie: cookies,
+          ...browserHeaders,
+          "Cookie": cookies,
+          "Referer": `${url}login`,
         },
       }
     );
