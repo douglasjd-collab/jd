@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -11,19 +12,59 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   RefreshCw, 
   Loader2, 
   CheckCircle2,
   Database,
-  AlertCircle
+  AlertCircle,
+  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SincronizacaoCanopus() {
   const [tipoProduto, setTipoProduto] = useState('101');
   const [permiteReserva, setPermiteReserva] = useState('N');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [usuario, setUsuario] = useState('');
+  const [senha, setSenha] = useState('');
+  const [empresaId, setEmpresaId] = useState(null);
   const queryClient = useQueryClient();
+
+  // Carregar empresa_id e credenciais
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const user = await base44.auth.me();
+        let empId = user?.empresa_id;
+        
+        if (!empId) {
+          const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: 'ativo' });
+          if (colabs?.length) empId = colabs[0].empresa_id;
+        }
+        
+        setEmpresaId(empId);
+        
+        if (empId) {
+          const integs = await base44.entities.IntegracaoCanopus.filter({ empresa_id: empId, origem: 'CANOPUS', status: 'ativo' });
+          if (integs?.length) {
+            setUsuario(integs[0].usuario || '');
+            setSenha(integs[0].senha || '');
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao carregar dados:', e);
+      }
+    };
+    loadData();
+  }, []);
 
   // Buscar total de planos
   const { data: planos = [] } = useQuery({
@@ -106,6 +147,40 @@ export default function SincronizacaoCanopus() {
     },
   });
 
+  // Salvar credenciais
+  const salvarCredenciaisMutation = useMutation({
+    mutationFn: async () => {
+      if (!empresaId) throw new Error('empresa_id não encontrado');
+      if (!usuario || !senha) throw new Error('Usuário e senha são obrigatórios');
+
+      const integs = await base44.entities.IntegracaoCanopus.filter({ empresa_id: empresaId, origem: 'CANOPUS' });
+      
+      if (integs?.length) {
+        await base44.entities.IntegracaoCanopus.update(integs[0].id, {
+          usuario,
+          senha,
+          status: 'ativo'
+        });
+      } else {
+        await base44.entities.IntegracaoCanopus.create({
+          empresa_id: empresaId,
+          origem: 'CANOPUS',
+          usuario,
+          senha,
+          url: 'https://afv.consorciocanopus.com.br/Sistema/',
+          status: 'ativo'
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success('Credenciais salvas com sucesso!');
+      setModalOpen(false);
+    },
+    onError: (err) => {
+      toast.error(err.message || 'Erro ao salvar credenciais');
+    }
+  });
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader>
@@ -180,6 +255,15 @@ export default function SincronizacaoCanopus() {
             )}
             Sincronizar Planos
           </Button>
+          
+          <Button
+            onClick={() => setModalOpen(true)}
+            variant="outline"
+            className="gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Configurar Credenciais
+          </Button>
         </div>
 
         {/* Info */}
@@ -194,6 +278,59 @@ export default function SincronizacaoCanopus() {
           </div>
         </div>
       </CardContent>
+
+      {/* Modal de Configuração */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configurar Credenciais Canopus</DialogTitle>
+            <DialogDescription>
+              Informe suas credenciais de acesso ao sistema Canopus
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Usuário</Label>
+              <Input
+                value={usuario}
+                onChange={(e) => setUsuario(e.target.value)}
+                placeholder="Digite o usuário"
+              />
+            </div>
+
+            <div>
+              <Label>Senha</Label>
+              <Input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Digite a senha"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => salvarCredenciaisMutation.mutate()}
+              disabled={salvarCredenciaisMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {salvarCredenciaisMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Salvar'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
