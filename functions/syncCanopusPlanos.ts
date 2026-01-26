@@ -1,6 +1,48 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
 import cheerio from "npm:cheerio@1.0.0-rc.12";
 
+// Retry com backoff exponencial
+async function fetchRetry(url, opts, tries = 3) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, opts);
+      return r;
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) {
+        await new Promise(res => setTimeout(res, 500 * Math.pow(2, i)));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+// Merge cookies manualmente
+function mergeCookies(prevCookie, setCookieHeader) {
+  const jar = new Map();
+  
+  // Cookies anteriores
+  if (prevCookie) {
+    prevCookie.split(";").forEach(kv => {
+      const [k, ...v] = kv.split("=");
+      if (k) jar.set(k.trim(), v.join("=").trim());
+    });
+  }
+  
+  // Novos cookies
+  if (setCookieHeader) {
+    const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+    cookies.forEach(sc => {
+      const part = sc.split(";")[0];
+      const [k, ...v] = part.split("=");
+      if (k) jar.set(k.trim(), v.join("=").trim());
+    });
+  }
+  
+  return Array.from(jar.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+}
+
 Deno.serve(async (req) => {
   let step = "init";
   
@@ -43,25 +85,35 @@ Deno.serve(async (req) => {
 
     const { usuario, senha, url = "https://afv.consorciocanopus.com.br/Sistema/" } = integs[0];
 
-    // Headers realistas para evitar bloqueio
+    // Headers realistas
     const browserHeaders = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Connection": "keep-alive",
-      "Upgrade-Insecure-Requests": "1",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+      "accept-encoding": "gzip, deflate, br",
+      "connection": "keep-alive",
     };
 
-    // Login no Canopus
+    let cookieJar = "";
+
+    // Passo 1: Visitar página inicial para pegar cookies iniciais
+    step = "visit_home";
+    const homeRes = await fetchRetry(url, {
+      headers: browserHeaders,
+      redirect: "manual",
+    });
+    cookieJar = mergeCookies(cookieJar, homeRes.headers.get("set-cookie"));
+
+    // Passo 2: Login no Canopus
     step = "login_canopus";
-    const loginRes = await fetch(`${url}login`, {
+    const loginRes = await fetchRetry(`${url}login`, {
       method: "POST",
       headers: {
         ...browserHeaders,
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Referer": url,
-        "Origin": url.replace(/\/$/, ""),
+        "content-type": "application/x-www-form-urlencoded",
+        "referer": url,
+        "origin": url.replace(/\/$/, ""),
+        "cookie": cookieJar,
       },
       body: new URLSearchParams({
         usuario,
@@ -70,20 +122,25 @@ Deno.serve(async (req) => {
       redirect: "manual",
     });
 
-    const cookies = loginRes.headers.get("set-cookie") || "";
-    if (!cookies) {
-      return Response.json({ error: "Falha no login - sem cookies", status: loginRes.status }, { status: 400 });
+    cookieJar = mergeCookies(cookieJar, loginRes.headers.get("set-cookie"));
+    
+    if (!cookieJar) {
+      return Response.json({ 
+        error: "Falha no login - sem cookies", 
+        status: loginRes.status,
+        headers: Object.fromEntries(loginRes.headers.entries())
+      }, { status: 400 });
     }
 
-    // Buscar planos
+    // Passo 3: Buscar planos
     step = "fetch_planos";
-    const planosRes = await fetch(
+    const planosRes = await fetchRetry(
       `${url}planos?id_tipo_produto=${id_tipo_produto}&permite_reserva=${permite_reserva}`,
       {
         headers: {
           ...browserHeaders,
-          "Cookie": cookies,
-          "Referer": `${url}login`,
+          "cookie": cookieJar,
+          "referer": `${url}login`,
         },
       }
     );
