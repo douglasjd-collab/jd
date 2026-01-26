@@ -19,19 +19,16 @@ function toNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function json(status: number, data: any) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
 Deno.serve(async (req) => {
   let step = "init";
   const startedAt = Date.now();
-
-  const safeJson = async () => {
-    try {
-      const txt = await req.text();
-      if (!txt) return {};
-      return JSON.parse(txt);
-    } catch {
-      return {};
-    }
-  };
 
   try {
     step = "base44_client";
@@ -39,28 +36,26 @@ Deno.serve(async (req) => {
 
     step = "auth_me";
     const user = await base44.auth.me();
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized", step }), {
-        status: 401,
-        headers: { "content-type": "application/json" },
-      });
-    }
+    if (!user) return json(401, { error: "Unauthorized", step });
 
     step = "check_admin_role";
     const role = String((user as any).role ?? (user as any).perfil ?? "");
     if (!["admin", "super_admin", "master"].includes(role)) {
-      return new Response(JSON.stringify({ error: "Acesso negado", role, step }), {
-        status: 403,
-        headers: { "content-type": "application/json" },
-      });
+      return json(403, { error: "Acesso negado", role, step });
     }
 
     step = "read_body";
-    const body = await safeJson();
+    const raw = await req.text();
+    const body = raw ? JSON.parse(raw) : {};
+    
+    step = "validate_body";
     const id_tipo_produto = String(body?.id_tipo_produto ?? "101");
-    const permite_reserva = String(body?.permite_reserva ?? "N");
+    const permite_reserva = body?.permite_reserva === "S" ? "S" : "N";
     const start = String(body?.start ?? "0");
     const length = String(body?.length ?? "200");
+
+    // ✅ TESTE: descomente esta linha pra confirmar que daqui pra baixo é que quebra
+    // return json(200, { ok: true, step, body, id_tipo_produto, permite_reserva });
 
     step = "get_empresa_id";
     let empresaId = (user as any).empresa_id;
@@ -73,13 +68,10 @@ Deno.serve(async (req) => {
       if (colabs?.length) empresaId = colabs[0].empresa_id;
     }
     if (!empresaId) {
-      return new Response(
-        JSON.stringify({
-          error: "empresa_id não encontrado. Vincule o usuário a uma empresa.",
-          step,
-        }),
-        { status: 400, headers: { "content-type": "application/json" } }
-      );
+      return json(400, {
+        error: "empresa_id não encontrado. Vincule o usuário a uma empresa.",
+        step,
+      });
     }
 
     step = "get_integracao_canopus";
@@ -89,13 +81,10 @@ Deno.serve(async (req) => {
     });
     const integracoes = Array.isArray(integRes) ? integRes : (integRes?.items ?? []);
     if (!integracoes?.length) {
-      return new Response(
-        JSON.stringify({
-          error: "Integração Canopus não configurada (sem credenciais ativas).",
-          step,
-        }),
-        { status: 400, headers: { "content-type": "application/json" } }
-      );
+      return json(400, {
+        error: "Integração Canopus não configurada (sem credenciais ativas).",
+        step,
+      });
     }
 
     const integracao = integracoes[0];
@@ -106,13 +95,10 @@ Deno.serve(async (req) => {
     const senha = integracao.senha;
 
     if (!usuario || !senha) {
-      return new Response(
-        JSON.stringify({
-          error: "Credenciais Canopus incompletas. Preencha usuário e senha na Integração.",
-          step,
-        }),
-        { status: 400, headers: { "content-type": "application/json" } }
-      );
+      return json(400, {
+        error: "Credenciais Canopus incompletas. Preencha usuário e senha na Integração.",
+        step,
+      });
     }
 
     // ---- LOGIN ----
@@ -125,14 +111,11 @@ Deno.serve(async (req) => {
     const as_fid = extractHidden(html0, "as_fid");
 
     if (!as_sfid || !as_fid) {
-      return new Response(
-        JSON.stringify({
-          error: "Não consegui localizar as_sfid/as_fid no HTML do login.",
-          step,
-          html_preview: html0.slice(0, 800),
-        }),
-        { status: 500, headers: { "content-type": "application/json" } }
-      );
+      return json(500, {
+        error: "Não consegui localizar as_sfid/as_fid no HTML do login.",
+        step,
+        html_preview: html0.slice(0, 800),
+      });
     }
 
     step = "collect_initial_cookies";
@@ -178,15 +161,12 @@ Deno.serve(async (req) => {
     step = "validate_session_cookie";
     const cookieString = jar.join("; ");
     if (!cookieString.includes("AFVCanopus=")) {
-      return new Response(
-        JSON.stringify({
-          error: "Login não gerou cookie AFVCanopus (sessão não foi criada).",
-          step,
-          hint: "Pode haver validação extra/bloqueio. Teste login manual e confirme que não há CAPTCHA/2FA.",
-          cookies_received: cookieString,
-        }),
-        { status: 400, headers: { "content-type": "application/json" } }
-      );
+      return json(400, {
+        error: "Login não gerou cookie AFVCanopus (sessão não foi criada).",
+        step,
+        hint: "Pode haver validação extra/bloqueio. Teste login manual e confirme que não há CAPTCHA/2FA.",
+        cookies_received: cookieString,
+      });
     }
 
     // ---- FETCH PLANOS ----
@@ -238,16 +218,13 @@ Deno.serve(async (req) => {
     const contentType = rPlanos.headers.get("content-type") || "";
 
     if (!rPlanos.ok) {
-      return new Response(
-        JSON.stringify({
-          error: "Falha ao buscar planos",
-          step,
-          http_status: status,
-          contentType,
-          body_preview: text.slice(0, 800),
-        }),
-        { status: 502, headers: { "content-type": "application/json" } }
-      );
+      return json(502, {
+        error: "Falha ao buscar planos",
+        step,
+        http_status: status,
+        contentType,
+        body_preview: text.slice(0, 800),
+      });
     }
 
     step = "parse_planos_json";
@@ -255,32 +232,26 @@ Deno.serve(async (req) => {
     try {
       parsed = JSON.parse(text);
     } catch {
-      return new Response(
-        JSON.stringify({
-          error: "Retorno dos planos não é JSON (provável HTML/login).",
-          step,
-          contentType,
-          body_preview: text.slice(0, 1200),
-        }),
-        { status: 422, headers: { "content-type": "application/json" } }
-      );
+      return json(422, {
+        error: "Retorno dos planos não é JSON (provável HTML/login).",
+        step,
+        contentType,
+        body_preview: text.slice(0, 1200),
+      });
     }
 
     step = "extract_rows";
     const rows = Array.isArray(parsed?.data) ? parsed.data : [];
     if (!rows.length) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          lidos: 0,
-          criados: 0,
-          atualizados: 0,
-          message: "0 planos retornados.",
-          step,
-          elapsed_ms: Date.now() - startedAt,
-        }),
-        { status: 200, headers: { "content-type": "application/json" } }
-      );
+      return json(200, {
+        success: true,
+        lidos: 0,
+        criados: 0,
+        atualizados: 0,
+        message: "0 planos retornados.",
+        step,
+        elapsed_ms: Date.now() - startedAt,
+      });
     }
 
     // ---- UPSERT NO BASE44 ----
@@ -289,66 +260,67 @@ Deno.serve(async (req) => {
     let atualizados = 0;
 
     for (const r of rows) {
-      const external_hash = String(r[0]);
-      const dados = {
-        empresa_id: empresaId,
-        origem: "CANOPUS",
-        produto_id: id_tipo_produto,
-        permite_reserva,
-        external_hash,
-        nome_bem: String(r[1] ?? ""),
-        valor_bem: toNumber(r[2]),
-        prazo_meses: toNumber(r[3]),
-        parcela: toNumber(r[4]),
-        plano: String(r[5] ?? ""),
-        tipo_venda: String(r[6] ?? ""),
-        status: "ativo",
-        ultima_sincronizacao: new Date().toISOString(),
-      };
+      try {
+        const external_hash = String(r[0] || "");
+        if (!external_hash) continue; // pula se não tem hash
 
-      const existingRes = await base44.asServiceRole.entities.PlanoCanopus.list({
-        filter: { empresa_id: empresaId, external_hash },
-        limit: 1,
-      });
-      const existing = Array.isArray(existingRes)
-        ? existingRes[0]
-        : (existingRes?.items?.[0] ?? null);
+        const dados = {
+          empresa_id: empresaId,
+          origem: "CANOPUS",
+          produto_id: id_tipo_produto,
+          permite_reserva,
+          external_hash,
+          nome_bem: String(r[1] ?? ""),
+          valor_bem: toNumber(r[2]),
+          prazo_meses: toNumber(r[3]),
+          parcela: toNumber(r[4]),
+          plano: String(r[5] ?? ""),
+          tipo_venda: String(r[6] ?? ""),
+          status: "ativo",
+          ultima_sincronizacao: new Date().toISOString(),
+        };
 
-      if (existing?.id) {
-        await base44.asServiceRole.entities.PlanoCanopus.update(existing.id, dados);
-        atualizados++;
-      } else {
-        await base44.asServiceRole.entities.PlanoCanopus.create(dados);
-        criados++;
+        const existingRes = await base44.asServiceRole.entities.PlanoCanopus.list({
+          filter: { empresa_id: empresaId, external_hash },
+          limit: 1,
+        });
+        const existing = Array.isArray(existingRes)
+          ? existingRes[0]
+          : (existingRes?.items?.[0] ?? null);
+
+        if (existing?.id) {
+          await base44.asServiceRole.entities.PlanoCanopus.update(existing.id, dados);
+          atualizados++;
+        } else {
+          await base44.asServiceRole.entities.PlanoCanopus.create(dados);
+          criados++;
+        }
+      } catch (e) {
+        // Se um registro falhar, continua com os demais
+        console.error("Erro ao salvar plano:", e);
       }
     }
 
     step = "done";
-    return new Response(
-      JSON.stringify({
-        success: true,
-        lidos: rows.length,
-        criados,
-        atualizados,
-        message: `Sincronização concluída. Lidos: ${rows.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
-        step,
-        elapsed_ms: Date.now() - startedAt,
-      }),
-      { status: 200, headers: { "content-type": "application/json" } }
-    );
+    return json(200, {
+      success: true,
+      lidos: rows.length,
+      criados,
+      atualizados,
+      message: `Sincronização concluída. Lidos: ${rows.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
+      step,
+      elapsed_ms: Date.now() - startedAt,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
 
-    return new Response(
-      JSON.stringify({
-        error: "Internal Server Error",
-        step,
-        message,
-        stack,
-        elapsed_ms: Date.now() - startedAt,
-      }),
-      { status: 500, headers: { "content-type": "application/json" } }
-    );
+    return json(500, {
+      error: "Internal Server Error",
+      step,
+      message,
+      stack,
+      elapsed_ms: Date.now() - startedAt,
+    });
   }
 });
