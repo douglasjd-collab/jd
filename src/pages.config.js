@@ -21,6 +21,7 @@ import LancamentoReceitas from './pages/LancamentoReceitas';
 import MeusDados from './pages/MeusDados';
 import OfertaLance from './pages/OfertaLance';
 import OportunidadeDetalhes from './pages/OportunidadeDetalhes';
+import PlanosCanopus from './pages/PlanosCanopus';
 import PlanosConsorcio from './pages/PlanosConsorcio';
 import RecebimentoComissao from './pages/RecebimentoComissao';
 import Relatorios from './pages/Relatorios';
@@ -34,7 +35,6 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import PlanosCanopus from './pages/PlanosCanopus';
 import __Layout from './Layout.jsx';
 
 
@@ -62,6 +62,7 @@ export const PAGES = {
     "MeusDados": MeusDados,
     "OfertaLance": OfertaLance,
     "OportunidadeDetalhes": OportunidadeDetalhes,
+    "PlanosCanopus": PlanosCanopus,
     "PlanosConsorcio": PlanosConsorcio,
     "RecebimentoComissao": RecebimentoComissao,
     "Relatorios": Relatorios,
@@ -75,7 +76,6 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "PlanosCanopus": PlanosCanopus,
 }
 
 export const pagesConfig = {

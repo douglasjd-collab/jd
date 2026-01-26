@@ -11,13 +11,16 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  Package
+  Package,
+  FileUp
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import ImportarPlanosCanopusPDF from '@/components/planos/ImportarPlanosCanopusPDF';
 
 export default function PlanosCanopusPage() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   React.useEffect(() => {
     loadUser();
@@ -104,6 +107,15 @@ export default function PlanosCanopusPage() {
         title="Planos Canopus"
         subtitle="Planos sincronizados do sistema Canopus"
         backTo="Configuracoes"
+        action={
+          <Button
+            onClick={() => setImportModalOpen(true)}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+          >
+            <FileUp className="w-4 h-4" />
+            Importar PDF
+          </Button>
+        }
       />
 
       {/* Stats */}
@@ -248,6 +260,11 @@ export default function PlanosCanopusPage() {
           </div>
         )}
       </Card>
+
+      <ImportarPlanosCanopusPDF
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+      />
     </div>
   );
 }
