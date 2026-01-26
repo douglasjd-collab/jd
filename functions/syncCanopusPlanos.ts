@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
+import cheerio from "npm:cheerio@1.0.0-rc.12";
 
 Deno.serve(async (req) => {
   try {
@@ -7,7 +8,9 @@ Deno.serve(async (req) => {
     
     const body = await req.json().catch(() => ({}));
     
-    return Response.json({ ok: true, user: user?.email ?? null, body });
+    const $ = cheerio.load("<html></html>");
+    
+    return Response.json({ ok: true, user: user?.email ?? null, body, cheerio_loaded: true });
   } catch (e) {
     return Response.json({
       error: "crash",
