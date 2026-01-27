@@ -225,76 +225,28 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
         onSubmit={async (data) => {
           setSalvandoCliente(true);
           try {
-            console.log('🔵 Iniciando cadastro de cliente...', data);
-            console.log('🔵 Empresa ID:', empresaId, 'Perfil:', currentUser?.perfil);
-            
-            // Validar empresa
             if (!empresaId) {
-              toast.error(isMaster ? 'Selecione uma empresa antes de cadastrar o cliente.' : 'Empresa não encontrada. Vincule o usuário a uma empresa.');
+              toast.error('Selecione uma empresa antes de cadastrar o cliente.');
               setSalvandoCliente(false);
               return;
-            }
-            
-            // Validar campos obrigatórios por tipo
-            const tipo = data.tipo_pessoa;
-            if (!tipo) {
-              toast.error('Informe o tipo de pessoa (Física/Jurídica).');
-              setSalvandoCliente(false);
-              return;
-            }
-            
-            const cpfLimpo = (data.cpf || '').replace(/\D/g, '');
-            const cnpjLimpo = (data.pj_cnpj || '').replace(/\D/g, '');
-            
-            if (tipo === 'Física') {
-              if (!data.nome_completo || data.nome_completo.trim() === '') {
-                toast.error('Nome completo é obrigatório.');
-                setSalvandoCliente(false);
-                return;
-              }
-              if (cpfLimpo.length !== 11) {
-                toast.error('CPF inválido.');
-                setSalvandoCliente(false);
-                return;
-              }
-            } else {
-              if (!data.pj_razao_social || data.pj_razao_social.trim() === '') {
-                toast.error('Razão social é obrigatória.');
-                setSalvandoCliente(false);
-                return;
-              }
-              if (cnpjLimpo.length !== 14) {
-                toast.error('CNPJ inválido.');
-                setSalvandoCliente(false);
-                return;
-              }
             }
             
             const dadosCliente = {
               ...data,
               empresa_id: empresaId,
-              status: 'ativo',
-              cpf: cpfLimpo || data.cpf,
-              pj_cnpj: cnpjLimpo || data.pj_cnpj
+              status: 'ativo'
             };
-            
-            console.log('🔵 Criando cliente com dados:', dadosCliente);
             
             const novoCliente = await base44.entities.Cliente.create(dadosCliente);
             
-            console.log('✅ Cliente criado com sucesso:', novoCliente);
-            
-            // Invalidar caches para atualizar as listas
-            await queryClient.invalidateQueries({ queryKey: ['clientes-busca-modal'] });
+            // ✅ atualiza caches para aparecer imediatamente
+            await queryClient.invalidateQueries({ queryKey: ['clientes-busca-modal', empresaId] });
             await queryClient.invalidateQueries({ queryKey: ['clientes-venda-form', empresaId] });
             
             handleClienteCriado(novoCliente);
           } catch (error) {
-            console.error('❌ Erro completo ao cadastrar cliente:', error);
-            console.error('❌ Error stack:', error.stack);
-            
-            const errorMessage = error?.message || error?.error || 'Erro desconhecido';
-            toast.error('Erro ao cadastrar cliente: ' + errorMessage);
+            console.error('❌ Erro ao cadastrar cliente:', error);
+            toast.error('Erro ao cadastrar cliente: ' + (error?.message || 'Erro desconhecido'));
           } finally {
             setSalvandoCliente(false);
           }
