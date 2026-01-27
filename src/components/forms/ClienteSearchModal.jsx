@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,10 +14,14 @@ import { Search, UserPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import ClienteForm from './ClienteForm';
 
-export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente, currentUser }) {
+export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente, currentUser, empresaIdSelecionada }) {
   const [busca, setBusca] = useState('');
   const [clienteFormOpen, setClienteFormOpen] = useState(false);
   const [salvandoCliente, setSalvandoCliente] = useState(false);
+  const queryClient = useQueryClient();
+  
+  const empresaId = empresaIdSelecionada || currentUser?.empresa_id;
+  const isMaster = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin';
 
   // Buscar todos os clientes ativos
   const { data: todosClientes = [], isLoading: buscando } = useQuery({
@@ -214,14 +218,17 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
           setSalvandoCliente(true);
           try {
             console.log('🔵 Iniciando cadastro de cliente...', data);
-            
-            // Garantir empresa_id para o cliente
-            const empresaId = currentUser?.empresa_id;
-            
             console.log('🔵 Empresa ID:', empresaId, 'Perfil:', currentUser?.perfil);
             
-            if (!empresaId && currentUser?.perfil !== 'super_admin' && currentUser?.perfil !== 'master') {
-              console.error('❌ Empresa não encontrada');
+            // Se for master/super_admin e não tiver empresa selecionada
+            if (!empresaId && isMaster) {
+              toast.error('Selecione uma empresa antes de cadastrar o cliente.');
+              setSalvandoCliente(false);
+              return;
+            }
+            
+            // Se não for master/super_admin e não tiver empresa
+            if (!empresaId && !isMaster) {
               toast.error('Empresa não encontrada. Vincule o usuário a uma empresa.');
               setSalvandoCliente(false);
               return;
@@ -239,13 +246,16 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
             
             console.log('✅ Cliente criado com sucesso:', novoCliente);
             
+            // Invalidar caches para atualizar as listas
+            await queryClient.invalidateQueries({ queryKey: ['clientes-busca-modal'] });
+            await queryClient.invalidateQueries({ queryKey: ['clientes-venda-form', empresaId] });
+            
             handleClienteCriado(novoCliente);
           } catch (error) {
             console.error('❌ Erro completo ao cadastrar cliente:', error);
             console.error('❌ Error stack:', error.stack);
-            console.error('❌ Error details:', JSON.stringify(error, null, 2));
             
-            const errorMessage = error.message || error.error || 'Erro desconhecido';
+            const errorMessage = error?.message || error?.error || 'Erro desconhecido';
             toast.error('Erro ao cadastrar cliente: ' + errorMessage);
           } finally {
             setSalvandoCliente(false);
