@@ -213,25 +213,40 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
         onSubmit={async (data) => {
           setSalvandoCliente(true);
           try {
+            console.log('🔵 Iniciando cadastro de cliente...', data);
+            
             // Garantir empresa_id para o cliente
             const empresaId = currentUser?.empresa_id;
             
+            console.log('🔵 Empresa ID:', empresaId, 'Perfil:', currentUser?.perfil);
+            
             if (!empresaId && currentUser?.perfil !== 'super_admin' && currentUser?.perfil !== 'master') {
+              console.error('❌ Empresa não encontrada');
               toast.error('Empresa não encontrada. Vincule o usuário a uma empresa.');
               setSalvandoCliente(false);
               return;
             }
             
-            const novoCliente = await base44.entities.Cliente.create({
+            const dadosCliente = {
               ...data,
               empresa_id: empresaId,
               status: 'ativo'
-            });
+            };
+            
+            console.log('🔵 Criando cliente com dados:', dadosCliente);
+            
+            const novoCliente = await base44.entities.Cliente.create(dadosCliente);
+            
+            console.log('✅ Cliente criado com sucesso:', novoCliente);
             
             handleClienteCriado(novoCliente);
           } catch (error) {
-            console.error('Erro ao cadastrar cliente:', error);
-            toast.error('Erro ao cadastrar cliente: ' + (error.message || 'Erro desconhecido'));
+            console.error('❌ Erro completo ao cadastrar cliente:', error);
+            console.error('❌ Error stack:', error.stack);
+            console.error('❌ Error details:', JSON.stringify(error, null, 2));
+            
+            const errorMessage = error.message || error.error || 'Erro desconhecido';
+            toast.error('Erro ao cadastrar cliente: ' + errorMessage);
           } finally {
             setSalvandoCliente(false);
           }

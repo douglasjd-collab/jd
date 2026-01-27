@@ -95,30 +95,41 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
   // Gerar código do cliente ao submeter
   const handleFormSubmit = async (data) => {
-    if (!data.cliente_code) {
-      try {
-        const clientes = await base44.entities.Cliente.list();
-        const ultimoCodigo = clientes
-          .map(c => c.cliente_code)
-          .filter(code => code && code.startsWith('CLI'))
-          .map(code => parseInt(code.replace('CLI', '')))
-          .filter(num => !isNaN(num))
-          .sort((a, b) => b - a)[0] || 0;
-        
-        data.cliente_code = `CLI${String(ultimoCodigo + 1).padStart(3, '0')}`;
-      } catch (error) {
-        data.cliente_code = `CLI001`;
+    try {
+      console.log('🟢 Processando submit do formulário...', data);
+      
+      if (!data.cliente_code) {
+        try {
+          const clientes = await base44.entities.Cliente.list();
+          const ultimoCodigo = clientes
+            .map(c => c.cliente_code)
+            .filter(code => code && code.startsWith('CLI'))
+            .map(code => parseInt(code.replace('CLI', '')))
+            .filter(num => !isNaN(num))
+            .sort((a, b) => b - a)[0] || 0;
+          
+          data.cliente_code = `CLI${String(ultimoCodigo + 1).padStart(3, '0')}`;
+          console.log('🟢 Código gerado:', data.cliente_code);
+        } catch (error) {
+          console.warn('⚠️ Erro ao gerar código, usando CLI001');
+          data.cliente_code = `CLI001`;
+        }
       }
-    }
 
-    // Converter campos de moeda para número (remover se vazio ou nulo)
-    data.valor_patrimonial = data.valor_patrimonial ? parseCurrencyToNumber(data.valor_patrimonial) : null;
-    data.renda = data.renda ? parseCurrencyToNumber(data.renda) : null;
-    data.pj_valor_patrimonial = data.pj_valor_patrimonial ? parseCurrencyToNumber(data.pj_valor_patrimonial) : null;
-    data.pj_capital_social = data.pj_capital_social ? parseCurrencyToNumber(data.pj_capital_social) : null;
-    data.pj_faturamento_medio = data.pj_faturamento_medio ? parseCurrencyToNumber(data.pj_faturamento_medio) : null;
-    
-    onSubmit(data);
+      // Converter campos de moeda para número (remover se vazio ou nulo)
+      data.valor_patrimonial = data.valor_patrimonial ? parseCurrencyToNumber(data.valor_patrimonial) : null;
+      data.renda = data.renda ? parseCurrencyToNumber(data.renda) : null;
+      data.pj_valor_patrimonial = data.pj_valor_patrimonial ? parseCurrencyToNumber(data.pj_valor_patrimonial) : null;
+      data.pj_capital_social = data.pj_capital_social ? parseCurrencyToNumber(data.pj_capital_social) : null;
+      data.pj_faturamento_medio = data.pj_faturamento_medio ? parseCurrencyToNumber(data.pj_faturamento_medio) : null;
+      
+      console.log('🟢 Dados processados, chamando onSubmit...');
+      await onSubmit(data);
+      console.log('✅ onSubmit concluído');
+    } catch (error) {
+      console.error('❌ Erro no handleFormSubmit:', error);
+      throw error;
+    }
   };
 
   const formatCPF = (value) => {
