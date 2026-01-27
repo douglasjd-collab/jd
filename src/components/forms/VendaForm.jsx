@@ -408,6 +408,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             open={clienteSearchOpen}
             onOpenChange={setClienteSearchOpen}
             currentUser={currentUser}
+            empresaIdSelecionada={watch('empresa_id') || empresaId}
             onSelectCliente={(cliente) => {
               setClienteSelecionado(cliente);
               setValue('cliente_id', cliente.id);
