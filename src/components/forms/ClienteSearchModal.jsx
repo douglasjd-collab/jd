@@ -233,7 +233,7 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
             if (!empresaId) {
               toast.error('Selecione uma empresa antes de cadastrar o cliente.');
               setSalvandoCliente(false);
-              return;
+              return null;
             }
             
             const dadosCliente = {
@@ -249,9 +249,11 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
             await queryClient.invalidateQueries({ queryKey: ['clientes-venda-form', empresaId] });
             
             handleClienteCriado(novoCliente);
+            return novoCliente;
           } catch (error) {
             console.error('❌ Erro ao cadastrar cliente:', error);
             toast.error('Erro ao cadastrar cliente: ' + (error?.message || 'Erro desconhecido'));
+            return null;
           } finally {
             setSalvandoCliente(false);
           }

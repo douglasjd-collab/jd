@@ -123,8 +123,9 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
     data.pj_faturamento_medio = data.pj_faturamento_medio ? parseCurrencyToNumber(data.pj_faturamento_medio) : null;
     
     console.log('🟢 Dados processados, chamando onSubmit...');
-    await onSubmit(data);
+    const clienteCriado = await onSubmit(data);
     console.log('✅ onSubmit concluído');
+    return clienteCriado;
   };
 
   const formatCPF = (value) => {
