@@ -30,6 +30,20 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
     defaultValues: cliente || {
       tipo_pessoa: 'Física',
       status: 'ativo',
+      // Checkboxes PF
+      doc_cpf: false,
+      doc_identidade: false,
+      doc_comprovante_endereco: false,
+      doc_comprovante_renda: false,
+      banco_nao_deseja_informar: false,
+      banco_nao_possui_conta: false,
+      // Checkboxes PJ
+      pj_doc_contrato_ou_estatuto_social: false,
+      pj_doc_cartao_cnpj: false,
+      pj_doc_documento_socios_ou_representante: false,
+      pj_doc_relacao_faturamento: false,
+      pj_banco_nao_deseja_informar: false,
+      pj_banco_nao_possui_conta: false,
     }
   });
 
@@ -48,6 +62,20 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       reset({
         tipo_pessoa: 'Física',
         status: 'ativo',
+        // Checkboxes PF
+        doc_cpf: false,
+        doc_identidade: false,
+        doc_comprovante_endereco: false,
+        doc_comprovante_renda: false,
+        banco_nao_deseja_informar: false,
+        banco_nao_possui_conta: false,
+        // Checkboxes PJ
+        pj_doc_contrato_ou_estatuto_social: false,
+        pj_doc_cartao_cnpj: false,
+        pj_doc_documento_socios_ou_representante: false,
+        pj_doc_relacao_faturamento: false,
+        pj_banco_nao_deseja_informar: false,
+        pj_banco_nao_possui_conta: false,
       });
     }
   }, [cliente, setValue, reset]);
@@ -616,7 +644,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="doc_cpf"
-                          checked={watch('doc_cpf')}
+                          checked={watch('doc_cpf') || false}
                           onCheckedChange={(checked) => setValue('doc_cpf', checked)}
                         />
                         <Label htmlFor="doc_cpf" className="cursor-pointer">
@@ -627,7 +655,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="doc_identidade"
-                          checked={watch('doc_identidade')}
+                          checked={watch('doc_identidade') || false}
                           onCheckedChange={(checked) => setValue('doc_identidade', checked)}
                         />
                         <Label htmlFor="doc_identidade" className="cursor-pointer">
@@ -638,7 +666,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="doc_comprovante_endereco"
-                          checked={watch('doc_comprovante_endereco')}
+                          checked={watch('doc_comprovante_endereco') || false}
                           onCheckedChange={(checked) => setValue('doc_comprovante_endereco', checked)}
                         />
                         <Label htmlFor="doc_comprovante_endereco" className="cursor-pointer">
@@ -649,7 +677,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="doc_comprovante_renda"
-                          checked={watch('doc_comprovante_renda')}
+                          checked={watch('doc_comprovante_renda') || false}
                           onCheckedChange={(checked) => setValue('doc_comprovante_renda', checked)}
                         />
                         <Label htmlFor="doc_comprovante_renda" className="cursor-pointer">
@@ -679,7 +707,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="banco_nao_deseja_informar"
-                          checked={watch('banco_nao_deseja_informar')}
+                          checked={watch('banco_nao_deseja_informar') || false}
                           onCheckedChange={(checked) => setValue('banco_nao_deseja_informar', checked)}
                         />
                         <Label htmlFor="banco_nao_deseja_informar" className="cursor-pointer">
@@ -690,7 +718,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="banco_nao_possui_conta"
-                          checked={watch('banco_nao_possui_conta')}
+                          checked={watch('banco_nao_possui_conta') || false}
                           onCheckedChange={(checked) => setValue('banco_nao_possui_conta', checked)}
                         />
                         <Label htmlFor="banco_nao_possui_conta" className="cursor-pointer">
@@ -1175,7 +1203,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="pj_doc_contrato_ou_estatuto_social"
-                          checked={watch('pj_doc_contrato_ou_estatuto_social')}
+                          checked={watch('pj_doc_contrato_ou_estatuto_social') || false}
                           onCheckedChange={(checked) => setValue('pj_doc_contrato_ou_estatuto_social', checked)}
                         />
                         <Label htmlFor="pj_doc_contrato_ou_estatuto_social" className="cursor-pointer">
@@ -1186,7 +1214,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="pj_doc_cartao_cnpj"
-                          checked={watch('pj_doc_cartao_cnpj')}
+                          checked={watch('pj_doc_cartao_cnpj') || false}
                           onCheckedChange={(checked) => setValue('pj_doc_cartao_cnpj', checked)}
                         />
                         <Label htmlFor="pj_doc_cartao_cnpj" className="cursor-pointer">
@@ -1197,7 +1225,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="pj_doc_documento_socios_ou_representante"
-                          checked={watch('pj_doc_documento_socios_ou_representante')}
+                          checked={watch('pj_doc_documento_socios_ou_representante') || false}
                           onCheckedChange={(checked) => setValue('pj_doc_documento_socios_ou_representante', checked)}
                         />
                         <Label htmlFor="pj_doc_documento_socios_ou_representante" className="cursor-pointer">
@@ -1208,7 +1236,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="pj_doc_relacao_faturamento"
-                          checked={watch('pj_doc_relacao_faturamento')}
+                          checked={watch('pj_doc_relacao_faturamento') || false}
                           onCheckedChange={(checked) => setValue('pj_doc_relacao_faturamento', checked)}
                         />
                         <Label htmlFor="pj_doc_relacao_faturamento" className="cursor-pointer">
@@ -1238,7 +1266,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="pj_banco_nao_deseja_informar"
-                          checked={watch('pj_banco_nao_deseja_informar')}
+                          checked={watch('pj_banco_nao_deseja_informar') || false}
                           onCheckedChange={(checked) => setValue('pj_banco_nao_deseja_informar', checked)}
                         />
                         <Label htmlFor="pj_banco_nao_deseja_informar" className="cursor-pointer">
@@ -1249,7 +1277,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="pj_banco_nao_possui_conta"
-                          checked={watch('pj_banco_nao_possui_conta')}
+                          checked={watch('pj_banco_nao_possui_conta') || false}
                           onCheckedChange={(checked) => setValue('pj_banco_nao_possui_conta', checked)}
                         />
                         <Label htmlFor="pj_banco_nao_possui_conta" className="cursor-pointer">
