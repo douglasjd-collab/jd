@@ -297,10 +297,11 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             Preencha os dados da venda de consórcio
           </DialogDescription>
         </DialogHeader>
+        {/* Campos hidden para dados denormalizados */}
+        <input type="hidden" {...register('cliente_nome')} />
+        <input type="hidden" {...register('cliente_cpf')} />
+        
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Campos hidden para dados denormalizados */}
-          <input type="hidden" {...register('cliente_nome')} />
-          <input type="hidden" {...register('cliente_cpf')} />
           {/* Card Empresa (apenas para Master) */}
           {isMaster && (
             <div className="border rounded-lg p-4 bg-white shadow-sm">
@@ -402,20 +403,6 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             
             {errors.cliente_id && <p className="text-sm text-red-500 mt-2">Cliente é obrigatório</p>}
           </div>
-          
-          {/* Modal de Busca de Cliente */}
-          <ClienteSearchModal
-            open={clienteSearchOpen}
-            onOpenChange={setClienteSearchOpen}
-            currentUser={currentUser}
-            empresaIdSelecionada={watch('empresa_id') || empresaId}
-            onSelectCliente={(cliente) => {
-              setClienteSelecionado(cliente);
-              setValue('cliente_id', cliente.id);
-              setValue('cliente_nome', cliente.nome_completo || cliente.pj_razao_social || cliente.nome || '');
-              setValue('cliente_cpf', cliente.cpf || cliente.pj_cnpj || '');
-            }}
-          />
             
           {/* Card Administradora e Tabela */}
           <div className="border rounded-lg p-4 bg-white shadow-sm">
@@ -692,6 +679,20 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             </Button>
           </div>
         </form>
+
+        {/* Modal de Busca de Cliente - FORA do form para evitar forms aninhados */}
+        <ClienteSearchModal
+          open={clienteSearchOpen}
+          onOpenChange={setClienteSearchOpen}
+          currentUser={currentUser}
+          empresaIdSelecionada={watch('empresa_id') || empresaId}
+          onSelectCliente={(cliente) => {
+            setClienteSelecionado(cliente);
+            setValue('cliente_id', cliente.id);
+            setValue('cliente_nome', cliente.nome_completo || cliente.pj_razao_social || cliente.nome || '');
+            setValue('cliente_cpf', cliente.cpf || cliente.pj_cnpj || '');
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
