@@ -73,15 +73,19 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
   const handleClienteCriado = (novoCliente) => {
     if (!novoCliente) return;
     
+    console.log('✅ Cliente criado com sucesso:', novoCliente);
     toast.success('Cliente cadastrado com sucesso!');
+    
+    // Fechar o form de cadastro
     setClienteFormOpen(false);
     
-    // Selecionar cliente IMEDIATAMENTE
+    // Selecionar cliente PRIMEIRO (dispara no VendaForm)
     onSelectCliente(novoCliente);
     
-    // Fechar modal de busca
-    onOpenChange(false);
+    // Limpar busca e estado local
     setBusca('');
+    
+    // O VendaForm vai fechar o modal automaticamente
   };
 
   return (

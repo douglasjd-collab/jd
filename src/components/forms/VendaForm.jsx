@@ -687,10 +687,12 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
           currentUser={currentUser}
           empresaIdSelecionada={watch('empresa_id') || empresaId}
           onSelectCliente={(cliente) => {
+            console.log('🟢 Cliente selecionado:', cliente);
             setClienteSelecionado(cliente);
             setValue('cliente_id', cliente.id);
             setValue('cliente_nome', cliente.nome_completo || cliente.pj_razao_social || cliente.nome || '');
             setValue('cliente_cpf', cliente.cpf || cliente.pj_cnpj || '');
+            setClienteSearchOpen(false);
           }}
         />
       </DialogContent>
