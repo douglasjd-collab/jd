@@ -220,24 +220,54 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
             console.log('🔵 Iniciando cadastro de cliente...', data);
             console.log('🔵 Empresa ID:', empresaId, 'Perfil:', currentUser?.perfil);
             
-            // Se for master/super_admin e não tiver empresa selecionada
-            if (!empresaId && isMaster) {
-              toast.error('Selecione uma empresa antes de cadastrar o cliente.');
+            // Validar empresa
+            if (!empresaId) {
+              toast.error(isMaster ? 'Selecione uma empresa antes de cadastrar o cliente.' : 'Empresa não encontrada. Vincule o usuário a uma empresa.');
               setSalvandoCliente(false);
               return;
             }
             
-            // Se não for master/super_admin e não tiver empresa
-            if (!empresaId && !isMaster) {
-              toast.error('Empresa não encontrada. Vincule o usuário a uma empresa.');
+            // Validar campos obrigatórios por tipo
+            const tipo = data.tipo_pessoa;
+            if (!tipo) {
+              toast.error('Informe o tipo de pessoa (Física/Jurídica).');
               setSalvandoCliente(false);
               return;
+            }
+            
+            const cpfLimpo = (data.cpf || '').replace(/\D/g, '');
+            const cnpjLimpo = (data.pj_cnpj || '').replace(/\D/g, '');
+            
+            if (tipo === 'Física') {
+              if (!data.nome_completo || data.nome_completo.trim() === '') {
+                toast.error('Nome completo é obrigatório.');
+                setSalvandoCliente(false);
+                return;
+              }
+              if (cpfLimpo.length !== 11) {
+                toast.error('CPF inválido.');
+                setSalvandoCliente(false);
+                return;
+              }
+            } else {
+              if (!data.pj_razao_social || data.pj_razao_social.trim() === '') {
+                toast.error('Razão social é obrigatória.');
+                setSalvandoCliente(false);
+                return;
+              }
+              if (cnpjLimpo.length !== 14) {
+                toast.error('CNPJ inválido.');
+                setSalvandoCliente(false);
+                return;
+              }
             }
             
             const dadosCliente = {
               ...data,
               empresa_id: empresaId,
-              status: 'ativo'
+              status: 'ativo',
+              cpf: cpfLimpo || data.cpf,
+              pj_cnpj: cnpjLimpo || data.pj_cnpj
             };
             
             console.log('🔵 Criando cliente com dados:', dadosCliente);
