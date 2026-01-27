@@ -1347,10 +1347,22 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
           )}
           
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenChange(false);
+              }}
+              disabled={isLoading}
+            >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading} className="bg-[#23BE84] hover:bg-[#1da570]">
+            <Button 
+              type="submit" 
+              disabled={isLoading} 
+              className="bg-[#23BE84] hover:bg-[#1da570]"
+            >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {cliente ? 'Salvar' : 'Cadastrar'}
             </Button>
