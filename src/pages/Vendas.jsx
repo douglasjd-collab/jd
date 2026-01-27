@@ -570,6 +570,8 @@ export default function Vendas() {
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
         currentUser={currentUser}
+        empresaIdPadrao={currentUser?.empresa_id}
+        oportunidade={null}
       />
 
       {/* Delete Confirmation Dialog */}

@@ -25,9 +25,13 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
 
   // Buscar todos os clientes ativos
   const { data: todosClientes = [], isLoading: buscando } = useQuery({
-    queryKey: ['clientes-busca-modal'],
-    queryFn: () => base44.entities.Cliente.filter({ status: 'ativo' }),
-    enabled: open,
+    queryKey: ['clientes-busca-modal', empresaId],
+    enabled: open && (!!empresaId || isMaster),
+    queryFn: async () => {
+      // Se master/super_admin e não selecionou empresa ainda, não busca.
+      if (isMaster && !empresaId) return [];
+      return await base44.entities.Cliente.filter({ status: 'ativo', empresa_id: empresaId });
+    },
   });
 
   // Filtrar clientes em tempo real
@@ -59,6 +63,10 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
   };
 
   const handleNovoCliente = () => {
+    if (isMaster && !empresaId) {
+      toast.error('Selecione uma empresa na Nova Venda antes de cadastrar cliente.');
+      return;
+    }
     setClienteFormOpen(true);
   };
 
