@@ -17,6 +17,7 @@ import ClienteForm from './ClienteForm';
 export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente, currentUser }) {
   const [busca, setBusca] = useState('');
   const [clienteFormOpen, setClienteFormOpen] = useState(false);
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
 
   // Buscar todos os clientes ativos
   const { data: todosClientes = [], isLoading: buscando } = useQuery({
@@ -200,20 +201,32 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
         onOpenChange={setClienteFormOpen}
         cliente={null}
         onSubmit={async (data) => {
+          setSalvandoCliente(true);
           try {
+            // Garantir empresa_id para o cliente
+            const empresaId = currentUser?.empresa_id;
+            
+            if (!empresaId && currentUser?.perfil !== 'super_admin' && currentUser?.perfil !== 'master') {
+              toast.error('Empresa não encontrada. Vincule o usuário a uma empresa.');
+              setSalvandoCliente(false);
+              return;
+            }
+            
             const novoCliente = await base44.entities.Cliente.create({
               ...data,
-              empresa_id: currentUser?.empresa_id,
+              empresa_id: empresaId,
               status: 'ativo'
             });
+            
             handleClienteCriado(novoCliente);
           } catch (error) {
             console.error('Erro ao cadastrar cliente:', error);
-            toast.error('Erro ao cadastrar cliente');
-            throw error;
+            toast.error('Erro ao cadastrar cliente: ' + (error.message || 'Erro desconhecido'));
+          } finally {
+            setSalvandoCliente(false);
           }
         }}
-        isLoading={false}
+        isLoading={salvandoCliente}
       />
     </>
   );
