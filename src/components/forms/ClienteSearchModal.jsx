@@ -71,14 +71,17 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
   };
 
   const handleClienteCriado = (novoCliente) => {
+    if (!novoCliente) return;
+    
     toast.success('Cliente cadastrado com sucesso!');
     setClienteFormOpen(false);
-    // Selecionar cliente primeiro, depois fechar modal
+    
+    // Selecionar cliente IMEDIATAMENTE
     onSelectCliente(novoCliente);
-    setTimeout(() => {
-      onOpenChange(false);
-      setBusca('');
-    }, 100);
+    
+    // Fechar modal de busca
+    onOpenChange(false);
+    setBusca('');
   };
 
   return (
