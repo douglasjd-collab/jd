@@ -160,7 +160,12 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
                   Busca: "{busca}"
                 </p>
                 <Button
-                  onClick={handleNovoCliente}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleNovoCliente();
+                  }}
                   className="bg-[#23BE84] hover:bg-[#1da570]"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
@@ -182,7 +187,12 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
                   ou cadastre um novo cliente
                 </p>
                 <Button
-                  onClick={handleNovoCliente}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleNovoCliente();
+                  }}
                   variant="outline"
                   className="w-full"
                 >

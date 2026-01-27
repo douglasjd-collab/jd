@@ -173,7 +173,10 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
             Complete o cadastro do cliente com todos os dados necessários
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit(handleFormSubmit)(e);
+        }} className="space-y-6">
           {/* Tipo de Pessoa */}
           <Card>
             <CardHeader>
