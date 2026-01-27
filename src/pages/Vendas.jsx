@@ -42,6 +42,7 @@ export default function Vendas() {
   const [selectedVenda, setSelectedVenda] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterAdministradora, setFilterAdministradora] = useState('todas');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vendaToDelete, setVendaToDelete] = useState(null);
@@ -111,6 +112,11 @@ export default function Vendas() {
   const { data: tabelas = [] } = useQuery({
     queryKey: ['tabelas-consorcio'],
     queryFn: () => base44.entities.TabelaConsorcio.list(),
+  });
+
+  const { data: administradoras = [] } = useQuery({
+    queryKey: ['administradoras'],
+    queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
   });
 
   const createMutation = useMutation({
@@ -352,7 +358,8 @@ export default function Vendas() {
       v.cota?.includes(search) ||
       v.contrato?.includes(search);
     const matchStatus = filterStatus === 'todos' || v.status === filterStatus;
-    return matchSearch && matchStatus;
+    const matchAdministradora = filterAdministradora === 'todas' || v.administradora_id === filterAdministradora;
+    return matchSearch && matchStatus && matchAdministradora;
   });
 
   const formatCurrency = (value) => {
@@ -537,6 +544,19 @@ export default function Vendas() {
               className="pl-10"
             />
           </div>
+          <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Administradora" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas Administradoras</SelectItem>
+              {administradoras.map(adm => (
+                <SelectItem key={adm.id} value={adm.id}>
+                  {adm.nome_fantasia || adm.razao_social}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-40">
               <Filter className="w-4 h-4 mr-2" />
