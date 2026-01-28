@@ -14,6 +14,7 @@ export default function RelatoriosFinanceiros() {
   const [user, setUser] = useState(null);
   const [dataInicio, setDataInicio] = useState(moment().startOf('month').format('YYYY-MM-DD'));
   const [dataFim, setDataFim] = useState(moment().endOf('month').format('YYYY-MM-DD'));
+  const [darkMode, setDarkMode] = useState(false);
 
   React.useEffect(() => {
     loadUser();
