@@ -29,7 +29,8 @@ export default function LancamentoReceitas() {
     repetir: false,
     repeticoes: 2,
     unidadeRepeticao: 'meses',
-    categoria: 'Bônus',
+    categoria_id: '',
+    subcategoria_id: '',
     origem: '',
   });
   const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
@@ -59,6 +60,26 @@ export default function LancamentoReceitas() {
       return await base44.entities.Receita.filter({});
     },
     enabled: !!user,
+  });
+
+  const { data: categorias = [] } = useQuery({
+    queryKey: ['categorias-receita'],
+    queryFn: async () => {
+      return await base44.entities.CategoriaReceita.filter({ ativo: true }, 'ordem');
+    },
+    enabled: !!user,
+  });
+
+  const { data: subcategorias = [] } = useQuery({
+    queryKey: ['subcategorias-receita', formData.categoria_id],
+    queryFn: async () => {
+      if (!formData.categoria_id) return [];
+      return await base44.entities.SubcategoriaReceita.filter({ 
+        categoria_id: formData.categoria_id, 
+        ativo: true 
+      }, 'ordem');
+    },
+    enabled: !!user && !!formData.categoria_id,
   });
 
   const createMutation = useMutation({
@@ -95,14 +116,15 @@ export default function LancamentoReceitas() {
       repetir: false,
       repeticoes: 2,
       unidadeRepeticao: 'meses',
-      categoria: 'Bônus',
+      categoria_id: '',
+      subcategoria_id: '',
       origem: '',
     });
     setMostrarDetalhes(true);
   };
 
   const handleSubmit = () => {
-    if (!formData.categoria || !formData.valor) {
+    if (!formData.categoria_id || !formData.valor) {
       toast.error('Preencha categoria e valor');
       return;
     }
@@ -122,10 +144,18 @@ export default function LancamentoReceitas() {
       dataFinal = formData.dataCustom;
     }
 
+    const categoria = categorias.find(c => c.id === formData.categoria_id);
+    const subcategoria = formData.subcategoria_id 
+      ? subcategorias.find(s => s.id === formData.subcategoria_id) 
+      : null;
+
     createMutation.mutate({
       empresa_id: user.empresa_id,
       descricao: formData.descricao,
-      categoria: formData.categoria,
+      categoria_id: formData.categoria_id,
+      categoria_nome: categoria?.nome || '',
+      subcategoria_id: formData.subcategoria_id || null,
+      subcategoria_nome: subcategoria?.nome || null,
       valor,
       data: dataFinal,
       origem: formData.origem,
@@ -214,6 +244,7 @@ export default function LancamentoReceitas() {
                 <th className="text-left p-4 font-semibold text-slate-700">Data</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Descrição</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Categoria</th>
+                <th className="text-left p-4 font-semibold text-slate-700">Subcategoria</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Origem</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Valor</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Lançado por</th>
@@ -223,13 +254,13 @@ export default function LancamentoReceitas() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-slate-500">
                     Carregando...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">
+                  <td colSpan={8} className="p-8 text-center text-slate-500">
                     Nenhuma receita encontrada
                   </td>
                 </tr>
@@ -238,7 +269,8 @@ export default function LancamentoReceitas() {
                   <tr key={receita.id} className="border-b hover:bg-slate-50">
                     <td className="p-4">{moment(receita.data).format('DD/MM/YYYY')}</td>
                     <td className="p-4">{receita.descricao}</td>
-                    <td className="p-4 text-sm text-slate-600">{receita.categoria}</td>
+                    <td className="p-4 text-sm text-slate-600">{receita.categoria_nome || receita.categoria || '-'}</td>
+                    <td className="p-4 text-sm text-slate-600">{receita.subcategoria_nome || '-'}</td>
                     <td className="p-4 text-sm text-slate-600">{receita.origem || '-'}</td>
                     <td className="p-4 font-semibold text-green-600">
                       {(receita.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -429,25 +461,60 @@ export default function LancamentoReceitas() {
                     <Tag className="w-5 h-5 text-slate-400" />
                     <div className="flex-1">
                       <Select
-                        value={formData.categoria}
-                        onValueChange={(v) => setFormData({ ...formData, categoria: v })}
+                        value={formData.categoria_id}
+                        onValueChange={(v) => setFormData({ ...formData, categoria_id: v, subcategoria_id: '' })}
                       >
                         <SelectTrigger className="bg-transparent border-none text-white focus:ring-0">
-                          <SelectValue placeholder="Categoria" />
+                          <SelectValue placeholder="Selecione a categoria *" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Bônus">Bônus</SelectItem>
-                          <SelectItem value="Repasse">Repasse</SelectItem>
-                          <SelectItem value="Ajuste">Ajuste</SelectItem>
-                          <SelectItem value="Outros">Outros</SelectItem>
+                          {categorias.length > 0 ? (
+                            categorias.map(cat => (
+                              <SelectItem key={cat.id} value={cat.id}>{cat.nome}</SelectItem>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-sm text-slate-500">
+                              Nenhuma categoria cadastrada
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
-                      {!formData.categoria && (
+                      {!formData.categoria_id && (
                         <p className="text-xs text-orange-400 mt-1">Campo obrigatório</p>
                       )}
                     </div>
                   </div>
                 </div>
+
+                {/* Subcategoria */}
+                {formData.categoria_id && (
+                  <div className="border-b border-slate-600 pb-4">
+                    <div className="flex items-center gap-3">
+                      <Tag className="w-5 h-5 text-slate-400" />
+                      <div className="flex-1">
+                        <Select
+                          value={formData.subcategoria_id}
+                          onValueChange={(v) => setFormData({ ...formData, subcategoria_id: v })}
+                        >
+                          <SelectTrigger className="bg-transparent border-none text-white focus:ring-0">
+                            <SelectValue placeholder="Subcategoria (opcional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {subcategorias.length > 0 ? (
+                              subcategorias.map(sub => (
+                                <SelectItem key={sub.id} value={sub.id}>{sub.nome}</SelectItem>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-sm text-slate-500">
+                                Nenhuma subcategoria cadastrada
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Origem (Conta) */}
                 <div className="border-b border-slate-600 pb-4">
