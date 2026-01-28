@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { DollarSign, TrendingUp, TrendingDown, Wallet, FileText, AlertCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Wallet, FileText, AlertCircle, Moon, Sun } from 'lucide-react';
 import moment from 'moment';
 
 export default function RelatoriosFinanceiros() {
@@ -202,26 +202,46 @@ export default function RelatoriosFinanceiros() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <PageHeader
-        title="Dashboard Financeiro"
-        subtitle="Visão consolidada de todas as movimentações financeiras"
-      />
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+      <div className="p-6 max-w-7xl mx-auto">
+      
+      {/* Toggle Tema */}
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setDarkMode(!darkMode)}
+          className={darkMode ? 'bg-slate-800 text-yellow-400 hover:bg-slate-700 border-slate-600' : ''}
+        >
+          {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </Button>
+      </div>
+      
+      <div className={darkMode ? 'text-white' : ''}>
+        <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Dashboard Financeiro</h1>
+        <p className={`mb-6 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Visão consolidada de todas as movimentações financeiras</p>
+      </div>
 
       {/* Filtro de Período */}
-      <Card className="p-6 mb-6">
+      <Card className={`p-6 mb-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1">
-            <Label>Data Início</Label>
+            <Label className={darkMode ? 'text-slate-300' : ''}>Data Início</Label>
             <Input
               type="date"
               value={dataInicio}
               onChange={(e) => setDataInicio(e.target.value)}
+              className={darkMode ? 'bg-slate-700 border-slate-600 text-white' : ''}
             />
           </div>
           <div className="flex-1">
-            <Label>Data Fim</Label>
-            <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+            <Label className={darkMode ? 'text-slate-300' : ''}>Data Fim</Label>
+            <Input 
+              type="date" 
+              value={dataFim} 
+              onChange={(e) => setDataFim(e.target.value)}
+              className={darkMode ? 'bg-slate-700 border-slate-600 text-white' : ''}
+            />
           </div>
           <Button
             variant="outline"
@@ -229,6 +249,7 @@ export default function RelatoriosFinanceiros() {
               setDataInicio(moment().startOf('month').format('YYYY-MM-DD'));
               setDataFim(moment().endOf('month').format('YYYY-MM-DD'));
             }}
+            className={darkMode ? 'bg-slate-700 border-slate-600 text-white hover:bg-slate-600' : ''}
           >
             Mês Atual
           </Button>
@@ -237,10 +258,10 @@ export default function RelatoriosFinanceiros() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="p-6">
+        <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Comissões Recebidas</p>
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Comissões Recebidas</p>
               <p className="text-2xl font-bold text-green-600">
                 {totalComissoesRecebidas.toLocaleString('pt-BR', {
                   style: 'currency',
@@ -252,10 +273,10 @@ export default function RelatoriosFinanceiros() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Comissões Pagas</p>
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Comissões Pagas</p>
               <p className="text-2xl font-bold text-red-600">
                 {totalComissoesPagas.toLocaleString('pt-BR', {
                   style: 'currency',
@@ -267,10 +288,10 @@ export default function RelatoriosFinanceiros() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Comissões a Pagar</p>
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Comissões a Pagar</p>
               <p className="text-2xl font-bold text-orange-600">
                 {totalComissoesAPagar.toLocaleString('pt-BR', {
                   style: 'currency',
@@ -284,10 +305,10 @@ export default function RelatoriosFinanceiros() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-         <Card className="p-6">
+         <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
            <div className="flex items-center justify-between">
              <div>
-               <p className="text-sm text-slate-500">Total de Receitas</p>
+               <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Total de Receitas</p>
                <p className="text-2xl font-bold text-green-600">
                  {totalReceitas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                </p>
@@ -296,10 +317,10 @@ export default function RelatoriosFinanceiros() {
            </div>
          </Card>
 
-         <Card className="p-6">
+         <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
            <div className="flex items-center justify-between">
              <div>
-               <p className="text-sm text-slate-500">Receitas + Comissões Recebidas</p>
+               <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Receitas + Comissões Recebidas</p>
                <p className="text-2xl font-bold text-green-600">
                  {(totalReceitas + totalComissoesRecebidas).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                </p>
@@ -308,10 +329,10 @@ export default function RelatoriosFinanceiros() {
            </div>
          </Card>
 
-         <Card className="p-6">
+         <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
            <div className="flex items-center justify-between">
              <div>
-               <p className="text-sm text-slate-500">Total de Despesas</p>
+               <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Total de Despesas</p>
                <p className="text-2xl font-bold text-red-600">
                  {totalDespesas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                </p>
@@ -322,11 +343,11 @@ export default function RelatoriosFinanceiros() {
        </div>
 
       {/* Resultado Final */}
-      <Card className="p-8 mb-6 bg-gradient-to-r from-blue-50 to-purple-50">
+      <Card className={`p-8 mb-6 ${darkMode ? 'bg-gradient-to-r from-slate-800 to-slate-700 border-slate-600' : 'bg-gradient-to-r from-blue-50 to-purple-50'}`}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-lg text-slate-700 mb-2">Resultado Final do Período</p>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className={`text-lg mb-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Resultado Final do Período</p>
+            <p className={`text-xs mb-4 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               (Comissões Recebidas + Receitas) - (Comissões Pagas + Despesas)
             </p>
             <p
@@ -350,9 +371,9 @@ export default function RelatoriosFinanceiros() {
       {/* Detalhamento */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Receitas Detalhadas */}
-        <Card>
-          <div className="p-4 border-b bg-slate-50">
-            <h3 className="font-semibold text-slate-700">Receitas por Categoria</h3>
+        <Card className={darkMode ? 'bg-slate-800 border-slate-700' : ''}>
+          <div className={`p-4 border-b ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-slate-50'}`}>
+            <h3 className={`font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Receitas por Categoria</h3>
           </div>
           <div className="p-4">
             {['Bônus', 'Repasse', 'Ajuste', 'Outros'].map((cat) => {
@@ -361,8 +382,8 @@ export default function RelatoriosFinanceiros() {
                 .reduce((acc, r) => acc + toNumber(r.valor), 0);
               if (total === 0) return null;
               return (
-                <div key={cat} className="flex justify-between py-2 border-b last:border-0">
-                  <span className="text-slate-600">{cat}</span>
+                <div key={cat} className={`flex justify-between py-2 border-b last:border-0 ${darkMode ? 'border-slate-700' : ''}`}>
+                  <span className={darkMode ? 'text-slate-400' : 'text-slate-600'}>{cat}</span>
                   <span className="font-semibold text-green-600">
                     {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
@@ -373,9 +394,9 @@ export default function RelatoriosFinanceiros() {
         </Card>
 
         {/* Despesas Detalhadas */}
-        <Card>
-          <div className="p-4 border-b bg-slate-50">
-            <h3 className="font-semibold text-slate-700">Despesas por Categoria</h3>
+        <Card className={darkMode ? 'bg-slate-800 border-slate-700' : ''}>
+          <div className={`p-4 border-b ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-slate-50'}`}>
+            <h3 className={`font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Despesas por Categoria</h3>
           </div>
           <div className="p-4">
             {[
@@ -394,8 +415,8 @@ export default function RelatoriosFinanceiros() {
                 .reduce((acc, d) => acc + toNumber(d.valor), 0);
               if (total === 0) return null;
               return (
-                <div key={cat} className="flex justify-between py-2 border-b last:border-0">
-                  <span className="text-slate-600">{cat}</span>
+                <div key={cat} className={`flex justify-between py-2 border-b last:border-0 ${darkMode ? 'border-slate-700' : ''}`}>
+                  <span className={darkMode ? 'text-slate-400' : 'text-slate-600'}>{cat}</span>
                   <span className="font-semibold text-red-600">
                     {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
@@ -408,41 +429,41 @@ export default function RelatoriosFinanceiros() {
 
       {/* Diagnóstico (somente ADM) */}
       {user?.perfil === 'super_admin' && (
-        <Card className="p-6 mt-6 bg-amber-50 border-amber-200">
+        <Card className={`p-6 mt-6 ${darkMode ? 'bg-amber-900/20 border-amber-700' : 'bg-amber-50 border-amber-200'}`}>
           <div className="flex items-start gap-3 mb-4">
-            <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+            <AlertCircle className={`w-5 h-5 mt-0.5 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`} />
             <div className="flex-1">
-              <h3 className="font-semibold text-amber-900 mb-3">Diagnóstico (ADM)</h3>
+              <h3 className={`font-semibold mb-3 ${darkMode ? 'text-amber-400' : 'text-amber-900'}`}>Diagnóstico (ADM)</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mb-4">
                 <div>
-                  <p className="text-amber-700">Total ComissaoAPagar (all)</p>
-                  <p className="font-bold text-lg text-amber-900">{comissoesAPagar.length}</p>
+                  <p className={darkMode ? 'text-amber-400' : 'text-amber-700'}>Total ComissaoAPagar (all)</p>
+                  <p className={`font-bold text-lg ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>{comissoesAPagar.length}</p>
                 </div>
                 <div>
-                  <p className="text-amber-700">Recebidas (period)</p>
-                  <p className="font-bold text-lg text-amber-900">{comissoesRecebidas.length}</p>
+                  <p className={darkMode ? 'text-amber-400' : 'text-amber-700'}>Recebidas (period)</p>
+                  <p className={`font-bold text-lg ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>{comissoesRecebidas.length}</p>
                 </div>
                 <div>
-                  <p className="text-amber-700">A Pagar</p>
-                  <p className="font-bold text-lg text-amber-900">{a_pagar_count}</p>
+                  <p className={darkMode ? 'text-amber-400' : 'text-amber-700'}>A Pagar</p>
+                  <p className={`font-bold text-lg ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>{a_pagar_count}</p>
                 </div>
                 <div>
-                  <p className="text-amber-700">Pagas</p>
-                  <p className="font-bold text-lg text-amber-900">{pagas_count}</p>
+                  <p className={darkMode ? 'text-amber-400' : 'text-amber-700'}>Pagas</p>
+                  <p className={`font-bold text-lg ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>{pagas_count}</p>
                 </div>
                 <div>
-                  <p className="text-amber-700">Receitas</p>
-                  <p className="font-bold text-lg text-amber-900">{receitas_count}</p>
+                  <p className={darkMode ? 'text-amber-400' : 'text-amber-700'}>Receitas</p>
+                  <p className={`font-bold text-lg ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>{receitas_count}</p>
                 </div>
               </div>
               {todosRecebimentos.length > 0 && (
-              <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
-                <p className="font-mono text-amber-900">Total Recebimentos: {todosRecebimentos.length}</p>
-                <p className="font-mono text-amber-900">- RecebimentoComissao: {recebimentosComissao.length}</p>
-                <p className="font-mono text-amber-900">- Receitas (status=recebida): {receitasRecebidas.length}</p>
-                <p className="font-mono text-amber-700">Período: {dataInicio} até {dataFim}</p>
-                <p className="font-mono text-amber-700">Recebidas no período: {recebidas_count}</p>
-                <p className="font-mono text-amber-700">Total: {totalComissoesRecebidas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+              <div className={`text-xs p-3 rounded border max-h-40 overflow-auto space-y-1 ${darkMode ? 'bg-slate-800 border-amber-800' : 'bg-white border-amber-200'}`}>
+                <p className={`font-mono ${darkMode ? 'text-amber-400' : 'text-amber-900'}`}>Total Recebimentos: {todosRecebimentos.length}</p>
+                <p className={`font-mono ${darkMode ? 'text-amber-400' : 'text-amber-900'}`}>- RecebimentoComissao: {recebimentosComissao.length}</p>
+                <p className={`font-mono ${darkMode ? 'text-amber-400' : 'text-amber-900'}`}>- Receitas (status=recebida): {receitasRecebidas.length}</p>
+                <p className={`font-mono ${darkMode ? 'text-amber-500' : 'text-amber-700'}`}>Período: {dataInicio} até {dataFim}</p>
+                <p className={`font-mono ${darkMode ? 'text-amber-500' : 'text-amber-700'}`}>Recebidas no período: {recebidas_count}</p>
+                <p className={`font-mono ${darkMode ? 'text-amber-500' : 'text-amber-700'}`}>Total: {totalComissoesRecebidas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
               </div>
               )}
             </div>
@@ -450,5 +471,6 @@ export default function RelatoriosFinanceiros() {
         </Card>
       )}
       </div>
-      );
-      }
+    </div>
+  );
+}
