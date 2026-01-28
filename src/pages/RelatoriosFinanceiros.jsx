@@ -32,14 +32,22 @@ export default function RelatoriosFinanceiros() {
     }
   };
 
-  // Buscar Recebimentos de Comissão (comissões recebidas das administradoras)
-  const { data: recebimentosComissao = [] } = useQuery({
-    queryKey: ['recebimentos-comissao-relatorio', user?.empresa_id],
+  // Buscar "Recebido ADM" a partir da entidade Comissao (igual ComissoesRecebidas)
+  const { data: comissoesRecebidasADM = [] } = useQuery({
+    queryKey: ['comissoes-recebidas-adm-dashboard', user?.empresa_id],
     queryFn: async () => {
-      const filter = user?.perfil === 'super_admin' || user?.perfil === 'master' 
-        ? { status_recebimento: 'recebida' }
-        : { status_recebimento: 'recebida', empresa_id: user?.empresa_id };
-      return await base44.entities.RecebimentoComissao.filter(filter);
+      // Super/Master vê tudo
+      if (user?.perfil === 'super_admin' || user?.perfil === 'master') {
+        return await base44.entities.Comissao.filter({ status: 'confirmada', tipo: 'receber' }, '-created_date', 500);
+      }
+
+      // Para filtrar por empresa: pega vendas da empresa e filtra as comissões por venda_id
+      const vendasEmpresa = await base44.entities.Venda.filter({ empresa_id: user?.empresa_id }, '-created_date', 1000);
+      const vendaIds = new Set(vendasEmpresa.map(v => v.id));
+
+      const todas = await base44.entities.Comissao.filter({ status: 'confirmada', tipo: 'receber' }, '-created_date', 500);
+
+      return todas.filter(c => vendaIds.has(c.venda_id));
     },
     enabled: !!user,
   });
@@ -108,24 +116,35 @@ export default function RelatoriosFinanceiros() {
   // Normalizar data para comparação (YYYY-MM-DD)
   const normalizeDate = (date) => {
     if (!date) return null;
-    const m = moment(date);
+
+    const formats = [
+      moment.ISO_8601,
+      'YYYY-MM-DD',
+      'YYYY-MM-DDTHH:mm:ss',
+      'YYYY-MM-DDTHH:mm:ss.SSSZ',
+      'DD/MM/YYYY',
+      'DD/MM/YYYY HH:mm',
+      'DD/MM/YYYY HH:mm:ss',
+    ];
+
+    const m = moment(date, formats, true);
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Combinar RecebimentoComissao + Receitas (status=recebida) no período
+  // Combinar Comissao(tipo=receber) + Receitas (status=recebida) no período
   const todosRecebimentos = [
-    ...recebimentosComissao.map(r => ({ 
-      ...r, 
+    ...comissoesRecebidasADM.map(c => ({
+      ...c,
       tipo: 'comissao',
-      data_recebimento: r.data_recebimento,
-      valor_recebido: r.valor_recebido 
+      data_recebimento: c.data_recebimento || c.created_date,
+      valor_recebido: c.valor,
     })),
-    ...receitasRecebidas.map(r => ({ 
-      ...r, 
+    ...receitasRecebidas.map(r => ({
+      ...r,
       tipo: 'receita',
       data_recebimento: r.data_recebimento || r.data,
-      valor_recebido: r.valor 
-    }))
+      valor_recebido: r.valor,
+    })),
   ];
 
   const comissoesRecebidas = todosRecebimentos.filter((c) => {
@@ -429,7 +448,7 @@ export default function RelatoriosFinanceiros() {
               {todosRecebimentos.length > 0 && (
               <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
                 <p className="font-mono text-amber-900">Total Recebimentos: {todosRecebimentos.length}</p>
-                <p className="font-mono text-amber-900">- RecebimentoComissao: {recebimentosComissao.length}</p>
+                <p className="font-mono text-amber-900">- Comissao (tipo=receber): {comissoesRecebidasADM.length}</p>
                 <p className="font-mono text-amber-900">- Receitas (status=recebida): {receitasRecebidas.length}</p>
                 <p className="font-mono text-amber-700">Período: {dataInicio} até {dataFim}</p>
                 <p className="font-mono text-amber-700">Recebidas no período: {recebidas_count}</p>
