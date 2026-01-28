@@ -12,12 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, Check, X } from 'lucide-react';
+import { Plus, Trash2, Check, X, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, empresaId }) {
   const [novaCategoria, setNovaCategoria] = useState('');
   const [novaSubcategoria, setNovaSubcategoria] = useState({ categoria_id: '', nome: '' });
+  const [expandedCategories, setExpandedCategories] = useState({});
   const queryClient = useQueryClient();
 
   const { data: categorias = [] } = useQuery({
@@ -219,45 +220,81 @@ export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, em
               </div>
             </Card>
 
-            {/* Lista de Subcategorias */}
-            <div className="space-y-2">
-              {subcategorias.length === 0 ? (
+            {/* Lista de Subcategorias Agrupadas por Categoria */}
+            <div className="space-y-3">
+              {categorias.length === 0 ? (
                 <Card className="p-8 text-center text-slate-500">
-                  Nenhuma subcategoria cadastrada
+                  Nenhuma categoria cadastrada
                 </Card>
               ) : (
-                subcategorias.map((sub) => (
-                  <Card key={sub.id} className={`p-4 ${!sub.ativo ? 'opacity-50' : ''}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{sub.nome}</p>
-                        <p className="text-xs text-slate-500">
-                          {sub.categoria_nome} • {sub.ativo ? 'Ativa' : 'Inativa'}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant={sub.ativo ? 'outline' : 'default'}
-                          onClick={() => toggleSubcategoriaAtivoMutation.mutate({ id: sub.id, ativo: !sub.ativo })}
-                        >
-                          {sub.ativo ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => {
-                            if (confirm(`Excluir subcategoria "${sub.nome}"?`)) {
-                              deleteSubcategoriaMutation.mutate(sub.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))
+                categorias.map((categoria) => {
+                  const subsCategoria = subcategorias.filter(s => s.categoria_id === categoria.id);
+                  const isExpanded = expandedCategories[categoria.id];
+                  
+                  return (
+                    <Card key={categoria.id} className="overflow-hidden">
+                      {/* Header da Categoria */}
+                      <button
+                        onClick={() => setExpandedCategories(prev => ({ ...prev, [categoria.id]: !prev[categoria.id] }))}
+                        className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          <div className="text-left">
+                            <p className="font-semibold text-slate-900">{categoria.nome}</p>
+                            <p className="text-xs text-slate-500">
+                              {subsCategoria.length} subcategoria{subsCategoria.length !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Subcategorias */}
+                      {isExpanded && (
+                        <div className="border-t bg-slate-50/50">
+                          {subsCategoria.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-slate-500">
+                              Nenhuma subcategoria nesta categoria
+                            </div>
+                          ) : (
+                            <div className="divide-y">
+                              {subsCategoria.map((sub) => (
+                                <div key={sub.id} className={`p-4 flex items-center justify-between ${!sub.ativo ? 'opacity-50' : ''}`}>
+                                  <div>
+                                    <p className="font-medium text-slate-900">{sub.nome}</p>
+                                    <p className="text-xs text-slate-500">
+                                      {sub.ativo ? 'Ativa' : 'Inativa'}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={sub.ativo ? 'outline' : 'default'}
+                                      onClick={() => toggleSubcategoriaAtivoMutation.mutate({ id: sub.id, ativo: !sub.ativo })}
+                                    >
+                                      {sub.ativo ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => {
+                                        if (confirm(`Excluir subcategoria "${sub.nome}"?`)) {
+                                          deleteSubcategoriaMutation.mutate(sub.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })
               )}
             </div>
           </TabsContent>
