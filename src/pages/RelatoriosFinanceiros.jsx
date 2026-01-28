@@ -41,6 +41,15 @@ export default function RelatoriosFinanceiros() {
     enabled: !!user,
   });
 
+  // Buscar Receitas Recebidas (para somar com comissões recebidas)
+  const { data: receitasRecebidas = [] } = useQuery({
+    queryKey: ['receitas-recebidas-relatorio'],
+    queryFn: async () => {
+      return await base44.entities.Receita.filter({ status: 'recebida' });
+    },
+    enabled: !!user,
+  });
+
   // Buscar Comissões a Pagar/Pagas (aos vendedores)
   const { data: comissoesAPagar = [] } = useQuery({
     queryKey: ['comissoes-a-pagar-relatorio'],
@@ -97,8 +106,23 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Comissões Recebidas no período (data_recebimento)
-  const comissoesRecebidas = recebimentosComissao.filter((c) => {
+  // Combinar RecebimentoComissao + Receitas (status=recebida) no período
+  const todosRecebimentos = [
+    ...recebimentosComissao.map(r => ({ 
+      ...r, 
+      tipo: 'comissao',
+      data_recebimento: r.data_recebimento,
+      valor_recebido: r.valor_recebido 
+    })),
+    ...receitasRecebidas.map(r => ({ 
+      ...r, 
+      tipo: 'receita',
+      data_recebimento: r.data_recebimento || r.data,
+      valor_recebido: r.valor 
+    }))
+  ];
+
+  const comissoesRecebidas = todosRecebimentos.filter((c) => {
     const d = normalizeDate(c.data_recebimento);
     if (!d) return false;
     return d >= dataInicio && d <= dataFim;
@@ -396,15 +420,14 @@ export default function RelatoriosFinanceiros() {
                   <p className="font-bold text-lg text-amber-900">{receitas_count}</p>
                 </div>
               </div>
-              {recebimentosComissao.length > 0 && (
+              {todosRecebimentos.length > 0 && (
               <div className="text-xs bg-white p-3 rounded border border-amber-200 max-h-40 overflow-auto space-y-1">
-                <p className="font-mono text-amber-900">Total RecebimentoComissao: {recebimentosComissao.length}</p>
-                <p className="font-mono text-amber-700">Primeiro registro:</p>
-                <p className="font-mono text-amber-700">- status: {recebimentosComissao[0]?.status_recebimento}</p>
-                <p className="font-mono text-amber-700">- data_recebimento: {recebimentosComissao[0]?.data_recebimento}</p>
-                <p className="font-mono text-amber-700">- valor_recebido: {recebimentosComissao[0]?.valor_recebido}</p>
+                <p className="font-mono text-amber-900">Total Recebimentos: {todosRecebimentos.length}</p>
+                <p className="font-mono text-amber-900">- RecebimentoComissao: {recebimentosComissao.length}</p>
+                <p className="font-mono text-amber-900">- Receitas (status=recebida): {receitasRecebidas.length}</p>
                 <p className="font-mono text-amber-700">Período: {dataInicio} até {dataFim}</p>
                 <p className="font-mono text-amber-700">Recebidas no período: {recebidas_count}</p>
+                <p className="font-mono text-amber-700">Total: {totalComissoesRecebidas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
               </div>
               )}
             </div>
