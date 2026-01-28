@@ -26,6 +26,7 @@ export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, em
   const [novaSubcategoria, setNovaSubcategoria] = useState({ categoria_id: '', nome: '' });
   const [expandedCategories, setExpandedCategories] = useState({});
   const [editandoCategoria, setEditandoCategoria] = useState(null);
+  const [editandoSubcategoria, setEditandoSubcategoria] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: categorias = [] } = useQuery({
@@ -84,6 +85,16 @@ export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, em
       queryClient.invalidateQueries(['subcategorias-receita']);
       toast.success('Subcategoria criada com sucesso!');
       setNovaSubcategoria({ categoria_id: '', nome: '' });
+    },
+  });
+
+  const updateSubcategoriaMutation = useMutation({
+    mutationFn: ({ id, nome }) => base44.entities.SubcategoriaReceita.update(id, { nome }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['subcategorias-receita-all']);
+      queryClient.invalidateQueries(['subcategorias-receita']);
+      toast.success('Subcategoria atualizada!');
+      setEditandoSubcategoria(null);
     },
   });
 
@@ -309,33 +320,68 @@ export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, em
                           ) : (
                             <div className="divide-y">
                               {subsCategoria.map((sub) => (
-                                <div key={sub.id} className={`p-4 flex items-center justify-between ${!sub.ativo ? 'opacity-50' : ''}`}>
-                                  <div>
-                                    <p className="font-medium text-slate-900">{sub.nome}</p>
-                                    <p className="text-xs text-slate-500">
-                                      {sub.ativo ? 'Ativa' : 'Inativa'}
-                                    </p>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant={sub.ativo ? 'outline' : 'default'}
-                                      onClick={() => toggleSubcategoriaAtivoMutation.mutate({ id: sub.id, ativo: !sub.ativo })}
-                                    >
-                                      {sub.ativo ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => {
-                                        if (confirm(`Excluir subcategoria "${sub.nome}"?`)) {
-                                          deleteSubcategoriaMutation.mutate(sub.id);
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
+                                <div key={sub.id} className={`p-4 ${!sub.ativo ? 'opacity-50' : ''}`}>
+                                  {editandoSubcategoria?.id === sub.id ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        value={editandoSubcategoria.nome}
+                                        onChange={(e) => setEditandoSubcategoria({ ...editandoSubcategoria, nome: e.target.value })}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            updateSubcategoriaMutation.mutate({ id: sub.id, nome: editandoSubcategoria.nome });
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditandoSubcategoria(null);
+                                          }
+                                        }}
+                                        autoFocus
+                                      />
+                                      <Button
+                                        size="sm"
+                                        onClick={() => updateSubcategoriaMutation.mutate({ id: sub.id, nome: editandoSubcategoria.nome })}
+                                      >
+                                        <Check className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setEditandoSubcategoria(null)}
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="font-medium text-slate-900">{sub.nome}</p>
+                                        <p className="text-xs text-slate-500">
+                                          {sub.ativo ? 'Ativa' : 'Inativa'}
+                                        </p>
+                                      </div>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button size="icon" variant="ghost">
+                                            <Settings className="w-4 h-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                          <DropdownMenuItem onClick={() => setEditandoSubcategoria({ id: sub.id, nome: sub.nome })}>
+                                            Editar
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            className="text-red-600"
+                                            onClick={() => {
+                                              if (confirm(`Excluir subcategoria "${sub.nome}"?`)) {
+                                                deleteSubcategoriaMutation.mutate(sub.id);
+                                              }
+                                            }}
+                                          >
+                                            Excluir
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
