@@ -283,10 +283,10 @@ export default function GerenciarContasBancariasModal({ open, onOpenChange, empr
                             <img
                               src={conta.logo_url}
                               alt={conta.nome_banco}
-                              className="w-16 h-16 object-contain border rounded"
+                              className="w-16 h-16 rounded-full object-cover border-2 border-slate-200"
                             />
                           ) : (
-                            <div className="w-16 h-16 bg-slate-100 border rounded flex items-center justify-center">
+                            <div className="w-16 h-16 bg-slate-100 border-2 border-slate-200 rounded-full flex items-center justify-center">
                               <Building2 className="w-8 h-8 text-slate-400" />
                             </div>
                           )}
@@ -298,10 +298,11 @@ export default function GerenciarContasBancariasModal({ open, onOpenChange, empr
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) handleUploadLogo(conta.id, file);
+                                e.target.value = '';
                               }}
                               disabled={uploadingLogo === conta.id}
                             />
-                            <div className="bg-blue-600 text-white p-1 rounded-full hover:bg-blue-700">
+                            <div className="bg-blue-600 text-white p-1.5 rounded-full hover:bg-blue-700 transition-colors shadow-lg">
                               {uploadingLogo === conta.id ? (
                                 <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                               ) : (
