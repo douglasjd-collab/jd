@@ -203,7 +203,9 @@ export default function GerenciarContasBancariasModal({ open, onOpenChange, empr
                 Adicionar Conta
               </Button>
             </Card>
+          </TabsContent>
 
+          <TabsContent value="lista" className="space-y-4">
             {/* Lista de Contas */}
             <div className="space-y-3">
               {contas.length === 0 ? (
