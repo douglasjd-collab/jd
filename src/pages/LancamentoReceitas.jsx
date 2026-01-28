@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown, Settings, MoreVertical, Edit2 } from 'lucide-react';
+import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown, Settings, MoreVertical, Edit2, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import moment from 'moment';
@@ -24,6 +24,9 @@ export default function LancamentoReceitas() {
   const [categoriasModalOpen, setCategoriasModalOpen] = useState(false);
   const [contasModalOpen, setContasModalOpen] = useState(false);
   const [editingReceita, setEditingReceita] = useState(null);
+  const [recebimentoModalOpen, setRecebimentoModalOpen] = useState(false);
+  const [receitaParaReceber, setReceitaParaReceber] = useState(null);
+  const [dataRecebimento, setDataRecebimento] = useState(moment().format('YYYY-MM-DD'));
   const [formData, setFormData] = useState({
     valor: '',
     foiRecebida: true,
@@ -119,6 +122,22 @@ export default function LancamentoReceitas() {
     },
   });
 
+  const finalizarRecebimentoMutation = useMutation({
+    mutationFn: async ({ id, data_recebimento }) => {
+      return await base44.entities.Receita.update(id, {
+        status: 'recebida',
+        data_recebimento
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['receitas']);
+      toast.success('Receita marcada como recebida!');
+      setRecebimentoModalOpen(false);
+      setReceitaParaReceber(null);
+      setDataRecebimento(moment().format('YYYY-MM-DD'));
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
       return await base44.entities.Receita.delete(id);
@@ -152,7 +171,7 @@ export default function LancamentoReceitas() {
     setEditingReceita(receita);
     setFormData({
       valor: receita.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-      foiRecebida: true,
+      foiRecebida: receita.status === 'recebida',
       tipoData: 'outro',
       dataCustom: receita.data,
       descricao: receita.descricao || '',
@@ -165,6 +184,23 @@ export default function LancamentoReceitas() {
       origem: receita.origem || '',
     });
     setModalOpen(true);
+  };
+
+  const handleAbrirRecebimento = (receita) => {
+    setReceitaParaReceber(receita);
+    setDataRecebimento(moment().format('YYYY-MM-DD'));
+    setRecebimentoModalOpen(true);
+  };
+
+  const handleConfirmarRecebimento = () => {
+    if (!dataRecebimento) {
+      toast.error('Informe a data de recebimento');
+      return;
+    }
+    finalizarRecebimentoMutation.mutate({
+      id: receitaParaReceber.id,
+      data_recebimento: dataRecebimento
+    });
   };
 
   const handleSubmit = () => {
@@ -211,6 +247,8 @@ export default function LancamentoReceitas() {
       subcategoria_nome: subcategoria?.nome || null,
       valor,
       data: dataFinal,
+      status: formData.foiRecebida ? 'recebida' : 'pendente',
+      data_recebimento: formData.foiRecebida ? dataFinal : null,
       origem: origemFinal,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
@@ -299,6 +337,7 @@ export default function LancamentoReceitas() {
           <table className="w-full">
             <thead className="bg-slate-50 border-b">
               <tr>
+                <th className="text-left p-4 font-semibold text-slate-700">Status</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Data</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Descrição</th>
                 <th className="text-left p-4 font-semibold text-slate-700">Categoria</th>
@@ -312,19 +351,37 @@ export default function LancamentoReceitas() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">
+                  <td colSpan={9} className="p-8 text-center text-slate-500">
                     Carregando...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">
+                  <td colSpan={9} className="p-8 text-center text-slate-500">
                     Nenhuma receita encontrada
                   </td>
                 </tr>
               ) : (
                 filtered.map((receita) => (
                   <tr key={receita.id} className="border-b hover:bg-slate-50">
+                    <td className="p-4">
+                      {receita.status === 'pendente' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAbrirRecebimento(receita)}
+                          className="bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100"
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Receber
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-2 text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm">Recebida</span>
+                        </div>
+                      )}
+                    </td>
                     <td className="p-4">{moment(receita.data).format('DD/MM/YYYY')}</td>
                     <td className="p-4">{receita.descricao}</td>
                     <td className="p-4 text-sm text-slate-600">{receita.categoria_nome || receita.categoria || '-'}</td>
@@ -705,6 +762,52 @@ export default function LancamentoReceitas() {
         onOpenChange={setContasModalOpen}
         empresaId={user?.empresa_id}
       />
+
+      {/* Modal Confirmar Recebimento */}
+      <Dialog open={recebimentoModalOpen} onOpenChange={setRecebimentoModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Recebimento</DialogTitle>
+          </DialogHeader>
+          
+          {receitaParaReceber && (
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <p className="text-sm text-slate-600 mb-1">Receita</p>
+                <p className="font-semibold">{receitaParaReceber.descricao}</p>
+                <p className="text-2xl font-bold text-green-600 mt-2">
+                  {(receitaParaReceber.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+
+              <div>
+                <Label>Data de Recebimento</Label>
+                <Input
+                  type="date"
+                  value={dataRecebimento}
+                  onChange={(e) => setDataRecebimento(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setRecebimentoModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleConfirmarRecebimento}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Confirmar Recebimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
