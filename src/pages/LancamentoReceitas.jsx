@@ -531,15 +531,39 @@ export default function LancamentoReceitas() {
                         onValueChange={(v) => setFormData({ ...formData, origem: v })}
                       >
                         <SelectTrigger className="bg-transparent border-none text-white focus:ring-0">
-                          <SelectValue placeholder="Selecione a conta bancária" />
+                          {formData.origem ? (
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const conta = contas.find(c => c.id === formData.origem);
+                                return (
+                                  <>
+                                    {conta?.logo_url ? (
+                                      <img src={conta.logo_url} alt="" className="w-6 h-6 rounded-full object-cover border border-slate-600" />
+                                    ) : (
+                                      <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center">
+                                        <Calculator className="w-3 h-3 text-slate-400" />
+                                      </div>
+                                    )}
+                                    <span>{conta?.codigo_banco} - {conta?.nome_banco}</span>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Selecione a conta bancária" />
+                          )}
                         </SelectTrigger>
                         <SelectContent>
                           {contas.length > 0 ? (
                             contas.map(conta => (
                               <SelectItem key={conta.id} value={conta.id}>
                                 <div className="flex items-center gap-2">
-                                  {conta.logo_url && (
-                                    <img src={conta.logo_url} alt="" className="w-5 h-5 object-contain" />
+                                  {conta.logo_url ? (
+                                    <img src={conta.logo_url} alt="" className="w-6 h-6 rounded-full object-cover border border-slate-200" />
+                                  ) : (
+                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
+                                      <Calculator className="w-3 h-3 text-slate-400" />
+                                    </div>
                                   )}
                                   <span>{conta.codigo_banco} - {conta.nome_banco}</span>
                                 </div>
