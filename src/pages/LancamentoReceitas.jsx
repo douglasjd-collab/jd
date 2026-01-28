@@ -518,7 +518,7 @@ export default function LancamentoReceitas() {
                     <Input
                       value={formData.origem}
                       onChange={(e) => setFormData({ ...formData, origem: e.target.value })}
-                      placeholder="Conta/Origem"
+                      placeholder="Conta/Recebimento"
                       className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0"
                     />
                   </div>
