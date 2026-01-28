@@ -32,9 +32,12 @@ export default function GerenciarContasBancariasModal({ open, onOpenChange, empr
   const { data: contas = [] } = useQuery({
     queryKey: ['contas-bancarias', empresaId],
     queryFn: async () => {
+      if (!empresaId) {
+        return await base44.entities.ContaBancaria.filter({ ativo: true }, 'ordem');
+      }
       return await base44.entities.ContaBancaria.filter({ empresa_id: empresaId, ativo: true }, 'ordem');
     },
-    enabled: !!empresaId && open,
+    enabled: open,
   });
 
   const createMutation = useMutation({
