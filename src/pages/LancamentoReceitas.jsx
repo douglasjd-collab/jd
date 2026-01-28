@@ -10,14 +10,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown } from 'lucide-react';
+import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
+import GerenciarCategoriasReceitaModal from '@/components/forms/GerenciarCategoriasReceitaModal';
 
 export default function LancamentoReceitas() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [categoriasModalOpen, setCategoriasModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     valor: '',
     foiRecebida: true,
@@ -483,6 +485,15 @@ export default function LancamentoReceitas() {
                         <p className="text-xs text-orange-400 mt-1">Campo obrigatório</p>
                       )}
                     </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setCategoriasModalOpen(true)}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
 
@@ -569,6 +580,13 @@ export default function LancamentoReceitas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Gerenciar Categorias */}
+      <GerenciarCategoriasReceitaModal
+        open={categoriasModalOpen}
+        onOpenChange={setCategoriasModalOpen}
+        empresaId={user?.empresa_id}
+      />
     </div>
   );
 }
