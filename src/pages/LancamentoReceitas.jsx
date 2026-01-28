@@ -26,7 +26,6 @@ export default function LancamentoReceitas() {
     tipoData: 'hoje',
     dataCustom: moment().format('YYYY-MM-DD'),
     descricao: '',
-    observacao: '',
     receitaFixa: false,
     repetir: false,
     repeticoes: 2,
@@ -113,7 +112,6 @@ export default function LancamentoReceitas() {
       tipoData: 'hoje',
       dataCustom: moment().format('YYYY-MM-DD'),
       descricao: '',
-      observacao: '',
       receitaFixa: false,
       repetir: false,
       repeticoes: 2,
@@ -161,7 +159,6 @@ export default function LancamentoReceitas() {
       valor,
       data: dataFinal,
       origem: formData.origem,
-      observacao: formData.observacao,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
     });
@@ -388,19 +385,6 @@ export default function LancamentoReceitas() {
                   value={formData.descricao}
                   onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                   placeholder="Descrição"
-                  className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0"
-                />
-              </div>
-            </div>
-
-            {/* Observação */}
-            <div className="border-b border-slate-600 pb-4">
-              <div className="flex items-center gap-3">
-                <Tag className="w-5 h-5 text-slate-400" />
-                <Input
-                  value={formData.observacao}
-                  onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                  placeholder="Observação"
                   className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0"
                 />
               </div>
