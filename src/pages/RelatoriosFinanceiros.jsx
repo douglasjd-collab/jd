@@ -34,18 +34,24 @@ export default function RelatoriosFinanceiros() {
 
   // Buscar Recebimentos de Comissão (comissões recebidas das administradoras)
   const { data: recebimentosComissao = [] } = useQuery({
-    queryKey: ['recebimentos-comissao-relatorio'],
+    queryKey: ['recebimentos-comissao-relatorio', user?.empresa_id],
     queryFn: async () => {
-      return await base44.entities.RecebimentoComissao.filter({ status_recebimento: 'recebida' });
+      const filter = user?.perfil === 'super_admin' || user?.perfil === 'master' 
+        ? { status_recebimento: 'recebida' }
+        : { status_recebimento: 'recebida', empresa_id: user?.empresa_id };
+      return await base44.entities.RecebimentoComissao.filter(filter);
     },
     enabled: !!user,
   });
 
   // Buscar Receitas Recebidas (para somar com comissões recebidas)
   const { data: receitasRecebidas = [] } = useQuery({
-    queryKey: ['receitas-recebidas-relatorio'],
+    queryKey: ['receitas-recebidas-relatorio', user?.empresa_id],
     queryFn: async () => {
-      return await base44.entities.Receita.filter({ status: 'recebida' });
+      const filter = user?.perfil === 'super_admin' || user?.perfil === 'master'
+        ? { status: 'recebida' }
+        : { status: 'recebida', empresa_id: user?.empresa_id };
+      return await base44.entities.Receita.filter(filter);
     },
     enabled: !!user,
   });
