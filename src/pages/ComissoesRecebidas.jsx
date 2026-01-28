@@ -45,8 +45,36 @@ export default function ComissoesRecebidas() {
     enabled: !!user,
   });
 
-  const filtered = recebimentos.filter((r) => {
-    if (user?.perfil === 'vendedor' && r.vendedor_id !== user?.id) {
+  const { data: receitas = [] } = useQuery({
+    queryKey: ['receitas-recebidas'],
+    queryFn: async () => {
+      return await base44.entities.Receita.filter({ status: 'recebida' });
+    },
+    enabled: !!user,
+  });
+
+  // Combinar recebimentos e receitas
+  const todosRecebimentos = [
+    ...recebimentos.map(r => ({ ...r, tipo: 'comissao' })),
+    ...receitas.map(r => ({
+      ...r,
+      tipo: 'receita',
+      data_recebimento: r.data_recebimento || r.data,
+      valor_recebido: r.valor,
+      valor_a_pagar: r.valor,
+      cliente_nome: r.descricao,
+      vendedor_nome: r.usuario_nome,
+      grupo: null,
+      cota: null,
+      contrato: null,
+      parcela_informada: null,
+      percentual_comissao: 100,
+      administradora_nome: r.categoria_nome || 'Receita',
+    }))
+  ];
+
+  const filtered = todosRecebimentos.filter((r) => {
+    if (user?.perfil === 'vendedor' && r.tipo === 'comissao' && r.vendedor_id !== user?.id) {
       return false;
     }
 
@@ -92,7 +120,7 @@ export default function ComissoesRecebidas() {
 
   const totalRecebido = filtered.reduce((acc, r) => acc + (r.valor_recebido || 0), 0);
 
-  const mesesDisponiveis = [...new Set(recebimentos.map((r) => 
+  const mesesDisponiveis = [...new Set(todosRecebimentos.map((r) => 
     r.data_recebimento ? moment(r.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM') : null
   ).filter(Boolean))].sort().reverse();
 
@@ -294,20 +322,26 @@ export default function ComissoesRecebidas() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-slate-50 border-b">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Vendedor</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Valor Recebido</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">% Com.</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">A Pagar</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Administradora</th>
-                        </tr>
+                       <tr>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Tipo</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente/Descrição</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Vendedor</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Valor Recebido</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">% Com.</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">A Pagar</th>
+                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Origem</th>
+                       </tr>
                       </thead>
                       <tbody>
                         {itens.map((recebimento) => (
-                          <tr key={recebimento.id} className="border-b hover:bg-slate-50">
+                          <tr key={`${recebimento.tipo}-${recebimento.id}`} className="border-b hover:bg-slate-50">
+                            <td className="p-3 text-sm">
+                              <Badge variant={recebimento.tipo === 'receita' ? 'default' : 'secondary'} className="text-xs">
+                                {recebimento.tipo === 'receita' ? 'Receita' : 'Comissão'}
+                              </Badge>
+                            </td>
                             <td className="p-3 text-sm">{recebimento.cliente_nome || '-'}</td>
                             <td className="p-3 text-sm">{recebimento.vendedor_nome || '-'}</td>
                             <td className="p-3 text-sm">
