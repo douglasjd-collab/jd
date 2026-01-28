@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown, Settings } from 'lucide-react';
+import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown, Settings, MoreVertical, Edit2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import moment from 'moment';
 import GerenciarCategoriasReceitaModal from '@/components/forms/GerenciarCategoriasReceitaModal';
@@ -22,6 +23,7 @@ export default function LancamentoReceitas() {
   const [modalOpen, setModalOpen] = useState(false);
   const [categoriasModalOpen, setCategoriasModalOpen] = useState(false);
   const [contasModalOpen, setContasModalOpen] = useState(false);
+  const [editingReceita, setEditingReceita] = useState(null);
   const [formData, setFormData] = useState({
     valor: '',
     foiRecebida: true,
@@ -105,6 +107,18 @@ export default function LancamentoReceitas() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }) => {
+      return await base44.entities.Receita.update(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['receitas']);
+      toast.success('Receita atualizada!');
+      setModalOpen(false);
+      resetForm();
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
       return await base44.entities.Receita.delete(id);
@@ -131,6 +145,26 @@ export default function LancamentoReceitas() {
       origem: '',
     });
     setMostrarDetalhes(true);
+    setEditingReceita(null);
+  };
+
+  const handleEdit = (receita) => {
+    setEditingReceita(receita);
+    setFormData({
+      valor: receita.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      foiRecebida: true,
+      tipoData: 'outro',
+      dataCustom: receita.data,
+      descricao: receita.descricao || '',
+      receitaFixa: false,
+      repetir: false,
+      repeticoes: 2,
+      unidadeRepeticao: 'meses',
+      categoria_id: receita.categoria_id || '',
+      subcategoria_id: receita.subcategoria_id || '',
+      origem: receita.origem || '',
+    });
+    setModalOpen(true);
   };
 
   const handleSubmit = () => {
@@ -159,7 +193,7 @@ export default function LancamentoReceitas() {
       ? subcategorias.find(s => s.id === formData.subcategoria_id) 
       : null;
 
-    createMutation.mutate({
+    const payload = {
       empresa_id: user.empresa_id,
       descricao: formData.descricao,
       categoria_id: formData.categoria_id,
@@ -171,7 +205,13 @@ export default function LancamentoReceitas() {
       origem: formData.origem,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
-    });
+    };
+
+    if (editingReceita) {
+      updateMutation.mutate({ id: editingReceita.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
 
   const formatarValor = (val) => {
@@ -287,13 +327,26 @@ export default function LancamentoReceitas() {
                     <td className="p-4 text-sm">{receita.usuario_nome}</td>
                     <td className="p-4">
                       {['master', 'super_admin', 'admin'].includes(user?.perfil) && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleExcluir(receita.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="ghost">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(receita)}>
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleExcluir(receita.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </td>
                   </tr>
@@ -308,7 +361,7 @@ export default function LancamentoReceitas() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#2a2d35] text-white border-none">
           <DialogHeader>
-            <DialogTitle className="text-white">Nova receita</DialogTitle>
+            <DialogTitle className="text-white">{editingReceita ? 'Editar receita' : 'Nova receita'}</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6">
@@ -624,7 +677,7 @@ export default function LancamentoReceitas() {
               onClick={handleSubmit}
               className="bg-green-600 hover:bg-green-700"
             >
-              Lançar Receita
+              {editingReceita ? 'Atualizar Receita' : 'Lançar Receita'}
             </Button>
           </DialogFooter>
         </DialogContent>
