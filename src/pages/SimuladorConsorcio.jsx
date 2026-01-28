@@ -741,6 +741,27 @@ export default function SimuladorConsorcio() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Informações do Cliente */}
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-xs text-slate-600 font-semibold mb-2">👤 Cliente</p>
+                    <p className="text-sm font-medium text-slate-900">{clienteNome}</p>
+                    <p className="text-xs text-slate-600">{telefone}</p>
+                    <p className="text-xs text-slate-600 capitalize mt-1">
+                      {tipoGrupo === 'automovel' ? 'Automóvel' : tipoGrupo === 'imovel' ? 'Imóvel' : tipoGrupo === 'motocicleta' ? 'Motocicleta' : tipoGrupo}
+                    </p>
+                  </div>
+
+                  {/* Informações do Plano */}
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-700 font-semibold mb-2">📋 Plano</p>
+                    <p className="text-sm font-medium text-blue-900">
+                      Crédito Total {formatCurrency(creditoTotal)}
+                    </p>
+                    <p className="text-xs text-blue-800 mt-1">
+                      {prazoOriginal} Meses de {formatCurrency(parcelaTotal)}
+                    </p>
+                  </div>
+
                   <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                     <p className="text-xs text-emerald-700 font-semibold mb-2">🎯 Lance Embutido</p>
                     <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceEmbutidoValor)}</p>
