@@ -262,10 +262,21 @@ export default function LancamentoReceitas() {
   };
 
   const formatarValor = (val) => {
-    const num = val.replace(/\D/g, '');
+    // Remove tudo exceto dígitos
+    let num = val.replace(/\D/g, '');
     if (!num) return '';
-    const valor = parseFloat(num) / 100;
-    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    // Adiciona centavos se não tiver o suficiente
+    if (num.length === 1) num = '0' + num;
+    
+    // Separa reais e centavos
+    const reais = num.slice(0, -2) || '0';
+    const centavos = num.slice(-2);
+    
+    // Formata com separador de milhares
+    const reaisFormatado = parseInt(reais).toLocaleString('pt-BR');
+    
+    return `${reaisFormatado},${centavos}`;
   };
 
   const handleExcluir = (id) => {
