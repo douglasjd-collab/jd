@@ -12,13 +12,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, Check, X, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Check, X, ChevronDown, Settings } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, empresaId }) {
   const [novaCategoria, setNovaCategoria] = useState('');
   const [novaSubcategoria, setNovaSubcategoria] = useState({ categoria_id: '', nome: '' });
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [editandoCategoria, setEditandoCategoria] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: categorias = [] } = useQuery({
@@ -40,6 +47,16 @@ export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, em
       queryClient.invalidateQueries(['categorias-receita']);
       toast.success('Categoria criada com sucesso!');
       setNovaCategoria('');
+    },
+  });
+
+  const updateCategoriaMutation = useMutation({
+    mutationFn: ({ id, nome }) => base44.entities.CategoriaReceita.update(id, { nome }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['categorias-receita-all']);
+      queryClient.invalidateQueries(['categorias-receita']);
+      toast.success('Categoria atualizada!');
+      setEditandoCategoria(null);
     },
   });
 
@@ -156,34 +173,67 @@ export default function GerenciarCategoriasReceitaModal({ open, onOpenChange, em
               ) : (
                 categorias.map((cat) => (
                   <Card key={cat.id} className={`p-4 ${!cat.ativo ? 'opacity-50' : ''}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{cat.nome}</p>
-                        <p className="text-xs text-slate-500">
-                          {cat.ativo ? 'Ativa' : 'Inativa'}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant={cat.ativo ? 'outline' : 'default'}
-                          onClick={() => toggleCategoriaAtivoMutation.mutate({ id: cat.id, ativo: !cat.ativo })}
-                        >
-                          {cat.ativo ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => {
-                            if (confirm(`Excluir categoria "${cat.nome}"?`)) {
-                              deleteCategoriaMutation.mutate(cat.id);
+                    {editandoCategoria?.id === cat.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editandoCategoria.nome}
+                          onChange={(e) => setEditandoCategoria({ ...editandoCategoria, nome: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              updateCategoriaMutation.mutate({ id: cat.id, nome: editandoCategoria.nome });
+                            }
+                            if (e.key === 'Escape') {
+                              setEditandoCategoria(null);
                             }
                           }}
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => updateCategoriaMutation.mutate({ id: cat.id, nome: editandoCategoria.nome })}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditandoCategoria(null)}
+                        >
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{cat.nome}</p>
+                          <p className="text-xs text-slate-500">
+                            {cat.ativo ? 'Ativa' : 'Inativa'}
+                          </p>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost">
+                              <Settings className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditandoCategoria({ id: cat.id, nome: cat.nome })}>
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => {
+                                if (confirm(`Excluir categoria "${cat.nome}"?`)) {
+                                  deleteCategoriaMutation.mutate(cat.id);
+                                }
+                              }}
+                            >
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
                   </Card>
                 ))
               )}
