@@ -133,12 +133,13 @@ export default function GerenciarContasBancariasModal({ open, onOpenChange, empr
           <DialogTitle>Gerenciar Contas Bancárias</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="contas" className="w-full">
-          <TabsList className="grid w-full grid-cols-1">
-            <TabsTrigger value="contas">Contas Bancárias</TabsTrigger>
+        <Tabs defaultValue="lista" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="lista">Contas Cadastradas</TabsTrigger>
+            <TabsTrigger value="nova">Nova Conta</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="contas" className="space-y-4">
+          <TabsContent value="nova" className="space-y-4">
             {/* Form: Nova Conta */}
             <Card className="p-4">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
