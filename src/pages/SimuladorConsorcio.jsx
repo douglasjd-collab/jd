@@ -178,11 +178,15 @@ export default function SimuladorConsorcio() {
         
         const colab = colabs?.[0];
         
-        // Super admin e master podem não ter empresa_id
-        let empresaId = colab?.empresa_id || null;
+        if (!colab) {
+          throw new Error('Colaborador não encontrado. Configure seu perfil primeiro.');
+        }
         
-        // Se não tiver empresa_id e não for super_admin/master, buscar primeira empresa disponível
-        if (!empresaId && (!colab || !['super_admin', 'master'].includes(colab.perfil))) {
+        // Buscar empresa_id
+        let empresaId = colab.empresa_id;
+        
+        // Se não tiver empresa_id, buscar primeira empresa disponível
+        if (!empresaId) {
           const empresas = await base44.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 1);
           if (empresas.length > 0) {
             empresaId = empresas[0].id;
