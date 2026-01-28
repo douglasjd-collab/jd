@@ -209,7 +209,9 @@ export default function LancamentoReceitas() {
       return;
     }
 
-    const valor = parseFloat(formData.valor.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    // Remove pontos de milhar, substitui vírgula por ponto, depois converte
+    const valorLimpo = formData.valor.replace(/\./g, '').replace(',', '.');
+    const valor = parseFloat(valorLimpo);
     if (isNaN(valor) || valor <= 0) {
       toast.error('Valor inválido');
       return;
