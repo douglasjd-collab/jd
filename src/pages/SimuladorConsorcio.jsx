@@ -751,12 +751,10 @@ export default function SimuladorConsorcio() {
 
                   <div className="p-4 bg-gradient-to-r from-[#23BE84] to-[#1da570] rounded-lg text-white">
                     <p className="text-xs font-semibold mb-1">💰 Valor a Receber</p>
-                    <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
-                    {resultado.creditoAReceber !== resultado.creditoTotal && (
-                      <p className="text-xs mt-1 opacity-90">
-                        Líquido após lance: {formatCurrency(resultado.creditoAReceber)}
-                      </p>
-                    )}
+                    <p className="text-3xl font-bold">{formatCurrency(resultado.creditoAReceber)}</p>
+                    <p className="text-xs mt-1 opacity-90">
+                      Crédito Total: {formatCurrency(resultado.creditoTotal)}
+                    </p>
                   </div>
 
                   {resultado.usarLanceProprio && (
