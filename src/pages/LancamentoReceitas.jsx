@@ -14,12 +14,14 @@ import { TrendingUp, Search, Trash2, Calculator, CheckCircle, Tag, FileText, Rep
 import { toast } from 'sonner';
 import moment from 'moment';
 import GerenciarCategoriasReceitaModal from '@/components/forms/GerenciarCategoriasReceitaModal';
+import GerenciarContasBancariasModal from '@/components/forms/GerenciarContasBancariasModal';
 
 export default function LancamentoReceitas() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [categoriasModalOpen, setCategoriasModalOpen] = useState(false);
+  const [contasModalOpen, setContasModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     valor: '',
     foiRecebida: true,
@@ -81,6 +83,14 @@ export default function LancamentoReceitas() {
       }, 'ordem');
     },
     enabled: !!user && !!formData.categoria_id,
+  });
+
+  const { data: contas = [] } = useQuery({
+    queryKey: ['contas-bancarias'],
+    queryFn: async () => {
+      return await base44.entities.ContaBancaria.filter({ ativo: true }, 'ordem');
+    },
+    enabled: !!user,
   });
 
   const createMutation = useMutation({
@@ -511,16 +521,47 @@ export default function LancamentoReceitas() {
                   </div>
                 )}
 
-                {/* Origem (Conta) */}
+                {/* Conta Bancária */}
                 <div className="border-b border-slate-600 pb-4">
                   <div className="flex items-center gap-3">
                     <Calculator className="w-5 h-5 text-slate-400" />
-                    <Input
-                      value={formData.origem}
-                      onChange={(e) => setFormData({ ...formData, origem: e.target.value })}
-                      placeholder="Conta/Recebimento"
-                      className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0"
-                    />
+                    <div className="flex-1">
+                      <Select
+                        value={formData.origem}
+                        onValueChange={(v) => setFormData({ ...formData, origem: v })}
+                      >
+                        <SelectTrigger className="bg-transparent border-none text-white focus:ring-0">
+                          <SelectValue placeholder="Selecione a conta bancária" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {contas.length > 0 ? (
+                            contas.map(conta => (
+                              <SelectItem key={conta.id} value={conta.id}>
+                                <div className="flex items-center gap-2">
+                                  {conta.logo_url && (
+                                    <img src={conta.logo_url} alt="" className="w-5 h-5 object-contain" />
+                                  )}
+                                  <span>{conta.codigo_banco} - {conta.nome_banco}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-sm text-slate-500">
+                              Nenhuma conta cadastrada
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setContasModalOpen(true)}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
 
@@ -569,6 +610,13 @@ export default function LancamentoReceitas() {
       <GerenciarCategoriasReceitaModal
         open={categoriasModalOpen}
         onOpenChange={setCategoriasModalOpen}
+        empresaId={user?.empresa_id}
+      />
+
+      {/* Modal Gerenciar Contas Bancárias */}
+      <GerenciarContasBancariasModal
+        open={contasModalOpen}
+        onOpenChange={setContasModalOpen}
         empresaId={user?.empresa_id}
       />
     </div>
