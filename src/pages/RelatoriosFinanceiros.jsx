@@ -169,7 +169,7 @@ export default function RelatoriosFinanceiros() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Relatórios Financeiros"
+        title="Dashboard Financeiro"
         subtitle="Visão consolidada de todas as movimentações financeiras"
       />
 
