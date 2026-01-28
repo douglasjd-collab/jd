@@ -114,15 +114,12 @@ export default function RelatoriosFinanceiros() {
   
   const recebidas_count = comissoesRecebidas.length;
 
-  // Comissões a Pagar (filtrar por data_recebimento)
-  const comissoesAPagarPeriodo = comissoesAPagar.filter((c) => {
-    if (c.status_pagamento !== 'a_pagar' || !c.data_recebimento) return false;
-    const normalized = normalizeDate(c.data_recebimento);
-    if (!normalized) return false;
-    return normalized >= dataInicio && normalized <= dataFim;
+  // Comissões a Pagar (todas as pendentes, sem filtro de período)
+  const comissoesAPagarPendentes = comissoesAPagar.filter((c) => {
+    return c.status_pagamento === 'a_pagar';
   });
-  const totalComissoesAPagar = comissoesAPagarPeriodo.reduce((acc, c) => acc + toNumber(c.valor_a_pagar), 0);
-  const a_pagar_count = comissoesAPagarPeriodo.length;
+  const totalComissoesAPagar = comissoesAPagarPendentes.reduce((acc, c) => acc + toNumber(c.valor_a_pagar), 0);
+  const a_pagar_count = comissoesAPagarPendentes.length;
 
   // Comissões Pagas (filtrar por data_pagamento)
   const comissoesPagasPeriodo = comissoesAPagar.filter((c) => {
