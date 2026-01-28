@@ -192,6 +192,15 @@ export default function LancamentoReceitas() {
     const subcategoria = formData.subcategoria_id 
       ? subcategorias.find(s => s.id === formData.subcategoria_id) 
       : null;
+    
+    // Buscar nome da conta se origem for um ID
+    let origemFinal = formData.origem;
+    if (formData.origem) {
+      const conta = contas.find(c => c.id === formData.origem);
+      if (conta) {
+        origemFinal = `${conta.codigo_banco} - ${conta.nome_banco}`;
+      }
+    }
 
     const payload = {
       empresa_id: user.empresa_id,
@@ -202,7 +211,7 @@ export default function LancamentoReceitas() {
       subcategoria_nome: subcategoria?.nome || null,
       valor,
       data: dataFinal,
-      origem: formData.origem,
+      origem: origemFinal,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
     };
