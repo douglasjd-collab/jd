@@ -203,17 +203,22 @@ export default function OportunidadeDetalhes() {
                       <p className="font-semibold text-slate-900">{formatCurrency(sim.credito_total)}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500 text-xs">📅 Parcela Original</p>
-                      <p className="font-semibold text-slate-900">{formatCurrency(sim.parcela_total)}</p>
+                      <p className="text-slate-500 text-xs">💵 Valor a Receber</p>
+                      <p className="font-semibold text-blue-600">{formatCurrency(sim.credito_total - (sim.lance_embutido_valor || 0))}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500 text-xs">🎯 Lance Total</p>
-                      <p className="font-semibold text-emerald-600">{formatCurrency(sim.lance_total)}</p>
+                      <p className="text-slate-500 text-xs">📅 Parcela Original</p>
+                      <p className="font-semibold text-slate-900">{formatCurrency(sim.parcela_total)}</p>
                     </div>
                     <div>
                       <p className="text-slate-500 text-xs">⏱️ Prazo Original</p>
                       <p className="font-semibold text-slate-900">{sim.prazo_original} meses</p>
                     </div>
+                  </div>
+                  
+                  <div className="mt-3 flex items-center gap-2">
+                    <p className="text-slate-500 text-xs">🏢 Administradora:</p>
+                    <p className="font-semibold text-slate-900">{sim.administradora || 'Canopus'}</p>
                   </div>
 
                   <div className="mt-3 pt-3 border-t border-slate-200">
