@@ -38,26 +38,36 @@ Deno.serve(async (req) => {
 
     step = "extract_text";
     const extractRes = await base44.integrations.Core.InvokeLLM({
-      prompt: `Extraia os dados da tabela de planos de consórcio deste PDF.
+      prompt: `Extraia TODOS os dados da tabela de planos de consórcio deste PDF.
+
+IMPORTANTE: Ao clicar em cada linha da tabela, aparecem MÚLTIPLAS OPÇÕES de prazo e parcela para o mesmo bem.
+Exemplo: CR4072 pode ter opções de 96, 86, 76, 66, 56, 46 e 36 meses com parcelas diferentes.
+
+VOCÊ DEVE EXTRAIR TODAS AS VARIAÇÕES DE PRAZO/PARCELA PARA CADA BEM!
 
 FORMATO DA TABELA:
-- Coluna "NOME DO BEM": Código (ex: CR4205) + descrição (ex: AUTOMÓVEL LEVE 70%)
-- Coluna "VALOR": Valor do crédito em R$
-- Coluna "PRAZO": Prazo em meses (ex: 96)
-- Coluna "1ª PARCELA": Valor da primeira parcela em R$
-- Coluna "PLANO": Código + descrição (ex: "21 - PLANO EXCLUSIVO 70%")
-- Coluna "TIPO DE VENDA": Código + descrição (ex: "62 - PARCELA GRADUAL")
+- Linha principal: Código (ex: CR4205) + Descrição (ex: AUTOMÓVEL LEVE 70%) + Valor do crédito
+- Ao expandir: Múltiplas opções com formato "Plano de X meses / 1ª parcela de R$ Y,YY | Grupo: ZZZZZ"
 
-Para cada linha da tabela, extraia:
+Para cada VARIAÇÃO de prazo/parcela, extraia um registro separado:
 - codigo: código do plano (ex: CR4205, CR4072, CR4301)
-- nome_bem: descrição completa do bem (ex: "AUTOMÓVEL LEVE 70%", "AUTOMÓVEL LEVE 50%")
+- nome_bem: descrição do bem (ex: "AUTOMÓVEL LEVE 70%", "AUTOMÓVEL LEVE 50%")
 - valor_bem: valor do crédito (apenas número, sem R$)
-- prazo_meses: prazo em meses (apenas número)
+- prazo_meses: prazo em meses (ex: 96, 86, 76, 66, 56, 46, 36)
 - primeira_parcela: valor da primeira parcela (apenas número, sem R$)
-- plano: código e descrição do plano (ex: "21 - PLANO EXCLUSIVO 70%")
-- tipo_venda: código e descrição do tipo de venda (ex: "62 - PARCELA GRADUAL", "114 - LINEAR")
+- grupo: código do grupo (ex: "008120")
+- plano: código e descrição do plano da linha principal (ex: "3000 - GRUPO 3000 PARTICIPANTES")
+- tipo_venda: código e descrição do tipo de venda (ex: "114 - LINEAR", "62 - PARCELA GRADUAL")
 
-Retorne um array de planos no formato JSON.`,
+EXEMPLO de saída esperada para CR4072 com valor R$ 25.000,00:
+[
+  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 96, primeira_parcela: 326.78, grupo: "008120", ... },
+  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 86, primeira_parcela: 360.35, grupo: "008120", ... },
+  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 76, primeira_parcela: 402.80, grupo: "008120", ... },
+  ... (todas as variações)
+]
+
+Retorne um array de planos no formato JSON com TODAS as variações.`,
       file_urls: [fileUrl],
       response_json_schema: {
         type: "object",
@@ -72,6 +82,7 @@ Retorne um array de planos no formato JSON.`,
                 valor_bem: { type: "number" },
                 prazo_meses: { type: "number" },
                 primeira_parcela: { type: "number" },
+                grupo: { type: "string" },
                 plano: { type: "string" },
                 tipo_venda: { type: "string" }
               },
@@ -113,7 +124,7 @@ Retorne um array de planos no formato JSON.`,
         valor_bem: plano.valor_bem,
         prazo_meses: plano.prazo_meses,
         parcela: plano.primeira_parcela,
-        plano: plano.plano || "",
+        plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
         tipo_venda: plano.tipo_venda || "",
         ultima_sincronizacao: new Date().toISOString(),
         status: "ativo"
