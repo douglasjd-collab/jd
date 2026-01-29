@@ -397,7 +397,7 @@ export default function Layout({ children, currentPageName }) {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-72 min-h-screen">
+      <main className={cn("lg:ml-72 min-h-screen", darkMode && "bg-slate-900")}>
         <div className="p-4 lg:p-8">
           {children}
         </div>
