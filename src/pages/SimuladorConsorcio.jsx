@@ -84,10 +84,9 @@ export default function SimuladorConsorcio() {
   const lanceEmbutidoValor = creditoTotal * (lanceEmbutidoPercentual / 100);
   const creditoAReceber = creditoTotal - lanceEmbutidoValor;
   
-  // Calcular percentual do lance próprio
-  const totalPlanoBase = parseFloat(prazoOriginal || 0) * parcelaTotal;
-  const lanceProprioPercentual = lanceProprio && totalPlanoBase > 0 
-    ? ((parseFloat(lanceProprio) / totalPlanoBase) * 100).toFixed(2) 
+  // Calcular percentual do lance próprio em cima do crédito
+  const lanceProprioPercentual = lanceProprio && creditoTotal > 0 
+    ? ((parseFloat(lanceProprio) / creditoTotal) * 100).toFixed(2) 
     : '0';
 
   const calcularSimulacao = () => {
