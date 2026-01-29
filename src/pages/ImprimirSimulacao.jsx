@@ -220,7 +220,7 @@ export default function ImprimirSimulacao() {
             <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
               📋 Dados do Cliente
             </h2>
-            <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="font-semibold">Nome:</span> {simulacao.cliente_nome}
               </div>
@@ -229,6 +229,9 @@ export default function ImprimirSimulacao() {
               </div>
               <div>
                 <span className="font-semibold">Tipo:</span> <span className="capitalize">{simulacao.tipo_grupo || 'Automóvel'}</span>
+              </div>
+              <div>
+                <span className="font-semibold">Administradora:</span> {simulacao.administradora || 'Canopus'}
               </div>
             </div>
           </div>
