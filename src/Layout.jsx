@@ -47,6 +47,7 @@ export default function Layout({ children, currentPageName }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoUploaderOpen, setLogoUploaderOpen] = useState(false);
   const [editarPerfilOpen, setEditarPerfilOpen] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
 
   useEffect(() => {
     loadUser();
