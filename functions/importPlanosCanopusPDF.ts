@@ -1,13 +1,35 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
 
-function j(status, data) {
+function j(status, data, corsHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: { 
+      "content-type": "application/json; charset=utf-8",
+      ...corsHeaders
+    },
   });
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get("origin") || "*";
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Credentials": "true",
+    "Content-Type": "application/json",
+  };
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders,
+        "Access-Control-Allow-Headers": "content-type, authorization",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+      },
+    });
+  }
+
   let step = "init";
   const t0 = Date.now();
 
@@ -15,7 +37,7 @@ Deno.serve(async (req) => {
     step = "auth";
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return j(401, { error: "Unauthorized", step });
+    if (!user) return j(401, { error: "Unauthorized", step }, corsHeaders);
 
     step = "get_empresa";
     let empresaId = user.empresa_id;
@@ -23,13 +45,13 @@ Deno.serve(async (req) => {
       const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
       if (colabs?.length) empresaId = colabs[0].empresa_id;
     }
-    if (!empresaId) return j(400, { error: "Empresa não encontrada", step });
+    if (!empresaId) return j(400, { error: "Empresa não encontrada", step }, corsHeaders);
 
     step = "parse_body";
     const body = await req.json();
     const { file_url, produto_id = "101" } = body;
 
-    if (!file_url) return j(400, { error: "URL do arquivo não fornecida", step });
+    if (!file_url) return j(400, { error: "URL do arquivo não fornecida", step }, corsHeaders);
 
     const produtoId = produto_id;
     const fileUrl = file_url;
@@ -97,7 +119,7 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
         error: "Nenhum plano encontrado no PDF", 
         step,
         elapsed_ms: Date.now() - t0
-      });
+      }, corsHeaders);
     }
 
     step = "save_planos";
@@ -143,7 +165,7 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
       atualizados,
       total_planos: planos.length,
       elapsed_ms: Date.now() - t0
-    });
+    }, corsHeaders);
 
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -152,6 +174,6 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
       step,
       message: msg,
       elapsed_ms: Date.now() - t0
-    });
+    }, corsHeaders);
   }
 });
