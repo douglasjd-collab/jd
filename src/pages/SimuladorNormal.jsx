@@ -488,7 +488,7 @@ export default function SimuladorNormal() {
                       <p className="text-xs text-purple-700">💎 Lance Próprio</p>
                       <p className="text-xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
                       <p className="text-xs text-purple-700 mt-1">
-                        {lanceProprioPercentual}% do total do plano
+                        {lanceProprioPercentual}% do crédito total
                       </p>
                     </div>
                   )}
@@ -607,7 +607,7 @@ export default function SimuladorNormal() {
                       <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
                       <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
                       <p className="text-xs text-purple-700 mt-1">
-                        {lanceProprioPercentual}% do total do plano
+                        {lanceProprioPercentual}% do crédito total
                       </p>
                     </div>
                   )}
