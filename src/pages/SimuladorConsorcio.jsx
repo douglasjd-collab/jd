@@ -83,6 +83,12 @@ export default function SimuladorConsorcio() {
   const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
   const lanceEmbutidoValor = creditoTotal * (lanceEmbutidoPercentual / 100);
   const creditoAReceber = creditoTotal - lanceEmbutidoValor;
+  
+  // Calcular percentual do lance próprio
+  const totalPlanoBase = parseFloat(prazoOriginal || 0) * parcelaTotal;
+  const lanceProprioPercentual = lanceProprio && totalPlanoBase > 0 
+    ? ((parseFloat(lanceProprio) / totalPlanoBase) * 100).toFixed(2) 
+    : '0';
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
@@ -653,17 +659,28 @@ export default function SimuladorConsorcio() {
 
                 {usarLanceProprio && (
                   <>
-                    <div>
-                      <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
-                      <Input
-                        type="text"
-                        value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
-                        onChange={(e) => {
-                          const valorNumerico = handleMoedaInput(e.target.value);
-                          setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
-                        }}
-                        placeholder="0,00"
-                      />
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-2">
+                        <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                        <Input
+                          type="text"
+                          value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                          onChange={(e) => {
+                            const valorNumerico = handleMoedaInput(e.target.value);
+                            setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                          }}
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Percentual (%)</Label>
+                        <Input
+                          type="text"
+                          value={lanceProprioPercentual + '%'}
+                          disabled
+                          className="bg-slate-100 text-slate-700 font-semibold"
+                        />
+                      </div>
                     </div>
 
                     {administradora === 'canopus' && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel') && (
@@ -707,6 +724,9 @@ export default function SimuladorConsorcio() {
                       <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                         <p className="text-xs text-purple-700">💎 Lance Próprio</p>
                         <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                        <p className="text-xs text-purple-700 mt-1">
+                          {lanceProprioPercentual}% do total do plano
+                        </p>
                       </div>
                     )}
                   </>
@@ -787,6 +807,9 @@ export default function SimuladorConsorcio() {
                       <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                         <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
                         <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
+                        <p className="text-xs text-purple-700 mt-1">
+                          {lanceProprioPercentual}% do total do plano
+                        </p>
                       </div>
 
                       <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
