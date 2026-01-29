@@ -181,7 +181,17 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Importar Planos (Print)', page: 'ImportarPlanosPrint' },
       ]
     },
-    { name: 'Importação', icon: Upload, page: 'Importacao', roles: ['master', 'super_admin', 'admin'] },
+    { 
+      name: 'Importação', 
+      icon: Upload, 
+      roles: ['master', 'super_admin', 'admin'],
+      submenu: [
+        { name: 'Importar Comissões', page: 'ImportacaoComissao' },
+        { name: 'Importar Planos', page: 'ImportacaoPlanos' },
+        { name: 'Importar Produção', page: 'ImportacaoProducao' },
+        { name: 'Histórico', page: 'Importacao' },
+      ]
+    },
     { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor'] },
     { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente'] },
