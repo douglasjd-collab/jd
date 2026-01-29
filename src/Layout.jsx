@@ -21,7 +21,9 @@ import {
   TrendingUp,
   Camera,
   Calculator,
-  Calendar
+  Calendar,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,7 @@ import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import AntiTranslateGuard from '@/components/AntiTranslateGuard';
 import { Toaster } from 'sonner';
+import { useTheme } from '@/components/ThemeContext';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
