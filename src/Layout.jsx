@@ -304,11 +304,21 @@ export default function Layout({ children, currentPageName }) {
                       Alterar Logo do Sistema
                     </DropdownMenuItem>
                   )}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      toggleDarkMode();
+                    }}
+                  >
+                    {darkMode ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+                    {darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                  </DropdownMenuItem>
+                  </div>
+                  </DropdownMenuContent>
+                  </DropdownMenu>
+                  </div>
+                  )}
 
         {/* Navigation */}
         <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-280px)]">
