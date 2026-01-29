@@ -39,12 +39,23 @@ Deno.serve(async (req) => {
     step = "extract_text";
     const extractRes = await base44.integrations.Core.InvokeLLM({
       prompt: `Extraia os dados da tabela de planos de consórcio deste PDF.
-      
+
+FORMATO DA TABELA:
+- Coluna "NOME DO BEM": Código (ex: CR4205) + descrição (ex: AUTOMÓVEL LEVE 70%)
+- Coluna "VALOR": Valor do crédito em R$
+- Coluna "PRAZO": Prazo em meses (ex: 96)
+- Coluna "1ª PARCELA": Valor da primeira parcela em R$
+- Coluna "PLANO": Código + descrição (ex: "21 - PLANO EXCLUSIVO 70%")
+- Coluna "TIPO DE VENDA": Código + descrição (ex: "62 - PARCELA GRADUAL")
+
 Para cada linha da tabela, extraia:
-- codigo: código do plano
-- descricao: descrição do bem
-- credito: valor do crédito
-- prazos: objeto com os prazos disponíveis (36, 48, 60, 72, 96 meses) e suas respectivas parcelas
+- codigo: código do plano (ex: CR4205, CR4072, CR4301)
+- nome_bem: descrição completa do bem (ex: "AUTOMÓVEL LEVE 70%", "AUTOMÓVEL LEVE 50%")
+- valor_bem: valor do crédito (apenas número, sem R$)
+- prazo_meses: prazo em meses (apenas número)
+- primeira_parcela: valor da primeira parcela (apenas número, sem R$)
+- plano: código e descrição do plano (ex: "21 - PLANO EXCLUSIVO 70%")
+- tipo_venda: código e descrição do tipo de venda (ex: "62 - PARCELA GRADUAL", "114 - LINEAR")
 
 Retorne um array de planos no formato JSON.`,
       file_urls: [fileUrl],
@@ -57,19 +68,14 @@ Retorne um array de planos no formato JSON.`,
               type: "object",
               properties: {
                 codigo: { type: "string" },
-                descricao: { type: "string" },
-                credito: { type: "number" },
-                prazos: {
-                  type: "object",
-                  properties: {
-                    "36": { type: "number" },
-                    "48": { type: "number" },
-                    "60": { type: "number" },
-                    "72": { type: "number" },
-                    "96": { type: "number" }
-                  }
-                }
-              }
+                nome_bem: { type: "string" },
+                valor_bem: { type: "number" },
+                prazo_meses: { type: "number" },
+                primeira_parcela: { type: "number" },
+                plano: { type: "string" },
+                tipo_venda: { type: "string" }
+              },
+              required: ["codigo", "nome_bem", "valor_bem", "prazo_meses", "primeira_parcela"]
             }
           }
         }
@@ -90,40 +96,35 @@ Retorne um array de planos no formato JSON.`,
     let atualizados = 0;
 
     for (const plano of planos) {
-      // Para cada prazo disponível, criar um registro
-      for (const [prazo, parcela] of Object.entries(plano.prazos || {})) {
-        if (!parcela || parcela <= 0) continue;
+      const hash = `${plano.codigo}_${plano.prazo_meses}`;
+      
+      const existe = await base44.entities.PlanoCanopus.filter({
+        empresa_id: empresaId,
+        external_hash: hash
+      });
 
-        const hash = `${plano.codigo}_${prazo}`;
-        
-        const existe = await base44.entities.PlanoCanopus.filter({
-          empresa_id: empresaId,
-          external_hash: hash
-        });
+      const data = {
+        empresa_id: empresaId,
+        origem: "PDF_IMPORT",
+        produto_id: produtoId,
+        permite_reserva: "N",
+        external_hash: hash,
+        nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
+        valor_bem: plano.valor_bem,
+        prazo_meses: plano.prazo_meses,
+        parcela: plano.primeira_parcela,
+        plano: plano.plano || "",
+        tipo_venda: plano.tipo_venda || "",
+        ultima_sincronizacao: new Date().toISOString(),
+        status: "ativo"
+      };
 
-        const data = {
-          empresa_id: empresaId,
-          origem: "PDF_IMPORT",
-          produto_id: produtoId,
-          permite_reserva: "N",
-          external_hash: hash,
-          nome: plano.descricao,
-          valor: plano.credito,
-          prazo: parseInt(prazo),
-          primeira_parcela: parcela,
-          plano: plano.codigo,
-          tipo_venda: "",
-          ultima_sincronizacao: new Date().toISOString(),
-          status: "ativo",
-        };
-
-        if (existe?.length) {
-          await base44.entities.PlanoCanopus.update(existe[0].id, data);
-          atualizados++;
-        } else {
-          await base44.entities.PlanoCanopus.create(data);
-          criados++;
-        }
+      if (existe?.length) {
+        await base44.entities.PlanoCanopus.update(existe[0].id, data);
+        atualizados++;
+      } else {
+        await base44.entities.PlanoCanopus.create(data);
+        criados++;
       }
     }
 
