@@ -80,28 +80,7 @@ export default function PlanosCanopusPage() {
     enabled: !!user?.empresa_id
   });
 
-  // Verificação de permissão
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-
-  if (!['admin', 'super_admin', 'master'].includes(user.perfil)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <XCircle className="w-16 h-16 text-red-500" />
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-900">Acesso Negado</h2>
-          <p className="text-slate-600 mt-2">Você não tem permissão para acessar esta página.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Agrupar planos por código (sem prazo)
+  // Agrupar planos por código (sem prazo) - ANTES dos early returns
   const groupedPlanos = React.useMemo(() => {
     const groups = {};
     
@@ -140,15 +119,17 @@ export default function PlanosCanopusPage() {
     return Object.values(groups);
   }, [planos]);
 
-  const filteredPlanos = groupedPlanos.filter(g => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      g.nome_bem?.toLowerCase().includes(s) ||
-      g.codigo?.toLowerCase().includes(s) ||
-      g.plano?.toLowerCase().includes(s)
-    );
-  });
+  const filteredPlanos = React.useMemo(() => {
+    return groupedPlanos.filter(g => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return (
+        g.nome_bem?.toLowerCase().includes(s) ||
+        g.codigo?.toLowerCase().includes(s) ||
+        g.plano?.toLowerCase().includes(s)
+      );
+    });
+  }, [groupedPlanos, search]);
 
   const produtoLabel = (id) => {
     const map = { '101': 'Automóveis', '102': 'Imóveis', '103': 'Motos' };
@@ -166,6 +147,27 @@ export default function PlanosCanopusPage() {
       currency: 'BRL' 
     });
   };
+
+  // Verificação de permissão
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (!['admin', 'super_admin', 'master'].includes(user.perfil)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <XCircle className="w-16 h-16 text-red-500" />
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-slate-900">Acesso Negado</h2>
+          <p className="text-slate-600 mt-2">Você não tem permissão para acessar esta página.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
