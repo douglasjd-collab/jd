@@ -224,6 +224,79 @@ export default function RelatoriosFinanceiros() {
         <p className={`mb-6 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Visão consolidada de todas as movimentações financeiras</p>
       </div>
 
+      {/* Botões de Acesso Rápido */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <Link to={createPageUrl('ComissoesPagar')}>
+          <Card className={`p-4 hover:shadow-lg transition-all cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'hover:border-orange-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <FileText className="w-5 h-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>Comissões a Pagar</p>
+              </div>
+              <ArrowRight className={`w-4 h-4 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`} />
+            </div>
+          </Card>
+        </Link>
+
+        <Link to={createPageUrl('ComissoesPagas')}>
+          <Card className={`p-4 hover:shadow-lg transition-all cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'hover:border-red-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <Wallet className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>Comissões Pagas</p>
+              </div>
+              <ArrowRight className={`w-4 h-4 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`} />
+            </div>
+          </Card>
+        </Link>
+
+        <Link to={createPageUrl('ComissoesRecebidas')}>
+          <Card className={`p-4 hover:shadow-lg transition-all cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'hover:border-green-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <DollarSign className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>Comissões Recebidas</p>
+              </div>
+              <ArrowRight className={`w-4 h-4 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`} />
+            </div>
+          </Card>
+        </Link>
+
+        <Link to={createPageUrl('LancamentoReceitas')}>
+          <Card className={`p-4 hover:shadow-lg transition-all cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'hover:border-blue-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>Lançamento de Receitas</p>
+              </div>
+              <ArrowRight className={`w-4 h-4 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`} />
+            </div>
+          </Card>
+        </Link>
+
+        <Link to={createPageUrl('LancamentoDespesas')}>
+          <Card className={`p-4 hover:shadow-lg transition-all cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'hover:border-purple-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <TrendingDown className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>Lançamento de Despesas</p>
+              </div>
+              <ArrowRight className={`w-4 h-4 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`} />
+            </div>
+          </Card>
+        </Link>
+      </div>
+
       {/* Filtro de Período */}
       <Card className={`p-6 mb-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
         <div className="flex flex-col md:flex-row gap-4 items-end">
