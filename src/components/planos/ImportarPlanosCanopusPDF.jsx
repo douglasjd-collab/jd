@@ -29,26 +29,16 @@ export default function ImportarPlanosCanopusPDF({ open, onOpenChange, standalon
     mutationFn: async () => {
       if (!file) throw new Error('Selecione um arquivo PDF');
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('produto_id', produtoId);
+      // 1. Upload do PDF
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-      // Chamar a função diretamente via fetch
-      const user = await base44.auth.me();
-      const response = await fetch('/api/apps/6950a9860c8af0e2ff10fc9e/functions/importPlanosCanopusPDF', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user.access_token}`,
-        },
-        body: formData,
+      // 2. Chamar função com URL do arquivo
+      const response = await base44.functions.invoke('importPlanosCanopusPDF', {
+        file_url,
+        produto_id: produtoId
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao importar PDF');
-      }
-
-      return await response.json();
+      return response.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['planos-canopus'] });
