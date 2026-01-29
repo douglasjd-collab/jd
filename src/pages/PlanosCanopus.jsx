@@ -137,8 +137,10 @@ export default function PlanosCanopusPage() {
       
       // Filtro de valor
       const valor = g.valor_bem || 0;
-      if (valorMin && valor < parseFloat(valorMin)) return false;
-      if (valorMax && valor > parseFloat(valorMax)) return false;
+      const min = valorMin ? parseFloat(valorMin) / 100 : 0;
+      const max = valorMax ? parseFloat(valorMax) / 100 : Infinity;
+      if (min && valor < min) return false;
+      if (max < Infinity && valor > max) return false;
       
       return true;
     });
@@ -159,6 +161,20 @@ export default function PlanosCanopusPage() {
       style: 'currency', 
       currency: 'BRL' 
     });
+  };
+
+  const formatCurrencyInput = (value) => {
+    if (!value) return '';
+    const number = parseFloat(value.replace(/\D/g, '')) / 100;
+    return number.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  };
+
+  const parseCurrencyInput = (value) => {
+    if (!value) return '';
+    return value.replace(/\D/g, '');
   };
 
   // Verificação de permissão
@@ -248,19 +264,19 @@ export default function PlanosCanopusPage() {
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-slate-400" />
             <Input
-              type="number"
+              type="text"
               placeholder="Valor mín."
-              value={valorMin}
-              onChange={(e) => setValorMin(e.target.value)}
-              className="w-32"
+              value={formatCurrencyInput(valorMin)}
+              onChange={(e) => setValorMin(parseCurrencyInput(e.target.value))}
+              className="w-40"
             />
             <span className="text-slate-400">até</span>
             <Input
-              type="number"
+              type="text"
               placeholder="Valor máx."
-              value={valorMax}
-              onChange={(e) => setValorMax(e.target.value)}
-              className="w-32"
+              value={formatCurrencyInput(valorMax)}
+              onChange={(e) => setValorMax(parseCurrencyInput(e.target.value))}
+              className="w-40"
             />
             {(valorMin || valorMax) && (
               <Button
