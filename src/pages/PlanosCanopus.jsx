@@ -27,7 +27,8 @@ import {
   XCircle,
   Package,
   Eye,
-  ChevronRight
+  ChevronRight,
+  Filter
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 
@@ -36,6 +37,8 @@ export default function PlanosCanopusPage() {
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [valorMin, setValorMin] = useState('');
+  const [valorMax, setValorMax] = useState('');
 
   React.useEffect(() => {
     loadUser();
@@ -121,15 +124,25 @@ export default function PlanosCanopusPage() {
 
   const filteredPlanos = React.useMemo(() => {
     return groupedPlanos.filter(g => {
-      if (!search) return true;
-      const s = search.toLowerCase();
-      return (
-        g.nome_bem?.toLowerCase().includes(s) ||
-        g.codigo?.toLowerCase().includes(s) ||
-        g.plano?.toLowerCase().includes(s)
-      );
+      // Filtro de busca
+      if (search) {
+        const s = search.toLowerCase();
+        const matchSearch = (
+          g.nome_bem?.toLowerCase().includes(s) ||
+          g.codigo?.toLowerCase().includes(s) ||
+          g.plano?.toLowerCase().includes(s)
+        );
+        if (!matchSearch) return false;
+      }
+      
+      // Filtro de valor
+      const valor = g.valor_bem || 0;
+      if (valorMin && valor < parseFloat(valorMin)) return false;
+      if (valorMax && valor > parseFloat(valorMax)) return false;
+      
+      return true;
     });
-  }, [groupedPlanos, search]);
+  }, [groupedPlanos, search, valorMin, valorMax]);
 
   const produtoLabel = (id) => {
     const map = { '101': 'Automóveis', '102': 'Imóveis', '103': 'Motos' };
@@ -220,16 +233,48 @@ export default function PlanosCanopusPage() {
         </Card>
       </div>
 
-      {/* Search */}
+      {/* Search & Filters */}
       <Card className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <Input
-            placeholder="Buscar por nome do bem, plano ou tipo de venda..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Input
+              placeholder="Buscar por nome do bem, plano ou tipo de venda..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-slate-400" />
+            <Input
+              type="number"
+              placeholder="Valor mín."
+              value={valorMin}
+              onChange={(e) => setValorMin(e.target.value)}
+              className="w-32"
+            />
+            <span className="text-slate-400">até</span>
+            <Input
+              type="number"
+              placeholder="Valor máx."
+              value={valorMax}
+              onChange={(e) => setValorMax(e.target.value)}
+              className="w-32"
+            />
+            {(valorMin || valorMax) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setValorMin('');
+                  setValorMax('');
+                }}
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
