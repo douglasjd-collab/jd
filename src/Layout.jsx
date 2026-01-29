@@ -47,7 +47,21 @@ export default function Layout({ children, currentPageName }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoUploaderOpen, setLogoUploaderOpen] = useState(false);
   const [editarPerfilOpen, setEditarPerfilOpen] = useState(false);
-  const { darkMode, toggleDarkMode } = useTheme();
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
 
   useEffect(() => {
     loadUser();
