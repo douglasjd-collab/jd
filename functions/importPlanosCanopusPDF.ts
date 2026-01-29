@@ -25,16 +25,14 @@ Deno.serve(async (req) => {
     }
     if (!empresaId) return j(400, { error: "Empresa não encontrada", step });
 
-    step = "parse_form";
-    const formData = await req.formData();
-    const file = formData.get("file");
-    const produtoId = formData.get("produto_id") || "101";
+    step = "parse_body";
+    const body = await req.json();
+    const { file_url, produto_id = "101" } = body;
 
-    if (!file) return j(400, { error: "PDF não fornecido", step });
+    if (!file_url) return j(400, { error: "URL do arquivo não fornecida", step });
 
-    step = "upload_pdf";
-    const uploadRes = await base44.integrations.Core.UploadFile({ file });
-    const fileUrl = uploadRes.file_url;
+    const produtoId = produto_id;
+    const fileUrl = file_url;
 
     step = "extract_text";
     const extractRes = await base44.integrations.Core.InvokeLLM({
