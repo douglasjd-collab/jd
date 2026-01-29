@@ -5,19 +5,37 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { 
   Search, 
   Database,
   Loader2,
   CheckCircle2,
   XCircle,
-  Package
+  Package,
+  Eye,
+  ChevronRight
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 
 export default function PlanosCanopusPage() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   React.useEffect(() => {
     loadUser();
@@ -83,19 +101,70 @@ export default function PlanosCanopusPage() {
     );
   }
 
-  const filteredPlanos = planos.filter(p => {
+  // Agrupar planos por código (sem prazo)
+  const groupedPlanos = React.useMemo(() => {
+    const groups = {};
+    
+    planos.forEach(plano => {
+      // Extrair código base do nome_bem (ex: "CR4072 - AUTOMÓVEL LEVE" -> "CR4072")
+      const codigo = plano.nome_bem?.split(' - ')[0]?.trim() || plano.external_hash?.split('_')[0];
+      if (!codigo) return;
+      
+      if (!groups[codigo]) {
+        groups[codigo] = {
+          codigo,
+          nome_bem: plano.nome_bem,
+          valor_bem: plano.valor_bem,
+          produto_id: plano.produto_id,
+          plano: plano.plano,
+          tipo_venda: plano.tipo_venda,
+          status: plano.status,
+          variacoes: []
+        };
+      }
+      
+      groups[codigo].variacoes.push({
+        id: plano.id,
+        prazo_meses: plano.prazo_meses,
+        parcela: plano.parcela,
+        plano: plano.plano,
+        tipo_venda: plano.tipo_venda
+      });
+    });
+    
+    // Ordenar variações por prazo
+    Object.values(groups).forEach(group => {
+      group.variacoes.sort((a, b) => (b.prazo_meses || 0) - (a.prazo_meses || 0));
+    });
+    
+    return Object.values(groups);
+  }, [planos]);
+
+  const filteredPlanos = groupedPlanos.filter(g => {
     if (!search) return true;
     const s = search.toLowerCase();
     return (
-      p.nome_bem?.toLowerCase().includes(s) ||
-      p.plano?.toLowerCase().includes(s) ||
-      p.tipo_venda?.toLowerCase().includes(s)
+      g.nome_bem?.toLowerCase().includes(s) ||
+      g.codigo?.toLowerCase().includes(s) ||
+      g.plano?.toLowerCase().includes(s)
     );
   });
 
   const produtoLabel = (id) => {
     const map = { '101': 'Automóveis', '102': 'Imóveis', '103': 'Motos' };
     return map[id] || id;
+  };
+
+  const handleOpenDialog = (group) => {
+    setSelectedGroup(group);
+    setDialogOpen(true);
+  };
+
+  const formatCurrency = (value) => {
+    return value?.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    });
   };
 
   return (
@@ -114,7 +183,7 @@ export default function PlanosCanopusPage() {
               <Database className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Total de Planos</p>
+              <p className="text-sm text-slate-500">Total de Variações</p>
               <p className="text-2xl font-bold text-slate-900">{planos.length}</p>
             </div>
           </div>
@@ -123,12 +192,12 @@ export default function PlanosCanopusPage() {
         <Card className="p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-emerald-100 rounded-xl">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              <Package className="w-6 h-6 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Ativos</p>
+              <p className="text-sm text-slate-500">Planos Únicos</p>
               <p className="text-2xl font-bold text-slate-900">
-                {planos.filter(p => p.status === 'ativo').length}
+                {groupedPlanos.length}
               </p>
             </div>
           </div>
@@ -137,7 +206,7 @@ export default function PlanosCanopusPage() {
         <Card className="p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-amber-100 rounded-xl">
-              <Package className="w-6 h-6 text-amber-600" />
+              <CheckCircle2 className="w-6 h-6 text-amber-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Produtos</p>
@@ -162,7 +231,7 @@ export default function PlanosCanopusPage() {
         </div>
       </Card>
 
-      {/* Lista de Planos */}
+      {/* Tabela de Planos */}
       <Card>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -176,78 +245,119 @@ export default function PlanosCanopusPage() {
             </p>
             {!search && (
               <p className="text-sm text-slate-400">
-                Acesse Configurações → Sincronização Canopus
+                Acesse Importação → Importar Planos
               </p>
             )}
           </div>
         ) : (
-          <div className="divide-y">
-            {filteredPlanos.map((plano) => (
-              <div key={plano.id} className="p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-slate-900 truncate">
-                        {plano.nome_bem}
-                      </h3>
-                      <Badge variant={plano.status === 'ativo' ? 'default' : 'secondary'}>
-                        {plano.status}
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <p className="text-slate-500">Produto</p>
-                        <p className="font-medium text-slate-700">
-                          {produtoLabel(plano.produto_id)}
-                        </p>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="font-semibold">NOME DO BEM</TableHead>
+                  <TableHead className="font-semibold text-right">VALOR</TableHead>
+                  <TableHead className="font-semibold text-center">PRAZO</TableHead>
+                  <TableHead className="font-semibold text-right">1ª PARCELA</TableHead>
+                  <TableHead className="font-semibold">PLANO</TableHead>
+                  <TableHead className="font-semibold">TIPO DE VENDA</TableHead>
+                  <TableHead className="font-semibold text-center">AÇÕES</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPlanos.map((group) => (
+                  <TableRow 
+                    key={group.codigo} 
+                    className="hover:bg-slate-50 cursor-pointer"
+                    onClick={() => handleOpenDialog(group)}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span className="text-blue-600">{group.codigo}</span>
+                        <span className="text-slate-600">-</span>
+                        <span>{group.nome_bem?.split(' - ')[1] || group.nome_bem}</span>
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {group.variacoes.length} variações
+                        </Badge>
                       </div>
-                      <div>
-                        <p className="text-slate-500">Valor do Bem</p>
-                        <p className="font-medium text-slate-700">
-                          {plano.valor_bem?.toLocaleString('pt-BR', { 
-                            style: 'currency', 
-                            currency: 'BRL' 
-                          })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Parcela</p>
-                        <p className="font-medium text-slate-700">
-                          {plano.parcela?.toLocaleString('pt-BR', { 
-                            style: 'currency', 
-                            currency: 'BRL' 
-                          })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500">Prazo</p>
-                        <p className="font-medium text-slate-700">
-                          {plano.prazo_meses} meses
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
-                      {plano.plano && (
-                        <span>Plano: <strong>{plano.plano}</strong></span>
-                      )}
-                      {plano.tipo_venda && (
-                        <span>Tipo: <strong>{plano.tipo_venda}</strong></span>
-                      )}
-                      {plano.permite_reserva && (
-                        <span>
-                          Reserva: <strong>{plano.permite_reserva === 'S' ? 'Sim' : 'Não'}</strong>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-slate-900">
+                      {formatCurrency(group.valor_bem)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {group.variacoes[0]?.prazo_meses || '-'}
+                    </TableCell>
+                    <TableCell className="text-right text-slate-900">
+                      {formatCurrency(group.variacoes[0]?.parcela)}
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-600">
+                      {group.plano?.split('|')[1]?.trim() || group.plano}
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-600">
+                      {group.tipo_venda}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDialog(group);
+                        }}
+                      >
+                        <ChevronRight className="w-5 h-5 text-blue-600" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </Card>
+
+      {/* Dialog com Variações */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedGroup?.codigo} - {selectedGroup?.nome_bem?.split(' - ')[1] || selectedGroup?.nome_bem}
+            </DialogTitle>
+            <div className="flex items-center gap-4 mt-2">
+              <span className="text-lg font-semibold text-blue-600">
+                {formatCurrency(selectedGroup?.valor_bem)}
+              </span>
+              <Badge>{selectedGroup?.plano?.split('|')[0]?.trim()}</Badge>
+              <Badge variant="outline">{selectedGroup?.tipo_venda}</Badge>
+            </div>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <div className="space-y-2">
+              {selectedGroup?.variacoes.map((variacao, idx) => (
+                <div 
+                  key={variacao.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full text-sm font-medium text-slate-600">
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        Plano de {variacao.prazo_meses} meses / 1ª parcela de {formatCurrency(variacao.parcela)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Grupo: {selectedGroup.plano?.split('|')[0]?.trim()}
+                      </p>
+                    </div>
+                  </div>
+                  <Eye className="w-5 h-5 text-slate-400" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
