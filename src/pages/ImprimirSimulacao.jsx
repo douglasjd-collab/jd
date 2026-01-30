@@ -152,6 +152,11 @@ export default function ImprimirSimulacao() {
   }
   const modelo = simulacao.opcao_pos_contemplacao === 'prazo' ? 'Canopus (Recomendado)' : 'Simples';
 
+  // Calcular percentual do lance próprio em relação ao crédito
+  const lanceProprioPercentual = simulacao.lance_proprio_ativo && simulacao.credito_total > 0
+    ? ((simulacao.lance_proprio_valor / simulacao.credito_total) * 100).toFixed(2)
+    : '0';
+
   // Calcula a primeira parcela no ato usando lógica robusta
   const { primeiraParcelaNoAto, isParcelaReduzida } = calcularPrimeiraParcelaNoAto();
 
@@ -287,7 +292,7 @@ export default function ImprimirSimulacao() {
                 )}
                 {simulacao.lance_proprio_ativo && (
                   <div className="flex justify-between">
-                    <span>Lance Próprio:</span>
+                    <span>Lance Próprio ({lanceProprioPercentual}%):</span>
                     <span className="font-semibold">
                       {formatCurrency(simulacao.lance_proprio_valor)}
                     </span>
