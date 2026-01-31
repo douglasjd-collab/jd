@@ -119,6 +119,7 @@ export default function Empresas() {
         endereco_complemento: '',
         endereco_cep: '',
         endereco_estado: '',
+        endereco_cidade: '',
         status: 'ativa'
       });
       setSelectedEmpresa(null);
@@ -127,7 +128,7 @@ export default function Empresas() {
   };
 
   const onSubmit = async (data) => {
-    if (!data.nome || !data.cpf_cnpj || !data.telefone || !data.email || !data.endereco_rua || !data.endereco_numero || !data.endereco_cep || !data.endereco_estado) {
+    if (!data.nome || !data.cpf_cnpj || !data.telefone || !data.email || !data.endereco_rua || !data.endereco_numero || !data.endereco_cep || !data.endereco_estado || !data.endereco_cidade) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -423,46 +424,58 @@ export default function Empresas() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <Label htmlFor="endereco_estado">Estado *</Label>
-                <Select
-                  value={watch('endereco_estado') || ''}
-                  onValueChange={(value) => setValue('endereco_estado', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AC">Acre</SelectItem>
-                    <SelectItem value="AL">Alagoas</SelectItem>
-                    <SelectItem value="AP">Amapá</SelectItem>
-                    <SelectItem value="AM">Amazonas</SelectItem>
-                    <SelectItem value="BA">Bahia</SelectItem>
-                    <SelectItem value="CE">Ceará</SelectItem>
-                    <SelectItem value="DF">Distrito Federal</SelectItem>
-                    <SelectItem value="ES">Espírito Santo</SelectItem>
-                    <SelectItem value="GO">Goiás</SelectItem>
-                    <SelectItem value="MA">Maranhão</SelectItem>
-                    <SelectItem value="MT">Mato Grosso</SelectItem>
-                    <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
-                    <SelectItem value="MG">Minas Gerais</SelectItem>
-                    <SelectItem value="PA">Pará</SelectItem>
-                    <SelectItem value="PB">Paraíba</SelectItem>
-                    <SelectItem value="PR">Paraná</SelectItem>
-                    <SelectItem value="PE">Pernambuco</SelectItem>
-                    <SelectItem value="PI">Piauí</SelectItem>
-                    <SelectItem value="RJ">Rio de Janeiro</SelectItem>
-                    <SelectItem value="RN">Rio Grande do Norte</SelectItem>
-                    <SelectItem value="RS">Rio Grande do Sul</SelectItem>
-                    <SelectItem value="RO">Rondônia</SelectItem>
-                    <SelectItem value="RR">Roraima</SelectItem>
-                    <SelectItem value="SC">Santa Catarina</SelectItem>
-                    <SelectItem value="SP">São Paulo</SelectItem>
-                    <SelectItem value="SE">Sergipe</SelectItem>
-                    <SelectItem value="TO">Tocantins</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.endereco_estado && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="endereco_estado">Estado *</Label>
+                  <Select
+                    value={watch('endereco_estado') || ''}
+                    onValueChange={(value) => setValue('endereco_estado', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AC">Acre</SelectItem>
+                      <SelectItem value="AL">Alagoas</SelectItem>
+                      <SelectItem value="AP">Amapá</SelectItem>
+                      <SelectItem value="AM">Amazonas</SelectItem>
+                      <SelectItem value="BA">Bahia</SelectItem>
+                      <SelectItem value="CE">Ceará</SelectItem>
+                      <SelectItem value="DF">Distrito Federal</SelectItem>
+                      <SelectItem value="ES">Espírito Santo</SelectItem>
+                      <SelectItem value="GO">Goiás</SelectItem>
+                      <SelectItem value="MA">Maranhão</SelectItem>
+                      <SelectItem value="MT">Mato Grosso</SelectItem>
+                      <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                      <SelectItem value="MG">Minas Gerais</SelectItem>
+                      <SelectItem value="PA">Pará</SelectItem>
+                      <SelectItem value="PB">Paraíba</SelectItem>
+                      <SelectItem value="PR">Paraná</SelectItem>
+                      <SelectItem value="PE">Pernambuco</SelectItem>
+                      <SelectItem value="PI">Piauí</SelectItem>
+                      <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                      <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                      <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                      <SelectItem value="RO">Rondônia</SelectItem>
+                      <SelectItem value="RR">Roraima</SelectItem>
+                      <SelectItem value="SC">Santa Catarina</SelectItem>
+                      <SelectItem value="SP">São Paulo</SelectItem>
+                      <SelectItem value="SE">Sergipe</SelectItem>
+                      <SelectItem value="TO">Tocantins</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.endereco_estado && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+                </div>
+
+                <div>
+                  <Label htmlFor="endereco_cidade">Cidade *</Label>
+                  <Input
+                    id="endereco_cidade"
+                    {...register('endereco_cidade', { required: true })}
+                    placeholder="Nome da cidade"
+                  />
+                  {errors.endereco_cidade && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
+                </div>
               </div>
             </div>
 
