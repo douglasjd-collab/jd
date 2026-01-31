@@ -128,7 +128,7 @@ export default function PlanosCanopusPage() {
   }, [planos]);
 
   const filteredPlanos = React.useMemo(() => {
-    return groupedPlanos.filter(g => {
+    const filtered = groupedPlanos.filter(g => {
       // Filtro de busca
       if (search) {
         const s = search.toLowerCase();
@@ -149,6 +149,9 @@ export default function PlanosCanopusPage() {
       
       return true;
     });
+    
+    // Ordenar por valor (crescente)
+    return filtered.sort((a, b) => (a.valor_bem || 0) - (b.valor_bem || 0));
   }, [groupedPlanos, search, valorMin, valorMax]);
 
   const produtoLabel = (id) => {
