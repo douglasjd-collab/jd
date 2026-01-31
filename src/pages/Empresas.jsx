@@ -40,8 +40,8 @@ import { Search, MoreHorizontal, Pencil, Trash2, Building2, Loader2 } from 'luci
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 
-// Cidades por estado
-const cidadesPorEstado = {
+// Cidades iniciais por estado
+const cidadesIniciaisPorEstado = {
   AC: ['Rio Branco', 'Cruzeiro do Sul', 'Sena Madureira', 'Tarauacá', 'Feijó'],
   AL: ['Maceió', 'Arapiraca', 'Palmeira dos Índios', 'Rio Largo', 'Penedo'],
   AP: ['Macapá', 'Santana', 'Laranjal do Jari', 'Oiapoque', 'Mazagão'],
@@ -80,6 +80,7 @@ export default function Empresas() {
   const [searchCidade, setSearchCidade] = useState('');
   const [cidadePersonalizada, setCidadePersonalizada] = useState('');
   const [usarCidadePersonalizada, setUsarCidadePersonalizada] = useState(false);
+  const [cidadesPorEstado, setCidadesPorEstado] = useState(cidadesIniciaisPorEstado);
   const queryClient = useQueryClient();
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm();
@@ -179,11 +180,22 @@ export default function Empresas() {
 
   const onSubmit = async (data) => {
     // Se estiver usando cidade personalizada, usar o valor do campo personalizado
-    const cidadeFinal = usarCidadePersonalizada ? cidadePersonalizada : data.endereco_cidade;
+    const cidadeFinal = usarCidadePersonalizada ? cidadePersonalizada.trim() : data.endereco_cidade;
     
     if (!data.nome || !data.cpf_cnpj || !data.telefone || !data.email || !data.endereco_rua || !data.endereco_numero || !data.endereco_cep || !data.endereco_estado || !cidadeFinal) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
+    }
+
+    // Se for cidade personalizada, adicionar à lista de cidades
+    if (usarCidadePersonalizada && cidadeFinal && data.endereco_estado) {
+      const cidadesDoEstado = cidadesPorEstado[data.endereco_estado] || [];
+      if (!cidadesDoEstado.includes(cidadeFinal)) {
+        setCidadesPorEstado(prev => ({
+          ...prev,
+          [data.endereco_estado]: [...cidadesDoEstado, cidadeFinal].sort()
+        }));
+      }
     }
 
     const dataFinal = {
