@@ -215,7 +215,7 @@ export default function PlanosCanopusPage() {
 🏷️ Bem: ${selectedGroup?.nome_bem || '-'}
 💰 Valor do Crédito: ${formatCurrency(selectedGroup?.valor_bem)}
 📅 Prazo: ${variacao.prazo_meses} meses
-💳 1ª Parcela: ${formatCurrency(variacao.parcela)}
+💳 Parcela: ${formatCurrency(variacao.parcela)}
 ${variacao.taxa_adm ? `📊 Taxa ADM: ${variacao.taxa_adm}%` : ''}
 
 📑 Plano: ${selectedGroup?.plano || '-'}
@@ -237,9 +237,8 @@ ${variacao.taxa_adm ? `📊 Taxa ADM: ${variacao.taxa_adm}%` : ''}
     
     const textoVariacoes = selectedGroup.variacoes.map((v, idx) => `
 ${idx + 1}. Plano de ${v.prazo_meses} meses
-   💳 1ª Parcela: ${formatCurrency(v.parcela)}
-   ${v.taxa_adm ? `📊 Taxa ADM: ${v.taxa_adm}%` : ''}
-    `).join('\n');
+   💳 Parcela: ${formatCurrency(v.parcela)}${v.taxa_adm ? `\n   📊 Taxa ADM: ${v.taxa_adm}%` : ''}
+`).join('\n');
 
     const texto = `
 📋 VARIAÇÕES DO PLANO ${selectedGroup.codigo}
@@ -250,7 +249,6 @@ ${idx + 1}. Plano de ${v.prazo_meses} meses
 🔄 Tipo de Venda: ${selectedGroup.tipo_venda || '-'}
 
 ${textoVariacoes}
-
 ---
 📱 Gerado via CRM Consórcio
     `.trim();
