@@ -36,7 +36,26 @@ export default function SimuladorNormal() {
 
   useEffect(() => {
     loadUser();
+    carregarPlanoSelecionado();
   }, []);
+
+  const carregarPlanoSelecionado = () => {
+    const dadosPlano = localStorage.getItem('planoSelecionado');
+    if (dadosPlano) {
+      try {
+        const plano = JSON.parse(dadosPlano);
+        setCartas([{
+          credito: plano.valor_credito?.toString() || '',
+          parcela: plano.parcela?.toString() || '',
+          prazo: plano.prazo?.toString() || '',
+          parcelaReduzida: ''
+        }]);
+        localStorage.removeItem('planoSelecionado');
+      } catch (e) {
+        console.error('Erro ao carregar plano selecionado:', e);
+      }
+    }
+  };
 
   const loadUser = async () => {
     const user = await base44.auth.me();
