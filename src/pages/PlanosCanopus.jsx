@@ -35,11 +35,13 @@ import {
   Package,
   ChevronRight,
   Filter,
-  Calculator
+  Calculator,
+  ClipboardCopy
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export default function PlanosCanopusPage() {
   const navigate = useNavigate();
@@ -204,6 +206,60 @@ export default function PlanosCanopusPage() {
     
     setTipoSimulacaoDialog(false);
     setDialogOpen(false);
+  };
+
+  const copiarVariacao = (variacao) => {
+    const texto = `
+📋 PLANO CANOPUS
+
+🏷️ Bem: ${selectedGroup?.nome_bem || '-'}
+💰 Valor do Crédito: ${formatCurrency(selectedGroup?.valor_bem)}
+📅 Prazo: ${variacao.prazo_meses} meses
+💳 1ª Parcela: ${formatCurrency(variacao.parcela)}
+${variacao.taxa_adm ? `📊 Taxa ADM: ${variacao.taxa_adm}%` : ''}
+
+📑 Plano: ${selectedGroup?.plano || '-'}
+🔄 Tipo de Venda: ${selectedGroup?.tipo_venda || '-'}
+
+---
+📱 Gerado via CRM Consórcio
+    `.trim();
+
+    navigator.clipboard.writeText(texto).then(() => {
+      toast.success('Plano copiado para a área de transferência!');
+    }).catch(() => {
+      toast.error('Erro ao copiar plano');
+    });
+  };
+
+  const copiarTodasVariacoes = () => {
+    if (!selectedGroup?.variacoes?.length) return;
+    
+    const textoVariacoes = selectedGroup.variacoes.map((v, idx) => `
+${idx + 1}. Plano de ${v.prazo_meses} meses
+   💳 1ª Parcela: ${formatCurrency(v.parcela)}
+   ${v.taxa_adm ? `📊 Taxa ADM: ${v.taxa_adm}%` : ''}
+    `).join('\n');
+
+    const texto = `
+📋 VARIAÇÕES DO PLANO ${selectedGroup.codigo}
+
+🏷️ Bem: ${selectedGroup.nome_bem || '-'}
+💰 Valor do Crédito: ${formatCurrency(selectedGroup.valor_bem)}
+📑 Plano: ${selectedGroup.plano || '-'}
+🔄 Tipo de Venda: ${selectedGroup.tipo_venda || '-'}
+
+${textoVariacoes}
+
+---
+📱 Gerado via CRM Consórcio
+    `.trim();
+
+    navigator.clipboard.writeText(texto).then(() => {
+      toast.success('Todas as variações copiadas!');
+    }).catch(() => {
+      toast.error('Erro ao copiar variações');
+    });
   };
 
   const formatCurrency = (value) => {
@@ -446,15 +502,28 @@ export default function PlanosCanopusPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {selectedGroup?.codigo} - {selectedGroup?.nome_bem?.split(' - ')[1] || selectedGroup?.nome_bem}
-            </DialogTitle>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="text-lg font-semibold text-blue-600">
-                {formatCurrency(selectedGroup?.valor_bem)}
-              </span>
-              <Badge>{selectedGroup?.plano?.split('|')[0]?.trim()}</Badge>
-              <Badge variant="outline">{selectedGroup?.tipo_venda}</Badge>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <DialogTitle>
+                  {selectedGroup?.codigo} - {selectedGroup?.nome_bem?.split(' - ')[1] || selectedGroup?.nome_bem}
+                </DialogTitle>
+                <div className="flex items-center gap-4 mt-2">
+                  <span className="text-lg font-semibold text-blue-600">
+                    {formatCurrency(selectedGroup?.valor_bem)}
+                  </span>
+                  <Badge>{selectedGroup?.plano?.split('|')[0]?.trim()}</Badge>
+                  <Badge variant="outline">{selectedGroup?.tipo_venda}</Badge>
+                </div>
+              </div>
+              <Button
+                onClick={copiarTodasVariacoes}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <ClipboardCopy className="w-4 h-4" />
+                Copiar Todas
+              </Button>
             </div>
           </DialogHeader>
 
@@ -479,15 +548,29 @@ export default function PlanosCanopusPage() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleAbrirSimulador(variacao)}
-                    className="gap-2"
-                  >
-                    <Calculator className="w-4 h-4" />
-                    Simulador
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copiarVariacao(variacao);
+                      }}
+                      className="gap-2"
+                    >
+                      <ClipboardCopy className="w-4 h-4" />
+                      Copiar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAbrirSimulador(variacao)}
+                      className="gap-2"
+                    >
+                      <Calculator className="w-4 h-4" />
+                      Simulador
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
