@@ -76,6 +76,8 @@ export default function Empresas() {
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [searchEstado, setSearchEstado] = useState('');
+  const [searchCidade, setSearchCidade] = useState('');
   const queryClient = useQueryClient();
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm();
@@ -460,39 +462,61 @@ export default function Empresas() {
                   <Label htmlFor="endereco_estado">Estado *</Label>
                   <Select
                     value={watch('endereco_estado') || ''}
-                    onValueChange={(value) => setValue('endereco_estado', value)}
+                    onValueChange={(value) => {
+                      setValue('endereco_estado', value);
+                      setValue('endereco_cidade', '');
+                      setSearchEstado('');
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="AC">Acre</SelectItem>
-                      <SelectItem value="AL">Alagoas</SelectItem>
-                      <SelectItem value="AP">Amapá</SelectItem>
-                      <SelectItem value="AM">Amazonas</SelectItem>
-                      <SelectItem value="BA">Bahia</SelectItem>
-                      <SelectItem value="CE">Ceará</SelectItem>
-                      <SelectItem value="DF">Distrito Federal</SelectItem>
-                      <SelectItem value="ES">Espírito Santo</SelectItem>
-                      <SelectItem value="GO">Goiás</SelectItem>
-                      <SelectItem value="MA">Maranhão</SelectItem>
-                      <SelectItem value="MT">Mato Grosso</SelectItem>
-                      <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
-                      <SelectItem value="MG">Minas Gerais</SelectItem>
-                      <SelectItem value="PA">Pará</SelectItem>
-                      <SelectItem value="PB">Paraíba</SelectItem>
-                      <SelectItem value="PR">Paraná</SelectItem>
-                      <SelectItem value="PE">Pernambuco</SelectItem>
-                      <SelectItem value="PI">Piauí</SelectItem>
-                      <SelectItem value="RJ">Rio de Janeiro</SelectItem>
-                      <SelectItem value="RN">Rio Grande do Norte</SelectItem>
-                      <SelectItem value="RS">Rio Grande do Sul</SelectItem>
-                      <SelectItem value="RO">Rondônia</SelectItem>
-                      <SelectItem value="RR">Roraima</SelectItem>
-                      <SelectItem value="SC">Santa Catarina</SelectItem>
-                      <SelectItem value="SP">São Paulo</SelectItem>
-                      <SelectItem value="SE">Sergipe</SelectItem>
-                      <SelectItem value="TO">Tocantins</SelectItem>
+                      <div className="px-2 pb-2">
+                        <Input
+                          placeholder="Buscar estado..."
+                          value={searchEstado}
+                          onChange={(e) => setSearchEstado(e.target.value)}
+                          className="h-8"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      {[
+                        { value: 'AC', label: 'Acre' },
+                        { value: 'AL', label: 'Alagoas' },
+                        { value: 'AP', label: 'Amapá' },
+                        { value: 'AM', label: 'Amazonas' },
+                        { value: 'BA', label: 'Bahia' },
+                        { value: 'CE', label: 'Ceará' },
+                        { value: 'DF', label: 'Distrito Federal' },
+                        { value: 'ES', label: 'Espírito Santo' },
+                        { value: 'GO', label: 'Goiás' },
+                        { value: 'MA', label: 'Maranhão' },
+                        { value: 'MT', label: 'Mato Grosso' },
+                        { value: 'MS', label: 'Mato Grosso do Sul' },
+                        { value: 'MG', label: 'Minas Gerais' },
+                        { value: 'PA', label: 'Pará' },
+                        { value: 'PB', label: 'Paraíba' },
+                        { value: 'PR', label: 'Paraná' },
+                        { value: 'PE', label: 'Pernambuco' },
+                        { value: 'PI', label: 'Piauí' },
+                        { value: 'RJ', label: 'Rio de Janeiro' },
+                        { value: 'RN', label: 'Rio Grande do Norte' },
+                        { value: 'RS', label: 'Rio Grande do Sul' },
+                        { value: 'RO', label: 'Rondônia' },
+                        { value: 'RR', label: 'Roraima' },
+                        { value: 'SC', label: 'Santa Catarina' },
+                        { value: 'SP', label: 'São Paulo' },
+                        { value: 'SE', label: 'Sergipe' },
+                        { value: 'TO', label: 'Tocantins' }
+                      ].filter(estado => 
+                        estado.label.toLowerCase().includes(searchEstado.toLowerCase()) ||
+                        estado.value.toLowerCase().includes(searchEstado.toLowerCase())
+                      ).map(estado => (
+                        <SelectItem key={estado.value} value={estado.value}>
+                          {estado.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {errors.endereco_estado && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
@@ -502,16 +526,30 @@ export default function Empresas() {
                   <Label htmlFor="endereco_cidade">Cidade *</Label>
                   <Select
                     value={watch('endereco_cidade') || ''}
-                    onValueChange={(value) => setValue('endereco_cidade', value)}
+                    onValueChange={(value) => {
+                      setValue('endereco_cidade', value);
+                      setSearchCidade('');
+                    }}
                     disabled={!watch('endereco_estado')}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={watch('endereco_estado') ? "Selecione a cidade" : "Selecione o estado primeiro"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {watch('endereco_estado') && cidadesPorEstado[watch('endereco_estado')]?.map(cidade => (
-                        <SelectItem key={cidade} value={cidade}>{cidade}</SelectItem>
-                      ))}
+                      <div className="px-2 pb-2">
+                        <Input
+                          placeholder="Buscar cidade..."
+                          value={searchCidade}
+                          onChange={(e) => setSearchCidade(e.target.value)}
+                          className="h-8"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      {watch('endereco_estado') && cidadesPorEstado[watch('endereco_estado')]
+                        ?.filter(cidade => cidade.toLowerCase().includes(searchCidade.toLowerCase()))
+                        .map(cidade => (
+                          <SelectItem key={cidade} value={cidade}>{cidade}</SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   {errors.endereco_cidade && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
