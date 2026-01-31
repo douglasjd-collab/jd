@@ -26,17 +26,22 @@ import {
   CheckCircle2,
   XCircle,
   Package,
-  Eye,
   ChevronRight,
-  Filter
+  Filter,
+  Calculator
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import { createPageUrl } from '@/utils';
+import { useNavigate } from 'react-router-dom';
 
 export default function PlanosCanopusPage() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedVariacao, setSelectedVariacao] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tipoSimulacaoDialog, setTipoSimulacaoDialog] = useState(false);
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
 
@@ -154,6 +159,36 @@ export default function PlanosCanopusPage() {
   const handleOpenDialog = (group) => {
     setSelectedGroup(group);
     setDialogOpen(true);
+  };
+
+  const handleAbrirSimulador = (variacao) => {
+    setSelectedVariacao(variacao);
+    setTipoSimulacaoDialog(true);
+  };
+
+  const handleSelecionarTipoSimulacao = (tipo) => {
+    if (!selectedVariacao || !selectedGroup) return;
+    
+    // Salvar dados no localStorage para o simulador
+    const dadosPlano = {
+      valor_credito: selectedGroup.valor_bem,
+      parcela: selectedVariacao.parcela,
+      prazo: selectedVariacao.prazo_meses,
+      nome_bem: selectedGroup.nome_bem,
+      plano: selectedGroup.plano
+    };
+    
+    localStorage.setItem('planoSelecionado', JSON.stringify(dadosPlano));
+    
+    // Redirecionar para o simulador apropriado
+    if (tipo === 'consorcio') {
+      navigate(createPageUrl('SimuladorConsorcio'));
+    } else {
+      navigate(createPageUrl('SimuladorNormal'));
+    }
+    
+    setTipoSimulacaoDialog(false);
+    setDialogOpen(false);
   };
 
   const formatCurrency = (value) => {
@@ -414,10 +449,52 @@ export default function PlanosCanopusPage() {
                       </p>
                     </div>
                   </div>
-                  <Eye className="w-5 h-5 text-slate-400" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleAbrirSimulador(variacao)}
+                    className="gap-2"
+                  >
+                    <Calculator className="w-4 h-4" />
+                    Simulador
+                  </Button>
                 </div>
               ))}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Tipo de Simulação */}
+      <Dialog open={tipoSimulacaoDialog} onOpenChange={setTipoSimulacaoDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tipo de Simulação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            <p className="text-sm text-slate-600">
+              Escolha o tipo de simulação que deseja realizar:
+            </p>
+            <Button
+              onClick={() => handleSelecionarTipoSimulacao('consorcio')}
+              className="w-full justify-start h-auto py-4 px-6"
+              variant="outline"
+            >
+              <div className="text-left">
+                <p className="font-semibold">Lance Embutido</p>
+                <p className="text-xs text-slate-500 mt-1">Simulação com lance embutido no consórcio</p>
+              </div>
+            </Button>
+            <Button
+              onClick={() => handleSelecionarTipoSimulacao('normal')}
+              className="w-full justify-start h-auto py-4 px-6"
+              variant="outline"
+            >
+              <div className="text-left">
+                <p className="font-semibold">Recurso Próprio</p>
+                <p className="text-xs text-slate-500 mt-1">Simulação com lance próprio do cliente</p>
+              </div>
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
