@@ -368,7 +368,7 @@ export default function PlanosCanopusPage() {
                 {filteredPlanos.map((group, index) => (
                   <TableRow 
                     key={group.codigo} 
-                    className={`hover:bg-blue-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-slate-100'}`}
+                    className={`hover:bg-blue-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-slate-200'}`}
                     onClick={() => handleOpenDialog(group)}
                   >
                     <TableCell className="font-medium">
