@@ -23,9 +23,7 @@ import {
   Calculator,
   Calendar,
   Moon,
-  Sun,
-  ChevronLeft,
-  ChevronRight
+  Sun
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -44,10 +42,6 @@ import { Toaster } from 'sonner';
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
-    return saved ? JSON.parse(saved) : false;
-  });
   const [expandedMenus, setExpandedMenus] = useState({});
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoUploaderOpen, setLogoUploaderOpen] = useState(false);
@@ -66,12 +60,7 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [darkMode]);
 
-  useEffect(() => {
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
-  }, [sidebarCollapsed]);
-
   const toggleDarkMode = () => setDarkMode(!darkMode);
-  const toggleSidebarCollapse = () => setSidebarCollapsed(!sidebarCollapsed);
 
   useEffect(() => {
     loadUser();
@@ -247,64 +236,34 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed top-0 left-0 h-full bg-[#10353C] text-white z-50 transform transition-all duration-300 lg:translate-x-0 flex flex-col",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full",
-        sidebarCollapsed ? "lg:w-20" : "lg:w-72",
-        !sidebarCollapsed && "w-72"
+        "fixed top-0 left-0 h-full w-72 bg-[#10353C] text-white z-50 transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className={cn(
-          "p-6 flex items-center border-b border-white/10",
-          sidebarCollapsed ? "justify-center" : "justify-between"
-        )}>
-          {!sidebarCollapsed && (
-            <div className="flex items-center gap-3">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
-              ) : (
-                <div className="w-10 h-10 bg-[#23BE84] rounded-xl flex items-center justify-center">
-                  <Wallet className="w-5 h-5" />
-                </div>
-              )}
-              <div>
-                <h1 className="font-bold text-lg">CRM Consórcio</h1>
-                <p className="text-xs text-white/60">Gestão Financeira</p>
+        <div className="p-6 flex items-center justify-between border-b border-white/10">
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
+            ) : (
+              <div className="w-10 h-10 bg-[#23BE84] rounded-xl flex items-center justify-center">
+                <Wallet className="w-5 h-5" />
               </div>
+            )}
+            <div>
+              <h1 className="font-bold text-lg">CRM Consórcio</h1>
+              <p className="text-xs text-white/60">Gestão Financeira</p>
             </div>
-          )}
-          {sidebarCollapsed && (
-            <div className="w-10 h-10 bg-[#23BE84] rounded-xl flex items-center justify-center">
-              <Wallet className="w-5 h-5" />
-            </div>
-          )}
+          </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Botão para recolher/expandir sidebar (apenas desktop) */}
-        <button
-          onClick={toggleSidebarCollapse}
-          className="hidden lg:flex items-center justify-center p-2 mx-4 my-2 rounded-lg hover:bg-white/10 transition-colors"
-        >
-          {sidebarCollapsed ? (
-            <ChevronRight className="w-5 h-5" />
-          ) : (
-            <>
-              <ChevronLeft className="w-5 h-5" />
-              <span className="ml-2 text-sm">Recolher Menu</span>
-            </>
-          )}
-        </button>
 
         {/* User Info */}
         {user && (
           <div className="p-4 border-b border-white/10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className={cn(
-                  "w-full flex items-center hover:bg-white/10 p-2 rounded-xl transition-colors",
-                  sidebarCollapsed ? "justify-center" : "gap-3"
-                )}>
+                <button className="w-full flex items-center gap-3 hover:bg-white/10 p-2 rounded-xl transition-colors">
                   {user.foto_perfil ? (
                     <img 
                       src={user.foto_perfil} 
@@ -316,15 +275,11 @@ export default function Layout({ children, currentPageName }) {
                       {(user.nome_perfil || user.full_name)?.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  {!sidebarCollapsed && (
-                    <>
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className="font-medium truncate">{user.nome_perfil || user.full_name}</p>
-                        <p className="text-xs text-white/60 capitalize">{user.perfil || 'Vendedor'}</p>
-                      </div>
-                      <ChevronDown className="w-4 h-4" />
-                    </>
-                  )}
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-medium truncate">{user.nome_perfil || user.full_name}</p>
+                    <p className="text-xs text-white/60 capitalize">{user.perfil || 'Vendedor'}</p>
+                  </div>
+                  <ChevronDown className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-64">
@@ -397,21 +352,18 @@ export default function Layout({ children, currentPageName }) {
                   <button
                     onClick={() => toggleSubmenu(item.name)}
                     className={cn(
-                      "w-full flex items-center rounded-xl transition-all hover:bg-white/10",
-                      sidebarCollapsed ? "justify-center px-4 py-3" : "justify-between gap-3 px-4 py-3"
+                      "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all",
+                      "hover:bg-white/10"
                     )}
-                    title={sidebarCollapsed ? item.name : ''}
                   >
-                    <div className={cn("flex items-center", !sidebarCollapsed && "gap-3")}>
+                    <div className="flex items-center gap-3">
                       <item.icon className="w-5 h-5" />
-                      {!sidebarCollapsed && <span>{item.name}</span>}
+                      <span>{item.name}</span>
                     </div>
-                    {!sidebarCollapsed && (
-                      <ChevronDown className={cn(
-                        "w-4 h-4 transition-transform",
-                        expandedMenus[item.name] && "rotate-180"
-                      )} />
-                    )}
+                    <ChevronDown className={cn(
+                      "w-4 h-4 transition-transform",
+                      expandedMenus[item.name] && "rotate-180"
+                    )} />
                   </button>
                   {expandedMenus[item.name] && (
                     <div className="ml-6 mt-1 space-y-1">
@@ -441,16 +393,14 @@ export default function Layout({ children, currentPageName }) {
                   to={createPageUrl(item.page)}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center rounded-xl transition-all",
-                    sidebarCollapsed ? "justify-center px-4 py-3" : "gap-3 px-4 py-3",
+                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
                     currentPageName === item.page
                       ? "bg-white/20 text-white"
                       : "text-white/70 hover:bg-white/10 hover:text-white"
                   )}
-                  title={sidebarCollapsed ? item.name : ''}
                 >
                   <item.icon className="w-5 h-5" />
-                  {!sidebarCollapsed && <span>{item.name}</span>}
+                  <span>{item.name}</span>
                 </Link>
               )}
             </div>
@@ -461,24 +411,16 @@ export default function Layout({ children, currentPageName }) {
         <div className="p-4 border-t border-white/10 mt-auto">
           <button
             onClick={handleLogout}
-            className={cn(
-              "w-full flex items-center rounded-xl transition-all text-red-400 hover:bg-red-500/10 hover:text-red-300",
-              sidebarCollapsed ? "justify-center px-4 py-3" : "gap-3 px-4 py-3"
-            )}
-            title={sidebarCollapsed ? 'Sair' : ''}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-400 hover:bg-red-500/10 hover:text-red-300"
           >
             <LogOut className="w-5 h-5" />
-            {!sidebarCollapsed && <span>Sair</span>}
+            <span>Sair</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className={cn(
-        "min-h-screen transition-all duration-300",
-        sidebarCollapsed ? "lg:ml-20" : "lg:ml-72",
-        darkMode && "bg-slate-900"
-      )}>
+      <main className={cn("lg:ml-72 min-h-screen", darkMode && "bg-slate-900")}>
         <div className="p-4 lg:p-8">
           {children}
         </div>
