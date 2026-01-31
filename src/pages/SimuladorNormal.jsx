@@ -39,17 +39,61 @@ export default function SimuladorNormal() {
     carregarPlanoSelecionado();
   }, []);
 
-  const carregarPlanoSelecionado = () => {
+  const carregarPlanoSelecionado = async () => {
     const dadosPlano = localStorage.getItem('planoSelecionado');
     if (dadosPlano) {
       try {
         const plano = JSON.parse(dadosPlano);
+        
+        // Verificar se o plano NÃO é de 50% nem 70%
+        const nomeBem = plano.nome_bem?.toUpperCase() || '';
+        const is50ou70 = nomeBem.includes('50%') || nomeBem.includes('70%');
+        
+        let parcelaReduzida = '';
+        
+        // Se não for 50% nem 70%, buscar o equivalente de 50%
+        if (!is50ou70 && plano.valor_credito && plano.prazo) {
+          try {
+            const user = await base44.auth.me();
+            if (user) {
+              const colabs = await base44.entities.Colaborador.filter(
+                { user_id: user.id, status: 'ativo' },
+                '-created_date',
+                1
+              );
+              
+              if (colabs?.[0]?.empresa_id) {
+                // Buscar plano de 50% com mesmo valor e prazo
+                const planos50 = await base44.entities.PlanoCanopus.filter({
+                  empresa_id: colabs[0].empresa_id,
+                  valor_bem: plano.valor_credito,
+                  prazo_meses: plano.prazo,
+                  status: 'ativo'
+                });
+                
+                // Encontrar o plano que contém "50%" no nome
+                const plano50 = planos50.find(p => 
+                  p.nome_bem?.toUpperCase().includes('50%')
+                );
+                
+                if (plano50?.parcela) {
+                  parcelaReduzida = plano50.parcela.toString();
+                  toast.success('Parcela reduzida (50%) preenchida automaticamente!');
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Erro ao buscar plano 50%:', e);
+          }
+        }
+        
         setCartas([{
           credito: plano.valor_credito?.toString() || '',
           parcela: plano.parcela?.toString() || '',
           prazo: plano.prazo?.toString() || '',
-          parcelaReduzida: ''
+          parcelaReduzida: parcelaReduzida
         }]);
+        
         localStorage.removeItem('planoSelecionado');
       } catch (e) {
         console.error('Erro ao carregar plano selecionado:', e);
