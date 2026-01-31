@@ -68,6 +68,7 @@ VOCÊ DEVE EXTRAIR TODAS AS VARIAÇÕES DE PRAZO/PARCELA PARA CADA BEM!
 FORMATO DA TABELA:
 - Linha principal: Código (ex: CR4205) + Descrição (ex: AUTOMÓVEL LEVE 70%) + Valor do crédito
 - Ao expandir: Múltiplas opções com formato "Plano de X meses / 1ª parcela de R$ Y,YY | Grupo: ZZZZZ"
+- TAXA DE ADMINISTRAÇÃO: Está na coluna "TAXA ADM. MENSAL" da tabela expandida, geralmente aparece como percentual (ex: "18.20 %", "17.00 %", "16.50 %")
 
 Para cada VARIAÇÃO de prazo/parcela, extraia um registro separado:
 - codigo: código do plano (ex: CR4205, CR4072, CR4301)
@@ -75,20 +76,27 @@ Para cada VARIAÇÃO de prazo/parcela, extraia um registro separado:
 - valor_bem: valor do crédito (apenas número, sem R$)
 - prazo_meses: prazo em meses (ex: 96, 86, 76, 66, 56, 46, 36)
 - primeira_parcela: valor da primeira parcela (apenas número, sem R$)
-- taxa_adm: taxa de administração em percentual (ex: 20.8 para 20.8%)
-- grupo: código do grupo (ex: "008120")
-- plano: código e descrição do plano da linha principal (ex: "3000 - GRUPO 3000 PARTICIPANTES")
+- taxa_adm: taxa de administração em percentual EXTRAÍDA DA COLUNA "TAXA ADM. MENSAL" (apenas número, ex: 18.20 para 18.20%, 20.8 para 20.8%). OBRIGATÓRIO!
+- grupo: código do grupo (ex: "008120", "8.320")
+- plano: código e descrição do plano da linha principal (ex: "3000 - GRUPO 3000 PARTICIPANTES", "Grupo: 8.320")
 - tipo_venda: código e descrição do tipo de venda (ex: "114 - LINEAR", "62 - PARCELA GRADUAL")
 
-EXEMPLO de saída esperada para CR4072 com valor R$ 25.000,00:
+ATENÇÃO ESPECIAL PARA TAXA DE ADMINISTRAÇÃO:
+- A taxa ADM está na tabela expandida, geralmente na coluna ao lado das parcelas
+- Pode aparecer como "18.20 %", "17.00 %", etc.
+- Extraia APENAS o número (ex: 18.20, 17.00, 16.50)
+- Se a taxa for "Total" seguida de percentual (ex: "Total 18.20 %"), pegue o número do percentual
+- SEMPRE extraia esta informação quando disponível na tabela
+
+EXEMPLO de saída esperada para CR4072 com valor R$ 25.000,00 e taxa ADM 18.20%:
 [
-  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 96, primeira_parcela: 326.78, grupo: "008120", ... },
-  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 86, primeira_parcela: 360.35, grupo: "008120", ... },
-  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 76, primeira_parcela: 402.80, grupo: "008120", ... },
+  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 96, primeira_parcela: 326.78, taxa_adm: 18.20, grupo: "008120", ... },
+  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 86, primeira_parcela: 360.35, taxa_adm: 17.00, grupo: "008120", ... },
+  { codigo: "CR4072", nome_bem: "AUTOMÓVEL LEVE", valor_bem: 25000, prazo_meses: 76, primeira_parcela: 402.80, taxa_adm: 16.50, grupo: "008120", ... },
   ... (todas as variações)
 ]
 
-Retorne um array de planos no formato JSON com TODAS as variações.`,
+Retorne um array de planos no formato JSON com TODAS as variações e suas respectivas taxas de administração.`,
       file_urls: [fileUrl],
       response_json_schema: {
         type: "object",
