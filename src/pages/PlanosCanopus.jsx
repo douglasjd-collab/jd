@@ -6,6 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -44,6 +51,7 @@ export default function PlanosCanopusPage() {
   const [tipoSimulacaoDialog, setTipoSimulacaoDialog] = useState(false);
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
+  const [tipoProduto, setTipoProduto] = useState('');
 
   React.useEffect(() => {
     loadUser();
@@ -147,12 +155,15 @@ export default function PlanosCanopusPage() {
       if (min && valor < min) return false;
       if (max < Infinity && valor > max) return false;
       
+      // Filtro de tipo de produto
+      if (tipoProduto && g.produto_id !== tipoProduto) return false;
+      
       return true;
     });
     
     // Ordenar por valor (crescente)
     return filtered.sort((a, b) => (a.valor_bem || 0) - (b.valor_bem || 0));
-  }, [groupedPlanos, search, valorMin, valorMax]);
+  }, [groupedPlanos, search, valorMin, valorMax, tipoProduto]);
 
   const produtoLabel = (id) => {
     const map = { '101': 'Automóveis', '102': 'Imóveis', '103': 'Motos' };
@@ -289,15 +300,28 @@ export default function PlanosCanopusPage() {
 
       {/* Search & Filters */}
       <Card className="p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <Input
-              placeholder="Buscar por nome do bem, plano ou tipo de venda..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Input
+                placeholder="Buscar por nome do bem, plano ou tipo de venda..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={tipoProduto} onValueChange={setTipoProduto}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Tipo de Plano" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="101">Automóveis</SelectItem>
+                <SelectItem value="102">Imóveis</SelectItem>
+                <SelectItem value="103">Motocicletas</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-slate-400" />
@@ -316,16 +340,17 @@ export default function PlanosCanopusPage() {
               onChange={(e) => setValorMax(parseCurrencyInput(e.target.value))}
               className="w-40"
             />
-            {(valorMin || valorMax) && (
+            {(valorMin || valorMax || tipoProduto) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setValorMin('');
                   setValorMax('');
+                  setTipoProduto('');
                 }}
               >
-                Limpar
+                Limpar Filtros
               </Button>
             )}
           </div>
