@@ -124,7 +124,7 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
 
     step = "save_planos";
     let criados = 0;
-    let atualizados = 0;
+    let ignorados = 0;
 
     for (const plano of planos) {
       const hash = `${plano.codigo}_${plano.prazo_meses}`;
@@ -134,6 +134,13 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
         external_hash: hash
       });
 
+      // Se já existe, ignorar (não duplicar)
+      if (existe?.length) {
+        ignorados++;
+        continue;
+      }
+
+      // Cadastrar apenas se não existir
       const data = {
         empresa_id: empresaId,
         origem: "PDF_IMPORT",
@@ -150,20 +157,16 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
         status: "ativo"
       };
 
-      if (existe?.length) {
-        await base44.entities.PlanoCanopus.update(existe[0].id, data);
-        atualizados++;
-      } else {
-        await base44.entities.PlanoCanopus.create(data);
-        criados++;
-      }
+      await base44.entities.PlanoCanopus.create(data);
+      criados++;
     }
 
     return j(200, {
       ok: true,
       criados,
-      atualizados,
+      ignorados,
       total_planos: planos.length,
+      message: `Importação concluída: ${criados} novos, ${ignorados} já existentes (ignorados)`,
       elapsed_ms: Date.now() - t0
     }, corsHeaders);
 

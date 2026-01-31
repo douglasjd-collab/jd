@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     }
 
     let criados = 0;
-    let atualizados = 0;
+    let ignorados = 0;
     const errors = [];
 
     // Obter empresa_id do usuário
@@ -92,15 +92,16 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Verificar se existe (upsert)
+        // Verificar se existe - não duplicar
         const existing = await base44.asServiceRole.entities.PlanoConsorcio.filter({
           hash_chave: planData.hash_chave
         });
 
         if (existing && existing.length > 0) {
-          await base44.asServiceRole.entities.PlanoConsorcio.update(existing[0].id, planData);
-          atualizados++;
+          // Já existe, ignorar
+          ignorados++;
         } else {
+          // Cadastrar apenas se não existir
           await base44.asServiceRole.entities.PlanoConsorcio.create(planData);
           criados++;
         }
@@ -112,8 +113,9 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       criados,
-      atualizados,
-      total: criados + atualizados,
+      ignorados,
+      total: criados + ignorados,
+      message: `Importação concluída: ${criados} novos, ${ignorados} já existentes (ignorados)`,
       erros: errors.length,
       errors: errors.length > 0 ? errors : null
     });

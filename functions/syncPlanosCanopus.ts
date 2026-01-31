@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
 
     // --- salvar no Base44 ---
     let criados = 0;
-    let atualizados = 0;
+    let ignorados = 0;
 
     for (const p of coletados) {
       const hash = `${empresaId}|${p.produto}|${p.nome_bem}|${p.prazo_meses}|${p.plano}|${p.tipo_venda}|${p.reajuste_tipo}`;
@@ -244,6 +244,13 @@ Deno.serve(async (req) => {
         hash_chave: hash,
       });
 
+      // Se já existe, ignorar (não duplicar)
+      if (existente?.length) {
+        ignorados++;
+        continue;
+      }
+
+      // Cadastrar apenas se não existir
       const dados = {
         empresa_id: empresaId,
         origem: "CANOPUS",
@@ -260,21 +267,16 @@ Deno.serve(async (req) => {
         ultima_sincronizacao: new Date().toISOString(),
       };
 
-      if (!existente?.length) {
-        await base44.asServiceRole.entities.PlanoCanopus.create(dados);
-        criados++;
-      } else {
-        await base44.asServiceRole.entities.PlanoCanopus.update(existente[0].id, dados);
-        atualizados++;
-      }
+      await base44.asServiceRole.entities.PlanoCanopus.create(dados);
+      criados++;
     }
 
     return Response.json({
       success: true,
       lidos: coletados.length,
       criados,
-      atualizados,
-      message: `Sincronização concluída. Lidos: ${coletados.length}, Criados: ${criados}, Atualizados: ${atualizados}`,
+      ignorados,
+      message: `Sincronização concluída: ${criados} novos, ${ignorados} já existentes (ignorados)`,
     });
   } catch (error) {
     const message = error?.message || String(error);
