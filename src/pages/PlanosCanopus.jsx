@@ -477,22 +477,22 @@ export default function PlanosCanopusPage() {
             </p>
             <Button
               onClick={() => handleSelecionarTipoSimulacao('consorcio')}
-              className="w-full justify-start h-auto py-4 px-6"
+              className="w-full justify-start h-auto py-4 px-6 bg-orange-50 border-2 border-orange-500 hover:bg-orange-100"
               variant="outline"
             >
               <div className="text-left">
-                <p className="font-semibold">Lance Embutido</p>
-                <p className="text-xs text-slate-500 mt-1">Simulação com lance embutido no consórcio</p>
+                <p className="font-semibold text-orange-900">Lance Embutido</p>
+                <p className="text-xs text-orange-700 mt-1">Simulação com lance embutido no consórcio</p>
               </div>
             </Button>
             <Button
               onClick={() => handleSelecionarTipoSimulacao('normal')}
-              className="w-full justify-start h-auto py-4 px-6"
+              className="w-full justify-start h-auto py-4 px-6 bg-blue-50 border-2 border-blue-600 hover:bg-blue-100"
               variant="outline"
             >
               <div className="text-left">
-                <p className="font-semibold">Recurso Próprio</p>
-                <p className="text-xs text-slate-500 mt-1">Simulação com lance próprio do cliente</p>
+                <p className="font-semibold text-blue-900">Recurso Próprio</p>
+                <p className="text-xs text-blue-700 mt-1">Simulação com lance próprio do cliente</p>
               </div>
             </Button>
           </div>
