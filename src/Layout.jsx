@@ -161,13 +161,13 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Simulador', icon: Calculator, page: 'SimuladorEscolha', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Vendas', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Oferta de Lance', icon: TrendingUp, page: 'OfertaLance', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Financeiro', icon: Wallet, page: 'RelatoriosFinanceiros', roles: ['master', 'super_admin', 'admin'] },
     { 
       name: 'Cadastros', 
