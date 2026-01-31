@@ -122,6 +122,7 @@ export default function PlanosCanopusPage() {
         id: plano.id,
         prazo_meses: plano.prazo_meses,
         parcela: plano.parcela,
+        taxa_adm: plano.taxa_adm,
         plano: plano.plano,
         tipo_venda: plano.tipo_venda
       });
@@ -474,6 +475,7 @@ export default function PlanosCanopusPage() {
                       </p>
                       <p className="text-xs text-slate-500">
                         Grupo: {selectedGroup.plano?.split('|')[0]?.trim()}
+                        {variacao.taxa_adm && ` • Taxa ADM: ${variacao.taxa_adm}%`}
                       </p>
                     </div>
                   </div>

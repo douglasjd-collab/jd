@@ -75,6 +75,7 @@ Para cada VARIAÇÃO de prazo/parcela, extraia um registro separado:
 - valor_bem: valor do crédito (apenas número, sem R$)
 - prazo_meses: prazo em meses (ex: 96, 86, 76, 66, 56, 46, 36)
 - primeira_parcela: valor da primeira parcela (apenas número, sem R$)
+- taxa_adm: taxa de administração em percentual (ex: 20.8 para 20.8%)
 - grupo: código do grupo (ex: "008120")
 - plano: código e descrição do plano da linha principal (ex: "3000 - GRUPO 3000 PARTICIPANTES")
 - tipo_venda: código e descrição do tipo de venda (ex: "114 - LINEAR", "62 - PARCELA GRADUAL")
@@ -102,6 +103,7 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
                 valor_bem: { type: "number" },
                 prazo_meses: { type: "number" },
                 primeira_parcela: { type: "number" },
+                taxa_adm: { type: "number" },
                 grupo: { type: "string" },
                 plano: { type: "string" },
                 tipo_venda: { type: "string" }
@@ -151,6 +153,7 @@ Retorne um array de planos no formato JSON com TODAS as variações.`,
         valor_bem: plano.valor_bem,
         prazo_meses: plano.prazo_meses,
         parcela: plano.primeira_parcela,
+        taxa_adm: plano.taxa_adm || null,
         plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
         tipo_venda: plano.tipo_venda || "",
         ultima_sincronizacao: new Date().toISOString(),
