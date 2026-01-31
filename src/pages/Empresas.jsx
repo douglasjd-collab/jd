@@ -78,6 +78,8 @@ export default function Empresas() {
   const [deleteId, setDeleteId] = useState(null);
   const [searchEstado, setSearchEstado] = useState('');
   const [searchCidade, setSearchCidade] = useState('');
+  const [cidadePersonalizada, setCidadePersonalizada] = useState('');
+  const [usarCidadePersonalizada, setUsarCidadePersonalizada] = useState(false);
   const queryClient = useQueryClient();
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm();
@@ -141,6 +143,17 @@ export default function Empresas() {
     if (empresa) {
       Object.keys(empresa).forEach(key => setValue(key, empresa[key]));
       setSelectedEmpresa(empresa);
+      
+      // Verificar se a cidade está na lista do estado
+      const estado = empresa.endereco_estado;
+      const cidade = empresa.endereco_cidade;
+      if (estado && cidade && cidadesPorEstado[estado]) {
+        const cidadeExiste = cidadesPorEstado[estado].includes(cidade);
+        if (!cidadeExiste) {
+          setUsarCidadePersonalizada(true);
+          setCidadePersonalizada(cidade);
+        }
+      }
     } else {
       reset({
         cpf_cnpj: '',
@@ -156,20 +169,32 @@ export default function Empresas() {
         status: 'ativa'
       });
       setSelectedEmpresa(null);
+      setUsarCidadePersonalizada(false);
+      setCidadePersonalizada('');
     }
+    setSearchEstado('');
+    setSearchCidade('');
     setFormOpen(true);
   };
 
   const onSubmit = async (data) => {
-    if (!data.nome || !data.cpf_cnpj || !data.telefone || !data.email || !data.endereco_rua || !data.endereco_numero || !data.endereco_cep || !data.endereco_estado || !data.endereco_cidade) {
+    // Se estiver usando cidade personalizada, usar o valor do campo personalizado
+    const cidadeFinal = usarCidadePersonalizada ? cidadePersonalizada : data.endereco_cidade;
+    
+    if (!data.nome || !data.cpf_cnpj || !data.telefone || !data.email || !data.endereco_rua || !data.endereco_numero || !data.endereco_cep || !data.endereco_estado || !cidadeFinal) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
+    const dataFinal = {
+      ...data,
+      endereco_cidade: cidadeFinal
+    };
+
     if (selectedEmpresa) {
-      updateMutation.mutate({ id: selectedEmpresa.id, data });
+      updateMutation.mutate({ id: selectedEmpresa.id, data: dataFinal });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(dataFinal);
     }
   };
 
@@ -524,34 +549,76 @@ export default function Empresas() {
 
                 <div>
                   <Label htmlFor="endereco_cidade">Cidade *</Label>
-                  <Select
-                    value={watch('endereco_cidade') || ''}
-                    onValueChange={(value) => {
-                      setValue('endereco_cidade', value);
-                      setSearchCidade('');
-                    }}
-                    disabled={!watch('endereco_estado')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={watch('endereco_estado') ? "Selecione a cidade" : "Selecione o estado primeiro"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <div className="px-2 pb-2">
-                        <Input
-                          placeholder="Buscar cidade..."
-                          value={searchCidade}
-                          onChange={(e) => setSearchCidade(e.target.value)}
-                          className="h-8"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                      {watch('endereco_estado') && cidadesPorEstado[watch('endereco_estado')]
-                        ?.filter(cidade => cidade.toLowerCase().includes(searchCidade.toLowerCase()))
-                        .map(cidade => (
-                          <SelectItem key={cidade} value={cidade}>{cidade}</SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  
+                  {!usarCidadePersonalizada ? (
+                    <>
+                      <Select
+                        value={watch('endereco_cidade') || ''}
+                        onValueChange={(value) => {
+                          setValue('endereco_cidade', value);
+                          setSearchCidade('');
+                        }}
+                        disabled={!watch('endereco_estado')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={watch('endereco_estado') ? "Selecione a cidade" : "Selecione o estado primeiro"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <div className="px-2 pb-2">
+                            <Input
+                              placeholder="Buscar cidade..."
+                              value={searchCidade}
+                              onChange={(e) => setSearchCidade(e.target.value)}
+                              className="h-8"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          {watch('endereco_estado') && cidadesPorEstado[watch('endereco_estado')]
+                            ?.filter(cidade => cidade.toLowerCase().includes(searchCidade.toLowerCase()))
+                            .map(cidade => (
+                              <SelectItem key={cidade} value={cidade}>{cidade}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {watch('endereco_estado') && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          onClick={() => {
+                            setUsarCidadePersonalizada(true);
+                            setCidadePersonalizada('');
+                          }}
+                          className="mt-1 h-auto p-0 text-xs text-blue-600"
+                        >
+                          Não encontrou sua cidade? Clique aqui para digitar
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        id="endereco_cidade"
+                        value={cidadePersonalizada}
+                        onChange={(e) => setCidadePersonalizada(e.target.value)}
+                        placeholder="Digite o nome da cidade"
+                      />
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          setUsarCidadePersonalizada(false);
+                          setCidadePersonalizada('');
+                          setValue('endereco_cidade', '');
+                        }}
+                        className="mt-1 h-auto p-0 text-xs text-blue-600"
+                      >
+                        Voltar para a lista de cidades
+                      </Button>
+                    </>
+                  )}
+                  
                   {errors.endereco_cidade && <p className="text-sm text-red-500 mt-1">Campo obrigatório</p>}
                 </div>
               </div>
