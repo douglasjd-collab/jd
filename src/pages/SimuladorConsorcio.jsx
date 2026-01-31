@@ -106,6 +106,11 @@ export default function SimuladorConsorcio() {
   const lanceProprioPercentual = lanceProprio && creditoTotal > 0 
     ? ((parseFloat(lanceProprio) / creditoTotal) * 100).toFixed(2) 
     : '0';
+  
+  // Calcular percentual total ofertado (lance embutido + lance próprio)
+  const percentualTotalOfertado = creditoTotal > 0
+    ? (((lanceEmbutidoValor + (usarLanceProprio ? parseFloat(lanceProprio || 0) : 0)) / creditoTotal) * 100).toFixed(2)
+    : '0';
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
@@ -826,6 +831,14 @@ export default function SimuladorConsorcio() {
                         <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
                         <p className="text-xs text-purple-700 mt-1">
                           {lanceProprioPercentual}% do crédito total
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg text-white">
+                        <p className="text-xs font-semibold mb-1">🎯 Percentual Total Ofertado</p>
+                        <p className="text-3xl font-bold">{percentualTotalOfertado}%</p>
+                        <p className="text-xs mt-1 opacity-90">
+                          Lance Embutido ({resultado.lanceEmbutidoPercentual}%) + Lance Próprio ({lanceProprioPercentual}%)
                         </p>
                       </div>
 

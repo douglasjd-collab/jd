@@ -156,6 +156,11 @@ export default function ImprimirSimulacao() {
   const lanceProprioPercentual = simulacao.lance_proprio_ativo && simulacao.credito_total > 0
     ? ((simulacao.lance_proprio_valor / simulacao.credito_total) * 100).toFixed(2)
     : '0';
+  
+  // Calcular percentual total ofertado (lance embutido + lance próprio)
+  const percentualTotalOfertado = simulacao.credito_total > 0
+    ? (((simulacao.lance_embutido_valor || 0) + (simulacao.lance_proprio_valor || 0)) / simulacao.credito_total * 100).toFixed(2)
+    : '0';
 
   // Calcula a primeira parcela no ato usando lógica robusta
   const { primeiraParcelaNoAto, isParcelaReduzida } = calcularPrimeiraParcelaNoAto();
@@ -304,6 +309,14 @@ export default function ImprimirSimulacao() {
                     {formatCurrency(simulacao.lance_total)}
                   </span>
                 </div>
+                {(simulacao.lance_embutido_ativo || simulacao.lance_proprio_ativo) && (
+                  <div className="card-section flex justify-between pt-1 mt-1 bg-orange-50 p-1.5 rounded border border-orange-200">
+                    <span className="font-bold text-orange-900">🎯 Percentual Total Ofertado:</span>
+                    <span className="text-base font-bold text-orange-900">
+                      {percentualTotalOfertado}%
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
