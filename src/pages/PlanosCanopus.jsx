@@ -140,26 +140,30 @@ export default function PlanosCanopusPage() {
           plano: plano.plano,
           tipo_venda: plano.tipo_venda,
           status: plano.status,
-          variacoes: []
+          variacoes: new Map() // Usar Map para evitar duplicatas por prazo
         };
       }
       
-      groups[codigo].variacoes.push({
-        id: plano.id,
-        prazo_meses: plano.prazo_meses,
-        parcela: plano.parcela,
-        taxa_adm: plano.taxa_adm,
-        plano: plano.plano,
-        tipo_venda: plano.tipo_venda
-      });
+      // Usar prazo_meses como chave para evitar duplicatas
+      const prazo = plano.prazo_meses;
+      if (prazo && !groups[codigo].variacoes.has(prazo)) {
+        groups[codigo].variacoes.set(prazo, {
+          id: plano.id,
+          prazo_meses: prazo,
+          parcela: plano.parcela,
+          taxa_adm: plano.taxa_adm,
+          plano: plano.plano,
+          tipo_venda: plano.tipo_venda
+        });
+      }
     });
     
-    // Ordenar variações por prazo
-    Object.values(groups).forEach(group => {
-      group.variacoes.sort((a, b) => (b.prazo_meses || 0) - (a.prazo_meses || 0));
-    });
-    
-    return Object.values(groups);
+    // Converter Map para array e ordenar por prazo
+    return Object.values(groups).map(group => ({
+      ...group,
+      variacoes: Array.from(group.variacoes.values())
+        .sort((a, b) => (b.prazo_meses || 0) - (a.prazo_meses || 0))
+    }));
   }, [planos]);
 
   const filteredPlanos = React.useMemo(() => {
