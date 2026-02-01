@@ -39,21 +39,44 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return j(401, { error: "Unauthorized", step }, corsHeaders);
 
-    step = "get_empresa";
+    // Role robusta: pega de vários campos possíveis
+    const rawRole = (user.perfil ?? user.role ?? user.papel ?? user.tipo ?? "").toString();
+    const userRole = rawRole.trim().toLowerCase();
+
+    step = "check_role";
     const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
     const userColab = colabs?.[0];
-    const isMaster = userColab?.perfil === 'master';
-    
-    let empresaId = null;
-    
+    const isMaster = userRole === 'master' || userColab?.perfil === 'master';
+
+    step = "get_empresa";
+    let empresaContextId = null;
+
     if (isMaster) {
-      // Master: planos globais (empresa_id = null)
-      empresaId = null;
+      // ✅ MASTER: importação global (empresa_id = null)
+      empresaContextId = null;
     } else {
-      // Outras empresas: planos da própria empresa
-      empresaId = user.empresa_id;
+      // ✅ OUTROS PERFIS: empresa é obrigatória
+      let empresaId = user.empresa_id ?? user.empresaId ?? user.empresa ?? null;
       if (!empresaId && colabs?.length) empresaId = colabs[0].empresa_id;
-      if (!empresaId) return j(400, { error: "Empresa não encontrada", step }, corsHeaders);
+      
+      if (!empresaId) {
+        return j(400, { 
+          error: "Empresa não encontrada", 
+          step, 
+          debug_role: rawRole 
+        }, corsHeaders);
+      }
+
+      const empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
+      if (!empresa) {
+        return j(400, { 
+          error: "Empresa não encontrada no banco", 
+          step, 
+          debug_empresaId: empresaId 
+        }, corsHeaders);
+      }
+
+      empresaContextId = empresaId;
     }
 
     step = "parse_body";
