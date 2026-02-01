@@ -180,9 +180,20 @@ export default function ImprimirSimulacao() {
             height: auto !important;
             overflow: hidden !important;
           }
+          
+          /* Ocultar sidebar/menu lateral */
+          aside { display: none !important; }
+          nav { display: none !important; }
+          header { display: none !important; }
+          
+          /* Garantir que o conteúdo use largura total */
+          main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+          
           .compact-print { 
             font-size: 11px !important; 
             line-height: 1.3 !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .compact-print h1 { font-size: 20px !important; margin-bottom: 4px !important; }
           .compact-print h2 { font-size: 14px !important; margin-bottom: 6px !important; padding-bottom: 2px !important; }
