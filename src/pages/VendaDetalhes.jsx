@@ -200,22 +200,22 @@ export default function VendaDetalhes() {
               </div>
             )}
 
-            {cliente?.telefone && (
+            {cliente?.celular && (
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                 <Phone className="w-5 h-5 text-slate-400" />
                 <div className="flex-1">
-                  <p className="text-sm text-slate-500">Telefone</p>
-                  <p className="font-medium">{cliente.telefone}</p>
+                  <p className="text-sm text-slate-500">Celular</p>
+                  <p className="font-medium">{cliente.celular}</p>
                 </div>
               </div>
             )}
 
-            {cliente?.telefone_secundario && (
+            {cliente?.telefone_fixo && (
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                 <Phone className="w-5 h-5 text-slate-400" />
                 <div className="flex-1">
-                  <p className="text-sm text-slate-500">Telefone Secundário</p>
-                  <p className="font-medium">{cliente.telefone_secundario}</p>
+                  <p className="text-sm text-slate-500">Telefone Fixo</p>
+                  <p className="font-medium">{cliente.telefone_fixo}</p>
                 </div>
               </div>
             )}
@@ -230,22 +230,46 @@ export default function VendaDetalhes() {
               </div>
             )}
 
-            {(cliente?.endereco_rua || cliente?.endereco_cidade) && (
+            {(cliente?.res_endereco || cliente?.res_cidade) && (
               <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
                 <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm text-slate-500">Endereço</p>
+                  <p className="text-sm text-slate-500">Endereço Residencial</p>
                   <p className="font-medium">
-                    {cliente.endereco_rua && `${cliente.endereco_rua}`}
-                    {cliente.endereco_numero && `, ${cliente.endereco_numero}`}
-                    {cliente.endereco_complemento && ` - ${cliente.endereco_complemento}`}
+                    {cliente.res_tipo_logradouro && `${cliente.res_tipo_logradouro} `}
+                    {cliente.res_endereco && `${cliente.res_endereco}`}
+                    {cliente.res_numero && `, ${cliente.res_numero}`}
+                    {cliente.res_complemento && ` - ${cliente.res_complemento}`}
                   </p>
-                  {(cliente.endereco_bairro || cliente.endereco_cidade || cliente.endereco_estado) && (
+                  {(cliente.res_bairro || cliente.res_cidade || cliente.res_uf) && (
                     <p className="text-sm text-slate-600 mt-1">
-                      {cliente.endereco_bairro && `${cliente.endereco_bairro}, `}
-                      {cliente.endereco_cidade && `${cliente.endereco_cidade}`}
-                      {cliente.endereco_estado && ` - ${cliente.endereco_estado}`}
-                      {cliente.endereco_cep && ` | CEP: ${cliente.endereco_cep}`}
+                      {cliente.res_bairro && `${cliente.res_bairro}, `}
+                      {cliente.res_cidade && `${cliente.res_cidade}`}
+                      {cliente.res_uf && ` - ${cliente.res_uf}`}
+                      {cliente.res_cep && ` | CEP: ${cliente.res_cep}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {(cliente?.com_endereco || cliente?.com_cidade) && (
+              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+                <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">Endereço Comercial</p>
+                  <p className="font-medium">
+                    {cliente.com_tipo_logradouro && `${cliente.com_tipo_logradouro} `}
+                    {cliente.com_endereco && `${cliente.com_endereco}`}
+                    {cliente.com_numero && `, ${cliente.com_numero}`}
+                    {cliente.com_complemento && ` - ${cliente.com_complemento}`}
+                  </p>
+                  {(cliente.com_bairro || cliente.com_cidade || cliente.com_uf) && (
+                    <p className="text-sm text-slate-600 mt-1">
+                      {cliente.com_bairro && `${cliente.com_bairro}, `}
+                      {cliente.com_cidade && `${cliente.com_cidade}`}
+                      {cliente.com_uf && ` - ${cliente.com_uf}`}
+                      {cliente.com_cep && ` | CEP: ${cliente.com_cep}`}
                     </p>
                   )}
                 </div>
