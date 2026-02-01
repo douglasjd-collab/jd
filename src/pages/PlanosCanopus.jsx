@@ -100,9 +100,18 @@ export default function PlanosCanopusPage() {
   };
 
   const { data: planos = [], isLoading } = useQuery({
-    queryKey: ['planos-canopus', user?.empresa_id],
+    queryKey: ['planos-canopus', user?.empresa_id, user?.perfil],
     queryFn: async () => {
-      if (!user?.empresa_id) return [];
+      if (!user) return [];
+      
+      // Super admin vê todos os planos de todas as empresas
+      if (user.perfil === 'super_admin') {
+        const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 1000);
+        return Array.isArray(res) ? res : (res?.items ?? []);
+      }
+      
+      // Outros perfis: apenas planos da própria empresa
+      if (!user.empresa_id) return [];
       const res = await base44.entities.PlanoCanopus.filter(
         { empresa_id: user.empresa_id },
         '-ultima_sincronizacao',
@@ -110,7 +119,7 @@ export default function PlanosCanopusPage() {
       );
       return Array.isArray(res) ? res : (res?.items ?? []);
     },
-    enabled: !!user?.empresa_id
+    enabled: !!user
   });
 
   // Agrupar planos por código (sem prazo) - ANTES dos early returns
@@ -331,18 +340,6 @@ ${textoVariacoes}
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-
-  if (!['admin', 'super_admin', 'master'].includes(user.perfil)) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <XCircle className="w-16 h-16 text-red-500" />
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-900">Acesso Negado</h2>
-          <p className="text-slate-600 mt-2">Você não tem permissão para acessar esta página.</p>
-        </div>
       </div>
     );
   }
