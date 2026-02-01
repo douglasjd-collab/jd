@@ -40,15 +40,28 @@ Deno.serve(async (req) => {
     if (!user) return j(401, { error: "Unauthorized", step }, corsHeaders);
 
     step = "get_empresa";
-    const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
+    const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
     const userColab = colabs?.[0];
     const isMaster = userColab?.perfil === 'master';
     
     let empresasIds = [];
+    let masterEmpresaId = null;
+    
     if (isMaster) {
-      // Se for master, buscar todas as empresas ativas
+      // Master: buscar empresa do master (se tiver) + todas as empresas ativas
+      masterEmpresaId = userColab?.empresa_id || null;
       const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
       empresasIds = empresas.map(e => e.id);
+      
+      // Se master tem empresa_id e não está na lista, adicionar
+      if (masterEmpresaId && !empresasIds.includes(masterEmpresaId)) {
+        empresasIds.unshift(masterEmpresaId);
+      }
+      
+      // Se não tem empresas, retornar erro
+      if (empresasIds.length === 0) {
+        return j(400, { error: "Nenhuma empresa ativa encontrada", step }, corsHeaders);
+      }
     } else {
       // Senão, apenas a empresa do usuário
       let empresaId = user.empresa_id;
