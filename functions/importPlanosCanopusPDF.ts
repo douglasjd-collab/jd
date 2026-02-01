@@ -148,9 +148,9 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
     for (const plano of planos) {
       const hash = `${plano.codigo}_${plano.prazo_meses}`;
       
-      // Verificar se já existe (global ou da empresa)
-      const filterCriteria = empresaId 
-        ? { empresa_id: empresaId, external_hash: hash }
+      // Verificar se já existe (global ou da empresa específica)
+      const filterCriteria = empresaContextId 
+        ? { empresa_id: empresaContextId, external_hash: hash }
         : { external_hash: hash };
       
       const existe = await base44.asServiceRole.entities.PlanoCanopus.filter(filterCriteria);
@@ -161,9 +161,9 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
         continue;
       }
 
-      // Cadastrar apenas se não existir
+      // Cadastrar plano
       const data = {
-        empresa_id: empresaId, // null para master, string para outras empresas
+        empresa_id: empresaContextId, // null para master (global), string para outras empresas
         origem: "PDF_IMPORT",
         produto_id: produtoId,
         permite_reserva: "N",
