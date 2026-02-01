@@ -21,7 +21,12 @@ import {
   Hash, 
   Wallet,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Phone,
+  Mail,
+  MapPin,
+  CreditCard,
+  Cake
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatDateBR } from '@/components/utils/dateHelpers';
@@ -39,6 +44,17 @@ export default function VendaDetalhes() {
       return vendas[0];
     },
     enabled: !!vendaId
+  });
+
+  // Buscar dados completos do cliente
+  const { data: cliente } = useQuery({
+    queryKey: ['cliente-detalhes', venda?.cliente_id],
+    queryFn: async () => {
+      if (!venda?.cliente_id) return null;
+      const clientes = await base44.entities.Cliente.filter({ id: venda.cliente_id });
+      return clientes[0];
+    },
+    enabled: !!venda?.cliente_id
   });
 
   const { data: parcelas = [], isLoading: loadingParcelas } = useQuery({
@@ -152,21 +168,118 @@ export default function VendaDetalhes() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Dados do Cliente */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle>Dados do Cliente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <User className="w-5 h-5 text-slate-400" />
+              <div className="flex-1">
+                <p className="text-sm text-slate-500">Nome Completo</p>
+                <p className="font-medium">{venda.cliente_nome}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <CreditCard className="w-5 h-5 text-slate-400" />
+              <div className="flex-1">
+                <p className="text-sm text-slate-500">CPF</p>
+                <p className="font-medium">{venda.cliente_cpf}</p>
+              </div>
+            </div>
+
+            {cliente?.data_nascimento && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <Cake className="w-5 h-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">Data de Nascimento</p>
+                  <p className="font-medium">{formatDateBR(cliente.data_nascimento)}</p>
+                </div>
+              </div>
+            )}
+
+            {cliente?.telefone && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <Phone className="w-5 h-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">Telefone</p>
+                  <p className="font-medium">{cliente.telefone}</p>
+                </div>
+              </div>
+            )}
+
+            {cliente?.telefone_secundario && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <Phone className="w-5 h-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">Telefone Secundário</p>
+                  <p className="font-medium">{cliente.telefone_secundario}</p>
+                </div>
+              </div>
+            )}
+
+            {cliente?.email && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <Mail className="w-5 h-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">E-mail</p>
+                  <p className="font-medium">{cliente.email}</p>
+                </div>
+              </div>
+            )}
+
+            {(cliente?.endereco_rua || cliente?.endereco_cidade) && (
+              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
+                <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">Endereço</p>
+                  <p className="font-medium">
+                    {cliente.endereco_rua && `${cliente.endereco_rua}`}
+                    {cliente.endereco_numero && `, ${cliente.endereco_numero}`}
+                    {cliente.endereco_complemento && ` - ${cliente.endereco_complemento}`}
+                  </p>
+                  {(cliente.endereco_bairro || cliente.endereco_cidade || cliente.endereco_estado) && (
+                    <p className="text-sm text-slate-600 mt-1">
+                      {cliente.endereco_bairro && `${cliente.endereco_bairro}, `}
+                      {cliente.endereco_cidade && `${cliente.endereco_cidade}`}
+                      {cliente.endereco_estado && ` - ${cliente.endereco_estado}`}
+                      {cliente.endereco_cep && ` | CEP: ${cliente.endereco_cep}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {cliente?.renda && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <Wallet className="w-5 h-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">Renda</p>
+                  <p className="font-medium">{formatCurrency(cliente.renda)}</p>
+                </div>
+              </div>
+            )}
+
+            {cliente?.profissao && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <Building2 className="w-5 h-5 text-slate-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-slate-500">Profissão</p>
+                  <p className="font-medium">{cliente.profissao}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Informações da Venda */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle>Informações da Venda</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <User className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-500">Cliente</p>
-                <p className="font-medium">{venda.cliente_nome}</p>
-                <p className="text-sm text-slate-500">{venda.cliente_cpf}</p>
-              </div>
-            </div>
-
             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
               <Building2 className="w-5 h-5 text-slate-400" />
               <div>
@@ -180,6 +293,30 @@ export default function VendaDetalhes() {
               <div>
                 <p className="text-sm text-slate-500">Grupo / Cota / Contrato</p>
                 <p className="font-medium">{venda.grupo} / {venda.cota} / {venda.contrato || '-'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <Wallet className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Valor do Crédito</p>
+                <p className="font-medium">{formatCurrency(venda.valorCredito)}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <Hash className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Prazo</p>
+                <p className="font-medium">{venda.prazo} meses</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <Hash className="w-5 h-5 text-slate-400" />
+              <div>
+                <p className="text-sm text-slate-500">Taxa de Administração</p>
+                <p className="font-medium">{venda.taxaAdministracao}%</p>
               </div>
             </div>
 
