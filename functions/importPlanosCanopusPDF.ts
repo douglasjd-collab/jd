@@ -40,12 +40,22 @@ Deno.serve(async (req) => {
     if (!user) return j(401, { error: "Unauthorized", step }, corsHeaders);
 
     step = "get_empresa";
-    let empresaId = user.empresa_id;
-    if (!empresaId) {
-      const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
-      if (colabs?.length) empresaId = colabs[0].empresa_id;
+    const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
+    const userColab = colabs?.[0];
+    const isMaster = userColab?.perfil === 'master';
+    
+    let empresasIds = [];
+    if (isMaster) {
+      // Se for master, buscar todas as empresas ativas
+      const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
+      empresasIds = empresas.map(e => e.id);
+    } else {
+      // Senão, apenas a empresa do usuário
+      let empresaId = user.empresa_id;
+      if (!empresaId && colabs?.length) empresaId = colabs[0].empresa_id;
+      if (!empresaId) return j(400, { error: "Empresa não encontrada", step }, corsHeaders);
+      empresasIds = [empresaId];
     }
-    if (!empresaId) return j(400, { error: "Empresa não encontrada", step }, corsHeaders);
 
     step = "parse_body";
     const body = await req.json();
@@ -137,39 +147,41 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
     let ignorados = 0;
 
     for (const plano of planos) {
-      const hash = `${plano.codigo}_${plano.prazo_meses}`;
-      
-      const existe = await base44.entities.PlanoCanopus.filter({
-        empresa_id: empresaId,
-        external_hash: hash
-      });
+      for (const empresaId of empresasIds) {
+        const hash = `${plano.codigo}_${plano.prazo_meses}`;
+        
+        const existe = await base44.asServiceRole.entities.PlanoCanopus.filter({
+          empresa_id: empresaId,
+          external_hash: hash
+        });
 
-      // Se já existe, ignorar (não duplicar)
-      if (existe?.length) {
-        ignorados++;
-        continue;
+        // Se já existe, ignorar (não duplicar)
+        if (existe?.length) {
+          ignorados++;
+          continue;
+        }
+
+        // Cadastrar apenas se não existir
+        const data = {
+          empresa_id: empresaId,
+          origem: "PDF_IMPORT",
+          produto_id: produtoId,
+          permite_reserva: "N",
+          external_hash: hash,
+          nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
+          valor_bem: plano.valor_bem,
+          prazo_meses: plano.prazo_meses,
+          parcela: plano.primeira_parcela,
+          taxa_adm: plano.taxa_adm || null,
+          plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
+          tipo_venda: plano.tipo_venda || "",
+          ultima_sincronizacao: new Date().toISOString(),
+          status: "ativo"
+        };
+
+        await base44.asServiceRole.entities.PlanoCanopus.create(data);
+        criados++;
       }
-
-      // Cadastrar apenas se não existir
-      const data = {
-        empresa_id: empresaId,
-        origem: "PDF_IMPORT",
-        produto_id: produtoId,
-        permite_reserva: "N",
-        external_hash: hash,
-        nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
-        valor_bem: plano.valor_bem,
-        prazo_meses: plano.prazo_meses,
-        parcela: plano.primeira_parcela,
-        taxa_adm: plano.taxa_adm || null,
-        plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
-        tipo_venda: plano.tipo_venda || "",
-        ultima_sincronizacao: new Date().toISOString(),
-        status: "ativo"
-      };
-
-      await base44.entities.PlanoCanopus.create(data);
-      criados++;
     }
 
     return j(200, {
@@ -177,7 +189,10 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
       criados,
       ignorados,
       total_planos: planos.length,
-      message: `Importação concluída: ${criados} novos, ${ignorados} já existentes (ignorados)`,
+      empresas_processadas: empresasIds.length,
+      message: isMaster 
+        ? `Importação concluída para ${empresasIds.length} empresa(s): ${criados} novos, ${ignorados} já existentes (ignorados)`
+        : `Importação concluída: ${criados} novos, ${ignorados} já existentes (ignorados)`,
       elapsed_ms: Date.now() - t0
     }, corsHeaders);
 
