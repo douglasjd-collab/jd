@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import VendaForm from '@/components/forms/VendaForm';
+import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
 
 export default function FunilVendas() {
   const [formOpen, setFormOpen] = useState(false);
@@ -51,6 +52,7 @@ export default function FunilVendas() {
   const [oportunidadeParaVenda, setOportunidadeParaVenda] = useState(null);
   const [indicadorNome, setIndicadorNome] = useState('');
   const [indicadorTelefone, setIndicadorTelefone] = useState('');
+  const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -1070,20 +1072,32 @@ export default function FunilVendas() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Cliente</Label>
-                <Select
-                  value={formData.cliente_id}
-                  onValueChange={(value) => setFormData({ ...formData, cliente_id: value })}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                  onClick={() => setClienteSearchOpen(true)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={null}>Nenhum</SelectItem>
-                    {clientes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {formData.cliente_id ? (
+                    (() => {
+                      const cliente = clientes.find(c => c.id === formData.cliente_id);
+                      return cliente?.nome_completo || cliente?.pj_razao_social || 'Cliente selecionado';
+                    })()
+                  ) : (
+                    <span className="text-slate-500">Buscar cliente...</span>
+                  )}
+                </Button>
+                {formData.cliente_id && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFormData({ ...formData, cliente_id: '' })}
+                    className="mt-1 w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    Remover Cliente
+                  </Button>
+                )}
               </div>
 
               <div>
@@ -1549,6 +1563,18 @@ export default function FunilVendas() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Busca de Cliente */}
+      <ClienteSearchModal
+        open={clienteSearchOpen}
+        onOpenChange={setClienteSearchOpen}
+        onSelectCliente={(cliente) => {
+          setFormData({ ...formData, cliente_id: cliente.id });
+          setClienteSearchOpen(false);
+        }}
+        currentUser={currentUser}
+        empresaIdSelecionada={currentUser?.empresa_id}
+      />
 
       {/* Dialog Criar Venda */}
       <Dialog open={vendaFormOpen} onOpenChange={setVendaFormOpen}>
