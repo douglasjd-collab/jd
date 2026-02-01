@@ -100,17 +100,35 @@ export default function PlanosCanopusPage() {
   };
 
   const { data: planos = [], isLoading } = useQuery({
-    queryKey: ['planos-canopus', user?.empresa_id],
+    queryKey: ['planos-canopus', user?.empresa_id, user?.perfil],
     queryFn: async () => {
-      if (!user?.empresa_id) return [];
-      const res = await base44.entities.PlanoCanopus.filter(
-        { empresa_id: user.empresa_id },
-        '-ultima_sincronizacao',
-        1000
-      );
-      return Array.isArray(res) ? res : (res?.items ?? []);
+      if (!user) return [];
+      
+      // Master vê todos os planos globais (empresa_id = null)
+      if (user.perfil === 'master') {
+        const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 1000);
+        const filtered = (Array.isArray(res) ? res : (res?.items ?? [])).filter(p => !p.empresa_id);
+        return filtered;
+      }
+      
+      // Outras empresas: planos globais (empresa_id = null) + planos da própria empresa
+      if (!user.empresa_id) return [];
+      
+      const [globais, daEmpresa] = await Promise.all([
+        base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 1000).then(res => {
+          const items = Array.isArray(res) ? res : (res?.items ?? []);
+          return items.filter(p => !p.empresa_id);
+        }),
+        base44.entities.PlanoCanopus.filter(
+          { empresa_id: user.empresa_id },
+          '-ultima_sincronizacao',
+          1000
+        ).then(res => Array.isArray(res) ? res : (res?.items ?? []))
+      ]);
+      
+      return [...globais, ...daEmpresa];
     },
-    enabled: !!user?.empresa_id
+    enabled: !!user
   });
 
   // Agrupar planos por código (sem prazo) - ANTES dos early returns

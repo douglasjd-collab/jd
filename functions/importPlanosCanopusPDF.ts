@@ -44,30 +44,16 @@ Deno.serve(async (req) => {
     const userColab = colabs?.[0];
     const isMaster = userColab?.perfil === 'master';
     
-    let empresasIds = [];
-    let masterEmpresaId = null;
+    let empresaId = null;
     
     if (isMaster) {
-      // Master: buscar empresa do master (se tiver) + todas as empresas ativas
-      masterEmpresaId = userColab?.empresa_id || null;
-      const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
-      empresasIds = empresas.map(e => e.id);
-      
-      // Se master tem empresa_id e não está na lista, adicionar
-      if (masterEmpresaId && !empresasIds.includes(masterEmpresaId)) {
-        empresasIds.unshift(masterEmpresaId);
-      }
-      
-      // Se não tem empresas, retornar erro
-      if (empresasIds.length === 0) {
-        return j(400, { error: "Nenhuma empresa ativa encontrada", step }, corsHeaders);
-      }
+      // Master: planos globais (empresa_id = null)
+      empresaId = null;
     } else {
-      // Senão, apenas a empresa do usuário
-      let empresaId = user.empresa_id;
+      // Outras empresas: planos da própria empresa
+      empresaId = user.empresa_id;
       if (!empresaId && colabs?.length) empresaId = colabs[0].empresa_id;
       if (!empresaId) return j(400, { error: "Empresa não encontrada", step }, corsHeaders);
-      empresasIds = [empresaId];
     }
 
     step = "parse_body";
@@ -160,41 +146,41 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
     let ignorados = 0;
 
     for (const plano of planos) {
-      for (const empresaId of empresasIds) {
-        const hash = `${plano.codigo}_${plano.prazo_meses}`;
-        
-        const existe = await base44.asServiceRole.entities.PlanoCanopus.filter({
-          empresa_id: empresaId,
-          external_hash: hash
-        });
+      const hash = `${plano.codigo}_${plano.prazo_meses}`;
+      
+      // Verificar se já existe (global ou da empresa)
+      const filterCriteria = empresaId 
+        ? { empresa_id: empresaId, external_hash: hash }
+        : { external_hash: hash };
+      
+      const existe = await base44.asServiceRole.entities.PlanoCanopus.filter(filterCriteria);
 
-        // Se já existe, ignorar (não duplicar)
-        if (existe?.length) {
-          ignorados++;
-          continue;
-        }
-
-        // Cadastrar apenas se não existir
-        const data = {
-          empresa_id: empresaId,
-          origem: "PDF_IMPORT",
-          produto_id: produtoId,
-          permite_reserva: "N",
-          external_hash: hash,
-          nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
-          valor_bem: plano.valor_bem,
-          prazo_meses: plano.prazo_meses,
-          parcela: plano.primeira_parcela,
-          taxa_adm: plano.taxa_adm || null,
-          plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
-          tipo_venda: plano.tipo_venda || "",
-          ultima_sincronizacao: new Date().toISOString(),
-          status: "ativo"
-        };
-
-        await base44.asServiceRole.entities.PlanoCanopus.create(data);
-        criados++;
+      // Se já existe, ignorar (não duplicar)
+      if (existe?.length) {
+        ignorados++;
+        continue;
       }
+
+      // Cadastrar apenas se não existir
+      const data = {
+        empresa_id: empresaId, // null para master, string para outras empresas
+        origem: "PDF_IMPORT",
+        produto_id: produtoId,
+        permite_reserva: "N",
+        external_hash: hash,
+        nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
+        valor_bem: plano.valor_bem,
+        prazo_meses: plano.prazo_meses,
+        parcela: plano.primeira_parcela,
+        taxa_adm: plano.taxa_adm || null,
+        plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
+        tipo_venda: plano.tipo_venda || "",
+        ultima_sincronizacao: new Date().toISOString(),
+        status: "ativo"
+      };
+
+      await base44.asServiceRole.entities.PlanoCanopus.create(data);
+      criados++;
     }
 
     return j(200, {
@@ -202,10 +188,9 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
       criados,
       ignorados,
       total_planos: planos.length,
-      empresas_processadas: empresasIds.length,
       message: isMaster 
-        ? `Importação concluída para ${empresasIds.length} empresa(s): ${criados} novos, ${ignorados} já existentes (ignorados)`
-        : `Importação concluída: ${criados} novos, ${ignorados} já existentes (ignorados)`,
+        ? `Importação global concluída: ${criados} novos planos (disponíveis para todas empresas), ${ignorados} já existentes`
+        : `Importação concluída: ${criados} novos, ${ignorados} já existentes`,
       elapsed_ms: Date.now() - t0
     }, corsHeaders);
 
