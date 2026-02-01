@@ -1,15 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
 
-function j(status, data, corsHeaders = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 
-      "content-type": "application/json; charset=utf-8",
-      ...corsHeaders
-    },
-  });
-}
-
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") || "*";
   const corsHeaders = {
@@ -30,74 +20,87 @@ Deno.serve(async (req) => {
     });
   }
 
-  let step = "init";
   const t0 = Date.now();
 
   try {
-    step = "auth";
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return j(401, { error: "Unauthorized", step }, corsHeaders);
 
-    // Role robusta: pega de vários campos possíveis
-    const rawRole = (user.perfil ?? user.role ?? user.papel ?? user.tipo ?? "").toString();
+    if (!user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+    }
+
+    // ✅ Role robusta
+    const rawRole = (user.perfil ?? user.role ?? user.papel ?? "").toString();
     const userRole = rawRole.trim().toLowerCase();
 
-    step = "check_role";
-    const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
-    const userColab = colabs?.[0];
-    const isMaster = userRole === 'master' || userColab?.perfil === 'master';
+    // ✅ Permissões aceitas
+    const allowed = ["super_admin", "master", "admin", "gerente"];
+    if (!allowed.includes(userRole)) {
+      return Response.json(
+        { error: "Forbidden: Requires admin or manager access", debug_role: rawRole },
+        { status: 403, headers: corsHeaders }
+      );
+    }
 
-    step = "get_empresas";
+    // ✅ super_admin/master = distribui para todas as empresas
+    const isDistributor = ["super_admin", "master"].includes(userRole);
+
+    // ✅ Ler body
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return Response.json({ error: "JSON inválido", step: "parse_body" }, { status: 400, headers: corsHeaders });
+    }
+
+    const file_url = body?.file_url;
+    const produto_id = (body?.produto_id ?? "101").toString().trim();
+
+    if (!file_url) {
+      return Response.json({ error: "file_url é obrigatório", step: "validate_input" }, { status: 400, headers: corsHeaders });
+    }
+
+    // ✅ Definir empresas alvo
     let empresasAlvo = [];
 
-    if (isMaster) {
-      // ✅ MASTER: distribuir para TODAS as empresas ativas
+    if (isDistributor) {
+      // 🔥 Distribui para todas as empresas ativas
       const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
-      empresasAlvo = (empresas || []).map(e => ({ id: e.id, nome: e.nome }));
-      
+      empresasAlvo = (empresas ?? []).map(e => ({ id: e.id, nome: e.nome }));
+
       if (empresasAlvo.length === 0) {
-        return j(400, { 
-          error: "Nenhuma empresa ativa encontrada para distribuir", 
-          step 
-        }, corsHeaders);
+        return Response.json({ error: "Nenhuma empresa ativa encontrada", step: "get_empresas" }, { status: 400, headers: corsHeaders });
       }
     } else {
-      // ✅ OUTROS PERFIS: apenas a própria empresa
+      // Usuário comum: exige empresa
       let empresaId = user.empresa_id ?? user.empresaId ?? user.empresa ?? null;
-      if (!empresaId && colabs?.length) empresaId = colabs[0].empresa_id;
       
       if (!empresaId) {
-        return j(400, { 
-          error: "Empresa não encontrada", 
-          step, 
-          debug_role: rawRole 
-        }, corsHeaders);
+        const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
+        if (colabs?.length) empresaId = colabs[0].empresa_id;
+      }
+
+      if (!empresaId) {
+        return Response.json(
+          { error: "Empresa não encontrada", step: "get_empresa", debug_role: rawRole },
+          { status: 400, headers: corsHeaders }
+        );
       }
 
       const empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
       if (!empresa) {
-        return j(400, { 
-          error: "Empresa não encontrada no banco", 
-          step, 
-          debug_empresaId: empresaId 
-        }, corsHeaders);
+        return Response.json(
+          { error: "Empresa não encontrada", step: "get_empresa", debug_empresaId: empresaId },
+          { status: 400, headers: corsHeaders }
+        );
       }
 
       empresasAlvo = [{ id: empresaId, nome: empresa.nome }];
     }
 
-    step = "parse_body";
-    const body = await req.json();
-    const { file_url, produto_id = "101" } = body;
-
-    if (!file_url) return j(400, { error: "URL do arquivo não fornecida", step }, corsHeaders);
-
-    const produtoId = produto_id;
-    const fileUrl = file_url;
-
-    step = "extract_text";
-    const extractRes = await base44.integrations.Core.InvokeLLM({
+    // ✅ 1) Extrair planos do PDF
+    const extractRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `Extraia TODOS os dados da tabela de planos de consórcio deste PDF.
 
 IMPORTANTE: Ao clicar em cada linha da tabela, aparecem MÚLTIPLAS OPÇÕES de prazo e parcela para o mesmo bem.
@@ -137,7 +140,7 @@ EXEMPLO de saída esperada para CR4072 com valor R$ 25.000,00 e taxa ADM 18.20%:
 ]
 
 Retorne um array de planos no formato JSON com TODAS as variações e suas respectivas taxas de administração.`,
-      file_urls: [fileUrl],
+      file_urls: [file_url],
       response_json_schema: {
         type: "object",
         properties: {
@@ -163,39 +166,40 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
       }
     });
 
-    const planos = extractRes.planos || [];
-    if (planos.length === 0) {
-      return j(400, { 
-        error: "Nenhum plano encontrado no PDF", 
-        step,
-        elapsed_ms: Date.now() - t0
-      }, corsHeaders);
+    const planosBase = extractRes.planos || [];
+    if (planosBase.length === 0) {
+      return Response.json(
+        { error: "Nenhum plano encontrado no PDF", step: "parse_pdf", elapsed_ms: Date.now() - t0 },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
-    step = "save_planos";
+    // ✅ 2) Replicar / Upsert por (empresa_id + external_hash)
+    const Plan = base44.asServiceRole.entities.PlanoCanopus;
+
     let criados = 0;
     let atualizados = 0;
-    let ignorados = 0;
-    let erros = 0;
+    const erros = [];
 
-    // Distribuir/replicar planos para cada empresa alvo
-    for (const empresa of empresasAlvo) {
-      for (const plano of planos) {
+    for (const emp of empresasAlvo) {
+      for (const plano of planosBase) {
         try {
-          const hash = `${plano.codigo}_${plano.prazo_meses}`;
-          
-          // Verificar se já existe para ESTA empresa
-          const existe = await base44.asServiceRole.entities.PlanoCanopus.filter({
-            empresa_id: empresa.id,
-            external_hash: hash
+          const external_hash = `${plano.codigo}_${plano.prazo_meses}`;
+
+          // Procurar existente
+          const existentes = await Plan.filter({
+            empresa_id: emp.id,
+            external_hash,
           });
 
-          const planoData = {
-            empresa_id: empresa.id,
+          const existente = Array.isArray(existentes) ? existentes[0] : null;
+
+          const payload = {
+            empresa_id: emp.id,
             origem: "PDF_IMPORT",
-            produto_id: produtoId,
+            produto_id,
             permite_reserva: "N",
-            external_hash: hash,
+            external_hash,
             nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
             valor_bem: plano.valor_bem,
             prazo_meses: plano.prazo_meses,
@@ -207,43 +211,42 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
             status: "ativo"
           };
 
-          if (existe?.length > 0) {
-            // Atualizar existente
-            await base44.asServiceRole.entities.PlanoCanopus.update(existe[0].id, planoData);
+          if (existente?.id) {
+            await Plan.update(existente.id, payload);
             atualizados++;
           } else {
-            // Criar novo
-            await base44.asServiceRole.entities.PlanoCanopus.create(planoData);
+            await Plan.create(payload);
             criados++;
           }
-        } catch (err) {
-          erros++;
-          console.error(`Erro ao processar plano ${plano.codigo} para empresa ${empresa.id}:`, err);
+        } catch (e) {
+          erros.push({
+            empresa_id: emp.id,
+            external_hash: `${plano?.codigo}_${plano?.prazo_meses}`,
+            error: e?.message ?? String(e),
+          });
         }
       }
     }
 
-    return j(200, {
-      ok: true,
-      mode: isMaster ? 'distribute_all_empresas' : 'single_empresa',
-      empresas_processadas: empresasAlvo.length,
-      planos_recebidos: planos.length,
+    return Response.json({
+      sucesso: true,
+      role: userRole,
+      modo: isDistributor ? "distribuir_todas_empresas" : "somente_minha_empresa",
+      empresas_alvo: empresasAlvo.length,
+      total_planos: planosBase.length,
       criados,
       atualizados,
       erros,
-      message: isMaster 
+      message: isDistributor 
         ? `Distribuição concluída: ${criados} criados, ${atualizados} atualizados em ${empresasAlvo.length} empresa(s)`
         : `Importação concluída: ${criados} criados, ${atualizados} atualizados`,
       elapsed_ms: Date.now() - t0
-    }, corsHeaders);
+    }, { headers: corsHeaders });
 
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return j(500, {
-      error: "Erro ao processar PDF",
-      step,
-      message: msg,
-      elapsed_ms: Date.now() - t0
-    }, corsHeaders);
+  } catch (error) {
+    return Response.json(
+      { error: error?.message ?? String(error), elapsed_ms: Date.now() - t0 },
+      { status: 500, headers: corsHeaders }
+    );
   }
 });
