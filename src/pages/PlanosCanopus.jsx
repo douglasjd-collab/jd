@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -36,7 +46,8 @@ import {
   ChevronRight,
   Filter,
   Calculator,
-  ClipboardCopy
+  ClipboardCopy,
+  Trash2
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { createPageUrl } from '@/utils';
@@ -54,6 +65,10 @@ export default function PlanosCanopusPage() {
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
   const [tipoProduto, setTipoProduto] = useState('');
+  const [planoParaExcluir, setPlanoParaExcluir] = useState(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
+  const queryClient = useQueryClient();
 
   React.useEffect(() => {
     loadUser();
@@ -258,6 +273,36 @@ ${textoVariacoes}
     }).catch(() => {
       toast.error('Erro ao copiar variações');
     });
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (group) => {
+      // Excluir todas as variações do grupo
+      const deletePromises = group.variacoes.map(v => 
+        base44.entities.PlanoCanopus.delete(v.id)
+      );
+      await Promise.all(deletePromises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['planos-canopus']);
+      toast.success('Plano excluído com sucesso!');
+      setConfirmDeleteOpen(false);
+      setPlanoParaExcluir(null);
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir plano: ' + error.message);
+    }
+  });
+
+  const handleExcluirPlano = (group) => {
+    setPlanoParaExcluir(group);
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmarExclusao = () => {
+    if (planoParaExcluir) {
+      deleteMutation.mutate(planoParaExcluir);
+    }
   };
 
   const formatCurrency = (value) => {
@@ -477,16 +522,30 @@ ${textoVariacoes}
                       {group.tipo_venda}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenDialog(group);
-                        }}
-                      >
-                        <ChevronRight className="w-5 h-5 text-blue-600" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDialog(group);
+                          }}
+                        >
+                          <ChevronRight className="w-5 h-5 text-blue-600" />
+                        </Button>
+                        {['admin', 'super_admin', 'master'].includes(user?.perfil) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExcluirPlano(group);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -609,6 +668,37 @@ ${textoVariacoes}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o plano <strong>{planoParaExcluir?.codigo}</strong> e todas as suas <strong>{planoParaExcluir?.variacoes?.length} variações</strong>?
+              <br /><br />
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
