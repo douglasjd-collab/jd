@@ -48,14 +48,22 @@ Deno.serve(async (req) => {
     const userColab = colabs?.[0];
     const isMaster = userRole === 'master' || userColab?.perfil === 'master';
 
-    step = "get_empresa";
-    let empresaContextId = null;
+    step = "get_empresas";
+    let empresasAlvo = [];
 
     if (isMaster) {
-      // ✅ MASTER: importação global (empresa_id = null)
-      empresaContextId = null;
+      // ✅ MASTER: distribuir para TODAS as empresas ativas
+      const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
+      empresasAlvo = (empresas || []).map(e => ({ id: e.id, nome: e.nome }));
+      
+      if (empresasAlvo.length === 0) {
+        return j(400, { 
+          error: "Nenhuma empresa ativa encontrada para distribuir", 
+          step 
+        }, corsHeaders);
+      }
     } else {
-      // ✅ OUTROS PERFIS: empresa é obrigatória
+      // ✅ OUTROS PERFIS: apenas a própria empresa
       let empresaId = user.empresa_id ?? user.empresaId ?? user.empresa ?? null;
       if (!empresaId && colabs?.length) empresaId = colabs[0].empresa_id;
       
@@ -76,7 +84,7 @@ Deno.serve(async (req) => {
         }, corsHeaders);
       }
 
-      empresaContextId = empresaId;
+      empresasAlvo = [{ id: empresaId, nome: empresa.nome }];
     }
 
     step = "parse_body";
@@ -166,54 +174,66 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
 
     step = "save_planos";
     let criados = 0;
+    let atualizados = 0;
     let ignorados = 0;
+    let erros = 0;
 
-    for (const plano of planos) {
-      const hash = `${plano.codigo}_${plano.prazo_meses}`;
-      
-      // Verificar se já existe (global ou da empresa específica)
-      const filterCriteria = empresaContextId 
-        ? { empresa_id: empresaContextId, external_hash: hash }
-        : { external_hash: hash };
-      
-      const existe = await base44.asServiceRole.entities.PlanoCanopus.filter(filterCriteria);
+    // Distribuir/replicar planos para cada empresa alvo
+    for (const empresa of empresasAlvo) {
+      for (const plano of planos) {
+        try {
+          const hash = `${plano.codigo}_${plano.prazo_meses}`;
+          
+          // Verificar se já existe para ESTA empresa
+          const existe = await base44.asServiceRole.entities.PlanoCanopus.filter({
+            empresa_id: empresa.id,
+            external_hash: hash
+          });
 
-      // Se já existe, ignorar (não duplicar)
-      if (existe?.length) {
-        ignorados++;
-        continue;
+          const planoData = {
+            empresa_id: empresa.id,
+            origem: "PDF_IMPORT",
+            produto_id: produtoId,
+            permite_reserva: "N",
+            external_hash: hash,
+            nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
+            valor_bem: plano.valor_bem,
+            prazo_meses: plano.prazo_meses,
+            parcela: plano.primeira_parcela,
+            taxa_adm: plano.taxa_adm || null,
+            plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
+            tipo_venda: plano.tipo_venda || "",
+            ultima_sincronizacao: new Date().toISOString(),
+            status: "ativo"
+          };
+
+          if (existe?.length > 0) {
+            // Atualizar existente
+            await base44.asServiceRole.entities.PlanoCanopus.update(existe[0].id, planoData);
+            atualizados++;
+          } else {
+            // Criar novo
+            await base44.asServiceRole.entities.PlanoCanopus.create(planoData);
+            criados++;
+          }
+        } catch (err) {
+          erros++;
+          console.error(`Erro ao processar plano ${plano.codigo} para empresa ${empresa.id}:`, err);
+        }
       }
-
-      // Cadastrar plano
-      const data = {
-        empresa_id: empresaContextId, // null para master (global), string para outras empresas
-        origem: "PDF_IMPORT",
-        produto_id: produtoId,
-        permite_reserva: "N",
-        external_hash: hash,
-        nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
-        valor_bem: plano.valor_bem,
-        prazo_meses: plano.prazo_meses,
-        parcela: plano.primeira_parcela,
-        taxa_adm: plano.taxa_adm || null,
-        plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
-        tipo_venda: plano.tipo_venda || "",
-        ultima_sincronizacao: new Date().toISOString(),
-        status: "ativo"
-      };
-
-      await base44.asServiceRole.entities.PlanoCanopus.create(data);
-      criados++;
     }
 
     return j(200, {
       ok: true,
+      mode: isMaster ? 'distribute_all_empresas' : 'single_empresa',
+      empresas_processadas: empresasAlvo.length,
+      planos_recebidos: planos.length,
       criados,
-      ignorados,
-      total_planos: planos.length,
+      atualizados,
+      erros,
       message: isMaster 
-        ? `Importação global concluída: ${criados} novos planos (disponíveis para todas empresas), ${ignorados} já existentes`
-        : `Importação concluída: ${criados} novos, ${ignorados} já existentes`,
+        ? `Distribuição concluída: ${criados} criados, ${atualizados} atualizados em ${empresasAlvo.length} empresa(s)`
+        : `Importação concluída: ${criados} criados, ${atualizados} atualizados`,
       elapsed_ms: Date.now() - t0
     }, corsHeaders);
 
