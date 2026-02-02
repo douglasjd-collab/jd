@@ -206,23 +206,23 @@ export default function ImportarResultadoAssembleia() {
               />
             </div>
             <div>
-              <Label>Arquivo CSV/Excel *</Label>
+              <Label>Arquivo PDF *</Label>
               <Input
                 id="file-input"
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".pdf"
                 onChange={(e) => setArquivo(e.target.files[0])}
               />
             </div>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-900 font-semibold mb-2">📋 Formato esperado do arquivo:</p>
+            <p className="text-sm text-blue-900 font-semibold mb-2">📋 Formato esperado do PDF:</p>
             <p className="text-xs text-blue-800">
-              <strong>Colunas:</strong> Grupo, Modalidade, Menor_Lance_%, Maior_Lance_%, Quantidade
+              O sistema irá extrair automaticamente os dados de lances do PDF da assembleia
             </p>
             <p className="text-xs text-blue-700 mt-1">
-              <strong>Modalidades:</strong> lance_livre, lance_limitado, sorteio, lance_fixo_30, lance_fixo_50
+              <strong>Suportado:</strong> Resultados de assembleia com lances por grupo e modalidade
             </p>
           </div>
 

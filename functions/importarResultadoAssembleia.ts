@@ -20,18 +20,46 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Parâmetros obrigatórios faltando' }, { status: 400 });
     }
 
-    // 1. Baixar arquivo
-    const fileResponse = await fetch(file_url);
-    const fileContent = await fileResponse.text();
+    // 1. Extrair dados do PDF usando LLM
+    const extractionResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      prompt: `Extraia os dados de lances da assembleia deste PDF. 
+      
+Para cada grupo, identifique:
+- Número do grupo
+- Modalidade do lance (lance_livre, lance_limitado, sorteio, lance_fixo_30, lance_fixo_50)
+- Menor lance em percentual (se aplicável)
+- Maior lance em percentual (se aplicável)
+- Quantidade de ocorrências
 
-    // 2. Processar CSV
-    const lines = fileContent.split('\n').filter(l => l.trim());
-    if (lines.length < 2) {
-      return Response.json({ error: 'Arquivo vazio ou inválido' }, { status: 400 });
+Retorne um array de objetos com os dados extraídos.`,
+      file_urls: [file_url],
+      response_json_schema: {
+        type: "object",
+        properties: {
+          lances: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                grupo: { type: "string" },
+                modalidade: { type: "string" },
+                menor_lance_percent: { type: "number" },
+                maior_lance_percent: { type: "number" },
+                quantidade: { type: "integer" }
+              },
+              required: ["grupo", "modalidade"]
+            }
+          }
+        },
+        required: ["lances"]
+      }
+    });
+
+    const dataLines = extractionResult.lances || [];
+    
+    if (dataLines.length === 0) {
+      return Response.json({ error: 'Nenhum dado extraído do PDF' }, { status: 400 });
     }
-
-    // Remover header
-    const dataLines = lines.slice(1);
 
     // 3. Criar registro de histórico
     const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
@@ -45,33 +73,25 @@ Deno.serve(async (req) => {
       usuario_nome
     });
 
-    // 4. Processar linhas e criar resumos
+    // 4. Processar dados extraídos e criar resumos
     const gruposSet = new Set();
     let totalRegistros = 0;
 
-    for (const line of dataLines) {
-      const parts = line.split(',').map(p => p.trim());
-      
-      if (parts.length < 5) continue;
-
-      const [grupo, modalidade, menorLance, maiorLance, quantidade] = parts;
+    for (const lance of dataLines) {
+      const { grupo, modalidade, menor_lance_percent, maior_lance_percent, quantidade } = lance;
 
       if (!grupo || !modalidade) continue;
 
-      gruposSet.add(grupo);
-
-      const menorPercent = parseFloat(menorLance) || null;
-      const maiorPercent = parseFloat(maiorLance) || null;
-      const qtd = parseInt(quantidade) || 0;
+      gruposSet.add(grupo.toString());
 
       await base44.asServiceRole.entities.HistoricoLanceResumo.create({
         empresa_id,
         historico_id: historico.id,
         grupo: grupo.toString(),
         modalidade,
-        menor_lance_percent: menorPercent,
-        maior_lance_percent: maiorPercent,
-        qtd_ocorrencias: qtd
+        menor_lance_percent: menor_lance_percent || null,
+        maior_lance_percent: maior_lance_percent || null,
+        qtd_ocorrencias: quantidade || 0
       });
 
       totalRegistros++;
