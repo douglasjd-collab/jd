@@ -56,6 +56,7 @@ export default function LancesDoGrupoPanel({ grupo }) {
     const livre = getResumo(resumos, "lance_livre");
     const limitado = getResumo(resumos, "lance_limitado");
     const sorteio = getResumo(resumos, "sorteio");
+    const fixo15 = getResumo(resumos, "lance_fixo_15");
     const fixo30 = getResumo(resumos, "lance_fixo_30");
     const fixo50 = getResumo(resumos, "lance_fixo_50");
 
@@ -80,15 +81,22 @@ export default function LancesDoGrupoPanel({ grupo }) {
         qtd: sorteio?.qtd_ocorrencias,
       },
       {
+        key: "lance_fixo_15",
+        title: "Lance Fixo 15%",
+        min: fixo15?.menor_lance_percent,
+        max: fixo15?.maior_lance_percent,
+        qtd: fixo15?.qtd_ocorrencias,
+      },
+      {
         key: "lance_fixo_30",
-        title: "Fixo 30%",
+        title: "Lance Fixo 30%",
         min: fixo30?.menor_lance_percent,
         max: fixo30?.maior_lance_percent,
         qtd: fixo30?.qtd_ocorrencias,
       },
       {
         key: "lance_fixo_50",
-        title: "Fixo 50%",
+        title: "Lance Fixo 50%",
         min: fixo50?.menor_lance_percent,
         max: fixo50?.maior_lance_percent,
         qtd: fixo50?.qtd_ocorrencias,
