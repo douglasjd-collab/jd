@@ -50,9 +50,18 @@ export default function ImportarResultadoAssembleia() {
   };
 
   const { data: historicos = [], isLoading } = useQuery({
-    queryKey: ['historico-lance-grupo', empresaId],
-    enabled: !!empresaId,
-    queryFn: () => base44.entities.HistoricoLanceGrupo.filter({ empresa_id: empresaId }, '-criado_em')
+    queryKey: ['historico-lance-grupo', empresaId, user?.perfil],
+    enabled: !!user,
+    queryFn: async () => {
+      if (user?.perfil === 'super_admin' || user?.perfil === 'master') {
+        // Super admin vê importações globais (empresa_id null) + específicas de empresas
+        const all = await base44.entities.HistoricoLanceGrupo.list('-criado_em');
+        return all;
+      }
+      // Outros veem apenas da sua empresa + globais
+      const all = await base44.entities.HistoricoLanceGrupo.list('-criado_em');
+      return all.filter(h => !h.empresa_id || h.empresa_id === empresaId);
+    }
   });
 
   const { data: resumos = [] } = useQuery({
