@@ -74,26 +74,22 @@ export default function LancesDoGrupoPanel({ grupo }) {
   const periodo = data?.periodo || 0;
 
   const cards = useMemo(() => {
-    // Função para calcular média de uma modalidade
-    const calcularMedia = (modalidade) => {
+    // Função para processar dados de uma modalidade
+    const processar = (modalidade) => {
       const dadosModalidade = resumos.filter(r => r.modalidade === modalidade);
       if (dadosModalidade.length === 0) return null;
 
-      const todosPercentuais = dadosModalidade.flatMap(d => 
-        d.menor_lance_percent && d.maior_lance_percent 
-          ? [d.menor_lance_percent, d.maior_lance_percent]
-          : []
-      );
+      const min = dadosModalidade[0].menor_lance_percent;
+      const max = dadosModalidade[0].maior_lance_percent;
+      const qtd = dadosModalidade[0].qtd_ocorrencias || 0;
 
-      if (todosPercentuais.length === 0) return null;
+      // Se não tem percentuais, retorna null
+      if (!min && !max) return null;
 
-      const soma = todosPercentuais.reduce((acc, val) => acc + val, 0);
-      const media = soma / todosPercentuais.length;
-      const min = Math.min(...todosPercentuais);
-      const max = Math.max(...todosPercentuais);
-      const totalOcorrencias = dadosModalidade.reduce((acc, d) => acc + (d.qtd_ocorrencias || 0), 0);
+      // Calcular média entre min e max
+      const media = min && max ? (min + max) / 2 : (min || max);
 
-      return { media, min, max, qtd: totalOcorrencias };
+      return { media, min, max, qtd };
     };
 
     const livre = calcularMedia("lance_livre");
