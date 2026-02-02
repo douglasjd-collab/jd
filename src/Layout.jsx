@@ -190,6 +190,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Importar Comissões', page: 'ImportacaoComissao' },
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
         { name: 'Importar Produção', page: 'ImportacaoProducao' },
+        { name: 'Importar Resultado', page: 'ImportarResultadoAssembleia' },
         { name: 'Histórico', page: 'Importacao' },
       ]
     },
