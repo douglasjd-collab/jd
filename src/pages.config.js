@@ -49,6 +49,7 @@
  */
 import Administradoras from './pages/Administradoras';
 import Agenda from './pages/Agenda';
+import CartasContempladas from './pages/CartasContempladas';
 import ClienteDetalhes from './pages/ClienteDetalhes';
 import Clientes from './pages/Clientes';
 import ComissaoPagar from './pages/ComissaoPagar';
@@ -87,13 +88,13 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import CartasContempladas from './pages/CartasContempladas';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Administradoras": Administradoras,
     "Agenda": Agenda,
+    "CartasContempladas": CartasContempladas,
     "ClienteDetalhes": ClienteDetalhes,
     "Clientes": Clientes,
     "ComissaoPagar": ComissaoPagar,
@@ -132,7 +133,6 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "CartasContempladas": CartasContempladas,
 }
 
 export const pagesConfig = {

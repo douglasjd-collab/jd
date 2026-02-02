@@ -18,12 +18,14 @@ import {
 import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
+import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
 
 export default function SimuladorConsorcio() {
   const [currentUser, setCurrentUser] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
+  const [grupo, setGrupo] = useState('');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
   const [administradora, setAdministradora] = useState('');
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(30);
@@ -486,8 +488,19 @@ export default function SimuladorConsorcio() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Número do Grupo</Label>
+                <Input 
+                  value={grupo} 
+                  onChange={(e) => setGrupo(e.target.value)} 
+                  placeholder="Ex: 8320"
+                />
+              </div>
             </CardContent>
           </Card>
+
+          {/* Histórico de Lances do Grupo */}
+          {grupo && <LancesDoGrupoPanel grupo={grupo} />}
 
           {/* Cartas de Crédito */}
           <Card className="border-0 shadow-sm">
