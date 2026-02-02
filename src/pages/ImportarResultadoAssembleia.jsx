@@ -106,11 +106,9 @@ export default function ImportarResultadoAssembleia() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      // Deletar resumos associados
+      // Deletar resumos associados em paralelo
       const resumos = await base44.entities.HistoricoLanceResumo.filter({ historico_id: id });
-      for (const resumo of resumos) {
-        await base44.entities.HistoricoLanceResumo.delete(resumo.id);
-      }
+      await Promise.all(resumos.map(resumo => base44.entities.HistoricoLanceResumo.delete(resumo.id)));
       // Deletar histórico
       await base44.entities.HistoricoLanceGrupo.delete(id);
     },

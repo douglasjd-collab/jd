@@ -22,16 +22,23 @@ Deno.serve(async (req) => {
 
     // 1. Extrair dados do PDF usando LLM
     const extractionResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `Extraia os dados de lances da assembleia deste PDF. 
-      
-Para cada grupo, identifique:
-- Número do grupo
-- Modalidade do lance (lance_livre, lance_limitado, sorteio, lance_fixo_30, lance_fixo_50)
-- Menor lance em percentual (se aplicável)
-- Maior lance em percentual (se aplicável)
-- Quantidade de ocorrências
+      prompt: `Analise este PDF de resultado de assembleia e extraia TODOS os lances por grupo.
 
-Retorne um array de objetos com os dados extraídos.`,
+FORMATO DE SAÍDA: Array JSON com cada lance.
+
+Para cada lance extraído, retorne:
+- grupo: número do grupo (string)
+- modalidade: tipo do lance - use EXATAMENTE um desses valores:
+  * "lance_livre" para Lance Livre
+  * "lance_limitado" para Lance Limitado
+  * "sorteio" para Sorteio
+  * "lance_fixo_30" para Lance Fixo 30%
+  * "lance_fixo_50" para Lance Fixo 50%
+- menor_lance_percent: menor lance em % (número, ex: 25.5) ou null
+- maior_lance_percent: maior lance em % (número, ex: 45.0) ou null
+- quantidade: número de ocorrências (inteiro)
+
+IMPORTANTE: Extraia TODOS os grupos e lances do documento. Seja preciso nos percentuais.`,
       file_urls: [file_url],
       response_json_schema: {
         type: "object",
@@ -43,11 +50,11 @@ Retorne um array de objetos com os dados extraídos.`,
               properties: {
                 grupo: { type: "string" },
                 modalidade: { type: "string" },
-                menor_lance_percent: { type: "number" },
-                maior_lance_percent: { type: "number" },
+                menor_lance_percent: { type: ["number", "null"] },
+                maior_lance_percent: { type: ["number", "null"] },
                 quantidade: { type: "integer" }
               },
-              required: ["grupo", "modalidade"]
+              required: ["grupo", "modalidade", "quantidade"]
             }
           }
         },
@@ -74,29 +81,30 @@ Retorne um array de objetos com os dados extraídos.`,
       usuario_nome
     });
 
-    // 4. Processar dados extraídos e criar resumos
+    // 4. Processar dados extraídos e criar resumos em paralelo
     const gruposSet = new Set();
-    let totalRegistros = 0;
-
-    for (const lance of dataLines) {
-      const { grupo, modalidade, menor_lance_percent, maior_lance_percent, quantidade } = lance;
-
-      if (!grupo || !modalidade) continue;
-
-      gruposSet.add(grupo.toString());
-
-      await base44.asServiceRole.entities.HistoricoLanceResumo.create({
-        empresa_id: empresa_id || null,
-        historico_id: historico.id,
-        grupo: grupo.toString(),
-        modalidade,
-        menor_lance_percent: menor_lance_percent || null,
-        maior_lance_percent: maior_lance_percent || null,
-        qtd_ocorrencias: quantidade || 0
+    
+    const resumosToCreate = dataLines
+      .filter(lance => lance.grupo && lance.modalidade)
+      .map(lance => {
+        gruposSet.add(lance.grupo.toString());
+        return {
+          empresa_id: empresa_id || null,
+          historico_id: historico.id,
+          grupo: lance.grupo.toString(),
+          modalidade: lance.modalidade,
+          menor_lance_percent: lance.menor_lance_percent || null,
+          maior_lance_percent: lance.maior_lance_percent || null,
+          qtd_ocorrencias: lance.quantidade || 0
+        };
       });
 
-      totalRegistros++;
-    }
+    // Criar todos os resumos em paralelo
+    await Promise.all(
+      resumosToCreate.map(data => base44.asServiceRole.entities.HistoricoLanceResumo.create(data))
+    );
+
+    const totalRegistros = resumosToCreate.length;
 
     // 5. Atualizar totais no histórico
     await base44.asServiceRole.entities.HistoricoLanceGrupo.update(historico.id, {
