@@ -106,19 +106,25 @@ export default function ImportarResultadoAssembleia() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      // Deletar resumos associados em paralelo
+      // Deletar resumos associados
       const resumos = await base44.entities.HistoricoLanceResumo.filter({ historico_id: id });
-      await Promise.all(resumos.map(resumo => base44.entities.HistoricoLanceResumo.delete(resumo.id)));
+      
+      // Deletar um por um para evitar problemas de permissão
+      for (const resumo of resumos) {
+        await base44.entities.HistoricoLanceResumo.delete(resumo.id);
+      }
+      
       // Deletar histórico
       await base44.entities.HistoricoLanceGrupo.delete(id);
     },
     onSuccess: () => {
-      toast.success('Histórico excluído');
+      toast.success('Histórico excluído com sucesso');
       queryClient.invalidateQueries(['historico-lance-grupo']);
       setDeleteId(null);
     },
-    onError: () => {
-      toast.error('Erro ao excluir');
+    onError: (error) => {
+      console.error('Erro ao excluir:', error);
+      toast.error(error?.message || 'Erro ao excluir histórico');
     }
   });
 
