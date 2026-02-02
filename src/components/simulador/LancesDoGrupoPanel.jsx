@@ -163,9 +163,11 @@ export default function LancesDoGrupoPanel({ grupo }) {
         <CardTitle className="text-base">
           Histórico de lances do GRUPO {grupo}
         </CardTitle>
-        <Badge variant="secondary">
-          Média dos últimos {periodo} {periodo === 1 ? 'mês' : 'meses'}
-        </Badge>
+        {historicos.length > 0 && (
+          <Badge variant="secondary">
+            Assembleia: {new Date(historicos[0].assembleia_data).toLocaleDateString('pt-BR')}
+          </Badge>
+        )}
       </CardHeader>
 
       <CardContent>
