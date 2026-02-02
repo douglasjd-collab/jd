@@ -28,67 +28,43 @@ export default function LancesDoGrupoPanel({ grupo }) {
   const enabled = !!grupo;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["lances-grupo-ultimos-3-meses", grupo],
+    queryKey: ["lances-grupo-mais-recente", grupo],
     enabled,
     queryFn: async () => {
-      console.log('🔍 Buscando histórico para grupo:', grupo);
-      
-      // 1) pegar históricos dos últimos 3 meses
-      const treseMesesAtras = new Date();
-      treseMesesAtras.setMonth(treseMesesAtras.getMonth() - 3);
-      console.log('📅 Data limite (3 meses atrás):', treseMesesAtras.toISOString());
-      
-      const historicos = await base44.entities.HistoricoLanceGrupo.list();
-      console.log('📊 Total de históricos encontrados:', historicos?.length || 0);
-      
-      const list = (historicos || [])
-        .filter(h => {
-          const dataAssembleia = new Date(h.assembleia_data);
-          const dentroDoRange = dataAssembleia >= treseMesesAtras;
-          console.log(`  • Histórico ${h.id}: ${h.assembleia_data} - ${dentroDoRange ? '✅ Dentro' : '❌ Fora'} do range`);
-          return dentroDoRange;
-        })
-        .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data))
-        .slice(0, 3);
-
-      console.log('✅ Históricos filtrados (últimos 3):', list.length);
-
-      if (list.length === 0) {
-        console.log('⚠️ Nenhum histórico encontrado nos últimos 3 meses');
-        return { historicos: [], resumos: [], periodo: 0 };
-      }
-
-      // 2) buscar resumos de todos os 3 históricos para o grupo
-      const historicosIds = list.map(h => h.id);
-      console.log('🔑 IDs dos históricos:', historicosIds);
-      
+      // 1) Buscar todos os resumos deste grupo
       const todosResumos = await base44.entities.HistoricoLanceResumo.filter({
         grupo: String(grupo),
       });
-      console.log(`📋 Resumos encontrados para grupo "${grupo}":`, todosResumos?.length || 0);
-      
-      if (todosResumos && todosResumos.length > 0) {
-        console.log('  Resumos detalhados:', todosResumos.map(r => ({
-          id: r.id,
-          grupo: r.grupo,
-          historico_id: r.historico_id,
-          modalidade: r.modalidade
-        })));
+
+      if (!todosResumos || todosResumos.length === 0) {
+        return { historicos: [], resumos: [], periodo: 0 };
       }
 
-      // filtrar apenas os dos últimos 3 históricos
-      const resumosFiltrados = todosResumos.filter(r => {
-        const inclui = historicosIds.includes(r.historico_id);
-        console.log(`  • Resumo ${r.id} (historico: ${r.historico_id}): ${inclui ? '✅ Incluído' : '❌ Excluído'}`);
-        return inclui;
-      });
+      // 2) Pegar os IDs únicos dos históricos que contém este grupo
+      const historicosIdsComGrupo = [...new Set(todosResumos.map(r => r.historico_id))];
 
-      console.log('✅ Total de resumos filtrados:', resumosFiltrados.length);
+      // 3) Buscar os históricos completos
+      const todosHistoricos = await base44.entities.HistoricoLanceGrupo.list();
+      
+      // 4) Filtrar apenas os que contêm o grupo e ordenar por data (mais recente primeiro)
+      const historicosComGrupo = (todosHistoricos || [])
+        .filter(h => historicosIdsComGrupo.includes(h.id))
+        .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data));
+
+      if (historicosComGrupo.length === 0) {
+        return { historicos: [], resumos: [], periodo: 0 };
+      }
+
+      // 5) Pegar apenas o histórico mais recente
+      const historicoMaisRecente = historicosComGrupo[0];
+
+      // 6) Filtrar apenas os resumos do histórico mais recente
+      const resumosDoHistorico = todosResumos.filter(r => r.historico_id === historicoMaisRecente.id);
 
       return { 
-        historicos: list, 
-        resumos: resumosFiltrados,
-        periodo: list.length 
+        historicos: [historicoMaisRecente], 
+        resumos: resumosDoHistorico,
+        periodo: 1
       };
     },
   });
