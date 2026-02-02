@@ -208,10 +208,11 @@ export default function LancesDoGrupoPanel({ grupo }) {
           </div>
         )}
 
-        {resumos.length > 0 && (
+        {resumos.length > 0 && historicos.length > 0 && (
           <div className="text-xs text-slate-500 mt-3 bg-emerald-50 p-2 rounded">
-            💡 <b>Dica:</b> Use a <b>Média</b> como referência principal para maior assertividade. 
-            Lance próximo ao "Máx" aumenta chances, próximo ao "Mín" é mais conservador.
+            💡 <b>Dados da última assembleia ({new Date(historicos[0].assembleia_data).toLocaleDateString('pt-BR')})</b>
+            <br/>
+            Use a <b>Média</b> como referência. Lance próximo ao "Máx" aumenta chances, próximo ao "Mín" é mais conservador.
           </div>
         )}
       </CardContent>
