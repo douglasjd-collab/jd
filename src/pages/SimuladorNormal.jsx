@@ -17,6 +17,7 @@ import { Calculator, Plus, Download, Loader2, TrendingUp, X, Copy, ShoppingBag }
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import SelecionarPlanoCanopusModal from '@/components/simulador/SelecionarPlanoCanopusModal';
+import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
 
 export default function SimuladorNormal() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -24,6 +25,7 @@ export default function SimuladorNormal() {
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
+  const [grupo, setGrupo] = useState('');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', parcelaReduzida: '' }]);
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(false);
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
@@ -397,8 +399,19 @@ export default function SimuladorNormal() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Número do Grupo</Label>
+                <Input 
+                  value={grupo} 
+                  onChange={(e) => setGrupo(e.target.value)} 
+                  placeholder="Ex: 8320"
+                />
+              </div>
             </CardContent>
           </Card>
+
+          {/* Histórico de Lances do Grupo */}
+          {grupo && <LancesDoGrupoPanel grupo={grupo} />}
 
           <Card className="border-0 shadow-sm">
             <CardHeader>

@@ -68,6 +68,7 @@ import ImportacaoDetalhes from './pages/ImportacaoDetalhes';
 import ImportacaoPlanos from './pages/ImportacaoPlanos';
 import ImportacaoProducao from './pages/ImportacaoProducao';
 import ImportarPlanosPrint from './pages/ImportarPlanosPrint';
+import ImportarResultadoAssembleia from './pages/ImportarResultadoAssembleia';
 import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import LancamentoDespesas from './pages/LancamentoDespesas';
 import LancamentoReceitas from './pages/LancamentoReceitas';
@@ -88,7 +89,6 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import ImportarResultadoAssembleia from './pages/ImportarResultadoAssembleia';
 import __Layout from './Layout.jsx';
 
 
@@ -114,6 +114,7 @@ export const PAGES = {
     "ImportacaoPlanos": ImportacaoPlanos,
     "ImportacaoProducao": ImportacaoProducao,
     "ImportarPlanosPrint": ImportarPlanosPrint,
+    "ImportarResultadoAssembleia": ImportarResultadoAssembleia,
     "ImprimirSimulacao": ImprimirSimulacao,
     "LancamentoDespesas": LancamentoDespesas,
     "LancamentoReceitas": LancamentoReceitas,
@@ -134,7 +135,6 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "ImportarResultadoAssembleia": ImportarResultadoAssembleia,
 }
 
 export const pagesConfig = {
