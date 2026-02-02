@@ -271,22 +271,43 @@ export default function CartasContempladas() {
 
             <div>
               <Label>Valor do Crédito</Label>
-              <Input type="number" value={form.valor_credito}
-                onChange={(e) => setForm((p) => ({ ...p, valor_credito: e.target.value }))}
+              <Input
+                type="text"
+                value={form.valor_credito ? parseFloat(form.valor_credito).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                onChange={(e) => {
+                  const numeros = e.target.value.replace(/\D/g, '');
+                  const valorNumerico = parseFloat(numeros) / 100;
+                  setForm((p) => ({ ...p, valor_credito: valorNumerico > 0 ? valorNumerico : 0 }));
+                }}
+                placeholder="0,00"
               />
             </div>
 
             <div>
               <Label>Parcela</Label>
-              <Input type="number" value={form.parcela}
-                onChange={(e) => setForm((p) => ({ ...p, parcela: e.target.value }))}
+              <Input
+                type="text"
+                value={form.parcela ? parseFloat(form.parcela).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                onChange={(e) => {
+                  const numeros = e.target.value.replace(/\D/g, '');
+                  const valorNumerico = parseFloat(numeros) / 100;
+                  setForm((p) => ({ ...p, parcela: valorNumerico > 0 ? valorNumerico : 0 }));
+                }}
+                placeholder="0,00"
               />
             </div>
 
             <div>
               <Label>Entrada</Label>
-              <Input type="number" value={form.entrada}
-                onChange={(e) => setForm((p) => ({ ...p, entrada: e.target.value }))}
+              <Input
+                type="text"
+                value={form.entrada ? parseFloat(form.entrada).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                onChange={(e) => {
+                  const numeros = e.target.value.replace(/\D/g, '');
+                  const valorNumerico = parseFloat(numeros) / 100;
+                  setForm((p) => ({ ...p, entrada: valorNumerico > 0 ? valorNumerico : 0 }));
+                }}
+                placeholder="0,00"
               />
             </div>
 
