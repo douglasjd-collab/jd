@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StatsCard from '@/components/ui/StatsCard';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { 
   ShoppingCart, 
   Wallet, 
@@ -15,7 +18,8 @@ import {
   Calendar,
   Building2,
   Cake,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -308,6 +312,8 @@ export default function Dashboard() {
 
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState(null);
+  const [gruposModalOpen, setGruposModalOpen] = React.useState(false);
+  const [grupoSelecionado, setGrupoSelecionado] = React.useState('');
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -383,12 +389,14 @@ export default function Dashboard() {
           icon={TrendingUp}
           color="purple"
         />
-        <StatsCard
-          title="Parcelas Atrasadas"
-          value={parcelasAtrasadas}
-          icon={Calendar}
-          color={parcelasAtrasadas > 0 ? 'red' : 'green'}
-        />
+        <div onClick={() => setGruposModalOpen(true)} className="cursor-pointer">
+          <StatsCard
+            title="Parcelas Atrasadas"
+            value={parcelasAtrasadas}
+            icon={Calendar}
+            color={parcelasAtrasadas > 0 ? 'red' : 'green'}
+          />
+        </div>
         <StatsCard
           title="Aniversariantes da Semana"
           value={aniversariantesSemana.length}
@@ -703,6 +711,65 @@ export default function Dashboard() {
             <div className="p-4 border-t flex justify-end">
               <button
                 onClick={() => setStatusModalOpen(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-medium transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Grupos */}
+      {gruposModalOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setGruposModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[85vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold text-slate-900 mb-4">
+                Histórico de Lances dos Grupos
+              </h2>
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Digite o número do grupo (ex: 1234)"
+                    value={grupoSelecionado}
+                    onChange={(e) => setGrupoSelecionado(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  onClick={() => setGrupoSelecionado('')}
+                  variant="outline"
+                >
+                  Limpar
+                </Button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)]">
+              {grupoSelecionado ? (
+                <LancesDoGrupoPanel grupo={grupoSelecionado} />
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <Search className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                  <p className="text-lg font-medium">Digite um número de grupo para visualizar o histórico</p>
+                  <p className="text-sm mt-2">Os dados de lances das últimas assembleias serão exibidos aqui</p>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t flex justify-end">
+              <button
+                onClick={() => {
+                  setGruposModalOpen(false);
+                  setGrupoSelecionado('');
+                }}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-medium transition-colors"
               >
                 Fechar
