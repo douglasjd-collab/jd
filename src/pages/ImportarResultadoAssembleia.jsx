@@ -106,63 +106,56 @@ export default function ImportarResultadoAssembleia() {
 
   const columns = [
     {
-      accessorKey: 'assembleia_data',
       header: 'Data Assembleia',
-      cell: ({ row }) => (
+      cell: (row) => (
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-slate-400" />
-          {new Date(row.original.assembleia_data).toLocaleDateString('pt-BR')}
+          {new Date(row.assembleia_data).toLocaleDateString('pt-BR')}
         </div>
       )
     },
     {
-      accessorKey: 'arquivo_nome',
       header: 'Arquivo',
-      cell: ({ row }) => (
+      cell: (row) => (
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-          <span className="text-sm">{row.original.arquivo_nome || 'Sem nome'}</span>
+          <span className="text-sm">{row.arquivo_nome || 'Sem nome'}</span>
         </div>
       )
     },
     {
-      accessorKey: 'total_grupos',
       header: 'Grupos',
-      cell: ({ row }) => (
-        <Badge variant="outline">{row.original.total_grupos || 0} grupos</Badge>
+      cell: (row) => (
+        <Badge variant="outline">{row.total_grupos || 0} grupos</Badge>
       )
     },
     {
-      accessorKey: 'total_registros',
       header: 'Registros',
-      cell: ({ row }) => (
-        <Badge variant="secondary">{row.original.total_registros || 0} registros</Badge>
+      cell: (row) => (
+        <Badge variant="secondary">{row.total_registros || 0} registros</Badge>
       )
     },
     {
-      accessorKey: 'criado_em',
       header: 'Importado em',
-      cell: ({ row }) => (
+      cell: (row) => (
         <span className="text-xs text-slate-500">
-          {new Date(row.original.criado_em).toLocaleString('pt-BR')}
+          {new Date(row.criado_em).toLocaleString('pt-BR')}
         </span>
       )
     },
     {
-      accessorKey: 'usuario_nome',
       header: 'Usuário',
-      cell: ({ row }) => (
-        <span className="text-sm">{row.original.usuario_nome || '-'}</span>
+      cell: (row) => (
+        <span className="text-sm">{row.usuario_nome || '-'}</span>
       )
     },
     {
-      id: 'actions',
       header: 'Ações',
-      cell: ({ row }) => (
+      cell: (row) => (
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => setDeleteId(row.original.id)}
+          onClick={() => setDeleteId(row.id)}
           className="text-red-600 hover:text-red-700 hover:bg-red-50"
         >
           <Trash2 className="w-4 h-4" />
