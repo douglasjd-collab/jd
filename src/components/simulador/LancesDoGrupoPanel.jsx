@@ -92,11 +92,11 @@ export default function LancesDoGrupoPanel({ grupo }) {
       return { media, min, max, qtd };
     };
 
-    const livre = calcularMedia("lance_livre");
-    const limitado = calcularMedia("lance_limitado");
-    const fixo15 = calcularMedia("lance_fixo_15");
-    const fixo30 = calcularMedia("lance_fixo_30");
-    const fixo50 = calcularMedia("lance_fixo_50");
+    const livre = processar("lance_livre");
+    const limitado = processar("lance_limitado");
+    const fixo15 = processar("lance_fixo_15");
+    const fixo30 = processar("lance_fixo_30");
+    const fixo50 = processar("lance_fixo_50");
     
     const sorteioResumos = resumos.filter(r => r.modalidade === "sorteio");
     const sorteioTotal = sorteioResumos.reduce((acc, d) => acc + (d.qtd_ocorrencias || 0), 0);
