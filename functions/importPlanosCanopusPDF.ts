@@ -69,8 +69,9 @@ Deno.serve(async (req) => {
       const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
       empresasAlvo = (empresas ?? []).map(e => ({ id: e.id, nome: e.nome }));
 
+      // Se não houver empresas, permitir importação sem empresa (para super_admin)
       if (empresasAlvo.length === 0) {
-        return Response.json({ error: "Nenhuma empresa ativa encontrada", step: "get_empresas" }, { status: 400, headers: corsHeaders });
+        empresasAlvo = [{ id: "sem_empresa", nome: "Sem Empresa (Global)" }];
       }
     } else {
       // Usuário comum: exige empresa
