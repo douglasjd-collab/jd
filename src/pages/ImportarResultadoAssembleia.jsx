@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, Loader2, FileSpreadsheet, Trash2, Calendar } from 'lucide-react';
+import { Upload, Loader2, FileSpreadsheet, Trash2, Calendar, Search, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,9 @@ export default function ImportarResultadoAssembleia() {
   const [arquivo, setArquivo] = useState(null);
   const [assembleiadata, setAssembleiaData] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
+  const [historicoSelecionado, setHistoricoSelecionado] = useState(null);
+  const [buscaGrupo, setBuscaGrupo] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -50,6 +53,12 @@ export default function ImportarResultadoAssembleia() {
     queryKey: ['historico-lance-grupo', empresaId],
     enabled: !!empresaId,
     queryFn: () => base44.entities.HistoricoLanceGrupo.filter({ empresa_id: empresaId }, '-criado_em')
+  });
+
+  const { data: resumos = [] } = useQuery({
+    queryKey: ['historico-lance-resumo', historicoSelecionado?.id],
+    enabled: !!historicoSelecionado?.id,
+    queryFn: () => base44.entities.HistoricoLanceResumo.filter({ historico_id: historicoSelecionado.id })
   });
 
   const importarMutation = useMutation({
@@ -152,14 +161,27 @@ export default function ImportarResultadoAssembleia() {
     {
       header: 'Ações',
       cell: (row) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setDeleteId(row.id)}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setHistoricoSelecionado(row);
+              setDetalhesModalOpen(true);
+            }}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setDeleteId(row.id)}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       )
     }
   ];
@@ -280,6 +302,125 @@ export default function ImportarResultadoAssembleia() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Detalhes do Histórico */}
+      {detalhesModalOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setDetalhesModalOpen(false);
+            setBuscaGrupo('');
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Detalhes da Importação
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Assembleia: {historicoSelecionado && new Date(historicoSelecionado.assembleia_data).toLocaleDateString('pt-BR')} • 
+                    {historicoSelecionado?.total_grupos} grupos • 
+                    {historicoSelecionado?.total_registros} registros
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDetalhesModalOpen(false);
+                    setBuscaGrupo('');
+                  }}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar por grupo..."
+                  value={buscaGrupo}
+                  onChange={(e) => setBuscaGrupo(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {(() => {
+                const gruposUnicos = [...new Set(resumos.map(r => r.grupo))].sort();
+                const gruposFiltrados = buscaGrupo 
+                  ? gruposUnicos.filter(g => g.includes(buscaGrupo))
+                  : gruposUnicos;
+
+                if (gruposFiltrados.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-slate-500">
+                      <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                      <p>Nenhum grupo encontrado</p>
+                    </div>
+                  );
+                }
+
+                const modalidadeLabel = {
+                  lance_livre: 'Lance Livre',
+                  lance_limitado: 'Lance Limitado',
+                  sorteio: 'Sorteio',
+                  lance_fixo_30: 'Fixo 30%',
+                  lance_fixo_50: 'Fixo 50%'
+                };
+
+                return (
+                  <div className="space-y-6">
+                    {gruposFiltrados.map(grupo => {
+                      const resumosGrupo = resumos.filter(r => r.grupo === grupo);
+                      return (
+                        <Card key={grupo} className="border-2">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <FileSpreadsheet className="w-5 h-5 text-[#23BE84]" />
+                              Grupo {grupo}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {resumosGrupo.map((resumo, idx) => (
+                                <div key={idx} className="p-3 bg-slate-50 rounded-lg">
+                                  <p className="font-semibold text-sm text-slate-700 mb-2">
+                                    {modalidadeLabel[resumo.modalidade] || resumo.modalidade}
+                                  </p>
+                                  <div className="space-y-1 text-xs">
+                                    {resumo.menor_lance_percent !== null && (
+                                      <p className="text-slate-600">
+                                        <span className="font-medium">Menor:</span> {resumo.menor_lance_percent}%
+                                      </p>
+                                    )}
+                                    {resumo.maior_lance_percent !== null && (
+                                      <p className="text-slate-600">
+                                        <span className="font-medium">Maior:</span> {resumo.maior_lance_percent}%
+                                      </p>
+                                    )}
+                                    <p className="text-slate-600">
+                                      <span className="font-medium">Ocorrências:</span> {resumo.qtd_ocorrencias}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
