@@ -47,9 +47,15 @@ export default function LancesDoGrupoPanel({ grupo }) {
         })));
       }
 
-      // Buscar com conversão para string
-      const resumosDoGrupo = todosResumos.filter(r => String(r.grupo) === String(grupo));
-      console.log(`✅ Resumos encontrados para grupo "${grupo}":`, resumosDoGrupo.length);
+      // Normalizar grupos removendo zeros à esquerda para comparação
+      const grupoNormalizado = String(grupo).replace(/^0+/, '') || '0';
+      
+      const resumosDoGrupo = todosResumos.filter(r => {
+        const grupoResumoNormalizado = String(r.grupo).replace(/^0+/, '') || '0';
+        return grupoResumoNormalizado === grupoNormalizado;
+      });
+      
+      console.log(`✅ Resumos encontrados para grupo "${grupo}" (normalizado: "${grupoNormalizado}"):`, resumosDoGrupo.length);
 
       if (!resumosDoGrupo || resumosDoGrupo.length === 0) {
         return { historicos: [], resumos: [], periodo: 0 };
