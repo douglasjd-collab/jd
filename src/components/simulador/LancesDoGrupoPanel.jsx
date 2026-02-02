@@ -31,26 +31,59 @@ export default function LancesDoGrupoPanel({ grupo }) {
     queryKey: ["lances-grupo-ultimos-3-meses", grupo],
     enabled,
     queryFn: async () => {
+      console.log('🔍 Buscando histórico para grupo:', grupo);
+      
       // 1) pegar históricos dos últimos 3 meses
       const treseMesesAtras = new Date();
       treseMesesAtras.setMonth(treseMesesAtras.getMonth() - 3);
+      console.log('📅 Data limite (3 meses atrás):', treseMesesAtras.toISOString());
       
       const historicos = await base44.entities.HistoricoLanceGrupo.list();
+      console.log('📊 Total de históricos encontrados:', historicos?.length || 0);
+      
       const list = (historicos || [])
-        .filter(h => new Date(h.assembleia_data) >= treseMesesAtras)
+        .filter(h => {
+          const dataAssembleia = new Date(h.assembleia_data);
+          const dentroDoRange = dataAssembleia >= treseMesesAtras;
+          console.log(`  • Histórico ${h.id}: ${h.assembleia_data} - ${dentroDoRange ? '✅ Dentro' : '❌ Fora'} do range`);
+          return dentroDoRange;
+        })
         .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data))
         .slice(0, 3);
 
-      if (list.length === 0) return { historicos: [], resumos: [], periodo: 0 };
+      console.log('✅ Históricos filtrados (últimos 3):', list.length);
+
+      if (list.length === 0) {
+        console.log('⚠️ Nenhum histórico encontrado nos últimos 3 meses');
+        return { historicos: [], resumos: [], periodo: 0 };
+      }
 
       // 2) buscar resumos de todos os 3 históricos para o grupo
       const historicosIds = list.map(h => h.id);
+      console.log('🔑 IDs dos históricos:', historicosIds);
+      
       const todosResumos = await base44.entities.HistoricoLanceResumo.filter({
         grupo: String(grupo),
       });
+      console.log(`📋 Resumos encontrados para grupo "${grupo}":`, todosResumos?.length || 0);
+      
+      if (todosResumos && todosResumos.length > 0) {
+        console.log('  Resumos detalhados:', todosResumos.map(r => ({
+          id: r.id,
+          grupo: r.grupo,
+          historico_id: r.historico_id,
+          modalidade: r.modalidade
+        })));
+      }
 
       // filtrar apenas os dos últimos 3 históricos
-      const resumosFiltrados = todosResumos.filter(r => historicosIds.includes(r.historico_id));
+      const resumosFiltrados = todosResumos.filter(r => {
+        const inclui = historicosIds.includes(r.historico_id);
+        console.log(`  • Resumo ${r.id} (historico: ${r.historico_id}): ${inclui ? '✅ Incluído' : '❌ Excluído'}`);
+        return inclui;
+      });
+
+      console.log('✅ Total de resumos filtrados:', resumosFiltrados.length);
 
       return { 
         historicos: list, 
