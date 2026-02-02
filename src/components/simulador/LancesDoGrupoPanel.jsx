@@ -28,78 +28,120 @@ export default function LancesDoGrupoPanel({ grupo }) {
   const enabled = !!grupo;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["lances-grupo-ultimo", grupo],
+    queryKey: ["lances-grupo-ultimos-3-meses", grupo],
     enabled,
     queryFn: async () => {
-      // 1) pegar todos históricos e escolher o mais recente
+      // 1) pegar históricos dos últimos 3 meses
+      const treseMesesAtras = new Date();
+      treseMesesAtras.setMonth(treseMesesAtras.getMonth() - 3);
+      
       const historicos = await base44.entities.HistoricoLanceGrupo.list();
-      const list = historicos || [];
-      if (list.length === 0) return { historico: null, resumos: [] };
+      const list = (historicos || [])
+        .filter(h => new Date(h.assembleia_data) >= treseMesesAtras)
+        .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data))
+        .slice(0, 3);
 
-      list.sort((a, b) => new Date(b.criado_em || 0) - new Date(a.criado_em || 0));
-      const last = list[0];
+      if (list.length === 0) return { historicos: [], resumos: [], periodo: 0 };
 
-      // 2) pegar resumos do histórico selecionado + grupo
-      const resumos = await base44.entities.HistoricoLanceResumo.filter({
-        historico_id: last.id,
+      // 2) buscar resumos de todos os 3 históricos para o grupo
+      const historicosIds = list.map(h => h.id);
+      const todosResumos = await base44.entities.HistoricoLanceResumo.filter({
         grupo: String(grupo),
       });
 
-      return { historico: last, resumos: resumos || [] };
+      // filtrar apenas os dos últimos 3 históricos
+      const resumosFiltrados = todosResumos.filter(r => historicosIds.includes(r.historico_id));
+
+      return { 
+        historicos: list, 
+        resumos: resumosFiltrados,
+        periodo: list.length 
+      };
     },
   });
 
   const resumos = data?.resumos || [];
-  const historico = data?.historico || null;
+  const historicos = data?.historicos || [];
+  const periodo = data?.periodo || 0;
 
   const cards = useMemo(() => {
-    const livre = getResumo(resumos, "lance_livre");
-    const limitado = getResumo(resumos, "lance_limitado");
-    const sorteio = getResumo(resumos, "sorteio");
-    const fixo15 = getResumo(resumos, "lance_fixo_15");
-    const fixo30 = getResumo(resumos, "lance_fixo_30");
-    const fixo50 = getResumo(resumos, "lance_fixo_50");
+    // Função para calcular média de uma modalidade
+    const calcularMedia = (modalidade) => {
+      const dadosModalidade = resumos.filter(r => r.modalidade === modalidade);
+      if (dadosModalidade.length === 0) return null;
+
+      const todosPercentuais = dadosModalidade.flatMap(d => 
+        d.menor_lance_percent && d.maior_lance_percent 
+          ? [d.menor_lance_percent, d.maior_lance_percent]
+          : []
+      );
+
+      if (todosPercentuais.length === 0) return null;
+
+      const soma = todosPercentuais.reduce((acc, val) => acc + val, 0);
+      const media = soma / todosPercentuais.length;
+      const min = Math.min(...todosPercentuais);
+      const max = Math.max(...todosPercentuais);
+      const totalOcorrencias = dadosModalidade.reduce((acc, d) => acc + (d.qtd_ocorrencias || 0), 0);
+
+      return { media, min, max, qtd: totalOcorrencias };
+    };
+
+    const livre = calcularMedia("lance_livre");
+    const limitado = calcularMedia("lance_limitado");
+    const fixo15 = calcularMedia("lance_fixo_15");
+    const fixo30 = calcularMedia("lance_fixo_30");
+    const fixo50 = calcularMedia("lance_fixo_50");
+    
+    const sorteioResumos = resumos.filter(r => r.modalidade === "sorteio");
+    const sorteioTotal = sorteioResumos.reduce((acc, d) => acc + (d.qtd_ocorrencias || 0), 0);
+    const sorteio = sorteioTotal > 0 ? { qtd: sorteioTotal } : null;
 
     return [
       {
         key: "lance_livre",
         title: "Lance Livre",
-        min: livre?.menor_lance_percent,
-        max: livre?.maior_lance_percent,
-        qtd: livre?.qtd_ocorrencias,
+        media: livre?.media,
+        min: livre?.min,
+        max: livre?.max,
+        qtd: livre?.qtd,
       },
       {
         key: "lance_limitado",
         title: "Lance Limitado",
-        min: limitado?.menor_lance_percent,
-        max: limitado?.maior_lance_percent,
-        qtd: limitado?.qtd_ocorrencias,
+        media: limitado?.media,
+        min: limitado?.min,
+        max: limitado?.max,
+        qtd: limitado?.qtd,
       },
       {
         key: "sorteio",
         title: "Sorteio",
-        qtd: sorteio?.qtd_ocorrencias,
+        qtd: sorteio?.qtd,
       },
       {
         key: "lance_fixo_15",
         title: "Lance Fixo 15%",
-        min: fixo15?.menor_lance_percent,
-        max: fixo15?.maior_lance_percent,
-        qtd: fixo15?.qtd_ocorrencias,
+        media: fixo15?.media,
+        min: fixo15?.min,
+        max: fixo15?.max,
+        qtd: fixo15?.qtd,
       },
       {
         key: "lance_fixo_30",
         title: "Lance Fixo 30%",
-        min: fixo30?.menor_lance_percent,
-        max: fixo30?.maior_lance_percent,
-        qtd: fixo30?.qtd_ocorrencias,
+        media: fixo30?.media,
+        min: fixo30?.min,
+        max: fixo30?.max,
+        qtd: fixo30?.qtd,
       },
       {
         key: "lance_fixo_50",
         title: "Lance Fixo 50%",
-        min: fixo50?.menor_lance_percent,
-        max: fixo50?.maior_lance_percent,
-        qtd: fixo50?.qtd_ocorrencias,
+        media: fixo50?.media,
+        min: fixo50?.min,
+        max: fixo50?.max,
+        qtd: fixo50?.qtd,
       },
     ];
   }, [resumos]);
@@ -112,11 +154,9 @@ export default function LancesDoGrupoPanel({ grupo }) {
         <CardTitle className="text-base">
           Histórico de lances do GRUPO {grupo}
         </CardTitle>
-        {historico?.assembleia_data ? (
-          <Badge variant="secondary">Assembleia {historico.assembleia_data}</Badge>
-        ) : (
-          <Badge variant="secondary">Última importação</Badge>
-        )}
+        <Badge variant="secondary">
+          Média dos últimos {periodo} {periodo === 1 ? 'mês' : 'meses'}
+        </Badge>
       </CardHeader>
 
       <CardContent>
@@ -137,17 +177,24 @@ export default function LancesDoGrupoPanel({ grupo }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {cards.map((c) => (
               <div key={c.key} className="rounded-lg border p-3 bg-white">
-                <div className="font-medium mb-1">{c.title}</div>
+                <div className="font-medium mb-2">{c.title}</div>
                 {c.key === "sorteio" ? (
                   <div className="text-sm text-slate-700">
-                    Ocorrências: <b>{c.qtd ?? 0}</b>
+                    Total contemplações: <b>{c.qtd ?? 0}</b>
                   </div>
-                ) : (
+                ) : c.media ? (
                   <div className="text-sm text-slate-700 space-y-1">
-                    <div>Menor: <b>{fmt(c.min)}</b></div>
-                    <div>Maior: <b>{fmt(c.max)}</b></div>
+                    <div className="text-emerald-700 font-semibold text-base">
+                      Média: {fmt(c.media)}
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-600">
+                      <span>Mín: {fmt(c.min)}</span>
+                      <span>Máx: {fmt(c.max)}</span>
+                    </div>
                     <div className="text-xs text-slate-500">Amostras: {c.qtd ?? 0}</div>
                   </div>
+                ) : (
+                  <div className="text-xs text-slate-400">Sem dados</div>
                 )}
               </div>
             ))}
@@ -155,8 +202,9 @@ export default function LancesDoGrupoPanel({ grupo }) {
         )}
 
         {resumos.length > 0 && (
-          <div className="text-xs text-slate-500 mt-3">
-            Use como referência: tente trabalhar perto do "Maior" para aumentar chance e perto do "Menor" para estratégia conservadora.
+          <div className="text-xs text-slate-500 mt-3 bg-emerald-50 p-2 rounded">
+            💡 <b>Dica:</b> Use a <b>Média</b> como referência principal para maior assertividade. 
+            Lance próximo ao "Máx" aumenta chances, próximo ao "Mín" é mais conservador.
           </div>
         )}
       </CardContent>
