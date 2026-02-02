@@ -390,8 +390,9 @@ export default function ImportarResultadoAssembleia() {
                   lance_livre: 'Lance Livre',
                   lance_limitado: 'Lance Limitado',
                   sorteio: 'Sorteio',
-                  lance_fixo_30: 'Fixo 30%',
-                  lance_fixo_50: 'Fixo 50%'
+                  lance_fixo_15: 'Lance Fixo 15%',
+                  lance_fixo_30: 'Lance Fixo 30%',
+                  lance_fixo_50: 'Lance Fixo 50%'
                 };
 
                 return (

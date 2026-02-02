@@ -22,23 +22,29 @@ Deno.serve(async (req) => {
 
     // 1. Extrair dados do PDF usando LLM
     const extractionResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `Analise este PDF de resultado de assembleia e extraia TODOS os lances por grupo.
+      prompt: `Extraia TODOS os dados desta tabela de resultado de assembleia.
 
-FORMATO DE SAÍDA: Array JSON com cada lance.
+A tabela possui as colunas: QT. | GRUPO | DESCRIÇÃO | CRÉDITO | MODALIDADE | LANCE %
 
-Para cada lance extraído, retorne:
-- grupo: número do grupo (string)
-- modalidade: tipo do lance - use EXATAMENTE um desses valores:
-  * "lance_livre" para Lance Livre
-  * "lance_limitado" para Lance Limitado
-  * "sorteio" para Sorteio
-  * "lance_fixo_30" para Lance Fixo 30%
-  * "lance_fixo_50" para Lance Fixo 50%
-- menor_lance_percent: menor lance em % (número, ex: 25.5) ou null
-- maior_lance_percent: maior lance em % (número, ex: 45.0) ou null
-- quantidade: número de ocorrências (inteiro)
+Para CADA LINHA da tabela, extraia:
+- grupo: número do grupo (ex: "003102")
+- modalidade: classifique EXATAMENTE como:
+  * "lance_livre" se a coluna MODALIDADE for "Lance Livre"
+  * "lance_limitado" se for "Lance Limitado"
+  * "sorteio" se for "Sorteio"
+  * "lance_fixo_15" se for "Lance Fixo" e o percentual for 15%
+  * "lance_fixo_30" se for "Lance Fixo" e o percentual for 30%
+  * "lance_fixo_50" se for "Lance Fixo" e o percentual for 50%
+- lance_percentual: o valor numérico da coluna LANCE % (ex: se for "20,0000%" extraia como 20.0)
+- quantidade: sempre 1 para cada linha (cada linha representa uma contemplação)
 
-IMPORTANTE: Extraia TODOS os grupos e lances do documento. Seja preciso nos percentuais.`,
+REGRAS IMPORTANTES:
+1. Extraia TODAS as linhas da tabela
+2. Para "Lance Fixo", verifique o percentual para classificar corretamente (15, 30 ou 50)
+3. Converta percentuais corretamente (20,0000% = 20.0)
+4. Agrupe por grupo+modalidade ao final
+
+Retorne um array com TODAS as contemplações extraídas.`,
       file_urls: [file_url],
       response_json_schema: {
         type: "object",
@@ -49,12 +55,14 @@ IMPORTANTE: Extraia TODOS os grupos e lances do documento. Seja preciso nos perc
               type: "object",
               properties: {
                 grupo: { type: "string" },
-                modalidade: { type: "string" },
-                menor_lance_percent: { type: ["number", "null"] },
-                maior_lance_percent: { type: ["number", "null"] },
+                modalidade: { 
+                  type: "string",
+                  enum: ["lance_livre", "lance_limitado", "sorteio", "lance_fixo_15", "lance_fixo_30", "lance_fixo_50"]
+                },
+                lance_percentual: { type: "number" },
                 quantidade: { type: "integer" }
               },
-              required: ["grupo", "modalidade", "quantidade"]
+              required: ["grupo", "modalidade", "lance_percentual", "quantidade"]
             }
           }
         },
@@ -81,23 +89,41 @@ IMPORTANTE: Extraia TODOS os grupos e lances do documento. Seja preciso nos perc
       usuario_nome
     });
 
-    // 4. Processar dados extraídos e criar resumos em paralelo
+    // 4. Agrupar e processar dados extraídos
     const gruposSet = new Set();
     
-    const resumosToCreate = dataLines
-      .filter(lance => lance.grupo && lance.modalidade)
-      .map(lance => {
-        gruposSet.add(lance.grupo.toString());
-        return {
-          empresa_id: empresa_id || null,
-          historico_id: historico.id,
+    // Agrupar por grupo + modalidade e somar quantidades
+    const agrupado = {};
+    
+    for (const lance of dataLines) {
+      if (!lance.grupo || !lance.modalidade) continue;
+      
+      const chave = `${lance.grupo}_${lance.modalidade}`;
+      gruposSet.add(lance.grupo.toString());
+      
+      if (!agrupado[chave]) {
+        agrupado[chave] = {
           grupo: lance.grupo.toString(),
           modalidade: lance.modalidade,
-          menor_lance_percent: lance.menor_lance_percent || null,
-          maior_lance_percent: lance.maior_lance_percent || null,
-          qtd_ocorrencias: lance.quantidade || 0
+          percentuais: [],
+          quantidade: 0
         };
-      });
+      }
+      
+      agrupado[chave].percentuais.push(lance.lance_percentual);
+      agrupado[chave].quantidade += (lance.quantidade || 1);
+    }
+
+    // Criar resumos com menor e maior percentual
+    const resumosToCreate = Object.values(agrupado).map(item => ({
+      empresa_id: empresa_id || null,
+      historico_id: historico.id,
+      grupo: item.grupo,
+      modalidade: item.modalidade,
+      menor_lance_percent: Math.min(...item.percentuais),
+      maior_lance_percent: Math.max(...item.percentuais),
+      qtd_ocorrencias: item.quantidade
+    }));
 
     // Criar todos os resumos em paralelo
     await Promise.all(
