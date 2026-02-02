@@ -51,10 +51,16 @@ Retorne array JSON direto.`,
       }
     });
 
-    const dataLines = extractionResult.lances || [];
+    console.log('Extraction result:', JSON.stringify(extractionResult, null, 2));
+    
+    const dataLines = extractionResult?.lances || [];
+    
+    console.log('Total linhas extraídas:', dataLines.length);
     
     if (dataLines.length === 0) {
-      return Response.json({ error: 'Nenhum dado extraído do PDF' }, { status: 400 });
+      return Response.json({ 
+        error: 'Nenhum dado extraído do PDF. Resultado completo: ' + JSON.stringify(extractionResult) 
+      }, { status: 400 });
     }
 
     // 3. Criar registro de histórico
@@ -112,6 +118,10 @@ Retorne array JSON direto.`,
 
     const totalRegistros = resumosToCreate.length;
 
+    console.log('Grupos únicos:', gruposSet.size);
+    console.log('Total registros a criar:', totalRegistros);
+    console.log('Resumos:', JSON.stringify(resumosToCreate, null, 2));
+
     // 5. Atualizar totais no histórico
     await base44.asServiceRole.entities.HistoricoLanceGrupo.update(historico.id, {
       total_grupos: gruposSet.size,
@@ -122,7 +132,12 @@ Retorne array JSON direto.`,
       success: true,
       historico_id: historico.id,
       total_grupos: gruposSet.size,
-      total_registros: totalRegistros
+      total_registros: totalRegistros,
+      debug: {
+        linhas_extraidas: dataLines.length,
+        grupos_unicos: Array.from(gruposSet),
+        resumos_criados: resumosToCreate.length
+      }
     });
 
   } catch (error) {
