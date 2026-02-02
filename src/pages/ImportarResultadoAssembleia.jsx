@@ -74,16 +74,18 @@ export default function ImportarResultadoAssembleia() {
     mutationFn: async () => {
       if (!arquivo) throw new Error('Selecione um arquivo');
       if (!assembleiadata) throw new Error('Informe a data da assembleia');
-      if (!empresaId) throw new Error('Empresa não identificada');
 
       // 1. Upload do arquivo
       const { file_url } = await base44.integrations.Core.UploadFile({ file: arquivo });
 
-      // 2. Processar via backend
+      // 2. Super admin faz importação global (sem empresa_id)
+      const isGlobal = user?.perfil === 'super_admin' || user?.perfil === 'master';
+
+      // 3. Processar via backend
       const response = await base44.functions.invoke('importarResultadoAssembleia', {
         file_url,
         assembleia_data: assembleiadata,
-        empresa_id: empresaId,
+        empresa_id: isGlobal ? null : empresaId,
         usuario_id: user.id,
         usuario_nome: user.full_name
       });
@@ -135,9 +137,16 @@ export default function ImportarResultadoAssembleia() {
     {
       header: 'Arquivo',
       cell: (row) => (
-        <div className="flex items-center gap-2">
-          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-          <span className="text-sm">{row.arquivo_nome || 'Sem nome'}</span>
+        <div>
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span className="text-sm">{row.arquivo_nome || 'Sem nome'}</span>
+          </div>
+          {!row.empresa_id && (
+            <Badge variant="outline" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200">
+              Global
+            </Badge>
+          )}
         </div>
       )
     },
@@ -248,6 +257,11 @@ export default function ImportarResultadoAssembleia() {
             <p className="text-xs text-blue-700 mt-1">
               <strong>Suportado:</strong> Resultados de assembleia com lances por grupo e modalidade
             </p>
+            {(user?.perfil === 'super_admin' || user?.perfil === 'master') && (
+              <p className="text-xs text-blue-800 font-semibold mt-2">
+                ✓ Importação global - dados visíveis para todas as empresas
+              </p>
+            )}
           </div>
 
           <Button

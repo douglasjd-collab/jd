@@ -16,8 +16,8 @@ Deno.serve(async (req) => {
 
     const { file_url, assembleia_data, empresa_id, usuario_id, usuario_nome } = await req.json();
 
-    if (!file_url || !assembleia_data || !empresa_id) {
-      return Response.json({ error: 'Parâmetros obrigatórios faltando' }, { status: 400 });
+    if (!file_url || !assembleia_data) {
+      return Response.json({ error: 'Parâmetros obrigatórios: file_url, assembleia_data' }, { status: 400 });
     }
 
     // 1. Extrair dados do PDF usando LLM
@@ -62,8 +62,9 @@ Retorne um array de objetos com os dados extraídos.`,
     }
 
     // 3. Criar registro de histórico
+    // empresa_id pode ser null para importações globais (super_admin)
     const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
-      empresa_id,
+      empresa_id: empresa_id || null,
       assembleia_data,
       arquivo_nome: file_url.split('/').pop(),
       total_grupos: 0,
@@ -85,7 +86,7 @@ Retorne um array de objetos com os dados extraídos.`,
       gruposSet.add(grupo.toString());
 
       await base44.asServiceRole.entities.HistoricoLanceResumo.create({
-        empresa_id,
+        empresa_id: empresa_id || null,
         historico_id: historico.id,
         grupo: grupo.toString(),
         modalidade,
