@@ -20,31 +20,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Parâmetros obrigatórios: file_url, assembleia_data' }, { status: 400 });
     }
 
-    // 1. Extrair dados do PDF usando LLM
+    // 1. Extrair dados do PDF usando LLM com OCR
     const extractionResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `Extraia TODOS os dados desta tabela de resultado de assembleia.
+      prompt: `Tabela: QT | GRUPO | DESCRIÇÃO | CRÉDITO | MODALIDADE | LANCE %
 
-A tabela possui as colunas: QT. | GRUPO | DESCRIÇÃO | CRÉDITO | MODALIDADE | LANCE %
+Para cada linha:
+- grupo: código (ex: "003102")
+- modalidade: "lance_livre", "lance_limitado", "sorteio", "lance_fixo_15", "lance_fixo_30" ou "lance_fixo_50"
+- percentual: número da coluna LANCE % (20,0000% = 20.0)
 
-Para CADA LINHA da tabela, extraia:
-- grupo: número do grupo (ex: "003102")
-- modalidade: classifique EXATAMENTE como:
-  * "lance_livre" se a coluna MODALIDADE for "Lance Livre"
-  * "lance_limitado" se for "Lance Limitado"
-  * "sorteio" se for "Sorteio"
-  * "lance_fixo_15" se for "Lance Fixo" e o percentual for 15%
-  * "lance_fixo_30" se for "Lance Fixo" e o percentual for 30%
-  * "lance_fixo_50" se for "Lance Fixo" e o percentual for 50%
-- lance_percentual: o valor numérico da coluna LANCE % (ex: se for "20,0000%" extraia como 20.0)
-- quantidade: sempre 1 para cada linha (cada linha representa uma contemplação)
-
-REGRAS IMPORTANTES:
-1. Extraia TODAS as linhas da tabela
-2. Para "Lance Fixo", verifique o percentual para classificar corretamente (15, 30 ou 50)
-3. Converta percentuais corretamente (20,0000% = 20.0)
-4. Agrupe por grupo+modalidade ao final
-
-Retorne um array com TODAS as contemplações extraídas.`,
+Retorne array JSON direto.`,
       file_urls: [file_url],
       response_json_schema: {
         type: "object",
@@ -55,14 +40,10 @@ Retorne um array com TODAS as contemplações extraídas.`,
               type: "object",
               properties: {
                 grupo: { type: "string" },
-                modalidade: { 
-                  type: "string",
-                  enum: ["lance_livre", "lance_limitado", "sorteio", "lance_fixo_15", "lance_fixo_30", "lance_fixo_50"]
-                },
-                lance_percentual: { type: "number" },
-                quantidade: { type: "integer" }
+                modalidade: { type: "string" },
+                percentual: { type: "number" }
               },
-              required: ["grupo", "modalidade", "lance_percentual", "quantidade"]
+              required: ["grupo", "modalidade"]
             }
           }
         },
@@ -89,10 +70,8 @@ Retorne um array com TODAS as contemplações extraídas.`,
       usuario_nome
     });
 
-    // 4. Agrupar e processar dados extraídos
+    // 4. Agrupar dados
     const gruposSet = new Set();
-    
-    // Agrupar por grupo + modalidade e somar quantidades
     const agrupado = {};
     
     for (const lance of dataLines) {
@@ -110,18 +89,19 @@ Retorne um array com TODAS as contemplações extraídas.`,
         };
       }
       
-      agrupado[chave].percentuais.push(lance.lance_percentual);
-      agrupado[chave].quantidade += (lance.quantidade || 1);
+      if (lance.percentual != null) {
+        agrupado[chave].percentuais.push(lance.percentual);
+      }
+      agrupado[chave].quantidade += 1;
     }
 
-    // Criar resumos com menor e maior percentual
     const resumosToCreate = Object.values(agrupado).map(item => ({
       empresa_id: empresa_id || null,
       historico_id: historico.id,
       grupo: item.grupo,
       modalidade: item.modalidade,
-      menor_lance_percent: Math.min(...item.percentuais),
-      maior_lance_percent: Math.max(...item.percentuais),
+      menor_lance_percent: item.percentuais.length > 0 ? Math.min(...item.percentuais) : null,
+      maior_lance_percent: item.percentuais.length > 0 ? Math.max(...item.percentuais) : null,
       qtd_ocorrencias: item.quantidade
     }));
 
