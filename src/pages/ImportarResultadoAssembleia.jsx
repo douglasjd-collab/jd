@@ -253,25 +253,21 @@ export default function ImportarResultadoAssembleia() {
                   className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
                 />
                 <div className={`
-                  border-2 border-dashed rounded-lg p-6 text-center transition-all
+                  border-2 border-dashed rounded-lg px-4 py-2.5 text-center transition-all
                   ${arquivo 
                     ? 'border-emerald-500 bg-emerald-50' 
                     : 'border-slate-300 bg-slate-50 hover:border-emerald-400 hover:bg-emerald-50/50'
                   }
                 `}>
                   {arquivo ? (
-                    <div className="space-y-2">
-                      <FileSpreadsheet className="w-8 h-8 mx-auto text-emerald-600" />
+                    <div className="flex items-center gap-2 justify-center">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                       <p className="text-sm font-medium text-emerald-900">{arquivo.name}</p>
-                      <p className="text-xs text-emerald-700">
-                        {(arquivo.size / 1024).toFixed(2)} KB
-                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <Upload className="w-8 h-8 mx-auto text-slate-400" />
-                      <p className="text-sm font-medium text-slate-700">Escolher arquivo</p>
-                      <p className="text-xs text-slate-500">ou arraste e solte aqui</p>
+                    <div className="flex items-center gap-2 justify-center">
+                      <Upload className="w-4 h-4 text-slate-400" />
+                      <p className="text-sm text-slate-700">Escolher arquivo</p>
                     </div>
                   )}
                 </div>
