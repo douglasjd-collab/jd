@@ -195,14 +195,16 @@ export default function ImportarResultadoAssembleia() {
           >
             <Eye className="w-4 h-4" />
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setDeleteId(row.id)}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {(user?.perfil === 'super_admin' || user?.perfil === 'master') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setDeleteId(row.id)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       )
     }
