@@ -525,7 +525,7 @@ export default function Vendas() {
       <PageHeader
         title="Vendas"
         subtitle={`${filteredVendas.length} vendas`}
-        actionLabel="Nova Venda"
+        actionLabel="Nova Proposta"
         onAction={() => {
           setSelectedVenda(null);
           setFormOpen(true);
