@@ -139,6 +139,33 @@ Deno.serve(async (req) => {
       usuario_nome: user.full_name || user.email
     });
 
+    // Extrair mês/ano da assembleia
+    const [ano, mes] = assembleia_data.split('-');
+    const mesAno = `${ano}-${mes}`;
+
+    // Buscar resumos existentes do mês para verificar se é 1ª chamada
+    const resumosExistentes = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
+      empresa_id,
+      grupo: rows.map(r => r.grupo)
+    });
+
+    // Agrupar existentes por grupo+modalidade+mês
+    const existentesMap = new Map();
+    for (const r of resumosExistentes) {
+      // Buscar histórico para pegar assembleia_data
+      const hist = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({ id: r.historico_id });
+      if (hist?.[0]?.assembleia_data) {
+        const [anoHist, mesHist] = hist[0].assembleia_data.split('-');
+        const mesAnoHist = `${anoHist}-${mesHist}`;
+        
+        // Só considera se for do MESMO mês
+        if (mesAnoHist === mesAno) {
+          const key = `${r.grupo}_${r.modalidade}`;
+          existentesMap.set(key, r);
+        }
+      }
+    }
+
     // Agrupar por grupo + modalidade e calcular estatísticas
     const grupos = new Map();
     for (const row of rows) {
@@ -155,25 +182,38 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Criar registros HistoricoLanceResumo
+    // Criar/Atualizar registros HistoricoLanceResumo com regras corretas
     const resumos = [];
-    for (const [, data] of grupos) {
+    for (const [key, data] of grupos) {
       const percentuais = data.percentuais;
-      const menor = percentuais.length > 0 ? Math.min(...percentuais) : null;
-      const maior = percentuais.length > 0 ? Math.max(...percentuais) : null;
+      const novoMenor = percentuais.length > 0 ? Math.min(...percentuais) : null;
+      const novoMaior = percentuais.length > 0 ? Math.max(...percentuais) : null;
       
-      resumos.push({
-        empresa_id,
-        historico_id: historico.id,
-        grupo: data.grupo,
-        modalidade: data.modalidade,
-        menor_lance_percent: menor,
-        maior_lance_percent: maior,
-        qtd_ocorrencias: percentuais.length || 1
-      });
+      const existente = existentesMap.get(key);
+
+      if (!existente) {
+        // PRIMEIRA CHAMADA: salva maior e menor
+        resumos.push({
+          empresa_id,
+          historico_id: historico.id,
+          grupo: data.grupo,
+          modalidade: data.modalidade,
+          menor_lance_percent: novoMenor,
+          maior_lance_percent: novoMaior,
+          qtd_ocorrencias: percentuais.length || 1
+        });
+      } else {
+        // CHAMADAS SEGUINTES: mantém o maior, atualiza só o menor
+        const menorFinal = Math.min(existente.menor_lance_percent || 999999, novoMenor || 999999);
+        
+        await base44.asServiceRole.entities.HistoricoLanceResumo.update(existente.id, {
+          menor_lance_percent: menorFinal === 999999 ? null : menorFinal,
+          qtd_ocorrencias: (existente.qtd_ocorrencias || 0) + (percentuais.length || 1)
+        });
+      }
     }
 
-    // Criar resumos em batch
+    // Criar apenas os novos resumos (primeira chamada)
     await chunked(resumos, 100, async (chunk) => {
       await Promise.all(
         chunk.map(r => base44.asServiceRole.entities.HistoricoLanceResumo.create(r))
