@@ -197,8 +197,12 @@ export default function Usuarios() {
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas-usuarios'],
-    queryFn: () => base44.entities.Empresa.filter({ status: 'ativa' }),
-    enabled: currentUser?.perfil === 'master' || currentUser?.perfil === 'admin'
+    queryFn: async () => {
+      const result = await base44.entities.Empresa.filter({ status: 'ativa' });
+      console.log('Empresas carregadas para vincular:', result);
+      return result;
+    },
+    enabled: ['master', 'super_admin', 'admin'].includes(currentUser?.perfil)
   });
 
   const updateMutation = useMutation({

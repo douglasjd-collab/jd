@@ -15,10 +15,12 @@ export default function VincularUsuarioModal({ open, onOpenChange, usuario, empr
   // Reset state quando abrir o modal
   React.useEffect(() => {
     if (open) {
+      console.log('Modal aberto para usuário:', usuario);
+      console.log('Empresas disponíveis:', empresas);
       setSelectedEmpresa('');
       setPerfil('vendedor');
     }
-  }, [open]);
+  }, [open, usuario, empresas]);
 
   const handleVincular = async () => {
     console.log('handleVincular iniciado');
@@ -95,18 +97,31 @@ export default function VincularUsuarioModal({ open, onOpenChange, usuario, empr
 
             <div>
               <label className="text-sm font-medium mb-2 block">Empresa</label>
-              <Select value={selectedEmpresa} onValueChange={setSelectedEmpresa}>
+              <Select 
+                value={selectedEmpresa} 
+                onValueChange={(value) => {
+                  console.log('Empresa selecionada:', value);
+                  setSelectedEmpresa(value);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma empresa" />
                 </SelectTrigger>
                 <SelectContent>
-                  {empresas?.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.nome}
-                    </SelectItem>
-                  ))}
+                  {empresas && empresas.length > 0 ? (
+                    empresas.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.nome}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-slate-500">Nenhuma empresa disponível</div>
+                  )}
                 </SelectContent>
               </Select>
+              {empresas && empresas.length === 0 && (
+                <p className="text-xs text-red-500 mt-1">⚠️ Nenhuma empresa cadastrada</p>
+              )}
             </div>
 
             <div>
