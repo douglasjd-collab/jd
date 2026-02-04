@@ -150,7 +150,7 @@ export default function OportunidadeDetalhes() {
           </div>
           <div>
             <p className="text-slate-500">Telefone:</p>
-            <p className="font-medium">{oportunidade.cliente_telefone || '-'}</p>
+            <p className="font-medium">{oportunidade.cliente_telefone || oportunidade.telefone_lead || '-'}</p>
           </div>
           <div>
             <p className="text-slate-500">Data Criação:</p>
