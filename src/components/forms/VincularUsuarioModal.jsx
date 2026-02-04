@@ -12,7 +12,20 @@ export default function VincularUsuarioModal({ open, onOpenChange, usuario, empr
   const [perfil, setPerfil] = useState('vendedor');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Reset state quando abrir o modal
+  React.useEffect(() => {
+    if (open) {
+      setSelectedEmpresa('');
+      setPerfil('vendedor');
+    }
+  }, [open]);
+
   const handleVincular = async () => {
+    console.log('handleVincular iniciado');
+    console.log('selectedEmpresa:', selectedEmpresa);
+    console.log('usuario:', usuario);
+    console.log('perfil:', perfil);
+
     if (!selectedEmpresa || !usuario) {
       toast.error('Selecione uma empresa');
       return;
@@ -21,9 +34,10 @@ export default function VincularUsuarioModal({ open, onOpenChange, usuario, empr
     setIsLoading(true);
     try {
       const empresa = empresas.find(e => e.id === selectedEmpresa);
+      console.log('empresa encontrada:', empresa);
       
       const dados = {
-        user_id: usuario.user_id,
+        user_id: usuario.user_id || usuario.id,
         nome: usuario.nome,
         email: usuario.email,
         perfil,
@@ -34,24 +48,31 @@ export default function VincularUsuarioModal({ open, onOpenChange, usuario, empr
         codigo_vendedor: usuario.codigo_vendedor || null,
       };
 
-      // Se já existe, atualizar; senão, criar
+      console.log('dados a serem salvos:', dados);
+
+      // Se já existe Colaborador com esse user_id, atualizar
       const existentes = await base44.entities.Colaborador.filter({
-        user_id: usuario.user_id,
-        empresa_id: selectedEmpresa
+        user_id: dados.user_id
       });
 
+      console.log('colaboradores existentes:', existentes);
+
       if (existentes?.length) {
+        console.log('Atualizando colaborador existente:', existentes[0].id);
         await base44.entities.Colaborador.update(existentes[0].id, dados);
       } else {
+        console.log('Criando novo colaborador');
         await base44.entities.Colaborador.create(dados);
       }
 
-      toast.success(`${usuario.nome} vinculado a ${empresa?.nome}`);
+      toast.success(`✅ ${usuario.nome} vinculado a ${empresa?.nome || selectedEmpresa}`);
+      setSelectedEmpresa('');
+      setPerfil('vendedor');
       onOpenChange(false);
-      onSuccess?.();
+      if (onSuccess) onSuccess();
     } catch (error) {
-      console.error(error);
-      toast.error(error.message || 'Erro ao vincular');
+      console.error('Erro ao vincular:', error);
+      toast.error(error.message || 'Erro ao vincular usuário');
     } finally {
       setIsLoading(false);
     }
