@@ -35,11 +35,92 @@ export default function Clientes() {
   const [openForm, setOpenForm] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [search, setSearch] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
 
+  React.useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const user = await base44.auth.me();
+      
+      if (!user) {
+        console.error('Usuário não autenticado');
+        return;
+      }
+
+      // Super admin não precisa de Colaborador - acessa tudo
+      if (user.role === 'super_admin') {
+        setCurrentUser({
+          ...user,
+          auth_id: user.id,
+          colaborador_id: null,
+          empresa_id: null,
+          perfil: 'super_admin',
+          nome_perfil: user.full_name,
+          email: user.email,
+        });
+        return;
+      }
+
+      // Para outros roles, buscar Colaborador
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: user.id, status: 'ativo' },
+        '-created_date'
+      );
+
+      if (!colabs || colabs.length === 0) {
+        console.warn('Usuário sem Colaborador vinculado:', user.email);
+        setCurrentUser({
+          ...user,
+          auth_id: user.id,
+          colaborador_id: null,
+          empresa_id: null,
+          perfil: 'vendedor',
+          nome_perfil: user.full_name || '',
+          email: user.email || '',
+        });
+        return;
+      }
+
+      const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === user.empresa_id);
+      const colab = byEmpresa || colabs[0];
+
+      setCurrentUser({
+        ...user,
+        auth_id: user.id,
+        colaborador_id: colab.id,
+        empresa_id: colab.empresa_id || null,
+        perfil: colab.perfil || 'vendedor',
+        nome_perfil: colab.nome || user.full_name || '',
+        email: colab.email || user.email || '',
+      });
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+    }
+  };
+
   const { data: clientes = [], isLoading } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: () => base44.entities.Cliente.list('-created_date'),
+    queryKey: ['clientes', currentUser?.empresa_id, currentUser?.perfil],
+    enabled: !!currentUser,
+    queryFn: async () => {
+      // Super admin e master veem todos os clientes
+      if (['super_admin', 'master'].includes(currentUser?.perfil)) {
+        return base44.entities.Cliente.list('-created_date');
+      }
+      
+      // Outros usuários veem apenas clientes da sua empresa
+      if (currentUser?.empresa_id) {
+        return base44.entities.Cliente.filter(
+          { empresa_id: currentUser.empresa_id },
+          '-created_date'
+        );
+      }
+      
+      return [];
+    },
   });
 
   const createMutation = useMutation({
