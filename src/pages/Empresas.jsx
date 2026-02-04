@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, MoreHorizontal, Pencil, Trash2, Building2, Loader2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Building2, Loader2, UserPlus, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 
@@ -76,6 +76,16 @@ export default function Empresas() {
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [conviteOpen, setConviteOpen] = useState(false);
+  const [empresaParaConvite, setEmpresaParaConvite] = useState(null);
+  const [conviteData, setConviteData] = useState({
+    email: '',
+    nome: '',
+    perfil: 'admin',
+    cpf_cnpj: '',
+    telefone: ''
+  });
+  const [sendingInvite, setSendingInvite] = useState(false);
   const [searchEstado, setSearchEstado] = useState('');
   const [searchCidade, setSearchCidade] = useState('');
   const [cidadePersonalizada, setCidadePersonalizada] = useState('');
@@ -88,6 +98,11 @@ export default function Empresas() {
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ['empresas'],
     queryFn: () => base44.entities.Empresa.list('-created_date'),
+  });
+
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ['usuarios-convite'],
+    queryFn: () => base44.entities.Colaborador.filter({ status: 'ativo' }),
   });
 
 
@@ -139,6 +154,45 @@ export default function Empresas() {
       toast.success('Empresa excluída!');
     },
   });
+
+  const handleEnviarConvite = async () => {
+    if (!conviteData.email || !conviteData.nome) {
+      toast.error('Preencha email e nome do usuário');
+      return;
+    }
+
+    setSendingInvite(true);
+    try {
+      const payload = {
+        ...conviteData,
+        empresa_id: empresaParaConvite.id,
+        status: 'ativo'
+      };
+
+      const res = await base44.functions.invoke('inviteUser', payload);
+      
+      if (res?.data?.error) {
+        throw new Error(res.data.error);
+      }
+
+      toast.success('✅ Convite enviado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['usuarios-convite'] });
+      setConviteOpen(false);
+      setConviteData({
+        email: '',
+        nome: '',
+        perfil: 'admin',
+        cpf_cnpj: '',
+        telefone: ''
+      });
+      setEmpresaParaConvite(null);
+    } catch (error) {
+      const msg = error?.message || 'Erro ao enviar convite';
+      toast.error(msg);
+    } finally {
+      setSendingInvite(false);
+    }
+  };
 
   const openForm = (empresa = null) => {
     if (empresa) {
@@ -306,6 +360,13 @@ export default function Empresas() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => {
+              setEmpresaParaConvite(row);
+              setConviteOpen(true);
+            }}>
+              <Mail className="w-4 h-4 mr-2" />
+              Enviar Convite
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openForm(row)}>
               <Pencil className="w-4 h-4 mr-2" />
               Editar
@@ -698,6 +759,124 @@ export default function Empresas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Enviar Convite */}
+      <Dialog open={conviteOpen} onOpenChange={setConviteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-[#23BE84]" />
+              Enviar Convite
+            </DialogTitle>
+          </DialogHeader>
+          
+          {empresaParaConvite && (
+            <div className="space-y-4">
+              <div className="p-3 bg-slate-50 rounded-lg border">
+                <p className="text-sm text-slate-500 mb-1">Empresa:</p>
+                <p className="font-semibold text-slate-900">{empresaParaConvite.nome}</p>
+                <p className="text-xs text-slate-500">{empresaParaConvite.codigo}</p>
+              </div>
+
+              <div>
+                <Label htmlFor="convite-email">Email *</Label>
+                <Input
+                  id="convite-email"
+                  type="email"
+                  placeholder="usuario@email.com"
+                  value={conviteData.email}
+                  onChange={(e) => setConviteData({ ...conviteData, email: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="convite-nome">Nome Completo *</Label>
+                <Input
+                  id="convite-nome"
+                  placeholder="Nome do usuário"
+                  value={conviteData.nome}
+                  onChange={(e) => setConviteData({ ...conviteData, nome: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="convite-perfil">Perfil *</Label>
+                <Select
+                  value={conviteData.perfil}
+                  onValueChange={(value) => setConviteData({ ...conviteData, perfil: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="gerente">Gerente</SelectItem>
+                    <SelectItem value="vendedor">Vendedor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="convite-cpf">CPF/CNPJ</Label>
+                  <Input
+                    id="convite-cpf"
+                    placeholder="000.000.000-00"
+                    value={conviteData.cpf_cnpj}
+                    onChange={(e) => setConviteData({ ...conviteData, cpf_cnpj: formatCPFCNPJ(e.target.value) })}
+                    maxLength={18}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="convite-telefone">Telefone</Label>
+                  <Input
+                    id="convite-telefone"
+                    placeholder="(00) 00000-0000"
+                    value={conviteData.telefone}
+                    onChange={(e) => setConviteData({ ...conviteData, telefone: formatPhone(e.target.value) })}
+                    maxLength={15}
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-900">
+                  <strong>ℹ️ Informação:</strong> Um email de convite será enviado para o usuário com instruções de acesso.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setConviteOpen(false);
+                    setConviteData({
+                      email: '',
+                      nome: '',
+                      perfil: 'admin',
+                      cpf_cnpj: '',
+                      telefone: ''
+                    });
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleEnviarConvite}
+                  disabled={sendingInvite}
+                  className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
+                >
+                  {sendingInvite && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <UserPlus className="w-4 h-4" />
+                  Enviar Convite
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
