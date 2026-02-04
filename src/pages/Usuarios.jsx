@@ -149,7 +149,11 @@ export default function Usuarios() {
         // Se for admin, buscar também usuários sem Colaborador (pendentes)
         if (isMasterOrSuperAdmin || currentUser?.perfil === 'admin') {
           try {
-            const todosUsuarios = await base44.asServiceRole.entities.User.list('-created_date');
+            // Buscar todos os Users usando service role
+            const response = await base44.functions.invoke('listarUsuariosPendentes', {});
+            const todosUsuarios = response?.data?.users || [];
+            
+            console.log('Todos usuários:', todosUsuarios);
             
             // IDs de usuários que já têm Colaborador
             const idsComColab = new Set(colaboradores.map(c => c.user_id).filter(Boolean));
@@ -173,6 +177,8 @@ export default function Usuarios() {
                 aguardando_configuracao: true,
                 created_date: u.created_date
               }));
+
+            console.log('Usuários sem colab:', usuariosSemColab);
 
             return [...usuariosSemColab, ...colaboradores];
           } catch (err) {
