@@ -32,12 +32,13 @@ import {
 import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import VendaForm from '@/components/forms/VendaForm';
 import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
 
 export default function FunilVendas() {
+  const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedOportunidade, setSelectedOportunidade] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -873,6 +874,7 @@ export default function FunilVendas() {
                                className={`p-3 rounded-lg shadow-sm transition-all cursor-move ${
                                  snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
                                } ${cardClasses}`}
+                               onDoubleClick={() => navigate(createPageUrl(`OportunidadeDetalhes?id=${oport.id}`))}
                              >
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
