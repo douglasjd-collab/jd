@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MoreHorizontal, Pencil, UserPlus, Trash2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -57,6 +57,7 @@ export default function Usuarios() {
   const [usuarioToVincular, setUsuarioToVincular] = useState(null);
   const [excluirOpen, setExcluirOpen] = useState(false);
   const [usuarioToExcluir, setUsuarioToExcluir] = useState(null);
+  const [empresasExpandidas, setEmpresasExpandidas] = useState(new Set());
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -451,6 +452,41 @@ export default function Usuarios() {
     return matchSearch && matchPerfil && matchEmpresa;
   });
 
+  // Agrupar usuários por empresa
+  const usuariosAgrupados = React.useMemo(() => {
+    const grupos = {};
+    
+    filteredUsuarios.forEach(u => {
+      const empresaId = u.empresa_id || 'sem_empresa';
+      if (!grupos[empresaId]) {
+        grupos[empresaId] = {
+          empresa_id: empresaId,
+          empresa_nome: u.empresa_nome || empresas.find(e => e.id === empresaId)?.nome || 'Sem Empresa',
+          usuarios: []
+        };
+      }
+      grupos[empresaId].usuarios.push(u);
+    });
+
+    return Object.values(grupos).sort((a, b) => {
+      if (a.empresa_id === 'sem_empresa') return 1;
+      if (b.empresa_id === 'sem_empresa') return -1;
+      return a.empresa_nome.localeCompare(b.empresa_nome);
+    });
+  }, [filteredUsuarios, empresas]);
+
+  const toggleEmpresa = (empresaId) => {
+    setEmpresasExpandidas(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(empresaId)) {
+        newSet.delete(empresaId);
+      } else {
+        newSet.add(empresaId);
+      }
+      return newSet;
+    });
+  };
+
   const columns = [
     {
       header: 'Nome',
@@ -626,13 +662,147 @@ export default function Usuarios() {
         </Select>
       </div>
 
-      {/* Table */}
-      <DataTable
-        columns={columns}
-        data={filteredUsuarios}
-        isLoading={isLoading}
-        emptyMessage="Nenhum usuário encontrado"
-      />
+      {/* Table Agrupada */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Nome</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">CPF/CNPJ</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Código</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Perfil</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Gerente</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Status</th>
+                <th className="w-12"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                    Carregando...
+                  </td>
+                </tr>
+              ) : usuariosAgrupados.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                    Nenhum usuário encontrado
+                  </td>
+                </tr>
+              ) : (
+                usuariosAgrupados.map((grupo) => (
+                  <React.Fragment key={grupo.empresa_id}>
+                    {/* Linha da Empresa (Header) */}
+                    <tr 
+                      className="bg-slate-100 hover:bg-slate-200 cursor-pointer border-b border-slate-200"
+                      onClick={() => toggleEmpresa(grupo.empresa_id)}
+                    >
+                      <td colSpan={7} className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {empresasExpandidas.has(grupo.empresa_id) ? (
+                            <ChevronDown className="w-5 h-5 text-slate-600" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-slate-600" />
+                          )}
+                          <Building2 className="w-5 h-5 text-slate-600" />
+                          <span className="font-semibold text-slate-900">{grupo.empresa_nome}</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {grupo.usuarios.length} {grupo.usuarios.length === 1 ? 'usuário' : 'usuários'}
+                          </Badge>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    {/* Usuários da Empresa (Expandidos) */}
+                    {empresasExpandidas.has(grupo.empresa_id) && grupo.usuarios.map((usuario) => (
+                      <tr 
+                        key={usuario.id} 
+                        className="border-b border-slate-100 hover:bg-slate-50"
+                      >
+                        <td className="px-4 py-3 pl-16">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <p className="font-medium text-slate-900">{usuario.nome}</p>
+                              <p className="text-sm text-slate-500">{usuario.email}</p>
+                            </div>
+                            {usuario.aguardando_configuracao && (
+                              <Badge className="bg-amber-100 text-amber-700 text-xs">Pendente</Badge>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700">{usuario.cpf_cnpj || '-'}</td>
+                        <td className="px-4 py-3 text-slate-700">{usuario.codigo_vendedor || '-'}</td>
+                        <td className="px-4 py-3">
+                          <Badge className={perfilColors[usuario.perfil] || perfilColors.vendedor}>
+                            {perfilLabels[usuario.perfil] || 'Vendedor'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700">
+                          {usuario.perfil === 'vendedor' ? getGerenteNome(usuario.gerente_id) : '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={usuario.status || 'ativo'} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {usuario.aguardando_configuracao ? (
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    setUsuarioToVincular(usuario);
+                                    setVincularOpen(true);
+                                  }}
+                                  className="text-[#23BE84] font-medium"
+                                >
+                                  <UserPlus className="w-4 h-4 mr-2" />
+                                  Configurar Usuário
+                                </DropdownMenuItem>
+                              ) : (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEdit(usuario)}>
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setUsuarioToVincular(usuario);
+                                      setVincularOpen(true);
+                                    }}
+                                  >
+                                    <UserPlus className="w-4 h-4 mr-2" />
+                                    Vincular a Empresa
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setUsuarioToExcluir(usuario);
+                                      setExcluirOpen(true);
+                                    }}
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Form Modal */}
       <UsuarioForm
