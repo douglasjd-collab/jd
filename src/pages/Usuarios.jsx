@@ -6,6 +6,7 @@ import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import UsuarioForm from '@/components/forms/UsuarioForm';
 import VincularUsuarioModal from '@/components/forms/VincularUsuarioModal';
+import ConfirmarExclusaoUsuarioModal from '@/components/forms/ConfirmarExclusaoUsuarioModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,8 @@ export default function Usuarios() {
   const [formKey, setFormKey] = useState(0);
   const [vincularOpen, setVincularOpen] = useState(false);
   const [usuarioToVincular, setUsuarioToVincular] = useState(null);
+  const [excluirOpen, setExcluirOpen] = useState(false);
+  const [usuarioToExcluir, setUsuarioToExcluir] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -523,9 +526,8 @@ export default function Usuarios() {
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => {
-                    if (confirm(`Tem certeza que deseja excluir o usuário "${row.nome}"?`)) {
-                      deleteMutation.mutate(row.id);
-                    }
+                    setUsuarioToExcluir(row);
+                    setExcluirOpen(true);
                   }}
                   className="text-red-600"
                 >
@@ -648,6 +650,17 @@ export default function Usuarios() {
           queryClient.invalidateQueries({ queryKey: ['usuarios'] });
           setVincularOpen(false);
           setUsuarioToVincular(null);
+        }}
+      />
+
+      {/* Confirmar Exclusão Modal */}
+      <ConfirmarExclusaoUsuarioModal
+        open={excluirOpen}
+        onOpenChange={setExcluirOpen}
+        usuario={usuarioToExcluir}
+        onConfirm={() => {
+          deleteMutation.mutate(usuarioToExcluir?.id);
+          setUsuarioToExcluir(null);
         }}
       />
     </div>
