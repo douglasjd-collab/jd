@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -22,26 +23,40 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, User, Building2 } from 'lucide-react';
+import { Loader2, User, Building2, Upload, X, FileText } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isLoading }) {
+  const [uploadingDoc, setUploadingDoc] = useState(null);
+  
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: cliente || {
       tipo_pessoa: 'Física',
       status: 'ativo',
       // Checkboxes PF
-      doc_cpf: false,
+      doc_documento_testemunhas: false,
+      doc_documento_testemunhas_urls: [],
       doc_identidade: false,
+      doc_identidade_urls: [],
       doc_comprovante_endereco: false,
+      doc_comprovante_endereco_urls: [],
       doc_comprovante_renda: false,
+      doc_comprovante_renda_urls: [],
+      doc_proposta_assinada: false,
+      doc_proposta_assinada_urls: [],
       banco_nao_deseja_informar: false,
       banco_nao_possui_conta: false,
       // Checkboxes PJ
       pj_doc_contrato_ou_estatuto_social: false,
+      pj_doc_contrato_ou_estatuto_social_urls: [],
       pj_doc_cartao_cnpj: false,
+      pj_doc_cartao_cnpj_urls: [],
       pj_doc_documento_socios_ou_representante: false,
+      pj_doc_documento_socios_ou_representante_urls: [],
       pj_doc_relacao_faturamento: false,
+      pj_doc_relacao_faturamento_urls: [],
+      pj_doc_proposta_assinada: false,
+      pj_doc_proposta_assinada_urls: [],
       pj_banco_nao_deseja_informar: false,
       pj_banco_nao_possui_conta: false,
     }
@@ -63,17 +78,29 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
         tipo_pessoa: 'Física',
         status: 'ativo',
         // Checkboxes PF
-        doc_cpf: false,
+        doc_documento_testemunhas: false,
+        doc_documento_testemunhas_urls: [],
         doc_identidade: false,
+        doc_identidade_urls: [],
         doc_comprovante_endereco: false,
+        doc_comprovante_endereco_urls: [],
         doc_comprovante_renda: false,
+        doc_comprovante_renda_urls: [],
+        doc_proposta_assinada: false,
+        doc_proposta_assinada_urls: [],
         banco_nao_deseja_informar: false,
         banco_nao_possui_conta: false,
         // Checkboxes PJ
         pj_doc_contrato_ou_estatuto_social: false,
+        pj_doc_contrato_ou_estatuto_social_urls: [],
         pj_doc_cartao_cnpj: false,
+        pj_doc_cartao_cnpj_urls: [],
         pj_doc_documento_socios_ou_representante: false,
+        pj_doc_documento_socios_ou_representante_urls: [],
         pj_doc_relacao_faturamento: false,
+        pj_doc_relacao_faturamento_urls: [],
+        pj_doc_proposta_assinada: false,
+        pj_doc_proposta_assinada_urls: [],
         pj_banco_nao_deseja_informar: false,
         pj_banco_nao_possui_conta: false,
       });
@@ -170,6 +197,34 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
   };
 
   const ufs = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+
+  const handleFileUpload = async (files, fieldName) => {
+    if (!files || files.length === 0) return;
+    
+    setUploadingDoc(fieldName);
+    
+    try {
+      const uploadedUrls = [];
+      for (const file of files) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        uploadedUrls.push(file_url);
+      }
+      
+      const currentUrls = watch(fieldName) || [];
+      setValue(fieldName, [...currentUrls, ...uploadedUrls]);
+      toast.success(`${files.length} arquivo(s) anexado(s)`);
+    } catch (error) {
+      toast.error('Erro ao fazer upload');
+      console.error(error);
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
+  const removeFile = (fieldName, urlToRemove) => {
+    const currentUrls = watch(fieldName) || [];
+    setValue(fieldName, currentUrls.filter(url => url !== urlToRemove));
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -654,49 +709,285 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                   <CardTitle className="text-lg">Checklist de Documentos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="doc_cpf"
-                          checked={watch('doc_cpf') || false}
-                          onCheckedChange={(checked) => setValue('doc_cpf', checked)}
-                        />
-                        <Label htmlFor="doc_cpf" className="cursor-pointer">
-                          CPF
-                        </Label>
+                    <div className="space-y-6">
+                      {/* Documento de Testemunhas */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="doc_documento_testemunhas"
+                            checked={watch('doc_documento_testemunhas') || false}
+                            onCheckedChange={(checked) => setValue('doc_documento_testemunhas', checked)}
+                          />
+                          <Label htmlFor="doc_documento_testemunhas" className="cursor-pointer">
+                            Documento de Testemunhas
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-doc_documento_testemunhas_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'doc_documento_testemunhas_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'doc_documento_testemunhas_urls'}
+                            onClick={() => document.getElementById('upload-doc_documento_testemunhas_urls').click()}
+                          >
+                            {uploadingDoc === 'doc_documento_testemunhas_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('doc_documento_testemunhas_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('doc_documento_testemunhas_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('doc_documento_testemunhas_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="doc_identidade"
-                          checked={watch('doc_identidade') || false}
-                          onCheckedChange={(checked) => setValue('doc_identidade', checked)}
-                        />
-                        <Label htmlFor="doc_identidade" className="cursor-pointer">
-                          Identidade (RG)
-                        </Label>
+                      {/* Identidade */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="doc_identidade"
+                            checked={watch('doc_identidade') || false}
+                            onCheckedChange={(checked) => setValue('doc_identidade', checked)}
+                          />
+                          <Label htmlFor="doc_identidade" className="cursor-pointer">
+                            Identidade (RG)
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-doc_identidade_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'doc_identidade_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'doc_identidade_urls'}
+                            onClick={() => document.getElementById('upload-doc_identidade_urls').click()}
+                          >
+                            {uploadingDoc === 'doc_identidade_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('doc_identidade_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('doc_identidade_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('doc_identidade_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="doc_comprovante_endereco"
-                          checked={watch('doc_comprovante_endereco') || false}
-                          onCheckedChange={(checked) => setValue('doc_comprovante_endereco', checked)}
-                        />
-                        <Label htmlFor="doc_comprovante_endereco" className="cursor-pointer">
-                          Comprovante de Endereço
-                        </Label>
+                      {/* Comprovante de Endereço */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="doc_comprovante_endereco"
+                            checked={watch('doc_comprovante_endereco') || false}
+                            onCheckedChange={(checked) => setValue('doc_comprovante_endereco', checked)}
+                          />
+                          <Label htmlFor="doc_comprovante_endereco" className="cursor-pointer">
+                            Comprovante de Endereço
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-doc_comprovante_endereco_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'doc_comprovante_endereco_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'doc_comprovante_endereco_urls'}
+                            onClick={() => document.getElementById('upload-doc_comprovante_endereco_urls').click()}
+                          >
+                            {uploadingDoc === 'doc_comprovante_endereco_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('doc_comprovante_endereco_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('doc_comprovante_endereco_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('doc_comprovante_endereco_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="doc_comprovante_renda"
-                          checked={watch('doc_comprovante_renda') || false}
-                          onCheckedChange={(checked) => setValue('doc_comprovante_renda', checked)}
-                        />
-                        <Label htmlFor="doc_comprovante_renda" className="cursor-pointer">
-                          Comprovante de Renda
-                        </Label>
+                      {/* Comprovante de Renda */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="doc_comprovante_renda"
+                            checked={watch('doc_comprovante_renda') || false}
+                            onCheckedChange={(checked) => setValue('doc_comprovante_renda', checked)}
+                          />
+                          <Label htmlFor="doc_comprovante_renda" className="cursor-pointer">
+                            Comprovante de Renda
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-doc_comprovante_renda_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'doc_comprovante_renda_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'doc_comprovante_renda_urls'}
+                            onClick={() => document.getElementById('upload-doc_comprovante_renda_urls').click()}
+                          >
+                            {uploadingDoc === 'doc_comprovante_renda_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('doc_comprovante_renda_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('doc_comprovante_renda_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('doc_comprovante_renda_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Proposta Assinada */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="doc_proposta_assinada"
+                            checked={watch('doc_proposta_assinada') || false}
+                            onCheckedChange={(checked) => setValue('doc_proposta_assinada', checked)}
+                          />
+                          <Label htmlFor="doc_proposta_assinada" className="cursor-pointer">
+                            Proposta Assinada
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-doc_proposta_assinada_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'doc_proposta_assinada_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'doc_proposta_assinada_urls'}
+                            onClick={() => document.getElementById('upload-doc_proposta_assinada_urls').click()}
+                          >
+                            {uploadingDoc === 'doc_proposta_assinada_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('doc_proposta_assinada_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('doc_proposta_assinada_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('doc_proposta_assinada_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="pt-4">
@@ -1213,49 +1504,285 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                   <CardTitle className="text-lg">Checklist de Documentos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="pj_doc_contrato_ou_estatuto_social"
-                          checked={watch('pj_doc_contrato_ou_estatuto_social') || false}
-                          onCheckedChange={(checked) => setValue('pj_doc_contrato_ou_estatuto_social', checked)}
-                        />
-                        <Label htmlFor="pj_doc_contrato_ou_estatuto_social" className="cursor-pointer">
-                          Contrato ou Estatuto Social
-                        </Label>
+                    <div className="space-y-6">
+                      {/* Contrato ou Estatuto Social */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="pj_doc_contrato_ou_estatuto_social"
+                            checked={watch('pj_doc_contrato_ou_estatuto_social') || false}
+                            onCheckedChange={(checked) => setValue('pj_doc_contrato_ou_estatuto_social', checked)}
+                          />
+                          <Label htmlFor="pj_doc_contrato_ou_estatuto_social" className="cursor-pointer">
+                            Contrato ou Estatuto Social
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-pj_doc_contrato_ou_estatuto_social_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'pj_doc_contrato_ou_estatuto_social_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'pj_doc_contrato_ou_estatuto_social_urls'}
+                            onClick={() => document.getElementById('upload-pj_doc_contrato_ou_estatuto_social_urls').click()}
+                          >
+                            {uploadingDoc === 'pj_doc_contrato_ou_estatuto_social_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('pj_doc_contrato_ou_estatuto_social_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('pj_doc_contrato_ou_estatuto_social_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('pj_doc_contrato_ou_estatuto_social_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="pj_doc_cartao_cnpj"
-                          checked={watch('pj_doc_cartao_cnpj') || false}
-                          onCheckedChange={(checked) => setValue('pj_doc_cartao_cnpj', checked)}
-                        />
-                        <Label htmlFor="pj_doc_cartao_cnpj" className="cursor-pointer">
-                          Cartão CNPJ
-                        </Label>
+                      {/* Cartão CNPJ */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="pj_doc_cartao_cnpj"
+                            checked={watch('pj_doc_cartao_cnpj') || false}
+                            onCheckedChange={(checked) => setValue('pj_doc_cartao_cnpj', checked)}
+                          />
+                          <Label htmlFor="pj_doc_cartao_cnpj" className="cursor-pointer">
+                            Cartão CNPJ
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-pj_doc_cartao_cnpj_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'pj_doc_cartao_cnpj_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'pj_doc_cartao_cnpj_urls'}
+                            onClick={() => document.getElementById('upload-pj_doc_cartao_cnpj_urls').click()}
+                          >
+                            {uploadingDoc === 'pj_doc_cartao_cnpj_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('pj_doc_cartao_cnpj_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('pj_doc_cartao_cnpj_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('pj_doc_cartao_cnpj_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="pj_doc_documento_socios_ou_representante"
-                          checked={watch('pj_doc_documento_socios_ou_representante') || false}
-                          onCheckedChange={(checked) => setValue('pj_doc_documento_socios_ou_representante', checked)}
-                        />
-                        <Label htmlFor="pj_doc_documento_socios_ou_representante" className="cursor-pointer">
-                          Documentos dos Sócios/Representante
-                        </Label>
+                      {/* Documentos dos Sócios/Representante */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="pj_doc_documento_socios_ou_representante"
+                            checked={watch('pj_doc_documento_socios_ou_representante') || false}
+                            onCheckedChange={(checked) => setValue('pj_doc_documento_socios_ou_representante', checked)}
+                          />
+                          <Label htmlFor="pj_doc_documento_socios_ou_representante" className="cursor-pointer">
+                            Documentos dos Sócios/Representante
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-pj_doc_documento_socios_ou_representante_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'pj_doc_documento_socios_ou_representante_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'pj_doc_documento_socios_ou_representante_urls'}
+                            onClick={() => document.getElementById('upload-pj_doc_documento_socios_ou_representante_urls').click()}
+                          >
+                            {uploadingDoc === 'pj_doc_documento_socios_ou_representante_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('pj_doc_documento_socios_ou_representante_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('pj_doc_documento_socios_ou_representante_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('pj_doc_documento_socios_ou_representante_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="pj_doc_relacao_faturamento"
-                          checked={watch('pj_doc_relacao_faturamento') || false}
-                          onCheckedChange={(checked) => setValue('pj_doc_relacao_faturamento', checked)}
-                        />
-                        <Label htmlFor="pj_doc_relacao_faturamento" className="cursor-pointer">
-                          Relação de Faturamento
-                        </Label>
+                      {/* Relação de Faturamento */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="pj_doc_relacao_faturamento"
+                            checked={watch('pj_doc_relacao_faturamento') || false}
+                            onCheckedChange={(checked) => setValue('pj_doc_relacao_faturamento', checked)}
+                          />
+                          <Label htmlFor="pj_doc_relacao_faturamento" className="cursor-pointer">
+                            Relação de Faturamento
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-pj_doc_relacao_faturamento_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'pj_doc_relacao_faturamento_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'pj_doc_relacao_faturamento_urls'}
+                            onClick={() => document.getElementById('upload-pj_doc_relacao_faturamento_urls').click()}
+                          >
+                            {uploadingDoc === 'pj_doc_relacao_faturamento_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('pj_doc_relacao_faturamento_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('pj_doc_relacao_faturamento_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('pj_doc_relacao_faturamento_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Proposta Assinada */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="pj_doc_proposta_assinada"
+                            checked={watch('pj_doc_proposta_assinada') || false}
+                            onCheckedChange={(checked) => setValue('pj_doc_proposta_assinada', checked)}
+                          />
+                          <Label htmlFor="pj_doc_proposta_assinada" className="cursor-pointer">
+                            Proposta Assinada
+                          </Label>
+                        </div>
+                        <div className="ml-6">
+                          <input
+                            type="file"
+                            id="upload-pj_doc_proposta_assinada_urls"
+                            multiple
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileUpload(Array.from(e.target.files), 'pj_doc_proposta_assinada_urls')}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingDoc === 'pj_doc_proposta_assinada_urls'}
+                            onClick={() => document.getElementById('upload-pj_doc_proposta_assinada_urls').click()}
+                          >
+                            {uploadingDoc === 'pj_doc_proposta_assinada_urls' ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                            ) : (
+                              <><Upload className="w-4 h-4 mr-2" /> Anexar Arquivos</>
+                            )}
+                          </Button>
+                          {watch('pj_doc_proposta_assinada_urls')?.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {watch('pj_doc_proposta_assinada_urls').map((url, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-slate-50 p-2 rounded">
+                                  <FileText className="w-3 h-3 text-slate-400" />
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-blue-600 hover:underline">
+                                    Arquivo {idx + 1}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFile('pj_doc_proposta_assinada_urls', url)}
+                                    className="text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="pt-4">
