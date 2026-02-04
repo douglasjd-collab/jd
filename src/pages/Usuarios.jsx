@@ -132,14 +132,53 @@ export default function Usuarios() {
       try {
         const isMasterOrSuperAdmin = ['master','super_admin'].includes(currentUser?.perfil);
         
+        // Buscar Colaboradores
+        let colaboradores = [];
         if (isMasterOrSuperAdmin) {
-          return await base44.entities.Colaborador.list('-created_date');
+          colaboradores = await base44.entities.Colaborador.list('-created_date');
+        } else {
+          colaboradores = await base44.entities.Colaborador.filter(
+            { empresa_id: currentUser.empresa_id },
+            '-created_date'
+          );
+        }
+
+        // Se for admin, buscar também usuários sem Colaborador (pendentes)
+        if (isMasterOrSuperAdmin || currentUser?.perfil === 'admin') {
+          try {
+            const todosUsuarios = await base44.entities.User.list('-created_date');
+            
+            // IDs de usuários que já têm Colaborador
+            const idsComColab = new Set(colaboradores.map(c => c.user_id).filter(Boolean));
+            
+            // Usuários sem Colaborador
+            const usuariosSemColab = todosUsuarios
+              .filter(u => !idsComColab.has(u.id) && u.role !== 'super_admin')
+              .map(u => ({
+                id: u.id,
+                user_id: u.id,
+                nome: u.full_name || u.email,
+                email: u.email,
+                perfil: null,
+                empresa_id: null,
+                empresa_nome: null,
+                status: 'pendente',
+                cpf_cnpj: null,
+                telefone: null,
+                codigo_vendedor: null,
+                gerente_id: null,
+                aguardando_configuracao: true,
+                created_date: u.created_date
+              }));
+
+            return [...usuariosSemColab, ...colaboradores];
+          } catch (err) {
+            console.error('Erro ao buscar usuários pendentes:', err);
+            return colaboradores;
+          }
         }
         
-        return await base44.entities.Colaborador.filter(
-          { empresa_id: currentUser.empresa_id },
-          '-created_date'
-        );
+        return colaboradores;
       } catch (err) {
         console.error('Erro ao listar usuários:', err);
         return [];
@@ -392,7 +431,9 @@ export default function Usuarios() {
     const matchSearch = u.nome?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.cpf_cnpj?.includes(search);
-    const matchPerfil = filterPerfil === 'todos' || u.perfil === filterPerfil;
+    const matchPerfil = filterPerfil === 'todos' || 
+      (filterPerfil === 'pendente' && u.aguardando_configuracao) ||
+      (filterPerfil !== 'pendente' && u.perfil === filterPerfil);
     const matchEmpresa = filterEmpresa === 'todas' || u.empresa_id === filterEmpresa;
     return matchSearch && matchPerfil && matchEmpresa;
   });
@@ -402,7 +443,12 @@ export default function Usuarios() {
       header: 'Nome',
       cell: (row) => (
         <div>
-          <p className="font-medium text-slate-900">{row.nome}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-slate-900">{row.nome}</p>
+            {row.aguardando_configuracao && (
+              <Badge className="bg-amber-100 text-amber-700 text-xs">Pendente</Badge>
+            )}
+          </div>
           <p className="text-sm text-slate-500">{row.email}</p>
         </div>
       )
@@ -449,30 +495,45 @@ export default function Usuarios() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEdit(row)}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => {
-                setUsuarioToVincular(row);
-                setVincularOpen(true);
-              }}
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Vincular a Empresa
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => {
-                if (confirm(`Tem certeza que deseja excluir o usuário "${row.nome}"?`)) {
-                  deleteMutation.mutate(row.id);
-                }
-              }}
-              className="text-red-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir
-            </DropdownMenuItem>
+            {row.aguardando_configuracao ? (
+              <DropdownMenuItem 
+                onClick={() => {
+                  setUsuarioToVincular(row);
+                  setVincularOpen(true);
+                }}
+                className="text-[#23BE84] font-medium"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Configurar Usuário
+              </DropdownMenuItem>
+            ) : (
+              <>
+                <DropdownMenuItem onClick={() => handleEdit(row)}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setUsuarioToVincular(row);
+                    setVincularOpen(true);
+                  }}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Vincular a Empresa
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    if (confirm(`Tem certeza que deseja excluir o usuário "${row.nome}"?`)) {
+                      deleteMutation.mutate(row.id);
+                    }
+                  }}
+                  className="text-red-600"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )
@@ -541,6 +602,7 @@ export default function Usuarios() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos os perfis</SelectItem>
+            <SelectItem value="pendente">⏳ Pendentes</SelectItem>
             <SelectItem value="vendedor">Vendedores</SelectItem>
             <SelectItem value="gerente">Gerentes</SelectItem>
             <SelectItem value="admin">Administradores</SelectItem>
