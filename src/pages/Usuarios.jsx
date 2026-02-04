@@ -507,7 +507,7 @@ export default function Usuarios() {
               <MoreHorizontal className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-48">
             {row.aguardando_configuracao ? (
               <DropdownMenuItem 
                 onClick={() => {
@@ -535,11 +535,13 @@ export default function Usuarios() {
                   Vincular a Empresa
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Clicou em excluir usuário:', row);
                     setUsuarioToExcluir(row);
                     setExcluirOpen(true);
                   }}
-                  className="text-red-600"
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Excluir
