@@ -146,7 +146,7 @@ export default function Usuarios() {
         // Se for admin, buscar também usuários sem Colaborador (pendentes)
         if (isMasterOrSuperAdmin || currentUser?.perfil === 'admin') {
           try {
-            const todosUsuarios = await base44.entities.User.list('-created_date');
+            const todosUsuarios = await base44.asServiceRole.entities.User.list('-created_date');
             
             // IDs de usuários que já têm Colaborador
             const idsComColab = new Set(colaboradores.map(c => c.user_id).filter(Boolean));
