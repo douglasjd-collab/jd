@@ -238,8 +238,8 @@ Deno.serve(async (req) => {
         res_endereco: info.enderecoLinha || clientes[0].res_endereco,
       });
     } else {
-      // Criar novo cliente
-      const created = await base44.entities.Cliente.create({
+      // Criar novo cliente - usar asServiceRole para garantir permissão
+      const created = await base44.asServiceRole.entities.Cliente.create({
         empresa_id: empresaId,
         tipo_pessoa: "Física",
         nome_completo: info.nome,
@@ -260,16 +260,25 @@ Deno.serve(async (req) => {
 
     // 5) Buscar administradora Canopus
     const admins = await base44.entities.Administradora.filter({
-      empresa_id: empresaId,
-      nome: "Canopus"
+      empresa_id: empresaId
     });
 
-    let administradoraId = admins?.[0]?.id;
+    // Buscar por nome (case insensitive)
+    const adminCanopus = admins.find(a => 
+      a.nome_fantasia?.toLowerCase().includes('canopus') || 
+      a.razao_social?.toLowerCase().includes('canopus')
+    );
+
+    let administradoraId = adminCanopus?.id;
+    
     if (!administradoraId) {
       // Criar se não existir
       const newAdmin = await base44.entities.Administradora.create({
         empresa_id: empresaId,
-        nome: "Canopus",
+        razao_social: "Consórcio Canopus",
+        nome_fantasia: "Canopus",
+        cnpj: "00000000000000",
+        tipoEmpresa: "LTDA",
         status: "ativa"
       });
       administradoraId = newAdmin?.id;
@@ -292,8 +301,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 7) Criar Venda (cota em branco)
-    const venda = await base44.entities.Venda.create({
+    // 7) Criar Venda (cota em branco) - usar asServiceRole
+    const venda = await base44.asServiceRole.entities.Venda.create({
       empresa_id: empresaId,
       cliente_id: clienteId,
       administradora_id: administradoraId,
@@ -320,7 +329,7 @@ Deno.serve(async (req) => {
 
     // Auditoria
     try {
-      await base44.entities.LogAuditoria.create({
+      await base44.asServiceRole.entities.LogAuditoria.create({
         usuario_id: user.id,
         usuario_nome: user.full_name,
         acao: `Importação de proposta PDF Canopus - Contrato ${info.numeroProposta}`,
