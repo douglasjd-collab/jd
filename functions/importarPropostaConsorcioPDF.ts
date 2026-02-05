@@ -147,26 +147,28 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
     // Buscar perfil do colaborador
-    let userPerfil = user.perfil || user.role;
-    let empresaId = user.empresa_id;
-
-    if (!userPerfil || userPerfil === 'user') {
-      const colabs = await base44.entities.Colaborador.filter(
-        { user_id: user.id, status: 'ativo' },
-        '-created_date',
-        1
-      );
-      if (colabs?.length) {
-        userPerfil = colabs[0].perfil;
-        empresaId = colabs[0].empresa_id;
-      }
+    const colabs = await base44.entities.Colaborador.filter(
+      { user_id: user.id, status: 'ativo' },
+      '-created_date',
+      1
+    );
+    
+    if (!colabs?.length) {
+      return Response.json({ 
+        error: "Usuário não vinculado a um colaborador." 
+      }, { status: 403 });
     }
+    
+    const colab = colabs[0];
+    const userPerfil = colab.perfil;
+    const empresaId = colab.empresa_id;
+    const colaboradorId = colab.id;
 
     if (!["super_admin", "master", "admin", "gerente", "vendedor"].includes(userPerfil)) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!empresaId && !["super_admin", "master"].includes(userPerfil)) {
+    if (!empresaId) {
       return Response.json({ error: "Empresa não configurada" }, { status: 400 });
     }
 
