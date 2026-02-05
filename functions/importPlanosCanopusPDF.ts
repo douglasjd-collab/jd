@@ -175,7 +175,7 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
       );
     }
 
-    // ✅ 2) Replicar / Upsert por (empresa_id + external_hash)
+    // ✅ 2) Replicar / Upsert por (empresa_id + external_hash) - OTIMIZADO
     const Plan = base44.asServiceRole.entities.PlanoCanopus;
 
     let criados = 0;
@@ -183,17 +183,21 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
     const erros = [];
 
     for (const emp of empresasAlvo) {
-      for (const plano of planosBase) {
-        try {
+      try {
+        // Buscar TODOS os planos existentes da empresa de uma vez
+        const existentes = await Plan.filter({ empresa_id: emp.id });
+        const existentesMap = new Map();
+        existentes.forEach(p => {
+          if (p.external_hash) existentesMap.set(p.external_hash, p);
+        });
+
+        const planosParaCriar = [];
+        const planosParaAtualizar = [];
+
+        // Preparar dados para operações em lote
+        for (const plano of planosBase) {
           const external_hash = `${plano.codigo}_${plano.prazo_meses}`;
-
-          // Procurar existente
-          const existentes = await Plan.filter({
-            empresa_id: emp.id,
-            external_hash,
-          });
-
-          const existente = Array.isArray(existentes) ? existentes[0] : null;
+          const existente = existentesMap.get(external_hash);
 
           const payload = {
             empresa_id: emp.id,
@@ -212,20 +216,32 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
             status: "ativo"
           };
 
-          if (existente?.id) {
-            await Plan.update(existente.id, payload);
-            atualizados++;
+          if (existente) {
+            planosParaAtualizar.push({ id: existente.id, ...payload });
           } else {
-            await Plan.create(payload);
-            criados++;
+            planosParaCriar.push(payload);
           }
-        } catch (e) {
-          erros.push({
-            empresa_id: emp.id,
-            external_hash: `${plano?.codigo}_${plano?.prazo_meses}`,
-            error: e?.message ?? String(e),
-          });
         }
+
+        // Operações em lote
+        if (planosParaCriar.length > 0) {
+          await Plan.bulkCreate(planosParaCriar);
+          criados += planosParaCriar.length;
+        }
+
+        if (planosParaAtualizar.length > 0) {
+          // Atualizar em paralelo (mais rápido que sequencial)
+          await Promise.all(
+            planosParaAtualizar.map(p => Plan.update(p.id, p))
+          );
+          atualizados += planosParaAtualizar.length;
+        }
+      } catch (e) {
+        erros.push({
+          empresa_id: emp.id,
+          error: e?.message ?? String(e),
+          detalhes: "Erro na operação em lote"
+        });
       }
     }
 
