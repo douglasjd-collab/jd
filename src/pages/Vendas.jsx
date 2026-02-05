@@ -5,6 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import DataTable from '@/components/ui/DataTable';
 import StatusBadge from '@/components/ui/StatusBadge';
 import VendaForm from '@/components/forms/VendaForm';
+import ImportarPropostaConsorcioPDF from '@/components/importacao/ImportarPropostaConsorcioPDF';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
