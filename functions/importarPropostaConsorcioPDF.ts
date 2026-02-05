@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
     
     if (!administradoraId) {
       // Criar se não existir
-      const newAdmin = await base44.entities.Administradora.create({
+      const newAdmin = await base44.asServiceRole.entities.Administradora.create({
         empresa_id: empresaId,
         razao_social: "Consórcio Canopus",
         nome_fantasia: "Canopus",
@@ -284,10 +284,29 @@ Deno.serve(async (req) => {
       administradoraId = newAdmin?.id;
     }
 
-    // 6) Evitar duplicidade por contrato ou CPF + valor
+    // 6) Buscar ou criar tabela padrão Canopus
+    const tabelas = await base44.entities.TabelaConsorcio.filter({
+      empresa_id: empresaId,
+      administradora_id: administradoraId
+    });
+
+    let tabelaId = tabelas?.[0]?.id;
+    
+    if (!tabelaId) {
+      // Criar tabela padrão
+      const newTabela = await base44.asServiceRole.entities.TabelaConsorcio.create({
+        empresa_id: empresaId,
+        nomeTabela: "Canopus - Importação PDF",
+        administradora_id: administradoraId,
+        administradora_nome: "Canopus",
+        status: "ativa"
+      });
+      tabelaId = newTabela?.id;
+    }
+
+    // 7) Evitar duplicidade por contrato
     if (info.numeroProposta) {
       const existing = await base44.entities.Venda.filter({
-        empresa_id: empresaId,
         contrato: String(info.numeroProposta)
       });
 
@@ -301,12 +320,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 7) Criar Venda (cota em branco) - usar asServiceRole
+    // 8) Criar Venda (cota em branco) - usar asServiceRole
     const venda = await base44.asServiceRole.entities.Venda.create({
       empresa_id: empresaId,
       cliente_id: clienteId,
+      cliente_nome: info.nome,
+      cliente_cpf: cpfDigits,
       administradora_id: administradoraId,
       administradora_nome: "Canopus",
+      tabela_id: tabelaId,
+      tabela_nome: "Canopus - Importação PDF",
       tipo: info.produto?.toLowerCase().includes("moto") ? "motocicleta" : 
             info.produto?.toLowerCase().includes("imóvel") ? "imovel" : "automovel",
       grupo: info.grupo || "",
