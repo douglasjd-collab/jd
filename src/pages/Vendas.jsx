@@ -531,7 +531,13 @@ export default function Vendas() {
           setSelectedVenda(null);
           setFormOpen(true);
         }}
-      />
+      >
+        <ImportarPropostaConsorcioPDF 
+          onSuccess={() => {
+            queryClient.invalidateQueries(['vendas']);
+          }}
+        />
+      </PageHeader>
 
       {/* Filters */}
       <Card className="p-4 border-0 shadow-sm">
