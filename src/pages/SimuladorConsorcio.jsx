@@ -157,8 +157,10 @@ export default function SimuladorConsorcio() {
         toast.warning('Lance próprio ajustado para o valor máximo do plano');
       }
 
-      // Aplicar amortização
-      saldoDevedorTotal = totalPlano - lanceProprioValor;
+      // Calcular saldo devedor correto:
+      // Total a pagar - 1ª parcela no ato - Lance total (embutido + próprio)
+      const lanceTotalCompleto = lanceEmbutidoValor + lanceProprioValor;
+      saldoDevedorTotal = totalPlano - parcelaTotal - lanceTotalCompleto;
 
       // Calcular meses cobrados
       if (aplicarRegraCanopus && administradora === 'canopus') {
@@ -857,14 +859,22 @@ export default function SimuladorConsorcio() {
 
                       <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-slate-600">Total do Plano:</span>
+                          <span className="text-slate-600">Total a pagar:</span>
                           <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Saldo Devedor após Lance:</span>
-                          <span className="font-semibold">{formatCurrency(resultado.saldoDevedor)}</span>
+                        <div className="flex justify-between text-red-600">
+                          <span>(-)Lance total:</span>
+                          <span className="font-semibold">-{formatCurrency(resultado.lanceEmbutidoValor + resultado.lanceProprio)}</span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-red-600">
+                          <span>(-)1ª parcela na contratação:</span>
+                          <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-2">
+                          <span className="text-slate-900 font-semibold">Saldo devedor:</span>
+                          <span className="font-bold text-lg">{formatCurrency(resultado.totalPlano - resultado.parcelaTotal - (resultado.lanceEmbutidoValor + resultado.lanceProprio))}</span>
+                        </div>
+                        <div className="flex justify-between text-xs mt-2 pt-2 border-t">
                           <span className="text-slate-600">Meses Cobrados:</span>
                           <span className="font-semibold">
                             {resultado.mesesCobrados} 
