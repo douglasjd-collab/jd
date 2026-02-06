@@ -65,6 +65,7 @@ export default function PlanosCanopusPage() {
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
   const [tipoProduto, setTipoProduto] = useState('');
+  const [filtroGrupo, setFiltroGrupo] = useState('');
   const [planoParaExcluir, setPlanoParaExcluir] = useState(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -189,12 +190,18 @@ export default function PlanosCanopusPage() {
       // Filtro de tipo de produto
       if (tipoProduto && g.produto_id !== tipoProduto) return false;
       
+      // Filtro de grupo
+      if (filtroGrupo) {
+        const grupoPlano = g.plano?.split('|')[0]?.trim() || '';
+        if (!grupoPlano.toLowerCase().includes(filtroGrupo.toLowerCase())) return false;
+      }
+      
       return true;
     });
     
     // Ordenar por valor (crescente)
     return filtered.sort((a, b) => (a.valor_bem || 0) - (b.valor_bem || 0));
-  }, [groupedPlanos, search, valorMin, valorMax, tipoProduto]);
+  }, [groupedPlanos, search, valorMin, valorMax, tipoProduto, filtroGrupo]);
 
   const produtoLabel = (id) => {
     const map = { '101': 'Automóveis', '102': 'Imóveis', '103': 'Motos' };
@@ -423,6 +430,12 @@ ${textoVariacoes}
                 <SelectItem value="103">Motocicletas</SelectItem>
               </SelectContent>
             </Select>
+            <Input
+              placeholder="Filtrar por grupo..."
+              value={filtroGrupo}
+              onChange={(e) => setFiltroGrupo(e.target.value)}
+              className="w-full md:w-48"
+            />
           </div>
           <div className="flex items-center gap-2">
             <Filter className="w-5 h-5 text-slate-400" />
@@ -441,7 +454,7 @@ ${textoVariacoes}
               onChange={(e) => setValorMax(parseCurrencyInput(e.target.value))}
               className="w-40"
             />
-            {(valorMin || valorMax || tipoProduto) && (
+            {(valorMin || valorMax || tipoProduto || filtroGrupo) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -449,6 +462,7 @@ ${textoVariacoes}
                   setValorMin('');
                   setValorMax('');
                   setTipoProduto('');
+                  setFiltroGrupo('');
                 }}
               >
                 Limpar Filtros
