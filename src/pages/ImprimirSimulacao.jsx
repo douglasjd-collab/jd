@@ -351,35 +351,31 @@ export default function ImprimirSimulacao() {
             </h2>
             <div className="space-y-0.5 text-xs">
               <div className="flex justify-between">
-                <span>Total do Plano:</span>
+                <span>Total a pagar:</span>
                 <span className="font-semibold">
                   {formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>(-) Lance:</span>
+              <div className="flex justify-between text-red-600">
+                <span>(-) Lance total:</span>
                 <span className="font-semibold">
-                  {formatCurrency(simulacao.lance_total)}
+                  -{formatCurrency(simulacao.lance_total)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>Saldo Base:</span>
+              <div className="flex justify-between text-red-600">
+                <span>(-) 1ª parcela na contratação{isParcelaReduzida ? ' - Reduzida' : ''}:</span>
                 <span className="font-semibold">
-                  {formatCurrency(
-                    simulacao.prazo_original * simulacao.parcela_total - simulacao.lance_total
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>(-) 1ª Parcela (no ato){isParcelaReduzida ? ' - Reduzida' : ''}:</span>
-                <span className="font-semibold">
-                  {formatCurrency(primeiraParcelaNoAto)}
+                  -{formatCurrency(primeiraParcelaNoAto)}
                 </span>
               </div>
               <div className="card-section flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-1.5 rounded">
-                <span className="font-bold">Saldo Devedor:</span>
+                <span className="font-bold">Saldo devedor:</span>
                 <span className="text-base font-bold text-blue-900">
-                  {formatCurrency(simulacao.saldo_apos_contemplacao)}
+                  {formatCurrency(
+                    (simulacao.prazo_original * simulacao.parcela_total) - 
+                    primeiraParcelaNoAto - 
+                    simulacao.lance_total
+                  )}
                 </span>
               </div>
               {simulacao.opcao_pos_contemplacao === 'prazo' && (
