@@ -129,33 +129,45 @@ Deno.serve(async (req) => {
     
     const isSegundaChamada = ['Segunda', 'Terceira', 'Quarta', 'Quinta', 'Sexta', 'Sétima'].includes(imp.chamada);
     
-    // Buscar registros existentes (se segunda chamada)
-    let registrosExistentes = [];
+    // Buscar resumos existentes da primeira chamada (se segunda chamada)
+    let resumosPrimeiraChamada = [];
     if (isSegundaChamada) {
       const [ano, mes] = imp.assembleia_data.split('-');
       const mesAno = `${ano}-${mes}`;
       
-      const todosResumos = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
-        empresa_id: imp.empresa_id
+      const todosHistoricos = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({
+        empresa_id: imp.empresa_id,
+        chamada: 'Primeira'
       });
       
-      for (const r of todosResumos) {
-        const hist = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({ id: r.historico_id });
-        if (hist?.[0]?.assembleia_data) {
-          const [anoHist, mesHist] = hist[0].assembleia_data.split('-');
-          const mesAnoHist = `${anoHist}-${mesHist}`;
-          
-          if (mesAnoHist === mesAno) {
-            registrosExistentes.push(r);
-          }
+      for (const hist of todosHistoricos) {
+        const [anoHist, mesHist] = hist.assembleia_data.split('-');
+        const mesAnoHist = `${anoHist}-${mesHist}`;
+        
+        if (mesAnoHist === mesAno) {
+          const resumosHist = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
+            historico_id: hist.id
+          });
+          resumosPrimeiraChamada.push(...resumosHist);
         }
       }
     }
     
-    const mapaExistentes = {};
-    for (const r of registrosExistentes) {
+    const mapaPrimeiraChamada = {};
+    for (const r of resumosPrimeiraChamada) {
       const chave = `${r.grupo}_${r.modalidade}`;
-      mapaExistentes[chave] = r;
+      mapaPrimeiraChamada[chave] = r;
+    }
+    
+    // Buscar resumos já criados para este historico_id
+    const resumosAtuais = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
+      historico_id
+    });
+    
+    const mapaAtuais = {};
+    for (const r of resumosAtuais) {
+      const chave = `${r.grupo}_${r.modalidade}`;
+      mapaAtuais[chave] = r;
     }
     
     const payloadCreate = [];
@@ -164,24 +176,34 @@ Deno.serve(async (req) => {
     for (const r of resumos) {
       const chave = `${r.grupo}_${r.modalidade}`;
       
-      if (isSegundaChamada && mapaExistentes[chave]) {
-        const existente = mapaExistentes[chave];
-        
-        // Segunda chamada ou posterior: NÃO sobrescreve maior/menor, apenas soma ocorrências
+      if (mapaAtuais[chave]) {
+        // Já existe resumo para este historico_id, atualizar
+        const existente = mapaAtuais[chave];
         payloadUpdate.push({
           id: existente.id,
-          menor_lance_percent: existente.menor_lance_percent,
-          maior_lance_percent: existente.maior_lance_percent,
+          menor_lance_percent: Math.min(existente.menor_lance_percent ?? 999, r.menor_lance_percent ?? 999),
+          maior_lance_percent: Math.max(existente.maior_lance_percent ?? 0, r.maior_lance_percent ?? 0),
           qtd_ocorrencias: (existente.qtd_ocorrencias ?? 0) + (r.qtd_ocorrencias ?? 1)
         });
       } else {
+        // Criar novo resumo para este historico_id
+        let menor_final = r.menor_lance_percent;
+        let maior_final = r.maior_lance_percent;
+        
+        // Se segunda chamada, usar valores da primeira como referência (não sobrescrever)
+        if (isSegundaChamada && mapaPrimeiraChamada[chave]) {
+          const primeiraChamada = mapaPrimeiraChamada[chave];
+          menor_final = primeiraChamada.menor_lance_percent;
+          maior_final = primeiraChamada.maior_lance_percent;
+        }
+        
         payloadCreate.push({
           empresa_id: imp.empresa_id,
           historico_id,
           grupo: r.grupo,
           modalidade: r.modalidade,
-          menor_lance_percent: r.menor_lance_percent ?? null,
-          maior_lance_percent: r.maior_lance_percent ?? null,
+          menor_lance_percent: menor_final ?? null,
+          maior_lance_percent: maior_final ?? null,
           qtd_ocorrencias: r.qtd_ocorrencias ?? 1
         });
       }
