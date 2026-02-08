@@ -90,20 +90,14 @@ function limparLinhasPDF(texto: string): string[] {
     .split('\n')
     .map(l => l.trim())
     .filter(l => {
-      // Deve ter pelo menos 15 caracteres
-      if (l.length < 15) return false;
-      
-      // Deve ter padrão: QT + GRUPO (1-3 dígitos seguidos de 6 dígitos)
+      // Deve começar com QT + GRUPO: 1-3 dígitos + 6 dígitos
       if (!/^\d{1,3}\d{6}/.test(l)) return false;
       
       // Ignorar headers e legendas
       if (l.match(/^QT/i)) return false;
       if (l.match(/Legendas/i)) return false;
       if (l.match(/Prováveis Contemplados/i)) return false;
-      if (l.match(/Assembleia/i)) return false;
       if (l.match(/Pedra Chave/i)) return false;
-      if (l.match(/^[-–—]{2,}/)) return false;
-      if (l.match(/^S\s*-\s*Sorteio/i)) return false;
       
       return true;
     });
@@ -112,55 +106,50 @@ function limparLinhasPDF(texto: string): string[] {
 function parseLinhaAssembleia(linha: string) {
   if (!linha) return null;
   
-  // Formato do PDF: "1003102SERVIÇOS FAIXA IR$ 22.964,10Lance Livre20,0000%"
-  // Ou com espaços: "1 003102 SERVIÇOS FAIXA I R$ 22.964,10 Lance Livre 20,0000%"
+  // Formato sem espaços: "1003102SERVIÇOS FAIXA IR$ 22.964,10Lance Livre20,0000%"
   
-  // Extrair QT (1-3 dígitos no início)
+  // 1. Extrair QT (1-3 dígitos no início)
   const qtMatch = linha.match(/^(\d{1,3})/);
   const qt = qtMatch ? parseInt(qtMatch[1]) : null;
   
-  // Extrair GRUPO (6 dígitos consecutivos após QT)
+  // 2. Extrair GRUPO (6 dígitos após o QT)
   const grupoMatch = linha.match(/^\d{1,3}(\d{6})/);
   const grupo = grupoMatch ? grupoMatch[1] : null;
   
   if (!grupo) return null;
   
-  // Extrair PERCENTUAL (formato: XX,XXXX% no final da linha)
+  // 3. Extrair PERCENTUAL (XX,XXXX% no final)
   const percentMatch = linha.match(/(\d{1,3},\d{2,4})%\s*$/);
   const percentual = percentMatch ? parseFloat(percentMatch[1].replace(',', '.')) : null;
   
-  // Extrair CRÉDITO (último R$ antes do tipo de lance)
+  // 4. Extrair CRÉDITO (último valor R$)
   const creditoMatches = [...linha.matchAll(/R\$\s*:?\s*([\d.]+,\d{2})/g)];
   const credito = creditoMatches.length > 0 
     ? parseFloat(creditoMatches[creditoMatches.length - 1][1].replace(/\./g, '').replace(',', '.'))
     : null;
   
-  // Identificar MODALIDADE
-  const linhaLower = linha.toLowerCase();
+  // 5. Identificar MODALIDADE
   let modalidade = "sorteio";
   
-  if (percentual !== null) {
-    if (linhaLower.includes("lance livre")) {
-      modalidade = "lance_livre";
-    } else if (linhaLower.includes("lance limitado")) {
-      modalidade = "lance_limitado";
-    } else if (linhaLower.includes("lance fixo")) {
+  if (linha.includes("Lance Livre")) {
+    modalidade = "lance_livre";
+  } else if (linha.includes("Lance Limitado")) {
+    modalidade = "lance_limitado";
+  } else if (linha.includes("Lance Fixo")) {
+    if (percentual !== null) {
       if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
       else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
       else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
       else modalidade = "lance_fixo_30";
-    } else {
-      modalidade = "lance_livre";
     }
   }
   
-  // Extrair DESCRIÇÃO (entre grupo e primeiro R$)
+  // 6. Extrair DESCRIÇÃO (entre grupo e primeiro R$)
   let descricao = linha
     .replace(/^\d{1,3}/, '') // Remove QT
     .replace(/^\d{6}/, '') // Remove grupo
-    .split(/R\$/)[0] // Tudo antes do primeiro R$
-    .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/gi, '') // Remove modalidade
-    .replace(/\s+/g, ' ')
+    .split(/R\$/)[0] // Antes do primeiro R$
+    .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/g, '')
     .trim();
   
   return {
