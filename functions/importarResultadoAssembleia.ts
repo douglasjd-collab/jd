@@ -219,20 +219,20 @@ Deno.serve(async (req) => {
       usuario_nome: user.full_name || user.email
     });
 
-    // Salvar detalhes (HistoricoLanceDetalhe)
-    await chunked(registros, 100, async (chunk) => {
-      await Promise.all(
-        chunk.map(r => base44.asServiceRole.entities.HistoricoLanceDetalhe.create({
-          empresa_id,
-          historico_id: historico.id,
-          qt: r.qt,
-          grupo: r.grupo,
-          descricao: r.descricao,
-          credito: r.credito,
-          modalidade: r.modalidade,
-          lance_percent: r.lance_percent
-        }))
-      );
+    // Salvar detalhes (HistoricoLanceDetalhe) usando bulkCreate
+    const detalhes = registros.map(r => ({
+      empresa_id,
+      historico_id: historico.id,
+      qt: r.qt,
+      grupo: r.grupo,
+      descricao: r.descricao,
+      credito: r.credito,
+      modalidade: r.modalidade,
+      lance_percent: r.lance_percent
+    }));
+    
+    await chunked(detalhes, 200, async (chunk) => {
+      await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(chunk);
     });
 
     // Agrupar por grupo + modalidade
@@ -288,12 +288,12 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Criar novos resumos
-    await chunked(novosResumos, 100, async (chunk) => {
-      await Promise.all(
-        chunk.map(r => base44.asServiceRole.entities.HistoricoLanceResumo.create(r))
-      );
-    });
+    // Criar novos resumos usando bulkCreate
+    if (novosResumos.length > 0) {
+      await chunked(novosResumos, 200, async (chunk) => {
+        await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(chunk);
+      });
+    }
 
     return Response.json({
       sucesso: true,
