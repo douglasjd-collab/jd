@@ -272,13 +272,13 @@ Deno.serve(async (req) => {
 
     const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
 
-    // Criar registro HistoricoLanceGrupo
+    // Criar registro HistoricoLanceGrupo com totais corretos
     const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
       empresa_id,
       assembleia_data,
       arquivo_nome,
-      total_grupos: 0,
-      total_registros: rows.length,
+      total_grupos: totalGruposUnicos, // Total de grupos únicos encontrados
+      total_registros: totalLinhasValidas, // Total de linhas válidas
       criado_em: new Date().toISOString(),
       usuario_id: user.id,
       usuario_nome: user.full_name || user.email
@@ -381,17 +381,12 @@ Deno.serve(async (req) => {
       );
     });
 
-    // Atualizar total de grupos
-    const gruposUnicos = new Set(rows.map(l => l.grupo)).size;
-    await base44.asServiceRole.entities.HistoricoLanceGrupo.update(historico.id, {
-      total_grupos: gruposUnicos
-    });
-
     return Response.json({
       sucesso: true,
       historico_id: historico.id,
       total_lances: rows.length,
-      total_grupos: gruposUnicos,
+      total_grupos: totalGruposUnicos,
+      total_registros: totalLinhasValidas,
       total_resumos: resumos.length
     });
 
