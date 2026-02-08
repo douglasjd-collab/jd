@@ -25,123 +25,39 @@ function parseOpcao(fullText: string) {
   return m?.[1] ? Number(m[1]) : null;
 }
 
-function extrairGrupo(bloco: string): string | null {
-  if (!bloco) return null;
+function parseLinhaAssembleia(linha: string) {
+  if (!linha) return null;
   
-  // Quebra o bloco em partes separadas por espaços
-  const partes = bloco.split(/\s+/);
+  // Extrair QT (1-3 dígitos no início da linha)
+  const qtMatch = linha.match(/^(\d{1,3})\s+/);
+  const qt = qtMatch ? parseInt(qtMatch[1]) : null;
   
-  for (const parte of partes) {
-    // Grupo válido = exatamente 6 dígitos (nada mais, nada menos)
-    if (/^\d{6}$/.test(parte)) {
-      return parte;
-    }
-  }
+  // Extrair GRUPO (exatamente 6 dígitos)
+  const grupoMatch = linha.match(/\b(\d{6})\b/);
+  const grupo = grupoMatch ? grupoMatch[1] : null;
   
-  return null;
-}
-
-function extrairQT(bloco: string): number | null {
-  if (!bloco) return null;
+  if (!grupo) return null; // Sem grupo = linha inválida
   
-  // QT aparece no início: "22 004109..."
-  const match = bloco.match(/^(\d{1,3})\s+\d{6}/);
+  // Extrair PERCENTUAL (formato: XX,XXXX%)
+  const percentMatch = linha.match(/(\d{1,3},\d{4})%/);
+  const percentual = percentMatch ? parseFloat(percentMatch[1].replace(',', '.')) : null;
   
-  return match ? parseInt(match[1]) : null;
-}
-
-function extrairPercentual(bloco: string): number | null {
-  if (!bloco) return null;
-  
-  // Percentual aparece como: 32,50% ou 15,00% ou 100,00%
-  const match = bloco.match(/(\d{1,3},\d{2})%/);
-  
-  if (!match) return null;
-  
-  // Converte "32,50" → 32.5
-  return parseFloat(match[1].replace(',', '.'));
-}
-
-function extrairValorCredito(bloco: string): number | null {
-  if (!bloco) return null;
-  
-  const match = bloco.match(/R\$\s?:?\s?([\d.]+,\d{2})/);
-  if (!match) return null;
-  
-  return parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
-}
-
-function extrairValorLance(bloco: string): number | null {
-  if (!bloco) return null;
-  
-  const matches = [...bloco.matchAll(/R\$\s?:?\s?([\d.]+,\d{2})/g)];
-  
-  // Normalmente o segundo valor é o lance
-  if (matches.length < 2) return null;
-  
-  return parseFloat(matches[1][1].replace(/\./g, '').replace(',', '.'));
-}
-
-function limparTextoPDF(texto: string): string[] {
-  return texto
-    .split('\n')
-    .map(l => l.replace(/\s+/g, ' ').trim())
-    .filter(l =>
-      l.length > 3 &&
-      !l.startsWith('QT.') &&
-      !l.match(/^QT\s+(GRUPO|DESCRIÇÃO)/i) &&
-      !l.startsWith('Legendas') &&
-      !l.match(/^[-–—]{3,}/) &&
-      !l.includes('Legenda') &&
-      !l.includes('TOTAL') &&
-      !l.match(/^(S|LL|LF|LFL)\s*[-–—]/) &&
-      !l.match(/^\d+ª\s*Opção/i) &&
-      !l.match(/Prováveis Contemplados/i)
-    );
-}
-
-function agruparBlocos(linhas: string[]): string[] {
-  const blocos: string[] = [];
-  let atual: string[] = [];
-
-  for (const linha of linhas) {
-    const limpa = linha.trim();
-
-    // Começa novo grupo SOMENTE se for 6 dígitos sozinho
-    if (/^\d{6}$/.test(limpa)) {
-      if (atual.length) blocos.push(atual.join(' '));
-      atual = [limpa];
-    } else if (atual.length) {
-      atual.push(limpa);
-    }
-  }
-
-  if (atual.length) blocos.push(atual.join(' '));
-
-  return blocos;
-}
-
-function parseBlocoAssembleia(bloco: string) {
-  const grupo = extrairGrupo(bloco);
-  // CRÍTICO: só descarta se não tem grupo - percentual é OPCIONAL
-  if (!grupo) return null;
-  
-  const qt = extrairQT(bloco);
-  const percentual = extrairPercentual(bloco);
-  const valorCredito = extrairValorCredito(bloco);
-  const valorLance = extrairValorLance(bloco);
+  // Extrair CRÉDITO (último valor R$ encontrado é o crédito final)
+  const creditoMatches = [...linha.matchAll(/R\$\s*:?\s*([\d.]+,\d{2})/g)];
+  const credito = creditoMatches.length > 0 
+    ? parseFloat(creditoMatches[creditoMatches.length - 1][1].replace(/\./g, '').replace(',', '.'))
+    : null;
   
   // Identificar modalidade
-  const blocoLower = bloco.toLowerCase();
+  const linhaLower = linha.toLowerCase();
   let modalidade = "sorteio"; // default para quando não tem percentual
   
   if (percentual !== null) {
-    // Tem percentual = é algum tipo de lance
-    if (blocoLower.includes("lance livre")) {
+    if (linhaLower.includes("lance livre") || linhaLower.includes(" ll ")) {
       modalidade = "lance_livre";
-    } else if (blocoLower.includes("lance limitado")) {
+    } else if (linhaLower.includes("lance limitado") || linhaLower.includes(" lm ")) {
       modalidade = "lance_limitado";
-    } else if (blocoLower.includes("lance fixo") || blocoLower.includes("fixo")) {
+    } else if (linhaLower.includes("lance fixo") || linhaLower.includes(" lf ")) {
       if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
       else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
       else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
@@ -151,13 +67,11 @@ function parseBlocoAssembleia(bloco: string) {
     }
   }
   
-  // Extrair descrição (remover QT, grupo, valores e modalidade)
-  let descricao = bloco
-    .replace(/^\d{1,3}\s+/, '') // Remove QT se houver
+  // Extrair descrição (entre grupo e primeiro R$)
+  let descricao = linha
+    .replace(/^\d{1,3}\s+/, '') // Remove QT
     .replace(/\d{6}/, '') // Remove grupo
-    .replace(/R\$\s?:?\s?[\d.]+,\d{2}/g, '') // Remove valores
-    .replace(/[\d.]+,\d{2}%/g, '') // Remove percentuais
-    .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/gi, '') // Remove modalidade
+    .split(/R\$/)[0] // Pega tudo antes do primeiro R$
     .replace(/\s+/g, ' ')
     .trim();
   
@@ -165,9 +79,88 @@ function parseBlocoAssembleia(bloco: string) {
     qt,
     grupo,
     descricao,
-    credito: valorCredito,
+    credito,
     modalidade,
-    lance_percent: percentual // pode ser null para sorteios
+    lance_percent: percentual
+  };
+}
+
+function limparLinhasPDF(texto: string): string[] {
+  return texto
+    .split('\n')
+    .map(l => l.replace(/\s+/g, ' ').trim())
+    .filter(l =>
+      l.length > 10 &&
+      !l.startsWith('QT.') &&
+      !l.match(/^QT\s+(GRUPO|DESCRIÇÃO)/i) &&
+      !l.includes('Legendas') &&
+      !l.match(/^[-–—]{3,}/) &&
+      !l.match(/^S\s*-\s*Sorteio/i) &&
+      !l.match(/Prováveis Contemplados/i) &&
+      !l.match(/Assembleia.*\d{2}\/\d{2}\/\d{4}/i) &&
+      !l.match(/Pedra Chave/i) &&
+      !l.match(/^\d+ª\s*Opção/i) &&
+      /\d{6}/.test(l) // Deve conter um grupo de 6 dígitos
+    );
+}
+
+function parseLinhaAssembleia(linha: string) {
+  if (!linha) return null;
+  
+  // Extrair QT (1-3 dígitos no início da linha)
+  const qtMatch = linha.match(/^(\d{1,3})\s+/);
+  const qt = qtMatch ? parseInt(qtMatch[1]) : null;
+  
+  // Extrair GRUPO (exatamente 6 dígitos)
+  const grupoMatch = linha.match(/\b(\d{6})\b/);
+  const grupo = grupoMatch ? grupoMatch[1] : null;
+  
+  if (!grupo) return null; // Sem grupo = linha inválida
+  
+  // Extrair PERCENTUAL (formato: XX,XXXX% ou XX,XX%)
+  const percentMatch = linha.match(/(\d{1,3},\d{2,4})%/);
+  const percentual = percentMatch ? parseFloat(percentMatch[1].replace(',', '.')) : null;
+  
+  // Extrair CRÉDITO (último valor R$ encontrado é o crédito final)
+  const creditoMatches = [...linha.matchAll(/R\$\s*:?\s*([\d.]+,\d{2})/g)];
+  const credito = creditoMatches.length > 0 
+    ? parseFloat(creditoMatches[creditoMatches.length - 1][1].replace(/\./g, '').replace(',', '.'))
+    : null;
+  
+  // Identificar modalidade
+  const linhaLower = linha.toLowerCase();
+  let modalidade = "sorteio"; // default para quando não tem percentual
+  
+  if (percentual !== null) {
+    if (linhaLower.includes("lance livre") || linhaLower.includes(" ll ")) {
+      modalidade = "lance_livre";
+    } else if (linhaLower.includes("lance limitado") || linhaLower.includes(" lm ")) {
+      modalidade = "lance_limitado";
+    } else if (linhaLower.includes("lance fixo") || linhaLower.includes(" lf ")) {
+      if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
+      else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
+      else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
+      else modalidade = "lance_fixo_30";
+    } else {
+      modalidade = "lance_livre";
+    }
+  }
+  
+  // Extrair descrição (entre grupo e primeiro R$)
+  let descricao = linha
+    .replace(/^\d{1,3}\s+/, '') // Remove QT
+    .replace(/\d{6}/, '') // Remove grupo
+    .split(/R\$/)[0] // Pega tudo antes do primeiro R$
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  return {
+    qt,
+    grupo,
+    descricao,
+    credito,
+    modalidade,
+    lance_percent: percentual
   };
 }
 
@@ -186,54 +179,39 @@ function parseRowsFromText(fullText: string) {
   console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
   console.log("[DEBUG] Tamanho do texto:", fullText.length);
 
-  // ETAPA 1: Limpeza inicial
-  const linhasLimpas = limparTextoPDF(fullText);
-  console.log("[DEBUG] Linhas após limpeza:", linhasLimpas.length);
-  console.log("[DEBUG] Primeiras 10 linhas limpas:");
-  linhasLimpas.slice(0, 10).forEach((line, idx) => {
+  // ETAPA 1: Limpeza e filtragem de linhas
+  const linhas = limparLinhasPDF(fullText);
+  console.log("[DEBUG] Linhas após limpeza:", linhas.length);
+  console.log("[DEBUG] Primeiras 10 linhas:");
+  linhas.slice(0, 10).forEach((line, idx) => {
     console.log(`  [${idx}] "${line}"`);
   });
 
-  // ETAPA 2: Agrupar linhas em blocos
-  const blocos = agruparBlocos(linhasLimpas);
-  console.log("[DEBUG] ========== BLOCOS ==========");
-  console.log("[DEBUG] Total de blocos:", blocos.length);
-  console.log("[DEBUG] Primeiros 5 blocos:");
-  blocos.slice(0, 5).forEach((bloco, idx) => {
-    console.log(`  [${idx}] "${bloco}"`);
-  });
-
-  // ETAPA 3: Parser de cada bloco
-  const registros = blocos
-    .map(parseBlocoAssembleia)
+  // ETAPA 2: Parse direto - cada linha é um registro completo
+  const registros = linhas
+    .map(parseLinhaAssembleia)
     .filter(Boolean);
 
   console.log("[DEBUG] ========== REGISTROS ==========");
-  console.log("[DEBUG] Total de registros:", registros.length);
-  console.log("[DEBUG] Primeiros 5 registros:");
-  registros.slice(0, 5).forEach((reg, idx) => {
-    console.log(`  [${idx}] { Grupo: ${reg.grupo}, Tipo: ${reg.modalidade}, Lance: ${reg.lance_percent || 'null'}%, Crédito: ${reg.credito} }`);
+  console.log("[DEBUG] Total de registros parseados:", registros.length);
+  console.log("[DEBUG] Primeiros 10 registros:");
+  registros.slice(0, 10).forEach((reg, idx) => {
+    console.log(`  [${idx}] QT:${reg.qt} Grupo:${reg.grupo} ${reg.modalidade} ${reg.lance_percent || 'SEM'}% Créd:${reg.credito}`);
   });
 
-  // ETAPA 4: Contagem de grupos únicos
+  // ETAPA 3: Contagem de grupos únicos
   const grupos = registros.map(r => r.grupo).filter(Boolean);
   const totalGrupos = new Set(grupos).size;
   
   console.log("[DEBUG] ========== RESULTADO FINAL ==========");
-  console.log("[DEBUG] - Total blocos:", blocos.length);
+  console.log("[DEBUG] - Total linhas válidas:", linhas.length);
   console.log("[DEBUG] - Total registros:", registros.length);
   console.log("[DEBUG] - Total grupos únicos:", totalGrupos);
-  console.log("[DEBUG] - Grupos encontrados:", Array.from(new Set(grupos)).sort().slice(0, 10).join(', '), '...');
+  console.log("[DEBUG] - Primeiros 20 grupos:", Array.from(new Set(grupos)).sort().slice(0, 20).join(', '));
 
-  console.log("[DEBUG] ========== FIM DO PARSE ==========");
-  console.log("[DEBUG] Total de blocos processados:", blocos.length);
-  console.log("[DEBUG] Total de registros parseados:", registros.length);
-  console.log("[DEBUG] Total de grupos únicos:", totalGrupos);
-  console.log("[DEBUG] Grupos:", Array.from(new Set(grupos)).sort().join(', '));
-  
   return {
     rows: registros,
-    totalLinhasValidas: blocos.length,
+    totalLinhasValidas: linhas.length,
     totalGruposUnicos: totalGrupos,
     grupos: Array.from(new Set(grupos)).sort()
   };
