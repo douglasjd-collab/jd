@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Search, TrendingDown, TrendingUp, Eye } from 'lucide-react';
+import { Calendar, Search, TrendingDown, TrendingUp, Eye, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 export default function HistoricoImportacao() {
   const [user, setUser] = useState(null);
@@ -17,6 +19,10 @@ export default function HistoricoImportacao() {
   const [search, setSearch] = useState('');
   const [selectedHistorico, setSelectedHistorico] = useState(null);
   const [detalhesOpen, setDetalhesOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [historicoToDelete, setHistoricoToDelete] = useState(null);
+
+  const queryClient = useQueryClient();
 
   React.useEffect(() => {
     loadUser();
@@ -66,6 +72,45 @@ export default function HistoricoImportacao() {
   const handleVerDetalhes = (historico) => {
     setSelectedHistorico(historico);
     setDetalhesOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (historicoId) => {
+      // Deletar detalhes
+      const detalhes = await base44.entities.HistoricoLanceDetalhe.filter({ historico_id: historicoId });
+      for (const detalhe of detalhes) {
+        await base44.entities.HistoricoLanceDetalhe.delete(detalhe.id);
+      }
+
+      // Deletar resumos
+      const resumos = await base44.entities.HistoricoLanceResumo.filter({ historico_id: historicoId });
+      for (const resumo of resumos) {
+        await base44.entities.HistoricoLanceResumo.delete(resumo.id);
+      }
+
+      // Deletar histórico principal
+      await base44.entities.HistoricoLanceGrupo.delete(historicoId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['historico-importacao']);
+      toast.success('Histórico excluído com sucesso');
+      setDeleteDialogOpen(false);
+      setHistoricoToDelete(null);
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir histórico: ' + error.message);
+    }
+  });
+
+  const handleDeleteClick = (historico) => {
+    setHistoricoToDelete(historico);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (historicoToDelete) {
+      deleteMutation.mutate(historicoToDelete.id);
+    }
   };
 
   // Agrupar detalhes por grupo
@@ -190,15 +235,25 @@ export default function HistoricoImportacao() {
                       </div>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => handleVerDetalhes(historico)}
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Ver Detalhes
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleVerDetalhes(historico)}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Ver Detalhes
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteClick(historico)}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
             </Card>
@@ -297,6 +352,43 @@ export default function HistoricoImportacao() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este histórico de importação?
+              <br />
+              <br />
+              <strong>{historicoToDelete?.arquivo_nome}</strong>
+              <br />
+              <br />
+              Esta ação irá remover:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>{historicoToDelete?.total_registros} lances detalhados</li>
+                <li>Todos os resumos dos {historicoToDelete?.total_grupos} grupos</li>
+                <li>O registro de importação</li>
+              </ul>
+              <br />
+              <span className="text-red-600 font-semibold">Esta ação não pode ser desfeita.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
