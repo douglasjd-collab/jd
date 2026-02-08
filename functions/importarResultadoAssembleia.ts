@@ -221,8 +221,8 @@ Deno.serve(async (req) => {
       usuario_nome: user.full_name || user.email
     });
 
-    // Salvar detalhes (HistoricoLanceDetalhe) - chunked com delay
-    await chunked(registros, 50, async (chunk) => {
+    // Salvar detalhes (HistoricoLanceDetalhe) - chunked com delay maior
+    await chunked(registros, 20, async (chunk) => {
       await Promise.all(
         chunk.map(r => base44.asServiceRole.entities.HistoricoLanceDetalhe.create({
           empresa_id,
@@ -235,8 +235,8 @@ Deno.serve(async (req) => {
           lance_percent: r.lance_percent
         }))
       );
-      // Delay para evitar rate limit
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Delay maior para evitar rate limit
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     // Agrupar por grupo + modalidade
@@ -292,13 +292,13 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Criar novos resumos - chunked com delay
-    await chunked(novosResumos, 50, async (chunk) => {
+    // Criar novos resumos - chunked com delay maior
+    await chunked(novosResumos, 20, async (chunk) => {
       await Promise.all(
         chunk.map(r => base44.asServiceRole.entities.HistoricoLanceResumo.create(r))
       );
-      // Delay para evitar rate limit
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Delay maior para evitar rate limit
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
 
     return Response.json({
