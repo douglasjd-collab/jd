@@ -50,81 +50,102 @@ function parseRowsFromText(fullText: string) {
 
   console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
   console.log("[DEBUG] Total de linhas no PDF:", lines.length);
-  console.log("[DEBUG] Primeiras 30 linhas:", lines.slice(0, 30));
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     
-    // Ignorar cabeçalhos e linhas irrelevantes
+    // Ignorar cabeçalhos, legendas e linhas irrelevantes
     if (
+      line.length < 15 ||
       /Prováveis Contemplados/i.test(line) ||
-      /^QT\.?\s*GRUPO/i.test(line) ||
-      /Legendas/i.test(line) ||
-      /^S\s*-\s*Sorteio/i.test(line) ||
-      /^LL\s*-/i.test(line) ||
-      /^LF\s*-/i.test(line) ||
+      /^QT\.?\s*(GRUPO|DESCRIÇÃO)/i.test(line) ||
+      /^(Legendas|MODALIDADE|CRÉDITO|LANCE)/i.test(line) ||
+      /^(S|LL|LF|LFL)\s*[-–—]/i.test(line) ||
       /^\d+ª\s*Opção/i.test(line) ||
       /Assembleia/i.test(line) ||
-      line.length < 15
+      /^\s*[-–—]+\s*$/i.test(line)
     ) {
       continue;
     }
 
-    // Regex para capturar: QT GRUPO DESCRIÇÃO CRÉDITO MODALIDADE LANCE%
-    // Exemplo: "1 003102 SERVIÇOS FAIXA I R$ 22.964,10 Lance Livre 20,0000%"
-    const regex = /^(\d+)\s+(\d{5,6})\s+(.+?)\s+R\$\s*([\d\.\,]+)\s+(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)\s*([\d\.\,]+)%/i;
+    // Regex flexível: QT GRUPO DESCRIÇÃO R$ VALOR [MODALIDADE] [PERCENTUAL%]
+    // Captura linha começando com número, seguido de grupo (5-6 dígitos)
+    const regex = /^(\d+)\s+(\d{5,6})\s+(.+?)\s+R\$\s*([\d\.\,]+)(?:\s+(.+?))?(?:\s+([\d\.\,]+)%)?$/i;
     const match = line.match(regex);
     
-    if (match) {
-      const qt = parseInt(match[1]);
-      const grupo = match[2];
-      const descricao = match[3].trim();
-      const credito = toNumberBRL("R$ " + match[4]);
-      const modalidadeTexto = match[5].trim();
-      const percentual = toPercent(match[6] + "%");
-      
-      // Mapear modalidade
-      let modalidade = "lance_livre";
+    if (!match) {
+      // Log apenas se parece ser uma linha de dados
+      if (/^\d+\s+\d{5,6}/.test(line)) {
+        console.log(`[DEBUG] ⚠️ Linha ${i} não processada:`, line);
+      }
+      continue;
+    }
+
+    const qt = parseInt(match[1]);
+    const grupo = match[2];
+    let descricao = match[3].trim();
+    const credito = toNumberBRL("R$ " + match[4]);
+    const modalidadeTexto = (match[5] || "").trim();
+    const percentualStr = match[6];
+    
+    // Limpar descrição (remover valores R$ duplicados)
+    descricao = descricao.replace(/\s*R\$\s*[\d\.\,]+/g, '').trim();
+
+    // Determinar modalidade e percentual
+    let modalidade = "sorteio"; // default quando não tem lance
+    let percentual: number | null = null;
+
+    if (percentualStr) {
+      percentual = toPercent(percentualStr + "%");
+    }
+
+    // Analisar texto da modalidade
+    if (modalidadeTexto) {
       const modalidadeLower = modalidadeTexto.toLowerCase();
       
-      if (modalidadeLower.includes("sorteio")) {
+      if (modalidadeLower.includes("sorteio") || modalidadeLower.includes("sort")) {
         modalidade = "sorteio";
-      } else if (modalidadeLower.includes("limitado")) {
-        modalidade = "lance_limitado";
-      } else if (modalidadeLower.includes("livre")) {
+        percentual = null; // Sorteio não tem lance
+      } else if (modalidadeLower.includes("lance livre") || modalidadeLower.includes("livre")) {
         modalidade = "lance_livre";
-      } else if (modalidadeLower.includes("fixo")) {
-        // Tentar identificar qual tipo de fixo pelo percentual
-        if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
-        else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
-        else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
-        else modalidade = "lance_fixo_30"; // default
-      }
-
-      console.log(`[DEBUG] ✅ Linha ${i}: QT=${qt}, Grupo=${grupo}, Desc="${descricao}", Crédito=${credito}, Modalidade=${modalidade}, Lance=${percentual}%`);
-      
-      rows.push({
-        qt,
-        grupo,
-        descricao,
-        credito,
-        modalidade,
-        lance_percent: percentual,
-      });
-    } else {
-      // Se tem grupo e percentual mas não deu match completo, tentar extrair o que puder
-      const grupoMatch = line.match(/\b(\d{5,6})\b/);
-      const percentMatch = line.match(/([\d\.\,]+)\s*%/);
-      
-      if (grupoMatch && percentMatch) {
-        console.log(`[DEBUG] ⚠️ Linha ${i} match parcial:`, line);
+      } else if (modalidadeLower.includes("lance limitado") || modalidadeLower.includes("limitado")) {
+        modalidade = "lance_limitado";
+      } else if (modalidadeLower.includes("lance fixo") || modalidadeLower.includes("fixo")) {
+        // Identificar tipo de fixo pelo percentual
+        if (percentual) {
+          if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
+          else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
+          else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
+          else modalidade = "lance_fixo_30"; // fallback
+        } else {
+          // Tentar extrair do texto: "Lance Fixo 30%"
+          if (modalidadeLower.includes("15")) modalidade = "lance_fixo_15";
+          else if (modalidadeLower.includes("30")) modalidade = "lance_fixo_30";
+          else if (modalidadeLower.includes("50")) modalidade = "lance_fixo_50";
+          else modalidade = "lance_fixo_30";
+        }
       }
     }
+
+    // Se não tem modalidade e não tem percentual = Sorteio
+    if (!modalidadeTexto && !percentualStr) {
+      modalidade = "sorteio";
+    }
+
+    console.log(`[DEBUG] ✅ Linha ${i}: QT=${qt}, Grupo=${grupo}, Desc="${descricao}", Crédito=R$${credito}, Modalidade=${modalidade}, Lance=${percentual || 0}%`);
+    
+    rows.push({
+      qt,
+      grupo,
+      descricao,
+      credito,
+      modalidade,
+      lance_percent: percentual,
+    });
   }
 
   console.log("[DEBUG] ========== FIM DO PARSE ==========");
   console.log("[DEBUG] Total de linhas processadas:", rows.length);
-  console.log("[DEBUG] Primeiros 5 resultados:", rows.slice(0, 5));
   
   return rows;
 }
