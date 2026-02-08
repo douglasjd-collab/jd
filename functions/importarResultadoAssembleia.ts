@@ -290,11 +290,13 @@ Deno.serve(async (req) => {
       }
     }
     
-    // Criar novos resumos
-    await chunked(novosResumos, 100, async (chunk) => {
+    // Criar novos resumos - chunked com delay
+    await chunked(novosResumos, 50, async (chunk) => {
       await Promise.all(
         chunk.map(r => base44.asServiceRole.entities.HistoricoLanceResumo.create(r))
       );
+      // Delay para evitar rate limit
+      await new Promise(resolve => setTimeout(resolve, 100));
     });
 
     return Response.json({
