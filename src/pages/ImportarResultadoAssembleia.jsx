@@ -106,15 +106,19 @@ export default function ImportarResultadoAssembleia() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      // Deletar resumos associados
+      // Deletar detalhes
+      const detalhes = await base44.entities.HistoricoLanceDetalhe.filter({ historico_id: id });
+      for (const detalhe of detalhes) {
+        await base44.entities.HistoricoLanceDetalhe.delete(detalhe.id);
+      }
+
+      // Deletar resumos
       const resumos = await base44.entities.HistoricoLanceResumo.filter({ historico_id: id });
-      
-      // Deletar um por um para evitar problemas de permissão
       for (const resumo of resumos) {
         await base44.entities.HistoricoLanceResumo.delete(resumo.id);
       }
       
-      // Deletar histórico
+      // Deletar histórico principal
       await base44.entities.HistoricoLanceGrupo.delete(id);
     },
     onSuccess: () => {
@@ -195,7 +199,7 @@ export default function ImportarResultadoAssembleia() {
           >
             <Eye className="w-4 h-4" />
           </Button>
-          {(user?.perfil === 'super_admin' || user?.perfil === 'master') && (
+          {(user?.perfil === 'super_admin' || user?.perfil === 'master' || user?.perfil === 'admin') && (
             <Button
               size="sm"
               variant="ghost"
