@@ -45,26 +45,66 @@ function parseRowsFromText(fullText: string) {
     lance_percent: number | null;
   }> = [];
 
-  const re = /^(\d+)\s+(\d{3,})\s+(.+?)\s+(R\$\s*[\d\.\,]+)\s+([A-Za-zÀ-ÿ\s]+?)\s+([\d\.\,]+%)$/;
+  // Regex mais flexível que captura: QT GRUPO COTA VALOR MODALIDADE PERCENTUAL
+  // Exemplos:
+  // 1 8320 001 R$ 50.000,00 Lance Livre 35,00%
+  // 2 8320 002 R$ 50.000,00 Sorteio 0,00%
+  const re = /^(\d+)\s+(\d{3,})\s+(\d+)\s+(R\$\s*[\d\.\,]+)\s+(.+?)\s+([\d\.\,]+%)\s*$/;
+  
+  // Regex alternativa sem QT inicial
+  const re2 = /^(\d{3,})\s+(\d+)\s+(R\$\s*[\d\.\,]+)\s+(.+?)\s+([\d\.\,]+%)\s*$/;
 
-  for (const line of lines) {
+  console.log("[DEBUG] Total de linhas encontradas:", lines.length);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Ignorar cabeçalhos e linhas irrelevantes
     if (
       /Prováveis Contemplados/i.test(line) ||
-      /^QT\.\s*GRUPO/i.test(line) ||
+      /^QT\.?\s*GRUPO/i.test(line) ||
       /Legendas/i.test(line) ||
-      /^S\s*-\s*Sorteio/i.test(line)
-    ) continue;
+      /^S\s*-\s*Sorteio/i.test(line) ||
+      /^LL\s*-/i.test(line) ||
+      /^LF\s*-/i.test(line) ||
+      /^\d+ª\s*Opção/i.test(line) ||
+      /Assembleia/i.test(line)
+    ) {
+      console.log(`[DEBUG] Linha ${i} ignorada (cabeçalho):`, line);
+      continue;
+    }
 
-    const m = line.match(re);
-    if (!m) continue;
+    // Tentar primeira regex (com QT)
+    let m = line.match(re);
+    if (m) {
+      console.log(`[DEBUG] Linha ${i} match (formato 1):`, line);
+      rows.push({
+        grupo: m[2],
+        modalidade: mapModalidade(m[5].trim()),
+        lance_percent: toPercent(m[6]),
+      });
+      continue;
+    }
 
-    rows.push({
-      grupo: m[2],
-      modalidade: mapModalidade(m[5].trim()),
-      lance_percent: toPercent(m[6]),
-    });
+    // Tentar segunda regex (sem QT)
+    m = line.match(re2);
+    if (m) {
+      console.log(`[DEBUG] Linha ${i} match (formato 2):`, line);
+      rows.push({
+        grupo: m[1],
+        modalidade: mapModalidade(m[4].trim()),
+        lance_percent: toPercent(m[5]),
+      });
+      continue;
+    }
+
+    // Log de linhas não processadas que parecem relevantes
+    if (/^\d+\s+\d{3,}/.test(line) || /^\d{3,}\s+\d+/.test(line)) {
+      console.log(`[DEBUG] Linha ${i} NÃO processada (possível dado):`, line);
+    }
   }
 
+  console.log("[DEBUG] Total de linhas processadas:", rows.length);
   return rows;
 }
 
