@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
       usuario_nome: user.full_name || user.email
     });
 
-    // 🚀 Salvar detalhes em LOTE (bulkCreate - 1 request só)
+    // 🚀 Salvar detalhes em LOTE (chunked para evitar rate limit)
     const detalhesParaCriar = registros.map(r => ({
       empresa_id,
       historico_id: historico.id,
@@ -245,7 +245,13 @@ Deno.serve(async (req) => {
       lance_percent: r.lance_percent
     }));
     
-    await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(detalhesParaCriar);
+    const blocosDetalhes = chunkArray(detalhesParaCriar, 25);
+    for (const bloco of blocosDetalhes) {
+      await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(bloco);
+      if (blocosDetalhes.length > 1) {
+        await sleep(400);
+      }
+    }
 
     // 🔹 Identificar chamada
     const isSegundaChamada = chamada === 'Segunda';
@@ -324,9 +330,15 @@ Deno.serve(async (req) => {
     }
     
     // 🔹 EXECUÇÃO SEM RATE LIMIT
-    // ✅ CREATE EM LOTE (1 request)
+    // ✅ CREATE EM LOTE (chunked para evitar rate limit)
     if (payloadCreate.length > 0) {
-      await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(payloadCreate);
+      const blocosCreate = chunkArray(payloadCreate, 25);
+      for (const bloco of blocosCreate) {
+        await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(bloco);
+        if (blocosCreate.length > 1) {
+          await sleep(400);
+        }
+      }
     }
     
     // ✅ UPDATE EM LOTE (chunked para evitar rate limit)
