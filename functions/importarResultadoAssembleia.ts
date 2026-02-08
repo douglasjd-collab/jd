@@ -78,17 +78,30 @@ function parseRowsFromText(fullText: string) {
     console.log(`  [${idx}] "${line}"`);
   });
 
-  // ETAPA 2: Parser por linha - CRITÉRIO: começa com número + grupo (5-6 dígitos)
-  for (let i = 0; i < linhasLimpas.length; i++) {
-    const line = linhasLimpas[i];
+  // ETAPA 2: Identificar linhas válidas e extrair grupos ANTES do parse completo
+  const linhasValidas = [];
+  const gruposEncontrados = new Set();
+
+  for (const line of linhasLimpas) {
+    // Linha válida = começa com QT (1-3 dígitos) + GRUPO (5-6 dígitos)
+    const match = line.match(/^(\d{1,3})\s+(\d{5,6})\s+/);
+    if (match) {
+      linhasValidas.push(line);
+      gruposEncontrados.add(match[2]); // Adiciona grupo ao Set
+    }
+  }
+
+  console.log("[DEBUG] Linhas válidas identificadas:", linhasValidas.length);
+  console.log("[DEBUG] Grupos únicos encontrados:", gruposEncontrados.size);
+  console.log("[DEBUG] Grupos:", Array.from(gruposEncontrados).sort().join(', '));
+
+  // ETAPA 3: Parser detalhado por linha
+  for (let i = 0; i < linhasValidas.length; i++) {
+    const line = linhasValidas[i];
     
-    // Identificar se é linha de dados: começa com QT (1-3 dígitos) + GRUPO (5-6 dígitos)
     const prefixMatch = line.match(/^(\d{1,3})\s+(\d{5,6})\s+(.+)/);
     if (!prefixMatch) {
-      // Log de linhas não processadas que parecem ser dados
-      if (/^\d+\s+\d{4,7}/.test(line)) {
-        console.log(`[DEBUG] ⚠️ Linha ${i} parece ser dado mas não deu match: "${line}"`);
-      }
+      console.log(`[DEBUG] ⚠️ Linha válida mas não deu match no parse: "${line}"`);
       continue;
     }
 
@@ -162,9 +175,16 @@ function parseRowsFromText(fullText: string) {
   }
 
   console.log("[DEBUG] ========== FIM DO PARSE ==========");
-  console.log("[DEBUG] Total de linhas processadas:", rows.length);
+  console.log("[DEBUG] Total de linhas processadas com sucesso:", rows.length);
+  console.log("[DEBUG] Total de linhas válidas encontradas:", linhasValidas.length);
+  console.log("[DEBUG] Total de grupos únicos:", gruposEncontrados.size);
   
-  return rows;
+  return {
+    rows,
+    totalLinhasValidas: linhasValidas.length,
+    totalGruposUnicos: gruposEncontrados.size,
+    grupos: Array.from(gruposEncontrados).sort()
+  };
 }
 
 function withTimeout<T>(promise: Promise<T>, ms = 25000): Promise<T> {
@@ -218,10 +238,13 @@ Deno.serve(async (req) => {
     const parsed = await withTimeout(pdfParse(buf), 25000);
 
     const text = parsed.text || "";
-    const rows = parseRowsFromText(text);
+    const parseResult = parseRowsFromText(text);
+    const rows = parseResult.rows || [];
+    const totalLinhasValidas = parseResult.totalLinhasValidas || 0;
+    const totalGruposUnicos = parseResult.totalGruposUnicos || 0;
 
-    // Se não encontrou linhas, ainda assim salvar o histórico mas sem detalhes
-    if (!rows.length) {
+    // Se não encontrou linhas válidas, salvar histórico vazio
+    if (totalLinhasValidas === 0) {
       console.log("[WARN] Nenhuma linha processada, salvando histórico vazio");
       
       const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
