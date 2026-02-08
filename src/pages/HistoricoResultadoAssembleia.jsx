@@ -78,13 +78,13 @@ export default function HistoricoResultadoAssembleia() {
         grupos[detalhe.grupo] = {
           grupo: detalhe.grupo,
           detalhes: [],
-          resumos: []
+          resumosPorModalidade: {}
         };
       }
       grupos[detalhe.grupo].detalhes.push(detalhe);
     }
 
-    // Adicionar resumos aos grupos
+    // Consolidar resumos por grupo + modalidade (agregando múltiplos historico_id)
     for (const resumo of todosResumos) {
       // Filtrar por mês se selecionado
       if (mesSelecionado) {
@@ -97,8 +97,34 @@ export default function HistoricoResultadoAssembleia() {
       }
 
       if (grupos[resumo.grupo]) {
-        grupos[resumo.grupo].resumos.push(resumo);
+        const modalidade = resumo.modalidade;
+        if (!grupos[resumo.grupo].resumosPorModalidade[modalidade]) {
+          grupos[resumo.grupo].resumosPorModalidade[modalidade] = {
+            modalidade,
+            menor_lance_percent: resumo.menor_lance_percent,
+            maior_lance_percent: resumo.maior_lance_percent,
+            qtd_ocorrencias: resumo.qtd_ocorrencias || 0
+          };
+        } else {
+          // Consolidar: pegar o menor dos menores, o maior dos maiores, e somar ocorrências
+          const atual = grupos[resumo.grupo].resumosPorModalidade[modalidade];
+          atual.menor_lance_percent = Math.min(
+            atual.menor_lance_percent ?? 999,
+            resumo.menor_lance_percent ?? 999
+          );
+          atual.maior_lance_percent = Math.max(
+            atual.maior_lance_percent ?? 0,
+            resumo.maior_lance_percent ?? 0
+          );
+          atual.qtd_ocorrencias = (atual.qtd_ocorrencias || 0) + (resumo.qtd_ocorrencias || 0);
+        }
       }
+    }
+
+    // Converter resumosPorModalidade de objeto para array
+    for (const grupo of Object.values(grupos)) {
+      grupo.resumos = Object.values(grupo.resumosPorModalidade);
+      delete grupo.resumosPorModalidade;
     }
 
     // Filtrar por busca de grupo
