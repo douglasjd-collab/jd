@@ -95,20 +95,30 @@ function limparTextoPDF(texto: string): string[] {
 
 function agruparBlocos(linhas: string[]): string[] {
   const blocos: string[] = [];
-  let blocoAtual = '';
+  let blocoAtual: string[] = [];
 
   for (const linha of linhas) {
-    // Detectar início de novo bloco: linha com QT + GRUPO (ex: "22 004109")
-    if (/^\d{1,3}\s+\d{6}/.test(linha)) {
-      if (blocoAtual) blocos.push(blocoAtual.trim());
-      blocoAtual = linha;
+    // Linha que contém SOMENTE o número do grupo (6 dígitos)
+    if (/^\d{6}$/.test(linha)) {
+      // Salva o bloco anterior
+      if (blocoAtual.length > 0) {
+        blocos.push(blocoAtual.join(' '));
+      }
+
+      // Inicia novo bloco já com o grupo
+      blocoAtual = [linha];
     } else {
-      // Continuar acumulando no bloco atual
-      blocoAtual += ' ' + linha;
+      // Continua o bloco atual
+      if (blocoAtual.length > 0) {
+        blocoAtual.push(linha);
+      }
     }
   }
 
-  if (blocoAtual) blocos.push(blocoAtual.trim());
+  // Salva o último bloco
+  if (blocoAtual.length > 0) {
+    blocos.push(blocoAtual.join(' '));
+  }
 
   return blocos;
 }
