@@ -51,6 +51,90 @@ function extrairPercentual(linha: string): number | null {
   return parseFloat(match[1].replace(',', '.'));
 }
 
+function extrairValorCredito(linha: string): number | null {
+  if (!linha) return null;
+  
+  const match = linha.match(/R\$\s?:?\s?([\d.]+,\d{2})/);
+  if (!match) return null;
+  
+  return parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
+}
+
+function extrairValorLance(linha: string): number | null {
+  if (!linha) return null;
+  
+  const matches = [...linha.matchAll(/R\$\s?:?\s?([\d.]+,\d{2})/g)];
+  
+  // Normalmente o segundo valor é o lance
+  if (matches.length < 2) return null;
+  
+  return parseFloat(matches[1][1].replace(/\./g, '').replace(',', '.'));
+}
+
+function limparTextoPDF(texto: string): string[] {
+  return texto
+    .split('\n')
+    .map(l => l.replace(/\s+/g, ' ').trim())
+    .filter(l =>
+      l.length > 10 &&
+      !l.startsWith('QT.') &&
+      !l.startsWith('QT ') &&
+      !l.startsWith('Legendas') &&
+      !l.startsWith('-') &&
+      !l.includes('Legenda') &&
+      !l.includes('TOTAL')
+    );
+}
+
+function parseLinhaAssembleia(linha: string) {
+  const grupo = extrairGrupo(linha);
+  if (!grupo) return null;
+  
+  const percentual = extrairPercentual(linha);
+  const valorCredito = extrairValorCredito(linha);
+  const valorLance = extrairValorLance(linha);
+  
+  // Identificar modalidade
+  const linhaLower = linha.toLowerCase();
+  let modalidade = "sorteio";
+  
+  if (percentual !== null) {
+    if (linhaLower.includes("lance livre")) {
+      modalidade = "lance_livre";
+    } else if (linhaLower.includes("lance limitado")) {
+      modalidade = "lance_limitado";
+    } else if (linhaLower.includes("lance fixo") || linhaLower.includes("fixo")) {
+      if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
+      else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
+      else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
+      else modalidade = "lance_fixo_30";
+    } else {
+      modalidade = "lance_livre";
+    }
+  }
+  
+  // Extrair QT e descrição
+  const prefixMatch = linha.match(/^(\d{1,3})\s+\d{6}\s+(.+)/);
+  const qt = prefixMatch ? parseInt(prefixMatch[1]) : null;
+  
+  let descricao = prefixMatch ? prefixMatch[2] : "";
+  descricao = descricao
+    .replace(/R\$\s?:?\s?[\d.]+,\d{2}/g, '')
+    .replace(/[\d.]+,\d{2}%/g, '')
+    .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  return {
+    qt,
+    grupo,
+    descricao,
+    credito: valorCredito,
+    modalidade,
+    lance_percent: percentual
+  };
+}
+
 function mapModalidade(texto: string): string {
   const t = texto.toLowerCase();
   if (t.includes("lance livre")) return "lance_livre";
@@ -63,139 +147,36 @@ function mapModalidade(texto: string): string {
 }
 
 function parseRowsFromText(fullText: string) {
-  const lines = fullText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-  const rows: Array<{
-    qt: number | null;
-    grupo: string;
-    descricao: string;
-    credito: number | null;
-    modalidade: string;
-    lance_percent: number | null;
-  }> = [];
-
   console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
-  console.log("[DEBUG] Total de linhas no PDF:", lines.length);
-  console.log("[DEBUG] Primeiras 20 linhas do PDF:");
-  lines.slice(0, 20).forEach((line, idx) => {
-    console.log(`  [${idx}] "${line}"`);
-  });
+  console.log("[DEBUG] Tamanho do texto:", fullText.length);
 
-  // ETAPA 1: Remover lixo (cabeçalhos, legendas, separadores) - MAIS TOLERANTE
-  const linhasLimpas = lines.filter(line => {
-    // Mínimo de 10 caracteres (era 15)
-    if (line.length < 10) return false;
-    
-    // Filtros mais específicos
-    if (/Prováveis Contemplados/i.test(line)) return false;
-    if (/^QT\.?\s*(GRUPO|DESCRIÇÃO)/i.test(line)) return false;
-    if (/^Legendas:/i.test(line)) return false;
-    if (/^(S|LL|LF|LFL)\s*[-–—]\s*Sorteio/i.test(line)) return false;
-    if (/^\d+ª\s*Opção/i.test(line)) return false;
-    if (/^Data\s+da\s+Assembleia/i.test(line)) return false;
-    if (/^\s*[-–—]{3,}\s*$/i.test(line)) return false;
-    
-    return true;
-  });
-
+  // ETAPA 1: Limpeza inicial
+  const linhasLimpas = limparTextoPDF(fullText);
   console.log("[DEBUG] Linhas após limpeza:", linhasLimpas.length);
   console.log("[DEBUG] Primeiras 10 linhas limpas:");
   linhasLimpas.slice(0, 10).forEach((line, idx) => {
     console.log(`  [${idx}] "${line}"`);
   });
 
-  // ETAPA 2: Identificar linhas válidas e extrair grupos ANTES do parse completo
-  const linhasValidas = linhasLimpas.filter(line => extrairGrupo(line));
-  const grupos = linhasValidas.map(extrairGrupo).filter(Boolean);
+  // ETAPA 2: Parser de cada linha
+  const registros = linhasLimpas
+    .map(parseLinhaAssembleia)
+    .filter(Boolean);
+
+  // ETAPA 3: Contagem de grupos únicos
+  const grupos = registros.map(r => r.grupo).filter(Boolean);
   const totalGrupos = new Set(grupos).size;
-
-  console.log("[DEBUG] Linhas válidas identificadas:", linhasValidas.length);
-  console.log("[DEBUG] Grupos únicos encontrados:", totalGrupos);
-  console.log("[DEBUG] Grupos:", Array.from(new Set(grupos)).sort().join(', '));
-
-  // ETAPA 3: Parser detalhado por linha
-  for (let i = 0; i < linhasValidas.length; i++) {
-    const line = linhasValidas[i];
-    
-    const prefixMatch = line.match(/^(\d{1,3})\s+(\d{6})\s+(.+)/);
-    if (!prefixMatch) {
-      console.log(`[DEBUG] ⚠️ Linha válida mas não deu match no parse: "${line}"`);
-      continue;
-    }
-
-    const qt = parseInt(prefixMatch[1]);
-    const grupo = prefixMatch[2];
-    const resto = prefixMatch[3]; // tudo após o grupo
-
-    console.log(`[DEBUG] Linha ${i} identificada: QT=${qt}, Grupo=${grupo}, Resto="${resto}"`);
-
-    // ETAPA 3: Extrair todos os valores R$ da linha
-    const valoresR$ = [];
-    const regexValor = /R\$\s*:?\s*([\d\.\,]+)/gi;
-    let matchValor;
-    while ((matchValor = regexValor.exec(resto)) !== null) {
-      const valor = toNumberBRL("R$ " + matchValor[1]);
-      if (valor != null) valoresR$.push(valor);
-    }
-
-    // Crédito é o ÚLTIMO valor R$ (padrão mais comum)
-    const credito = valoresR$.length > 0 ? valoresR$[valoresR$.length - 1] : null;
-
-    // ETAPA 4: Extrair percentual usando função dedicada
-    const percentual = extrairPercentual(line);
-
-    // ETAPA 5: Identificar modalidade por palavras-chave
-    const restoLower = resto.toLowerCase();
-    let modalidade = "sorteio"; // default
-
-    if (percentual !== null) {
-      // Tem percentual = é lance
-      if (restoLower.includes("lance livre")) {
-        modalidade = "lance_livre";
-      } else if (restoLower.includes("lance limitado")) {
-        modalidade = "lance_limitado";
-      } else if (restoLower.includes("lance fixo") || restoLower.includes("fixo")) {
-        if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
-        else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
-        else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
-        else modalidade = "lance_fixo_30";
-      } else {
-        // Tem percentual mas não identificou o tipo específico = Lance Livre
-        modalidade = "lance_livre";
-      }
-    } else {
-      // Não tem percentual = sorteio (já é o default)
-      modalidade = "sorteio";
-    }
-
-    // ETAPA 6: Extrair descrição (remover valores R$, percentuais e modalidade)
-    let descricao = resto
-      .replace(/R\$\s*:?\s*[\d\.\,]+/gi, '') // Remove R$
-      .replace(/[\d\.\,]+\s*%/g, '') // Remove percentuais
-      .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/gi, '') // Remove modalidade
-      .replace(/\s+/g, ' ') // Normaliza espaços
-      .trim();
-
-    console.log(`[DEBUG] ✅ Processado: Grupo=${grupo}, Desc="${descricao}", Crédito=${credito}, Modalidade=${modalidade}, Lance=${percentual}%`);
-
-    rows.push({
-      qt,
-      grupo,
-      descricao,
-      credito,
-      modalidade,
-      lance_percent: percentual,
-    });
-  }
+  const totalLinhasValidas = linhasLimpas.filter(l => extrairGrupo(l)).length;
 
   console.log("[DEBUG] ========== FIM DO PARSE ==========");
-  console.log("[DEBUG] Total de linhas processadas com sucesso:", rows.length);
-  console.log("[DEBUG] Total de linhas válidas encontradas:", linhasValidas.length);
+  console.log("[DEBUG] Total de linhas válidas encontradas:", totalLinhasValidas);
+  console.log("[DEBUG] Total de registros parseados:", registros.length);
   console.log("[DEBUG] Total de grupos únicos:", totalGrupos);
+  console.log("[DEBUG] Grupos:", Array.from(new Set(grupos)).sort().join(', '));
   
   return {
-    rows,
-    totalLinhasValidas: linhasValidas.length,
+    rows: registros,
+    totalLinhasValidas,
     totalGruposUnicos: totalGrupos,
     grupos: Array.from(new Set(grupos)).sort()
   };
