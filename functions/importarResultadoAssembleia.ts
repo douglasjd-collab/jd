@@ -235,71 +235,89 @@ Deno.serve(async (req) => {
     
     await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(detalhesParaCriar);
 
+    // 🔹 Identificar chamada
+    const isSegundaChamada = chamada === 'Segunda';
+    
     // Agrupar por grupo + modalidade
     const resumos = agruparPorGrupoEModalidade(registros);
     
-    // Verificar resumos existentes (mesmo mês)
-    const [ano, mes] = assembleia_data.split('-');
-    const mesAno = `${ano}-${mes}`;
+    // 🔹 Buscar registros existentes (1 request)
+    let registrosExistentes = [];
     
-    const resumosExistentes = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
-      empresa_id,
-      grupo: resumos.map(r => r.grupo)
-    });
-    
-    const existentesMap = new Map();
-    for (const r of resumosExistentes) {
-      const hist = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({ id: r.historico_id });
-      if (hist?.[0]?.assembleia_data) {
-        const [anoHist, mesHist] = hist[0].assembleia_data.split('-');
-        const mesAnoHist = `${anoHist}-${mesHist}`;
-        
-        if (mesAnoHist === mesAno) {
-          const key = `${r.grupo}_${r.modalidade}`;
-          existentesMap.set(key, r);
+    if (isSegundaChamada) {
+      const [ano, mes] = assembleia_data.split('-');
+      const mesAno = `${ano}-${mes}`;
+      
+      // Buscar todos resumos da empresa no mesmo mês/ano
+      const todosResumos = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
+        empresa_id
+      });
+      
+      // Filtrar por mês/ano em memória
+      for (const r of todosResumos) {
+        const hist = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({ id: r.historico_id });
+        if (hist?.[0]?.assembleia_data) {
+          const [anoHist, mesHist] = hist[0].assembleia_data.split('-');
+          const mesAnoHist = `${anoHist}-${mesHist}`;
+          
+          if (mesAnoHist === mesAno) {
+            registrosExistentes.push(r);
+          }
         }
       }
     }
     
-    // Criar/Atualizar resumos
-    const novosResumos = [];
-    const atualizacoes = [];
+    // 🔹 Criar mapa de controle (MEMÓRIA)
+    const mapaExistentes = {};
+    for (const r of registrosExistentes) {
+      const chave = `${r.grupo}_${r.modalidade}`;
+      mapaExistentes[chave] = r;
+    }
     
-    for (const resumo of resumos) {
-      const key = `${resumo.grupo}_${resumo.modalidade}`;
-      const existente = existentesMap.get(key);
+    // 🔹 Gerar payload FINAL (sem duplicar)
+    const payloadCreate = [];
+    const payloadUpdate = [];
+    
+    for (const r of resumos) {
+      const chave = `${r.grupo}_${r.modalidade}`;
       
-      if (!existente) {
-        // Primeira chamada: salva menor e maior
-        novosResumos.push({
-          empresa_id,
-          historico_id: historico.id,
-          ...resumo
+      if (isSegundaChamada && mapaExistentes[chave]) {
+        // Segunda chamada e existe: atualizar
+        payloadUpdate.push({
+          id: mapaExistentes[chave].id,
+          menor_lance_percent: r.menor_lance_percent ?? null,
+          maior_lance_percent: r.maior_lance_percent ?? null,
+          qtd_ocorrencias: (mapaExistentes[chave].qtd_ocorrencias || 0) + (r.qtd_ocorrencias || 1)
         });
       } else {
-        // Chamadas seguintes: mantém maior, atualiza menor
-        const novoMenor = resumo.menor_lance_percent;
-        const menorFinal = existente.menor_lance_percent !== null && novoMenor !== null
-          ? Math.min(existente.menor_lance_percent, novoMenor)
-          : (novoMenor || existente.menor_lance_percent);
-        
-        atualizacoes.push(
-          base44.asServiceRole.entities.HistoricoLanceResumo.update(existente.id, {
-            menor_lance_percent: menorFinal,
-            qtd_ocorrencias: (existente.qtd_ocorrencias || 0) + (resumo.qtd_ocorrencias || 1)
-          })
-        );
+        // Primeira chamada OU não existe: criar
+        payloadCreate.push({
+          empresa_id,
+          historico_id: historico.id,
+          grupo: r.grupo,
+          modalidade: r.modalidade,
+          menor_lance_percent: r.menor_lance_percent ?? null,
+          maior_lance_percent: r.maior_lance_percent ?? null,
+          qtd_ocorrencias: r.qtd_ocorrencias ?? 1
+        });
       }
     }
     
-    // Executar atualizações em paralelo
-    if (atualizacoes.length > 0) {
-      await Promise.all(atualizacoes);
+    // 🔹 EXECUÇÃO SEM RATE LIMIT
+    // ✅ CREATE EM LOTE (1 request)
+    if (payloadCreate.length > 0) {
+      await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(payloadCreate);
     }
     
-    // 🚀 Criar novos resumos em LOTE (bulkCreate - 1 request só)
-    if (novosResumos.length > 0) {
-      await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(novosResumos);
+    // ✅ UPDATE EM LOTE
+    if (payloadUpdate.length > 0) {
+      await Promise.all(payloadUpdate.map(item => 
+        base44.asServiceRole.entities.HistoricoLanceResumo.update(item.id, {
+          menor_lance_percent: item.menor_lance_percent,
+          maior_lance_percent: item.maior_lance_percent,
+          qtd_ocorrencias: item.qtd_ocorrencias
+        })
+      ));
     }
 
     return Response.json({
