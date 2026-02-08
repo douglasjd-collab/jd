@@ -25,6 +25,18 @@ function parseOpcao(fullText: string) {
   return m?.[1] ? Number(m[1]) : null;
 }
 
+function extrairGrupo(linha: string): string | null {
+  if (!linha) return null;
+  
+  const texto = linha.replace(/\s+/g, ' ').trim();
+  
+  // Padrão: QT (1-3 dígitos) + GRUPO (6 dígitos)
+  // Exemplo: "22 004109 MOTO FAIXA I ..."
+  const match = texto.match(/^\d{1,3}\s+(\d{6})\s+/);
+  
+  return match ? match[1] : null;
+}
+
 function mapModalidade(texto: string): string {
   const t = texto.toLowerCase();
   if (t.includes("lance livre")) return "lance_livre";
@@ -83,11 +95,10 @@ function parseRowsFromText(fullText: string) {
   const gruposEncontrados = new Set();
 
   for (const line of linhasLimpas) {
-    // Linha válida = começa com QT (1-3 dígitos) + GRUPO (5-6 dígitos)
-    const match = line.match(/^(\d{1,3})\s+(\d{5,6})\s+/);
-    if (match) {
+    const grupo = extrairGrupo(line);
+    if (grupo) {
       linhasValidas.push(line);
-      gruposEncontrados.add(match[2]); // Adiciona grupo ao Set
+      gruposEncontrados.add(grupo); // Adiciona grupo ao Set
     }
   }
 
@@ -99,7 +110,7 @@ function parseRowsFromText(fullText: string) {
   for (let i = 0; i < linhasValidas.length; i++) {
     const line = linhasValidas[i];
     
-    const prefixMatch = line.match(/^(\d{1,3})\s+(\d{5,6})\s+(.+)/);
+    const prefixMatch = line.match(/^(\d{1,3})\s+(\d{6})\s+(.+)/);
     if (!prefixMatch) {
       console.log(`[DEBUG] ⚠️ Linha válida mas não deu match no parse: "${line}"`);
       continue;
