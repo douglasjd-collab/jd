@@ -1,6 +1,18 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
 import pdfParse from "npm:pdf-parse@1.1.1";
 
+function chunkArray(arr, size = 25) {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function limparLinhasPDF(texto) {
   return texto
     .split('\n')
@@ -317,15 +329,23 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(payloadCreate);
     }
     
-    // ✅ UPDATE EM LOTE
+    // ✅ UPDATE EM LOTE (chunked para evitar rate limit)
     if (payloadUpdate.length > 0) {
-      await Promise.all(payloadUpdate.map(item => 
-        base44.asServiceRole.entities.HistoricoLanceResumo.update(item.id, {
-          menor_lance_percent: item.menor_lance_percent,
-          maior_lance_percent: item.maior_lance_percent,
-          qtd_ocorrencias: item.qtd_ocorrencias
-        })
-      ));
+      const blocos = chunkArray(payloadUpdate, 25);
+      
+      for (const bloco of blocos) {
+        await Promise.all(bloco.map(item => 
+          base44.asServiceRole.entities.HistoricoLanceResumo.update(item.id, {
+            menor_lance_percent: item.menor_lance_percent,
+            maior_lance_percent: item.maior_lance_percent,
+            qtd_ocorrencias: item.qtd_ocorrencias
+          })
+        ));
+        
+        if (blocos.length > 1) {
+          await sleep(400); // Evita rate limit entre blocos
+        }
+      }
     }
 
     return Response.json({
