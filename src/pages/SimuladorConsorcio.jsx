@@ -47,10 +47,14 @@ export default function SimuladorConsorcio() {
       try {
         const plano = JSON.parse(dadosPlano);
         setCartas([{
-          credito: plano.valor_credito?.toString() || '',
+          credito: plano.credito?.toString() || plano.valor_credito?.toString() || '',
           parcela: plano.parcela?.toString() || '',
           prazo: plano.prazo?.toString() || ''
         }]);
+        // Preencher grupo automaticamente se vir do plano
+        if (plano.grupo) {
+          setGrupo(plano.grupo);
+        }
         localStorage.removeItem('planoSelecionado');
       } catch (e) {
         console.error('Erro ao carregar plano selecionado:', e);
