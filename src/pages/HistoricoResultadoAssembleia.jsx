@@ -296,24 +296,82 @@ export default function HistoricoResultadoAssembleia() {
                   </div>
 
                   {/* Resumo do Grupo */}
-                  <div className="mt-4 pt-4 border-t bg-blue-50 rounded-lg p-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <p className="text-sm text-blue-700 font-semibold mb-1">Total de Contemplações</p>
-                        <p className="text-3xl font-bold text-blue-900">{totalContemplacoes}</p>
+                  <div className="mt-4 pt-4 border-t bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Coluna 1: Lances Livre e Limitado */}
+                      <div className="space-y-4">
+                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide mb-3">Menor Lance</h3>
+                        {(() => {
+                          const lanceLivre = grupo.resumos.find(r => r.modalidade === 'lance_livre');
+                          const lanceLimitado = grupo.resumos.find(r => r.modalidade === 'lance_limitado');
+                          
+                          return (
+                            <div className="space-y-3">
+                              <div className="bg-white rounded-lg p-3 shadow-sm border-l-4 border-emerald-500">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-700">Lance Livre</span>
+                                  <span className="text-2xl font-bold text-emerald-600">
+                                    {lanceLivre?.menor_lance_percent ? `${lanceLivre.menor_lance_percent.toFixed(2)}%` : '-'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 shadow-sm border-l-4 border-blue-500">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-700">Lance Limitado</span>
+                                  <span className="text-2xl font-bold text-blue-600">
+                                    {lanceLimitado?.menor_lance_percent ? `${lanceLimitado.menor_lance_percent.toFixed(2)}%` : '-'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
-                      <div>
-                        <p className="text-sm text-blue-700 font-semibold mb-1">Menor Lance</p>
-                        <p className="text-3xl font-bold text-blue-900">
-                          {menorLance < 999 ? `${menorLance.toFixed(2)}%` : '-'}
-                        </p>
+
+                      {/* Coluna 2: Lance Fixo */}
+                      <div className="space-y-4">
+                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide mb-3">Lance Fixo - Contemplados</h3>
+                        {(() => {
+                          const lanceFixo15 = grupo.resumos.find(r => r.modalidade === 'lance_fixo_15');
+                          const lanceFixo30 = grupo.resumos.find(r => r.modalidade === 'lance_fixo_30');
+                          const lanceFixo50 = grupo.resumos.find(r => r.modalidade === 'lance_fixo_50');
+                          
+                          return (
+                            <div className="space-y-3">
+                              <div className="bg-white rounded-lg p-3 shadow-sm border-l-4 border-amber-400">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-700">Fixo 15%</span>
+                                  <span className="text-2xl font-bold text-amber-600">
+                                    {lanceFixo15?.qtd_ocorrencias || 0}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 shadow-sm border-l-4 border-orange-500">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-700">Fixo 30%</span>
+                                  <span className="text-2xl font-bold text-orange-600">
+                                    {lanceFixo30?.qtd_ocorrencias || 0}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 shadow-sm border-l-4 border-red-500">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-700">Fixo 50%</span>
+                                  <span className="text-2xl font-bold text-red-600">
+                                    {lanceFixo50?.qtd_ocorrencias || 0}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
-                      <div>
-                        <p className="text-sm text-blue-700 font-semibold mb-1">Maior Lance</p>
-                        <p className="text-3xl font-bold text-blue-900">
-                          {maiorLance > 0 ? `${maiorLance.toFixed(2)}%` : '-'}
-                        </p>
-                      </div>
+                    </div>
+
+                    {/* Total de Contemplações */}
+                    <div className="mt-4 pt-4 border-t border-indigo-200 text-center">
+                      <p className="text-sm text-slate-600 mb-1">Total de Contemplações</p>
+                      <p className="text-4xl font-bold text-indigo-900">{totalContemplacoes}</p>
                     </div>
                   </div>
                 </CardContent>
