@@ -165,7 +165,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Proposta', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Simulador', icon: Calculator, page: 'SimuladorEscolha', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Histórico Resultado', icon: FileText, page: 'HistoricoImportacao', roles: ['master', 'super_admin', 'admin', 'gerente'] },
+    { name: 'Resultado de Assembleia', icon: FileText, page: 'HistoricoImportacao', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
