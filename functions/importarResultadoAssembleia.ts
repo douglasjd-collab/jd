@@ -269,8 +269,8 @@ Deno.serve(async (req) => {
 
     const text = parsed.text || "";
 
-    console.log('=== TEXTO PDF (primeiros 1000 caracteres) ===');
-    console.log(text.substring(0, 1000));
+    console.log('=== TEXTO PDF (primeiros 2000 caracteres) ===');
+    console.log(text.substring(0, 2000));
     console.log('=== TOTAL DE CARACTERES ===', text.length);
 
     const parseResult = parseRowsFromText(text);
@@ -282,7 +282,10 @@ Deno.serve(async (req) => {
     console.log('Total de linhas válidas:', totalLinhasValidas);
     console.log('Total de grupos únicos:', totalGruposUnicos);
     console.log('Total de rows:', rows.length);
-    console.log('Primeiros 3 rows:', rows.slice(0, 3));
+    console.log('Primeiros 5 rows completos:');
+    rows.slice(0, 5).forEach((r, i) => {
+      console.log(`  [${i}] QT:${r.qt} Grupo:${r.grupo} Mod:${r.modalidade} Lance:${r.lance_percent}% Créd:R$${r.credito}`);
+    });
 
     // Se não encontrou linhas válidas, salvar histórico vazio
     if (totalLinhasValidas === 0) {
