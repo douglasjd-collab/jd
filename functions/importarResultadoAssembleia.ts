@@ -121,10 +121,6 @@ function withTimeout(promise, ms = 25000) {
   });
 }
 
-async function chunked(items, size, fn) {
-  for (let i = 0; i < items.length; i += size) await fn(items.slice(i, i + size));
-}
-
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
@@ -221,23 +217,19 @@ Deno.serve(async (req) => {
       usuario_nome: user.full_name || user.email
     });
 
-    // Salvar detalhes (HistoricoLanceDetalhe) - chunked com delay maior
-    await chunked(registros, 20, async (chunk) => {
-      await Promise.all(
-        chunk.map(r => base44.asServiceRole.entities.HistoricoLanceDetalhe.create({
-          empresa_id,
-          historico_id: historico.id,
-          qt: r.qt,
-          grupo: r.grupo,
-          descricao: r.descricao,
-          credito: r.credito,
-          modalidade: r.modalidade,
-          lance_percent: r.lance_percent
-        }))
-      );
-      // Delay maior para evitar rate limit
-      await new Promise(resolve => setTimeout(resolve, 300));
-    });
+    // 🚀 Salvar detalhes em LOTE (bulkCreate - 1 request só)
+    const detalhesParaCriar = registros.map(r => ({
+      empresa_id,
+      historico_id: historico.id,
+      qt: r.qt,
+      grupo: r.grupo,
+      descricao: r.descricao,
+      credito: r.credito,
+      modalidade: r.modalidade,
+      lance_percent: r.lance_percent
+    }));
+    
+    await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(detalhesParaCriar);
 
     // Agrupar por grupo + modalidade
     const resumos = agruparPorGrupoEModalidade(registros);
@@ -267,6 +259,8 @@ Deno.serve(async (req) => {
     
     // Criar/Atualizar resumos
     const novosResumos = [];
+    const atualizacoes = [];
+    
     for (const resumo of resumos) {
       const key = `${resumo.grupo}_${resumo.modalidade}`;
       const existente = existentesMap.get(key);
@@ -285,21 +279,24 @@ Deno.serve(async (req) => {
           ? Math.min(existente.menor_lance_percent, novoMenor)
           : (novoMenor || existente.menor_lance_percent);
         
-        await base44.asServiceRole.entities.HistoricoLanceResumo.update(existente.id, {
-          menor_lance_percent: menorFinal,
-          qtd_ocorrencias: (existente.qtd_ocorrencias || 0) + (resumo.qtd_ocorrencias || 1)
-        });
+        atualizacoes.push(
+          base44.asServiceRole.entities.HistoricoLanceResumo.update(existente.id, {
+            menor_lance_percent: menorFinal,
+            qtd_ocorrencias: (existente.qtd_ocorrencias || 0) + (resumo.qtd_ocorrencias || 1)
+          })
+        );
       }
     }
     
-    // Criar novos resumos - chunked com delay maior
-    await chunked(novosResumos, 20, async (chunk) => {
-      await Promise.all(
-        chunk.map(r => base44.asServiceRole.entities.HistoricoLanceResumo.create(r))
-      );
-      // Delay maior para evitar rate limit
-      await new Promise(resolve => setTimeout(resolve, 300));
-    });
+    // Executar atualizações em paralelo
+    if (atualizacoes.length > 0) {
+      await Promise.all(atualizacoes);
+    }
+    
+    // 🚀 Criar novos resumos em LOTE (bulkCreate - 1 request só)
+    if (novosResumos.length > 0) {
+      await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(novosResumos);
+    }
 
     return Response.json({
       sucesso: true,
