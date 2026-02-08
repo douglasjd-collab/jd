@@ -65,29 +65,24 @@ Deno.serve(async (req) => {
     const imp = importacao[0];
     const registros = JSON.parse(imp.payload_json || '[]');
     
-    // Se é a primeira chamada (offset = 0), criar histórico principal
+    // Usar o historico_id que já foi criado na etapa 1 (importarResultadoAssembleia)
     let historico_id = imp.historico_id;
     
+    if (!historico_id) {
+      return Response.json({ error: "historico_id não encontrado na importação" }, { status: 400 });
+    }
+    
+    // Se é a primeira chamada (offset = 0), atualizar os totais do histórico
     if (offset === 0) {
       const totalGrupos = new Set(registros.map(r => r.grupo)).size;
       
-      const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
-        empresa_id: imp.empresa_id,
-        assembleia_data: imp.assembleia_data,
-        chamada: imp.chamada,
-        arquivo_nome: imp.arquivo_nome,
+      await base44.asServiceRole.entities.HistoricoLanceGrupo.update(historico_id, {
         total_grupos: totalGrupos,
-        total_registros: registros.length,
-        criado_em: new Date().toISOString(),
-        usuario_id: imp.usuario_id,
-        usuario_nome: imp.usuario_nome
+        total_registros: registros.length
       });
       
-      historico_id = historico.id;
-      
-      // Atualizar importação com historico_id
+      // Atualizar status da importação
       await base44.asServiceRole.entities.ImportacaoAssembleia.update(imp.id, {
-        historico_id: historico.id,
         status: 'PROCESSANDO'
       });
     }
