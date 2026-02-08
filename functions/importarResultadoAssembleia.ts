@@ -50,29 +50,45 @@ function parseRowsFromText(fullText: string) {
 
   console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
   console.log("[DEBUG] Total de linhas no PDF:", lines.length);
+  console.log("[DEBUG] Primeiras 20 linhas do PDF:");
+  lines.slice(0, 20).forEach((line, idx) => {
+    console.log(`  [${idx}] "${line}"`);
+  });
 
-  // ETAPA 1: Remover lixo (cabeçalhos, legendas, separadores)
+  // ETAPA 1: Remover lixo (cabeçalhos, legendas, separadores) - MAIS TOLERANTE
   const linhasLimpas = lines.filter(line => {
-    if (line.length < 15) return false;
+    // Mínimo de 10 caracteres (era 15)
+    if (line.length < 10) return false;
+    
+    // Filtros mais específicos
     if (/Prováveis Contemplados/i.test(line)) return false;
-    if (/^QT\.?\s*(GRUPO|DESCRIÇÃO|CRÉDITO|MODALIDADE|LANCE)/i.test(line)) return false;
-    if (/^(Legendas|MODALIDADE|CRÉDITO)/i.test(line)) return false;
-    if (/^(S|LL|LF|LFL)\s*[-–—]\s*(Sorteio|Lance)/i.test(line)) return false;
+    if (/^QT\.?\s*(GRUPO|DESCRIÇÃO)/i.test(line)) return false;
+    if (/^Legendas:/i.test(line)) return false;
+    if (/^(S|LL|LF|LFL)\s*[-–—]\s*Sorteio/i.test(line)) return false;
     if (/^\d+ª\s*Opção/i.test(line)) return false;
-    if (/Assembleia/i.test(line)) return false;
-    if (/^\s*[-–—]+\s*$/i.test(line)) return false;
+    if (/^Data\s+da\s+Assembleia/i.test(line)) return false;
+    if (/^\s*[-–—]{3,}\s*$/i.test(line)) return false;
+    
     return true;
   });
 
   console.log("[DEBUG] Linhas após limpeza:", linhasLimpas.length);
+  console.log("[DEBUG] Primeiras 10 linhas limpas:");
+  linhasLimpas.slice(0, 10).forEach((line, idx) => {
+    console.log(`  [${idx}] "${line}"`);
+  });
 
-  // ETAPA 2: Parser por linha - CRITÉRIO: começa com número + grupo (6 dígitos)
+  // ETAPA 2: Parser por linha - CRITÉRIO: começa com número + grupo (5-6 dígitos)
   for (let i = 0; i < linhasLimpas.length; i++) {
     const line = linhasLimpas[i];
     
-    // Identificar se é linha de dados: começa com QT (1-3 dígitos) + GRUPO (6 dígitos)
-    const prefixMatch = line.match(/^(\d{1,3})\s+(\d{6})\s+(.+)/);
+    // Identificar se é linha de dados: começa com QT (1-3 dígitos) + GRUPO (5-6 dígitos)
+    const prefixMatch = line.match(/^(\d{1,3})\s+(\d{5,6})\s+(.+)/);
     if (!prefixMatch) {
+      // Log de linhas não processadas que parecem ser dados
+      if (/^\d+\s+\d{4,7}/.test(line)) {
+        console.log(`[DEBUG] ⚠️ Linha ${i} parece ser dado mas não deu match: "${line}"`);
+      }
       continue;
     }
 
