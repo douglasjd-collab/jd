@@ -26,6 +26,7 @@ export default function ImportarResultadoAssembleia() {
   const [empresaId, setEmpresaId] = useState(null);
   const [arquivo, setArquivo] = useState(null);
   const [assembleiadata, setAssembleiaData] = useState('');
+  const [chamada, setChamada] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
   const [historicoSelecionado, setHistoricoSelecionado] = useState(null);
@@ -74,6 +75,7 @@ export default function ImportarResultadoAssembleia() {
     mutationFn: async () => {
       if (!arquivo) throw new Error('Selecione um arquivo');
       if (!assembleiadata) throw new Error('Informe a data da assembleia');
+      if (!chamada) throw new Error('Selecione a chamada');
 
       // 1. Upload do arquivo
       const { file_url } = await base44.integrations.Core.UploadFile({ file: arquivo });
@@ -85,6 +87,7 @@ export default function ImportarResultadoAssembleia() {
       const response = await base44.functions.invoke('importarResultadoAssembleia', {
         file_url,
         assembleia_data: assembleiadata,
+        chamada,
         empresa_id: isGlobal ? null : empresaId,
         usuario_id: user.id,
         usuario_nome: user.full_name
@@ -97,6 +100,7 @@ export default function ImportarResultadoAssembleia() {
       queryClient.invalidateQueries(['historico-lance-grupo']);
       setArquivo(null);
       setAssembleiaData('');
+      setChamada('');
       document.getElementById('file-input').value = '';
     },
     onError: (error) => {
@@ -136,9 +140,16 @@ export default function ImportarResultadoAssembleia() {
     {
       header: 'Data Assembleia',
       cell: (row) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-slate-400" />
-          {new Date(row.assembleia_data).toLocaleDateString('pt-BR')}
+        <div>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            {new Date(row.assembleia_data).toLocaleDateString('pt-BR')}
+          </div>
+          {row.chamada && (
+            <Badge variant="outline" className="mt-1 text-xs">
+              {row.chamada}
+            </Badge>
+          )}
         </div>
       )
     },
@@ -239,7 +250,7 @@ export default function ImportarResultadoAssembleia() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Data da Assembleia *</Label>
               <Input
@@ -247,6 +258,23 @@ export default function ImportarResultadoAssembleia() {
                 value={assembleiadata}
                 onChange={(e) => setAssembleiaData(e.target.value)}
               />
+            </div>
+            <div>
+              <Label>Chamada *</Label>
+              <select
+                value={chamada}
+                onChange={(e) => setChamada(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Selecione...</option>
+                <option value="Primeira">Primeira</option>
+                <option value="Segunda">Segunda</option>
+                <option value="Terceira">Terceira</option>
+                <option value="Quarta">Quarta</option>
+                <option value="Quinta">Quinta</option>
+                <option value="Sexta">Sexta</option>
+                <option value="Sétima">Sétima</option>
+              </select>
             </div>
             <div>
               <Label>Arquivo PDF *</Label>
@@ -298,7 +326,7 @@ export default function ImportarResultadoAssembleia() {
 
           <Button
             onClick={() => importarMutation.mutate()}
-            disabled={!arquivo || !assembleiadata || importarMutation.isPending}
+            disabled={!arquivo || !assembleiadata || !chamada || importarMutation.isPending}
             className="w-full bg-[#23BE84] hover:bg-[#1da570]"
           >
             {importarMutation.isPending ? (

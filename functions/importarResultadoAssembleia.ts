@@ -147,10 +147,10 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { file_url, assembleia_data } = body;
+    const { file_url, assembleia_data, chamada } = body;
 
-    if (!file_url || !assembleia_data) {
-      return Response.json({ error: "file_url e assembleia_data são obrigatórios" }, { status: 400 });
+    if (!file_url || !assembleia_data || !chamada) {
+      return Response.json({ error: "file_url, assembleia_data e chamada são obrigatórios" }, { status: 400 });
     }
 
     // Baixar PDF
@@ -188,6 +188,7 @@ Deno.serve(async (req) => {
       const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
         empresa_id,
         assembleia_data,
+        chamada,
         arquivo_nome,
         total_grupos: 0,
         total_registros: 0,
@@ -211,6 +212,7 @@ Deno.serve(async (req) => {
     const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
       empresa_id,
       assembleia_data,
+      chamada,
       arquivo_nome,
       total_grupos: totalGrupos,
       total_registros: registros.length,
