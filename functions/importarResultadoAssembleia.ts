@@ -283,11 +283,19 @@ Deno.serve(async (req) => {
       
       if (isSegundaChamada && mapaExistentes[chave]) {
         // Segunda chamada e existe: atualizar
+        const existente = mapaExistentes[chave];
+        
+        // 🔥 REGRA: Preservar o MAIOR lance entre primeira e segunda chamada
+        const maiorFinal =
+          existente.maior_lance_percent !== null && r.maior_lance_percent !== null
+            ? Math.max(existente.maior_lance_percent, r.maior_lance_percent)
+            : (existente.maior_lance_percent ?? r.maior_lance_percent ?? null);
+        
         payloadUpdate.push({
-          id: mapaExistentes[chave].id,
-          menor_lance_percent: r.menor_lance_percent ?? null,
-          maior_lance_percent: r.maior_lance_percent ?? null,
-          qtd_ocorrencias: (mapaExistentes[chave].qtd_ocorrencias || 0) + (r.qtd_ocorrencias || 1)
+          id: existente.id,
+          menor_lance_percent: r.menor_lance_percent ?? existente.menor_lance_percent ?? null,
+          maior_lance_percent: maiorFinal,
+          qtd_ocorrencias: (existente.qtd_ocorrencias ?? 0) + (r.qtd_ocorrencias ?? 1)
         });
       } else {
         // Primeira chamada OU não existe: criar
