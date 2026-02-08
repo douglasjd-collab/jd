@@ -137,47 +137,41 @@ export default function ImportarResultadoAssembleia() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      try {
-        // Deletar ImportacaoAssembleia relacionada
-        const importacoes = await base44.entities.ImportacaoAssembleia.filter({ historico_id: id });
-        if (importacoes && importacoes.length > 0) {
-          await Promise.all(importacoes.map(imp => 
-            base44.entities.ImportacaoAssembleia.delete(imp.id).catch(() => null)
-          ));
+      // PASSO 1: Marcar como pendente (UX imediata)
+      await base44.entities.HistoricoLanceGrupo.update(id, {
+        status: 'EXCLUIR_PENDENTE'
+      });
+
+      // PASSO 2 e 3: Processar exclusão em lotes
+      let status = 'PROCESSANDO';
+      
+      while (status !== 'FINALIZADO') {
+        const response = await base44.functions.invoke('processarExclusaoHistoricoLance', {
+          historico_id: id,
+          limit: 20
+        });
+
+        if (!response.data) {
+          throw new Error('Erro no processamento da exclusão');
         }
 
-        // Deletar detalhes
-        const detalhes = await base44.entities.HistoricoLanceDetalhe.filter({ historico_id: id });
-        if (detalhes && detalhes.length > 0) {
-          await Promise.all(detalhes.map(detalhe => 
-            base44.entities.HistoricoLanceDetalhe.delete(detalhe.id).catch(() => null)
-          ));
-        }
+        status = response.data.status;
 
-        // Deletar resumos
-        const resumos = await base44.entities.HistoricoLanceResumo.filter({ historico_id: id });
-        if (resumos && resumos.length > 0) {
-          await Promise.all(resumos.map(resumo => 
-            base44.entities.HistoricoLanceResumo.delete(resumo.id).catch(() => null)
-          ));
+        // Mostrar progresso
+        if (status !== 'FINALIZADO') {
+          toast.loading(`Excluindo: ${status}`, { id: 'exclusao-progresso' });
         }
-        
-        // Deletar histórico principal
-        await base44.entities.HistoricoLanceGrupo.delete(id);
-      } catch (error) {
-        // Se falhar, tentar deletar apenas o histórico principal
-        console.warn('Erro ao deletar filhos, tentando deletar apenas o histórico principal:', error);
-        await base44.entities.HistoricoLanceGrupo.delete(id);
       }
+
+      toast.success('Histórico excluído com sucesso', { id: 'exclusao-progresso' });
     },
     onSuccess: () => {
-      toast.success('Histórico excluído com sucesso');
       queryClient.invalidateQueries(['historico-lance-grupo']);
       setDeleteId(null);
     },
     onError: (error) => {
       console.error('Erro ao excluir:', error);
-      toast.error(error?.message || 'Erro ao excluir histórico');
+      toast.error(error?.message || 'Erro ao excluir histórico', { id: 'exclusao-progresso' });
     }
   });
 
