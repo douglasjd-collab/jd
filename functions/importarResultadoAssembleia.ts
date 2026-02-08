@@ -6,15 +6,19 @@ function limparLinhasPDF(texto) {
     .split('\n')
     .map(l => l.trim())
     .filter(l => {
-      // Deve começar com QT + GRUPO: 1-3 dígitos + 6 dígitos
-      if (!/^\d{1,3}\d{6}/.test(l)) return false;
+      if (!l || l.length < 10) return false;
       
-      // Ignorar headers
-      if (l.match(/^QT/i)) return false;
-      if (l.match(/Legendas/i)) return false;
+      // Ignorar headers conhecidos
+      if (l.match(/^QT\s+GRUPO/i)) return false;
+      if (l.match(/Legendas:/i)) return false;
       if (l.match(/Prováveis Contemplados/i)) return false;
+      if (l.match(/^\s*Página/i)) return false;
+      if (l.match(/^\s*Data:/i)) return false;
       
-      return true;
+      // Aceitar linhas que contenham grupo de 6 dígitos
+      if (/\d{6}/.test(l)) return true;
+      
+      return false;
     });
 }
 
