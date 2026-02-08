@@ -80,23 +80,50 @@ export default function ImportarResultadoAssembleia() {
       // 1. Upload do arquivo
       const { file_url } = await base44.integrations.Core.UploadFile({ file: arquivo });
 
-      // 2. Super admin faz importação global (sem empresa_id)
-      const isGlobal = user?.perfil === 'super_admin' || user?.perfil === 'master';
-
-      // 3. Processar via backend
+      // 2. ETAPA 1: Parse do PDF
       const response = await base44.functions.invoke('importarResultadoAssembleia', {
         file_url,
         assembleia_data: assembleiadata,
-        chamada,
-        empresa_id: isGlobal ? null : empresaId,
-        usuario_id: user.id,
-        usuario_nome: user.full_name
+        chamada
       });
 
-      return response.data;
+      if (!response.data.sucesso) {
+        throw new Error(response.data.error || 'Erro no parse do PDF');
+      }
+
+      const { importacao_id, total_registros } = response.data;
+
+      // 3. ETAPA 2 e 3: Processar em lotes
+      let offset = 0;
+      const limit = 20;
+      let concluido = false;
+
+      while (!concluido) {
+        const processResponse = await base44.functions.invoke('processarImportacaoAssembleia', {
+          importacao_id,
+          offset,
+          limit
+        });
+
+        if (!processResponse.data.sucesso) {
+          throw new Error(processResponse.data.error || 'Erro no processamento');
+        }
+
+        concluido = processResponse.data.concluido;
+        offset = processResponse.data.proximo_offset || offset + limit;
+
+        // Mostrar progresso
+        const progresso = Math.round((processResponse.data.registros_processados / total_registros) * 100);
+        toast.loading(`Processando: ${progresso}%`, { id: 'importacao-progresso' });
+
+        if (concluido) {
+          toast.success(`Importação concluída: ${total_registros} registros`, { id: 'importacao-progresso' });
+        }
+      }
+
+      return { total_registros };
     },
     onSuccess: (data) => {
-      toast.success(`Importado: ${data.total_grupos} grupos, ${data.total_registros} registros`);
       queryClient.invalidateQueries(['historico-lance-grupo']);
       setArquivo(null);
       setAssembleiaData('');
@@ -104,7 +131,7 @@ export default function ImportarResultadoAssembleia() {
       document.getElementById('file-input').value = '';
     },
     onError: (error) => {
-      toast.error(error.message || 'Erro ao importar');
+      toast.error(error.message || 'Erro ao importar', { id: 'importacao-progresso' });
     }
   });
 

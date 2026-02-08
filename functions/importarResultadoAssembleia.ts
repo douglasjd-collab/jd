@@ -1,18 +1,6 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
 import pdfParse from "npm:pdf-parse@1.1.1";
 
-function chunkArray(arr, size = 25) {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function limparLinhasPDF(texto) {
   return texto
     .split('\n')
@@ -92,43 +80,6 @@ function parseLinhaAssembleia(linha) {
   };
 }
 
-function agruparPorGrupoEModalidade(registros) {
-  const grupos = new Map();
-  
-  for (const reg of registros) {
-    const key = `${reg.grupo}_${reg.modalidade}`;
-    
-    if (!grupos.has(key)) {
-      grupos.set(key, {
-        grupo: reg.grupo,
-        modalidade: reg.modalidade,
-        percentuais: []
-      });
-    }
-    
-    if (reg.lance_percent !== null) {
-      grupos.get(key).percentuais.push(reg.lance_percent);
-    }
-  }
-  
-  const resumos = [];
-  for (const [key, data] of grupos) {
-    const percentuais = data.percentuais;
-    const menor = percentuais.length > 0 ? Math.min(...percentuais) : null;
-    const maior = percentuais.length > 0 ? Math.max(...percentuais) : null;
-    
-    resumos.push({
-      grupo: data.grupo,
-      modalidade: data.modalidade,
-      menor_lance_percent: menor,
-      maior_lance_percent: maior,
-      qtd_ocorrencias: percentuais.length || 1
-    });
-  }
-  
-  return resumos;
-}
-
 function withTimeout(promise, ms = 25000) {
   return new Promise((resolve, reject) => {
     const id = setTimeout(() => reject(new Error(`Timeout após ${ms}ms`)), ms);
@@ -181,192 +132,32 @@ Deno.serve(async (req) => {
     // Parse
     const linhas = limparLinhasPDF(text);
     console.log('[DEBUG] Total linhas limpas:', linhas.length);
-    console.log('[DEBUG] Primeiras 20 linhas:');
-    linhas.slice(0, 20).forEach((l, i) => console.log(`  [${i}] ${l}`));
 
     const registros = linhas.map(parseLinhaAssembleia).filter(Boolean);
     console.log('[DEBUG] Total registros parseados:', registros.length);
-    console.log('[DEBUG] Primeiros 20 registros:');
-    registros.slice(0, 20).forEach((r, i) => {
-      console.log(`  [${i}] QT:${r.qt} Grupo:${r.grupo} Mod:${r.modalidade} Lance:${r.lance_percent}% Créd:${r.credito}`);
-    });
-
-    const totalGrupos = new Set(registros.map(r => r.grupo)).size;
-
-    // Se não encontrou nada, salvar histórico vazio
-    if (registros.length === 0) {
-      const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
-      
-      const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
-        empresa_id,
-        assembleia_data,
-        chamada,
-        arquivo_nome,
-        total_grupos: 0,
-        total_registros: 0,
-        criado_em: new Date().toISOString(),
-        usuario_id: user.id,
-        usuario_nome: user.full_name || user.email
-      });
-
-      return Response.json({
-        sucesso: true,
-        aviso: "Nenhuma linha válida encontrada no PDF",
-        historico_id: historico.id,
-        total_lances: 0,
-        total_grupos: 0
-      });
-    }
 
     const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
 
-    // Criar histórico principal
-    const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
+    // 🟢 ETAPA 1: Salvar payload JSON no banco
+    const importacao = await base44.asServiceRole.entities.ImportacaoAssembleia.create({
       empresa_id,
       assembleia_data,
       chamada,
       arquivo_nome,
-      total_grupos: totalGrupos,
+      file_url,
+      status: 'PARSE_OK',
+      payload_json: JSON.stringify(registros),
       total_registros: registros.length,
-      criado_em: new Date().toISOString(),
+      registros_processados: 0,
       usuario_id: user.id,
       usuario_nome: user.full_name || user.email
     });
 
-    // 🚀 Salvar detalhes em LOTE (chunked para evitar rate limit)
-    const detalhesParaCriar = registros.map(r => ({
-      empresa_id,
-      historico_id: historico.id,
-      qt: r.qt,
-      grupo: r.grupo,
-      descricao: r.descricao,
-      credito: r.credito,
-      modalidade: r.modalidade,
-      lance_percent: r.lance_percent
-    }));
-    
-    const blocosDetalhes = chunkArray(detalhesParaCriar, 25);
-    for (const bloco of blocosDetalhes) {
-      await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(bloco);
-      if (blocosDetalhes.length > 1) {
-        await sleep(400);
-      }
-    }
-
-    // 🔹 Identificar chamada
-    const isSegundaChamada = chamada === 'Segunda';
-    
-    // Agrupar por grupo + modalidade
-    const resumos = agruparPorGrupoEModalidade(registros);
-    
-    // 🔹 Buscar registros existentes (1 request)
-    let registrosExistentes = [];
-    
-    if (isSegundaChamada) {
-      const [ano, mes] = assembleia_data.split('-');
-      const mesAno = `${ano}-${mes}`;
-      
-      // Buscar todos resumos da empresa no mesmo mês/ano
-      const todosResumos = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
-        empresa_id
-      });
-      
-      // Filtrar por mês/ano em memória
-      for (const r of todosResumos) {
-        const hist = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({ id: r.historico_id });
-        if (hist?.[0]?.assembleia_data) {
-          const [anoHist, mesHist] = hist[0].assembleia_data.split('-');
-          const mesAnoHist = `${anoHist}-${mesHist}`;
-          
-          if (mesAnoHist === mesAno) {
-            registrosExistentes.push(r);
-          }
-        }
-      }
-    }
-    
-    // 🔹 Criar mapa de controle (MEMÓRIA)
-    const mapaExistentes = {};
-    for (const r of registrosExistentes) {
-      const chave = `${r.grupo}_${r.modalidade}`;
-      mapaExistentes[chave] = r;
-    }
-    
-    // 🔹 Gerar payload FINAL (sem duplicar)
-    const payloadCreate = [];
-    const payloadUpdate = [];
-    
-    for (const r of resumos) {
-      const chave = `${r.grupo}_${r.modalidade}`;
-      
-      if (isSegundaChamada && mapaExistentes[chave]) {
-        // Segunda chamada e existe: atualizar
-        const existente = mapaExistentes[chave];
-        
-        // 🔥 REGRA: Preservar o MAIOR lance entre primeira e segunda chamada
-        const maiorFinal =
-          existente.maior_lance_percent !== null && r.maior_lance_percent !== null
-            ? Math.max(existente.maior_lance_percent, r.maior_lance_percent)
-            : (existente.maior_lance_percent ?? r.maior_lance_percent ?? null);
-        
-        payloadUpdate.push({
-          id: existente.id,
-          menor_lance_percent: r.menor_lance_percent ?? existente.menor_lance_percent ?? null,
-          maior_lance_percent: maiorFinal,
-          qtd_ocorrencias: (existente.qtd_ocorrencias ?? 0) + (r.qtd_ocorrencias ?? 1)
-        });
-      } else {
-        // Primeira chamada OU não existe: criar
-        payloadCreate.push({
-          empresa_id,
-          historico_id: historico.id,
-          grupo: r.grupo,
-          modalidade: r.modalidade,
-          menor_lance_percent: r.menor_lance_percent ?? null,
-          maior_lance_percent: r.maior_lance_percent ?? null,
-          qtd_ocorrencias: r.qtd_ocorrencias ?? 1
-        });
-      }
-    }
-    
-    // 🔹 EXECUÇÃO SEM RATE LIMIT
-    // ✅ CREATE EM LOTE (chunked para evitar rate limit)
-    if (payloadCreate.length > 0) {
-      const blocosCreate = chunkArray(payloadCreate, 25);
-      for (const bloco of blocosCreate) {
-        await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(bloco);
-        if (blocosCreate.length > 1) {
-          await sleep(400);
-        }
-      }
-    }
-    
-    // ✅ UPDATE EM LOTE (chunked para evitar rate limit)
-    if (payloadUpdate.length > 0) {
-      const blocos = chunkArray(payloadUpdate, 25);
-      
-      for (const bloco of blocos) {
-        await Promise.all(bloco.map(item => 
-          base44.asServiceRole.entities.HistoricoLanceResumo.update(item.id, {
-            menor_lance_percent: item.menor_lance_percent,
-            maior_lance_percent: item.maior_lance_percent,
-            qtd_ocorrencias: item.qtd_ocorrencias
-          })
-        ));
-        
-        if (blocos.length > 1) {
-          await sleep(400); // Evita rate limit entre blocos
-        }
-      }
-    }
-
     return Response.json({
       sucesso: true,
-      historico_id: historico.id,
-      total_lances: registros.length,
-      total_grupos: totalGrupos,
-      total_resumos_criados: payloadCreate.length,
-      total_resumos_atualizados: payloadUpdate.length
+      importacao_id: importacao.id,
+      total_registros: registros.length,
+      mensagem: 'Parse concluído. Inicie o processamento no frontend.'
     });
 
   } catch (e) {
