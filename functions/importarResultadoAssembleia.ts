@@ -28,10 +28,17 @@ function parseOpcao(fullText: string) {
 function extrairGrupo(bloco: string): string | null {
   if (!bloco) return null;
   
-  // Buscar grupo de 6 dígitos em qualquer parte do bloco
-  const match = bloco.match(/\b(\d{6})\b/);
+  // Quebra o bloco em partes separadas por espaços
+  const partes = bloco.split(/\s+/);
   
-  return match ? match[1] : null;
+  for (const parte of partes) {
+    // Grupo válido = exatamente 6 dígitos (nada mais, nada menos)
+    if (/^\d{6}$/.test(parte)) {
+      return parte;
+    }
+  }
+  
+  return null;
 }
 
 function extrairQT(bloco: string): number | null {
@@ -95,36 +102,28 @@ function limparTextoPDF(texto: string): string[] {
 
 function agruparBlocos(linhas: string[]): string[] {
   const blocos: string[] = [];
-  let blocoAtual: string[] = [];
+  let atual: string[] = [];
 
   for (const linha of linhas) {
-    // Linha que contém SOMENTE o número do grupo (6 dígitos)
-    if (/^\d{6}$/.test(linha)) {
-      // Salva o bloco anterior
-      if (blocoAtual.length > 0) {
-        blocos.push(blocoAtual.join(' '));
-      }
+    const limpa = linha.trim();
 
-      // Inicia novo bloco já com o grupo
-      blocoAtual = [linha];
-    } else {
-      // Continua o bloco atual
-      if (blocoAtual.length > 0) {
-        blocoAtual.push(linha);
-      }
+    // Começa novo grupo SOMENTE se for 6 dígitos sozinho
+    if (/^\d{6}$/.test(limpa)) {
+      if (atual.length) blocos.push(atual.join(' '));
+      atual = [limpa];
+    } else if (atual.length) {
+      atual.push(limpa);
     }
   }
 
-  // Salva o último bloco
-  if (blocoAtual.length > 0) {
-    blocos.push(blocoAtual.join(' '));
-  }
+  if (atual.length) blocos.push(atual.join(' '));
 
   return blocos;
 }
 
 function parseBlocoAssembleia(bloco: string) {
   const grupo = extrairGrupo(bloco);
+  // CRÍTICO: só descarta se não tem grupo - percentual é OPCIONAL
   if (!grupo) return null;
   
   const qt = extrairQT(bloco);
@@ -134,9 +133,10 @@ function parseBlocoAssembleia(bloco: string) {
   
   // Identificar modalidade
   const blocoLower = bloco.toLowerCase();
-  let modalidade = "sorteio";
+  let modalidade = "sorteio"; // default para quando não tem percentual
   
   if (percentual !== null) {
+    // Tem percentual = é algum tipo de lance
     if (blocoLower.includes("lance livre")) {
       modalidade = "lance_livre";
     } else if (blocoLower.includes("lance limitado")) {
@@ -153,7 +153,8 @@ function parseBlocoAssembleia(bloco: string) {
   
   // Extrair descrição (remover QT, grupo, valores e modalidade)
   let descricao = bloco
-    .replace(/^\d{1,3}\s+\d{6}\s*/, '') // Remove QT e grupo
+    .replace(/^\d{1,3}\s+/, '') // Remove QT se houver
+    .replace(/\d{6}/, '') // Remove grupo
     .replace(/R\$\s?:?\s?[\d.]+,\d{2}/g, '') // Remove valores
     .replace(/[\d.]+,\d{2}%/g, '') // Remove percentuais
     .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/gi, '') // Remove modalidade
@@ -166,7 +167,7 @@ function parseBlocoAssembleia(bloco: string) {
     descricao,
     credito: valorCredito,
     modalidade,
-    lance_percent: percentual
+    lance_percent: percentual // pode ser null para sorteios
   };
 }
 
@@ -195,8 +196,9 @@ function parseRowsFromText(fullText: string) {
 
   // ETAPA 2: Agrupar linhas em blocos
   const blocos = agruparBlocos(linhasLimpas);
-  console.log("[DEBUG] Blocos agrupados:", blocos.length);
-  console.log("[DEBUG] Primeiros 5 blocos COMPLETOS:");
+  console.log("[DEBUG] ========== BLOCOS ==========");
+  console.log("[DEBUG] Total de blocos:", blocos.length);
+  console.log("[DEBUG] Primeiros 5 blocos:");
   blocos.slice(0, 5).forEach((bloco, idx) => {
     console.log(`  [${idx}] "${bloco}"`);
   });
@@ -206,20 +208,22 @@ function parseRowsFromText(fullText: string) {
     .map(parseBlocoAssembleia)
     .filter(Boolean);
 
-  console.log("[DEBUG] Primeiros 5 REGISTROS parseados:");
+  console.log("[DEBUG] ========== REGISTROS ==========");
+  console.log("[DEBUG] Total de registros:", registros.length);
+  console.log("[DEBUG] Primeiros 5 registros:");
   registros.slice(0, 5).forEach((reg, idx) => {
-    console.log(`  [${idx}] Grupo: ${reg.grupo}, QT: ${reg.qt}, Desc: ${reg.descricao}, Crédito: ${reg.credito}, Modalidade: ${reg.modalidade}, Lance: ${reg.lance_percent}%`);
+    console.log(`  [${idx}] { Grupo: ${reg.grupo}, Tipo: ${reg.modalidade}, Lance: ${reg.lance_percent || 'null'}%, Crédito: ${reg.credito} }`);
   });
 
   // ETAPA 4: Contagem de grupos únicos
   const grupos = registros.map(r => r.grupo).filter(Boolean);
   const totalGrupos = new Set(grupos).size;
   
-  console.log("[DEBUG] ⚠️ VERIFICAÇÃO FINAL:");
-  console.log("[DEBUG] - Blocos processados:", blocos.length);
-  console.log("[DEBUG] - Registros válidos:", registros.length);
-  console.log("[DEBUG] - Grupos únicos:", totalGrupos);
-  console.log("[DEBUG] - Arrays vazios?", { blocos: blocos.length === 0, registros: registros.length === 0 });
+  console.log("[DEBUG] ========== RESULTADO FINAL ==========");
+  console.log("[DEBUG] - Total blocos:", blocos.length);
+  console.log("[DEBUG] - Total registros:", registros.length);
+  console.log("[DEBUG] - Total grupos únicos:", totalGrupos);
+  console.log("[DEBUG] - Grupos encontrados:", Array.from(new Set(grupos)).sort().slice(0, 10).join(', '), '...');
 
   console.log("[DEBUG] ========== FIM DO PARSE ==========");
   console.log("[DEBUG] Total de blocos processados:", blocos.length);
