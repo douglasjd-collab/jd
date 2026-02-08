@@ -58,7 +58,7 @@ export default function HistoricoResultadoAssembleia() {
 
   // Processar dados consolidados
   const gruposConsolidados = React.useMemo(() => {
-    if (!todosDetalhes.length || !todosResumos.length) return [];
+    if (!todosDetalhes.length) return [];
 
     // Agrupar detalhes por grupo
     const grupos = {};
@@ -77,58 +77,36 @@ export default function HistoricoResultadoAssembleia() {
       if (!grupos[detalhe.grupo]) {
         grupos[detalhe.grupo] = {
           grupo: detalhe.grupo,
-          detalhes: [],
-          resumosPorModalidade: {}
+          detalhes: []
         };
       }
       grupos[detalhe.grupo].detalhes.push(detalhe);
     }
 
-    // Consolidar resumos por grupo + modalidade (agregando múltiplos historico_id)
-    for (const resumo of todosResumos) {
-      // Filtrar por mês se selecionado
-      if (mesSelecionado) {
-        const historico = historicos.find(h => h.id === resumo.historico_id);
-        if (historico) {
-          const dataAssembleia = new Date(historico.assembleia_data);
-          const mesAno = `${dataAssembleia.getFullYear()}-${String(dataAssembleia.getMonth() + 1).padStart(2, '0')}`;
-          if (mesAno !== mesSelecionado) continue;
-        }
-      }
-
-      if (grupos[resumo.grupo]) {
-        const modalidade = resumo.modalidade;
-        if (!grupos[resumo.grupo].resumosPorModalidade[modalidade]) {
-          grupos[resumo.grupo].resumosPorModalidade[modalidade] = {
-            modalidade,
-            menor_lance_percent: resumo.menor_lance_percent,
-            maior_lance_percent: resumo.maior_lance_percent,
-            qtd_ocorrencias: resumo.qtd_ocorrencias || 0
-          };
-        } else {
-          // Consolidar: pegar o menor dos menores, o maior dos maiores, e somar ocorrências
-          const atual = grupos[resumo.grupo].resumosPorModalidade[modalidade];
-          atual.menor_lance_percent = Math.min(
-            atual.menor_lance_percent ?? 999,
-            resumo.menor_lance_percent ?? 999
-          );
-          atual.maior_lance_percent = Math.max(
-            atual.maior_lance_percent ?? 0,
-            resumo.maior_lance_percent ?? 0
-          );
-          atual.qtd_ocorrencias = (atual.qtd_ocorrencias || 0) + (resumo.qtd_ocorrencias || 0);
-        }
-      }
-    }
-
-    // Converter resumosPorModalidade de objeto para array e limpar valores inválidos
+    // Calcular resumos a partir dos detalhes (fonte de verdade)
     for (const grupo of Object.values(grupos)) {
-      grupo.resumos = Object.values(grupo.resumosPorModalidade).map(r => ({
-        ...r,
-        menor_lance_percent: r.menor_lance_percent >= 999 ? null : r.menor_lance_percent,
-        maior_lance_percent: r.maior_lance_percent <= 0 ? null : r.maior_lance_percent
+      const resumosPorModalidade = {};
+      
+      for (const detalhe of grupo.detalhes) {
+        const modalidade = detalhe.modalidade;
+        if (!resumosPorModalidade[modalidade]) {
+          resumosPorModalidade[modalidade] = {
+            modalidade,
+            lances: []
+          };
+        }
+        if (detalhe.lance_percent !== null) {
+          resumosPorModalidade[modalidade].lances.push(detalhe.lance_percent);
+        }
+      }
+      
+      // Converter para resumos com min/max calculados
+      grupo.resumos = Object.values(resumosPorModalidade).map(r => ({
+        modalidade: r.modalidade,
+        menor_lance_percent: r.lances.length > 0 ? Math.min(...r.lances) : null,
+        maior_lance_percent: r.lances.length > 0 ? Math.max(...r.lances) : null,
+        qtd_ocorrencias: r.lances.length
       }));
-      delete grupo.resumosPorModalidade;
     }
 
     // Filtrar por busca de grupo
