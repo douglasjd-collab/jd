@@ -325,7 +325,8 @@ Deno.serve(async (req) => {
       historico_id: historico.id,
       total_lances: registros.length,
       total_grupos: totalGrupos,
-      total_resumos: novosResumos.length
+      total_resumos_criados: payloadCreate.length,
+      total_resumos_atualizados: payloadUpdate.length
     });
 
   } catch (e) {
