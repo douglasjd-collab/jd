@@ -128,11 +128,15 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
   };
 
   const handleSelectVariacao = (group, variacao) => {
+    // Extrair número do grupo do código (ex: "CR4301" -> "4301")
+    const grupoNumero = group.codigo?.replace(/^\D+/, '') || '';
+    
     onSelectPlano({
       credito: group.valor_bem,
       parcela: variacao.parcela,
       prazo: variacao.prazo_meses,
-      nome_bem: group.nome_bem
+      nome_bem: group.nome_bem,
+      grupo: grupoNumero
     });
     setVariacoesDialogOpen(false);
     onOpenChange(false);
