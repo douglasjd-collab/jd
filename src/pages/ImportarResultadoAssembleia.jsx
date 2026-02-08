@@ -512,7 +512,10 @@ export default function ImportarResultadoAssembleia() {
                       return (
                         <Card key={grupo} className="border-2">
                           <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
+                            <CardTitle 
+                              className="text-lg flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
+                              onClick={() => setBuscaGrupo(grupo)}
+                            >
                               <FileSpreadsheet className="w-5 h-5 text-[#23BE84]" />
                               Grupo {grupo}
                             </CardTitle>
