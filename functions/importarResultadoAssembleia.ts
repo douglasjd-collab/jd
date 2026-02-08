@@ -180,8 +180,13 @@ function parseRowsFromText(fullText: string) {
   // ETAPA 1: Limpeza e filtragem de linhas
   const linhas = limparLinhasPDF(fullText);
   console.log("[DEBUG] Linhas após limpeza:", linhas.length);
-  console.log("[DEBUG] Primeiras 15 linhas:");
-  linhas.slice(0, 15).forEach((line, idx) => {
+  console.log("[DEBUG] Primeiras 20 linhas RAW:");
+  linhas.slice(0, 20).forEach((line, idx) => {
+    console.log(`  [${idx}] "${line}"`);
+  });
+  
+  console.log("[DEBUG] Últimas 5 linhas RAW:");
+  linhas.slice(-5).forEach((line, idx) => {
     console.log(`  [${idx}] "${line}"`);
   });
 
