@@ -93,16 +93,17 @@ export default function ImportarResultadoAssembleia() {
 
       const { importacao_id, total_registros } = response.data;
 
-      // 3. ETAPA 2 e 3: Processar em lotes
+      // 3. ETAPA 2 e 3: Processar em lotes com pausa
       let offset = 0;
-      const limit = 20;
+      const limit = 10;
       let concluido = false;
 
       while (!concluido) {
         const processResponse = await base44.functions.invoke('processarImportacaoAssembleia', {
           importacao_id,
           offset,
-          limit
+          limit,
+          chamada
         });
 
         if (!processResponse.data.sucesso) {
@@ -115,6 +116,11 @@ export default function ImportarResultadoAssembleia() {
         // Mostrar progresso
         const progresso = Math.round((processResponse.data.registros_processados / total_registros) * 100);
         toast.loading(`Processando: ${progresso}%`, { id: 'importacao-progresso' });
+
+        // ⏸️ Pausa obrigatória entre lotes
+        if (!concluido) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
 
         if (concluido) {
           toast.success(`Importação concluída: ${total_registros} registros`, { id: 'importacao-progresso' });

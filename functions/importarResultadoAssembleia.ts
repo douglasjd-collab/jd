@@ -138,7 +138,20 @@ Deno.serve(async (req) => {
 
     const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
 
-    // 🟢 ETAPA 1: Salvar payload JSON no banco
+    // 🟢 ETAPA 1: Criar histórico vazio e salvar payload
+    const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
+      empresa_id,
+      assembleia_data,
+      chamada,
+      arquivo_nome,
+      status: 'ATIVO',
+      total_grupos: 0,
+      total_registros: 0,
+      criado_em: new Date().toISOString(),
+      usuario_id: user.id,
+      usuario_nome: user.full_name || user.email
+    });
+
     const importacao = await base44.asServiceRole.entities.ImportacaoAssembleia.create({
       empresa_id,
       assembleia_data,
@@ -149,6 +162,7 @@ Deno.serve(async (req) => {
       payload_json: JSON.stringify(registros),
       total_registros: registros.length,
       registros_processados: 0,
+      historico_id: historico.id,
       usuario_id: user.id,
       usuario_nome: user.full_name || user.email
     });
@@ -156,6 +170,7 @@ Deno.serve(async (req) => {
     return Response.json({
       sucesso: true,
       importacao_id: importacao.id,
+      historico_id: historico.id,
       total_registros: registros.length,
       mensagem: 'Parse concluído. Inicie o processamento no frontend.'
     });
