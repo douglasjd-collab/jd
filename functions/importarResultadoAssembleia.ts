@@ -88,55 +88,63 @@ function parseLinhaAssembleia(linha: string) {
 function limparLinhasPDF(texto: string): string[] {
   return texto
     .split('\n')
-    .map(l => l.replace(/\s+/g, ' ').trim())
-    .filter(l =>
-      l.length > 10 &&
-      !l.startsWith('QT.') &&
-      !l.match(/^QT\s+(GRUPO|DESCRIÇÃO)/i) &&
-      !l.includes('Legendas') &&
-      !l.match(/^[-–—]{3,}/) &&
-      !l.match(/^S\s*-\s*Sorteio/i) &&
-      !l.match(/Prováveis Contemplados/i) &&
-      !l.match(/Assembleia.*\d{2}\/\d{2}\/\d{4}/i) &&
-      !l.match(/Pedra Chave/i) &&
-      !l.match(/^\d+ª\s*Opção/i) &&
-      /\d{6}/.test(l) // Deve conter um grupo de 6 dígitos
-    );
+    .map(l => l.trim())
+    .filter(l => {
+      // Deve ter pelo menos 15 caracteres
+      if (l.length < 15) return false;
+      
+      // Deve ter padrão: QT + GRUPO (1-3 dígitos seguidos de 6 dígitos)
+      if (!/^\d{1,3}\d{6}/.test(l)) return false;
+      
+      // Ignorar headers e legendas
+      if (l.match(/^QT/i)) return false;
+      if (l.match(/Legendas/i)) return false;
+      if (l.match(/Prováveis Contemplados/i)) return false;
+      if (l.match(/Assembleia/i)) return false;
+      if (l.match(/Pedra Chave/i)) return false;
+      if (l.match(/^[-–—]{2,}/)) return false;
+      if (l.match(/^S\s*-\s*Sorteio/i)) return false;
+      
+      return true;
+    });
 }
 
 function parseLinhaAssembleia(linha: string) {
   if (!linha) return null;
   
-  // Extrair QT (1-3 dígitos no início da linha)
-  const qtMatch = linha.match(/^(\d{1,3})\s+/);
+  // Formato do PDF: "1003102SERVIÇOS FAIXA IR$ 22.964,10Lance Livre20,0000%"
+  // Ou com espaços: "1 003102 SERVIÇOS FAIXA I R$ 22.964,10 Lance Livre 20,0000%"
+  
+  // Extrair QT (1-3 dígitos no início)
+  const qtMatch = linha.match(/^(\d{1,3})/);
   const qt = qtMatch ? parseInt(qtMatch[1]) : null;
   
-  // Extrair GRUPO (exatamente 6 dígitos)
-  const grupoMatch = linha.match(/\b(\d{6})\b/);
+  // Extrair GRUPO (6 dígitos consecutivos após QT)
+  const grupoMatch = linha.match(/^\d{1,3}(\d{6})/);
   const grupo = grupoMatch ? grupoMatch[1] : null;
   
-  if (!grupo) return null; // Sem grupo = linha inválida
+  if (!grupo) return null;
   
-  // Extrair PERCENTUAL (formato: XX,XXXX% ou XX,XX%)
-  const percentMatch = linha.match(/(\d{1,3},\d{2,4})%/);
+  // Extrair PERCENTUAL (formato: XX,XXXX% no final da linha)
+  const percentMatch = linha.match(/(\d{1,3},\d{2,4})%\s*$/);
   const percentual = percentMatch ? parseFloat(percentMatch[1].replace(',', '.')) : null;
   
-  // Extrair CRÉDITO (último valor R$ encontrado é o crédito final)
+  // Extrair CRÉDITO (último R$ antes do tipo de lance)
   const creditoMatches = [...linha.matchAll(/R\$\s*:?\s*([\d.]+,\d{2})/g)];
   const credito = creditoMatches.length > 0 
     ? parseFloat(creditoMatches[creditoMatches.length - 1][1].replace(/\./g, '').replace(',', '.'))
     : null;
   
-  // Identificar modalidade
+  // Identificar MODALIDADE
   const linhaLower = linha.toLowerCase();
-  let modalidade = "sorteio"; // default para quando não tem percentual
+  let modalidade = "sorteio";
   
   if (percentual !== null) {
-    if (linhaLower.includes("lance livre") || linhaLower.includes(" ll ")) {
+    if (linhaLower.includes("lance livre")) {
       modalidade = "lance_livre";
-    } else if (linhaLower.includes("lance limitado") || linhaLower.includes(" lm ")) {
+    } else if (linhaLower.includes("lance limitado")) {
       modalidade = "lance_limitado";
-    } else if (linhaLower.includes("lance fixo") || linhaLower.includes(" lf ")) {
+    } else if (linhaLower.includes("lance fixo")) {
       if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
       else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
       else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
@@ -146,11 +154,12 @@ function parseLinhaAssembleia(linha: string) {
     }
   }
   
-  // Extrair descrição (entre grupo e primeiro R$)
+  // Extrair DESCRIÇÃO (entre grupo e primeiro R$)
   let descricao = linha
-    .replace(/^\d{1,3}\s+/, '') // Remove QT
-    .replace(/\d{6}/, '') // Remove grupo
-    .split(/R\$/)[0] // Pega tudo antes do primeiro R$
+    .replace(/^\d{1,3}/, '') // Remove QT
+    .replace(/^\d{6}/, '') // Remove grupo
+    .split(/R\$/)[0] // Tudo antes do primeiro R$
+    .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/gi, '') // Remove modalidade
     .replace(/\s+/g, ' ')
     .trim();
   
@@ -182,8 +191,8 @@ function parseRowsFromText(fullText: string) {
   // ETAPA 1: Limpeza e filtragem de linhas
   const linhas = limparLinhasPDF(fullText);
   console.log("[DEBUG] Linhas após limpeza:", linhas.length);
-  console.log("[DEBUG] Primeiras 10 linhas:");
-  linhas.slice(0, 10).forEach((line, idx) => {
+  console.log("[DEBUG] Primeiras 15 linhas:");
+  linhas.slice(0, 15).forEach((line, idx) => {
     console.log(`  [${idx}] "${line}"`);
   });
 
@@ -194,9 +203,9 @@ function parseRowsFromText(fullText: string) {
 
   console.log("[DEBUG] ========== REGISTROS ==========");
   console.log("[DEBUG] Total de registros parseados:", registros.length);
-  console.log("[DEBUG] Primeiros 10 registros:");
-  registros.slice(0, 10).forEach((reg, idx) => {
-    console.log(`  [${idx}] QT:${reg.qt} Grupo:${reg.grupo} ${reg.modalidade} ${reg.lance_percent || 'SEM'}% Créd:${reg.credito}`);
+  console.log("[DEBUG] Primeiros 15 registros:");
+  registros.slice(0, 15).forEach((reg, idx) => {
+    console.log(`  [${idx}] QT:${reg.qt} Grupo:${reg.grupo} Mod:${reg.modalidade} Lance:${reg.lance_percent || 'N/A'}% Créd:R$${reg.credito || 'N/A'} Desc:"${reg.descricao}"`);
   });
 
   // ETAPA 3: Contagem de grupos únicos
@@ -207,7 +216,7 @@ function parseRowsFromText(fullText: string) {
   console.log("[DEBUG] - Total linhas válidas:", linhas.length);
   console.log("[DEBUG] - Total registros:", registros.length);
   console.log("[DEBUG] - Total grupos únicos:", totalGrupos);
-  console.log("[DEBUG] - Primeiros 20 grupos:", Array.from(new Set(grupos)).sort().slice(0, 20).join(', '));
+  console.log("[DEBUG] - Primeiros 30 grupos:", Array.from(new Set(grupos)).sort().slice(0, 30).join(', '));
 
   return {
     rows: registros,
