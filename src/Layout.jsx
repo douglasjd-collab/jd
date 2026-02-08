@@ -192,7 +192,8 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
         { name: 'Importar Produção', page: 'ImportacaoProducao' },
         { name: 'Importar Resultado', page: 'ImportarResultadoAssembleia' },
-        { name: 'Histórico', page: 'Importacao' },
+        { name: 'Histórico Resultado', page: 'HistoricoImportacao' },
+        { name: 'Histórico Geral', page: 'Importacao' },
       ]
     },
     { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor'] },

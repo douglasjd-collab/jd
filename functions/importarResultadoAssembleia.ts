@@ -40,14 +40,17 @@ function parseRowsFromText(fullText: string) {
   const lines = fullText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
   const rows: Array<{
+    qt: number | null;
     grupo: string;
+    descricao: string;
+    credito: number | null;
     modalidade: string;
     lance_percent: number | null;
   }> = [];
 
   console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
   console.log("[DEBUG] Total de linhas no PDF:", lines.length);
-  console.log("[DEBUG] Primeiras 20 linhas:", lines.slice(0, 20));
+  console.log("[DEBUG] Primeiras 30 linhas:", lines.slice(0, 30));
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -62,53 +65,61 @@ function parseRowsFromText(fullText: string) {
       /^LF\s*-/i.test(line) ||
       /^\d+ª\s*Opção/i.test(line) ||
       /Assembleia/i.test(line) ||
-      line.length < 10
+      line.length < 15
     ) {
       continue;
     }
 
-    // Tentar extrair grupo (3 ou 4 dígitos), modalidade e percentual de forma mais flexível
-    // Procurar por padrão: GRUPO (3-4 dígitos) ... MODALIDADE ... PERCENTUAL%
+    // Regex para capturar: QT GRUPO DESCRIÇÃO CRÉDITO MODALIDADE LANCE%
+    // Exemplo: "1 003102 SERVIÇOS FAIXA I R$ 22.964,10 Lance Livre 20,0000%"
+    const regex = /^(\d+)\s+(\d{5,6})\s+(.+?)\s+R\$\s*([\d\.\,]+)\s+(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)\s*([\d\.\,]+)%/i;
+    const match = line.match(regex);
     
-    const grupoMatch = line.match(/\b(\d{3,4})\b/);
-    const percentMatch = line.match(/([\d\.\,]+)\s*%/);
-    
-    if (!grupoMatch || !percentMatch) {
-      // Se tem números mas não conseguiu extrair, log
-      if (/\d{3,}/.test(line)) {
-        console.log(`[DEBUG] Linha ${i} com números mas sem match:`, line);
+    if (match) {
+      const qt = parseInt(match[1]);
+      const grupo = match[2];
+      const descricao = match[3].trim();
+      const credito = toNumberBRL("R$ " + match[4]);
+      const modalidadeTexto = match[5].trim();
+      const percentual = toPercent(match[6] + "%");
+      
+      // Mapear modalidade
+      let modalidade = "lance_livre";
+      const modalidadeLower = modalidadeTexto.toLowerCase();
+      
+      if (modalidadeLower.includes("sorteio")) {
+        modalidade = "sorteio";
+      } else if (modalidadeLower.includes("limitado")) {
+        modalidade = "lance_limitado";
+      } else if (modalidadeLower.includes("livre")) {
+        modalidade = "lance_livre";
+      } else if (modalidadeLower.includes("fixo")) {
+        // Tentar identificar qual tipo de fixo pelo percentual
+        if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
+        else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
+        else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
+        else modalidade = "lance_fixo_30"; // default
       }
-      continue;
-    }
 
-    const grupo = grupoMatch[1];
-    const percentual = toPercent(percentMatch[1] + "%");
-    
-    // Tentar identificar modalidade por palavras-chave
-    let modalidade = "lance_livre"; // default
-    const lineLower = line.toLowerCase();
-    
-    if (lineLower.includes("sorteio") || lineLower.includes("sort")) {
-      modalidade = "sorteio";
-    } else if (lineLower.includes("lance limitado") || lineLower.includes("limitado")) {
-      modalidade = "lance_limitado";
-    } else if (lineLower.includes("lance livre") || lineLower.includes("livre")) {
-      modalidade = "lance_livre";
-    } else if (lineLower.includes("fixo 15") || (lineLower.includes("15") && lineLower.includes("%"))) {
-      modalidade = "lance_fixo_15";
-    } else if (lineLower.includes("fixo 30") || (lineLower.includes("30") && lineLower.includes("%"))) {
-      modalidade = "lance_fixo_30";
-    } else if (lineLower.includes("fixo 50") || (lineLower.includes("50") && lineLower.includes("%"))) {
-      modalidade = "lance_fixo_50";
+      console.log(`[DEBUG] ✅ Linha ${i}: QT=${qt}, Grupo=${grupo}, Desc="${descricao}", Crédito=${credito}, Modalidade=${modalidade}, Lance=${percentual}%`);
+      
+      rows.push({
+        qt,
+        grupo,
+        descricao,
+        credito,
+        modalidade,
+        lance_percent: percentual,
+      });
+    } else {
+      // Se tem grupo e percentual mas não deu match completo, tentar extrair o que puder
+      const grupoMatch = line.match(/\b(\d{5,6})\b/);
+      const percentMatch = line.match(/([\d\.\,]+)\s*%/);
+      
+      if (grupoMatch && percentMatch) {
+        console.log(`[DEBUG] ⚠️ Linha ${i} match parcial:`, line);
+      }
     }
-
-    console.log(`[DEBUG] ✅ Linha ${i} processada: Grupo=${grupo}, Modalidade=${modalidade}, Lance=${percentual}%`);
-    
-    rows.push({
-      grupo,
-      modalidade,
-      lance_percent: percentual,
-    });
   }
 
   console.log("[DEBUG] ========== FIM DO PARSE ==========");
@@ -187,6 +198,22 @@ Deno.serve(async (req) => {
       criado_em: new Date().toISOString(),
       usuario_id: user.id,
       usuario_nome: user.full_name || user.email
+    });
+
+    // Criar registros detalhados (HistoricoLanceDetalhe)
+    await chunked(rows, 100, async (chunk) => {
+      await Promise.all(
+        chunk.map(row => base44.asServiceRole.entities.HistoricoLanceDetalhe.create({
+          empresa_id,
+          historico_id: historico.id,
+          qt: row.qt,
+          grupo: row.grupo,
+          descricao: row.descricao,
+          credito: row.credito,
+          modalidade: row.modalidade,
+          lance_percent: row.lance_percent
+        }))
+      );
     });
 
     // Extrair mês/ano da assembleia
