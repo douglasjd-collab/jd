@@ -45,16 +45,9 @@ function parseRowsFromText(fullText: string) {
     lance_percent: number | null;
   }> = [];
 
-  // Regex mais flexível que captura: QT GRUPO COTA VALOR MODALIDADE PERCENTUAL
-  // Exemplos:
-  // 1 8320 001 R$ 50.000,00 Lance Livre 35,00%
-  // 2 8320 002 R$ 50.000,00 Sorteio 0,00%
-  const re = /^(\d+)\s+(\d{3,})\s+(\d+)\s+(R\$\s*[\d\.\,]+)\s+(.+?)\s+([\d\.\,]+%)\s*$/;
-  
-  // Regex alternativa sem QT inicial
-  const re2 = /^(\d{3,})\s+(\d+)\s+(R\$\s*[\d\.\,]+)\s+(.+?)\s+([\d\.\,]+%)\s*$/;
-
-  console.log("[DEBUG] Total de linhas encontradas:", lines.length);
+  console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
+  console.log("[DEBUG] Total de linhas no PDF:", lines.length);
+  console.log("[DEBUG] Primeiras 20 linhas:", lines.slice(0, 20));
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -68,43 +61,60 @@ function parseRowsFromText(fullText: string) {
       /^LL\s*-/i.test(line) ||
       /^LF\s*-/i.test(line) ||
       /^\d+ª\s*Opção/i.test(line) ||
-      /Assembleia/i.test(line)
+      /Assembleia/i.test(line) ||
+      line.length < 10
     ) {
-      console.log(`[DEBUG] Linha ${i} ignorada (cabeçalho):`, line);
       continue;
     }
 
-    // Tentar primeira regex (com QT)
-    let m = line.match(re);
-    if (m) {
-      console.log(`[DEBUG] Linha ${i} match (formato 1):`, line);
-      rows.push({
-        grupo: m[2],
-        modalidade: mapModalidade(m[5].trim()),
-        lance_percent: toPercent(m[6]),
-      });
+    // Tentar extrair grupo (3 ou 4 dígitos), modalidade e percentual de forma mais flexível
+    // Procurar por padrão: GRUPO (3-4 dígitos) ... MODALIDADE ... PERCENTUAL%
+    
+    const grupoMatch = line.match(/\b(\d{3,4})\b/);
+    const percentMatch = line.match(/([\d\.\,]+)\s*%/);
+    
+    if (!grupoMatch || !percentMatch) {
+      // Se tem números mas não conseguiu extrair, log
+      if (/\d{3,}/.test(line)) {
+        console.log(`[DEBUG] Linha ${i} com números mas sem match:`, line);
+      }
       continue;
     }
 
-    // Tentar segunda regex (sem QT)
-    m = line.match(re2);
-    if (m) {
-      console.log(`[DEBUG] Linha ${i} match (formato 2):`, line);
-      rows.push({
-        grupo: m[1],
-        modalidade: mapModalidade(m[4].trim()),
-        lance_percent: toPercent(m[5]),
-      });
-      continue;
+    const grupo = grupoMatch[1];
+    const percentual = toPercent(percentMatch[1] + "%");
+    
+    // Tentar identificar modalidade por palavras-chave
+    let modalidade = "lance_livre"; // default
+    const lineLower = line.toLowerCase();
+    
+    if (lineLower.includes("sorteio") || lineLower.includes("sort")) {
+      modalidade = "sorteio";
+    } else if (lineLower.includes("lance limitado") || lineLower.includes("limitado")) {
+      modalidade = "lance_limitado";
+    } else if (lineLower.includes("lance livre") || lineLower.includes("livre")) {
+      modalidade = "lance_livre";
+    } else if (lineLower.includes("fixo 15") || (lineLower.includes("15") && lineLower.includes("%"))) {
+      modalidade = "lance_fixo_15";
+    } else if (lineLower.includes("fixo 30") || (lineLower.includes("30") && lineLower.includes("%"))) {
+      modalidade = "lance_fixo_30";
+    } else if (lineLower.includes("fixo 50") || (lineLower.includes("50") && lineLower.includes("%"))) {
+      modalidade = "lance_fixo_50";
     }
 
-    // Log de linhas não processadas que parecem relevantes
-    if (/^\d+\s+\d{3,}/.test(line) || /^\d{3,}\s+\d+/.test(line)) {
-      console.log(`[DEBUG] Linha ${i} NÃO processada (possível dado):`, line);
-    }
+    console.log(`[DEBUG] ✅ Linha ${i} processada: Grupo=${grupo}, Modalidade=${modalidade}, Lance=${percentual}%`);
+    
+    rows.push({
+      grupo,
+      modalidade,
+      lance_percent: percentual,
+    });
   }
 
+  console.log("[DEBUG] ========== FIM DO PARSE ==========");
   console.log("[DEBUG] Total de linhas processadas:", rows.length);
+  console.log("[DEBUG] Primeiros 5 resultados:", rows.slice(0, 5));
+  
   return rows;
 }
 
