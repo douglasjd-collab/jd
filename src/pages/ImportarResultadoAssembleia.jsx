@@ -110,20 +110,30 @@ export default function ImportarResultadoAssembleia() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      // Deletar detalhes
-      const detalhes = await base44.entities.HistoricoLanceDetalhe.filter({ historico_id: id });
-      for (const detalhe of detalhes) {
-        await base44.entities.HistoricoLanceDetalhe.delete(detalhe.id);
-      }
+      try {
+        // Deletar detalhes
+        const detalhes = await base44.entities.HistoricoLanceDetalhe.filter({ historico_id: id });
+        if (detalhes && detalhes.length > 0) {
+          await Promise.all(detalhes.map(detalhe => 
+            base44.entities.HistoricoLanceDetalhe.delete(detalhe.id).catch(() => null)
+          ));
+        }
 
-      // Deletar resumos
-      const resumos = await base44.entities.HistoricoLanceResumo.filter({ historico_id: id });
-      for (const resumo of resumos) {
-        await base44.entities.HistoricoLanceResumo.delete(resumo.id);
+        // Deletar resumos
+        const resumos = await base44.entities.HistoricoLanceResumo.filter({ historico_id: id });
+        if (resumos && resumos.length > 0) {
+          await Promise.all(resumos.map(resumo => 
+            base44.entities.HistoricoLanceResumo.delete(resumo.id).catch(() => null)
+          ));
+        }
+        
+        // Deletar histórico principal
+        await base44.entities.HistoricoLanceGrupo.delete(id);
+      } catch (error) {
+        // Se falhar, tentar deletar apenas o histórico principal
+        console.warn('Erro ao deletar filhos, tentando deletar apenas o histórico principal:', error);
+        await base44.entities.HistoricoLanceGrupo.delete(id);
       }
-      
-      // Deletar histórico principal
-      await base44.entities.HistoricoLanceGrupo.delete(id);
     },
     onSuccess: () => {
       toast.success('Histórico excluído com sucesso');
