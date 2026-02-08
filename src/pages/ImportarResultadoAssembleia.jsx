@@ -148,7 +148,7 @@ export default function ImportarResultadoAssembleia() {
       while (status !== 'FINALIZADO') {
         const response = await base44.functions.invoke('processarExclusaoHistoricoLance', {
           historico_id: id,
-          limit: 20
+          limit: 15
         });
 
         if (!response.data) {

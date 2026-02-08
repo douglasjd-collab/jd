@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { historico_id, limit = 20 } = body;
+    const { historico_id, limit = 15 } = body;
 
     if (!historico_id) {
       return Response.json({ error: "historico_id é obrigatório" }, { status: 400 });
