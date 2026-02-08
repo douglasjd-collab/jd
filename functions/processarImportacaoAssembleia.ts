@@ -185,11 +185,20 @@ Deno.serve(async (req) => {
         let menor_final = r.menor_lance_percent;
         let maior_final = r.maior_lance_percent;
         
-        // Se segunda chamada, usar valores da primeira como referência (não sobrescrever)
+        // Se segunda chamada, comparar com valores da primeira e usar o melhor (menor lance, maior lance)
         if (isSegundaChamada && mapaPrimeiraChamada[chave]) {
           const primeiraChamada = mapaPrimeiraChamada[chave];
-          menor_final = primeiraChamada.menor_lance_percent;
-          maior_final = primeiraChamada.maior_lance_percent;
+          menor_final = Math.min(
+            primeiraChamada.menor_lance_percent ?? 999,
+            r.menor_lance_percent ?? 999
+          );
+          maior_final = Math.max(
+            primeiraChamada.maior_lance_percent ?? 0,
+            r.maior_lance_percent ?? 0
+          );
+          // Limpar valores inválidos
+          if (menor_final >= 999) menor_final = null;
+          if (maior_final <= 0) maior_final = null;
         }
         
         payloadCreate.push({
