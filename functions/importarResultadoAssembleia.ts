@@ -37,6 +37,20 @@ function extrairGrupo(linha: string): string | null {
   return match ? match[1] : null;
 }
 
+function extrairPercentual(linha: string): number | null {
+  if (!linha) return null;
+  
+  const texto = linha.replace(/\s+/g, ' ').trim();
+  
+  // Percentual aparece como: 32,50% ou 15,00% ou 100,00%
+  const match = texto.match(/(\d{1,3},\d{2})%/);
+  
+  if (!match) return null;
+  
+  // Converte "32,50" → 32.5
+  return parseFloat(match[1].replace(',', '.'));
+}
+
 function mapModalidade(texto: string): string {
   const t = texto.toLowerCase();
   if (t.includes("lance livre")) return "lance_livre";
@@ -127,35 +141,31 @@ function parseRowsFromText(fullText: string) {
     // Crédito é o ÚLTIMO valor R$ (padrão mais comum)
     const credito = valoresR$.length > 0 ? valoresR$[valoresR$.length - 1] : null;
 
-    // ETAPA 4: Extrair percentual (se existir)
-    const percentMatch = resto.match(/([\d\.\,]+)\s*%/);
-    const percentual = percentMatch ? toPercent(percentMatch[1] + "%") : null;
+    // ETAPA 4: Extrair percentual usando função dedicada
+    const percentual = extrairPercentual(line);
 
     // ETAPA 5: Identificar modalidade por palavras-chave
-    let modalidade = "sorteio"; // default
     const restoLower = resto.toLowerCase();
+    let modalidade = "sorteio"; // default
 
-    if (restoLower.includes("sorteio")) {
-      modalidade = "sorteio";
-    } else if (restoLower.includes("lance livre")) {
-      modalidade = "lance_livre";
-    } else if (restoLower.includes("lance limitado")) {
-      modalidade = "lance_limitado";
-    } else if (restoLower.includes("lance fixo") || restoLower.includes("fixo")) {
-      if (percentual) {
+    if (percentual !== null) {
+      // Tem percentual = é lance
+      if (restoLower.includes("lance livre")) {
+        modalidade = "lance_livre";
+      } else if (restoLower.includes("lance limitado")) {
+        modalidade = "lance_limitado";
+      } else if (restoLower.includes("lance fixo") || restoLower.includes("fixo")) {
         if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
         else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
         else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
         else modalidade = "lance_fixo_30";
       } else {
-        if (restoLower.includes("15")) modalidade = "lance_fixo_15";
-        else if (restoLower.includes("30")) modalidade = "lance_fixo_30";
-        else if (restoLower.includes("50")) modalidade = "lance_fixo_50";
-        else modalidade = "lance_fixo_30";
+        // Tem percentual mas não identificou o tipo específico = Lance Livre
+        modalidade = "lance_livre";
       }
-    } else if (percentual !== null) {
-      // Se tem percentual mas não identificou modalidade = Lance Livre
-      modalidade = "lance_livre";
+    } else {
+      // Não tem percentual = sorteio (já é o default)
+      modalidade = "sorteio";
     }
 
     // ETAPA 6: Extrair descrição (remover valores R$, percentuais e modalidade)
