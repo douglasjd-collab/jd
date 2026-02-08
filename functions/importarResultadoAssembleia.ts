@@ -1,91 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
 import pdfParse from "npm:pdf-parse@1.1.1";
 
-function toNumberBRL(s: string) {
-  const clean = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
-  const n = Number(clean);
-  return Number.isFinite(n) ? n : null;
-}
-
-function toPercent(s: string) {
-  const clean = s.replace("%", "").replace(/\./g, "").replace(",", ".");
-  const n = Number(clean);
-  return Number.isFinite(n) ? n : null;
-}
-
-function parseAssembleiaDate(fullText: string) {
-  const m = fullText.match(/Assembleia\s*[:\-]?\s*(\d{2}\/\d{2}\/\d{4})/i);
-  if (!m?.[1]) return null;
-  const [dd, mm, yyyy] = m[1].split("/");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function parseOpcao(fullText: string) {
-  const m = fullText.match(/(\d+)\s*ª\s*Opç/i);
-  return m?.[1] ? Number(m[1]) : null;
-}
-
-function parseLinhaAssembleia(linha: string) {
-  if (!linha) return null;
-  
-  // Extrair QT (1-3 dígitos no início da linha)
-  const qtMatch = linha.match(/^(\d{1,3})\s+/);
-  const qt = qtMatch ? parseInt(qtMatch[1]) : null;
-  
-  // Extrair GRUPO (exatamente 6 dígitos)
-  const grupoMatch = linha.match(/\b(\d{6})\b/);
-  const grupo = grupoMatch ? grupoMatch[1] : null;
-  
-  if (!grupo) return null; // Sem grupo = linha inválida
-  
-  // Extrair PERCENTUAL (formato: XX,XXXX%)
-  const percentMatch = linha.match(/(\d{1,3},\d{4})%/);
-  const percentual = percentMatch ? parseFloat(percentMatch[1].replace(',', '.')) : null;
-  
-  // Extrair CRÉDITO (último valor R$ encontrado é o crédito final)
-  const creditoMatches = [...linha.matchAll(/R\$\s*:?\s*([\d.]+,\d{2})/g)];
-  const credito = creditoMatches.length > 0 
-    ? parseFloat(creditoMatches[creditoMatches.length - 1][1].replace(/\./g, '').replace(',', '.'))
-    : null;
-  
-  // Identificar modalidade
-  const linhaLower = linha.toLowerCase();
-  let modalidade = "sorteio"; // default para quando não tem percentual
-  
-  if (percentual !== null) {
-    if (linhaLower.includes("lance livre") || linhaLower.includes(" ll ")) {
-      modalidade = "lance_livre";
-    } else if (linhaLower.includes("lance limitado") || linhaLower.includes(" lm ")) {
-      modalidade = "lance_limitado";
-    } else if (linhaLower.includes("lance fixo") || linhaLower.includes(" lf ")) {
-      if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
-      else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
-      else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
-      else modalidade = "lance_fixo_30";
-    } else {
-      modalidade = "lance_livre";
-    }
-  }
-  
-  // Extrair descrição (entre grupo e primeiro R$)
-  let descricao = linha
-    .replace(/^\d{1,3}\s+/, '') // Remove QT
-    .replace(/\d{6}/, '') // Remove grupo
-    .split(/R\$/)[0] // Pega tudo antes do primeiro R$
-    .replace(/\s+/g, ' ')
-    .trim();
-  
-  return {
-    qt,
-    grupo,
-    descricao,
-    credito,
-    modalidade,
-    lance_percent: percentual
-  };
-}
-
-function limparLinhasPDF(texto: string): string[] {
+function limparLinhasPDF(texto) {
   return texto
     .split('\n')
     .map(l => l.trim())
@@ -93,42 +9,41 @@ function limparLinhasPDF(texto: string): string[] {
       // Deve começar com QT + GRUPO: 1-3 dígitos + 6 dígitos
       if (!/^\d{1,3}\d{6}/.test(l)) return false;
       
-      // Ignorar headers e legendas
+      // Ignorar headers
       if (l.match(/^QT/i)) return false;
       if (l.match(/Legendas/i)) return false;
       if (l.match(/Prováveis Contemplados/i)) return false;
-      if (l.match(/Pedra Chave/i)) return false;
       
       return true;
     });
 }
 
-function parseLinhaAssembleia(linha: string) {
+function parseLinhaAssembleia(linha) {
   if (!linha) return null;
   
-  // Formato sem espaços: "1003102SERVIÇOS FAIXA IR$ 22.964,10Lance Livre20,0000%"
+  // Formato: "1003102SERVIÇOS FAIXA IR$ 22.964,10Lance Livre20,0000%"
   
-  // 1. Extrair QT (1-3 dígitos no início)
+  // 1. QT (1-3 dígitos no início)
   const qtMatch = linha.match(/^(\d{1,3})/);
   const qt = qtMatch ? parseInt(qtMatch[1]) : null;
   
-  // 2. Extrair GRUPO (6 dígitos após o QT)
+  // 2. GRUPO (6 dígitos após QT)
   const grupoMatch = linha.match(/^\d{1,3}(\d{6})/);
   const grupo = grupoMatch ? grupoMatch[1] : null;
   
   if (!grupo) return null;
   
-  // 3. Extrair PERCENTUAL (XX,XXXX% no final)
-  const percentMatch = linha.match(/(\d{1,3},\d{2,4})%\s*$/);
+  // 3. PERCENTUAL (número com vírgula seguido de %)
+  const percentMatch = linha.match(/(\d{1,3},\d{2,4})%/);
   const percentual = percentMatch ? parseFloat(percentMatch[1].replace(',', '.')) : null;
   
-  // 4. Extrair CRÉDITO (último valor R$)
+  // 4. CRÉDITO (último R$ encontrado)
   const creditoMatches = [...linha.matchAll(/R\$\s*:?\s*([\d.]+,\d{2})/g)];
   const credito = creditoMatches.length > 0 
     ? parseFloat(creditoMatches[creditoMatches.length - 1][1].replace(/\./g, '').replace(',', '.'))
     : null;
   
-  // 5. Identificar MODALIDADE
+  // 5. MODALIDADE
   let modalidade = "sorteio";
   
   if (linha.includes("Lance Livre")) {
@@ -144,11 +59,10 @@ function parseLinhaAssembleia(linha: string) {
     }
   }
   
-  // 6. Extrair DESCRIÇÃO (entre grupo e primeiro R$)
+  // 6. DESCRIÇÃO
   let descricao = linha
-    .replace(/^\d{1,3}/, '') // Remove QT
-    .replace(/^\d{6}/, '') // Remove grupo
-    .split(/R\$/)[0] // Antes do primeiro R$
+    .replace(/^\d{1,3}\d{6}/, '') // Remove QT + grupo
+    .split(/R\$/)[0] // Antes do R$
     .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/g, '')
     .trim();
   
@@ -162,67 +76,44 @@ function parseLinhaAssembleia(linha: string) {
   };
 }
 
-function mapModalidade(texto: string): string {
-  const t = texto.toLowerCase();
-  if (t.includes("lance livre")) return "lance_livre";
-  if (t.includes("lance limitado")) return "lance_limitado";
-  if (t.includes("sorteio")) return "sorteio";
-  if (t.includes("fixo 15") || t.includes("15%")) return "lance_fixo_15";
-  if (t.includes("fixo 30") || t.includes("30%")) return "lance_fixo_30";
-  if (t.includes("fixo 50") || t.includes("50%")) return "lance_fixo_50";
-  return texto; // retorna original se não reconhecer
-}
-
-function parseRowsFromText(fullText: string) {
-  console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
-  console.log("[DEBUG] Tamanho do texto:", fullText.length);
-
-  // ETAPA 1: Limpeza e filtragem de linhas
-  const linhas = limparLinhasPDF(fullText);
-  console.log("[DEBUG] ========== LINHAS APÓS LIMPEZA ==========");
-  console.log("[DEBUG] Total de linhas:", linhas.length);
-  console.log("[DEBUG] Primeiras 20 linhas:");
-  linhas.slice(0, 20).forEach((line, idx) => {
-    console.log(`  [${idx}] "${line}"`);
-  });
-
-  // ETAPA 2: Parse direto - cada linha é um registro completo
-  const registros = linhas
-    .map((linha, idx) => {
-      const result = parseLinhaAssembleia(linha);
-      if (idx < 5) {
-        console.log(`[DEBUG] Parse linha[${idx}]: QT=${result?.qt} Grupo=${result?.grupo} Lance=${result?.lance_percent} Mod=${result?.modalidade}`);
-      }
-      return result;
-    })
-    .filter(Boolean);
-
-  console.log("[DEBUG] ========== REGISTROS ==========");
-  console.log("[DEBUG] Total de registros parseados:", registros.length);
-  console.log("[DEBUG] Primeiros 20 registros:");
-  registros.slice(0, 20).forEach((reg, idx) => {
-    console.log(`  [${idx}] QT:${reg.qt} Grupo:${reg.grupo} Mod:${reg.modalidade} Lance:${reg.lance_percent || 'N/A'}% Créd:R$${reg.credito || 'N/A'}`);
-  });
-
-  // ETAPA 3: Contagem de grupos únicos
-  const grupos = registros.map(r => r.grupo).filter(Boolean);
-  const totalGrupos = new Set(grupos).size;
+function agruparPorGrupoEModalidade(registros) {
+  const grupos = new Map();
   
-  console.log("[DEBUG] ========== RESULTADO FINAL ==========");
-  console.log("[DEBUG] - Total linhas válidas:", linhas.length);
-  console.log("[DEBUG] - Total registros:", registros.length);
-  console.log("[DEBUG] - Total grupos únicos:", totalGrupos);
-  console.log("[DEBUG] - Primeiros 30 grupos:", Array.from(new Set(grupos)).sort().slice(0, 30).join(', '));
-
-  return {
-    rows: registros,
-    totalLinhasValidas: linhas.length,
-    totalGruposUnicos: totalGrupos,
-    grupos: Array.from(new Set(grupos)).sort()
-  };
+  for (const reg of registros) {
+    const key = `${reg.grupo}_${reg.modalidade}`;
+    
+    if (!grupos.has(key)) {
+      grupos.set(key, {
+        grupo: reg.grupo,
+        modalidade: reg.modalidade,
+        percentuais: []
+      });
+    }
+    
+    if (reg.lance_percent !== null) {
+      grupos.get(key).percentuais.push(reg.lance_percent);
+    }
+  }
+  
+  const resumos = [];
+  for (const [key, data] of grupos) {
+    const percentuais = data.percentuais;
+    const menor = percentuais.length > 0 ? Math.min(...percentuais) : null;
+    const maior = percentuais.length > 0 ? Math.max(...percentuais) : null;
+    
+    resumos.push({
+      grupo: data.grupo,
+      modalidade: data.modalidade,
+      menor_lance_percent: menor,
+      maior_lance_percent: maior,
+      qtd_ocorrencias: percentuais.length || 1
+    });
+  }
+  
+  return resumos;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms = 25000): Promise<T> {
+function withTimeout(promise, ms = 25000) {
   return new Promise((resolve, reject) => {
     const id = setTimeout(() => reject(new Error(`Timeout após ${ms}ms`)), ms);
     promise.then(v => { clearTimeout(id); resolve(v); })
@@ -230,7 +121,7 @@ function withTimeout<T>(promise: Promise<T>, ms = 25000): Promise<T> {
   });
 }
 
-async function chunked<T>(items: T[], size: number, fn: (chunk: T[]) => Promise<void>) {
+async function chunked(items, size, fn) {
   for (let i = 0; i < items.length; i += size) await fn(items.slice(i, i + size));
 }
 
@@ -246,7 +137,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Buscar empresa_id do usuário
     let empresa_id = user.empresa_id;
     if (!empresa_id) {
       const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
@@ -263,7 +153,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: "file_url e assembleia_data são obrigatórios" }, { status: 400 });
     }
 
-    // Baixar arquivo
+    // Baixar PDF
     const fileRes = await fetch(file_url);
     if (!fileRes.ok) {
       return Response.json({ error: "Falha ao baixar arquivo" }, { status: 400 });
@@ -271,31 +161,28 @@ Deno.serve(async (req) => {
 
     const buf = new Uint8Array(await fileRes.arrayBuffer());
     const parsed = await withTimeout(pdfParse(buf), 25000);
-
     const text = parsed.text || "";
 
-    console.log('=== TEXTO PDF (primeiros 2000 caracteres) ===');
+    console.log('=== TEXTO PDF (primeiros 2000 chars) ===');
     console.log(text.substring(0, 2000));
-    console.log('=== TOTAL DE CARACTERES ===', text.length);
 
-    const parseResult = parseRowsFromText(text);
-    const rows = parseResult.rows || [];
-    const totalLinhasValidas = parseResult.totalLinhasValidas || 0;
-    const totalGruposUnicos = parseResult.totalGruposUnicos || 0;
+    // Parse
+    const linhas = limparLinhasPDF(text);
+    console.log('[DEBUG] Total linhas limpas:', linhas.length);
+    console.log('[DEBUG] Primeiras 20 linhas:');
+    linhas.slice(0, 20).forEach((l, i) => console.log(`  [${i}] ${l}`));
 
-    console.log('=== RESULTADO DO PARSER ===');
-    console.log('Total de linhas válidas:', totalLinhasValidas);
-    console.log('Total de grupos únicos:', totalGruposUnicos);
-    console.log('Total de rows:', rows.length);
-    console.log('Primeiros 5 rows completos:');
-    rows.slice(0, 5).forEach((r, i) => {
-      console.log(`  [${i}] QT:${r.qt} Grupo:${r.grupo} Mod:${r.modalidade} Lance:${r.lance_percent}% Créd:R$${r.credito}`);
+    const registros = linhas.map(parseLinhaAssembleia).filter(Boolean);
+    console.log('[DEBUG] Total registros parseados:', registros.length);
+    console.log('[DEBUG] Primeiros 20 registros:');
+    registros.slice(0, 20).forEach((r, i) => {
+      console.log(`  [${i}] QT:${r.qt} Grupo:${r.grupo} Mod:${r.modalidade} Lance:${r.lance_percent}% Créd:${r.credito}`);
     });
 
-    // Se não encontrou linhas válidas, salvar histórico vazio
-    if (totalLinhasValidas === 0) {
-      console.log("[WARN] Nenhuma linha processada, salvando histórico vazio");
-      
+    const totalGrupos = new Set(registros.map(r => r.grupo)).size;
+
+    // Se não encontrou nada, salvar histórico vazio
+    if (registros.length === 0) {
       const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
       
       const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
@@ -311,120 +198,98 @@ Deno.serve(async (req) => {
 
       return Response.json({
         sucesso: true,
-        aviso: "PDF importado mas nenhuma linha estruturada foi encontrada",
+        aviso: "Nenhuma linha válida encontrada no PDF",
         historico_id: historico.id,
         total_lances: 0,
-        total_grupos: 0,
-        total_resumos: 0
+        total_grupos: 0
       });
     }
 
     const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
 
-    // Criar registro HistoricoLanceGrupo com totais corretos
+    // Criar histórico principal
     const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
       empresa_id,
       assembleia_data,
       arquivo_nome,
-      total_grupos: totalGruposUnicos, // Total de grupos únicos encontrados
-      total_registros: totalLinhasValidas, // Total de linhas válidas
+      total_grupos: totalGrupos,
+      total_registros: registros.length,
       criado_em: new Date().toISOString(),
       usuario_id: user.id,
       usuario_nome: user.full_name || user.email
     });
 
-    // Criar registros detalhados (HistoricoLanceDetalhe)
-    await chunked(rows, 100, async (chunk) => {
+    // Salvar detalhes (HistoricoLanceDetalhe)
+    await chunked(registros, 100, async (chunk) => {
       await Promise.all(
-        chunk.map(row => base44.asServiceRole.entities.HistoricoLanceDetalhe.create({
+        chunk.map(r => base44.asServiceRole.entities.HistoricoLanceDetalhe.create({
           empresa_id,
           historico_id: historico.id,
-          qt: row.qt,
-          grupo: row.grupo,
-          descricao: row.descricao,
-          credito: row.credito,
-          modalidade: row.modalidade,
-          lance_percent: row.lance_percent
+          qt: r.qt,
+          grupo: r.grupo,
+          descricao: r.descricao,
+          credito: r.credito,
+          modalidade: r.modalidade,
+          lance_percent: r.lance_percent
         }))
       );
     });
 
-    // Extrair mês/ano da assembleia
+    // Agrupar por grupo + modalidade
+    const resumos = agruparPorGrupoEModalidade(registros);
+    
+    // Verificar resumos existentes (mesmo mês)
     const [ano, mes] = assembleia_data.split('-');
     const mesAno = `${ano}-${mes}`;
-
-    // Buscar resumos existentes do mês para verificar se é 1ª chamada
+    
     const resumosExistentes = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
       empresa_id,
-      grupo: rows.map(r => r.grupo)
+      grupo: resumos.map(r => r.grupo)
     });
-
-    // Agrupar existentes por grupo+modalidade+mês
+    
     const existentesMap = new Map();
     for (const r of resumosExistentes) {
-      // Buscar histórico para pegar assembleia_data
       const hist = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({ id: r.historico_id });
       if (hist?.[0]?.assembleia_data) {
         const [anoHist, mesHist] = hist[0].assembleia_data.split('-');
         const mesAnoHist = `${anoHist}-${mesHist}`;
         
-        // Só considera se for do MESMO mês
         if (mesAnoHist === mesAno) {
           const key = `${r.grupo}_${r.modalidade}`;
           existentesMap.set(key, r);
         }
       }
     }
-
-    // Agrupar por grupo + modalidade e calcular estatísticas
-    const grupos = new Map();
-    for (const row of rows) {
-      const key = `${row.grupo}_${row.modalidade}`;
-      if (!grupos.has(key)) {
-        grupos.set(key, {
-          grupo: row.grupo,
-          modalidade: row.modalidade,
-          percentuais: []
-        });
-      }
-      if (row.lance_percent != null) {
-        grupos.get(key).percentuais.push(row.lance_percent);
-      }
-    }
-
-    // Criar/Atualizar registros HistoricoLanceResumo com regras corretas
-    const resumos = [];
-    for (const [key, data] of grupos) {
-      const percentuais = data.percentuais;
-      const novoMenor = percentuais.length > 0 ? Math.min(...percentuais) : null;
-      const novoMaior = percentuais.length > 0 ? Math.max(...percentuais) : null;
-      
+    
+    // Criar/Atualizar resumos
+    const novosResumos = [];
+    for (const resumo of resumos) {
+      const key = `${resumo.grupo}_${resumo.modalidade}`;
       const existente = existentesMap.get(key);
-
+      
       if (!existente) {
-        // PRIMEIRA CHAMADA: salva maior e menor
-        resumos.push({
+        // Primeira chamada: salva menor e maior
+        novosResumos.push({
           empresa_id,
           historico_id: historico.id,
-          grupo: data.grupo,
-          modalidade: data.modalidade,
-          menor_lance_percent: novoMenor,
-          maior_lance_percent: novoMaior,
-          qtd_ocorrencias: percentuais.length || 1
+          ...resumo
         });
       } else {
-        // CHAMADAS SEGUINTES: mantém o maior, atualiza só o menor
-        const menorFinal = Math.min(existente.menor_lance_percent || 999999, novoMenor || 999999);
+        // Chamadas seguintes: mantém maior, atualiza menor
+        const novoMenor = resumo.menor_lance_percent;
+        const menorFinal = existente.menor_lance_percent !== null && novoMenor !== null
+          ? Math.min(existente.menor_lance_percent, novoMenor)
+          : (novoMenor || existente.menor_lance_percent);
         
         await base44.asServiceRole.entities.HistoricoLanceResumo.update(existente.id, {
-          menor_lance_percent: menorFinal === 999999 ? null : menorFinal,
-          qtd_ocorrencias: (existente.qtd_ocorrencias || 0) + (percentuais.length || 1)
+          menor_lance_percent: menorFinal,
+          qtd_ocorrencias: (existente.qtd_ocorrencias || 0) + (resumo.qtd_ocorrencias || 1)
         });
       }
     }
-
-    // Criar apenas os novos resumos (primeira chamada)
-    await chunked(resumos, 100, async (chunk) => {
+    
+    // Criar novos resumos
+    await chunked(novosResumos, 100, async (chunk) => {
       await Promise.all(
         chunk.map(r => base44.asServiceRole.entities.HistoricoLanceResumo.create(r))
       );
@@ -433,10 +298,9 @@ Deno.serve(async (req) => {
     return Response.json({
       sucesso: true,
       historico_id: historico.id,
-      total_lances: rows.length,
-      total_grupos: totalGruposUnicos,
-      total_registros: totalLinhasValidas,
-      total_resumos: resumos.length
+      total_lances: registros.length,
+      total_grupos: totalGrupos,
+      total_resumos: novosResumos.length
     });
 
   } catch (e) {
