@@ -186,9 +186,9 @@ function parseRowsFromText(fullText: string) {
   // ETAPA 2: Agrupar linhas em blocos
   const blocos = agruparBlocos(linhasLimpas);
   console.log("[DEBUG] Blocos agrupados:", blocos.length);
-  console.log("[DEBUG] Primeiros 5 blocos:");
+  console.log("[DEBUG] Primeiros 5 blocos COMPLETOS:");
   blocos.slice(0, 5).forEach((bloco, idx) => {
-    console.log(`  [${idx}] "${bloco.substring(0, 100)}..."`);
+    console.log(`  [${idx}] "${bloco}"`);
   });
 
   // ETAPA 3: Parser de cada bloco
@@ -196,9 +196,20 @@ function parseRowsFromText(fullText: string) {
     .map(parseBlocoAssembleia)
     .filter(Boolean);
 
+  console.log("[DEBUG] Primeiros 5 REGISTROS parseados:");
+  registros.slice(0, 5).forEach((reg, idx) => {
+    console.log(`  [${idx}] Grupo: ${reg.grupo}, QT: ${reg.qt}, Desc: ${reg.descricao}, Crédito: ${reg.credito}, Modalidade: ${reg.modalidade}, Lance: ${reg.lance_percent}%`);
+  });
+
   // ETAPA 4: Contagem de grupos únicos
   const grupos = registros.map(r => r.grupo).filter(Boolean);
   const totalGrupos = new Set(grupos).size;
+  
+  console.log("[DEBUG] ⚠️ VERIFICAÇÃO FINAL:");
+  console.log("[DEBUG] - Blocos processados:", blocos.length);
+  console.log("[DEBUG] - Registros válidos:", registros.length);
+  console.log("[DEBUG] - Grupos únicos:", totalGrupos);
+  console.log("[DEBUG] - Arrays vazios?", { blocos: blocos.length === 0, registros: registros.length === 0 });
 
   console.log("[DEBUG] ========== FIM DO PARSE ==========");
   console.log("[DEBUG] Total de blocos processados:", blocos.length);
@@ -265,10 +276,21 @@ Deno.serve(async (req) => {
     const parsed = await withTimeout(pdfParse(buf), 25000);
 
     const text = parsed.text || "";
+
+    console.log('=== TEXTO PDF (primeiros 1000 caracteres) ===');
+    console.log(text.substring(0, 1000));
+    console.log('=== TOTAL DE CARACTERES ===', text.length);
+
     const parseResult = parseRowsFromText(text);
     const rows = parseResult.rows || [];
     const totalLinhasValidas = parseResult.totalLinhasValidas || 0;
     const totalGruposUnicos = parseResult.totalGruposUnicos || 0;
+
+    console.log('=== RESULTADO DO PARSER ===');
+    console.log('Total de linhas válidas:', totalLinhasValidas);
+    console.log('Total de grupos únicos:', totalGruposUnicos);
+    console.log('Total de rows:', rows.length);
+    console.log('Primeiros 3 rows:', rows.slice(0, 3));
 
     // Se não encontrou linhas válidas, salvar histórico vazio
     if (totalLinhasValidas === 0) {
