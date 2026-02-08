@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { importacao_id, offset = 0, limit = 20 } = body;
+    const { importacao_id, offset = 0, limit = 10 } = body;
 
     if (!importacao_id) {
       return Response.json({ error: "importacao_id é obrigatório" }, { status: 400 });
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     // Atualizar resumos (apenas do slice atual)
     const resumos = agruparPorGrupoEModalidade(slice);
     
-    const isSegundaChamada = imp.chamada === 'Segunda';
+    const isSegundaChamada = ['Segunda', 'Terceira', 'Quarta', 'Quinta', 'Sexta', 'Sétima'].includes(imp.chamada);
     
     // Buscar registros existentes (se segunda chamada)
     let registrosExistentes = [];
@@ -167,15 +167,11 @@ Deno.serve(async (req) => {
       if (isSegundaChamada && mapaExistentes[chave]) {
         const existente = mapaExistentes[chave];
         
-        const maiorFinal =
-          existente.maior_lance_percent !== null && r.maior_lance_percent !== null
-            ? Math.max(existente.maior_lance_percent, r.maior_lance_percent)
-            : (existente.maior_lance_percent ?? r.maior_lance_percent ?? null);
-        
+        // Segunda chamada ou posterior: NÃO sobrescreve maior/menor, apenas soma ocorrências
         payloadUpdate.push({
           id: existente.id,
-          menor_lance_percent: r.menor_lance_percent ?? existente.menor_lance_percent ?? null,
-          maior_lance_percent: maiorFinal,
+          menor_lance_percent: existente.menor_lance_percent,
+          maior_lance_percent: existente.maior_lance_percent,
           qtd_ocorrencias: (existente.qtd_ocorrencias ?? 0) + (r.qtd_ocorrencias ?? 1)
         });
       } else {
