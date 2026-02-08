@@ -51,89 +51,90 @@ function parseRowsFromText(fullText: string) {
   console.log("[DEBUG] ========== INÍCIO DO PARSE ==========");
   console.log("[DEBUG] Total de linhas no PDF:", lines.length);
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  // ETAPA 1: Remover lixo (cabeçalhos, legendas, separadores)
+  const linhasLimpas = lines.filter(line => {
+    if (line.length < 15) return false;
+    if (/Prováveis Contemplados/i.test(line)) return false;
+    if (/^QT\.?\s*(GRUPO|DESCRIÇÃO|CRÉDITO|MODALIDADE|LANCE)/i.test(line)) return false;
+    if (/^(Legendas|MODALIDADE|CRÉDITO)/i.test(line)) return false;
+    if (/^(S|LL|LF|LFL)\s*[-–—]\s*(Sorteio|Lance)/i.test(line)) return false;
+    if (/^\d+ª\s*Opção/i.test(line)) return false;
+    if (/Assembleia/i.test(line)) return false;
+    if (/^\s*[-–—]+\s*$/i.test(line)) return false;
+    return true;
+  });
+
+  console.log("[DEBUG] Linhas após limpeza:", linhasLimpas.length);
+
+  // ETAPA 2: Parser por linha - CRITÉRIO: começa com número + grupo (6 dígitos)
+  for (let i = 0; i < linhasLimpas.length; i++) {
+    const line = linhasLimpas[i];
     
-    // Ignorar cabeçalhos, legendas e linhas irrelevantes
-    if (
-      line.length < 15 ||
-      /Prováveis Contemplados/i.test(line) ||
-      /^QT\.?\s*(GRUPO|DESCRIÇÃO)/i.test(line) ||
-      /^(Legendas|MODALIDADE|CRÉDITO|LANCE)/i.test(line) ||
-      /^(S|LL|LF|LFL)\s*[-–—]/i.test(line) ||
-      /^\d+ª\s*Opção/i.test(line) ||
-      /Assembleia/i.test(line) ||
-      /^\s*[-–—]+\s*$/i.test(line)
-    ) {
+    // Identificar se é linha de dados: começa com QT (1-3 dígitos) + GRUPO (6 dígitos)
+    const prefixMatch = line.match(/^(\d{1,3})\s+(\d{6})\s+(.+)/);
+    if (!prefixMatch) {
       continue;
     }
 
-    // Regex flexível: QT GRUPO DESCRIÇÃO R$ VALOR [MODALIDADE] [PERCENTUAL%]
-    // Captura linha começando com número, seguido de grupo (5-6 dígitos)
-    const regex = /^(\d+)\s+(\d{5,6})\s+(.+?)\s+R\$\s*([\d\.\,]+)(?:\s+(.+?))?(?:\s+([\d\.\,]+)%)?$/i;
-    const match = line.match(regex);
-    
-    if (!match) {
-      // Log apenas se parece ser uma linha de dados
-      if (/^\d+\s+\d{5,6}/.test(line)) {
-        console.log(`[DEBUG] ⚠️ Linha ${i} não processada:`, line);
-      }
-      continue;
+    const qt = parseInt(prefixMatch[1]);
+    const grupo = prefixMatch[2];
+    const resto = prefixMatch[3]; // tudo após o grupo
+
+    console.log(`[DEBUG] Linha ${i} identificada: QT=${qt}, Grupo=${grupo}, Resto="${resto}"`);
+
+    // ETAPA 3: Extrair todos os valores R$ da linha
+    const valoresR$ = [];
+    const regexValor = /R\$\s*:?\s*([\d\.\,]+)/gi;
+    let matchValor;
+    while ((matchValor = regexValor.exec(resto)) !== null) {
+      const valor = toNumberBRL("R$ " + matchValor[1]);
+      if (valor != null) valoresR$.push(valor);
     }
 
-    const qt = parseInt(match[1]);
-    const grupo = match[2];
-    let descricao = match[3].trim();
-    const credito = toNumberBRL("R$ " + match[4]);
-    const modalidadeTexto = (match[5] || "").trim();
-    const percentualStr = match[6];
-    
-    // Limpar descrição (remover valores R$ duplicados)
-    descricao = descricao.replace(/\s*R\$\s*[\d\.\,]+/g, '').trim();
+    // Crédito é o ÚLTIMO valor R$ (padrão mais comum)
+    const credito = valoresR$.length > 0 ? valoresR$[valoresR$.length - 1] : null;
 
-    // Determinar modalidade e percentual
-    let modalidade = "sorteio"; // default quando não tem lance
-    let percentual: number | null = null;
+    // ETAPA 4: Extrair percentual (se existir)
+    const percentMatch = resto.match(/([\d\.\,]+)\s*%/);
+    const percentual = percentMatch ? toPercent(percentMatch[1] + "%") : null;
 
-    if (percentualStr) {
-      percentual = toPercent(percentualStr + "%");
-    }
+    // ETAPA 5: Identificar modalidade por palavras-chave
+    let modalidade = "sorteio"; // default
+    const restoLower = resto.toLowerCase();
 
-    // Analisar texto da modalidade
-    if (modalidadeTexto) {
-      const modalidadeLower = modalidadeTexto.toLowerCase();
-      
-      if (modalidadeLower.includes("sorteio") || modalidadeLower.includes("sort")) {
-        modalidade = "sorteio";
-        percentual = null; // Sorteio não tem lance
-      } else if (modalidadeLower.includes("lance livre") || modalidadeLower.includes("livre")) {
-        modalidade = "lance_livre";
-      } else if (modalidadeLower.includes("lance limitado") || modalidadeLower.includes("limitado")) {
-        modalidade = "lance_limitado";
-      } else if (modalidadeLower.includes("lance fixo") || modalidadeLower.includes("fixo")) {
-        // Identificar tipo de fixo pelo percentual
-        if (percentual) {
-          if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
-          else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
-          else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
-          else modalidade = "lance_fixo_30"; // fallback
-        } else {
-          // Tentar extrair do texto: "Lance Fixo 30%"
-          if (modalidadeLower.includes("15")) modalidade = "lance_fixo_15";
-          else if (modalidadeLower.includes("30")) modalidade = "lance_fixo_30";
-          else if (modalidadeLower.includes("50")) modalidade = "lance_fixo_50";
-          else modalidade = "lance_fixo_30";
-        }
-      }
-    }
-
-    // Se não tem modalidade e não tem percentual = Sorteio
-    if (!modalidadeTexto && !percentualStr) {
+    if (restoLower.includes("sorteio")) {
       modalidade = "sorteio";
+    } else if (restoLower.includes("lance livre")) {
+      modalidade = "lance_livre";
+    } else if (restoLower.includes("lance limitado")) {
+      modalidade = "lance_limitado";
+    } else if (restoLower.includes("lance fixo") || restoLower.includes("fixo")) {
+      if (percentual) {
+        if (percentual >= 14 && percentual <= 16) modalidade = "lance_fixo_15";
+        else if (percentual >= 28 && percentual <= 32) modalidade = "lance_fixo_30";
+        else if (percentual >= 48 && percentual <= 52) modalidade = "lance_fixo_50";
+        else modalidade = "lance_fixo_30";
+      } else {
+        if (restoLower.includes("15")) modalidade = "lance_fixo_15";
+        else if (restoLower.includes("30")) modalidade = "lance_fixo_30";
+        else if (restoLower.includes("50")) modalidade = "lance_fixo_50";
+        else modalidade = "lance_fixo_30";
+      }
+    } else if (percentual !== null) {
+      // Se tem percentual mas não identificou modalidade = Lance Livre
+      modalidade = "lance_livre";
     }
 
-    console.log(`[DEBUG] ✅ Linha ${i}: QT=${qt}, Grupo=${grupo}, Desc="${descricao}", Crédito=R$${credito}, Modalidade=${modalidade}, Lance=${percentual || 0}%`);
-    
+    // ETAPA 6: Extrair descrição (remover valores R$, percentuais e modalidade)
+    let descricao = resto
+      .replace(/R\$\s*:?\s*[\d\.\,]+/gi, '') // Remove R$
+      .replace(/[\d\.\,]+\s*%/g, '') // Remove percentuais
+      .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/gi, '') // Remove modalidade
+      .replace(/\s+/g, ' ') // Normaliza espaços
+      .trim();
+
+    console.log(`[DEBUG] ✅ Processado: Grupo=${grupo}, Desc="${descricao}", Crédito=${credito}, Modalidade=${modalidade}, Lance=${percentual}%`);
+
     rows.push({
       qt,
       grupo,
@@ -203,8 +204,31 @@ Deno.serve(async (req) => {
     const text = parsed.text || "";
     const rows = parseRowsFromText(text);
 
+    // Se não encontrou linhas, ainda assim salvar o histórico mas sem detalhes
     if (!rows.length) {
-      return Response.json({ error: "Nenhuma linha de histórico encontrada no PDF" }, { status: 422 });
+      console.log("[WARN] Nenhuma linha processada, salvando histórico vazio");
+      
+      const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
+      
+      const historico = await base44.asServiceRole.entities.HistoricoLanceGrupo.create({
+        empresa_id,
+        assembleia_data,
+        arquivo_nome,
+        total_grupos: 0,
+        total_registros: 0,
+        criado_em: new Date().toISOString(),
+        usuario_id: user.id,
+        usuario_nome: user.full_name || user.email
+      });
+
+      return Response.json({
+        sucesso: true,
+        aviso: "PDF importado mas nenhuma linha estruturada foi encontrada",
+        historico_id: historico.id,
+        total_lances: 0,
+        total_grupos: 0,
+        total_resumos: 0
+      });
     }
 
     const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
