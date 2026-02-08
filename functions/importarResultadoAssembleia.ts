@@ -91,20 +91,13 @@ function parseRowsFromText(fullText: string) {
   });
 
   // ETAPA 2: Identificar linhas válidas e extrair grupos ANTES do parse completo
-  const linhasValidas = [];
-  const gruposEncontrados = new Set();
-
-  for (const line of linhasLimpas) {
-    const grupo = extrairGrupo(line);
-    if (grupo) {
-      linhasValidas.push(line);
-      gruposEncontrados.add(grupo); // Adiciona grupo ao Set
-    }
-  }
+  const linhasValidas = linhasLimpas.filter(line => extrairGrupo(line));
+  const grupos = linhasValidas.map(extrairGrupo).filter(Boolean);
+  const totalGrupos = new Set(grupos).size;
 
   console.log("[DEBUG] Linhas válidas identificadas:", linhasValidas.length);
-  console.log("[DEBUG] Grupos únicos encontrados:", gruposEncontrados.size);
-  console.log("[DEBUG] Grupos:", Array.from(gruposEncontrados).sort().join(', '));
+  console.log("[DEBUG] Grupos únicos encontrados:", totalGrupos);
+  console.log("[DEBUG] Grupos:", Array.from(new Set(grupos)).sort().join(', '));
 
   // ETAPA 3: Parser detalhado por linha
   for (let i = 0; i < linhasValidas.length; i++) {
@@ -188,13 +181,13 @@ function parseRowsFromText(fullText: string) {
   console.log("[DEBUG] ========== FIM DO PARSE ==========");
   console.log("[DEBUG] Total de linhas processadas com sucesso:", rows.length);
   console.log("[DEBUG] Total de linhas válidas encontradas:", linhasValidas.length);
-  console.log("[DEBUG] Total de grupos únicos:", gruposEncontrados.size);
+  console.log("[DEBUG] Total de grupos únicos:", totalGrupos);
   
   return {
     rows,
     totalLinhasValidas: linhasValidas.length,
-    totalGruposUnicos: gruposEncontrados.size,
-    grupos: Array.from(gruposEncontrados).sort()
+    totalGruposUnicos: totalGrupos,
+    grupos: Array.from(new Set(grupos)).sort()
   };
 }
 
