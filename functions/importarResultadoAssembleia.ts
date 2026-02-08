@@ -179,27 +179,29 @@ function parseRowsFromText(fullText: string) {
 
   // ETAPA 1: Limpeza e filtragem de linhas
   const linhas = limparLinhasPDF(fullText);
-  console.log("[DEBUG] Linhas após limpeza:", linhas.length);
-  console.log("[DEBUG] Primeiras 20 linhas RAW:");
+  console.log("[DEBUG] ========== LINHAS APÓS LIMPEZA ==========");
+  console.log("[DEBUG] Total de linhas:", linhas.length);
+  console.log("[DEBUG] Primeiras 20 linhas:");
   linhas.slice(0, 20).forEach((line, idx) => {
-    console.log(`  [${idx}] "${line}"`);
-  });
-  
-  console.log("[DEBUG] Últimas 5 linhas RAW:");
-  linhas.slice(-5).forEach((line, idx) => {
     console.log(`  [${idx}] "${line}"`);
   });
 
   // ETAPA 2: Parse direto - cada linha é um registro completo
   const registros = linhas
-    .map(parseLinhaAssembleia)
+    .map((linha, idx) => {
+      const result = parseLinhaAssembleia(linha);
+      if (idx < 5) {
+        console.log(`[DEBUG] Parse linha[${idx}]: QT=${result?.qt} Grupo=${result?.grupo} Lance=${result?.lance_percent} Mod=${result?.modalidade}`);
+      }
+      return result;
+    })
     .filter(Boolean);
 
   console.log("[DEBUG] ========== REGISTROS ==========");
   console.log("[DEBUG] Total de registros parseados:", registros.length);
-  console.log("[DEBUG] Primeiros 15 registros:");
-  registros.slice(0, 15).forEach((reg, idx) => {
-    console.log(`  [${idx}] QT:${reg.qt} Grupo:${reg.grupo} Mod:${reg.modalidade} Lance:${reg.lance_percent || 'N/A'}% Créd:R$${reg.credito || 'N/A'} Desc:"${reg.descricao}"`);
+  console.log("[DEBUG] Primeiros 20 registros:");
+  registros.slice(0, 20).forEach((reg, idx) => {
+    console.log(`  [${idx}] QT:${reg.qt} Grupo:${reg.grupo} Mod:${reg.modalidade} Lance:${reg.lance_percent || 'N/A'}% Créd:R$${reg.credito || 'N/A'}`);
   });
 
   // ETAPA 3: Contagem de grupos únicos
