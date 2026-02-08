@@ -121,9 +121,13 @@ export default function HistoricoResultadoAssembleia() {
       }
     }
 
-    // Converter resumosPorModalidade de objeto para array
+    // Converter resumosPorModalidade de objeto para array e limpar valores inválidos
     for (const grupo of Object.values(grupos)) {
-      grupo.resumos = Object.values(grupo.resumosPorModalidade);
+      grupo.resumos = Object.values(grupo.resumosPorModalidade).map(r => ({
+        ...r,
+        menor_lance_percent: r.menor_lance_percent >= 999 ? null : r.menor_lance_percent,
+        maior_lance_percent: r.maior_lance_percent <= 0 ? null : r.maior_lance_percent
+      }));
       delete grupo.resumosPorModalidade;
     }
 
