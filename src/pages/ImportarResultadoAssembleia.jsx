@@ -138,6 +138,14 @@ export default function ImportarResultadoAssembleia() {
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
       try {
+        // Deletar ImportacaoAssembleia relacionada
+        const importacoes = await base44.entities.ImportacaoAssembleia.filter({ historico_id: id });
+        if (importacoes && importacoes.length > 0) {
+          await Promise.all(importacoes.map(imp => 
+            base44.entities.ImportacaoAssembleia.delete(imp.id).catch(() => null)
+          ));
+        }
+
         // Deletar detalhes
         const detalhes = await base44.entities.HistoricoLanceDetalhe.filter({ historico_id: id });
         if (detalhes && detalhes.length > 0) {
