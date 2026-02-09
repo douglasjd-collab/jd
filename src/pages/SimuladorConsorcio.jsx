@@ -777,7 +777,7 @@ export default function SimuladorConsorcio() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
                   <div>
                     <Label className="text-sm font-medium">Deseja ofertar Recurso Próprio junto com o Lance Embutido?</Label>
                     <p className="text-xs text-slate-500 mt-1">Oferece um valor adicional para reduzir as parcelas</p>
