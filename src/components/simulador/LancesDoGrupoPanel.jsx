@@ -93,7 +93,7 @@ export default function LancesDoGrupoPanel({
   const detalhesUltimoHistorico = data?.detalhesUltimoHistorico || [];
 
   // 1️⃣ MENOR LANCE → apenas do último histórico (piso atual do mercado)
-  const getMenorLanceUltimoHistorico = (modalidade) => {
+  const getMenorLanceUltimoHistorico = React.useCallback((modalidade) => {
     const lances = detalhesUltimoHistorico
       .filter(d =>
         d.modalidade === modalidade &&
@@ -102,10 +102,10 @@ export default function LancesDoGrupoPanel({
       .map(d => d.lance_percent);
 
     return lances.length ? Math.min(...lances) : null;
-  };
+  }, [detalhesUltimoHistorico]);
 
   // 2️⃣ MAIOR LANCE → histórico COMPLETO (teto histórico)
-  const getMaiorLanceHistoricoCompleto = (modalidade) => {
+  const getMaiorLanceHistoricoCompleto = React.useCallback((modalidade) => {
     const lances = todosDetalhes
       .filter(d =>
         d.modalidade === modalidade &&
@@ -114,7 +114,7 @@ export default function LancesDoGrupoPanel({
       .map(d => d.lance_percent);
 
     return lances.length ? Math.max(...lances) : null;
-  };
+  }, [todosDetalhes]);
 
   // Notificar o componente pai quando os valores mudarem
   React.useEffect(() => {
