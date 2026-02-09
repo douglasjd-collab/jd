@@ -553,7 +553,7 @@ ${textoVariacoes}
                         >
                           <ChevronRight className="w-5 h-5 text-blue-600" />
                         </Button>
-                        {['admin', 'super_admin', 'master'].includes(user?.perfil) && (
+                        {['admin', 'super_admin', 'master', 'gerente'].includes(user?.perfil) && (
                           <Button
                             variant="ghost"
                             size="sm"

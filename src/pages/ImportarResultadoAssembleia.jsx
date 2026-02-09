@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, Loader2, FileSpreadsheet, Trash2, Calendar, Search, Eye } from 'lucide-react';
+import { Upload, Loader2, FileSpreadsheet, Trash2, Calendar, Search, Eye, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import DataTable from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -277,6 +277,34 @@ export default function ImportarResultadoAssembleia() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  // Bloquear acesso para vendedores
+  if (user.perfil === 'vendedor') {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Importar Resultado de Assembleia"
+          subtitle="Importar histórico de lances dos grupos"
+          backTo="Importacao"
+        />
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                <XCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Acesso Negado</h3>
+                <p className="text-slate-600">
+                  Apenas administradores podem importar resultados de assembleia.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
