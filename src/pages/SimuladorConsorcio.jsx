@@ -585,8 +585,10 @@ export default function SimuladorConsorcio() {
           {grupo && (
             <LancesDoGrupoPanel 
               grupo={grupo}
-              onMenorLanceChange={setMenorLance}
-              onMaiorLanceChange={setMaiorLance}
+              onMenorLanceLivreChange={setMenorLanceLivre}
+              onMaiorLanceLivreChange={setMaiorLanceLivre}
+              onMenorLanceLimitadoChange={setMenorLanceLimitado}
+              onMaiorLanceLimitadoChange={setMaiorLanceLimitado}
             />
           )}
 
