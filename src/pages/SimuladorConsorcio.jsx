@@ -46,15 +46,21 @@ export default function SimuladorConsorcio() {
     if (dadosPlano) {
       try {
         const plano = JSON.parse(dadosPlano);
+        console.log('Plano carregado:', plano);
+        console.log('Grupo do plano:', plano.grupo);
+        
         setCartas([{
           credito: plano.credito?.toString() || plano.valor_credito?.toString() || '',
           parcela: plano.parcela?.toString() || '',
           prazo: plano.prazo?.toString() || ''
         }]);
+        
         // Preencher grupo automaticamente se vir do plano
         if (plano.grupo) {
+          console.log('Setando grupo:', plano.grupo);
           setGrupo(plano.grupo);
         }
+        
         localStorage.removeItem('planoSelecionado');
       } catch (e) {
         console.error('Erro ao carregar plano selecionado:', e);
