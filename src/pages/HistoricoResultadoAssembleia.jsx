@@ -345,15 +345,54 @@ export default function HistoricoResultadoAssembleia() {
                           );
                         })()}
                       </div>
-                    </div>
+                      </div>
 
-                    {/* Total de Contemplações */}
-                    <div className="mt-3 pt-3 border-t border-indigo-200 text-center">
+                      {/* Total de Contemplações */}
+                      <div className="mt-3 pt-3 border-t border-indigo-200 text-center">
                       <p className="text-xs text-slate-600 mb-1">Total de Contemplações</p>
                       <p className="text-2xl font-bold text-indigo-900">{totalContemplacoes}</p>
-                    </div>
-                  </div>
-                </CardContent>
+                      </div>
+                      </div>
+
+                      {/* Tabela de Detalhes */}
+                      <div className="overflow-x-auto">
+                      <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-slate-50">
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">QT.</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Descrição</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Crédito</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Modalidade</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Lance %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {grupo.detalhes.map((detalhe, idx) => (
+                          <tr key={idx} className="border-b hover:bg-slate-50">
+                            <td className="px-4 py-3 text-sm">{detalhe.qt}</td>
+                            <td className="px-4 py-3 text-sm font-medium">{detalhe.descricao}</td>
+                            <td className="px-4 py-3 text-sm">
+                              {detalhe.credito ? `R$ ${detalhe.credito.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                                {modalidadeLabel[detalhe.modalidade] || detalhe.modalidade}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {detalhe.lance_percent !== null ? (
+                                <span className="text-blue-600 font-semibold flex items-center justify-end gap-1">
+                                  <TrendingDown className="w-4 h-4" />
+                                  {detalhe.lance_percent.toFixed(4)}%
+                                </span>
+                              ) : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      </table>
+                      </div>
+                      </CardContent>
               </Card>
             );
           })}
