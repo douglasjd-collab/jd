@@ -755,31 +755,7 @@ export default function SimuladorConsorcio() {
                   <Switch checked={usarLanceProprio} onCheckedChange={setUsarLanceProprio} />
                 </div>
 
-                {usarLanceProprio && (
-                  <>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="col-span-2">
-                        <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
-                        <Input
-                          type="text"
-                          value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
-                          onChange={(e) => {
-                            const valorNumerico = handleMoedaInput(e.target.value);
-                            setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
-                          }}
-                          placeholder="0,00"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Percentual (%)</Label>
-                        <Input
-                          type="text"
-                          value={lanceProprioPercentual + '%'}
-                          disabled
-                          className="bg-slate-100 text-slate-700 font-semibold"
-                        />
-                      </div>
-                    </div>
+
 
                     {administradora === 'canopus' && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel') && (
                       <>
