@@ -73,11 +73,12 @@ export default function LancesDoGrupoPanel({ grupo }) {
 
         console.log('📊 Resumos do histórico mais recente:', resumosDoHistoricoMaisRecente.length);
 
-        // Log detalhado para lance_limitado
-        const lanceLimitado = resumosDoHistoricoMaisRecente.find(r => r.modalidade === 'lance_limitado');
-        if (lanceLimitado) {
-          console.log('🔍 Lance Limitado - Dados do resumo:', lanceLimitado);
-        }
+        // Log detalhado para lance_limitado - TODOS os registros
+        const todosLanceLimitado = resumosDoHistoricoMaisRecente.filter(r => r.modalidade === 'lance_limitado');
+        console.log('🔍 Lance Limitado - TODOS os registros:', todosLanceLimitado);
+        todosLanceLimitado.forEach((r, i) => {
+          console.log(`   [${i}] menor: ${r.menor_lance_percent}%, maior: ${r.maior_lance_percent}%`);
+        });
 
         return {
           historicos: [historicoMaisRecente],
