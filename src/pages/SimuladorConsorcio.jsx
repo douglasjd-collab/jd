@@ -981,11 +981,11 @@ export default function SimuladorConsorcio() {
                         <>
                           <div className="flex justify-between items-center">
                             <span className="text-purple-700 text-sm">Parcelas:</span>
-                            <span className="font-bold text-purple-900 text-xl">{resultado.mesesCobrados}x</span>
+                            <span className="font-bold text-purple-900 text-lg">{resultado.mesesCobrados}x</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-purple-700 text-sm">Nova Parcela:</span>
-                            <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
+                            <span className="font-bold text-purple-900 text-lg">{formatCurrency(resultado.novaParcela)}</span>
                           </div>
                         </>
                       ) : (
