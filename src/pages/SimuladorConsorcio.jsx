@@ -819,13 +819,23 @@ export default function SimuladorConsorcio() {
                     )}
 
                     {lanceProprio && parseFloat(lanceProprio) > 0 && (
-                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                        <p className="text-xs text-purple-700">💎 Lance Próprio</p>
-                        <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
-                        <p className="text-xs text-purple-700 mt-1">
-                          {lanceProprioPercentual}% do crédito total
-                        </p>
-                      </div>
+                      <>
+                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                          <p className="text-xs text-purple-700">💎 Lance Próprio</p>
+                          <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                          <p className="text-xs text-purple-700 mt-1">
+                            {lanceProprioPercentual}% do crédito total
+                          </p>
+                        </div>
+
+                        {/* Relógio de Contemplação */}
+                        {relogio && (
+                          <RelogioContemplacao
+                            relogio={relogio}
+                            lanceOfertado={lanceConsiderado}
+                          />
+                        )}
+                      </>
                     )}
                   </>
                 )}
