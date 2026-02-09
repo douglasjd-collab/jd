@@ -938,10 +938,10 @@ export default function SimuladorConsorcio() {
                         </p>
                       </div>
 
-                      <div className="p-4 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg text-white">
-                        <p className="text-xs font-semibold mb-1">🎯 Percentual Total Ofertado</p>
-                        <p className="text-3xl font-bold">{percentualTotalOfertado}%</p>
-                        <p className="text-xs mt-1 opacity-90">
+                      <div className="p-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg text-white">
+                        <p className="text-xs font-semibold">🎯 Percentual Total Ofertado</p>
+                        <p className="text-2xl font-bold">{percentualTotalOfertado}%</p>
+                        <p className="text-xs mt-0.5 opacity-90">
                           Lance Embutido ({resultado.lanceEmbutidoPercentual}%) + Lance Próprio ({lanceProprioPercentual}%)
                         </p>
                       </div>
