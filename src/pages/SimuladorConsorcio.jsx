@@ -131,9 +131,11 @@ export default function SimuladorConsorcio() {
 
   // Calcular o lance total e percentual para o relógio
   const lanceTotal = React.useMemo(() => {
+    // Se tem lance próprio E está ativo o switch, soma embutido + próprio
     if (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) {
       return lanceEmbutidoValor + parseFloat(lanceProprio);
     }
+    // Senão, usa apenas o lance embutido
     if (lanceEmbutidoPercentual > 0) {
       return lanceEmbutidoValor;
     }
@@ -144,6 +146,15 @@ export default function SimuladorConsorcio() {
     if (creditoTotal <= 0 || lanceTotal <= 0) return 0;
     return (lanceTotal / creditoTotal) * 100;
   }, [lanceTotal, creditoTotal]);
+
+  // Calcular se deve mostrar o relógio
+  const mostrarRelogio = React.useMemo(() => {
+    // Mostra se:
+    // 1. Tem grupo (para buscar histórico)
+    // 2. Tem dados de menor e maior lance
+    // 3. Tem lance próprio com valor > 0
+    return grupo && menorLance && maiorLance && lanceProprio && parseFloat(lanceProprio) > 0;
+  }, [grupo, menorLance, maiorLance, lanceProprio]);
 
   // Atualizar o relógio automaticamente quando o lance muda
   useEffect(() => {
