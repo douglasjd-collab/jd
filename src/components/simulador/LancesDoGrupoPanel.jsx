@@ -96,10 +96,10 @@ export default function LancesDoGrupoPanel({ grupo, onMenorLanceChange, onMaiorL
       .map(d => d.lance_percent);
 
     return lances.length ? Math.min(...lances) : null;
-  };
+  }, [detalhesUltimoHistorico]);
 
   // 2️⃣ MAIOR LANCE → histórico COMPLETO (teto histórico)
-  const getMaiorLanceHistoricoCompleto = (modalidade) => {
+  const getMaiorLanceHistoricoCompleto = React.useMemo(() => (modalidade) => {
     const lances = todosDetalhes
       .filter(d =>
         d.modalidade === modalidade &&
