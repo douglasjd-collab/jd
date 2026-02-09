@@ -912,10 +912,10 @@ export default function SimuladorConsorcio() {
                     </p>
                   </div>
 
-                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <p className="text-xs text-emerald-700 font-semibold mb-2">🎯 Lance Embutido</p>
-                    <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceEmbutidoValor)}</p>
-                    <p className="text-xs text-emerald-800 mt-2">
+                  <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <p className="text-xs text-emerald-700 font-semibold mb-1">🎯 Lance Embutido</p>
+                    <p className="text-lg font-bold text-emerald-900">{formatCurrency(resultado.lanceEmbutidoValor)}</p>
+                    <p className="text-xs text-emerald-800 mt-1">
                       {resultado.lanceEmbutidoPercentual}% • {resultado.administradora}
                     </p>
                   </div>
