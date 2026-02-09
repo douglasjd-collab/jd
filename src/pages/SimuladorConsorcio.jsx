@@ -930,10 +930,10 @@ export default function SimuladorConsorcio() {
 
                   {resultado.usarLanceProprio && (
                     <>
-                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                        <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
-                        <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
-                        <p className="text-xs text-purple-700 mt-1">
+                      <div className="p-2 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-xs text-purple-700 font-semibold mb-1">💎 Lance Próprio</p>
+                        <p className="text-lg font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
+                        <p className="text-xs text-purple-700 mt-0.5">
                           {lanceProprioPercentual}% do crédito total
                         </p>
                       </div>
