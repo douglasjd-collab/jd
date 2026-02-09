@@ -24,7 +24,13 @@ function getResumo(resumos, key) {
   return resumos.find((r) => r.modalidade === key) || null;
 }
 
-export default function LancesDoGrupoPanel({ grupo, onMenorLanceChange, onMaiorLanceChange }) {
+export default function LancesDoGrupoPanel({ 
+  grupo, 
+  onMenorLanceLivreChange,
+  onMaiorLanceLivreChange,
+  onMenorLanceLimitadoChange,
+  onMaiorLanceLimitadoChange
+}) {
   const enabled = !!grupo;
 
   const { data, isLoading, error } = useQuery({
