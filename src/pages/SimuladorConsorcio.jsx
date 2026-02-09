@@ -19,6 +19,8 @@ import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X, Copy } from
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
+import RelogioContemplacao from '@/components/simulador/RelogioContemplacao';
+import { calcularRelogioContemplacao } from '@/components/utils/calcularRelogioContemplacao';
 
 export default function SimuladorConsorcio() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -35,6 +37,9 @@ export default function SimuladorConsorcio() {
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [resultado, setResultado] = useState(null);
+  const [relogio, setRelogio] = useState(null);
+  const [menorLance, setMenorLance] = useState(null);
+  const [maiorLance, setMaiorLance] = useState(null);
 
   useEffect(() => {
     loadUser();
