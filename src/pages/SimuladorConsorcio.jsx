@@ -959,11 +959,11 @@ export default function SimuladorConsorcio() {
                           <span>(-)1ª parcela na contratação:</span>
                           <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
                         </div>
-                        <div className="flex justify-between border-t pt-2">
+                        <div className="flex justify-between border-t pt-1">
                           <span className="text-slate-900 font-semibold">Saldo devedor:</span>
-                          <span className="font-bold text-lg">{formatCurrency(resultado.totalPlano - resultado.parcelaTotal - (resultado.lanceEmbutidoValor + resultado.lanceProprio))}</span>
+                          <span className="font-bold">{formatCurrency(resultado.totalPlano - resultado.parcelaTotal - (resultado.lanceEmbutidoValor + resultado.lanceProprio))}</span>
                         </div>
-                        <div className="flex justify-between text-xs mt-2 pt-2 border-t">
+                        <div className="flex justify-between text-xs mt-1 pt-1 border-t">
                           <span className="text-slate-600">Meses Cobrados:</span>
                           <span className="font-semibold">
                             {resultado.mesesCobrados} 
