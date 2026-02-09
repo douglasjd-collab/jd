@@ -129,45 +129,46 @@ export default function SimuladorConsorcio() {
     ? (((lanceEmbutidoValor + (usarLanceProprio ? parseFloat(lanceProprio || 0) : 0)) / creditoTotal) * 100).toFixed(2)
     : '0';
 
-  // Lance considerado para o relógio (fonte única)
-  const lanceConsiderado = React.useMemo(() => {
+  // Calcular o lance total e percentual para o relógio
+  const lanceTotal = React.useMemo(() => {
     if (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) {
-      return parseFloat(lanceProprioPercentual);
+      return lanceEmbutidoValor + parseFloat(lanceProprio);
     }
-
     if (lanceEmbutidoPercentual > 0) {
-      return lanceEmbutidoPercentual;
+      return lanceEmbutidoValor;
     }
+    return 0;
+  }, [usarLanceProprio, lanceProprio, lanceEmbutidoValor, lanceEmbutidoPercentual]);
 
-    return null;
-  }, [usarLanceProprio, lanceProprio, lanceProprioPercentual, lanceEmbutidoPercentual]);
+  const lancePercentual = React.useMemo(() => {
+    if (creditoTotal <= 0 || lanceTotal <= 0) return 0;
+    return (lanceTotal / creditoTotal) * 100;
+  }, [lanceTotal, creditoTotal]);
 
-  // Atualizar o relógio quando os valores mudarem
+  // Atualizar o relógio automaticamente quando o lance muda
   useEffect(() => {
-    if (
-      lanceConsiderado == null ||
-      menorLance == null ||
-      maiorLance == null
-    ) {
+    // Só calcula se tiver histórico E lance total
+    if (!menorLance || !maiorLance || lanceTotal <= 0) {
       setRelogio(null);
       return;
     }
 
     const resultado = calcularRelogioContemplacao({
-      lanceCliente: lanceConsiderado,
+      lanceCliente: lancePercentual,
       menorLance,
       maiorLance
     });
 
-    console.log('Relógio recalculado', {
-      lanceConsiderado,
+    console.log('Relógio atualizado automaticamente', {
+      lanceTotal,
+      lancePercentual,
       menorLance,
       maiorLance,
       resultado
     });
 
     setRelogio(resultado);
-  }, [lanceConsiderado, menorLance, maiorLance]);
+  }, [lanceTotal, lancePercentual, menorLance, maiorLance]);
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
