@@ -837,7 +837,7 @@ export default function SimuladorConsorcio() {
                           placeholder="0,00"
                         />
                         {lanceProprio && parseFloat(lanceProprio) > 0 && (
-                          <div className="mt-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                          <div className="mt-1 p-2 bg-purple-50 rounded-lg border border-purple-200">
                             <p className="text-xs text-purple-700">💎 Lance Próprio</p>
                             <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
                             <p className="text-xs text-purple-700 mt-1">
