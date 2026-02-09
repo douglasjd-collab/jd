@@ -110,12 +110,9 @@ export default function LancesDoGrupoPanel({ grupo }) {
       const qtd = dadosModalidade[0].qtd_ocorrencias || 0;
 
       // Se não tem percentuais, retorna null
-      if (!min && !max) return null;
+      if (min == null && max == null) return null;
 
-      // Calcular média entre min e max
-      const media = min && max ? (min + max) / 2 : (min || max);
-
-      return { media, min, max, qtd };
+      return { min, max, qtd };
     };
 
     const livre = processar("lance_livre");
