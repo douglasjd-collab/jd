@@ -178,15 +178,7 @@ export default function LancesDoGrupoPanel({
 
           return (
             <>
-              <div className="text-xs text-slate-500 mt-3 bg-emerald-50 p-2 rounded">
-                💡 <b>Dados da última assembleia ({new Date(ultimoHistorico.assembleia_data).toLocaleDateString('pt-BR')})</b>
-                <br/>
-                <b>Menor</b> = última assembleia (piso atual) | <b>Maior</b> = histórico completo (teto histórico)
-                <br/>
-                Lance próximo ao "Maior" aumenta chances, próximo ao "Menor" é mais conservador.
-              </div>
-
-              <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
+              <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
                 <div className="grid grid-cols-2 gap-4">
                   {menorLanceLivre !== null && (
                     <div className="bg-white rounded-lg px-4 py-3 border-2 border-emerald-200 shadow-sm">
