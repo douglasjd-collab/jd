@@ -147,8 +147,20 @@ export default function SimuladorConsorcio() {
 
   // Atualizar o relógio automaticamente quando o lance muda
   useEffect(() => {
+    console.log("🔔 useEffect do relógio executou");
+    console.log({
+      lanceTotal,
+      usarLanceProprio,
+      lanceEmbutidoPercentual,
+      creditoTotal,
+      menorLance,
+      maiorLance,
+      lancePercentual
+    });
+
     // Só calcula se tiver histórico E lance total
     if (!menorLance || !maiorLance || lanceTotal <= 0) {
+      console.log("⚠️ Relógio não calculado: falta histórico ou lance");
       setRelogio(null);
       return;
     }
@@ -159,7 +171,7 @@ export default function SimuladorConsorcio() {
       maiorLance
     });
 
-    console.log('Relógio atualizado automaticamente', {
+    console.log('✅ Relógio atualizado automaticamente', {
       lanceTotal,
       lancePercentual,
       menorLance,
@@ -168,7 +180,7 @@ export default function SimuladorConsorcio() {
     });
 
     setRelogio(resultado);
-  }, [lanceTotal, lancePercentual, menorLance, maiorLance]);
+  }, [lanceTotal, lancePercentual, menorLance, maiorLance, usarLanceProprio, lanceEmbutidoPercentual, creditoTotal]);
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
