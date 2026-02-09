@@ -153,26 +153,27 @@ export default function LancesDoGrupoPanel({ grupo }) {
           return (
             <>
               <div className="text-xs text-slate-500 mt-3 bg-emerald-50 p-2 rounded">
-                💡 <b>Dados da última assembleia ({new Date(historicos[0].assembleia_data).toLocaleDateString('pt-BR')})</b>
+                💡 <b>Dados da última assembleia ({new Date(ultimoHistorico.assembleia_data).toLocaleDateString('pt-BR')})</b>
                 <br/>
-                Use a <b>Mín</b> como referência. Lance próximo ao "Máx" aumenta chances, próximo ao "Mín" é mais conservador.
+                <b>Menor</b> = última assembleia (piso atual) | <b>Maior</b> = histórico completo (teto histórico)
+                <br/>
+                Lance próximo ao "Maior" aumenta chances, próximo ao "Menor" é mais conservador.
               </div>
 
               <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
-                <p className="text-xs font-semibold text-slate-700 mb-2 text-center">MENOR LANCE</p>
                 <div className="grid grid-cols-2 gap-4">
-                  {lanceLivre.menor !== null && (
+                  {menorLanceLivre !== null && (
                     <div className="bg-white rounded px-3 py-2 border border-emerald-200">
                       <p className="text-xs text-slate-600 text-center mb-1">Lance Livre</p>
-                      <p className="text-2xl font-bold text-emerald-700 text-center">{fmt(lanceLivre.menor)}</p>
-                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLivre.maior)}</p>
+                      <p className="text-2xl font-bold text-emerald-700 text-center">{fmt(menorLanceLivre)}</p>
+                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(maiorLanceLivre)}</p>
                     </div>
                   )}
-                  {lanceLimitado.menor !== null && (
+                  {menorLanceLimitado !== null && (
                     <div className="bg-white rounded px-3 py-2 border border-blue-200">
                       <p className="text-xs text-slate-600 text-center mb-1">Lance Limitado</p>
-                      <p className="text-2xl font-bold text-blue-700 text-center">{fmt(lanceLimitado.menor)}</p>
-                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLimitado.maior)}</p>
+                      <p className="text-2xl font-bold text-blue-700 text-center">{fmt(menorLanceLimitado)}</p>
+                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(maiorLanceLimitado)}</p>
                     </div>
                   )}
                 </div>
