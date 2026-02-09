@@ -946,7 +946,7 @@ export default function SimuladorConsorcio() {
                         </p>
                       </div>
 
-                      <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
+                      <div className="p-2 bg-slate-50 rounded-lg space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span className="text-slate-600">Total a pagar:</span>
                           <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
