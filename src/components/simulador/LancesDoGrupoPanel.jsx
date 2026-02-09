@@ -32,64 +32,73 @@ export default function LancesDoGrupoPanel({ grupo }) {
     enabled,
     queryFn: async () => {
       console.log('🔍 Buscando grupo:', grupo, 'tipo:', typeof grupo);
-      
-      // 1) Buscar TODOS os resumos
-      const todosResumos = await base44.entities.HistoricoLanceResumo.list();
-      console.log('📊 Total de resumos no banco:', todosResumos?.length || 0);
-      
-      if (todosResumos && todosResumos.length > 0) {
-        console.log('📋 Grupos únicos encontrados:', [...new Set(todosResumos.map(r => r.grupo))]);
-        console.log('📋 Primeiros 5 resumos:', todosResumos.slice(0, 5).map(r => ({
-          id: r.id,
-          grupo: r.grupo,
-          tipo_grupo: typeof r.grupo,
-          historico_id: r.historico_id
-        })));
-      }
 
-      // Normalizar grupos removendo zeros à esquerda para comparação
+      // 1) Buscar todos os detalhes de lances e históricos
+      const todosDetalhes = await base44.entities.HistoricoLanceDetalhe.list();
+      const todosHistoricos = await base44.entities.HistoricoLanceGrupo.list();
+
+      console.log('📊 Total de detalhes:', todosDetalhes?.length || 0);
+      console.log('📊 Total de históricos:', todosHistoricos?.length || 0);
+
       const grupoNormalizado = String(grupo).replace(/^0+/, '') || '0';
-      
-      const resumosDoGrupo = todosResumos.filter(r => {
-        const grupoResumoNormalizado = String(r.grupo).replace(/^0+/, '') || '0';
-        return grupoResumoNormalizado === grupoNormalizado;
-      });
-      
-      console.log(`✅ Resumos encontrados para grupo "${grupo}" (normalizado: "${grupoNormalizado}"):`, resumosDoGrupo.length);
 
-      if (!resumosDoGrupo || resumosDoGrupo.length === 0) {
+      // 2) Filtrar detalhes do grupo atual
+      const detalhesDoGrupo = todosDetalhes.filter(d => {
+        const grupoDetalheNormalizado = String(d.grupo).replace(/^0+/, '') || '0';
+        return grupoDetalheNormalizado === grupoNormalizado;
+      });
+
+      console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, detalhesDoGrupo.length);
+
+      if (!detalhesDoGrupo || detalhesDoGrupo.length === 0) {
         return { historicos: [], resumos: [], periodo: 0 };
       }
 
-      // 2) Pegar os IDs únicos dos históricos que contém este grupo
-      const historicosIdsComGrupo = [...new Set(resumosDoGrupo.map(r => r.historico_id))];
-      console.log('🔑 IDs dos históricos com este grupo:', historicosIdsComGrupo);
-
-      // 3) Buscar os históricos completos
-      const todosHistoricos = await base44.entities.HistoricoLanceGrupo.list();
-      
-      // 4) Filtrar apenas os que contêm o grupo e ordenar por data (mais recente primeiro)
-      const historicosComGrupo = (todosHistoricos || [])
-        .filter(h => historicosIdsComGrupo.includes(h.id))
+      // 3) Encontrar o histórico mais recente para este grupo
+      const historicosComDetalhesDoGrupo = todosHistoricos
+        .filter(h => detalhesDoGrupo.some(d => d.historico_id === h.id))
         .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data));
 
-      console.log('📅 Históricos encontrados:', historicosComGrupo.length);
-
-      if (historicosComGrupo.length === 0) {
+      if (historicosComDetalhesDoGrupo.length === 0) {
         return { historicos: [], resumos: [], periodo: 0 };
       }
 
-      // 5) Pegar apenas o histórico mais recente
-      const historicoMaisRecente = historicosComGrupo[0];
-      console.log('✅ Usando histórico mais recente:', historicoMaisRecente.assembleia_data);
+      const historicoMaisRecente = historicosComDetalhesDoGrupo[0];
+      console.log('✅ Histórico mais recente:', historicoMaisRecente.assembleia_data);
 
-      // 6) Filtrar apenas os resumos do histórico mais recente
-      const resumosDoHistorico = resumosDoGrupo.filter(r => r.historico_id === historicoMaisRecente.id);
-      console.log('📊 Resumos do histórico mais recente:', resumosDoHistorico.length);
+      // 4) Filtrar detalhes do histórico mais recente
+      const detalhesDoHistoricoMaisRecente = detalhesDoGrupo.filter(
+        d => d.historico_id === historicoMaisRecente.id
+      );
 
-      return { 
-        historicos: [historicoMaisRecente], 
-        resumos: resumosDoHistorico,
+      // 5) Calcular resumos (min/max/qtd) a partir dos detalhes
+      const resumosCalculados = {};
+      for (const detalhe of detalhesDoHistoricoMaisRecente) {
+        if (!resumosCalculados[detalhe.modalidade]) {
+          resumosCalculados[detalhe.modalidade] = {
+            modalidade: detalhe.modalidade,
+            lances: [],
+            qtd_ocorrencias: 0
+          };
+        }
+        if (detalhe.lance_percent !== null) {
+          resumosCalculados[detalhe.modalidade].lances.push(detalhe.lance_percent);
+          resumosCalculados[detalhe.modalidade].qtd_ocorrencias++;
+        }
+      }
+
+      const finalResumos = Object.values(resumosCalculados).map(r => ({
+        modalidade: r.modalidade,
+        menor_lance_percent: r.lances.length > 0 ? Math.min(...r.lances) : null,
+        maior_lance_percent: r.lances.length > 0 ? Math.max(...r.lances) : null,
+        qtd_ocorrencias: r.qtd_ocorrencias
+      }));
+      
+      console.log('📊 Resumos calculados:', finalResumos.length);
+
+      return {
+        historicos: [historicoMaisRecente],
+        resumos: finalResumos,
         periodo: 1
       };
     },
