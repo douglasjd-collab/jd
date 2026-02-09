@@ -129,6 +129,46 @@ export default function SimuladorConsorcio() {
     ? (((lanceEmbutidoValor + (usarLanceProprio ? parseFloat(lanceProprio || 0) : 0)) / creditoTotal) * 100).toFixed(2)
     : '0';
 
+  // Lance considerado para o relógio (fonte única)
+  const lanceConsiderado = React.useMemo(() => {
+    if (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) {
+      return parseFloat(lanceProprioPercentual);
+    }
+
+    if (lanceEmbutidoPercentual > 0) {
+      return lanceEmbutidoPercentual;
+    }
+
+    return null;
+  }, [usarLanceProprio, lanceProprio, lanceProprioPercentual, lanceEmbutidoPercentual]);
+
+  // Atualizar o relógio quando os valores mudarem
+  useEffect(() => {
+    if (
+      lanceConsiderado == null ||
+      menorLance == null ||
+      maiorLance == null
+    ) {
+      setRelogio(null);
+      return;
+    }
+
+    const resultado = calcularRelogioContemplacao({
+      lanceCliente: lanceConsiderado,
+      menorLance,
+      maiorLance
+    });
+
+    console.log('Relógio recalculado', {
+      lanceConsiderado,
+      menorLance,
+      maiorLance,
+      resultado
+    });
+
+    setRelogio(resultado);
+  }, [lanceConsiderado, menorLance, maiorLance]);
+
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
       toast.error('Preencha nome e telefone do cliente');
