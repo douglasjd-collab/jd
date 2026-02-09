@@ -129,7 +129,6 @@ export default function LancesDoGrupoPanel({ grupo }) {
       {
         key: "lance_livre",
         title: "Lance Livre",
-        media: livre?.media,
         min: livre?.min,
         max: livre?.max,
         qtd: livre?.qtd,
@@ -137,7 +136,6 @@ export default function LancesDoGrupoPanel({ grupo }) {
       {
         key: "lance_limitado",
         title: "Lance Limitado",
-        media: limitado?.media,
         min: limitado?.min,
         max: limitado?.max,
         qtd: limitado?.qtd,
@@ -150,7 +148,6 @@ export default function LancesDoGrupoPanel({ grupo }) {
       {
         key: "lance_fixo_15",
         title: "Lance Fixo 15%",
-        media: fixo15?.media,
         min: fixo15?.min,
         max: fixo15?.max,
         qtd: fixo15?.qtd,
@@ -158,7 +155,6 @@ export default function LancesDoGrupoPanel({ grupo }) {
       {
         key: "lance_fixo_30",
         title: "Lance Fixo 30%",
-        media: fixo30?.media,
         min: fixo30?.min,
         max: fixo30?.max,
         qtd: fixo30?.qtd,
@@ -166,7 +162,6 @@ export default function LancesDoGrupoPanel({ grupo }) {
       {
         key: "lance_fixo_50",
         title: "Lance Fixo 50%",
-        media: fixo50?.media,
         min: fixo50?.min,
         max: fixo50?.max,
         qtd: fixo50?.qtd,
