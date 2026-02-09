@@ -557,7 +557,22 @@ export default function SimuladorConsorcio() {
           </Card>
 
           {/* Histórico de Lances do Grupo */}
-          {grupo && <LancesDoGrupoPanel grupo={grupo} />}
+          {grupo && (
+            <LancesDoGrupoPanel 
+              grupo={grupo}
+              onMenorLanceChange={setMenorLance}
+              onMaiorLanceChange={setMaiorLance}
+            />
+          )}
+
+          {/* Relógio de Contemplação */}
+          {relogio && (
+            <RelogioContemplacao
+              relogio={relogio}
+              lanceOfertado={lanceConsiderado}
+              mediaHistorica={(menorLance + maiorLance) / 2}
+            />
+          )}
 
           {/* Cartas de Crédito */}
           <Card className="border-0 shadow-sm">
