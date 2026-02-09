@@ -28,62 +28,54 @@ export default function LancesDoGrupoPanel({ grupo }) {
   const enabled = !!grupo;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["lances-grupo-mais-recente", grupo],
+    queryKey: ["lances-grupo-detalhes", grupo],
     enabled,
     queryFn: async () => {
-        console.log('🔍 Buscando grupo:', grupo, 'tipo:', typeof grupo);
+        console.log('🔍 Buscando detalhes do grupo:', grupo);
 
-        // 1) Buscar todos os resumos e históricos
-        const todosResumos = await base44.entities.HistoricoLanceResumo.list();
+        // 1) Buscar todos os detalhes e históricos
+        const todosDetalhes = await base44.entities.HistoricoLanceDetalhe.list();
         const todosHistoricos = await base44.entities.HistoricoLanceGrupo.list();
 
-        console.log('📊 Total de resumos:', todosResumos?.length || 0);
+        console.log('📊 Total de detalhes:', todosDetalhes?.length || 0);
         console.log('📊 Total de históricos:', todosHistoricos?.length || 0);
 
         const grupoNormalizado = String(grupo).replace(/^0+/, '') || '0';
 
-        // 2) Filtrar resumos do grupo atual
-        const resumosDoGrupo = todosResumos.filter(r => {
-          const grupoResumoNormalizado = String(r.grupo).replace(/^0+/, '') || '0';
-          return grupoResumoNormalizado === grupoNormalizado;
+        // 2) Filtrar detalhes do grupo atual
+        const detalhesDoGrupo = todosDetalhes.filter(d => {
+          const grupoDetalheNormalizado = String(d.grupo).replace(/^0+/, '') || '0';
+          return grupoDetalheNormalizado === grupoNormalizado;
         });
 
-        console.log(`✅ Resumos encontrados para grupo "${grupo}":`, resumosDoGrupo.length);
+        console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, detalhesDoGrupo.length);
 
-        if (!resumosDoGrupo || resumosDoGrupo.length === 0) {
-          return { historicos: [], resumos: [], periodo: 0 };
+        if (!detalhesDoGrupo || detalhesDoGrupo.length === 0) {
+          return { historicos: [], detalhes: [] };
         }
 
         // 3) Encontrar o histórico mais recente para este grupo
-        const historicosComResumosDoGrupo = todosHistoricos
-          .filter(h => resumosDoGrupo.some(r => r.historico_id === h.id))
+        const historicosComDetalhesDoGrupo = todosHistoricos
+          .filter(h => detalhesDoGrupo.some(d => d.historico_id === h.id))
           .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data));
 
-        if (historicosComResumosDoGrupo.length === 0) {
-          return { historicos: [], resumos: [], periodo: 0 };
+        if (historicosComDetalhesDoGrupo.length === 0) {
+          return { historicos: [], detalhes: [] };
         }
 
-        const historicoMaisRecente = historicosComResumosDoGrupo[0];
+        const historicoMaisRecente = historicosComDetalhesDoGrupo[0];
         console.log('✅ Histórico mais recente:', historicoMaisRecente.assembleia_data);
 
-        // 4) Filtrar resumos do histórico mais recente
-        const resumosDoHistoricoMaisRecente = resumosDoGrupo.filter(
-          r => r.historico_id === historicoMaisRecente.id
+        // 4) Filtrar detalhes do histórico mais recente
+        const detalhesDoHistoricoMaisRecente = detalhesDoGrupo.filter(
+          d => d.historico_id === historicoMaisRecente.id
         );
 
-        console.log('📊 Resumos do histórico mais recente:', resumosDoHistoricoMaisRecente.length);
-
-        // Log detalhado para lance_limitado - TODOS os registros
-        const todosLanceLimitado = resumosDoHistoricoMaisRecente.filter(r => r.modalidade === 'lance_limitado');
-        console.log('🔍 Lance Limitado - TODOS os registros:', todosLanceLimitado);
-        todosLanceLimitado.forEach((r, i) => {
-          console.log(`   [${i}] menor: ${r.menor_lance_percent}%, maior: ${r.maior_lance_percent}%`);
-        });
+        console.log('📊 Detalhes do histórico mais recente:', detalhesDoHistoricoMaisRecente.length);
 
         return {
           historicos: [historicoMaisRecente],
-          resumos: resumosDoHistoricoMaisRecente,
-          periodo: 1
+          detalhes: detalhesDoHistoricoMaisRecente
         };
       },
   });
