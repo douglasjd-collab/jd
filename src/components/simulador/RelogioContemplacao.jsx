@@ -6,7 +6,7 @@ import { TrendingUp, AlertCircle } from 'lucide-react';
  * Componente visual do Relógio Contemplador
  * Mostra a chance de contemplação baseada no índice calculado
  */
-export default function RelogioContemplacao({ relogio, lanceOfertado, mediaHistorica }) {
+export default function RelogioContemplacao({ relogio, lanceOfertado }) {
   if (!relogio || relogio.nivel === 'desconhecido') {
     return (
       <Card className="border-slate-200">
@@ -27,13 +27,6 @@ export default function RelogioContemplacao({ relogio, lanceOfertado, mediaHisto
       text: 'text-red-700',
       progress: 'bg-red-500',
       icon: 'text-red-500'
-    },
-    orange: {
-      bg: 'bg-orange-50',
-      border: 'border-orange-200',
-      text: 'text-orange-700',
-      progress: 'bg-orange-500',
-      icon: 'text-orange-500'
     },
     yellow: {
       bg: 'bg-yellow-50',
@@ -59,10 +52,6 @@ export default function RelogioContemplacao({ relogio, lanceOfertado, mediaHisto
   };
 
   const config = coresConfig[relogio.cor] || coresConfig.gray;
-  const diferencaPercentual = ((lanceOfertado - mediaHistorica) / mediaHistorica * 100).toFixed(1);
-  const textoDiferenca = diferencaPercentual >= 0 
-    ? `${diferencaPercentual}% acima da média` 
-    : `${Math.abs(diferencaPercentual)}% abaixo da média`;
 
   return (
     <Card className={`${config.border} border-2 ${config.bg}`}>
