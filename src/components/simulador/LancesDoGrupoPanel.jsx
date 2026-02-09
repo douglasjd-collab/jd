@@ -163,17 +163,29 @@ export default function LancesDoGrupoPanel({ grupo }) {
               <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
                 <div className="grid grid-cols-2 gap-4">
                   {menorLanceLivre !== null && (
-                    <div className="bg-white rounded px-3 py-2 border border-emerald-200">
-                      <p className="text-xs text-slate-600 text-center mb-1">Lance Livre</p>
-                      <p className="text-2xl font-bold text-emerald-700 text-center">{fmt(menorLanceLivre)}</p>
-                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(maiorLanceLivre)}</p>
+                    <div className="bg-white rounded-lg px-4 py-3 border-2 border-emerald-200 shadow-sm">
+                      <p className="text-xs font-semibold text-slate-600 text-center mb-2">Lance Livre (Embutido)</p>
+                      <div className="border-b border-slate-200 pb-2 mb-2">
+                        <p className="text-[10px] font-medium text-emerald-600 text-center uppercase">Menor Lance</p>
+                        <p className="text-3xl font-bold text-emerald-700 text-center">{fmt(menorLanceLivre)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
+                        <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLanceLivre)}</p>
+                      </div>
                     </div>
                   )}
                   {menorLanceLimitado !== null && (
-                    <div className="bg-white rounded px-3 py-2 border border-blue-200">
-                      <p className="text-xs text-slate-600 text-center mb-1">Lance Limitado</p>
-                      <p className="text-2xl font-bold text-blue-700 text-center">{fmt(menorLanceLimitado)}</p>
-                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(maiorLanceLimitado)}</p>
+                    <div className="bg-white rounded-lg px-4 py-3 border-2 border-blue-200 shadow-sm">
+                      <p className="text-xs font-semibold text-slate-600 text-center mb-2">Lance Limitado (Próprio)</p>
+                      <div className="border-b border-slate-200 pb-2 mb-2">
+                        <p className="text-[10px] font-medium text-blue-600 text-center uppercase">Menor Lance</p>
+                        <p className="text-3xl font-bold text-blue-700 text-center">{fmt(menorLanceLimitado)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
+                        <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLanceLimitado)}</p>
+                      </div>
                     </div>
                   )}
                 </div>
