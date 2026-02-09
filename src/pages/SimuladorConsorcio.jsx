@@ -616,7 +616,7 @@ export default function SimuladorConsorcio() {
             <CardContent className="space-y-3">
               {cartas.map((carta, index) => (
                <div key={index} className="relative p-2 bg-slate-50 rounded-lg border">
-                  <div className="absolute top-2 right-2 flex gap-1">
+                  <div className="absolute top-1 right-1 flex gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
