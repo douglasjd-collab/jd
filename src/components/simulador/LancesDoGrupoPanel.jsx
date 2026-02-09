@@ -108,7 +108,26 @@ export default function LancesDoGrupoPanel({ grupo, onMenorLanceChange, onMaiorL
       .map(d => d.lance_percent);
 
     return lances.length ? Math.max(...lances) : null;
-  };
+  }, [todosDetalhes]);
+
+  // Notificar o componente pai quando os valores mudarem
+  React.useEffect(() => {
+    const menorLanceLivre = getMenorLanceUltimoHistorico('lance_livre');
+    const menorLanceLimitado = getMenorLanceUltimoHistorico('lance_limitado');
+    const maiorLanceLivre = getMaiorLanceHistoricoCompleto('lance_livre');
+    const maiorLanceLimitado = getMaiorLanceHistoricoCompleto('lance_limitado');
+
+    // Priorizar lance livre (embutido) para o menor lance
+    const menorCalculado = menorLanceLivre || menorLanceLimitado;
+    // Pegar o maior entre os dois tipos
+    const maiorCalculado = Math.max(
+      maiorLanceLivre || 0,
+      maiorLanceLimitado || 0
+    ) || null;
+
+    if (onMenorLanceChange) onMenorLanceChange(menorCalculado);
+    if (onMaiorLanceChange) onMaiorLanceChange(maiorCalculado);
+  }, [getMenorLanceUltimoHistorico, getMaiorLanceHistoricoCompleto, onMenorLanceChange, onMaiorLanceChange]);
 
   if (!enabled) return null;
 
