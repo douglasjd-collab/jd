@@ -565,14 +565,6 @@ export default function SimuladorConsorcio() {
             />
           )}
 
-          {/* Relógio de Contemplação */}
-          {relogio && (
-            <RelogioContemplacao
-              relogio={relogio}
-              lanceOfertado={lanceConsiderado}
-            />
-          )}
-
           {/* Cartas de Crédito */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
