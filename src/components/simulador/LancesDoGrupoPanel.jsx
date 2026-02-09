@@ -232,18 +232,18 @@ export default function LancesDoGrupoPanel({ grupo }) {
               <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
                 <p className="text-xs font-semibold text-slate-700 mb-2 text-center">MENOR LANCE</p>
                 <div className="grid grid-cols-2 gap-4">
-                  {lanceLivre && (
+                  {lanceLivre.menor !== null && (
                     <div className="bg-white rounded px-3 py-2 border border-emerald-200">
                       <p className="text-xs text-slate-600 text-center mb-1">Lance Livre</p>
-                      <p className="text-2xl font-bold text-emerald-700 text-center">{fmt(lanceLivre.menor_lance_percent)}</p>
-                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLivre.maior_lance_percent)}</p>
+                      <p className="text-2xl font-bold text-emerald-700 text-center">{fmt(lanceLivre.menor)}</p>
+                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLivre.maior)}</p>
                     </div>
                   )}
-                  {lanceLimitado && (
+                  {lanceLimitado.menor !== null && (
                     <div className="bg-white rounded px-3 py-2 border border-blue-200">
                       <p className="text-xs text-slate-600 text-center mb-1">Lance Limitado</p>
-                      <p className="text-2xl font-bold text-blue-700 text-center">{fmt(lanceLimitado.menor_lance_percent)}</p>
-                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLimitado.maior_lance_percent)}</p>
+                      <p className="text-2xl font-bold text-blue-700 text-center">{fmt(lanceLimitado.menor)}</p>
+                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLimitado.maior)}</p>
                     </div>
                   )}
                 </div>
