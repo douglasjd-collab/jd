@@ -265,7 +265,7 @@ export default function HistoricoResultadoAssembleia() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                    {/* Resumo do Grupo - TOPO */}
-                  <div className="mt-3 pt-3 border-t bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3">
+                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Coluna 1: Lances Livre e Limitado */}
                       <div className="space-y-2">
