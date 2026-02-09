@@ -152,58 +152,36 @@ export default function SimuladorConsorcio() {
 
   // Atualizar o relógio automaticamente quando o lance muda
   useEffect(() => {
-    console.log("🔔 useEffect do relógio executou");
-    console.log({
-      lanceTotal,
-      lancePercentualTotal,
-      usarLanceProprio,
-      creditoTotal,
-      menorLanceLivre,
-      maiorLanceLivre,
-      menorLanceLimitado,
-      maiorLanceLimitado
-    });
-
-    // Se não tem lance, não mostra relógio
+    // Se não tem lance, limpa o relógio
     if (lancePercentualTotal <= 0) {
-      console.log("⚠️ Relógio não calculado: lance zerado");
       setRelogio(null);
       return;
     }
 
-    let menorLanceAtivo;
-    let maiorLanceAtivo;
+    let menorLanceAtivo = null;
+    let maiorLanceAtivo = null;
 
     // REGRA: Se tem lance próprio ativo, usa histórico LIMITADO
     if (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) {
       menorLanceAtivo = menorLanceLimitado;
       maiorLanceAtivo = maiorLanceLimitado;
-      console.log("🔵 Usando histórico LIMITADO (lance próprio)");
-    } else {
-      // Senão, usa histórico LIVRE (embutido)
+    } else if (lanceEmbutidoPercentual > 0) {
+      // Senão, se tem lance embutido, usa histórico LIVRE
       menorLanceAtivo = menorLanceLivre;
       maiorLanceAtivo = maiorLanceLivre;
-      console.log("🟢 Usando histórico LIVRE (lance embutido)");
     }
 
-    // Se não tem histórico, não mostra relógio
+    // Se não tem histórico disponível, limpa o relógio
     if (!menorLanceAtivo || !maiorLanceAtivo) {
-      console.log("⚠️ Relógio não calculado: falta histórico");
       setRelogio(null);
       return;
     }
 
+    // Calcula e atualiza o relógio
     const resultado = calcularRelogioContemplacao({
       lanceCliente: lancePercentualTotal,
       menorLance: menorLanceAtivo,
       maiorLance: maiorLanceAtivo
-    });
-
-    console.log('✅ Relógio atualizado automaticamente', {
-      lancePercentualTotal,
-      menorLanceAtivo,
-      maiorLanceAtivo,
-      resultado
     });
 
     setRelogio(resultado);
@@ -212,7 +190,7 @@ export default function SimuladorConsorcio() {
     lancePercentualTotal, 
     usarLanceProprio, 
     lanceProprio,
-    creditoTotal,
+    lanceEmbutidoPercentual,
     menorLanceLivre,
     maiorLanceLivre,
     menorLanceLimitado,
