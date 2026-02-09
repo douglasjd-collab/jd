@@ -680,7 +680,7 @@ export default function SimuladorConsorcio() {
                   </div>
 
                   {carta.credito && carta.parcela && carta.prazo && (
-                    <div className="mt-2 text-xs text-slate-600 pt-2 border-t">
+                    <div className="mt-1 text-xs text-slate-600 pt-1 border-t">
                       <span className="font-semibold">
                         {formatCurrency(parseFloat(carta.credito))} • 
                         {formatCurrency(parseFloat(carta.parcela))}/mês • 
