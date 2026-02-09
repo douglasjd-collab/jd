@@ -570,7 +570,6 @@ export default function SimuladorConsorcio() {
             <RelogioContemplacao
               relogio={relogio}
               lanceOfertado={lanceConsiderado}
-              mediaHistorica={(menorLance + maiorLance) / 2}
             />
           )}
 
