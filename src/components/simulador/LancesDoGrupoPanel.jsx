@@ -243,13 +243,80 @@ export default function LancesDoGrupoPanel({ grupo }) {
           </div>
         )}
 
-        {resumos.length > 0 && historicos.length > 0 && (
-          <div className="text-xs text-slate-500 mt-3 bg-emerald-50 p-2 rounded">
-            💡 <b>Dados da última assembleia ({new Date(historicos[0].assembleia_data).toLocaleDateString('pt-BR')})</b>
-            <br/>
-            Use a <b>Mín</b> como referência. Lance próximo ao "Máx" aumenta chances, próximo ao "Mín" é mais conservador.
-          </div>
-        )}
+        {resumos.length > 0 && historicos.length > 0 && (() => {
+          const lanceLivre = resumos.find(r => r.modalidade === 'lance_livre');
+          const lanceLimitado = resumos.find(r => r.modalidade === 'lance_limitado');
+          
+          // Encontrar o maior lance entre todas as modalidades de lance (excluir sorteio)
+          const modalidadesDeLance = resumos.filter(r => r.modalidade !== 'sorteio');
+          const maiorLanceGeral = modalidadesDeLance.length > 0
+            ? Math.max(...modalidadesDeLance.map(r => r.maior_lance_percent || 0))
+            : null;
+
+          return (
+            <>
+              <div className="text-xs text-slate-500 mt-3 bg-emerald-50 p-2 rounded">
+                💡 <b>Dados da última assembleia ({new Date(historicos[0].assembleia_data).toLocaleDateString('pt-BR')})</b>
+                <br/>
+                Use a <b>Mín</b> como referência. Lance próximo ao "Máx" aumenta chances, próximo ao "Mín" é mais conservador.
+              </div>
+
+              <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-700 mb-1">MENOR LANCE</p>
+                    <div className="space-y-1">
+                      {lanceLivre?.menor_lance_percent != null && (
+                        <div className="bg-white rounded px-2 py-1 border border-emerald-200">
+                          <p className="text-xs text-slate-600">Lance Livre</p>
+                          <p className="text-lg font-bold text-emerald-700">{fmt(lanceLivre.menor_lance_percent)}</p>
+                          {lanceLivre.maior_lance_percent != null && (
+                            <p className="text-xs text-slate-500">Maior: {fmt(lanceLivre.maior_lance_percent)}</p>
+                          )}
+                        </div>
+                      )}
+                      {lanceLimitado?.menor_lance_percent != null && (
+                        <div className="bg-white rounded px-2 py-1 border border-blue-200">
+                          <p className="text-xs text-slate-600">Lance Limitado</p>
+                          <p className="text-lg font-bold text-blue-700">{fmt(lanceLimitado.menor_lance_percent)}</p>
+                          {lanceLimitado.maior_lance_percent != null && (
+                            <p className="text-xs text-slate-500">Maior: {fmt(lanceLimitado.maior_lance_percent)}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700 mb-1">LANCE FIXO - CONTEMPLADOS</p>
+                    <div className="space-y-1">
+                      {['lance_fixo_15', 'lance_fixo_30', 'lance_fixo_50'].map(modalidade => {
+                        const fixo = resumos.find(r => r.modalidade === modalidade);
+                        if (!fixo || fixo.qtd_ocorrencias === 0) return null;
+                        const nomeFixo = modalidade === 'lance_fixo_15' ? 'Fixo 15%' : modalidade === 'lance_fixo_30' ? 'Fixo 30%' : 'Fixo 50%';
+                        return (
+                          <div key={modalidade} className="bg-white rounded px-2 py-1 border border-orange-200">
+                            <p className="text-xs text-slate-600">{nomeFixo}</p>
+                            <p className="text-lg font-bold text-orange-700">{fixo.qtd_ocorrencias || 0}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700 mb-1">Total de Contemplações</p>
+                    <div className="bg-white rounded px-3 py-2 border-2 border-indigo-300">
+                      <p className="text-4xl font-bold text-indigo-700">
+                        {resumos.reduce((acc, r) => acc + (r.qtd_ocorrencias || 0), 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </CardContent>
     </Card>
   );
