@@ -82,26 +82,32 @@ export default function LancesDoGrupoPanel({ grupo }) {
       },
   });
 
-  const detalhes = data?.detalhes || [];
-  const historicos = data?.historicos || [];
+  const ultimoHistorico = data?.ultimoHistorico || null;
+  const todosDetalhes = data?.todosDetalhes || [];
+  const detalhesUltimoHistorico = data?.detalhesUltimoHistorico || [];
 
-  // Função para calcular menor e maior lance por modalidade (usando detalhes)
-  const calcularMenorMaiorLancePorModalidade = (modalidade) => {
-    const lances = detalhes
+  // 1️⃣ MENOR LANCE → apenas do último histórico (piso atual do mercado)
+  const getMenorLanceUltimoHistorico = (modalidade) => {
+    const lances = detalhesUltimoHistorico
       .filter(d =>
         d.modalidade === modalidade &&
         typeof d.lance_percent === 'number'
       )
       .map(d => d.lance_percent);
 
-    if (!lances.length) {
-      return { menor: null, maior: null };
-    }
+    return lances.length ? Math.min(...lances) : null;
+  };
 
-    return {
-      menor: Math.min(...lances),
-      maior: Math.max(...lances)
-    };
+  // 2️⃣ MAIOR LANCE → histórico COMPLETO (teto histórico)
+  const getMaiorLanceHistoricoCompleto = (modalidade) => {
+    const lances = todosDetalhes
+      .filter(d =>
+        d.modalidade === modalidade &&
+        typeof d.lance_percent === 'number'
+      )
+      .map(d => d.lance_percent);
+
+    return lances.length ? Math.max(...lances) : null;
   };
 
   if (!enabled) return null;
