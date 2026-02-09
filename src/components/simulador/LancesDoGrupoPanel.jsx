@@ -81,7 +81,7 @@ export default function LancesDoGrupoPanel({ grupo }) {
             qtd_ocorrencias: 0
           };
         }
-        if (detalhe.lance_percent !== null) {
+        if (detalhe.lance_percent !== null && detalhe.lance_percent !== undefined) {
           resumosCalculados[detalhe.modalidade].lances.push(detalhe.lance_percent);
           resumosCalculados[detalhe.modalidade].qtd_ocorrencias++;
         }
@@ -92,13 +92,23 @@ export default function LancesDoGrupoPanel({ grupo }) {
         const soma = lances.reduce((acc, val) => acc + val, 0);
         const media = lances.length > 0 ? soma / lances.length : null;
         
-        return {
+        const resultado = {
           modalidade: r.modalidade,
           menor_lance_percent: lances.length > 0 ? Math.min(...lances) : null,
           maior_lance_percent: lances.length > 0 ? Math.max(...lances) : null,
           media_lance_percent: media,
           qtd_ocorrencias: r.qtd_ocorrencias
         };
+        
+        // Log detalhado para lance_limitado
+        if (r.modalidade === 'lance_limitado') {
+          console.log('🔍 Lance Limitado - Todos os lances:', lances);
+          console.log('🔍 Lance Limitado - Menor:', resultado.menor_lance_percent);
+          console.log('🔍 Lance Limitado - Maior:', resultado.maior_lance_percent);
+          console.log('🔍 Lance Limitado - Quantidade:', lances.length);
+        }
+        
+        return resultado;
       });
       
       console.log('📊 Resumos calculados:', finalResumos.length);
