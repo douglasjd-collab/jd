@@ -42,40 +42,42 @@ export default function LancesDoGrupoPanel({ grupo }) {
 
         const grupoNormalizado = String(grupo).replace(/^0+/, '') || '0';
 
-        // 2) Filtrar detalhes do grupo atual
-        const detalhesDoGrupo = todosDetalhes.filter(d => {
+        // 2) Filtrar TODOS os detalhes do grupo (histórico completo)
+        const todosDetalhesDoGrupo = todosDetalhes.filter(d => {
           const grupoDetalheNormalizado = String(d.grupo).replace(/^0+/, '') || '0';
           return grupoDetalheNormalizado === grupoNormalizado;
         });
 
-        console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, detalhesDoGrupo.length);
+        console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, todosDetalhesDoGrupo.length);
 
-        if (!detalhesDoGrupo || detalhesDoGrupo.length === 0) {
-          return { historicos: [], detalhes: [] };
+        if (!todosDetalhesDoGrupo || todosDetalhesDoGrupo.length === 0) {
+          return { ultimoHistorico: null, todosDetalhes: [], detalhesUltimoHistorico: [] };
         }
 
         // 3) Encontrar o histórico mais recente para este grupo
-        const historicosComDetalhesDoGrupo = todosHistoricos
-          .filter(h => detalhesDoGrupo.some(d => d.historico_id === h.id))
+        const historicosDoGrupo = todosHistoricos
+          .filter(h => todosDetalhesDoGrupo.some(d => d.historico_id === h.id))
           .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data));
 
-        if (historicosComDetalhesDoGrupo.length === 0) {
-          return { historicos: [], detalhes: [] };
+        if (historicosDoGrupo.length === 0) {
+          return { ultimoHistorico: null, todosDetalhes: [], detalhesUltimoHistorico: [] };
         }
 
-        const historicoMaisRecente = historicosComDetalhesDoGrupo[0];
-        console.log('✅ Histórico mais recente:', historicoMaisRecente.assembleia_data);
+        const ultimoHistorico = historicosDoGrupo[0];
+        console.log('✅ Histórico mais recente:', ultimoHistorico.assembleia_data);
 
-        // 4) Filtrar detalhes do histórico mais recente
-        const detalhesDoHistoricoMaisRecente = detalhesDoGrupo.filter(
-          d => d.historico_id === historicoMaisRecente.id
+        // 4) Detalhes do último histórico (para menor lance)
+        const detalhesUltimoHistorico = todosDetalhesDoGrupo.filter(
+          d => d.historico_id === ultimoHistorico.id
         );
 
-        console.log('📊 Detalhes do histórico mais recente:', detalhesDoHistoricoMaisRecente.length);
+        console.log('📊 Detalhes do último histórico:', detalhesUltimoHistorico.length);
+        console.log('📊 Detalhes de TODO o histórico:', todosDetalhesDoGrupo.length);
 
         return {
-          historicos: [historicoMaisRecente],
-          detalhes: detalhesDoHistoricoMaisRecente
+          ultimoHistorico,
+          todosDetalhes: todosDetalhesDoGrupo,
+          detalhesUltimoHistorico
         };
       },
   });
