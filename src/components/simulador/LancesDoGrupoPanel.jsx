@@ -135,15 +135,20 @@ export default function LancesDoGrupoPanel({ grupo }) {
           <div className="text-sm text-red-600">
             Erro ao carregar histórico.
           </div>
-        ) : detalhes.length === 0 ? (
+        ) : todosDetalhes.length === 0 ? (
           <div className="text-sm text-slate-600">
             Não achei histórico importado para esse grupo.
           </div>
         ) : null}
 
-        {detalhes.length > 0 && historicos.length > 0 && (() => {
-          const lanceLivre = calcularMenorMaiorLancePorModalidade('lance_livre');
-          const lanceLimitado = calcularMenorMaiorLancePorModalidade('lance_limitado');
+        {todosDetalhes.length > 0 && ultimoHistorico && (() => {
+          // Lance Livre: menor (última assembleia) + maior (histórico completo)
+          const menorLanceLivre = getMenorLanceUltimoHistorico('lance_livre');
+          const maiorLanceLivre = getMaiorLanceHistoricoCompleto('lance_livre');
+
+          // Lance Limitado: menor (última assembleia) + maior (histórico completo)
+          const menorLanceLimitado = getMenorLanceUltimoHistorico('lance_limitado');
+          const maiorLanceLimitado = getMaiorLanceHistoricoCompleto('lance_limitado');
 
           return (
             <>
