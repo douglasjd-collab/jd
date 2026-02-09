@@ -798,9 +798,9 @@ export default function SimuladorConsorcio() {
                         </div>
 
                         {aplicarRegraCanopus && (
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label className="text-xs">Parcelas de Carência</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                                   <div>
+                                     <Label className="text-xs">Parcelas de Carência</Label>
                               <Input
                                 type="number"
                                 min="0"
