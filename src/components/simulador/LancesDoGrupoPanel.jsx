@@ -83,13 +83,18 @@ export default function LancesDoGrupoPanel({ grupo }) {
   const detalhes = data?.detalhes || [];
   const historicos = data?.historicos || [];
 
-  // Função para calcular menor lance por modalidade (usando detalhes)
+  // Função para calcular menor e maior lance por modalidade (usando detalhes)
   const calcularMenorMaiorLancePorModalidade = (modalidade) => {
     const lances = detalhes
-      .filter(d => d.modalidade === modalidade && d.lance_percent !== null)
+      .filter(d =>
+        d.modalidade === modalidade &&
+        typeof d.lance_percent === 'number'
+      )
       .map(d => d.lance_percent);
 
-    if (!lances.length) return { menor: null, maior: null };
+    if (!lances.length) {
+      return { menor: null, maior: null };
+    }
 
     return {
       menor: Math.min(...lances),
