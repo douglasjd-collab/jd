@@ -128,8 +128,10 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
   };
 
   const handleSelectVariacao = (group, variacao) => {
-    // Extrair número do grupo do código (ex: "CR4301" -> "4301")
-    const grupoNumero = group.codigo?.replace(/^\D+/, '') || '';
+    // Extrair número do grupo do campo plano (ex: "9130|..." -> "9130")
+    const grupoNumero = group.plano?.split('|')[0]?.trim() || 
+                        variacao.plano?.split('|')[0]?.trim() || 
+                        group.codigo?.replace(/^\D+/, '') || '';
     
     onSelectPlano({
       credito: group.valor_bem,
