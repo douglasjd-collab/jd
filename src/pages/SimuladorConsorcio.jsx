@@ -144,55 +144,80 @@ export default function SimuladorConsorcio() {
     return 0;
   }, [usarLanceProprio, lanceProprio, lanceEmbutidoValor, lanceEmbutidoPercentual]);
 
-  // Percentual do lance PRÓPRIO (somente) para o relógio
-  const lanceProprioPercentualRelogio = React.useMemo(() => {
-    if (!lanceProprio || parseFloat(lanceProprio) <= 0 || creditoTotal <= 0) return 0;
-    return (parseFloat(lanceProprio) / creditoTotal) * 100;
-  }, [lanceProprio, creditoTotal]);
+  // Percentual do lance TOTAL (embutido + próprio se houver) para o relógio
+  const lancePercentualTotal = React.useMemo(() => {
+    if (creditoTotal <= 0 || lanceTotal <= 0) return 0;
+    return (lanceTotal / creditoTotal) * 100;
+  }, [lanceTotal, creditoTotal]);
 
-  // Calcular se deve mostrar o relógio
-  const mostrarRelogio = React.useMemo(() => {
-    // Mostra se:
-    // 1. Tem grupo (para buscar histórico)
-    // 2. Tem dados de menor e maior lance
-    // 3. Tem lance próprio com valor > 0
-    return grupo && menorLance && maiorLance && lanceProprio && parseFloat(lanceProprio) > 0;
-  }, [grupo, menorLance, maiorLance, lanceProprio]);
-
-  // Atualizar o relógio automaticamente quando o lance próprio muda
+  // Atualizar o relógio automaticamente quando o lance muda
   useEffect(() => {
     console.log("🔔 useEffect do relógio executou");
     console.log({
-      lanceProprioPercentualRelogio,
+      lanceTotal,
+      lancePercentualTotal,
       usarLanceProprio,
-      lanceProprio,
       creditoTotal,
-      menorLance,
-      maiorLance
+      menorLanceLivre,
+      maiorLanceLivre,
+      menorLanceLimitado,
+      maiorLanceLimitado
     });
 
-    // Só calcula se tiver histórico E lance próprio
-    if (!menorLance || !maiorLance || lanceProprioPercentualRelogio <= 0) {
-      console.log("⚠️ Relógio não calculado: falta histórico ou lance próprio");
+    // Se não tem lance, não mostra relógio
+    if (lancePercentualTotal <= 0) {
+      console.log("⚠️ Relógio não calculado: lance zerado");
+      setRelogio(null);
+      return;
+    }
+
+    let menorLanceAtivo;
+    let maiorLanceAtivo;
+
+    // REGRA: Se tem lance próprio ativo, usa histórico LIMITADO
+    if (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) {
+      menorLanceAtivo = menorLanceLimitado;
+      maiorLanceAtivo = maiorLanceLimitado;
+      console.log("🔵 Usando histórico LIMITADO (lance próprio)");
+    } else {
+      // Senão, usa histórico LIVRE (embutido)
+      menorLanceAtivo = menorLanceLivre;
+      maiorLanceAtivo = maiorLanceLivre;
+      console.log("🟢 Usando histórico LIVRE (lance embutido)");
+    }
+
+    // Se não tem histórico, não mostra relógio
+    if (!menorLanceAtivo || !maiorLanceAtivo) {
+      console.log("⚠️ Relógio não calculado: falta histórico");
       setRelogio(null);
       return;
     }
 
     const resultado = calcularRelogioContemplacao({
-      lanceCliente: lanceProprioPercentualRelogio,
-      menorLance,
-      maiorLance
+      lanceCliente: lancePercentualTotal,
+      menorLance: menorLanceAtivo,
+      maiorLance: maiorLanceAtivo
     });
 
     console.log('✅ Relógio atualizado automaticamente', {
-      lanceProprioPercentualRelogio,
-      menorLance,
-      maiorLance,
+      lancePercentualTotal,
+      menorLanceAtivo,
+      maiorLanceAtivo,
       resultado
     });
 
     setRelogio(resultado);
-  }, [lanceProprioPercentualRelogio, menorLance, maiorLance, usarLanceProprio, lanceProprio, creditoTotal]);
+  }, [
+    lanceTotal, 
+    lancePercentualTotal, 
+    usarLanceProprio, 
+    lanceProprio,
+    creditoTotal,
+    menorLanceLivre,
+    maiorLanceLivre,
+    menorLanceLimitado,
+    maiorLanceLimitado
+  ]);
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
