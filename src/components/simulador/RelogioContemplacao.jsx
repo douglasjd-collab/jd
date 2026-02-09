@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 /**
  * Componente visual do Relógio Contemplador
@@ -13,119 +13,96 @@ export default function RelogioContemplacao({ relogio, lanceOfertado }) {
         <CardContent className="pt-6">
           <div className="flex items-center gap-3 text-slate-500">
             <AlertCircle className="w-5 h-5" />
-            <p className="text-sm">Histórico insuficiente para análise</p>
+            <p className="text-sm">Histórico insuficiente</p>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const coresConfig = {
-    red: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      text: 'text-red-700',
-      progress: 'bg-red-500',
-      icon: 'text-red-500'
-    },
-    yellow: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      text: 'text-yellow-700',
-      progress: 'bg-yellow-500',
-      icon: 'text-yellow-500'
-    },
-    green: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      text: 'text-green-700',
-      progress: 'bg-green-500',
-      icon: 'text-green-500'
-    },
-    gray: {
-      bg: 'bg-slate-50',
-      border: 'border-slate-200',
-      text: 'text-slate-700',
-      progress: 'bg-slate-500',
-      icon: 'text-slate-500'
-    }
-  };
+  // Determinar cor do medidor baseado no nível
+  let corFundo, corAgulha, textoNivel;
+  
+  if (relogio.nivel === 'baixa') {
+    corFundo = '#ef4444'; // vermelho
+    corAgulha = '#dc2626';
+    textoNivel = 'Baixa Chance';
+  } else if (relogio.nivel === 'media') {
+    corFundo = '#22c55e'; // verde
+    corAgulha = '#16a34a';
+    textoNivel = 'Boa Chance';
+  } else {
+    corFundo = '#3b82f6'; // azul
+    corAgulha = '#2563eb';
+    textoNivel = 'Muita Chance';
+  }
 
-  const config = coresConfig[relogio.cor] || coresConfig.gray;
+  // Calcular ângulo da agulha (de -90 a 90 graus, onde -90 é esquerda e 90 é direita)
+  const anguloAgulha = -90 + (relogio.percentualRelogio * 1.8);
 
   return (
-    <Card className={`${config.border} border-2 ${config.bg}`}>
+    <Card className="border-slate-200">
       <CardContent className="pt-6">
-        <div className="space-y-4">
-          {/* Título e Percentual */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className={`w-5 h-5 ${config.icon}`} />
-              <h3 className="font-semibold text-slate-900">Relógio Contemplador</h3>
-            </div>
-            <span className={`text-lg font-bold ${config.text}`}>
-              {relogio.chance_percentual}%
-            </span>
-          </div>
+        <div className="space-y-3">
+          {/* Título */}
+          <h3 className="font-semibold text-slate-900 text-center text-sm">⏱️ Relógio Contemplador</h3>
 
-          {/* Barra de Progresso Semicircular */}
-          <div className="space-y-2">
-            <div className="flex justify-center">
-              <div className="relative w-48 h-24">
-                {/* Fundo do arco */}
-                <svg className="w-full h-full" viewBox="0 0 200 100">
-                  <path
-                    d="M 20 90 A 80 80 0 0 1 180 90"
-                    fill="none"
-                    stroke="#e2e8f0"
-                    strokeWidth="16"
+          {/* Medidor Circular */}
+          <div className="flex justify-center">
+            <div className="relative w-40 h-24">
+              {/* SVG do medidor */}
+              <svg className="w-full h-full" viewBox="0 0 200 120">
+                {/* Fundo do arco - vermelho */}
+                <path
+                  d="M 20 100 A 80 80 0 0 1 100 20"
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth="20"
+                  strokeLinecap="round"
+                />
+                {/* Meio do arco - verde */}
+                <path
+                  d="M 100 20 A 80 80 0 0 1 180 100"
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="20"
+                  strokeLinecap="round"
+                />
+                {/* Área azul (5% acima do mínimo) */}
+                <path
+                  d="M 140 40 A 80 80 0 0 1 180 100"
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="20"
+                  strokeLinecap="round"
+                />
+                
+                {/* Agulha indicadora */}
+                <g transform={`rotate(${anguloAgulha} 100 100)`}>
+                  <line
+                    x1="100"
+                    y1="100"
+                    x2="100"
+                    y2="40"
+                    stroke={corAgulha}
+                    strokeWidth="3"
                     strokeLinecap="round"
                   />
-                  {/* Arco colorido (progresso) */}
-                  <path
-                    d="M 20 90 A 80 80 0 0 1 180 90"
-                    fill="none"
-                    stroke={config.progress.replace('bg-', '')}
-                    strokeWidth="16"
-                    strokeLinecap="round"
-                    strokeDasharray={`${relogio.percentualRelogio * 2.51}, 251`}
-                    className="transition-all duration-1000 ease-out"
-                    style={{ stroke: config.progress === 'bg-red-500' ? '#ef4444' : config.progress === 'bg-yellow-500' ? '#eab308' : '#22c55e' }}
-                  />
-                </svg>
-                {/* Texto central */}
-                <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-                  <span className={`text-3xl font-bold ${config.text}`}>
-                    {relogio.chance_percentual}%
-                  </span>
-                  <span className="text-xs text-slate-600 mt-1">de chance</span>
-                </div>
-              </div>
-            </div>
-            <p className={`text-center text-sm font-medium ${config.text}`}>{relogio.label}</p>
-          </div>
+                  <circle cx="100" cy="100" r="6" fill={corAgulha} />
+                </g>
 
-          {/* Detalhes do Lance */}
-          <div className="grid grid-cols-1 gap-2 text-sm pt-3 border-t">
-            <div className="flex justify-between">
-              <span className="text-slate-600">Seu lance:</span>
-              <span className="font-semibold text-slate-900">{lanceOfertado.toFixed(2)}%</span>
+                {/* Labels */}
+                <text x="30" y="115" fontSize="10" fill="#ef4444" fontWeight="bold">BAIXA</text>
+                <text x="78" y="25" fontSize="10" fill="#22c55e" fontWeight="bold">BOA</text>
+                <text x="155" y="115" fontSize="10" fill="#3b82f6" fontWeight="bold">ALTA</text>
+              </svg>
             </div>
           </div>
 
-          {/* Mensagem de Contexto */}
-          <div className={`text-xs ${config.text} ${config.bg} border ${config.border} p-3 rounded-lg`}>
-            <strong>💡 {relogio.nivel === 'alta' 
-              ? 'Você está acima da média do grupo!'
-              : relogio.nivel === 'media'
-              ? 'Você está na média do grupo.'
-              : 'Seu lance está abaixo da média.'}</strong>
-            <br />
-            {relogio.nivel === 'alta' 
-              ? 'Seu lance está competitivo e tem boas chances de contemplação!'
-              : relogio.nivel === 'media'
-              ? 'Seu lance está na média. Considere aumentar para melhorar suas chances.'
-              : 'Lance abaixo da média histórica. Recomendamos aumentar o valor.'}
+          {/* Texto do nível */}
+          <div className="text-center">
+            <p className="text-lg font-bold" style={{ color: corFundo }}>{textoNivel}</p>
+            <p className="text-xs text-slate-600 mt-1">Lance: {lanceOfertado.toFixed(2)}%</p>
           </div>
         </div>
       </CardContent>
