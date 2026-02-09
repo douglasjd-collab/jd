@@ -196,18 +196,30 @@ export default function LancesDoGrupoPanel({ grupo }) {
         ) : null}
 
         {resumos.length > 0 && historicos.length > 0 && (() => {
-          // Filtrar apenas lance_livre e lance_limitado
-          const livres = resumos.filter(r => r.modalidade === 'lance_livre' && r.menor_lance_percent != null && r.maior_lance_percent != null);
-          const limitados = resumos.filter(r => r.modalidade === 'lance_limitado' && r.menor_lance_percent != null && r.maior_lance_percent != null);
+          // Função para calcular menor e maior por modalidade
+          const calcularMinMaxPorModalidade = (modalidade) => {
+            const filtrados = resumos.filter(r =>
+              r.modalidade === modalidade &&
+              typeof r.menor_lance_percent === 'number'
+            );
 
-          // Para cada modalidade, pegar o resumo com o menor valor de menor_lance_percent (mais conservador)
-          const lanceLivre = livres.length > 0 
-            ? livres.reduce((prev, curr) => prev.menor_lance_percent < curr.menor_lance_percent ? prev : curr)
-            : null;
+            if (filtrados.length === 0) {
+              return { menor: null, maior: null };
+            }
 
-          const lanceLimitado = limitados.length > 0 
-            ? limitados.reduce((prev, curr) => prev.menor_lance_percent < curr.menor_lance_percent ? prev : curr)
-            : null;
+            const menores = filtrados.map(r => r.menor_lance_percent);
+            const maiores = filtrados
+              .filter(r => typeof r.maior_lance_percent === 'number')
+              .map(r => r.maior_lance_percent);
+
+            return {
+              menor: Math.min(...menores),
+              maior: maiores.length ? Math.max(...maiores) : null
+            };
+          };
+
+          const lanceLivre = calcularMinMaxPorModalidade('lance_livre');
+          const lanceLimitado = calcularMinMaxPorModalidade('lance_limitado');
 
           return (
             <>
