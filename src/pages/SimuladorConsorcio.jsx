@@ -974,9 +974,9 @@ export default function SimuladorConsorcio() {
                     </>
                   )}
 
-                  <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
-                    <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
-                    <div className="space-y-2">
+                  <div className="p-2 bg-purple-50 rounded-lg border-2 border-purple-300">
+                    <p className="text-xs text-purple-700 font-semibold mb-1">✨ Resultado Final</p>
+                    <div className="space-y-1">
                       {resultado.usarLanceProprio ? (
                         <>
                           <div className="flex justify-between items-center">
