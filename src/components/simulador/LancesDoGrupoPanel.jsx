@@ -83,77 +83,19 @@ export default function LancesDoGrupoPanel({ grupo }) {
   const detalhes = data?.detalhes || [];
   const historicos = data?.historicos || [];
 
-  const cards = useMemo(() => {
-    // Função para processar dados de uma modalidade
-    const processar = (modalidade) => {
-      const dadosModalidade = resumos.filter(r => r.modalidade === modalidade && r.menor_lance_percent != null && r.maior_lance_percent != null);
-      if (dadosModalidade.length === 0) return null;
+  // Função para calcular menor lance por modalidade (usando detalhes)
+  const calcularMenorMaiorLancePorModalidade = (modalidade) => {
+    const lances = detalhes
+      .filter(d => d.modalidade === modalidade && d.lance_percent !== null)
+      .map(d => d.lance_percent);
 
-      // Pegar o resumo com o menor valor de menor_lance_percent (mais conservador)
-      const resumoSelecionado = dadosModalidade.reduce((prev, curr) => 
-        prev.menor_lance_percent < curr.menor_lance_percent ? prev : curr
-      );
+    if (!lances.length) return { menor: null, maior: null };
 
-      const min = resumoSelecionado.menor_lance_percent;
-      const max = resumoSelecionado.maior_lance_percent;
-      const qtd = resumoSelecionado.qtd_ocorrencias || 0;
-
-      return { min, max, qtd };
+    return {
+      menor: Math.min(...lances),
+      maior: Math.max(...lances)
     };
-
-    const livre = processar("lance_livre");
-    const limitado = processar("lance_limitado");
-    const fixo15 = processar("lance_fixo_15");
-    const fixo30 = processar("lance_fixo_30");
-    const fixo50 = processar("lance_fixo_50");
-    
-    const sorteioResumos = resumos.filter(r => r.modalidade === "sorteio");
-    const sorteioTotal = sorteioResumos.reduce((acc, d) => acc + (d.qtd_ocorrencias || 0), 0);
-    const sorteio = sorteioTotal > 0 ? { qtd: sorteioTotal } : null;
-
-    return [
-      {
-        key: "lance_livre",
-        title: "Lance Livre",
-        min: livre?.min,
-        max: livre?.max,
-        qtd: livre?.qtd,
-      },
-      {
-        key: "lance_limitado",
-        title: "Lance Limitado",
-        min: limitado?.min,
-        max: limitado?.max,
-        qtd: limitado?.qtd,
-      },
-      {
-        key: "sorteio",
-        title: "Sorteio",
-        qtd: sorteio?.qtd,
-      },
-      {
-        key: "lance_fixo_15",
-        title: "Lance Fixo 15%",
-        min: fixo15?.min,
-        max: fixo15?.max,
-        qtd: fixo15?.qtd,
-      },
-      {
-        key: "lance_fixo_30",
-        title: "Lance Fixo 30%",
-        min: fixo30?.min,
-        max: fixo30?.max,
-        qtd: fixo30?.qtd,
-      },
-      {
-        key: "lance_fixo_50",
-        title: "Lance Fixo 50%",
-        min: fixo50?.min,
-        max: fixo50?.max,
-        qtd: fixo50?.qtd,
-      },
-    ];
-  }, [resumos]);
+  };
 
   if (!enabled) return null;
 
