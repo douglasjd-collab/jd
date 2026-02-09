@@ -207,14 +207,15 @@ export default function LancesDoGrupoPanel({ grupo }) {
                   <div className="text-sm text-slate-700">
                     Total contemplações: <b>{c.qtd ?? 0}</b>
                   </div>
-                ) : c.media ? (
+                ) : c.min != null || c.max != null ? (
                   <div className="text-sm text-slate-700 space-y-1">
-                    <div className="text-emerald-700 font-semibold text-base">
-                      Média: {fmt(c.media)}
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-600">
-                      <span>Mín: {fmt(c.min)}</span>
-                      <span>Máx: {fmt(c.max)}</span>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-blue-700 font-semibold">
+                        Mín: <span className="bg-blue-100 px-2 py-1 rounded">{fmt(c.min)}</span>
+                      </span>
+                      <span className="text-slate-700 font-semibold">
+                        Máx: <span className="bg-slate-100 px-2 py-1 rounded">{fmt(c.max)}</span>
+                      </span>
                     </div>
                     <div className="text-xs text-slate-500">Amostras: {c.qtd ?? 0}</div>
                   </div>
