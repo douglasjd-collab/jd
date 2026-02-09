@@ -538,9 +538,9 @@ export default function SimuladorConsorcio() {
         <p className="text-slate-500">Simulação com lance embutido de administradoras</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Formulário - 2 colunas */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-3">
           {/* Dados do Cliente */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
