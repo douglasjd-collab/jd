@@ -123,17 +123,18 @@ export default function LancesDoGrupoPanel({
     const maiorLanceLivre = getMaiorLanceHistoricoCompleto('lance_livre');
     const maiorLanceLimitado = getMaiorLanceHistoricoCompleto('lance_limitado');
 
-    // Priorizar lance livre (embutido) para o menor lance
-    const menorCalculado = menorLanceLivre || menorLanceLimitado;
-    // Pegar o maior entre os dois tipos
-    const maiorCalculado = Math.max(
-      maiorLanceLivre || 0,
-      maiorLanceLimitado || 0
-    ) || null;
-
-    if (onMenorLanceChange) onMenorLanceChange(menorCalculado);
-    if (onMaiorLanceChange) onMaiorLanceChange(maiorCalculado);
-  }, [getMenorLanceUltimoHistorico, getMaiorLanceHistoricoCompleto, onMenorLanceChange, onMaiorLanceChange]);
+    if (onMenorLanceLivreChange) onMenorLanceLivreChange(menorLanceLivre);
+    if (onMaiorLanceLivreChange) onMaiorLanceLivreChange(maiorLanceLivre);
+    if (onMenorLanceLimitadoChange) onMenorLanceLimitadoChange(menorLanceLimitado);
+    if (onMaiorLanceLimitadoChange) onMaiorLanceLimitadoChange(maiorLanceLimitado);
+  }, [
+    getMenorLanceUltimoHistorico, 
+    getMaiorLanceHistoricoCompleto, 
+    onMenorLanceLivreChange, 
+    onMaiorLanceLivreChange,
+    onMenorLanceLimitadoChange,
+    onMaiorLanceLimitadoChange
+  ]);
 
   if (!enabled) return null;
 
