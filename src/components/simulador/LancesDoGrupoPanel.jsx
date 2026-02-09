@@ -197,16 +197,14 @@ export default function LancesDoGrupoPanel({ grupo }) {
           const livres = resumos.filter(r => r.modalidade === 'lance_livre' && r.menor_lance_percent != null && r.maior_lance_percent != null);
           const limitados = resumos.filter(r => r.modalidade === 'lance_limitado' && r.menor_lance_percent != null && r.maior_lance_percent != null);
 
-          // Pegar o menor dos menores e o maior dos maiores para cada modalidade
-          const lanceLivre = livres.length > 0 ? {
-            menor_lance_percent: Math.min(...livres.map(r => r.menor_lance_percent)),
-            maior_lance_percent: Math.max(...livres.map(r => r.maior_lance_percent))
-          } : null;
+          // Para cada modalidade, pegar o resumo com o menor valor de menor_lance_percent (mais conservador)
+          const lanceLivre = livres.length > 0 
+            ? livres.reduce((prev, curr) => prev.menor_lance_percent < curr.menor_lance_percent ? prev : curr)
+            : null;
 
-          const lanceLimitado = limitados.length > 0 ? {
-            menor_lance_percent: Math.min(...limitados.map(r => r.menor_lance_percent)),
-            maior_lance_percent: Math.max(...limitados.map(r => r.maior_lance_percent))
-          } : null;
+          const lanceLimitado = limitados.length > 0 
+            ? limitados.reduce((prev, curr) => prev.menor_lance_percent < curr.menor_lance_percent ? prev : curr)
+            : null;
 
           return (
             <>
