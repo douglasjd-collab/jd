@@ -118,9 +118,9 @@ export default function LancesDoGrupoPanel({ grupo }) {
         <CardTitle className="text-base">
           Histórico de lances do GRUPO {grupo}
         </CardTitle>
-        {historicos.length > 0 && (
+        {ultimoHistorico && (
           <Badge variant="secondary">
-            Assembleia: {new Date(historicos[0].assembleia_data).toLocaleDateString('pt-BR')}
+            Assembleia: {new Date(ultimoHistorico.assembleia_data).toLocaleDateString('pt-BR')}
           </Badge>
         )}
       </CardHeader>
