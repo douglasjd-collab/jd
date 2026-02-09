@@ -87,7 +87,7 @@ export default function LancesDoGrupoPanel({ grupo, onMenorLanceChange, onMaiorL
   const detalhesUltimoHistorico = data?.detalhesUltimoHistorico || [];
 
   // 1️⃣ MENOR LANCE → apenas do último histórico (piso atual do mercado)
-  const getMenorLanceUltimoHistorico = (modalidade) => {
+  const getMenorLanceUltimoHistorico = React.useMemo(() => (modalidade) => {
     const lances = detalhesUltimoHistorico
       .filter(d =>
         d.modalidade === modalidade &&
