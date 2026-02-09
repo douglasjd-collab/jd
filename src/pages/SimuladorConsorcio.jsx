@@ -755,8 +755,8 @@ export default function SimuladorConsorcio() {
                   <Switch checked={usarLanceProprio} onCheckedChange={setUsarLanceProprio} />
                 </div>
 
-
-
+                {usarLanceProprio && (
+                  <>
                     {administradora === 'canopus' && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel') && (
                       <>
                         <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -794,39 +794,37 @@ export default function SimuladorConsorcio() {
                       </>
                     )}
 
-                    {usarLanceProprio && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
-                          <Input
-                            type="text"
-                            value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
-                            onChange={(e) => {
-                              const valorNumerico = handleMoedaInput(e.target.value);
-                              setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
-                            }}
-                            placeholder="0,00"
-                          />
-                          {lanceProprio && parseFloat(lanceProprio) > 0 && (
-                            <div className="mt-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                              <p className="text-xs text-purple-700">💎 Lance Próprio</p>
-                              <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
-                              <p className="text-xs text-purple-700 mt-1">
-                                {lanceProprioPercentual}% do crédito total
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Relógio de Contemplação */}
-                        {relogio && lanceConsiderado && (
-                          <RelogioContemplacao
-                            relogio={relogio}
-                            lanceOfertado={lanceConsiderado}
-                          />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                        <Input
+                          type="text"
+                          value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                          onChange={(e) => {
+                            const valorNumerico = handleMoedaInput(e.target.value);
+                            setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                          }}
+                          placeholder="0,00"
+                        />
+                        {lanceProprio && parseFloat(lanceProprio) > 0 && (
+                          <div className="mt-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                            <p className="text-xs text-purple-700">💎 Lance Próprio</p>
+                            <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                            <p className="text-xs text-purple-700 mt-1">
+                              {lanceProprioPercentual}% do crédito total
+                            </p>
+                          </div>
                         )}
                       </div>
-                    )}
+
+                      {/* Relógio de Contemplação */}
+                      {relogio && lanceConsiderado && (
+                        <RelogioContemplacao
+                          relogio={relogio}
+                          lanceOfertado={lanceConsiderado}
+                        />
+                      )}
+                    </div>
                   </>
                 )}
               </CardContent>
