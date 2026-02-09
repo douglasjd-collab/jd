@@ -122,37 +122,15 @@ export default function LancesDoGrupoPanel({ grupo }) {
           <div className="text-sm text-red-600">
             Erro ao carregar histórico.
           </div>
-        ) : resumos.length === 0 ? (
+        ) : detalhes.length === 0 ? (
           <div className="text-sm text-slate-600">
             Não achei histórico importado para esse grupo.
           </div>
         ) : null}
 
-        {resumos.length > 0 && historicos.length > 0 && (() => {
-          // Função para calcular menor e maior por modalidade
-          const calcularMinMaxPorModalidade = (modalidade) => {
-            const filtrados = resumos.filter(r =>
-              r.modalidade === modalidade &&
-              typeof r.menor_lance_percent === 'number'
-            );
-
-            if (filtrados.length === 0) {
-              return { menor: null, maior: null };
-            }
-
-            const menores = filtrados.map(r => r.menor_lance_percent);
-            const maiores = filtrados
-              .filter(r => typeof r.maior_lance_percent === 'number')
-              .map(r => r.maior_lance_percent);
-
-            return {
-              menor: Math.min(...menores),
-              maior: maiores.length ? Math.max(...maiores) : null
-            };
-          };
-
-          const lanceLivre = calcularMinMaxPorModalidade('lance_livre');
-          const lanceLimitado = calcularMinMaxPorModalidade('lance_limitado');
+        {detalhes.length > 0 && historicos.length > 0 && (() => {
+          const lanceLivre = calcularMenorMaiorLancePorModalidade('lance_livre');
+          const lanceLimitado = calcularMenorMaiorLancePorModalidade('lance_limitado');
 
           return (
             <>
