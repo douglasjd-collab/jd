@@ -95,15 +95,17 @@ export default function LancesDoGrupoPanel({ grupo }) {
   const cards = useMemo(() => {
     // Função para processar dados de uma modalidade
     const processar = (modalidade) => {
-      const dadosModalidade = resumos.filter(r => r.modalidade === modalidade);
+      const dadosModalidade = resumos.filter(r => r.modalidade === modalidade && r.menor_lance_percent != null && r.maior_lance_percent != null);
       if (dadosModalidade.length === 0) return null;
 
-      const min = dadosModalidade[0].menor_lance_percent;
-      const max = dadosModalidade[0].maior_lance_percent;
-      const qtd = dadosModalidade[0].qtd_ocorrencias || 0;
+      // Pegar o resumo com o menor valor de menor_lance_percent (mais conservador)
+      const resumoSelecionado = dadosModalidade.reduce((prev, curr) => 
+        prev.menor_lance_percent < curr.menor_lance_percent ? prev : curr
+      );
 
-      // Se não tem percentuais, retorna null
-      if (min == null && max == null) return null;
+      const min = resumoSelecionado.menor_lance_percent;
+      const max = resumoSelecionado.maior_lance_percent;
+      const qtd = resumoSelecionado.qtd_ocorrencias || 0;
 
       return { min, max, qtd };
     };
