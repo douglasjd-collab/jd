@@ -902,8 +902,8 @@ export default function SimuladorConsorcio() {
                   </div>
 
                   {/* Informações do Plano */}
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-xs text-blue-700 font-semibold mb-2">📋 Plano</p>
+                  <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-700 font-semibold mb-1">📋 Plano</p>
                     <p className="text-sm font-medium text-blue-900">
                       Crédito Total {formatCurrency(creditoTotal)}
                     </p>
