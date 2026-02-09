@@ -87,12 +87,19 @@ export default function LancesDoGrupoPanel({ grupo }) {
         }
       }
 
-      const finalResumos = Object.values(resumosCalculados).map(r => ({
-        modalidade: r.modalidade,
-        menor_lance_percent: r.lances.length > 0 ? Math.min(...r.lances) : null,
-        maior_lance_percent: r.lances.length > 0 ? Math.max(...r.lances) : null,
-        qtd_ocorrencias: r.qtd_ocorrencias
-      }));
+      const finalResumos = Object.values(resumosCalculados).map(r => {
+        const lances = r.lances;
+        const soma = lances.reduce((acc, val) => acc + val, 0);
+        const media = lances.length > 0 ? soma / lances.length : null;
+        
+        return {
+          modalidade: r.modalidade,
+          menor_lance_percent: lances.length > 0 ? Math.min(...lances) : null,
+          maior_lance_percent: lances.length > 0 ? Math.max(...lances) : null,
+          media_lance_percent: media,
+          qtd_ocorrencias: r.qtd_ocorrencias
+        };
+      });
       
       console.log('📊 Resumos calculados:', finalResumos.length);
 

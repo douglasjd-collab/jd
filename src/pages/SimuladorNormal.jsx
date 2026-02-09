@@ -18,6 +18,8 @@ import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import SelecionarPlanoCanopusModal from '@/components/simulador/SelecionarPlanoCanopusModal';
 import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
+import RelogioContemplacao from '@/components/simulador/RelogioContemplacao';
+import { calcularRelogioContemplacao } from '@/components/utils/calcularRelogioContemplacao';
 
 export default function SimuladorNormal() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -35,6 +37,7 @@ export default function SimuladorNormal() {
   const [resultado, setResultado] = useState(null);
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
   const [cartaIndex, setCartaIndex] = useState(null);
+  const [historicoLances, setHistoricoLances] = useState(null);
 
   useEffect(() => {
     loadUser();
@@ -124,6 +127,72 @@ export default function SimuladorNormal() {
     queryKey: ['etapas-funil'],
     queryFn: () => base44.entities.EtapaFunil.filter({ status: 'ativa' }, 'ordem')
   });
+
+  // Buscar dados históricos do grupo quando disponível
+  useEffect(() => {
+    const buscarHistorico = async () => {
+      if (!grupo) {
+        setHistoricoLances(null);
+        return;
+      }
+
+      try {
+        const todosDetalhes = await base44.entities.HistoricoLanceDetalhe.list();
+        const todosHistoricos = await base44.entities.HistoricoLanceGrupo.list();
+
+        const grupoNormalizado = String(grupo).replace(/^0+/, '') || '0';
+        const detalhesDoGrupo = todosDetalhes.filter(d => {
+          const grupoDetalheNormalizado = String(d.grupo).replace(/^0+/, '') || '0';
+          return grupoDetalheNormalizado === grupoNormalizado;
+        });
+
+        if (detalhesDoGrupo.length === 0) {
+          setHistoricoLances(null);
+          return;
+        }
+
+        const historicosComDetalhes = todosHistoricos
+          .filter(h => detalhesDoGrupo.some(d => d.historico_id === h.id))
+          .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data));
+
+        if (historicosComDetalhes.length === 0) {
+          setHistoricoLances(null);
+          return;
+        }
+
+        const historicoMaisRecente = historicosComDetalhes[0];
+        const detalhesRecentes = detalhesDoGrupo.filter(
+          d => d.historico_id === historicoMaisRecente.id
+        );
+
+        // Calcular resumos por modalidade
+        const resumosPorModalidade = {};
+        for (const detalhe of detalhesRecentes) {
+          if (!resumosPorModalidade[detalhe.modalidade]) {
+            resumosPorModalidade[detalhe.modalidade] = [];
+          }
+          if (detalhe.lance_percent !== null) {
+            resumosPorModalidade[detalhe.modalidade].push(detalhe.lance_percent);
+          }
+        }
+
+        const resumos = Object.entries(resumosPorModalidade).map(([modalidade, lances]) => {
+          const soma = lances.reduce((acc, val) => acc + val, 0);
+          return {
+            modalidade,
+            media_lance_percent: lances.length > 0 ? soma / lances.length : null
+          };
+        });
+
+        setHistoricoLances(resumos);
+      } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+        setHistoricoLances(null);
+      }
+    };
+
+    buscarHistorico();
+  }, [grupo]);
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '' }]);
@@ -679,13 +748,28 @@ export default function SimuladorNormal() {
                   </div>
 
                   {resultado.usarLanceProprio && (
-                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                      <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
-                      <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
-                      <p className="text-xs text-purple-700 mt-1">
-                        {lanceProprioPercentual}% do crédito total
-                      </p>
-                    </div>
+                   <>
+                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                       <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
+                       <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
+                       <p className="text-xs text-purple-700 mt-1">
+                         {lanceProprioPercentual}% do crédito total
+                       </p>
+                     </div>
+
+                     {/* Relógio Contemplador */}
+                     {historicoLances && historicoLances.length > 0 && (() => {
+                       const mediaHistorica = historicoLances.find(r => r.modalidade === 'lance_limitado')?.media_lance_percent;
+                       if (!mediaHistorica) return null;
+
+                       const relogio = calcularRelogioContemplacao(
+                         parseFloat(lanceProprioPercentual),
+                         mediaHistorica
+                       );
+
+                       return <RelogioContemplacao relogio={relogio} />;
+                     })()}
+                   </>
                   )}
 
                   {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio) && (
