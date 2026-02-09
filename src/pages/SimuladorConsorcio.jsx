@@ -824,35 +824,37 @@ export default function SimuladorConsorcio() {
                       </>
                     )}
 
-                    <div>
-                      <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
-                      <Input
-                        type="text"
-                        value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
-                        onChange={(e) => {
-                          const valorNumerico = handleMoedaInput(e.target.value);
-                          setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
-                        }}
-                        placeholder="0,00"
-                      />
-                      {lanceProprio && parseFloat(lanceProprio) > 0 && (
-                        <div className="mt-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                          <p className="text-xs text-purple-700">💎 Lance Próprio</p>
-                          <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
-                          <p className="text-xs text-purple-700 mt-1">
-                            {lanceProprioPercentual}% do crédito total
-                          </p>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                        <Input
+                          type="text"
+                          value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                          onChange={(e) => {
+                            const valorNumerico = handleMoedaInput(e.target.value);
+                            setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                          }}
+                          placeholder="0,00"
+                        />
+                        {lanceProprio && parseFloat(lanceProprio) > 0 && (
+                          <div className="mt-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                            <p className="text-xs text-purple-700">💎 Lance Próprio</p>
+                            <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                            <p className="text-xs text-purple-700 mt-1">
+                              {lanceProprioPercentual}% do crédito total
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Relógio de Contemplação */}
+                      {relogio && (
+                        <RelogioContemplacao
+                          relogio={relogio}
+                          lanceOfertado={lancePercentualTotal}
+                        />
                       )}
                     </div>
-
-                    {/* Relógio de Contemplação */}
-                    {relogio && (
-                      <RelogioContemplacao
-                        relogio={relogio}
-                        lanceOfertado={lancePercentualTotal}
-                      />
-                    )}
                   </>
                 )}
               </CardContent>
