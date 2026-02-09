@@ -890,9 +890,9 @@ export default function SimuladorConsorcio() {
                   <p className="text-sm">Preencha os dados e calcule a simulação</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {/* Informações do Cliente */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="space-y-2">
+                    {/* Informações do Cliente */}
+                    <div className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                     <p className="text-xs text-slate-600 font-semibold mb-2">👤 Cliente</p>
                     <p className="text-sm font-medium text-slate-900">{clienteNome}</p>
                     <p className="text-xs text-slate-600">{telefone}</p>
