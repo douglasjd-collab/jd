@@ -221,13 +221,18 @@ export default function PlanosCanopusPage() {
   const handleSelecionarTipoSimulacao = (tipo) => {
     if (!selectedVariacao || !selectedGroup) return;
     
+    // Extrair número do grupo do campo plano (ex: "9130 | ..." -> "9130")
+    const grupoNumero = selectedGroup.plano?.split('|')[0]?.trim() || '';
+    
     // Salvar dados no localStorage para o simulador
     const dadosPlano = {
+      credito: selectedGroup.valor_bem,
       valor_credito: selectedGroup.valor_bem,
       parcela: selectedVariacao.parcela,
       prazo: selectedVariacao.prazo_meses,
       nome_bem: selectedGroup.nome_bem,
-      plano: selectedGroup.plano
+      plano: selectedGroup.plano,
+      grupo: grupoNumero
     };
     
     localStorage.setItem('planoSelecionado', JSON.stringify(dadosPlano));
