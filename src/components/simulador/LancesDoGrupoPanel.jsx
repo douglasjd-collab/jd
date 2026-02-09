@@ -262,7 +262,7 @@ export default function LancesDoGrupoPanel({ grupo }) {
               </div>
 
               <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
                     <p className="text-xs font-semibold text-emerald-700 mb-1">MENOR LANCE</p>
                     <div className="space-y-1">
@@ -301,15 +301,6 @@ export default function LancesDoGrupoPanel({ grupo }) {
                           </div>
                         );
                       })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-slate-700 mb-1">Total de Contemplações</p>
-                    <div className="bg-white rounded px-3 py-2 border-2 border-indigo-300">
-                      <p className="text-4xl font-bold text-indigo-700">
-                        {resumos.reduce((acc, r) => acc + (r.qtd_ocorrencias || 0), 0)}
-                      </p>
                     </div>
                   </div>
                 </div>
