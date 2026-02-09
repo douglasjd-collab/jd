@@ -548,7 +548,7 @@ export default function SimuladorConsorcio() {
                 📋 Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Nome do Cliente *</Label>
@@ -714,7 +714,7 @@ export default function SimuladorConsorcio() {
                 🎯 Lance Embutido
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-2">
               <div>
                 <Label className="text-xs">Administradora *</Label>
                 <Select value={administradora} onValueChange={setAdministradora}>
@@ -776,7 +776,7 @@ export default function SimuladorConsorcio() {
                   💰 Lance Próprio (Recurso Próprio)
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-2">
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                   <div>
                     <Label className="text-sm font-medium">Deseja ofertar Recurso Próprio junto com o Lance Embutido?</Label>
