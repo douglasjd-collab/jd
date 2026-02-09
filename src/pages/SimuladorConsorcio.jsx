@@ -525,9 +525,9 @@ export default function SimuladorConsorcio() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <div className="flex justify-center mb-4">
+    <div className="space-y-3">
+      <div className="text-center mb-3">
+        <div className="flex justify-center mb-2">
           <img 
             src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
             alt="JD Promotora" 
