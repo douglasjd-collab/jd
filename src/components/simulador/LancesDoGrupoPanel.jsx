@@ -193,14 +193,20 @@ export default function LancesDoGrupoPanel({ grupo }) {
         ) : null}
 
         {resumos.length > 0 && historicos.length > 0 && (() => {
-          const lanceLivre = resumos.find(r => r.modalidade === 'lance_livre');
-          const lanceLimitado = resumos.find(r => r.modalidade === 'lance_limitado');
-          
-          // Encontrar o maior lance entre todas as modalidades de lance (excluir sorteio)
-          const modalidadesDeLance = resumos.filter(r => r.modalidade !== 'sorteio');
-          const maiorLanceGeral = modalidadesDeLance.length > 0
-            ? Math.max(...modalidadesDeLance.map(r => r.maior_lance_percent || 0))
-            : null;
+          // Filtrar apenas lance_livre e lance_limitado
+          const livres = resumos.filter(r => r.modalidade === 'lance_livre' && r.menor_lance_percent != null && r.maior_lance_percent != null);
+          const limitados = resumos.filter(r => r.modalidade === 'lance_limitado' && r.menor_lance_percent != null && r.maior_lance_percent != null);
+
+          // Pegar o menor dos menores e o maior dos maiores para cada modalidade
+          const lanceLivre = livres.length > 0 ? {
+            menor_lance_percent: Math.min(...livres.map(r => r.menor_lance_percent)),
+            maior_lance_percent: Math.max(...livres.map(r => r.maior_lance_percent))
+          } : null;
+
+          const lanceLimitado = limitados.length > 0 ? {
+            menor_lance_percent: Math.min(...limitados.map(r => r.menor_lance_percent)),
+            maior_lance_percent: Math.max(...limitados.map(r => r.maior_lance_percent))
+          } : null;
 
           return (
             <>
@@ -213,22 +219,18 @@ export default function LancesDoGrupoPanel({ grupo }) {
               <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
                 <p className="text-xs font-semibold text-slate-700 mb-2 text-center">MENOR LANCE</p>
                 <div className="grid grid-cols-2 gap-4">
-                  {lanceLivre?.menor_lance_percent != null && (
+                  {lanceLivre && (
                     <div className="bg-white rounded px-3 py-2 border border-emerald-200">
                       <p className="text-xs text-slate-600 text-center mb-1">Lance Livre</p>
                       <p className="text-2xl font-bold text-emerald-700 text-center">{fmt(lanceLivre.menor_lance_percent)}</p>
-                      {lanceLivre.maior_lance_percent != null && (
-                        <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLivre.maior_lance_percent)}</p>
-                      )}
+                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLivre.maior_lance_percent)}</p>
                     </div>
                   )}
-                  {lanceLimitado?.menor_lance_percent != null && (
+                  {lanceLimitado && (
                     <div className="bg-white rounded px-3 py-2 border border-blue-200">
                       <p className="text-xs text-slate-600 text-center mb-1">Lance Limitado</p>
                       <p className="text-2xl font-bold text-blue-700 text-center">{fmt(lanceLimitado.menor_lance_percent)}</p>
-                      {lanceLimitado.maior_lance_percent != null && (
-                        <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLimitado.maior_lance_percent)}</p>
-                      )}
+                      <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLimitado.maior_lance_percent)}</p>
                     </div>
                   )}
                 </div>
