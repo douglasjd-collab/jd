@@ -235,48 +235,26 @@ export default function LancesDoGrupoPanel({ grupo }) {
               </div>
 
               <div className="mt-3 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-xs font-semibold text-emerald-700 mb-1">MENOR LANCE</p>
-                    <div className="space-y-1">
-                      {lanceLivre?.menor_lance_percent != null && (
-                        <div className="bg-white rounded px-2 py-1 border border-emerald-200">
-                          <p className="text-xs text-slate-600">Lance Livre</p>
-                          <p className="text-lg font-bold text-emerald-700">{fmt(lanceLivre.menor_lance_percent)}</p>
-                          {lanceLivre.maior_lance_percent != null && (
-                            <p className="text-xs text-slate-500">Maior: {fmt(lanceLivre.maior_lance_percent)}</p>
-                          )}
-                        </div>
-                      )}
-                      {lanceLimitado?.menor_lance_percent != null && (
-                        <div className="bg-white rounded px-2 py-1 border border-blue-200">
-                          <p className="text-xs text-slate-600">Lance Limitado</p>
-                          <p className="text-lg font-bold text-blue-700">{fmt(lanceLimitado.menor_lance_percent)}</p>
-                          {lanceLimitado.maior_lance_percent != null && (
-                            <p className="text-xs text-slate-500">Maior: {fmt(lanceLimitado.maior_lance_percent)}</p>
-                          )}
-                        </div>
+                <p className="text-xs font-semibold text-slate-700 mb-2 text-center">MENOR LANCE</p>
+                <div className="grid grid-cols-2 gap-4">
+                  {lanceLivre?.menor_lance_percent != null && (
+                    <div className="bg-white rounded px-3 py-2 border border-emerald-200">
+                      <p className="text-xs text-slate-600 text-center mb-1">Lance Livre</p>
+                      <p className="text-2xl font-bold text-emerald-700 text-center">{fmt(lanceLivre.menor_lance_percent)}</p>
+                      {lanceLivre.maior_lance_percent != null && (
+                        <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLivre.maior_lance_percent)}</p>
                       )}
                     </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-slate-700 mb-1">LANCE FIXO - CONTEMPLADOS</p>
-                    <div className="space-y-1">
-                      {['lance_fixo_15', 'lance_fixo_30', 'lance_fixo_50'].map(modalidade => {
-                        const fixo = resumos.find(r => r.modalidade === modalidade);
-                        if (!fixo || fixo.qtd_ocorrencias === 0) return null;
-                        const percentual = modalidade === 'lance_fixo_15' ? '15%' : modalidade === 'lance_fixo_30' ? '30%' : '50%';
-                        const nomeFixo = `Fixo ${percentual}`;
-                        return (
-                          <div key={modalidade} className="bg-white rounded px-2 py-1 border border-orange-200">
-                            <p className="text-xs text-slate-600">{nomeFixo}</p>
-                            <p className="text-lg font-bold text-orange-700">{fixo.qtd_ocorrencias || 0}</p>
-                          </div>
-                        );
-                      })}
+                  )}
+                  {lanceLimitado?.menor_lance_percent != null && (
+                    <div className="bg-white rounded px-3 py-2 border border-blue-200">
+                      <p className="text-xs text-slate-600 text-center mb-1">Lance Limitado</p>
+                      <p className="text-2xl font-bold text-blue-700 text-center">{fmt(lanceLimitado.menor_lance_percent)}</p>
+                      {lanceLimitado.maior_lance_percent != null && (
+                        <p className="text-xs text-slate-500 text-center mt-1">Maior: {fmt(lanceLimitado.maior_lance_percent)}</p>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </>
