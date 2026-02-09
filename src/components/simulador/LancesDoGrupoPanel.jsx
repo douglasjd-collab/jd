@@ -266,7 +266,8 @@ export default function LancesDoGrupoPanel({ grupo }) {
                       {['lance_fixo_15', 'lance_fixo_30', 'lance_fixo_50'].map(modalidade => {
                         const fixo = resumos.find(r => r.modalidade === modalidade);
                         if (!fixo || fixo.qtd_ocorrencias === 0) return null;
-                        const nomeFixo = modalidade === 'lance_fixo_15' ? 'Fixo 15%' : modalidade === 'lance_fixo_30' ? 'Fixo 30%' : 'Fixo 50%';
+                        const percentual = modalidade === 'lance_fixo_15' ? '15%' : modalidade === 'lance_fixo_30' ? '30%' : '50%';
+                        const nomeFixo = `Fixo ${percentual}`;
                         return (
                           <div key={modalidade} className="bg-white rounded px-2 py-1 border border-orange-200">
                             <p className="text-xs text-slate-600">{nomeFixo}</p>
