@@ -127,8 +127,8 @@ export default function RelogioContemplacao({ relogio, lanceOfertado }) {
               ? 'Seu lance está na média. Considere aumentar para melhorar suas chances.'
               : 'Lance abaixo da média histórica. Recomendamos aumentar o valor.'}
           </div>
-          </div>
-          </CardContent>
-          </Card>
-          );
-          }
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
