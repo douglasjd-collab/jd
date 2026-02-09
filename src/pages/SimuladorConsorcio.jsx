@@ -819,10 +819,10 @@ export default function SimuladorConsorcio() {
                       </div>
 
                       {/* Relógio de Contemplação */}
-                      {relogio && lanceConsiderado && (
+                      {relogio && (
                         <RelogioContemplacao
                           relogio={relogio}
-                          lanceOfertado={lanceConsiderado}
+                          lanceOfertado={lancePercentual}
                         />
                       )}
                     </div>
