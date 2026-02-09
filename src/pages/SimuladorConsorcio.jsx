@@ -844,7 +844,7 @@ export default function SimuladorConsorcio() {
                       {mostrarRelogio && relogio && (
                         <RelogioContemplacao
                           relogio={relogio}
-                          lanceOfertado={lancePercentual}
+                          lanceOfertado={lanceProprioPercentualRelogio}
                         />
                       )}
                     </div>
