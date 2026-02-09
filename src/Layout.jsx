@@ -187,7 +187,7 @@ export default function Layout({ children, currentPageName }) {
     { 
       name: 'Importação', 
       icon: Upload, 
-      roles: ['master', 'super_admin', 'admin'],
+      roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
       submenu: [
         { name: 'Importar Comissões', page: 'ImportacaoComissao' },
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
