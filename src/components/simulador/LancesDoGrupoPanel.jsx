@@ -80,9 +80,8 @@ export default function LancesDoGrupoPanel({ grupo }) {
       },
   });
 
-  const resumos = data?.resumos || [];
+  const detalhes = data?.detalhes || [];
   const historicos = data?.historicos || [];
-  const periodo = data?.periodo || 0;
 
   const cards = useMemo(() => {
     // Função para processar dados de uma modalidade
