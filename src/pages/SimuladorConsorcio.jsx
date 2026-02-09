@@ -692,8 +692,8 @@ export default function SimuladorConsorcio() {
               ))}
 
               {/* Totais */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <p className="text-xs text-blue-700">💰 Crédito Total</p>
                     <p className="text-xl font-bold text-blue-900">{formatCurrency(creditoTotal)}</p>
