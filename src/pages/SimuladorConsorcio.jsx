@@ -549,7 +549,7 @@ export default function SimuladorConsorcio() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
                   <Label>Nome do Cliente *</Label>
                   <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome completo" />
