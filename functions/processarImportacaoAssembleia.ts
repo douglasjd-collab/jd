@@ -25,11 +25,16 @@ function agruparPorGrupoEModalidade(registros) {
     const menor = percentuais.length > 0 ? Math.min(...percentuais) : null;
     const maior = percentuais.length > 0 ? Math.max(...percentuais) : null;
     
+    // Calcular média
+    const soma = percentuais.reduce((acc, val) => acc + val, 0);
+    const media = percentuais.length > 0 ? soma / percentuais.length : null;
+    
     resumos.push({
       grupo: data.grupo,
       modalidade: data.modalidade,
       menor_lance_percent: menor,
       maior_lance_percent: maior,
+      media_lance_percent: media,
       qtd_ocorrencias: percentuais.length || 1
     });
   }
@@ -174,11 +179,19 @@ Deno.serve(async (req) => {
       if (mapaAtuais[chave]) {
         // Já existe resumo para este historico_id, atualizar
         const existente = mapaAtuais[chave];
+        // Recalcular média combinando os dados
+        const qtdExistente = existente.qtd_ocorrencias ?? 0;
+        const qtdNova = r.qtd_ocorrencias ?? 1;
+        const somaExistente = (existente.media_lance_percent ?? 0) * qtdExistente;
+        const somaNova = (r.media_lance_percent ?? 0) * qtdNova;
+        const novaMedia = (somaExistente + somaNova) / (qtdExistente + qtdNova);
+        
         payloadUpdate.push({
           id: existente.id,
           menor_lance_percent: Math.min(existente.menor_lance_percent ?? 999, r.menor_lance_percent ?? 999),
           maior_lance_percent: Math.max(existente.maior_lance_percent ?? 0, r.maior_lance_percent ?? 0),
-          qtd_ocorrencias: (existente.qtd_ocorrencias ?? 0) + (r.qtd_ocorrencias ?? 1)
+          media_lance_percent: novaMedia,
+          qtd_ocorrencias: qtdExistente + qtdNova
         });
       } else {
         // Criar novo resumo para este historico_id
@@ -208,6 +221,7 @@ Deno.serve(async (req) => {
           modalidade: r.modalidade,
           menor_lance_percent: menor_final ?? null,
           maior_lance_percent: maior_final ?? null,
+          media_lance_percent: r.media_lance_percent ?? null,
           qtd_ocorrencias: r.qtd_ocorrencias ?? 1
         });
       }
@@ -222,6 +236,7 @@ Deno.serve(async (req) => {
         base44.asServiceRole.entities.HistoricoLanceResumo.update(item.id, {
           menor_lance_percent: item.menor_lance_percent,
           maior_lance_percent: item.maior_lance_percent,
+          media_lance_percent: item.media_lance_percent,
           qtd_ocorrencias: item.qtd_ocorrencias
         })
       ));
