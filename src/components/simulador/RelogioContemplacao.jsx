@@ -57,59 +57,75 @@ export default function RelogioContemplacao({ relogio, lanceOfertado }) {
     <Card className={`${config.border} border-2 ${config.bg}`}>
       <CardContent className="pt-6">
         <div className="space-y-4">
-          {/* Título e Ícone */}
+          {/* Título e Percentual */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingUp className={`w-5 h-5 ${config.icon}`} />
               <h3 className="font-semibold text-slate-900">Relógio Contemplador</h3>
             </div>
-            <span className={`text-xs font-medium px-2 py-1 rounded ${config.bg} ${config.text} border ${config.border}`}>
-              Índice: {relogio.indice.toFixed(2)}x
+            <span className={`text-lg font-bold ${config.text}`}>
+              {relogio.chance_percentual}%
             </span>
           </div>
 
-          {/* Barra de Progresso */}
+          {/* Barra de Progresso Semicircular */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm text-slate-600">
-              <span>0%</span>
-              <span className={`font-semibold ${config.text}`}>{relogio.label}</span>
-              <span>100%</span>
+            <div className="flex justify-center">
+              <div className="relative w-48 h-24">
+                {/* Fundo do arco */}
+                <svg className="w-full h-full" viewBox="0 0 200 100">
+                  <path
+                    d="M 20 90 A 80 80 0 0 1 180 90"
+                    fill="none"
+                    stroke="#e2e8f0"
+                    strokeWidth="16"
+                    strokeLinecap="round"
+                  />
+                  {/* Arco colorido (progresso) */}
+                  <path
+                    d="M 20 90 A 80 80 0 0 1 180 90"
+                    fill="none"
+                    stroke={config.progress.replace('bg-', '')}
+                    strokeWidth="16"
+                    strokeLinecap="round"
+                    strokeDasharray={`${relogio.percentualRelogio * 2.51}, 251`}
+                    className="transition-all duration-1000 ease-out"
+                    style={{ stroke: config.progress === 'bg-red-500' ? '#ef4444' : config.progress === 'bg-yellow-500' ? '#eab308' : '#22c55e' }}
+                  />
+                </svg>
+                {/* Texto central */}
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+                  <span className={`text-3xl font-bold ${config.text}`}>
+                    {relogio.chance_percentual}%
+                  </span>
+                  <span className="text-xs text-slate-600 mt-1">de chance</span>
+                </div>
+              </div>
             </div>
-            <div className="w-full bg-slate-200 rounded-full h-4 relative overflow-hidden">
-              <div 
-                className={`${config.progress} h-full rounded-full transition-all duration-700 ease-out`}
-                style={{ width: `${relogio.percentualRelogio}%` }}
-              />
-              {/* Marcador de posição */}
-              <div 
-                className="absolute top-0 h-full w-1 bg-slate-800 shadow-lg"
-                style={{ left: `${relogio.percentualRelogio}%` }}
-              />
-            </div>
+            <p className={`text-center text-sm font-medium ${config.text}`}>{relogio.label}</p>
           </div>
 
-          {/* Detalhes */}
-          <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
-            <div>
-              <p className="text-slate-500 text-xs">Seu lance</p>
-              <p className="font-semibold text-slate-900">{lanceOfertado.toFixed(2)}%</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs">Média histórica</p>
-              <p className="font-semibold text-slate-900">{mediaHistorica.toFixed(2)}%</p>
+          {/* Detalhes do Lance */}
+          <div className="grid grid-cols-1 gap-2 text-sm pt-3 border-t">
+            <div className="flex justify-between">
+              <span className="text-slate-600">Seu lance:</span>
+              <span className="font-semibold text-slate-900">{lanceOfertado.toFixed(2)}%</span>
             </div>
           </div>
 
           {/* Mensagem de Contexto */}
           <div className={`text-xs ${config.text} ${config.bg} border ${config.border} p-3 rounded-lg`}>
-            <strong>💡 {textoDiferenca}</strong>
+            <strong>💡 {relogio.nivel === 'alta' 
+              ? 'Você está acima da média do grupo!'
+              : relogio.nivel === 'media'
+              ? 'Você está na média do grupo.'
+              : 'Seu lance está abaixo da média.'}</strong>
             <br />
-            {relogio.nivel === 'muito_alta' || relogio.nivel === 'alta' 
+            {relogio.nivel === 'alta' 
               ? 'Seu lance está competitivo e tem boas chances de contemplação!'
               : relogio.nivel === 'media'
               ? 'Seu lance está na média. Considere aumentar para melhorar suas chances.'
               : 'Lance abaixo da média histórica. Recomendamos aumentar o valor.'}
-          </div>
         </div>
       </CardContent>
     </Card>
