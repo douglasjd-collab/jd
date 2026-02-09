@@ -824,9 +824,9 @@ export default function SimuladorConsorcio() {
                       </>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                       <div>
+                         <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
                         <Input
                           type="text"
                           value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
