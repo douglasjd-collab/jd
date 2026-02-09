@@ -38,8 +38,10 @@ export default function SimuladorConsorcio() {
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [resultado, setResultado] = useState(null);
   const [relogio, setRelogio] = useState(null);
-  const [menorLance, setMenorLance] = useState(null);
-  const [maiorLance, setMaiorLance] = useState(null);
+  const [menorLanceLivre, setMenorLanceLivre] = useState(null);
+  const [maiorLanceLivre, setMaiorLanceLivre] = useState(null);
+  const [menorLanceLimitado, setMenorLanceLimitado] = useState(null);
+  const [maiorLanceLimitado, setMaiorLanceLimitado] = useState(null);
 
   useEffect(() => {
     loadUser();
