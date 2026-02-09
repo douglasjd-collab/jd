@@ -126,8 +126,9 @@ export default function RelogioContemplacao({ relogio, lanceOfertado }) {
               : relogio.nivel === 'media'
               ? 'Seu lance está na média. Considere aumentar para melhorar suas chances.'
               : 'Lance abaixo da média histórica. Recomendamos aumentar o valor.'}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+          </div>
+          </div>
+          </CardContent>
+          </Card>
+          );
+          }
