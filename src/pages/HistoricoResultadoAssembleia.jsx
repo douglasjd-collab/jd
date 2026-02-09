@@ -23,7 +23,7 @@ export default function HistoricoResultadoAssembleia() {
     const me = await base44.auth.me();
     setUser(me);
 
-    if (me.perfil === 'super_admin' || me.perfil === 'master') {
+    if (me.role === 'super_admin') {
       const empresas = await base44.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 1);
       if (empresas.length > 0) setEmpresaId(empresas[0].id);
     } else {
