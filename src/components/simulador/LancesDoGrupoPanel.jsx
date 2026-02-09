@@ -214,34 +214,7 @@ export default function LancesDoGrupoPanel({ grupo }) {
           <div className="text-sm text-slate-600">
             Não achei histórico importado para esse grupo.
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {cards.map((c) => (
-              <div key={c.key} className="rounded-lg border p-3 bg-white">
-                <div className="font-medium mb-2">{c.title}</div>
-                {c.key === "sorteio" ? (
-                  <div className="text-sm text-slate-700">
-                    Total contemplações: <b>{c.qtd ?? 0}</b>
-                  </div>
-                ) : c.min != null || c.max != null ? (
-                  <div className="text-sm text-slate-700 space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-blue-700 font-semibold">
-                        Mín: <span className="bg-blue-100 px-2 py-1 rounded">{fmt(c.min)}</span>
-                      </span>
-                      <span className="text-slate-700 font-semibold">
-                        Máx: <span className="bg-slate-100 px-2 py-1 rounded">{fmt(c.max)}</span>
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500">Amostras: {c.qtd ?? 0}</div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-400">Sem dados</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        ) : null}
 
         {resumos.length > 0 && historicos.length > 0 && (() => {
           const lanceLivre = resumos.find(r => r.modalidade === 'lance_livre');
