@@ -43,6 +43,14 @@ export default function NovaVendaConsignado() {
     prazo_original: '',
     contrato_anterior: '',
     data_inicio: '',
+    vendedor_parceiro_id: '',
+    tabela_comissao_id: '',
+    percentual_comissao_empresa: '',
+    comissao_empresa_prevista: '',
+    comissao_empresa_recebida: '',
+    percentual_comissao_vendedor: '',
+    comissao_vendedor_prevista: '',
+    comissao_vendedor_paga: '',
     status: 'em_andamento',
     empresa_parceira: '',
     observacoes: ''
@@ -77,9 +85,22 @@ export default function NovaVendaConsignado() {
     queryFn: () => base44.entities.Banco.filter({ empresa_id: empresaId, ativo: true })
   });
 
+  const { data: vendedores = [] } = useQuery({
+    queryKey: ['vendedores', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome')
+  });
+
+  const { data: tabelasComissao = [] } = useQuery({
+    queryKey: ['tabelas-comissao-emprestimo', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.TabelaComissaoEmprestimo.filter({ empresa_id: empresaId, ativo: true })
+  });
+
   const criarVendaMutation = useMutation({
     mutationFn: async (dados) => {
       const convenioSelecionado = convenios.find(c => c.id === dados.convenio_id);
+      const vendedorSelecionado = vendedores.find(v => v.id === dados.vendedor_parceiro_id);
 
       const vendaBase = await base44.entities.VendaBase.create({
         empresa_id: empresaId,
@@ -89,8 +110,8 @@ export default function NovaVendaConsignado() {
         cliente_nome: clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social,
         usuario_digitador_id: user.id,
         usuario_digitador_nome: user.full_name,
-        vendedor_id: user.id,
-        vendedor_nome: user.full_name,
+        vendedor_id: vendedorSelecionado?.id || user.id,
+        vendedor_nome: vendedorSelecionado?.nome || user.full_name,
         empresa_parceira: dados.empresa_parceira || dados.banco,
         status: dados.status,
         valor_total: parseFloat(dados.valor_liberado) || 0,
@@ -119,6 +140,15 @@ export default function NovaVendaConsignado() {
         prazo_original: parseInt(dados.prazo_original) || 0,
         contrato_anterior: dados.contrato_anterior,
         data_inicio: dados.data_inicio || null,
+        vendedor_parceiro_id: dados.vendedor_parceiro_id || null,
+        vendedor_parceiro_nome: vendedorSelecionado?.nome || '',
+        tabela_comissao_id: dados.tabela_comissao_id || null,
+        percentual_comissao_empresa: parseFloat(dados.percentual_comissao_empresa) || 0,
+        comissao_empresa_prevista: parseFloat(dados.comissao_empresa_prevista) || 0,
+        comissao_empresa_recebida: parseFloat(dados.comissao_empresa_recebida) || 0,
+        percentual_comissao_vendedor: parseFloat(dados.percentual_comissao_vendedor) || 0,
+        comissao_vendedor_prevista: parseFloat(dados.comissao_vendedor_prevista) || 0,
+        comissao_vendedor_paga: parseFloat(dados.comissao_vendedor_paga) || 0,
         status: dados.status
       });
 
@@ -152,8 +182,64 @@ export default function NovaVendaConsignado() {
 
   const handleMoedaChange = (campo, valor) => {
     const numero = valor.replace(/\D/g, '');
-    setFormData({ ...formData, [campo]: (parseFloat(numero) / 100).toFixed(2) });
+    const novoValor = (parseFloat(numero) / 100).toFixed(2);
+    const novoForm = { ...formData, [campo]: novoValor };
+    
+    // Recalcular comissões se for valor_liberado ou prazo
+    if (campo === 'valor_liberado') {
+      calcularComissoes(novoForm);
+    } else {
+      setFormData(novoForm);
+    }
   };
+
+  const calcularComissoes = (dadosForm) => {
+    const valorLiberado = parseFloat(dadosForm.valor_liberado) || 0;
+    const prazo = parseInt(dadosForm.prazo) || 0;
+    const tipo = dadosForm.tipo_consignado;
+    const convenioId = dadosForm.convenio_id;
+    const banco = dadosForm.banco;
+
+    // Buscar tabela de comissão aplicável
+    const tabelaAplicavel = tabelasComissao.find(t => {
+      const tipoMatch = t.tipo_operacao === tipo;
+      const convenioMatch = !t.convenio_id || t.convenio_id === convenioId;
+      const bancoMatch = !t.banco || t.banco === banco;
+      const prazoMatch = prazo >= t.prazo_min && prazo <= t.prazo_max;
+      
+      return tipoMatch && convenioMatch && bancoMatch && prazoMatch;
+    });
+
+    if (tabelaAplicavel && valorLiberado > 0) {
+      const comissaoEmpresa = (valorLiberado * tabelaAplicavel.percentual_comissao_empresa) / 100;
+      const comissaoVendedor = (valorLiberado * tabelaAplicavel.percentual_comissao_vendedor) / 100;
+
+      setFormData({
+        ...dadosForm,
+        tabela_comissao_id: tabelaAplicavel.id,
+        percentual_comissao_empresa: tabelaAplicavel.percentual_comissao_empresa,
+        comissao_empresa_prevista: comissaoEmpresa.toFixed(2),
+        percentual_comissao_vendedor: tabelaAplicavel.percentual_comissao_vendedor,
+        comissao_vendedor_prevista: comissaoVendedor.toFixed(2)
+      });
+    } else {
+      setFormData({
+        ...dadosForm,
+        tabela_comissao_id: '',
+        percentual_comissao_empresa: '',
+        comissao_empresa_prevista: '',
+        percentual_comissao_vendedor: '',
+        comissao_vendedor_prevista: ''
+      });
+    }
+  };
+
+  // Recalcular quando prazo, tipo, convênio ou banco mudar
+  useEffect(() => {
+    if (formData.valor_liberado && formData.prazo) {
+      calcularComissoes(formData);
+    }
+  }, [formData.prazo, formData.tipo_consignado, formData.convenio_id, formData.banco]);
 
   const renderCamposPorTipo = () => {
     if (formData.tipo_consignado === 'NOVO' || formData.tipo_consignado === 'REFINANCIAMENTO') {
@@ -575,12 +661,130 @@ export default function NovaVendaConsignado() {
               </Button>
             </div>
 
-            <div>
-              <Label>Empresa Parceira</Label>
-              <Input value={formData.empresa_parceira} onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Vendedor/Parceiro</Label>
+                <select
+                  value={formData.vendedor_parceiro_id}
+                  onChange={(e) => setFormData({ ...formData, vendedor_parceiro_id: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {vendedores.map(v => (
+                    <option key={v.id} value={v.id}>{v.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Empresa Parceira</Label>
+                <Input value={formData.empresa_parceira} onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })} />
+              </div>
             </div>
 
             {renderCamposPorTipo()}
+
+            {(user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') && (
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-semibold mb-4">Comissões</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>% Comissão Empresa</Label>
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      value={formData.percentual_comissao_empresa} 
+                      onChange={(e) => setFormData({ ...formData, percentual_comissao_empresa: e.target.value })}
+                      readOnly
+                      className="bg-slate-50"
+                    />
+                  </div>
+                  <div>
+                    <Label>Comissão Empresa Prevista</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                      <Input 
+                        className="pl-10 bg-slate-50"
+                        value={formatarMoeda(formData.comissao_empresa_prevista)}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Comissão Empresa Recebida</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                      <Input 
+                        className="pl-10"
+                        value={formatarMoeda(formData.comissao_empresa_recebida)} 
+                        onChange={(e) => handleMoedaChange('comissao_empresa_recebida', e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>% Comissão Vendedor</Label>
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      value={formData.percentual_comissao_vendedor} 
+                      onChange={(e) => setFormData({ ...formData, percentual_comissao_vendedor: e.target.value })}
+                      readOnly
+                      className="bg-slate-50"
+                    />
+                  </div>
+                  <div>
+                    <Label>Comissão Vendedor Prevista</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                      <Input 
+                        className="pl-10 bg-slate-50"
+                        value={formatarMoeda(formData.comissao_vendedor_prevista)}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Comissão Vendedor Paga</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                      <Input 
+                        className="pl-10"
+                        value={formatarMoeda(formData.comissao_vendedor_paga)} 
+                        onChange={(e) => handleMoedaChange('comissao_vendedor_paga', e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && (
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-semibold mb-4">Sua Comissão</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Percentual</Label>
+                    <Input 
+                      value={formData.percentual_comissao_vendedor + '%'}
+                      readOnly
+                      className="bg-slate-50"
+                    />
+                  </div>
+                  <div>
+                    <Label>Valor Previsto</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                      <Input 
+                        className="pl-10 bg-slate-50"
+                        value={formatarMoeda(formData.comissao_vendedor_prevista)}
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label>Status</Label>
