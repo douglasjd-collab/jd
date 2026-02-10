@@ -250,9 +250,12 @@ export default function HistoricoResultadoAssembleia() {
       ) : (
         <div className="space-y-4">
           {gruposConsolidados.map((grupo) => {
-            const totalContemplacoes = grupo.detalhes.length;
-            const menorLance = Math.min(...grupo.resumos.map(r => r.menor_lance_percent || 999));
-            const maiorLance = Math.max(...grupo.resumos.map(r => r.maior_lance_percent || 0));
+            if (!grupo.resumos || grupo.resumos.length === 0) return null;
+            
+            const totalContemplacoes = grupo.detalhes?.length || 0;
+            const resumosValidos = grupo.resumos.filter(r => r.menor_lance_percent !== null);
+            const menorLance = resumosValidos.length > 0 ? Math.min(...resumosValidos.map(r => r.menor_lance_percent)) : 0;
+            const maiorLance = resumosValidos.length > 0 ? Math.max(...resumosValidos.map(r => r.maior_lance_percent || 0)) : 0;
 
             return (
               <Card key={grupo.grupo} className="border-2">
