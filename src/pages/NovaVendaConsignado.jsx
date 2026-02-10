@@ -669,32 +669,22 @@ export default function NovaVendaConsignado() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Número ADE</Label>
-                <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
+                <Label>Tabela</Label>
+                <select
+                  value={formData.tabela_emprestimo_id}
+                  onChange={(e) => handleTabelaChange(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {tabelasEmprestimo.map(t => (
+                    <option key={t.id} value={t.id}>{t.nome}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <Label>Número do Contrato</Label>
-                <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
+                <Label>Número do Benefício</Label>
+                <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
               </div>
-            </div>
-
-            <div>
-              <Label>Tabela</Label>
-              <select
-                value={formData.tabela_emprestimo_id}
-                onChange={(e) => handleTabelaChange(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-              >
-                <option value="">Selecione...</option>
-                {tabelasEmprestimo.map(t => (
-                  <option key={t.id} value={t.id}>{t.nome}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <Label>Número do Benefício</Label>
-              <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
             </div>
 
             <div>
@@ -856,6 +846,17 @@ export default function NovaVendaConsignado() {
                 </div>
               </div>
             )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Número ADE</Label>
+                <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
+              </div>
+              <div>
+                <Label>Número do Contrato</Label>
+                <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
+              </div>
+            </div>
 
             <div>
               <Label>Status</Label>
