@@ -62,11 +62,13 @@ Deno.serve(async (req) => {
 
       // Extrair apenas números do telefone
       const telefoneLimpo = String(telefone).replace(/\D/g, '');
+      console.log('📱 Telefone extraído:', telefoneLimpo);
 
       // Buscar conversa existente
       const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
         cliente_telefone: telefoneLimpo
       });
+      console.log('🔍 Conversas encontradas:', conversas.length);
 
       let conversa;
       if (conversas.length === 0) {
@@ -75,6 +77,7 @@ Deno.serve(async (req) => {
         if (!empresaId) {
           const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
           empresaId = empresas[0]?.id || 'default';
+          console.log('🏢 Empresa selecionada:', empresaId);
         }
 
         // Criar nova conversa
@@ -88,6 +91,7 @@ Deno.serve(async (req) => {
           ultima_mensagem: conteudo || tipo,
           data_ultima_mensagem: new Date().toISOString()
         });
+        console.log('✨ Nova conversa criada:', conversa.id);
       } else {
         conversa = conversas[0];
         // Atualizar última mensagem
@@ -95,6 +99,7 @@ Deno.serve(async (req) => {
           ultima_mensagem: conteudo || tipo,
           data_ultima_mensagem: new Date().toISOString()
         });
+        console.log('🔄 Conversa atualizada:', conversa.id);
       }
 
       // Criar registro de mensagem
@@ -118,7 +123,7 @@ Deno.serve(async (req) => {
         status: 'entregue'
       });
 
-      console.log('Mensagem processada:', novaMensagem.id);
+      console.log('✅ Mensagem salva:', { id: novaMensagem.id, tipo: tipo_conteudo });
     }
 
     return Response.json({ success: true });
