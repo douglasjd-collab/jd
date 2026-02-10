@@ -13,9 +13,9 @@ export default function ConfiguracaoWhatsApp() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const evolutionUrl = 'https://evolutionapi-evolution-api.dsnnn7.easypanel.host/';
-  const instanceName = 'TESTEWAZE';
-  const apiKey = '8846A2E033A6-43D5-BA5D-AE05D48F44F2';
+  const evolutionUrl = Deno.env.get?.('EVOLUTION_API_URL') || 'https://evolutionapi-evolution-api.dsnnn7.easypanel.host/';
+  const instanceName = Deno.env.get?.('EVOLUTION_INSTANCE_NAME') || 'default';
+  const apiKey = Deno.env.get?.('EVOLUTION_API_KEY') || '***';
 
   useEffect(() => {
     loadWebhookUrl();

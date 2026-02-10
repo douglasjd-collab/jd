@@ -49,6 +49,7 @@
  */
 import Administradoras from './pages/Administradoras';
 import Agenda from './pages/Agenda';
+import BatePapo from './pages/BatePapo';
 import CartasContempladas from './pages/CartasContempladas';
 import ClienteDetalhes from './pages/ClienteDetalhes';
 import Clientes from './pages/Clientes';
@@ -58,6 +59,7 @@ import ComissoesPagar from './pages/ComissoesPagar';
 import ComissoesPagas from './pages/ComissoesPagas';
 import ComissoesRecebidas from './pages/ComissoesRecebidas';
 import ConfiguracaoFunil from './pages/ConfiguracaoFunil';
+import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
 import Configuracoes from './pages/Configuracoes';
 import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
@@ -101,14 +103,13 @@ import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import BatePapo from './pages/BatePapo';
-import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Administradoras": Administradoras,
     "Agenda": Agenda,
+    "BatePapo": BatePapo,
     "CartasContempladas": CartasContempladas,
     "ClienteDetalhes": ClienteDetalhes,
     "Clientes": Clientes,
@@ -118,6 +119,7 @@ export const PAGES = {
     "ComissoesPagas": ComissoesPagas,
     "ComissoesRecebidas": ComissoesRecebidas,
     "ConfiguracaoFunil": ConfiguracaoFunil,
+    "ConfiguracaoWhatsApp": ConfiguracaoWhatsApp,
     "Configuracoes": Configuracoes,
     "Dashboard": Dashboard,
     "Empresas": Empresas,
@@ -161,8 +163,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "BatePapo": BatePapo,
-    "ConfiguracaoWhatsApp": ConfiguracaoWhatsApp,
 }
 
 export const pagesConfig = {
