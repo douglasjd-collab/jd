@@ -825,7 +825,6 @@ export default function NovaVendaConsignado() {
                     </div>
                   </div>
                 </div>
-              </div>
             </CardContent>
           </Card>
         )}
@@ -862,7 +861,6 @@ export default function NovaVendaConsignado() {
                     </div>
                   </div>
                 </div>
-              </div>
             </CardContent>
           </Card>
         )}
