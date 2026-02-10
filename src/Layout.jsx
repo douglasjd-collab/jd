@@ -498,7 +498,9 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <main className={cn("lg:ml-72 min-h-screen", darkMode && "bg-slate-900")}>
         <div className="p-4 lg:p-8">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
 
