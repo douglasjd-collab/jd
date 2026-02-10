@@ -30,6 +30,7 @@ export default function NovaVendaConsignado() {
     numero_ade: '',
     numero_contrato: '',
     convenio_id: '',
+    tabela_emprestimo_id: '',
     numero_beneficio: '',
     banco: '',
     valor_liberado: '',
@@ -95,6 +96,18 @@ export default function NovaVendaConsignado() {
     queryKey: ['tabelas-comissao-emprestimo', empresaId],
     enabled: !!empresaId,
     queryFn: () => base44.entities.TabelaComissaoEmprestimo.filter({ empresa_id: empresaId, ativo: true })
+  });
+
+  const { data: tabelasEmprestimo = [] } = useQuery({
+    queryKey: ['tabelas-emprestimo', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.TabelaEmprestimo.filter({ empresa_id: empresaId, ativo: true }, 'nome')
+  });
+
+  const { data: empresasParceiras = [] } = useQuery({
+    queryKey: ['empresas-parceiras', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.EmpresaParceira.filter({ empresa_id: empresaId, ativo: true }, 'nome')
   });
 
   const criarVendaMutation = useMutation({
@@ -240,6 +253,41 @@ export default function NovaVendaConsignado() {
       calcularComissoes(formData);
     }
   }, [formData.prazo, formData.tipo_consignado, formData.convenio_id, formData.banco]);
+
+  // Aplicar comissões da tabela selecionada
+  const handleTabelaChange = (tabelaId) => {
+    const tabela = tabelasEmprestimo.find(t => t.id === tabelaId);
+    if (tabela) {
+      const valorLiberado = parseFloat(formData.valor_liberado) || 0;
+      const comissaoEmpresa = valorLiberado > 0 ? (valorLiberado * tabela.comissao_empresa) / 100 : 0;
+      const comissaoVendedor = valorLiberado > 0 ? (valorLiberado * tabela.comissao_corretor) / 100 : 0;
+
+      setFormData({
+        ...formData,
+        tabela_emprestimo_id: tabelaId,
+        percentual_comissao_empresa: tabela.comissao_empresa,
+        comissao_empresa_prevista: comissaoEmpresa.toFixed(2),
+        percentual_comissao_vendedor: tabela.comissao_corretor,
+        comissao_vendedor_prevista: comissaoVendedor.toFixed(2)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        tabela_emprestimo_id: '',
+        percentual_comissao_empresa: '',
+        comissao_empresa_prevista: '',
+        percentual_comissao_vendedor: '',
+        comissao_vendedor_prevista: ''
+      });
+    }
+  };
+
+  // Recalcular comissões quando valor mudar e tabela estiver selecionada
+  useEffect(() => {
+    if (formData.tabela_emprestimo_id && formData.valor_liberado) {
+      handleTabelaChange(formData.tabela_emprestimo_id);
+    }
+  }, [formData.valor_liberado]);
 
   const renderCamposPorTipo = () => {
     if (formData.tipo_consignado === 'NOVO' || formData.tipo_consignado === 'REFINANCIAMENTO') {
@@ -630,9 +678,23 @@ export default function NovaVendaConsignado() {
                 </div>
               </div>
               <div>
-                <Label>Número do Benefício</Label>
-                <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
+                <Label>Tabela</Label>
+                <select
+                  value={formData.tabela_emprestimo_id}
+                  onChange={(e) => handleTabelaChange(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {tabelasEmprestimo.map(t => (
+                    <option key={t.id} value={t.id}>{t.nome}</option>
+                  ))}
+                </select>
               </div>
+            </div>
+
+            <div>
+              <Label>Número do Benefício</Label>
+              <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
             </div>
 
             <div>
@@ -677,7 +739,16 @@ export default function NovaVendaConsignado() {
               </div>
               <div>
                 <Label>Empresa Parceira</Label>
-                <Input value={formData.empresa_parceira} onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })} />
+                <select
+                  value={formData.empresa_parceira}
+                  onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {empresasParceiras.map(ep => (
+                    <option key={ep.id} value={ep.nome}>{ep.nome}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
