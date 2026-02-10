@@ -19,7 +19,8 @@ import {
   Building2,
   Cake,
   AlertCircle,
-  Search
+  Search,
+  Upload
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
