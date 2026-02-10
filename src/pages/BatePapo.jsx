@@ -64,26 +64,34 @@ export default function BatePapo() {
     refetchInterval: 5000
   });
 
-  const { data: mensagens = [], isError: mensagensError, error: msgError } = useQuery({
-    queryKey: ['mensagens-whatsapp', conversaSelecionada?.id],
-    enabled: !!conversaSelecionada?.id,
+  const { data: mensagens = [], isError: mensagensError, error: msgError, isPending: loadingMensagens } = useQuery({
+    queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId],
+    enabled: !!conversaSelecionada?.id && !!empresaId,
     queryFn: async () => {
       try {
-        console.log('[Chat] Carregando mensagens para conversa:', conversaSelecionada?.id);
-        console.log('[Chat] User info:', { perfil: user?.perfil, empresa_id: user?.empresa_id });
+        console.log('[Chat] Carregando mensagens:', { 
+          conversa_id: conversaSelecionada?.id,
+          empresa_id: empresaId,
+          user_perfil: user?.perfil
+        });
+        
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionada.id },
           'created_date'
         );
-        console.log('[Chat] Mensagens carregadas:', msgs.length);
-        return msgs;
+        console.log('[Chat] ✅ Mensagens carregadas:', msgs.length);
+        return msgs || [];
       } catch (err) {
-        console.error('[Chat] Erro ao carregar mensagens:', err);
-        console.error('[Chat] Erro details:', err.response?.data || err.message);
-        toast.error('Erro ao carregar mensagens: ' + err.message);
+        console.error('[Chat] ❌ Erro ao carregar:', {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data
+        });
         throw err;
       }
     },
+    retry: 3,
+    retryDelay: 1000,
     refetchInterval: 2000
   });
 
@@ -262,7 +270,11 @@ export default function BatePapo() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 bg-white">
-              {mensagens.length === 0 ? (
+              {loadingMensagens ? (
+                <div className="flex items-center justify-center h-full text-slate-500">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : mensagens.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-slate-500">
                   <p>Nenhuma mensagem ainda</p>
                 </div>
