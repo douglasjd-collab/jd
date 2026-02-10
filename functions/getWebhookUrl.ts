@@ -5,7 +5,7 @@ Deno.serve(async (req) => {
     const appDomain = url.hostname;
     const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
     
-    const webhookUrl = `https://${appDomain}/functions/receberWebhookWhatsApp`;
+    const webhookUrl = `https://${appDomain}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
     
     return Response.json({
       webhookUrl,
