@@ -20,8 +20,11 @@ import {
   Cake,
   AlertCircle,
   Search,
-  Upload
+  Upload,
+  Plus,
+  Banknote
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -358,13 +361,23 @@ export default function Dashboard() {
     <ErrorBoundary>
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
-          Olá, {user?.full_name?.split(' ')[0] || 'Usuário'}!
-        </h1>
-        <p className="text-slate-500 mt-1">
-          {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">
+            Olá, {user?.full_name?.split(' ')[0] || 'Usuário'}!
+          </h1>
+          <p className="text-slate-500 mt-1">
+            {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Link to="/NovaVenda">
+            <Button className="bg-[#23BE84] hover:bg-[#1da570]">
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Proposta
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Alerta Aniversariantes do Dia */}
