@@ -90,9 +90,8 @@ export default function BatePapo() {
         throw err;
       }
     },
-    retry: 3,
-    retryDelay: 1000,
-    refetchInterval: 2000
+    retry: 1,
+    retryDelay: 500
   });
 
   // Subscrição em tempo real para novas mensagens
