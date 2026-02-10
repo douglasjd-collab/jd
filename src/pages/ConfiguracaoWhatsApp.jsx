@@ -28,7 +28,7 @@ export default function ConfiguracaoWhatsApp() {
     } catch (error) {
       console.error('Erro ao carregar webhook URL:', error);
       // Fallback para URL padrão
-      setWebhookUrl(`https://${window.location.hostname}/functions/receberWebhookWhatsApp?instance=${instanceName}`);
+      setWebhookUrl(`https://${window.location.hostname}/functions/receberWebhookWhatsApp`);
     } finally {
       setLoading(false);
     }
