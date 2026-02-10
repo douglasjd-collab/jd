@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
 
       let conversa;
       if (conversas.length === 0) {
+        console.log('❌ Nenhuma conversa encontrada, criando nova...');
         // Obter empresa padrão ou usar super_admin
         let empresaId = body.empresa_id;
         if (!empresaId) {
@@ -102,19 +103,25 @@ Deno.serve(async (req) => {
         }
 
         // Criar nova conversa
-        conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
-          empresa_id: empresaId,
-          cliente_id: '',
-          cliente_nome: message.pushName || message.from_name || 'Cliente',
-          cliente_telefone: telefoneLimpo,
-          whatsapp_id: message.id || Date.now().toString(),
-          status: 'ativa',
-          ultima_mensagem: conteudo || tipo,
-          data_ultima_mensagem: new Date().toISOString()
-        });
-        console.log('✨ Nova conversa criada:', conversa.id);
+        try {
+          conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+            empresa_id: empresaId,
+            cliente_id: '',
+            cliente_nome: body.data?.pushName || message.pushName || 'Cliente',
+            cliente_telefone: telefoneLimpo,
+            whatsapp_id: body.data?.key?.id || message.id || Date.now().toString(),
+            status: 'ativa',
+            ultima_mensagem: conteudo || tipo,
+            data_ultima_mensagem: new Date().toISOString()
+          });
+          console.log('✨ Nova conversa criada:', { id: conversa.id, telefone: telefoneLimpo });
+        } catch (err) {
+          console.error('❌ Erro ao criar conversa:', err.message);
+          throw err;
+        }
       } else {
         conversa = conversas[0];
+        console.log('✅ Conversa encontrada:', { id: conversa.id, telefone: telefoneLimpo });
         // Atualizar última mensagem
         await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
           ultima_mensagem: conteudo || tipo,
