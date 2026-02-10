@@ -581,6 +581,47 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Importações Recentes */}
+      {importacoes.length > 0 && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Upload className="w-5 h-5 text-blue-500" />
+              Últimas Importações de Resultado de Assembleia
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {importacoes.map((imp) => (
+                <div key={imp.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      imp.status === 'CONCLUIDO' ? 'bg-green-100 text-green-600' :
+                      imp.status === 'ERRO' ? 'bg-red-100 text-red-600' :
+                      'bg-blue-100 text-blue-600'
+                    }`}>
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900">{imp.arquivo_nome}</p>
+                      <p className="text-sm text-slate-500">
+                        {imp.assembleia_data ? format(new Date(imp.assembleia_data + 'T12:00:00'), 'dd/MM/yyyy') : '-'} • {imp.chamada}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <StatusBadge status={imp.status} />
+                    <p className="text-xs text-slate-500 mt-1">
+                      {imp.total_registros || 0} registros
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Bottom Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Oportunidades Recentes */}
