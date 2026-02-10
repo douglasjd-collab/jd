@@ -64,16 +64,10 @@ export default function BatePapo() {
         { conversa_id: conversaSelecionada.id },
         'created_date'
       );
-      console.log('✅ QUERY RESULT - Mensagens carregadas:', msgs.length, msgs);
       return msgs;
     },
     refetchInterval: 2000
   });
-
-  // Debug do estado
-  useEffect(() => {
-    console.log('🎨 RENDER - mensagens state:', mensagens.length, mensagens);
-  }, [mensagens]);
 
   // Subscrição em tempo real para novas mensagens
   useEffect(() => {
@@ -216,17 +210,15 @@ export default function BatePapo() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 bg-white">
-              {console.log('🎨 RENDER CHAT - mensagens.length:', mensagens.length)}
               {mensagens.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-slate-500">
                   <p>Nenhuma mensagem ainda</p>
                 </div>
               ) : (
                 <>
-                  {mensagens.map((msg, idx) => {
-                    console.log(`📝 Renderizando mensagem ${idx}:`, msg.id, msg.tipo_conteudo);
-                    return <MensagemItem key={msg.id} mensagem={msg} />;
-                  })}
+                  {mensagens.map(msg => (
+                    <MensagemItem key={msg.id} mensagem={msg} />
+                  ))}
                   <div ref={messagesEndRef} />
                 </>
               )}
