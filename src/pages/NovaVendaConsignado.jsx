@@ -625,33 +625,21 @@ export default function NovaVendaConsignado() {
               )}
             </div>
 
-            <div>
-              <Label>Tipo de Consignado *</Label>
-              <select
-                value={formData.tipo_consignado}
-                onChange={(e) => setFormData({ ...formData, tipo_consignado: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                required
-              >
-                <option value="NOVO">Novo</option>
-                <option value="REFINANCIAMENTO">Refinanciamento</option>
-                <option value="PORTABILIDADE_PURA">Portabilidade Pura</option>
-                <option value="REFIN_PORTABILIDADE">Refin + Portabilidade</option>
-              </select>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Número ADE</Label>
-                <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
+                <Label>Tipo de Consignado *</Label>
+                <select
+                  value={formData.tipo_consignado}
+                  onChange={(e) => setFormData({ ...formData, tipo_consignado: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  required
+                >
+                  <option value="NOVO">Novo</option>
+                  <option value="REFINANCIAMENTO">Refinanciamento</option>
+                  <option value="PORTABILIDADE_PURA">Portabilidade Pura</option>
+                  <option value="REFIN_PORTABILIDADE">Refin + Portabilidade</option>
+                </select>
               </div>
-              <div>
-                <Label>Número do Contrato</Label>
-                <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Convênio *</Label>
                 <div className="flex gap-2">
@@ -677,19 +665,31 @@ export default function NovaVendaConsignado() {
                   </Button>
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Tabela</Label>
-                <select
-                  value={formData.tabela_emprestimo_id}
-                  onChange={(e) => handleTabelaChange(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                >
-                  <option value="">Selecione...</option>
-                  {tabelasEmprestimo.map(t => (
-                    <option key={t.id} value={t.id}>{t.nome}</option>
-                  ))}
-                </select>
+                <Label>Número ADE</Label>
+                <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
               </div>
+              <div>
+                <Label>Número do Contrato</Label>
+                <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
+              </div>
+            </div>
+
+            <div>
+              <Label>Tabela</Label>
+              <select
+                value={formData.tabela_emprestimo_id}
+                onChange={(e) => handleTabelaChange(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+              >
+                <option value="">Selecione...</option>
+                {tabelasEmprestimo.map(t => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </select>
             </div>
 
             <div>
