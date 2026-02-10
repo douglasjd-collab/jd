@@ -166,7 +166,16 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Proposta', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { 
+      name: 'Vendas', 
+      icon: FileText, 
+      roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
+      submenu: [
+        { name: 'Consórcio', page: 'Vendas' },
+        { name: 'Financiamento', page: 'VendasFinanciamento' },
+      ]
+    },
     { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Simulador', icon: Calculator, page: 'SimuladorEscolha', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Resultado de Assembleia', icon: FileText, page: 'HistoricoResultadoAssembleia', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
