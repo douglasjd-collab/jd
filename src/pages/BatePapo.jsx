@@ -46,25 +46,39 @@ export default function BatePapo() {
     }
   };
 
-  const { data: conversas = [] } = useQuery({
+  const { data: conversas = [], isError: conversasError, error: conversasErrorMsg } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
-    queryFn: () => base44.entities.ConversaWhatsapp.filter(
-      { empresa_id: empresaId },
-      '-data_ultima_mensagem'
-    ),
+    queryFn: async () => {
+      try {
+        return await base44.entities.ConversaWhatsapp.filter(
+          { empresa_id: empresaId },
+          '-data_ultima_mensagem'
+        );
+      } catch (err) {
+        console.error('Erro ao carregar conversas:', err);
+        toast.error('Erro ao carregar conversas: ' + err.message);
+        throw err;
+      }
+    },
     refetchInterval: 5000
   });
 
-  const { data: mensagens = [] } = useQuery({
+  const { data: mensagens = [], isError: mensagensError } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionada?.id],
     enabled: !!conversaSelecionada?.id,
     queryFn: async () => {
-      const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaSelecionada.id },
-        'created_date'
-      );
-      return msgs;
+      try {
+        const msgs = await base44.entities.MensagemWhatsapp.filter(
+          { conversa_id: conversaSelecionada.id },
+          'created_date'
+        );
+        return msgs;
+      } catch (err) {
+        console.error('Erro ao carregar mensagens:', err);
+        toast.error('Erro ao carregar mensagens: ' + err.message);
+        throw err;
+      }
     },
     refetchInterval: 2000
   });
@@ -147,6 +161,20 @@ export default function BatePapo() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (conversasError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-4">
+        <div className="text-center">
+          <h3 className="font-semibold text-red-600 mb-2">Erro ao carregar conversas</h3>
+          <p className="text-sm text-slate-600">{conversasErrorMsg?.message}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Recarregar
+          </Button>
+        </div>
       </div>
     );
   }
