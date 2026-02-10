@@ -41,6 +41,7 @@ import { Toaster } from 'sonner';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
   const [logoUrl, setLogoUrl] = useState(null);
