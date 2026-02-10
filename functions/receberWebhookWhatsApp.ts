@@ -142,7 +142,12 @@ Deno.serve(async (req) => {
         status: 'entregue'
       });
 
-      console.log('✅ Mensagem salva:', { id: novaMensagem.id, tipo: tipo_conteudo });
+      console.log('✅ Mensagem salva com sucesso:', { 
+        id: novaMensagem.id, 
+        conversa_id: conversa.id,
+        tipo: tipo_conteudo,
+        conteudo: (conteudo || '').substring(0, 50)
+      });
     }
 
     return Response.json({ success: true });
