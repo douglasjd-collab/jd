@@ -193,6 +193,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'Usuários', page: 'Usuarios' },
         { name: 'Administradoras', page: 'Administradoras' },
+        { name: 'Empresas Parceiras', page: 'EmpresasParceiras' },
         { name: 'Tabelas de Consórcio', page: 'TabelasConsorcio' },
         { name: 'Planos de Consórcio', page: 'PlanosConsorcio' },
         { name: 'Comissões Empréstimos', page: 'TabelasComissaoEmprestimo' },

@@ -99,6 +99,7 @@ import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
 import NovaVendaEmprestimo from './pages/NovaVendaEmprestimo';
 import TabelasComissaoEmprestimo from './pages/TabelasComissaoEmprestimo';
+import EmpresasParceiras from './pages/EmpresasParceiras';
 import __Layout from './Layout.jsx';
 
 
@@ -155,6 +156,7 @@ export const PAGES = {
     "VendasFinanciamento": VendasFinanciamento,
     "NovaVendaEmprestimo": NovaVendaEmprestimo,
     "TabelasComissaoEmprestimo": TabelasComissaoEmprestimo,
+    "EmpresasParceiras": EmpresasParceiras,
 }
 
 export const pagesConfig = {
