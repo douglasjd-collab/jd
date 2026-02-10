@@ -15,6 +15,11 @@ export default function ConfiguracaoWhatsApp() {
   const [instanceName, setInstanceName] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [tempUrl, setTempUrl] = useState('');
+  const [tempInstance, setTempInstance] = useState('');
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -35,6 +40,35 @@ export default function ConfiguracaoWhatsApp() {
       setApiKey('');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditMode = () => {
+    if (!editMode) {
+      setTempUrl(evolutionUrl);
+      setTempInstance(instanceName);
+      setTempApiKey(apiKey);
+    }
+    setEditMode(!editMode);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await base44.functions.invoke('atualizarConfigWhatsApp', {
+        evolutionUrl: tempUrl,
+        instanceName: tempInstance,
+        apiKey: tempApiKey
+      });
+      setEvolutionUrl(tempUrl);
+      setInstanceName(tempInstance);
+      setApiKey(tempApiKey);
+      setEditMode(false);
+      toast.success('Configurações salvas com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao salvar: ' + error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
