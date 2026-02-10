@@ -23,7 +23,8 @@ import {
   Calculator,
   Calendar,
   Moon,
-  Sun
+  Sun,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
