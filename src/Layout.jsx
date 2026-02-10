@@ -219,6 +219,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Configuração WhatsApp', icon: MessageCircle, page: 'ConfiguracaoWhatsApp', roles: ['master', 'super_admin', 'admin'] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => 

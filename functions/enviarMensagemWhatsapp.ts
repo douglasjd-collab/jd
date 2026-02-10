@@ -20,34 +20,44 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
     }
 
+    // Configurações da Evolution API
+    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+
+    if (!evolutionApiKey || !evolutionApiUrl || !instanceName) {
+      return Response.json({ 
+        error: 'Evolution API não configurada' 
+      }, { status: 400 });
+    }
+
     // Preparar payload para Evolution API
-    const evolutionPayload = {
-      number: telefone.replace(/\D/g, ''), // Remove formatação
-      type: 'text'
-    };
+    let endpoint, payload;
 
     if (mensagem.tipo_conteudo === 'texto') {
-      evolutionPayload.text = mensagem.texto;
+      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText`;
+      payload = {
+        number: telefone.replace(/\D/g, ''),
+        text: mensagem.texto,
+        instance: instanceName
+      };
     } else {
-      // Para arquivos, enviar como media
-      evolutionPayload.type = 'media';
-      evolutionPayload.media = {
-        type: mensagem.tipo_conteudo,
-        url: mensagem.arquivo_url
+      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendMedia`;
+      payload = {
+        number: telefone.replace(/\D/g, ''),
+        mediaUrl: mensagem.arquivo_url,
+        mediaType: mensagem.tipo_conteudo,
+        instance: instanceName
       };
     }
 
-    // Chamar Evolution API
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') || 'https://api.evolution.app/message/sendText';
-
-    const response = await fetch(evolutionApiUrl, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${evolutionApiKey}`
+        'apikey': evolutionApiKey
       },
-      body: JSON.stringify(evolutionPayload)
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
