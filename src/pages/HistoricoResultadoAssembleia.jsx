@@ -155,7 +155,9 @@ export default function HistoricoResultadoAssembleia() {
   const mesesDisponiveis = React.useMemo(() => {
     const meses = new Set();
     for (const historico of historicos) {
+      if (!historico.assembleia_data) continue;
       const data = new Date(historico.assembleia_data);
+      if (isNaN(data.getTime())) continue;
       const mesAno = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
       meses.add(mesAno);
     }
