@@ -87,7 +87,7 @@ export default function Layout({ children, currentPageName }) {
       }
 
       // Super admin não precisa de Colaborador - acessa tudo
-      if (me.role === 'super_admin') {
+      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
         setUser({
           ...me,
           auth_id: me.id,
