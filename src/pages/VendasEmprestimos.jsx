@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Banknote, Wallet, Plus, Loader2, Search } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 
 export default function VendasEmprestimos() {
   const [user, setUser] = useState(null);
@@ -132,7 +133,14 @@ export default function VendasEmprestimos() {
       <PageHeader
         title="Empréstimos"
         subtitle="Gestão de propostas de empréstimos consignados e pessoais"
-      />
+      >
+        <Link to={createPageUrl('NovaVenda')}>
+          <Button className="bg-[#23BE84] hover:bg-[#1da570]">
+            <Plus className="w-4 h-4 mr-2" />
+            Nova Venda
+          </Button>
+        </Link>
+      </PageHeader>
 
       <Card>
         <CardContent className="p-4 space-y-4">

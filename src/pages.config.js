@@ -75,6 +75,10 @@ import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import LancamentoDespesas from './pages/LancamentoDespesas';
 import LancamentoReceitas from './pages/LancamentoReceitas';
 import MeusDados from './pages/MeusDados';
+import NovaVenda from './pages/NovaVenda';
+import NovaVendaConsignado from './pages/NovaVendaConsignado';
+import NovaVendaEmprestimoPessoal from './pages/NovaVendaEmprestimoPessoal';
+import NovaVendaFinanciamento from './pages/NovaVendaFinanciamento';
 import OfertaLance from './pages/OfertaLance';
 import OportunidadeDetalhes from './pages/OportunidadeDetalhes';
 import PlanosCanopus from './pages/PlanosCanopus';
@@ -91,12 +95,8 @@ import TabelasConsorcio from './pages/TabelasConsorcio';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
-import NovaVenda from './pages/NovaVenda';
-import NovaVendaFinanciamento from './pages/NovaVendaFinanciamento';
-import VendasFinanciamento from './pages/VendasFinanciamento';
-import NovaVendaConsignado from './pages/NovaVendaConsignado';
-import NovaVendaEmprestimoPessoal from './pages/NovaVendaEmprestimoPessoal';
 import VendasEmprestimos from './pages/VendasEmprestimos';
+import VendasFinanciamento from './pages/VendasFinanciamento';
 import __Layout from './Layout.jsx';
 
 
@@ -129,6 +129,10 @@ export const PAGES = {
     "LancamentoDespesas": LancamentoDespesas,
     "LancamentoReceitas": LancamentoReceitas,
     "MeusDados": MeusDados,
+    "NovaVenda": NovaVenda,
+    "NovaVendaConsignado": NovaVendaConsignado,
+    "NovaVendaEmprestimoPessoal": NovaVendaEmprestimoPessoal,
+    "NovaVendaFinanciamento": NovaVendaFinanciamento,
     "OfertaLance": OfertaLance,
     "OportunidadeDetalhes": OportunidadeDetalhes,
     "PlanosCanopus": PlanosCanopus,
@@ -145,12 +149,8 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
-    "NovaVenda": NovaVenda,
-    "NovaVendaFinanciamento": NovaVendaFinanciamento,
-    "VendasFinanciamento": VendasFinanciamento,
-    "NovaVendaConsignado": NovaVendaConsignado,
-    "NovaVendaEmprestimoPessoal": NovaVendaEmprestimoPessoal,
     "VendasEmprestimos": VendasEmprestimos,
+    "VendasFinanciamento": VendasFinanciamento,
 }
 
 export const pagesConfig = {
