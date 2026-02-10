@@ -120,8 +120,10 @@ export default function HistoricoResultadoAssembleia() {
     // Ordenar por menor lance se ativado
     if (ordenarPorMenor) {
       gruposFiltrados.sort((a, b) => {
-        const menorA = Math.min(...a.resumos.map(r => r.menor_lance_percent || 999));
-        const menorB = Math.min(...b.resumos.map(r => r.menor_lance_percent || 999));
+        const resumosA = a.resumos?.length > 0 ? a.resumos : [];
+        const resumosB = b.resumos?.length > 0 ? b.resumos : [];
+        const menorA = resumosA.length > 0 ? Math.min(...resumosA.map(r => r.menor_lance_percent || 999)) : 999;
+        const menorB = resumosB.length > 0 ? Math.min(...resumosB.map(r => r.menor_lance_percent || 999)) : 999;
         return menorA - menorB;
       });
     }
