@@ -1,16 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
-  console.log('📨 Requisição recebida:', req.method, new Date().toISOString());
+  console.error('[WEBHOOK] 📨 Requisição:', req.method);
   
-  // Validar método
   if (req.method === 'GET') {
-    // Challenge para validação de webhook
     const url = new URL(req.url);
     const challenge = url.searchParams.get('challenge');
-    if (challenge) {
-      return new Response(challenge);
-    }
+    if (challenge) return new Response(challenge);
     return new Response('OK');
   }
 
@@ -19,14 +15,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('📥 Lendo body do POST...');
+    console.error('[WEBHOOK] 📥 Parseando body...');
     const body = await req.json();
-    console.log('✅ Body parseado com sucesso');
+    console.error('[WEBHOOK] ✅ Body OK');
     const url = new URL(req.url);
     const instance = url.searchParams.get('instance');
 
-    console.log('🔔 Webhook recebido:', { event: body.event, instance, timestamp: new Date().toISOString() });
-    console.log('📋 Body completo:', JSON.stringify(body).substring(0, 300));
+    console.error('[WEBHOOK] 🔔 Event:', body.event, 'Instance:', instance);
 
     // Ignorar eventos de atualização de status (não são mensagens novas)
     if (body.event === 'messages.update') {
@@ -109,77 +104,72 @@ Deno.serve(async (req) => {
     if (message && telefone && tipo !== undefined) {
       const base44 = createClientFromRequest(req);
 
-      // Extrair apenas números do telefone
-      console.log('🔧 Processando - Telefone bruto:', telefone);
+      console.error('[WEBHOOK] Telefone bruto:', telefone);
       const telefoneLimpo = String(telefone).replace(/\D/g, '');
-      console.log('📱 Telefone limpo:', telefoneLimpo);
-      console.log('📋 Tipo:', tipo, 'Conteúdo:', (conteudo || '').substring(0, 50));
+      console.error('[WEBHOOK] Telefone limpo:', telefoneLimpo, '| Tipo:', tipo);
 
-      // Buscar conversa existente
-      console.log('🔎 Buscando conversa com telefone:', telefoneLimpo);
+      console.error('[WEBHOOK] Buscando conversa...');
       let conversas = [];
       try {
         conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
           cliente_telefone: telefoneLimpo
         });
+        console.error('[WEBHOOK] Conversas encontradas:', conversas.length);
       } catch (filterErr) {
-        console.error('❌ Erro ao buscar conversa:', filterErr.message);
+        console.error('[WEBHOOK] ❌ Erro filter:', filterErr.message);
         conversas = [];
       }
-      console.log('🔍 Conversas encontradas:', conversas.length);
 
       let conversa;
       if (conversas.length === 0) {
-        console.log('❌ Nenhuma conversa encontrada, criando nova...');
-        // Obter empresa padrão ou usar super_admin
+        console.error('[WEBHOOK] Criando nova conversa...');
         let empresaId = body.empresa_id;
         if (!empresaId) {
           try {
             const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
             empresaId = empresas && empresas.length > 0 ? empresas[0].id : null;
-            console.log('🏢 Empresa encontrada:', empresaId, 'Total:', empresas?.length);
+            console.error('[WEBHOOK] Empresa:', empresaId);
           } catch (empErr) {
-            console.error('❌ Erro ao buscar empresa:', empErr.message);
-            // Usar primeira empresa como fallback
+            console.error('[WEBHOOK] Erro Empresa:', empErr.message);
             empresaId = null;
           }
         }
 
         if (!empresaId) {
-          console.error('❌ CRÍTICO: Nenhuma empresa_id disponível!');
-          return Response.json({ success: false, error: 'Nenhuma empresa configurada' }, { status: 400 });
+          console.error('[WEBHOOK] ERRO: Sem empresa!');
+          return Response.json({ success: false, error: 'Sem empresa' }, { status: 400 });
         }
 
-        // Criar nova conversa
         try {
           const dadosConversa = {
             empresa_id: empresaId,
             cliente_id: '',
-            cliente_nome: body.data?.pushName || message.pushName || 'Cliente',
+            cliente_nome: body.data?.pushName || 'Cliente',
             cliente_telefone: telefoneLimpo,
-            whatsapp_id: body.data?.key?.id || message.id || Date.now().toString(),
+            whatsapp_id: body.data?.key?.id || 'wid_' + Date.now(),
             status: 'ativa',
             ultima_mensagem: conteudo || tipo,
             data_ultima_mensagem: new Date().toISOString()
           };
-          console.log('📝 Criando conversa com dados:', JSON.stringify(dadosConversa));
+          console.error('[WEBHOOK] Dados conversa:', JSON.stringify(dadosConversa));
           
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create(dadosConversa);
-          console.log('✨ Nova conversa criada:', { id: conversa.id, telefone: telefoneLimpo, empresa_id: empresaId });
+          console.error('[WEBHOOK] ✅ Conversa criada:', conversa.id);
         } catch (err) {
-          console.error('❌ Erro ao criar conversa:', err.message);
-          console.error('Details:', err);
+          console.error('[WEBHOOK] ❌ Erro conversa:', err.message, err);
           throw err;
         }
       } else {
         conversa = conversas[0];
-        console.log('✅ Conversa encontrada:', { id: conversa.id, telefone: telefoneLimpo });
-        // Atualizar última mensagem
-        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-          ultima_mensagem: conteudo || tipo,
-          data_ultima_mensagem: new Date().toISOString()
-        });
-        console.log('🔄 Conversa atualizada:', conversa.id);
+        console.error('[WEBHOOK] Conversa existente:', conversa.id);
+        try {
+          await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+            ultima_mensagem: conteudo || tipo,
+            data_ultima_mensagem: new Date().toISOString()
+          });
+        } catch (upErr) {
+          console.error('[WEBHOOK] Erro update:', upErr.message);
+        }
       }
 
       // Criar registro de mensagem
@@ -203,13 +193,18 @@ Deno.serve(async (req) => {
         status: 'entregue'
       };
       
-      console.log('💬 Criando mensagem:', JSON.stringify(dadosMensagem));
+      console.error('[WEBHOOK] 💬 Mensagem:', JSON.stringify(dadosMensagem));
       
-      const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create(dadosMensagem);
-      console.log('✅ Mensagem criada:', { id: novaMensagem.id, conversa_id: conversa.id, tipo: tipo_conteudo });
+      try {
+        const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create(dadosMensagem);
+        console.error('[WEBHOOK] ✅ Mensagem criada:', novaMensagem.id);
+      } catch (msgErr) {
+        console.error('[WEBHOOK] ❌ Erro mensagem:', msgErr.message, msgErr);
+        throw msgErr;
+      }
     }
 
-    console.log('✨ Webhook processado com sucesso');
+    console.error('[WEBHOOK] ✨ Sucesso!');
     return Response.json({ success: true });
 
   } catch (error) {
