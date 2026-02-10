@@ -11,24 +11,28 @@ import { toast } from 'sonner';
 export default function ConfiguracaoWhatsApp() {
   const [copied, setCopied] = useState(null);
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [evolutionUrl, setEvolutionUrl] = useState('');
+  const [instanceName, setInstanceName] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const evolutionUrl = Deno.env.get?.('EVOLUTION_API_URL') || 'https://evolutionapi-evolution-api.dsnnn7.easypanel.host/';
-  const instanceName = Deno.env.get?.('EVOLUTION_INSTANCE_NAME') || 'default';
-  const apiKey = Deno.env.get?.('EVOLUTION_API_KEY') || '***';
-
   useEffect(() => {
-    loadWebhookUrl();
+    loadConfig();
   }, []);
 
-  const loadWebhookUrl = async () => {
+  const loadConfig = async () => {
     try {
       const response = await base44.functions.invoke('getWebhookUrl');
       setWebhookUrl(response.data.webhookUrl);
+      setEvolutionUrl(response.data.evolutionUrl);
+      setInstanceName(response.data.instanceName);
+      setApiKey(response.data.apiKey);
     } catch (error) {
-      console.error('Erro ao carregar webhook URL:', error);
-      // Fallback para URL padrão
-      setWebhookUrl(`https://${window.location.hostname}/functions/receberWebhookWhatsApp?instance=${instanceName}`);
+      console.error('Erro ao carregar configurações:', error);
+      setWebhookUrl('');
+      setEvolutionUrl('');
+      setInstanceName('');
+      setApiKey('');
     } finally {
       setLoading(false);
     }
