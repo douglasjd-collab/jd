@@ -4,6 +4,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function MensagemItem({ mensagem }) {
+  console.log('[MensagemItem] Renderizando:', { tipo: mensagem.tipo_conteudo, texto: mensagem.texto?.substring(0, 50), remetente: mensagem.remetente });
+  
   const isVendedor = mensagem.remetente === 'vendedor';
   
   const renderConteudo = () => {
@@ -65,7 +67,8 @@ export default function MensagemItem({ mensagem }) {
         );
       
       default:
-        return null;
+        console.warn('[MensagemItem] Tipo de conteúdo desconhecido:', mensagem.tipo_conteudo);
+        return <p className="text-slate-500 italic">Tipo não suportado: {mensagem.tipo_conteudo}</p>;
     }
   };
 
