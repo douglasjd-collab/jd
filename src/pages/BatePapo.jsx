@@ -63,8 +63,22 @@ export default function BatePapo() {
       { conversa_id: conversaSelecionada.id },
       'created_date'
     ),
-    refetchInterval: 3000
+    refetchInterval: 2000
   });
+
+  // Subscrição em tempo real para novas mensagens
+  useEffect(() => {
+    if (!conversaSelecionada?.id) return;
+
+    const unsubscribe = base44.entities.MensagemWhatsapp.subscribe((event) => {
+      // Se a mensagem é da conversa atual
+      if (event.data?.conversa_id === conversaSelecionada.id) {
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+      }
+    });
+
+    return unsubscribe;
+  }, [conversaSelecionada?.id, queryClient]);
 
   const enviarMensagemMutation = useMutation({
     mutationFn: async ({ texto, arquivo }) => {
