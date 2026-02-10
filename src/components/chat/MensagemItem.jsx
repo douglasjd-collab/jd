@@ -5,12 +5,6 @@ import { ptBR } from 'date-fns/locale';
 
 export default function MensagemItem({ mensagem }) {
   const isVendedor = mensagem.remetente === 'vendedor';
-  console.log('🎯 Renderizando MensagemItem:', { 
-    id: mensagem.id,
-    tipo: mensagem.tipo_conteudo,
-    remetente: mensagem.remetente,
-    texto: (mensagem.texto || '').substring(0, 30)
-  });
   
   const renderConteudo = () => {
     switch (mensagem.tipo_conteudo) {

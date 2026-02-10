@@ -137,15 +137,6 @@ Deno.serve(async (req) => {
       if (tipo === 'video') tipo_conteudo = 'video';
       if (tipo === 'document') tipo_conteudo = 'pdf';
 
-      console.log('📝 Preparando criar mensagem com:', {
-        conversa_id: conversa.id,
-        empresa_id: conversa.empresa_id,
-        remetente: 'cliente',
-        tipo_conteudo,
-        texto: (conteudo || '').substring(0, 50),
-        whatsapp_message_id: message.id
-      });
-
       const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
         conversa_id: conversa.id,
         empresa_id: conversa.empresa_id,
@@ -158,15 +149,6 @@ Deno.serve(async (req) => {
         whatsapp_message_id: message.id,
         data_envio: new Date().toISOString(),
         status: 'entregue'
-      });
-
-      console.log('✅ Mensagem salva com sucesso:', { 
-        id: novaMensagem.id, 
-        conversa_id: conversa.id,
-        empresa_id: conversa.empresa_id,
-        tipo: tipo_conteudo,
-        conteudo: (conteudo || '').substring(0, 50),
-        created_date: novaMensagem.created_date
       });
     }
 
