@@ -85,7 +85,7 @@ export default function MensagemItem({ mensagem }) {
         <div>{renderConteudo()}</div>
         
         <p className={`text-xs mt-1 ${isVendedor ? 'text-white/70' : 'text-slate-600'}`}>
-          {format(new Date(mensagem.created_date), 'HH:mm', { locale: ptBR })}
+          {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm', { locale: ptBR })}
         </p>
         
         {isVendedor && mensagem.status && (
