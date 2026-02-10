@@ -57,6 +57,10 @@ Deno.serve(async (req) => {
       console.log('✓ Formato 3 detectado (propriedades diretas)');
     }
 
+    if (!message) {
+      console.warn('⚠️ Nenhum formato de mensagem reconhecido. Body:', JSON.stringify(body).substring(0, 200));
+    }
+
     if (message && telefone && tipo !== undefined) {
       const base44 = createClientFromRequest(req);
 
