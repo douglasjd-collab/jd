@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
+import ConvenioFormModal from '@/components/forms/ConvenioFormModal';
 
 export default function NovaVendaConsignado() {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ export default function NovaVendaConsignado() {
   const [empresaId, setEmpresaId] = useState(null);
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
   const [showClienteModal, setShowClienteModal] = useState(false);
+  const [showConvenioModal, setShowConvenioModal] = useState(false);
+  const [salvandoConvenio, setSalvandoConvenio] = useState(false);
   const [matriculas, setMatriculas] = useState(['']);
   const [formData, setFormData] = useState({
     tipo_consignado: 'NOVO',
@@ -324,17 +327,28 @@ export default function NovaVendaConsignado() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Convênio *</Label>
-                <select
-                  value={formData.convenio_id}
-                  onChange={(e) => setFormData({ ...formData, convenio_id: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {convenios.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={formData.convenio_id}
+                    onChange={(e) => setFormData({ ...formData, convenio_id: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                    required
+                  >
+                    <option value="">Selecione...</option>
+                    {convenios.map(c => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowConvenioModal(true)}
+                    title="Cadastrar novo convênio"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
               <div>
                 <Label>Número do Benefício</Label>
@@ -430,6 +444,35 @@ export default function NovaVendaConsignado() {
         }}
         currentUser={user}
         empresaIdSelecionada={empresaId}
+      />
+
+      <ConvenioFormModal
+        open={showConvenioModal}
+        onOpenChange={setShowConvenioModal}
+        isLoading={salvandoConvenio}
+        onSubmit={async (dados) => {
+          setSalvandoConvenio(true);
+          try {
+            const novoConvenio = await base44.entities.Convenio.create({
+              empresa_id: empresaId,
+              nome: dados.nome,
+              tipo: dados.tipo,
+              ativo: true
+            });
+            
+            await queryClient.invalidateQueries({ queryKey: ['convenios', empresaId] });
+            
+            setFormData({ ...formData, convenio_id: novoConvenio.id });
+            setShowConvenioModal(false);
+            toast.success('Convênio cadastrado com sucesso!');
+            return novoConvenio;
+          } catch (error) {
+            toast.error('Erro ao cadastrar convênio: ' + error.message);
+            return null;
+          } finally {
+            setSalvandoConvenio(false);
+          }
+        }}
       />
     </div>
   );
