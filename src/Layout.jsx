@@ -3,29 +3,30 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
 import {
-  LayoutDashboard,
-  Users,
-  UserCircle,
-  Building2,
-  FileSpreadsheet,
-  ShoppingCart,
-  Upload,
-  FileText,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  ChevronDown,
-  Wallet,
-  Image as ImageIcon,
-  TrendingUp,
-  Camera,
-  Calculator,
-  Calendar,
-  Moon,
-  Sun,
-  Loader2
-} from 'lucide-react';
+        LayoutDashboard,
+        Users,
+        UserCircle,
+        Building2,
+        FileSpreadsheet,
+        ShoppingCart,
+        Upload,
+        FileText,
+        Settings,
+        LogOut,
+        Menu,
+        X,
+        ChevronDown,
+        Wallet,
+        Image as ImageIcon,
+        TrendingUp,
+        Camera,
+        Calculator,
+        Calendar,
+        MessageCircle,
+        Moon,
+        Sun,
+        Loader2
+      } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
