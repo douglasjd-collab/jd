@@ -269,6 +269,10 @@ export default function BatePapo() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 bg-white space-y-2">
+              <div className="text-xs text-slate-400 mb-4">
+                DEBUG: loading={loadingMensagens} | length={mensagens.length}
+              </div>
+              
               {loadingMensagens && (
                 <div className="flex items-center justify-center h-full text-slate-500">
                   <Loader2 className="w-6 h-6 animate-spin" />
@@ -282,12 +286,13 @@ export default function BatePapo() {
               )}
 
               {!loadingMensagens && mensagens.length > 0 && (
-                <>
-                  {mensagens.map(msg => (
-                    <MensagemItem key={msg.id} mensagem={msg} />
-                  ))}
+                <div className="space-y-2">
+                  {mensagens.map((msg, idx) => {
+                    console.log(`[DEBUG] Renderizando msg ${idx}:`, msg);
+                    return <MensagemItem key={msg.id} mensagem={msg} />;
+                  })}
                   <div ref={messagesEndRef} />
-                </>
+                </div>
               )}
             </div>
 
