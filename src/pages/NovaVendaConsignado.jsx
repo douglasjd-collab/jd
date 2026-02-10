@@ -423,12 +423,13 @@ export default function NovaVendaConsignado() {
 
       <ClienteSearchModal
         open={showClienteModal}
-        onClose={() => setShowClienteModal(false)}
-        onSelect={(cliente) => {
+        onOpenChange={setShowClienteModal}
+        onSelectCliente={(cliente) => {
           setClienteSelecionado(cliente);
           setShowClienteModal(false);
         }}
-        empresaId={empresaId}
+        currentUser={user}
+        empresaIdSelecionada={empresaId}
       />
     </div>
   );
