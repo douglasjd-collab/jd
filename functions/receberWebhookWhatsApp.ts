@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const instance = url.searchParams.get('instance');
 
-    console.log('Webhook recebido:', { instance, data: body });
+    console.log('🔔 Webhook recebido:', { instance, timestamp: new Date().toISOString() });
 
     // Validar chave (você pode adicionar validação extra)
     const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
       telefone = message.from || body.from;
       tipo = message.type;
       conteudo = message.text || message.caption;
+      console.log('✓ Formato 1 detectado (body.data.message)');
     }
     // Formato 2: body.messages (webhook direto)
     else if (body.messages && body.messages.length > 0) {
@@ -45,6 +46,7 @@ Deno.serve(async (req) => {
       telefone = message.from || message.sender;
       tipo = message.type;
       conteudo = message.body || message.text;
+      console.log('✓ Formato 2 detectado (body.messages)');
     }
     // Formato 3: propriedades diretas
     else if (body.from && body.type) {
@@ -52,6 +54,7 @@ Deno.serve(async (req) => {
       telefone = body.from;
       tipo = body.type;
       conteudo = body.body || body.text;
+      console.log('✓ Formato 3 detectado (propriedades diretas)');
     }
 
     if (message && telefone && tipo !== undefined) {
