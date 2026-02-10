@@ -134,14 +134,25 @@ Deno.serve(async (req) => {
         // Obter empresa padrão ou usar super_admin
         let empresaId = body.empresa_id;
         if (!empresaId) {
-          const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
-          empresaId = empresas[0]?.id || 'default';
-          console.log('🏢 Empresa selecionada:', empresaId);
+          try {
+            const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
+            empresaId = empresas && empresas.length > 0 ? empresas[0].id : null;
+            console.log('🏢 Empresa encontrada:', empresaId, 'Total:', empresas?.length);
+          } catch (empErr) {
+            console.error('❌ Erro ao buscar empresa:', empErr.message);
+            // Usar primeira empresa como fallback
+            empresaId = null;
+          }
+        }
+
+        if (!empresaId) {
+          console.error('❌ CRÍTICO: Nenhuma empresa_id disponível!');
+          return Response.json({ success: false, error: 'Nenhuma empresa configurada' }, { status: 400 });
         }
 
         // Criar nova conversa
         try {
-          conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+          const dadosConversa = {
             empresa_id: empresaId,
             cliente_id: '',
             cliente_nome: body.data?.pushName || message.pushName || 'Cliente',
@@ -150,10 +161,14 @@ Deno.serve(async (req) => {
             status: 'ativa',
             ultima_mensagem: conteudo || tipo,
             data_ultima_mensagem: new Date().toISOString()
-          });
-          console.log('✨ Nova conversa criada:', { id: conversa.id, telefone: telefoneLimpo });
+          };
+          console.log('📝 Criando conversa com dados:', JSON.stringify(dadosConversa));
+          
+          conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create(dadosConversa);
+          console.log('✨ Nova conversa criada:', { id: conversa.id, telefone: telefoneLimpo, empresa_id: empresaId });
         } catch (err) {
           console.error('❌ Erro ao criar conversa:', err.message);
+          console.error('Details:', err);
           throw err;
         }
       } else {
@@ -174,7 +189,7 @@ Deno.serve(async (req) => {
       if (tipo === 'video') tipo_conteudo = 'video';
       if (tipo === 'document') tipo_conteudo = 'pdf';
 
-      const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+      const dadosMensagem = {
         conversa_id: conversa.id,
         empresa_id: conversa.empresa_id,
         remetente: 'cliente',
@@ -183,19 +198,27 @@ Deno.serve(async (req) => {
         arquivo_url: message.media?.url || '',
         arquivo_nome: message.media?.name || '',
         arquivo_tamanho: message.media?.size || 0,
-        whatsapp_message_id: message.id,
+        whatsapp_message_id: message.id || 'msg_' + Date.now(),
         data_envio: new Date().toISOString(),
         status: 'entregue'
-      });
+      };
+      
+      console.log('💬 Criando mensagem:', JSON.stringify(dadosMensagem));
+      
+      const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create(dadosMensagem);
+      console.log('✅ Mensagem criada:', { id: novaMensagem.id, conversa_id: conversa.id, tipo: tipo_conteudo });
     }
 
+    console.log('✨ Webhook processado com sucesso');
     return Response.json({ success: true });
 
   } catch (error) {
-    console.error('Erro no webhook:', error);
+    console.error('❌ ERRO CRÍTICO no webhook:', error);
+    console.error('Stack:', error.stack);
     return Response.json({ 
       success: false, 
-      error: error.message 
+      error: error.message,
+      stack: error.stack
     }, { status: 500 });
   }
 });
