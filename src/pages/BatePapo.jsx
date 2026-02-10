@@ -59,10 +59,15 @@ export default function BatePapo() {
   const { data: mensagens = [] } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionada?.id],
     enabled: !!conversaSelecionada?.id,
-    queryFn: () => base44.entities.MensagemWhatsapp.filter(
-      { conversa_id: conversaSelecionada.id },
-      'created_date'
-    ),
+    queryFn: async () => {
+      console.log('Carregando mensagens para conversa:', conversaSelecionada.id);
+      const msgs = await base44.entities.MensagemWhatsapp.filter(
+        { conversa_id: conversaSelecionada.id },
+        'created_date'
+      );
+      console.log('Mensagens carregadas:', msgs.length, msgs);
+      return msgs;
+    },
     refetchInterval: 2000
   });
 
