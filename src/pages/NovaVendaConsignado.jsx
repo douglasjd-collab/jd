@@ -134,6 +134,18 @@ export default function NovaVendaConsignado() {
     criarVendaMutation.mutate(formData);
   };
 
+  const formatarMoeda = (valor) => {
+    if (!valor) return '';
+    const numero = valor.replace(/\D/g, '');
+    const valorFormatado = (parseFloat(numero) / 100).toFixed(2);
+    return valorFormatado.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  const handleMoedaChange = (campo, valor) => {
+    const numero = valor.replace(/\D/g, '');
+    setFormData({ ...formData, [campo]: (parseFloat(numero) / 100).toFixed(2) });
+  };
+
   const renderCamposPorTipo = () => {
     if (formData.tipo_consignado === 'NOVO' || formData.tipo_consignado === 'REFINANCIAMENTO') {
       return (
@@ -145,21 +157,46 @@ export default function NovaVendaConsignado() {
             </div>
             <div>
               <Label>Valor Liberado *</Label>
-              <Input type="number" step="0.01" value={formData.valor_liberado} onChange={(e) => setFormData({ ...formData, valor_liberado: e.target.value })} required />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.valor_liberado)} 
+                  onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} 
+                  placeholder="0,00"
+                  required 
+                />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Valor Bruto</Label>
-              <Input type="number" step="0.01" value={formData.valor_bruto} onChange={(e) => setFormData({ ...formData, valor_bruto: e.target.value })} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.valor_bruto)} 
+                  onChange={(e) => handleMoedaChange('valor_bruto', e.target.value)} 
+                  placeholder="0,00"
+                />
+              </div>
             </div>
             <div>
               <Label>Prazo (meses)</Label>
-              <Input type="number" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} />
+              <Input type="number" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value.replace(/\D/g, '') })} placeholder="12" />
             </div>
             <div>
               <Label>Parcela</Label>
-              <Input type="number" step="0.01" value={formData.parcela} onChange={(e) => setFormData({ ...formData, parcela: e.target.value })} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.parcela)} 
+                  onChange={(e) => handleMoedaChange('parcela', e.target.value)} 
+                  placeholder="0,00"
+                />
+              </div>
             </div>
           </div>
           <div>
@@ -180,17 +217,26 @@ export default function NovaVendaConsignado() {
             </div>
             <div>
               <Label>Saldo Devedor *</Label>
-              <Input type="number" step="0.01" value={formData.saldo_devedor} onChange={(e) => setFormData({ ...formData, saldo_devedor: e.target.value })} required />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.saldo_devedor)} 
+                  onChange={(e) => handleMoedaChange('saldo_devedor', e.target.value)} 
+                  placeholder="0,00"
+                  required 
+                />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Prazo Restante</Label>
-              <Input type="number" value={formData.prazo_restante} onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value })} />
+              <Input type="number" value={formData.prazo_restante} onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value.replace(/\D/g, '') })} placeholder="12" />
             </div>
             <div>
               <Label>Prazo Original</Label>
-              <Input type="number" value={formData.prazo_original} onChange={(e) => setFormData({ ...formData, prazo_original: e.target.value })} />
+              <Input type="number" value={formData.prazo_original} onChange={(e) => setFormData({ ...formData, prazo_original: e.target.value.replace(/\D/g, '') })} placeholder="12" />
             </div>
             <div>
               <Label>Data de Início</Label>
@@ -216,13 +262,21 @@ export default function NovaVendaConsignado() {
             </div>
             <div>
               <Label>Saldo Devedor</Label>
-              <Input type="number" step="0.01" value={formData.saldo_devedor} onChange={(e) => setFormData({ ...formData, saldo_devedor: e.target.value })} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.saldo_devedor)} 
+                  onChange={(e) => handleMoedaChange('saldo_devedor', e.target.value)} 
+                  placeholder="0,00"
+                />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Prazo Restante</Label>
-              <Input type="number" value={formData.prazo_restante} onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value })} />
+              <Input type="number" value={formData.prazo_restante} onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value.replace(/\D/g, '') })} placeholder="12" />
             </div>
             <div>
               <Label>Contrato Anterior</Label>
@@ -238,21 +292,45 @@ export default function NovaVendaConsignado() {
             </div>
             <div>
               <Label>Valor Liberado</Label>
-              <Input type="number" step="0.01" value={formData.valor_liberado} onChange={(e) => setFormData({ ...formData, valor_liberado: e.target.value })} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.valor_liberado)} 
+                  onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} 
+                  placeholder="0,00"
+                />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Valor Bruto</Label>
-              <Input type="number" step="0.01" value={formData.valor_bruto} onChange={(e) => setFormData({ ...formData, valor_bruto: e.target.value })} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.valor_bruto)} 
+                  onChange={(e) => handleMoedaChange('valor_bruto', e.target.value)} 
+                  placeholder="0,00"
+                />
+              </div>
             </div>
             <div>
               <Label>Prazo</Label>
-              <Input type="number" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} />
+              <Input type="number" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value.replace(/\D/g, '') })} placeholder="12" />
             </div>
             <div>
               <Label>Parcela</Label>
-              <Input type="number" step="0.01" value={formData.parcela} onChange={(e) => setFormData({ ...formData, parcela: e.target.value })} />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  value={formatarMoeda(formData.parcela)} 
+                  onChange={(e) => handleMoedaChange('parcela', e.target.value)} 
+                  placeholder="0,00"
+                />
+              </div>
             </div>
           </div>
         </>
