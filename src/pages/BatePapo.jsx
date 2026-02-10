@@ -60,12 +60,18 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionada?.id],
     enabled: !!conversaSelecionada?.id,
     queryFn: async () => {
-      console.log('Carregando mensagens para conversa:', conversaSelecionada.id);
+      console.log('🔍 Carregando mensagens:', {
+        conversa_id: conversaSelecionada.id,
+        empresa_id: empresaId
+      });
       const msgs = await base44.entities.MensagemWhatsapp.filter(
         { conversa_id: conversaSelecionada.id },
         'created_date'
       );
-      console.log('Mensagens carregadas:', msgs.length, msgs);
+      console.log('📩 Mensagens encontradas:', msgs.length);
+      if (msgs.length > 0) {
+        console.log('Primeira mensagem:', msgs[0]);
+      }
       return msgs;
     },
     refetchInterval: 2000
