@@ -76,7 +76,7 @@ export default function HistoricoResultadoAssembleia() {
 
   // Processar dados consolidados
   const gruposConsolidados = React.useMemo(() => {
-    if (!todosDetalhes.length) return [];
+    if (!todosDetalhes || todosDetalhes.length === 0) return [];
 
     // Agrupar detalhes por grupo
     const grupos = {};
