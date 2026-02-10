@@ -268,7 +268,7 @@ export default function HistoricoResultadoAssembleia() {
       ) : (
         <div className="space-y-4">
           {gruposConsolidados.map((grupo) => {
-            if (!grupo.resumos || grupo.resumos.length === 0) return null;
+            if (!grupo || !grupo.resumos || grupo.resumos.length === 0) return null;
             
             const totalContemplacoes = grupo.detalhes?.length || 0;
             const resumosValidos = grupo.resumos.filter(r => r.menor_lance_percent !== null);
