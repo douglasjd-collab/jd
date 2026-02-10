@@ -345,17 +345,18 @@ export default function HistoricoResultadoAssembleia() {
                           );
                         })()}
                       </div>
+                    </div>
 
-                      {/* Total de Contemplações */}
-                      <div className="mt-3 pt-3 border-t border-indigo-200 text-center">
-                        <p className="text-xs text-slate-600 mb-1">Total de Contemplações</p>
-                        <p className="text-2xl font-bold text-indigo-900">{totalContemplacoes}</p>
-                      </div>
-                      </div>
+                    {/* Total de Contemplações */}
+                    <div className="mt-3 pt-3 border-t border-indigo-200 text-center">
+                      <p className="text-xs text-slate-600 mb-1">Total de Contemplações</p>
+                      <p className="text-2xl font-bold text-indigo-900">{totalContemplacoes}</p>
+                    </div>
+                  </div>
 
-                      {/* Tabela de Detalhes */}
-                      <div className="overflow-x-auto">
-                      <table className="w-full">
+                  {/* Tabela de Detalhes */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
                         <thead>
                           <tr className="border-b bg-slate-50">
                             <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">QT.</th>
