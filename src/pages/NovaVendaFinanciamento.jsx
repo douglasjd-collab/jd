@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createPageUrl } from './utils';
 import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
 
 export default function NovaVendaFinanciamento() {
@@ -91,7 +90,7 @@ export default function NovaVendaFinanciamento() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
       toast.success('Financiamento cadastrado com sucesso!');
-      navigate(createPageUrl('VendasFinanciamento'));
+      navigate('/VendasFinanciamento');
     },
     onError: (error) => {
       toast.error('Erro ao criar financiamento: ' + error.message);
@@ -272,7 +271,7 @@ export default function NovaVendaFinanciamento() {
             </div>
 
             <div className="flex gap-3 justify-end">
-              <Button type="button" variant="outline" onClick={() => navigate(createPageUrl('NovaVenda'))}>
+              <Button type="button" variant="outline" onClick={() => navigate('/NovaVenda')}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={criarVendaMutation.isPending}>

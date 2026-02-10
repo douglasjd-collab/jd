@@ -7,7 +7,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Plus, Loader2 } from 'lucide-react';
-import { createPageUrl } from './utils';
 
 export default function VendasFinanciamento() {
   const [user, setUser] = useState(null);
@@ -86,7 +85,7 @@ export default function VendasFinanciamento() {
         title="Financiamentos"
         subtitle="Gestão de vendas de financiamento"
         action={
-          <Link to={createPageUrl('NovaVendaFinanciamento')}>
+          <Link to="/NovaVendaFinanciamento">
             <Button className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="w-4 h-4 mr-2" />
               Novo Financiamento

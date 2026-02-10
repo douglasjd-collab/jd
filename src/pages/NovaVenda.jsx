@@ -5,7 +5,6 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Banknote, CreditCard, Wallet, ArrowRight } from 'lucide-react';
-import { createPageUrl } from './utils';
 
 export default function NovaVenda() {
   const [user, setUser] = useState(null);
@@ -27,7 +26,7 @@ export default function NovaVenda() {
       descricao: 'Gestão completa de vendas de consórcio',
       icon: FileText,
       color: 'from-blue-500 to-blue-600',
-      url: createPageUrl('Vendas')
+      page: 'Vendas'
     },
     {
       id: 'FINANCIAMENTO',
@@ -35,7 +34,7 @@ export default function NovaVenda() {
       descricao: 'Veículos, motos, caminhões e imóveis',
       icon: CreditCard,
       color: 'from-emerald-500 to-emerald-600',
-      url: createPageUrl('NovaVendaFinanciamento')
+      page: 'NovaVendaFinanciamento'
     },
     {
       id: 'EMPRESTIMO_CONSIGNADO',
@@ -43,7 +42,7 @@ export default function NovaVenda() {
       descricao: 'Novo, refinanciamento e portabilidade',
       icon: Banknote,
       color: 'from-purple-500 to-purple-600',
-      url: createPageUrl('NovaVendaConsignado')
+      page: 'NovaVendaConsignado'
     },
     {
       id: 'EMPRESTIMO_PESSOAL',
@@ -51,7 +50,7 @@ export default function NovaVenda() {
       descricao: 'Crefaz e débito em conta',
       icon: Wallet,
       color: 'from-orange-500 to-orange-600',
-      url: createPageUrl('NovaVendaEmprestimoPessoal')
+      page: 'NovaVendaEmprestimoPessoal'
     }
   ];
 
@@ -71,7 +70,7 @@ export default function NovaVenda() {
             <Card 
               key={produto.id}
               className="cursor-pointer hover:shadow-xl transition-all duration-300 border-2 hover:border-[#23BE84] group"
-              onClick={() => navigate(produto.url)}
+              onClick={() => navigate(`/${produto.page}`)}
             >
               <CardHeader>
                 <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${produto.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
