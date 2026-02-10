@@ -279,9 +279,10 @@ export default function BatePapo() {
                 </div>
               ) : (
                 <>
-                  {mensagens.map(msg => (
-                    <MensagemItem key={msg.id} mensagem={msg} />
-                  ))}
+                  {console.log('[BatePapo] Renderizando', mensagens.length, 'mensagens') || mensagens.map(msg => {
+                    console.log('[BatePapo] Renderizando msg:', msg.id, msg.tipo_conteudo);
+                    return <MensagemItem key={msg.id} mensagem={msg} />;
+                  })}
                   <div ref={messagesEndRef} />
                 </>
               )}
