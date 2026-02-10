@@ -218,6 +218,11 @@ export default function BatePapo() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 bg-white">
+              {console.log('DEBUG RENDER:', { 
+                mensagensLength: mensagens?.length, 
+                mensagens, 
+                conversaSelecionada 
+              })}
               {mensagens.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-slate-500">
                   <p>Nenhuma mensagem ainda</p>
