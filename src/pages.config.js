@@ -94,6 +94,9 @@ import Vendas from './pages/Vendas';
 import NovaVenda from './pages/NovaVenda';
 import NovaVendaFinanciamento from './pages/NovaVendaFinanciamento';
 import VendasFinanciamento from './pages/VendasFinanciamento';
+import NovaVendaConsignado from './pages/NovaVendaConsignado';
+import NovaVendaEmprestimoPessoal from './pages/NovaVendaEmprestimoPessoal';
+import VendasEmprestimos from './pages/VendasEmprestimos';
 import __Layout from './Layout.jsx';
 
 
@@ -145,6 +148,9 @@ export const PAGES = {
     "NovaVenda": NovaVenda,
     "NovaVendaFinanciamento": NovaVendaFinanciamento,
     "VendasFinanciamento": VendasFinanciamento,
+    "NovaVendaConsignado": NovaVendaConsignado,
+    "NovaVendaEmprestimoPessoal": NovaVendaEmprestimoPessoal,
+    "VendasEmprestimos": VendasEmprestimos,
 }
 
 export const pagesConfig = {

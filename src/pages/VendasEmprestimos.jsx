@@ -1,0 +1,230 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import PageHeader from '@/components/ui/PageHeader';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Banknote, Wallet, Plus, Loader2 } from 'lucide-react';
+
+export default function VendasEmprestimos() {
+  const [user, setUser] = useState(null);
+  const [empresaId, setEmpresaId] = useState(null);
+  const [filtroTipo, setFiltroTipo] = useState('todos');
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    const me = await base44.auth.me();
+    setUser(me);
+
+    if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+      const empresas = await base44.entities.Empresa.filter({ status: 'ativa' });
+      if (empresas.length > 0) setEmpresaId(empresas[0].id);
+    } else {
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+      if (colabs.length > 0) setEmpresaId(colabs[0].empresa_id);
+    }
+  };
+
+  const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
+
+  const { data: vendas = [], isLoading } = useQuery({
+    queryKey: ['vendas-emprestimos', empresaId, isSuperAdmin],
+    enabled: !!user && (isSuperAdmin || !!empresaId),
+    queryFn: async () => {
+      let vendasBase;
+      if (isSuperAdmin) {
+        vendasBase = await base44.entities.VendaBase.list('-created_date', 5000);
+        vendasBase = vendasBase.filter(v => v.produto === 'EMPRESTIMO_CONSIGNADO' || v.produto === 'EMPRESTIMO_PESSOAL');
+      } else {
+        const consignados = await base44.entities.VendaBase.filter({ empresa_id: empresaId, produto: 'EMPRESTIMO_CONSIGNADO' });
+        const pessoais = await base44.entities.VendaBase.filter({ empresa_id: empresaId, produto: 'EMPRESTIMO_PESSOAL' });
+        vendasBase = [...consignados, ...pessoais];
+      }
+
+      const vendasComDetalhes = await Promise.all(
+        vendasBase.map(async (vb) => {
+          let detalhes = null;
+          if (vb.produto === 'EMPRESTIMO_CONSIGNADO') {
+            const det = await base44.entities.VendaConsignado.filter({ venda_base_id: vb.id });
+            detalhes = det[0];
+          } else if (vb.produto === 'EMPRESTIMO_PESSOAL') {
+            const det = await base44.entities.VendaEmprestimoPessoal.filter({ venda_base_id: vb.id });
+            detalhes = det[0];
+          }
+          return { ...vb, detalhes };
+        })
+      );
+
+      return vendasComDetalhes.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    }
+  });
+
+  const vendasFiltradas = filtroTipo === 'todos' 
+    ? vendas 
+    : vendas.filter(v => v.produto === filtroTipo);
+
+  const statusColors = {
+    em_andamento: 'bg-blue-100 text-blue-800',
+    pendente: 'bg-yellow-100 text-yellow-800',
+    aguardando_formalizacao: 'bg-orange-100 text-orange-800',
+    aguardando_cip: 'bg-indigo-100 text-indigo-800',
+    saldo_retornado: 'bg-teal-100 text-teal-800',
+    aguardando_pagamento: 'bg-purple-100 text-purple-800',
+    pago: 'bg-emerald-100 text-emerald-800',
+    cancelado: 'bg-red-100 text-red-800'
+  };
+
+  const statusLabels = {
+    em_andamento: 'Em Andamento',
+    pendente: 'Pendente',
+    aguardando_formalizacao: 'Aguardando Formalização',
+    aguardando_cip: 'Aguardando CIP',
+    saldo_retornado: 'Saldo Retornado',
+    aguardando_pagamento: 'Aguardando Pagamento',
+    pago: 'Pago',
+    cancelado: 'Cancelado'
+  };
+
+  if (!user || !empresaId) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Empréstimos"
+        subtitle="Gestão de propostas de empréstimos consignados e pessoais"
+      />
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-3">
+            <Button 
+              variant={filtroTipo === 'todos' ? 'default' : 'outline'}
+              onClick={() => setFiltroTipo('todos')}
+            >
+              Todos
+            </Button>
+            <Button 
+              variant={filtroTipo === 'EMPRESTIMO_CONSIGNADO' ? 'default' : 'outline'}
+              onClick={() => setFiltroTipo('EMPRESTIMO_CONSIGNADO')}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Banknote className="w-4 h-4 mr-2" />
+              Consignado
+            </Button>
+            <Button 
+              variant={filtroTipo === 'EMPRESTIMO_PESSOAL' ? 'default' : 'outline'}
+              onClick={() => setFiltroTipo('EMPRESTIMO_PESSOAL')}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              <Wallet className="w-4 h-4 mr-2" />
+              Pessoal
+            </Button>
+            
+            <div className="ml-auto flex gap-2">
+              <Link to="/NovaVendaConsignado">
+                <Button className="bg-purple-600 hover:bg-purple-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Consignado
+                </Button>
+              </Link>
+              <Link to="/NovaVendaEmprestimoPessoal">
+                <Button className="bg-orange-600 hover:bg-orange-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Pessoal
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        </div>
+      ) : vendasFiltradas.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Banknote className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+            <p className="text-slate-500">Nenhum empréstimo cadastrado</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {vendasFiltradas.map((venda) => {
+            const isConsignado = venda.produto === 'EMPRESTIMO_CONSIGNADO';
+            const Icon = isConsignado ? Banknote : Wallet;
+            const bgColor = isConsignado ? 'from-purple-500 to-purple-600' : 'from-orange-500 to-orange-600';
+            
+            return (
+              <Card key={venda.id} className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgColor} flex items-center justify-center`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg">{venda.cliente_nome}</h3>
+                        <p className="text-sm text-slate-600">
+                          {isConsignado ? 'Consignado' : 'Pessoal'} - {venda.tipo}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className={statusColors[venda.status]}>
+                      {statusLabels[venda.status]}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-slate-500">Banco</span>
+                      <p className="font-medium">{venda.detalhes?.banco || venda.detalhes?.banco_anterior || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Valor Liberado</span>
+                      <p className="font-medium">
+                        {venda.detalhes?.valor_liberado 
+                          ? `R$ ${venda.detalhes.valor_liberado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Parcela</span>
+                      <p className="font-medium">
+                        {venda.detalhes?.parcela 
+                          ? `R$ ${venda.detalhes.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">
+                        {isConsignado ? 'Convênio' : 'Contrato'}
+                      </span>
+                      <p className="font-medium">
+                        {isConsignado 
+                          ? (venda.detalhes?.convenio_nome || '-')
+                          : (venda.detalhes?.numero_contrato || '-')}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

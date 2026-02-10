@@ -166,14 +166,15 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Nova Proposta', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { 
-      name: 'Vendas', 
+      name: 'Propostas', 
       icon: FileText, 
       roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
       submenu: [
         { name: 'Consórcio', page: 'Vendas' },
-        { name: 'Financiamento', page: 'VendasFinanciamento' },
+        { name: 'Empréstimos', page: 'VendasEmprestimos' },
+        { name: 'Financiamentos', page: 'VendasFinanciamento' },
       ]
     },
     { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
