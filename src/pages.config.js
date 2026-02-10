@@ -102,6 +102,7 @@ import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
 import BatePapo from './pages/BatePapo';
+import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
 import __Layout from './Layout.jsx';
 
 
@@ -161,6 +162,7 @@ export const PAGES = {
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
     "BatePapo": BatePapo,
+    "ConfiguracaoWhatsApp": ConfiguracaoWhatsApp,
 }
 
 export const pagesConfig = {
