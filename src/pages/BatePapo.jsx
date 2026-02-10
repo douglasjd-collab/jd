@@ -203,7 +203,7 @@ export default function BatePapo() {
 
         {/* Chat */}
         {conversaSelecionada ? (
-          <Card className="md:col-span-2 flex flex-col">
+          <Card className="md:col-span-2 flex flex-col h-full">
             <div className="p-4 border-b bg-slate-50">
               <h3 className="font-semibold text-slate-900">{conversaSelecionada.cliente_nome}</h3>
               <p className="text-sm text-slate-500">{conversaSelecionada.cliente_telefone}</p>
