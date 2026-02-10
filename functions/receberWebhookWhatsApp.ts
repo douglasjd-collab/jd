@@ -26,30 +26,61 @@ Deno.serve(async (req) => {
     // Validar chave (você pode adicionar validação extra)
     const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
 
-    // Processar mensagens recebidas
+    // Processar diferentes formatos de webhook
+    let message = null;
+    let telefone = null;
+    let tipo = null;
+    let conteudo = null;
+
+    // Formato 1: body.data.message (novo formato Evolution)
     if (body.data?.message) {
-      const message = body.data.message;
+      message = body.data.message;
+      telefone = message.from || body.from;
+      tipo = message.type;
+      conteudo = message.text || message.caption;
+    }
+    // Formato 2: body.messages (webhook direto)
+    else if (body.messages && body.messages.length > 0) {
+      message = body.messages[0];
+      telefone = message.from || message.sender;
+      tipo = message.type;
+      conteudo = message.body || message.text;
+    }
+    // Formato 3: propriedades diretas
+    else if (body.from && body.type) {
+      message = body;
+      telefone = body.from;
+      tipo = body.type;
+      conteudo = body.body || body.text;
+    }
+
+    if (message && telefone && tipo !== undefined) {
       const base44 = createClientFromRequest(req);
 
-      // Extrair informações
-      const telefone = message.from || body.from;
-      const tipo = message.type; // text, image, audio, video, document
-      const conteudo = message.text || message.caption;
+      // Extrair apenas números do telefone
+      const telefoneLimpo = String(telefone).replace(/\D/g, '');
 
       // Buscar conversa existente
       const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-        cliente_telefone: telefone.replace(/\D/g, '')
+        cliente_telefone: telefoneLimpo
       });
 
       let conversa;
       if (conversas.length === 0) {
+        // Obter empresa padrão ou usar super_admin
+        let empresaId = body.empresa_id;
+        if (!empresaId) {
+          const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
+          empresaId = empresas[0]?.id || 'default';
+        }
+
         // Criar nova conversa
         conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
-          empresa_id: body.empresa_id || conversas[0]?.empresa_id,
+          empresa_id: empresaId,
           cliente_id: '',
-          cliente_nome: message.from_name || 'Cliente',
-          cliente_telefone: telefone,
-          whatsapp_id: message.id,
+          cliente_nome: message.pushName || message.from_name || 'Cliente',
+          cliente_telefone: telefoneLimpo,
+          whatsapp_id: message.id || Date.now().toString(),
           status: 'ativa',
           ultima_mensagem: conteudo || tipo,
           data_ultima_mensagem: new Date().toISOString()
