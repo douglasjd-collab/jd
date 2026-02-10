@@ -392,7 +392,7 @@ export default function HistoricoResultadoAssembleia() {
                           </tr>
                         </thead>
                         <tbody>
-                          {grupo.detalhes.map((detalhe, idx) => (
+                         {(grupo.detalhes || []).map((detalhe, idx) => (
                             <tr key={idx} className="border-b hover:bg-slate-50">
                               <td className="px-4 py-3 text-sm">{detalhe.qt}</td>
                               <td className="px-4 py-3 text-sm font-medium">{detalhe.descricao}</td>
