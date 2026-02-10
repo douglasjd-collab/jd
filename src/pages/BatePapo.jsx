@@ -64,12 +64,13 @@ export default function BatePapo() {
     refetchInterval: 5000
   });
 
-  const { data: mensagens = [], isError: mensagensError } = useQuery({
+  const { data: mensagens = [], isError: mensagensError, error: msgError } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionada?.id],
     enabled: !!conversaSelecionada?.id,
     queryFn: async () => {
       try {
         console.log('[Chat] Carregando mensagens para conversa:', conversaSelecionada?.id);
+        console.log('[Chat] User info:', { perfil: user?.perfil, empresa_id: user?.empresa_id });
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionada.id },
           'created_date'
@@ -78,6 +79,7 @@ export default function BatePapo() {
         return msgs;
       } catch (err) {
         console.error('[Chat] Erro ao carregar mensagens:', err);
+        console.error('[Chat] Erro details:', err.response?.data || err.message);
         toast.error('Erro ao carregar mensagens: ' + err.message);
         throw err;
       }
@@ -176,6 +178,26 @@ export default function BatePapo() {
           <Button onClick={() => window.location.reload()} className="mt-4">
             Recarregar
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mensagensError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Bate-papo"
+          subtitle="Converse com seus clientes via WhatsApp"
+        />
+        <div className="flex flex-col items-center justify-center h-96 gap-4 bg-red-50 rounded-lg border border-red-200">
+          <div className="text-center">
+            <h3 className="font-semibold text-red-600 mb-2">Erro ao carregar mensagens</h3>
+            <p className="text-sm text-red-600 mb-4">{msgError?.message || 'Erro desconhecido'}</p>
+            <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] })} className="mt-4">
+              Tentar Novamente
+            </Button>
+          </div>
         </div>
       </div>
     );
