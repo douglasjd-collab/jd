@@ -605,27 +605,47 @@ export default function NovaVendaConsignado() {
         backTo="NovaVenda"
       />
 
-      <form onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Dados Gerais</CardTitle>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Módulo Cliente */}
+        <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-white">
+          <CardHeader className="bg-purple-50/50 border-b">
+            <CardTitle className="flex items-center gap-2 text-purple-900">
+              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm font-bold">1</span>
+              </div>
+              Cliente
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="pt-6">
             <div>
               <Label>Cliente *</Label>
               {clienteSelecionado ? (
-                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
-                  <span className="font-medium">{clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social}</span>
+                <div className="flex items-center justify-between p-4 bg-purple-100 rounded-lg border-2 border-purple-300">
+                  <span className="font-semibold text-purple-900">{clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social}</span>
                   <Button type="button" variant="outline" size="sm" onClick={() => setShowClienteModal(true)}>
                     Alterar
                   </Button>
                 </div>
               ) : (
-                <Button type="button" variant="outline" className="w-full" onClick={() => setShowClienteModal(true)}>
-                  Selecionar Cliente
+                <Button type="button" variant="outline" className="w-full h-12 border-2 border-dashed" onClick={() => setShowClienteModal(true)}>
+                  + Selecionar Cliente
                 </Button>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Módulo Proposta */}
+        <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-white">
+          <CardHeader className="bg-blue-50/50 border-b">
+            <CardTitle className="flex items-center gap-2 text-blue-900">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm font-bold">2</span>
+              </div>
+              Dados da Proposta
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -720,10 +740,22 @@ export default function NovaVendaConsignado() {
 
             {renderCamposPorTipo()}
 
-            {(user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') && (
-              <div className="border-t pt-6 mt-6">
-                <h3 className="text-lg font-semibold mb-4">Comissões</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          </CardContent>
+        </Card>
+
+        {/* Módulo Comissões */}
+        {(user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') && (
+          <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-white">
+            <CardHeader className="bg-green-50/50 border-b">
+              <CardTitle className="flex items-center gap-2 text-green-900">
+                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">3</span>
+                </div>
+                Comissões
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>% Comissão Empresa</Label>
                     <Input 
@@ -794,12 +826,22 @@ export default function NovaVendaConsignado() {
                   </div>
                 </div>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
-            {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && (
-              <div className="border-t pt-6 mt-6">
-                <h3 className="text-lg font-semibold mb-4">Sua Comissão</h3>
-                <div className="grid grid-cols-2 gap-4">
+        {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && (
+          <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/50 to-white">
+            <CardHeader className="bg-amber-50/50 border-b">
+              <CardTitle className="flex items-center gap-2 text-amber-900">
+                <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">3</span>
+                </div>
+                Sua Comissão
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Percentual</Label>
                     <Input 
@@ -821,8 +863,21 @@ export default function NovaVendaConsignado() {
                   </div>
                 </div>
               </div>
-            )}
+            </CardContent>
+          </Card>
+        )}
 
+        {/* Módulo Finalização */}
+        <Card className="border-l-4 border-l-slate-500 bg-gradient-to-br from-slate-50/50 to-white">
+          <CardHeader className="bg-slate-50/50 border-b">
+            <CardTitle className="flex items-center gap-2 text-slate-900">
+              <div className="w-8 h-8 bg-slate-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm font-bold">4</span>
+              </div>
+              Finalização
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Número ADE</Label>
@@ -861,11 +916,11 @@ export default function NovaVendaConsignado() {
               />
             </div>
 
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => navigate('/NovaVenda')}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={criarVendaMutation.isPending}>
+              <Button type="submit" disabled={criarVendaMutation.isPending} className="bg-[#23BE84] hover:bg-[#1da570]">
                 {criarVendaMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
