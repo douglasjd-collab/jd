@@ -21,7 +21,20 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const instance = url.searchParams.get('instance');
 
-    console.log('🔔 Webhook recebido:', { instance, timestamp: new Date().toISOString() });
+    console.log('🔔 Webhook recebido:', { event: body.event, instance, timestamp: new Date().toISOString() });
+    console.log('📋 Body completo:', JSON.stringify(body).substring(0, 300));
+
+    // Ignorar eventos de atualização de status (não são mensagens novas)
+    if (body.event === 'messages.update' || body.data?.status) {
+      console.log('⏭️ Ignorado: Evento de atualização de status, não é mensagem nova');
+      return Response.json({ success: true, skipped: 'status_update' });
+    }
+
+    // Ignorar mensagens enviadas pelo bot (fromMe: true)
+    if (body.data?.fromMe === true || body.fromMe === true) {
+      console.log('⏭️ Ignorado: Mensagem enviada pelo bot, não pelo cliente');
+      return Response.json({ success: true, skipped: 'from_bot' });
+    }
 
     // Validar chave (você pode adicionar validação extra)
     const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
@@ -58,7 +71,8 @@ Deno.serve(async (req) => {
     }
 
     if (!message) {
-      console.warn('⚠️ Nenhum formato de mensagem reconhecido. Body:', JSON.stringify(body).substring(0, 200));
+      console.warn('⚠️ Nenhum formato de mensagem reconhecido. Event:', body.event, 'Body:', JSON.stringify(body).substring(0, 300));
+      return Response.json({ success: true, skipped: 'unknown_format' });
     }
 
     if (message && telefone && tipo !== undefined) {
