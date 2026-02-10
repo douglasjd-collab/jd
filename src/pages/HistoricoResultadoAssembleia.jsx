@@ -85,10 +85,12 @@ export default function HistoricoResultadoAssembleia() {
       // Filtrar por mês se selecionado
       if (mesSelecionado) {
         const historico = historicos.find(h => h.id === detalhe.historico_id);
-        if (historico) {
+        if (historico && historico.assembleia_data) {
           const dataAssembleia = new Date(historico.assembleia_data);
-          const mesAno = `${dataAssembleia.getFullYear()}-${String(dataAssembleia.getMonth() + 1).padStart(2, '0')}`;
-          if (mesAno !== mesSelecionado) continue;
+          if (!isNaN(dataAssembleia.getTime())) {
+            const mesAno = `${dataAssembleia.getFullYear()}-${String(dataAssembleia.getMonth() + 1).padStart(2, '0')}`;
+            if (mesAno !== mesSelecionado) continue;
+          }
         }
       }
 
