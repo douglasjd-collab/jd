@@ -89,13 +89,15 @@ export default function HistoricoResultadoAssembleia() {
       
       for (const detalhe of grupo.detalhes) {
         const modalidade = detalhe.modalidade;
+        if (!modalidade) continue;
+        
         if (!resumosPorModalidade[modalidade]) {
           resumosPorModalidade[modalidade] = {
             modalidade,
             lances: []
           };
         }
-        if (detalhe.lance_percent !== null) {
+        if (detalhe.lance_percent !== null && detalhe.lance_percent !== undefined) {
           resumosPorModalidade[modalidade].lances.push(detalhe.lance_percent);
         }
       }
