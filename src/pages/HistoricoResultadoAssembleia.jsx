@@ -390,9 +390,9 @@ export default function HistoricoResultadoAssembleia() {
                             </tr>
                           ))}
                         </tbody>
-                      </table>
-                      </div>
-                      </CardContent>
+                    </table>
+                  </div>
+                </CardContent>
               </Card>
             );
           })}
