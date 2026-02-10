@@ -24,7 +24,6 @@ export default function NovaVendaConsignado() {
   const [showBancoModal, setShowBancoModal] = useState(false);
   const [salvandoConvenio, setSalvandoConvenio] = useState(false);
   const [salvandoBanco, setSalvandoBanco] = useState(false);
-  const [matriculas, setMatriculas] = useState(['']);
   const [formData, setFormData] = useState({
     tipo_consignado: 'NOVO',
     numero_ade: '',
@@ -140,7 +139,6 @@ export default function NovaVendaConsignado() {
         convenio_id: dados.convenio_id,
         convenio_nome: convenioSelecionado?.nome || '',
         numero_beneficio: dados.numero_beneficio,
-        matriculas: matriculas.filter(m => m.trim()),
         banco: dados.banco,
         valor_liberado: parseFloat(dados.valor_liberado) || 0,
         valor_bruto: parseFloat(dados.valor_bruto) || 0,
@@ -181,6 +179,10 @@ export default function NovaVendaConsignado() {
     e.preventDefault();
     if (!clienteSelecionado) {
       toast.error('Selecione um cliente');
+      return;
+    }
+    if (formData.status === 'pago' && !formData.numero_contrato) {
+      toast.error('Para o status Pago é necessário informar o Número do Contrato');
       return;
     }
     criarVendaMutation.mutate(formData);
@@ -685,32 +687,6 @@ export default function NovaVendaConsignado() {
                 <Label>Número do Benefício</Label>
                 <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
               </div>
-            </div>
-
-            <div>
-              <Label>Matrículas</Label>
-              {matriculas.map((mat, idx) => (
-                <div key={idx} className="flex gap-2 mb-2">
-                  <Input
-                    value={mat}
-                    onChange={(e) => {
-                      const novas = [...matriculas];
-                      novas[idx] = e.target.value;
-                      setMatriculas(novas);
-                    }}
-                    placeholder="Digite a matrícula"
-                  />
-                  {matriculas.length > 1 && (
-                    <Button type="button" variant="outline" size="icon" onClick={() => setMatriculas(matriculas.filter((_, i) => i !== idx))}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" onClick={() => setMatriculas([...matriculas, ''])}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Matrícula
-              </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
