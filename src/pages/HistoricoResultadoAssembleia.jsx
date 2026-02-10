@@ -32,12 +32,18 @@ export default function HistoricoResultadoAssembleia() {
     }
   };
 
+  const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
+
   const { data: todosDetalhes = [], isLoading: loadingDetalhes, error: errorDetalhes } = useQuery({
-    queryKey: ['historico-detalhes-consolidado', empresaId],
-    enabled: !!empresaId,
+    queryKey: ['historico-detalhes-consolidado', empresaId, isSuperAdmin],
+    enabled: !!user && (isSuperAdmin || !!empresaId),
     staleTime: 60000,
     queryFn: async () => {
       try {
+        if (isSuperAdmin) {
+          // Super admin vê tudo
+          return await base44.entities.HistoricoLanceDetalhe.list('-created_date', 5000);
+        }
         return await base44.entities.HistoricoLanceDetalhe.filter({ empresa_id: empresaId });
       } catch (error) {
         console.error('Erro ao carregar detalhes:', error);
@@ -47,11 +53,14 @@ export default function HistoricoResultadoAssembleia() {
   });
 
   const { data: todosResumos = [], isLoading: loadingResumos } = useQuery({
-    queryKey: ['historico-resumos-consolidado', empresaId],
-    enabled: !!empresaId,
+    queryKey: ['historico-resumos-consolidado', empresaId, isSuperAdmin],
+    enabled: !!user && (isSuperAdmin || !!empresaId),
     staleTime: 60000,
     queryFn: async () => {
       try {
+        if (isSuperAdmin) {
+          return await base44.entities.HistoricoLanceResumo.list('-created_date', 5000);
+        }
         return await base44.entities.HistoricoLanceResumo.filter({ empresa_id: empresaId });
       } catch (error) {
         console.error('Erro ao carregar resumos:', error);
@@ -61,11 +70,14 @@ export default function HistoricoResultadoAssembleia() {
   });
 
   const { data: historicos = [] } = useQuery({
-    queryKey: ['historico-grupos', empresaId],
-    enabled: !!empresaId,
+    queryKey: ['historico-grupos', empresaId, isSuperAdmin],
+    enabled: !!user && (isSuperAdmin || !!empresaId),
     staleTime: 60000,
     queryFn: async () => {
       try {
+        if (isSuperAdmin) {
+          return await base44.entities.HistoricoLanceGrupo.list('-assembleia_data', 5000);
+        }
         return await base44.entities.HistoricoLanceGrupo.filter({ empresa_id: empresaId });
       } catch (error) {
         console.error('Erro ao carregar históricos:', error);
