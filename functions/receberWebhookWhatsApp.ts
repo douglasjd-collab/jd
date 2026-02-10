@@ -25,13 +25,13 @@ Deno.serve(async (req) => {
     console.log('📋 Body completo:', JSON.stringify(body).substring(0, 300));
 
     // Ignorar eventos de atualização de status (não são mensagens novas)
-    if (body.event === 'messages.update' || body.data?.status) {
-      console.log('⏭️ Ignorado: Evento de atualização de status, não é mensagem nova');
+    if (body.event === 'messages.update') {
+      console.log('⏭️ Ignorado: Evento messages.update (apenas atualização de status)');
       return Response.json({ success: true, skipped: 'status_update' });
     }
 
-    // Ignorar mensagens enviadas pelo bot (fromMe: true)
-    if (body.data?.fromMe === true || body.fromMe === true) {
+    // Ignorar mensagens enviadas pelo bot (fromMe: true) - apenas para messages.upsert
+    if (body.event === 'messages.upsert' && body.data?.key?.fromMe === true) {
       console.log('⏭️ Ignorado: Mensagem enviada pelo bot, não pelo cliente');
       return Response.json({ success: true, skipped: 'from_bot' });
     }
