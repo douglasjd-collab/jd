@@ -50,8 +50,34 @@ Deno.serve(async (req) => {
       message = body.data.message;
       // Para messages.upsert, o telefone está em body.data.key.remoteJid
       telefone = body.data.key?.remoteJid || message.from;
-      tipo = message.type;
-      conteudo = message.conversation || message.text || message.caption;
+      
+      // Detectar tipo pela presença de propriedades específicas
+      if (message.conversation) {
+        tipo = 'text';
+        conteudo = message.conversation;
+      } else if (message.imageMessage) {
+        tipo = 'image';
+        conteudo = message.imageMessage.caption || '';
+      } else if (message.audioMessage) {
+        tipo = 'audio';
+        conteudo = 'Áudio';
+      } else if (message.videoMessage) {
+        tipo = 'video';
+        conteudo = message.videoMessage.caption || 'Vídeo';
+      } else if (message.documentMessage) {
+        tipo = 'document';
+        conteudo = message.documentMessage.title || 'Documento';
+      } else if (message.stickerMessage) {
+        tipo = 'sticker';
+        conteudo = 'Sticker';
+      } else if (message.text) {
+        tipo = 'text';
+        conteudo = message.text;
+      } else {
+        tipo = 'text';
+        conteudo = '';
+      }
+      
       console.log('✓ Formato 1 detectado (messages.upsert)');
     }
     // Formato 2: body.messages (webhook direto)
