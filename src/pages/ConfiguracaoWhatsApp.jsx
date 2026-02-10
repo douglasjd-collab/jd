@@ -161,23 +161,32 @@ export default function ConfiguracaoWhatsApp() {
 
             <div>
               <Label className="mb-2 block">URL do Webhook</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={webhookUrl}
-                  readOnly 
-                  className="bg-slate-50 font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(webhookUrl, 'webhook')}
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Este URL receberá as mensagens do WhatsApp em tempo real
-              </p>
+              {loading ? (
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Carregando URL...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={webhookUrl}
+                      readOnly 
+                      className="bg-slate-50 font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(webhookUrl, 'webhook')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Este URL receberá as mensagens do WhatsApp em tempo real
+                  </p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
