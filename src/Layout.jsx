@@ -194,7 +194,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Usuários', page: 'Usuarios' },
         { name: 'Administradoras', page: 'Administradoras' },
         { name: 'Empresas Parceiras', page: 'EmpresasParceiras' },
-        { name: 'Tabelas de Empréstimo', page: 'TabelasEmprestimo' },
+        { name: 'Tabela de Comissão', page: 'TabelasEmprestimo' },
         { name: 'Tabelas de Consórcio', page: 'TabelasConsorcio' },
         { name: 'Planos de Consórcio', page: 'PlanosConsorcio' },
         { name: 'Comissões Empréstimos', page: 'TabelasComissaoEmprestimo' },

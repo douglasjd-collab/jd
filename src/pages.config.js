@@ -61,6 +61,7 @@ import ConfiguracaoFunil from './pages/ConfiguracaoFunil';
 import Configuracoes from './pages/Configuracoes';
 import Dashboard from './pages/Dashboard';
 import Empresas from './pages/Empresas';
+import EmpresasParceiras from './pages/EmpresasParceiras';
 import FunilVendas from './pages/FunilVendas';
 import HistoricoImportacao from './pages/HistoricoImportacao';
 import HistoricoResultadoAssembleia from './pages/HistoricoResultadoAssembleia';
@@ -77,6 +78,7 @@ import LancamentoReceitas from './pages/LancamentoReceitas';
 import MeusDados from './pages/MeusDados';
 import NovaVenda from './pages/NovaVenda';
 import NovaVendaConsignado from './pages/NovaVendaConsignado';
+import NovaVendaEmprestimo from './pages/NovaVendaEmprestimo';
 import NovaVendaEmprestimoPessoal from './pages/NovaVendaEmprestimoPessoal';
 import NovaVendaFinanciamento from './pages/NovaVendaFinanciamento';
 import OfertaLance from './pages/OfertaLance';
@@ -91,16 +93,14 @@ import SimuladorConsorcio from './pages/SimuladorConsorcio';
 import SimuladorEscolha from './pages/SimuladorEscolha';
 import SimuladorNormal from './pages/SimuladorNormal';
 import SyncTests from './pages/SyncTests';
+import TabelasComissaoEmprestimo from './pages/TabelasComissaoEmprestimo';
 import TabelasConsorcio from './pages/TabelasConsorcio';
+import TabelasEmprestimo from './pages/TabelasEmprestimo';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import NovaVendaEmprestimo from './pages/NovaVendaEmprestimo';
-import TabelasComissaoEmprestimo from './pages/TabelasComissaoEmprestimo';
-import EmpresasParceiras from './pages/EmpresasParceiras';
-import TabelasEmprestimo from './pages/TabelasEmprestimo';
 import __Layout from './Layout.jsx';
 
 
@@ -119,6 +119,7 @@ export const PAGES = {
     "Configuracoes": Configuracoes,
     "Dashboard": Dashboard,
     "Empresas": Empresas,
+    "EmpresasParceiras": EmpresasParceiras,
     "FunilVendas": FunilVendas,
     "HistoricoImportacao": HistoricoImportacao,
     "HistoricoResultadoAssembleia": HistoricoResultadoAssembleia,
@@ -135,6 +136,7 @@ export const PAGES = {
     "MeusDados": MeusDados,
     "NovaVenda": NovaVenda,
     "NovaVendaConsignado": NovaVendaConsignado,
+    "NovaVendaEmprestimo": NovaVendaEmprestimo,
     "NovaVendaEmprestimoPessoal": NovaVendaEmprestimoPessoal,
     "NovaVendaFinanciamento": NovaVendaFinanciamento,
     "OfertaLance": OfertaLance,
@@ -149,16 +151,14 @@ export const PAGES = {
     "SimuladorEscolha": SimuladorEscolha,
     "SimuladorNormal": SimuladorNormal,
     "SyncTests": SyncTests,
+    "TabelasComissaoEmprestimo": TabelasComissaoEmprestimo,
     "TabelasConsorcio": TabelasConsorcio,
+    "TabelasEmprestimo": TabelasEmprestimo,
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "NovaVendaEmprestimo": NovaVendaEmprestimo,
-    "TabelasComissaoEmprestimo": TabelasComissaoEmprestimo,
-    "EmpresasParceiras": EmpresasParceiras,
-    "TabelasEmprestimo": TabelasEmprestimo,
 }
 
 export const pagesConfig = {
