@@ -189,6 +189,20 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
+  const { data: importacoes = [] } = useQuery({
+    queryKey: ['importacoes-assembleia-dashboard', user?.empresa_id],
+    enabled: !!user?.empresa_id,
+    queryFn: async () => {
+      const imp = await base44.entities.ImportacaoAssembleia.filter(
+        { empresa_id: user.empresa_id },
+        '-created_date',
+        10
+      );
+      return imp;
+    },
+    staleTime: 30000,
+  });
+
   // Filtrar dados por perfil (excluir vendas canceladas)
   const filteredVendas = vendas.filter(v => {
     // Não contar vendas canceladas
