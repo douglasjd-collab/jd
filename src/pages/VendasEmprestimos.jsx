@@ -12,7 +12,7 @@ import { Banknote, Wallet, Plus, Loader2, Search } from 'lucide-react';
 export default function VendasEmprestimos() {
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
-  const [filtroTipo, setFiltroTipo] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroSubtipo, setFiltroSubtipo] = useState('todos');
   const [buscaNome, setBuscaNome] = useState('');
   const [buscaCpf, setBuscaCpf] = useState('');
@@ -70,8 +70,8 @@ export default function VendasEmprestimos() {
   });
 
   const vendasFiltradas = vendas.filter(v => {
-    // Filtro por produto
-    if (filtroTipo !== 'todos' && v.produto !== filtroTipo) return false;
+    // Filtro por status
+    if (filtroStatus !== 'todos' && v.status !== filtroStatus) return false;
     
     // Filtro por subtipo (tipo de consignado)
     if (filtroSubtipo !== 'todos') {
@@ -136,38 +136,49 @@ export default function VendasEmprestimos() {
 
       <Card>
         <CardContent className="p-4 space-y-4">
-          {/* Filtros por Tipo de Produto */}
+          {/* Filtros por Status */}
           <div className="flex flex-wrap gap-3">
             <Button 
-              variant={filtroTipo === 'todos' ? 'default' : 'outline'}
-              onClick={() => {
-                setFiltroTipo('todos');
-                setFiltroSubtipo('todos');
-              }}
+              variant={filtroStatus === 'todos' ? 'default' : 'outline'}
+              onClick={() => setFiltroStatus('todos')}
+              className="bg-teal-600 hover:bg-teal-700"
             >
               Todos
             </Button>
             <Button 
-              variant={filtroTipo === 'EMPRESTIMO_CONSIGNADO' ? 'default' : 'outline'}
-              onClick={() => {
-                setFiltroTipo('EMPRESTIMO_CONSIGNADO');
-                setFiltroSubtipo('todos');
-              }}
-              className="bg-purple-600 hover:bg-purple-700"
+              variant={filtroStatus === 'aguardando_cip' ? 'default' : 'outline'}
+              onClick={() => setFiltroStatus('aguardando_cip')}
+              className="bg-indigo-600 hover:bg-indigo-700"
             >
-              <Banknote className="w-4 h-4 mr-2" />
-              Consignado
+              Aguardando CIP
             </Button>
             <Button 
-              variant={filtroTipo === 'EMPRESTIMO_PESSOAL' ? 'default' : 'outline'}
-              onClick={() => {
-                setFiltroTipo('EMPRESTIMO_PESSOAL');
-                setFiltroSubtipo('todos');
-              }}
+              variant={filtroStatus === 'pendente' ? 'default' : 'outline'}
+              onClick={() => setFiltroStatus('pendente')}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              Pendente
+            </Button>
+            <Button 
+              variant={filtroStatus === 'aguardando_formalizacao' ? 'default' : 'outline'}
+              onClick={() => setFiltroStatus('aguardando_formalizacao')}
               className="bg-orange-600 hover:bg-orange-700"
             >
-              <Wallet className="w-4 h-4 mr-2" />
-              Pessoal
+              Aguardando Formalização
+            </Button>
+            <Button 
+              variant={filtroStatus === 'em_andamento' ? 'default' : 'outline'}
+              onClick={() => setFiltroStatus('em_andamento')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Em Andamento
+            </Button>
+            <Button 
+              variant={filtroStatus === 'pago' ? 'default' : 'outline'}
+              onClick={() => setFiltroStatus('pago')}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Pago
             </Button>
             
             <div className="ml-auto flex gap-2">
@@ -187,58 +198,44 @@ export default function VendasEmprestimos() {
           </div>
 
           {/* Filtros por Tipo de Consignado */}
-          {(filtroTipo === 'todos' || filtroTipo === 'EMPRESTIMO_CONSIGNADO') && (
-            <div className="flex flex-wrap gap-2 pt-2 border-t">
-              <span className="text-sm font-medium text-slate-600 self-center mr-2">Tipo de Consignado:</span>
-              <Button 
-                size="sm"
-                variant={filtroSubtipo === 'todos' ? 'default' : 'outline'}
-                onClick={() => setFiltroSubtipo('todos')}
-              >
-                Todos
-              </Button>
-              <Button 
-                size="sm"
-                variant={filtroSubtipo === 'NOVO' ? 'default' : 'outline'}
-                onClick={() => {
-                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
-                  setFiltroSubtipo('NOVO');
-                }}
-              >
-                Novo
-              </Button>
-              <Button 
-                size="sm"
-                variant={filtroSubtipo === 'REFINANCIAMENTO' ? 'default' : 'outline'}
-                onClick={() => {
-                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
-                  setFiltroSubtipo('REFINANCIAMENTO');
-                }}
-              >
-                Refinanciamento
-              </Button>
-              <Button 
-                size="sm"
-                variant={filtroSubtipo === 'PORTABILIDADE_PURA' ? 'default' : 'outline'}
-                onClick={() => {
-                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
-                  setFiltroSubtipo('PORTABILIDADE_PURA');
-                }}
-              >
-                Portabilidade Pura
-              </Button>
-              <Button 
-                size="sm"
-                variant={filtroSubtipo === 'REFIN_PORTABILIDADE' ? 'default' : 'outline'}
-                onClick={() => {
-                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
-                  setFiltroSubtipo('REFIN_PORTABILIDADE');
-                }}
-              >
-                Portabilidade + Refin
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            <span className="text-sm font-medium text-slate-600 self-center mr-2">Tipo de Consignado:</span>
+            <Button 
+              size="sm"
+              variant={filtroSubtipo === 'todos' ? 'default' : 'outline'}
+              onClick={() => setFiltroSubtipo('todos')}
+            >
+              Todos
+            </Button>
+            <Button 
+              size="sm"
+              variant={filtroSubtipo === 'NOVO' ? 'default' : 'outline'}
+              onClick={() => setFiltroSubtipo('NOVO')}
+            >
+              Novo
+            </Button>
+            <Button 
+              size="sm"
+              variant={filtroSubtipo === 'REFINANCIAMENTO' ? 'default' : 'outline'}
+              onClick={() => setFiltroSubtipo('REFINANCIAMENTO')}
+            >
+              Refinanciamento
+            </Button>
+            <Button 
+              size="sm"
+              variant={filtroSubtipo === 'PORTABILIDADE_PURA' ? 'default' : 'outline'}
+              onClick={() => setFiltroSubtipo('PORTABILIDADE_PURA')}
+            >
+              Portabilidade Pura
+            </Button>
+            <Button 
+              size="sm"
+              variant={filtroSubtipo === 'REFIN_PORTABILIDADE' ? 'default' : 'outline'}
+              onClick={() => setFiltroSubtipo('REFIN_PORTABILIDADE')}
+            >
+              Portabilidade + Refin
+            </Button>
+          </div>
 
           {/* Campos de Busca */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t">
