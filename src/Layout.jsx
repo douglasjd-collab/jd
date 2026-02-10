@@ -213,6 +213,18 @@ export default function Layout({ children, currentPageName }) {
     setExpandedMenus(prev => ({ ...prev, [name]: !prev[name] }));
   };
 
+  // Loading inicial
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-[#23BE84] mx-auto mb-4" />
+          <p className="text-slate-600 font-medium">Carregando sistema...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Verificar se usuário está aguardando configuração
   if (user?.aguardando_configuracao) {
     return (
