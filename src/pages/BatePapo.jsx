@@ -69,13 +69,15 @@ export default function BatePapo() {
     enabled: !!conversaSelecionada?.id,
     queryFn: async () => {
       try {
+        console.log('[Chat] Carregando mensagens para conversa:', conversaSelecionada?.id);
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionada.id },
           'created_date'
         );
+        console.log('[Chat] Mensagens carregadas:', msgs.length);
         return msgs;
       } catch (err) {
-        console.error('Erro ao carregar mensagens:', err);
+        console.error('[Chat] Erro ao carregar mensagens:', err);
         toast.error('Erro ao carregar mensagens: ' + err.message);
         throw err;
       }
