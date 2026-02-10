@@ -1,19 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, Copy, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Copy, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ConfiguracaoWhatsApp() {
   const [copied, setCopied] = useState(null);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const evolutionUrl = 'https://evolutionapi-evolution-api.dsnnn7.easypanel.host/';
-  const webhookUrl = 'https://wazecrm.base44.app/functions/receberWebhookWhatsApp?instance=TESTEWAZE';
   const instanceName = 'TESTEWAZE';
   const apiKey = '8846A2E033A6-43D5-BA5D-AE05D48F44F2';
+
+  useEffect(() => {
+    loadWebhookUrl();
+  }, []);
+
+  const loadWebhookUrl = async () => {
+    try {
+      const response = await base44.functions.invoke('getWebhookUrl');
+      setWebhookUrl(response.data.webhookUrl);
+    } catch (error) {
+      console.error('Erro ao carregar webhook URL:', error);
+      // Fallback para URL padrão
+      setWebhookUrl(`https://${window.location.hostname}/functions/receberWebhookWhatsApp?instance=${instanceName}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const copyToClipboard = (text, name) => {
     navigator.clipboard.writeText(text);
