@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
+  console.log('📨 Requisição recebida:', req.method, new Date().toISOString());
+  
   // Validar método
   if (req.method === 'GET') {
     // Challenge para validação de webhook
@@ -17,7 +19,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('📥 Lendo body do POST...');
     const body = await req.json();
+    console.log('✅ Body parseado com sucesso');
     const url = new URL(req.url);
     const instance = url.searchParams.get('instance');
 
