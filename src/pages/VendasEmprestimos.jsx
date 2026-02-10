@@ -6,12 +6,17 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, Wallet, Plus, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Banknote, Wallet, Plus, Loader2, Search } from 'lucide-react';
 
 export default function VendasEmprestimos() {
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState('todos');
+  const [filtroSubtipo, setFiltroSubtipo] = useState('todos');
+  const [buscaNome, setBuscaNome] = useState('');
+  const [buscaCpf, setBuscaCpf] = useState('');
+  const [buscaBanco, setBuscaBanco] = useState('');
 
   useEffect(() => {
     loadUser();
@@ -64,9 +69,33 @@ export default function VendasEmprestimos() {
     }
   });
 
-  const vendasFiltradas = filtroTipo === 'todos' 
-    ? vendas 
-    : vendas.filter(v => v.produto === filtroTipo);
+  const vendasFiltradas = vendas.filter(v => {
+    // Filtro por produto
+    if (filtroTipo !== 'todos' && v.produto !== filtroTipo) return false;
+    
+    // Filtro por subtipo (tipo de consignado)
+    if (filtroSubtipo !== 'todos') {
+      if (v.produto !== 'EMPRESTIMO_CONSIGNADO') return false;
+      if (v.tipo !== filtroSubtipo) return false;
+    }
+    
+    // Busca por nome
+    if (buscaNome && !v.cliente_nome?.toLowerCase().includes(buscaNome.toLowerCase())) return false;
+    
+    // Busca por CPF (nos detalhes do cliente)
+    if (buscaCpf) {
+      const cpfBusca = buscaCpf.replace(/\D/g, '');
+      if (!v.cliente_nome?.includes(cpfBusca)) return false;
+    }
+    
+    // Busca por banco
+    if (buscaBanco) {
+      const banco = v.detalhes?.banco || v.detalhes?.banco_anterior || '';
+      if (!banco.toLowerCase().includes(buscaBanco.toLowerCase())) return false;
+    }
+    
+    return true;
+  });
 
   const statusColors = {
     em_andamento: 'bg-blue-100 text-blue-800',
@@ -106,17 +135,24 @@ export default function VendasEmprestimos() {
       />
 
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-4">
+          {/* Filtros por Tipo de Produto */}
           <div className="flex flex-wrap gap-3">
             <Button 
               variant={filtroTipo === 'todos' ? 'default' : 'outline'}
-              onClick={() => setFiltroTipo('todos')}
+              onClick={() => {
+                setFiltroTipo('todos');
+                setFiltroSubtipo('todos');
+              }}
             >
               Todos
             </Button>
             <Button 
               variant={filtroTipo === 'EMPRESTIMO_CONSIGNADO' ? 'default' : 'outline'}
-              onClick={() => setFiltroTipo('EMPRESTIMO_CONSIGNADO')}
+              onClick={() => {
+                setFiltroTipo('EMPRESTIMO_CONSIGNADO');
+                setFiltroSubtipo('todos');
+              }}
               className="bg-purple-600 hover:bg-purple-700"
             >
               <Banknote className="w-4 h-4 mr-2" />
@@ -124,7 +160,10 @@ export default function VendasEmprestimos() {
             </Button>
             <Button 
               variant={filtroTipo === 'EMPRESTIMO_PESSOAL' ? 'default' : 'outline'}
-              onClick={() => setFiltroTipo('EMPRESTIMO_PESSOAL')}
+              onClick={() => {
+                setFiltroTipo('EMPRESTIMO_PESSOAL');
+                setFiltroSubtipo('todos');
+              }}
               className="bg-orange-600 hover:bg-orange-700"
             >
               <Wallet className="w-4 h-4 mr-2" />
@@ -144,6 +183,91 @@ export default function VendasEmprestimos() {
                   Novo Pessoal
                 </Button>
               </Link>
+            </div>
+          </div>
+
+          {/* Filtros por Tipo de Consignado */}
+          {(filtroTipo === 'todos' || filtroTipo === 'EMPRESTIMO_CONSIGNADO') && (
+            <div className="flex flex-wrap gap-2 pt-2 border-t">
+              <span className="text-sm font-medium text-slate-600 self-center mr-2">Tipo de Consignado:</span>
+              <Button 
+                size="sm"
+                variant={filtroSubtipo === 'todos' ? 'default' : 'outline'}
+                onClick={() => setFiltroSubtipo('todos')}
+              >
+                Todos
+              </Button>
+              <Button 
+                size="sm"
+                variant={filtroSubtipo === 'NOVO' ? 'default' : 'outline'}
+                onClick={() => {
+                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
+                  setFiltroSubtipo('NOVO');
+                }}
+              >
+                Novo
+              </Button>
+              <Button 
+                size="sm"
+                variant={filtroSubtipo === 'REFINANCIAMENTO' ? 'default' : 'outline'}
+                onClick={() => {
+                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
+                  setFiltroSubtipo('REFINANCIAMENTO');
+                }}
+              >
+                Refinanciamento
+              </Button>
+              <Button 
+                size="sm"
+                variant={filtroSubtipo === 'PORTABILIDADE_PURA' ? 'default' : 'outline'}
+                onClick={() => {
+                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
+                  setFiltroSubtipo('PORTABILIDADE_PURA');
+                }}
+              >
+                Portabilidade Pura
+              </Button>
+              <Button 
+                size="sm"
+                variant={filtroSubtipo === 'REFIN_PORTABILIDADE' ? 'default' : 'outline'}
+                onClick={() => {
+                  setFiltroTipo('EMPRESTIMO_CONSIGNADO');
+                  setFiltroSubtipo('REFIN_PORTABILIDADE');
+                }}
+              >
+                Portabilidade + Refin
+              </Button>
+            </div>
+          )}
+
+          {/* Campos de Busca */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por nome..."
+                value={buscaNome}
+                onChange={(e) => setBuscaNome(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por CPF..."
+                value={buscaCpf}
+                onChange={(e) => setBuscaCpf(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por banco..."
+                value={buscaBanco}
+                onChange={(e) => setBuscaBanco(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </div>
         </CardContent>
