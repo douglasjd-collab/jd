@@ -80,8 +80,10 @@ Deno.serve(async (req) => {
       const base44 = createClientFromRequest(req);
 
       // Extrair apenas números do telefone
+      console.log('🔧 Processando - Telefone bruto:', telefone);
       const telefoneLimpo = String(telefone).replace(/\D/g, '');
-      console.log('📱 Telefone extraído:', telefoneLimpo);
+      console.log('📱 Telefone limpo:', telefoneLimpo);
+      console.log('📋 Tipo:', tipo, 'Conteúdo:', (conteudo || '').substring(0, 50));
 
       // Buscar conversa existente
       const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
