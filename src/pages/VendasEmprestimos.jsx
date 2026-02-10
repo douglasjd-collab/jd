@@ -180,21 +180,6 @@ export default function VendasEmprestimos() {
             >
               Pago
             </Button>
-            
-            <div className="ml-auto flex gap-2">
-              <Link to="/NovaVendaConsignado">
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Consignado
-                </Button>
-              </Link>
-              <Link to="/NovaVendaEmprestimoPessoal">
-                <Button className="bg-orange-600 hover:bg-orange-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Pessoal
-                </Button>
-              </Link>
-            </div>
           </div>
 
           {/* Filtros por Tipo de Consignado */}
