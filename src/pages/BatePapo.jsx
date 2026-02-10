@@ -64,10 +64,16 @@ export default function BatePapo() {
         { conversa_id: conversaSelecionada.id },
         'created_date'
       );
+      console.log('✅ QUERY RESULT - Mensagens carregadas:', msgs.length, msgs);
       return msgs;
     },
     refetchInterval: 2000
   });
+
+  // Debug do estado
+  useEffect(() => {
+    console.log('🎨 RENDER - mensagens state:', mensagens.length, mensagens);
+  }, [mensagens]);
 
   // Subscrição em tempo real para novas mensagens
   useEffect(() => {
