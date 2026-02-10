@@ -134,7 +134,7 @@ export default function VendasEmprestimos() {
         title="Empréstimos"
         subtitle="Gestão de propostas de empréstimos consignados e pessoais"
       >
-        <Link to={createPageUrl('NovaVenda')}>
+        <Link to={createPageUrl('NovaVendaEmprestimo')}>
           <Button className="bg-[#23BE84] hover:bg-[#1da570]">
             <Plus className="w-4 h-4 mr-2" />
             Nova Venda
