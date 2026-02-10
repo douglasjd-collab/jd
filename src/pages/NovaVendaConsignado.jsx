@@ -11,6 +11,7 @@ import { Loader2, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
 import ConvenioFormModal from '@/components/forms/ConvenioFormModal';
+import BancoFormModal from '@/components/forms/BancoFormModal';
 
 export default function NovaVendaConsignado() {
   const navigate = useNavigate();
@@ -20,7 +21,9 @@ export default function NovaVendaConsignado() {
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showConvenioModal, setShowConvenioModal] = useState(false);
+  const [showBancoModal, setShowBancoModal] = useState(false);
   const [salvandoConvenio, setSalvandoConvenio] = useState(false);
+  const [salvandoBanco, setSalvandoBanco] = useState(false);
   const [matriculas, setMatriculas] = useState(['']);
   const [formData, setFormData] = useState({
     tipo_consignado: 'NOVO',
@@ -66,6 +69,12 @@ export default function NovaVendaConsignado() {
     queryKey: ['convenios', empresaId],
     enabled: !!empresaId,
     queryFn: () => base44.entities.Convenio.filter({ empresa_id: empresaId, ativo: true })
+  });
+
+  const { data: bancos = [] } = useQuery({
+    queryKey: ['bancos', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.Banco.filter({ empresa_id: empresaId, ativo: true })
   });
 
   const criarVendaMutation = useMutation({
@@ -153,7 +162,34 @@ export default function NovaVendaConsignado() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Banco *</Label>
-              <Input value={formData.banco} onChange={(e) => setFormData({ ...formData, banco: e.target.value })} required />
+              <div className="flex gap-2">
+                <select
+                  value={formData.banco}
+                  onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  <option value="C6 Bank">C6 Bank</option>
+                  <option value="Digio">Digio</option>
+                  <option value="BMG">BMG</option>
+                  <option value="Finanto">Finanto</option>
+                  <option value="BRB">BRB</option>
+                  <option value="Happy">Happy</option>
+                  {bancos.map(b => (
+                    <option key={b.id} value={b.nome}>{b.nome}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowBancoModal(true)}
+                  title="Cadastrar novo banco"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <Label>Valor Liberado *</Label>
@@ -213,7 +249,34 @@ export default function NovaVendaConsignado() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Banco Anterior *</Label>
-              <Input value={formData.banco_anterior} onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })} required />
+              <div className="flex gap-2">
+                <select
+                  value={formData.banco_anterior}
+                  onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  <option value="C6 Bank">C6 Bank</option>
+                  <option value="Digio">Digio</option>
+                  <option value="BMG">BMG</option>
+                  <option value="Finanto">Finanto</option>
+                  <option value="BRB">BRB</option>
+                  <option value="Happy">Happy</option>
+                  {bancos.map(b => (
+                    <option key={b.id} value={b.nome}>{b.nome}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowBancoModal(true)}
+                  title="Cadastrar novo banco"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <Label>Saldo Devedor *</Label>
@@ -258,7 +321,33 @@ export default function NovaVendaConsignado() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Banco Anterior</Label>
-              <Input value={formData.banco_anterior} onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })} />
+              <div className="flex gap-2">
+                <select
+                  value={formData.banco_anterior}
+                  onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="C6 Bank">C6 Bank</option>
+                  <option value="Digio">Digio</option>
+                  <option value="BMG">BMG</option>
+                  <option value="Finanto">Finanto</option>
+                  <option value="BRB">BRB</option>
+                  <option value="Happy">Happy</option>
+                  {bancos.map(b => (
+                    <option key={b.id} value={b.nome}>{b.nome}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowBancoModal(true)}
+                  title="Cadastrar novo banco"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <Label>Saldo Devedor</Label>
@@ -288,7 +377,33 @@ export default function NovaVendaConsignado() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Banco</Label>
-              <Input value={formData.banco} onChange={(e) => setFormData({ ...formData, banco: e.target.value })} />
+              <div className="flex gap-2">
+                <select
+                  value={formData.banco}
+                  onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="C6 Bank">C6 Bank</option>
+                  <option value="Digio">Digio</option>
+                  <option value="BMG">BMG</option>
+                  <option value="Finanto">Finanto</option>
+                  <option value="BRB">BRB</option>
+                  <option value="Happy">Happy</option>
+                  {bancos.map(b => (
+                    <option key={b.id} value={b.nome}>{b.nome}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowBancoModal(true)}
+                  title="Cadastrar novo banco"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <Label>Valor Liberado</Label>
@@ -549,6 +664,35 @@ export default function NovaVendaConsignado() {
             return null;
           } finally {
             setSalvandoConvenio(false);
+          }
+        }}
+      />
+
+      <BancoFormModal
+        open={showBancoModal}
+        onOpenChange={setShowBancoModal}
+        isLoading={salvandoBanco}
+        onSubmit={async (dados) => {
+          setSalvandoBanco(true);
+          try {
+            const novoBanco = await base44.entities.Banco.create({
+              empresa_id: empresaId,
+              nome: dados.nome,
+              codigo: dados.codigo,
+              ativo: true
+            });
+            
+            await queryClient.invalidateQueries({ queryKey: ['bancos', empresaId] });
+            
+            setFormData({ ...formData, banco: novoBanco.nome });
+            setShowBancoModal(false);
+            toast.success('Banco cadastrado com sucesso!');
+            return novoBanco;
+          } catch (error) {
+            toast.error('Erro ao cadastrar banco: ' + error.message);
+            return null;
+          } finally {
+            setSalvandoBanco(false);
           }
         }}
       />
