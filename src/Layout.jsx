@@ -137,8 +137,10 @@ export default function Layout({ children, currentPageName }) {
         email: colab.email || me.email || '',
       });
     } catch (e) {
-      console.log('Erro ao carregar usuário:', e);
+      console.error('Erro ao carregar usuário:', e);
       setUser(null);
+    } finally {
+      setLoadingUser(false);
     }
   };
 
