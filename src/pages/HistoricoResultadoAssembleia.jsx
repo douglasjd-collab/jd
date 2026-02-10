@@ -32,27 +32,45 @@ export default function HistoricoResultadoAssembleia() {
     }
   };
 
-  const { data: todosDetalhes = [], isLoading: loadingDetalhes } = useQuery({
+  const { data: todosDetalhes = [], isLoading: loadingDetalhes, error: errorDetalhes } = useQuery({
     queryKey: ['historico-detalhes-consolidado', empresaId],
     enabled: !!empresaId,
+    staleTime: 60000,
     queryFn: async () => {
-      return await base44.entities.HistoricoLanceDetalhe.filter({ empresa_id: empresaId });
+      try {
+        return await base44.entities.HistoricoLanceDetalhe.filter({ empresa_id: empresaId });
+      } catch (error) {
+        console.error('Erro ao carregar detalhes:', error);
+        return [];
+      }
     }
   });
 
   const { data: todosResumos = [], isLoading: loadingResumos } = useQuery({
     queryKey: ['historico-resumos-consolidado', empresaId],
     enabled: !!empresaId,
+    staleTime: 60000,
     queryFn: async () => {
-      return await base44.entities.HistoricoLanceResumo.filter({ empresa_id: empresaId });
+      try {
+        return await base44.entities.HistoricoLanceResumo.filter({ empresa_id: empresaId });
+      } catch (error) {
+        console.error('Erro ao carregar resumos:', error);
+        return [];
+      }
     }
   });
 
   const { data: historicos = [] } = useQuery({
     queryKey: ['historico-grupos', empresaId],
     enabled: !!empresaId,
+    staleTime: 60000,
     queryFn: async () => {
-      return await base44.entities.HistoricoLanceGrupo.filter({ empresa_id: empresaId });
+      try {
+        return await base44.entities.HistoricoLanceGrupo.filter({ empresa_id: empresaId });
+      } catch (error) {
+        console.error('Erro ao carregar históricos:', error);
+        return [];
+      }
     }
   });
 
