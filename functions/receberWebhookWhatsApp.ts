@@ -116,9 +116,16 @@ Deno.serve(async (req) => {
       console.log('📋 Tipo:', tipo, 'Conteúdo:', (conteudo || '').substring(0, 50));
 
       // Buscar conversa existente
-      const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-        cliente_telefone: telefoneLimpo
-      });
+      console.log('🔎 Buscando conversa com telefone:', telefoneLimpo);
+      let conversas = [];
+      try {
+        conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+          cliente_telefone: telefoneLimpo
+        });
+      } catch (filterErr) {
+        console.error('❌ Erro ao buscar conversa:', filterErr.message);
+        conversas = [];
+      }
       console.log('🔍 Conversas encontradas:', conversas.length);
 
       let conversa;
