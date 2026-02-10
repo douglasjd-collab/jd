@@ -107,9 +107,19 @@ export default function ConfiguracaoWhatsApp() {
         {/* Informações da Evolution API */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>⚙️</span> Dados da Evolution API
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <span>⚙️</span> Dados da Evolution API
+              </CardTitle>
+              <Button
+                variant={editMode ? 'outline' : 'default'}
+                size="sm"
+                onClick={handleEditMode}
+                disabled={saving}
+              >
+                {editMode ? 'Cancelar' : 'Editar'}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             
@@ -117,17 +127,20 @@ export default function ConfiguracaoWhatsApp() {
               <Label className="mb-2 block">URL da API</Label>
               <div className="flex gap-2">
                 <Input 
-                  value={evolutionUrl}
-                  readOnly 
-                  className="bg-slate-50"
+                  value={editMode ? tempUrl : evolutionUrl}
+                  onChange={(e) => editMode && setTempUrl(e.target.value)}
+                  readOnly={!editMode}
+                  className={editMode ? '' : 'bg-slate-50'}
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(evolutionUrl, 'url')}
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
+                {!editMode && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(evolutionUrl, 'url')}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -135,17 +148,20 @@ export default function ConfiguracaoWhatsApp() {
               <Label className="mb-2 block">Nome da Instância</Label>
               <div className="flex gap-2">
                 <Input 
-                  value={instanceName}
-                  readOnly 
-                  className="bg-slate-50"
+                  value={editMode ? tempInstance : instanceName}
+                  onChange={(e) => editMode && setTempInstance(e.target.value)}
+                  readOnly={!editMode}
+                  className={editMode ? '' : 'bg-slate-50'}
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(instanceName, 'instance')}
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
+                {!editMode && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(instanceName, 'instance')}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -153,20 +169,41 @@ export default function ConfiguracaoWhatsApp() {
               <Label className="mb-2 block">Chave de API</Label>
               <div className="flex gap-2">
                 <Input 
-                  value={apiKey}
-                  type="password"
-                  readOnly 
-                  className="bg-slate-50"
+                  value={editMode ? tempApiKey : apiKey}
+                  onChange={(e) => editMode && setTempApiKey(e.target.value)}
+                  type={editMode ? 'text' : 'password'}
+                  readOnly={!editMode}
+                  className={editMode ? '' : 'bg-slate-50'}
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(apiKey, 'key')}
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
+                {!editMode && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(apiKey, 'key')}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </div>
+
+            {editMode && (
+              <div className="flex gap-2 justify-end pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={handleEditMode}
+                  disabled={saving}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
