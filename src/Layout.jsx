@@ -22,7 +22,7 @@ import {
         Camera,
         Calculator,
         Calendar,
-        MessageCircle,
+        MessageSquare,
         Moon,
         Sun,
         Loader2
@@ -185,7 +185,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Oferta de Lance', icon: TrendingUp, page: 'OfertaLance', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Bate-papo', icon: MessageCircle, page: 'BatePapo', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Financeiro', icon: Wallet, page: 'RelatoriosFinanceiros', roles: ['master', 'super_admin', 'admin'] },
     { 
