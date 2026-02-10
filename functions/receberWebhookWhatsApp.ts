@@ -45,13 +45,14 @@ Deno.serve(async (req) => {
     let tipo = null;
     let conteudo = null;
 
-    // Formato 1: body.data.message (novo formato Evolution)
-    if (body.data?.message) {
+    // Formato 1: body.data.message (novo formato Evolution messages.upsert)
+    if (body.event === 'messages.upsert' && body.data?.message) {
       message = body.data.message;
-      telefone = message.from || body.from;
+      // Para messages.upsert, o telefone está em body.data.key.remoteJid
+      telefone = body.data.key?.remoteJid || message.from;
       tipo = message.type;
-      conteudo = message.text || message.caption;
-      console.log('✓ Formato 1 detectado (body.data.message)');
+      conteudo = message.conversation || message.text || message.caption;
+      console.log('✓ Formato 1 detectado (messages.upsert)');
     }
     // Formato 2: body.messages (webhook direto)
     else if (body.messages && body.messages.length > 0) {
