@@ -111,22 +111,32 @@ export default function BatePapo() {
 
   // Subscrição em tempo real para novas mensagens
   useEffect(() => {
-    if (!conversaSelecionada?.id) return;
-
-    console.log('[Real-time] Subscrevendo mensagens da conversa:', conversaSelecionada.id);
+    console.log('[Real-time] Subscribing to messages');
     
     const unsubscribe = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      console.log('[Real-time] Evento recebido:', event);
+      console.log('[Real-time] 📨 Evento recebido:', event.type, event.id);
       
-      if (event.data?.conversa_id === conversaSelecionada.id) {
-        console.log('[Real-time] ✅ Mensagem da conversa atual - invalidando cache');
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+      if (event.type === 'create' && event.data?.conversa_id) {
+        console.log('[Real-time] ✅ Nova mensagem - conversa:', event.data.conversa_id);
+        
+        // Atualizar conversas
         queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+        
+        // Se a conversa é a atual, atualizar mensagens
+        if (event.data.conversa_id === conversaSelecionada?.id) {
+          console.log('[Real-time] 🔄 Atualizando mensagens da conversa atual');
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id, empresaId] });
+        } else {
+          console.log('[Real-time] Mensagem de outra conversa');
+        }
+      } else if (event.type === 'update') {
+        console.log('[Real-time] 🔄 Atualização de mensagem');
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId] });
       }
     });
 
     return () => {
-      console.log('[Real-time] Desinscrevendo da conversa:', conversaSelecionada.id);
+      console.log('[Real-time] Desinscrevendo');
       unsubscribe();
     };
   }, [conversaSelecionada?.id, empresaId, queryClient]);
