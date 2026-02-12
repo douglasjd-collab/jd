@@ -226,16 +226,6 @@ export default function BatePapo() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Conversas</h1>
-            <p className="text-sm text-slate-500">WhatsApp Business</p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex-1 flex overflow-hidden">
         {/* Lista de Conversas */}
         <div className="w-80 bg-white border-r flex flex-col">
