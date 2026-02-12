@@ -99,12 +99,12 @@ import SyncTests from './pages/SyncTests';
 import TabelasComissaoEmprestimo from './pages/TabelasComissaoEmprestimo';
 import TabelasConsorcio from './pages/TabelasConsorcio';
 import TabelasEmprestimo from './pages/TabelasEmprestimo';
+import TesteWhatsApp from './pages/TesteWhatsApp';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import TesteWhatsApp from './pages/TesteWhatsApp';
 import __Layout from './Layout.jsx';
 
 
@@ -161,12 +161,12 @@ export const PAGES = {
     "TabelasComissaoEmprestimo": TabelasComissaoEmprestimo,
     "TabelasConsorcio": TabelasConsorcio,
     "TabelasEmprestimo": TabelasEmprestimo,
+    "TesteWhatsApp": TesteWhatsApp,
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "TesteWhatsApp": TesteWhatsApp,
 }
 
 export const pagesConfig = {

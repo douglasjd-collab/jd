@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, Copy, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ConfiguracaoWhatsApp() {
@@ -107,6 +107,34 @@ export default function ConfiguracaoWhatsApp() {
     } catch (error) {
       console.error('Erro ao atualizar webhook:', error);
       toast.error('❌ Erro: ' + error.message);
+    } finally {
+      setAtualizandoWebhook(false);
+    }
+  };
+
+  const testarRecebimento = async () => {
+    setAtualizandoWebhook(true);
+    try {
+      const { data } = await base44.functions.invoke('testarRecebimentoWebhook');
+      console.log('📊 Diagnóstico:', data);
+      
+      if (data.success) {
+        if (data.diagnostico.webhook_configurado) {
+          toast.success('✅ Webhook configurado corretamente!', {
+            description: `${data.diagnostico.banco.total_mensagens} mensagens e ${data.diagnostico.banco.total_conversas} conversas no banco`
+          });
+        } else {
+          toast.warning('⚠️ ' + data.recomendacao, {
+            duration: 8000
+          });
+        }
+        // Mostrar detalhes completos
+        console.table(data.diagnostico);
+      } else {
+        toast.error('Erro: ' + data.error);
+      }
+    } catch (error) {
+      toast.error('Erro ao diagnosticar: ' + error.message);
     } finally {
       setAtualizandoWebhook(false);
     }
@@ -312,7 +340,7 @@ export default function ConfiguracaoWhatsApp() {
               )}
             </div>
 
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t space-y-3">
               <Button 
                 onClick={atualizarWebhookEvolution}
                 disabled={atualizandoWebhook || !evolutionUrl || !instanceName || !apiKey}
@@ -321,7 +349,7 @@ export default function ConfiguracaoWhatsApp() {
                 {atualizandoWebhook ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Configurando Webhook...
+                    Configurando...
                   </>
                 ) : (
                   <>
@@ -330,8 +358,28 @@ export default function ConfiguracaoWhatsApp() {
                   </>
                 )}
               </Button>
-              <p className="text-xs text-center text-slate-500 mt-2">
-                Clique para configurar o webhook automaticamente na Evolution API
+
+              <Button 
+                onClick={testarRecebimento}
+                disabled={atualizandoWebhook}
+                variant="outline"
+                className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50"
+              >
+                {atualizandoWebhook ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Diagnosticando...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Diagnosticar Por Que Não Recebo Mensagens
+                  </>
+                )}
+              </Button>
+              
+              <p className="text-xs text-center text-slate-500">
+                Use o diagnóstico para verificar se o webhook está correto
               </p>
             </div>
           </CardContent>
