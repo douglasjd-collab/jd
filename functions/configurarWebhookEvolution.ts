@@ -14,13 +14,29 @@ Deno.serve(async (req) => {
     console.log('📋 Verificando variáveis de ambiente:');
     console.log('- EVOLUTION_API_URL:', evolutionUrl ? '✅' : '❌ FALTANDO');
     console.log('- EVOLUTION_API_KEY:', evolutionKey ? '✅' : '❌ FALTANDO');
-    console.log('- EVOLUTION_INSTANCE_NAME:', instanceName || '❌ FALTANDO');
+    console.log('- EVOLUTION_INSTANCE_NAME (env):', instanceName || '❌ FALTANDO');
+    
+    // Tentar obter instance da empresa do usuário autenticado
+    let finalInstanceName = instanceName;
+    try {
+      const base44 = createClientFromRequest(req);
+      const user = await base44.auth.me();
+      if (user?.empresa_id) {
+        const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: user.empresa_id });
+        if (empresas.length > 0 && empresas[0].evolution_instance_name) {
+          finalInstanceName = empresas[0].evolution_instance_name;
+          console.log('✅ Instance obtida da empresa:', finalInstanceName);
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Não conseguiu obter instance da empresa, usando env:', instanceName);
+    }
 
-    if (!evolutionUrl || !evolutionKey || !instanceName) {
+    if (!evolutionUrl || !evolutionKey || !finalInstanceName) {
       const missing = [];
       if (!evolutionUrl) missing.push('EVOLUTION_API_URL');
       if (!evolutionKey) missing.push('EVOLUTION_API_KEY');
-      if (!instanceName) missing.push('EVOLUTION_INSTANCE_NAME');
+      if (!finalInstanceName) missing.push('EVOLUTION_INSTANCE_NAME');
       
       console.error('❌ Variáveis faltando:', missing.join(', '));
       throw new Error(`Configure estas variáveis: ${missing.join(', ')}`);
