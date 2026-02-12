@@ -67,21 +67,25 @@ Deno.serve(async (req) => {
     console.log('   URL:', setUrl);
     
     const payload = {
-      url: webhookUrl,
-      events: [
-        'MESSAGES_UPSERT',
-        'MESSAGES_UPDATE',
-        'MESSAGES_DELETE',
-        'SEND_MESSAGE',
-        'CONTACTS_SET',
-        'PRESENCE_UPDATE',
-        'TYPING_START',
-        'TYPING_STOP',
-        'READ_MESSAGES',
-        'CONNECTION_UPDATE',
-        'CALL',
-        'NEW_JWT_TOKEN'
-      ]
+      webhook: {
+        url: webhookUrl,
+        webhook_by_events: false,
+        webhook_base64: false,
+        events: [
+          'MESSAGES_UPSERT',
+          'MESSAGES_UPDATE',
+          'MESSAGES_DELETE',
+          'SEND_MESSAGE',
+          'CONTACTS_SET',
+          'PRESENCE_UPDATE',
+          'TYPING_START',
+          'TYPING_STOP',
+          'READ_MESSAGES',
+          'CONNECTION_UPDATE',
+          'CALL',
+          'NEW_JWT_TOKEN'
+        ]
+      }
     };
     
     console.log('   Payload:', JSON.stringify(payload, null, 2));
