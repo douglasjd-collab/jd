@@ -98,8 +98,13 @@ export default function ConfiguracaoWhatsApp() {
       setEvolutionUrl(tempUrl);
       setInstanceName(tempInstance);
       setApiKey(tempApiKey);
+      
+      // Gerar novo webhook URL com o novo instance name
+      const novaUrl = gerarUrlWebhook(tempInstance);
+      setWebhookUrl(novaUrl);
+      
       setEditMode(false);
-      toast.success('✅ Configurações WhatsApp salvas para esta empresa!');
+      toast.success('✅ Configurações WhatsApp salvas! A URL do webhook foi atualizada automaticamente.');
     } catch (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } finally {
