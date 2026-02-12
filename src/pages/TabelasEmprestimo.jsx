@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Pencil, Trash2, Upload, History, Plus } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Upload, History, Plus, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -297,6 +297,27 @@ export default function TabelasEmprestimo() {
     });
   };
 
+  const handleBaixarModelo = () => {
+    const csvContent = `Data,Convenio,Banco,Tabela,Prazo
+01/02/2026,INSS,C6 Bank,INSS ML NORMAL - WEB,84
+01/02/2026,Governo PE,BMG,Governo PE Especial,96
+15/02/2026,INSS,Digio,INSS Refin,72`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'modelo_tabelas_emprestimo.csv');
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Modelo baixado com sucesso!');
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (editando) {
@@ -531,117 +552,100 @@ export default function TabelasEmprestimo() {
       <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Importar Tabelas</DialogTitle>
+            <DialogTitle>Importar Tabelas via CSV</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Importação via CSV */}
-            <div className="space-y-4">
+          <div className="space-y-4">
+            {/* Botão para baixar modelo */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm text-blue-900 mb-1">
+                    📥 Baixe o Modelo de Planilha
+                  </h3>
+                  <p className="text-sm text-blue-700">
+                    Baixe o arquivo CSV modelo para preencher com suas tabelas
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleBaixarModelo}
+                  className="border-blue-300 hover:bg-blue-100"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar Modelo
+                </Button>
+              </div>
+            </div>
+
+            {/* Upload do arquivo */}
+            <div className="space-y-3">
               <div>
-                <Label className="text-base font-semibold">Importar via Arquivo CSV/Excel</Label>
+                <Label className="text-base font-semibold">Selecione o Arquivo CSV</Label>
                 <p className="text-sm text-slate-500 mt-1">
-                  Selecione um arquivo CSV com as colunas: Data, Convenio, Banco, Tabela, Prazo
+                  Formato: Data, Convenio, Banco, Tabela, Prazo
                 </p>
               </div>
 
-              <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
+              <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center hover:border-slate-300 transition-colors">
+                <Upload className="w-12 h-12 mx-auto mb-3 text-slate-400" />
                 <Input
                   type="file"
                   accept=".csv,.txt"
                   onChange={(e) => setArquivoCSV(e.target.files?.[0] || null)}
-                  className="max-w-xs mx-auto"
+                  className="max-w-sm mx-auto"
                 />
                 {arquivoCSV && (
-                  <p className="text-sm text-green-600 mt-2">
-                    ✓ {arquivoCSV.name}
-                  </p>
+                  <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+                    <span className="text-green-600 font-medium">✓</span>
+                    <span className="text-sm text-green-700">{arquivoCSV.name}</span>
+                  </div>
                 )}
               </div>
-
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <p className="text-sm font-medium mb-2">Formato esperado do CSV:</p>
-                <div className="text-xs font-mono bg-white p-3 rounded border">
-                  Data,Convenio,Banco,Tabela,Prazo<br/>
-                  01/02/2026,INSS,C6 Bank,INSS ML NORMAL,84<br/>
-                  01/02/2026,Governo PE,BMG,Governo PE Especial,96
-                </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  Aceita separação por vírgula (,), ponto-e-vírgula (;) ou tab
-                </p>
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <Button 
-                  onClick={handleImportarCSV} 
-                  disabled={!arquivoCSV || importarCSVMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {importarCSVMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Importando CSV...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Importar CSV
-                    </>
-                  )}
-                </Button>
-              </div>
             </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-slate-200" />
+            {/* Exemplo do formato */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="text-sm font-medium mb-2">Exemplo do formato CSV:</p>
+              <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
+                <div>Data,Convenio,Banco,Tabela,Prazo</div>
+                <div>01/02/2026,INSS,C6 Bank,INSS ML NORMAL - WEB,84</div>
+                <div>01/02/2026,Governo PE,BMG,Governo PE Especial,96</div>
+                <div>15/02/2026,INSS,Digio,INSS Refin,72</div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-slate-500">ou</span>
-              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                💡 Aceita separação por vírgula (,), ponto-e-vírgula (;) ou tab
+              </p>
             </div>
 
-            {/* Importação Manual */}
-            <div className="space-y-4">
-              <div>
-                <Label className="text-base font-semibold">Importar via Cole e Copia</Label>
-                <p className="text-sm text-slate-500 mt-1">
-                  Cole dados do Excel (formato: Nome [TAB] Comissão Corretor [TAB] Comissão Empresa)
-                </p>
-              </div>
-
-              <div>
-                <textarea
-                  value={importText}
-                  onChange={(e) => setImportText(e.target.value)}
-                  className="flex min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono"
-                  placeholder="210180 - INSS ML NORMAL - WEB [INSS C6 BANK]	8.20	10.00&#10;210181 - INSS ML ESPECIAL [INSS BMG]	7.50	9.50"
-                />
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <Button onClick={handleImportar} disabled={importarMutation.isPending}>
-                  {importarMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Importando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Importar Manual
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
+            {/* Botões de ação */}
             <div className="flex gap-3 justify-end pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => {
-                setShowImportModal(false);
-                setArquivoCSV(null);
-                setImportText('');
-              }}>
-                Fechar
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setShowImportModal(false);
+                  setArquivoCSV(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleImportarCSV} 
+                disabled={!arquivoCSV || importarCSVMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {importarCSVMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Importar Tabelas
+                  </>
+                )}
               </Button>
             </div>
           </div>
