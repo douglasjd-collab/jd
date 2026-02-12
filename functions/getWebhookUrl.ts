@@ -2,45 +2,32 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const url = new URL(req.url);
-    const appDomain = url.hostname;
-    
-    // Tentar carregar config da entidade primeiro
-    let evolutionUrl = '';
-    let instanceName = '';
-    let apiKey = '';
+    // Obter credenciais
+    const evolutionUrl = Deno.env.get('EVOLUTION_API_URL') || '';
+    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY') || '';
+    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'TESTEWAZE';
 
-    try {
-      const configs = await base44.asServiceRole.entities.ConfiguracaoSistema.filter(
-        { chave: 'whatsapp_config' }
-      );
-      
-      if (configs && configs.length > 0) {
-        const config = JSON.parse(configs[0].valor || '{}');
-        evolutionUrl = config.evolutionUrl || '';
-        instanceName = config.instanceName || '';
-        apiKey = config.apiKey || '';
-      }
-    } catch (e) {
-      console.log('Usando env variables para WhatsApp config');
-    }
+    // Construir URL do webhook - PADRÃO DO DEPLOYMENT
+    const currentUrl = new URL(req.url);
+    const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
+    const webhookUrl = `${baseUrl}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
 
-    // Fallback para variáveis de ambiente
-    if (!evolutionUrl) evolutionUrl = Deno.env.get('EVOLUTION_API_URL') || '';
-    if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'default';
-    if (!apiKey) apiKey = Deno.env.get('EVOLUTION_API_KEY') || '';
-    
-    const webhookUrl = `https://${appDomain}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
-    
+    console.log('Base URL do deployment:', baseUrl);
+    console.log('Webhook URL gerada:', webhookUrl);
+    console.log('Instance Name:', instanceName);
+
     return Response.json({
-      webhookUrl,
-      appDomain,
-      instanceName,
-      evolutionUrl,
-      apiKey: apiKey ? '***' : ''
+      webhookUrl: webhookUrl,
+      evolutionUrl: evolutionUrl,
+      instanceName: instanceName,
+      apiKey: evolutionKey ? '***configurada***' : '',
+      deployment_host: currentUrl.host
     });
+
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('Erro ao obter webhook URL:', error);
+    return Response.json({
+      error: error.message
+    }, { status: 500 });
   }
 });
