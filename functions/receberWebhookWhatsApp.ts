@@ -215,25 +215,50 @@ Deno.serve(async (req) => {
         throw new Error('FALHA CRÍTICA: Conversa não tem ID válido');
       }
 
-    // CRIAR MENSAGEM
-    console.log('💾 Criando mensagem...');
-    const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
-      conversa_id: conversa.id,
-      empresa_id: empresaId,
-      remetente: 'cliente',
-      tipo_conteudo: tipo,
-      texto: conteudo,
-      whatsapp_message_id: messageId,
-      data_envio: new Date().toISOString(),
-      status: 'entregue'
-    });
+    // CRIAR MENSAGEM - REGRA RIGOROSA
+    console.log('💾 CRIANDO MENSAGEM OBRIGATORIAMENTE...');
+
+    // Validação final
+    if (!conversa.id) {
+      throw new Error('ERRO CRÍTICO: conversa.id está vazio ou undefined');
+    }
+    if (!tipo || !conteudo) {
+      throw new Error('ERRO CRÍTICO: tipo ou conteudo está vazio');
+    }
+    if (!messageId) {
+      throw new Error('ERRO CRÍTICO: messageId está vazio');
+    }
+
+    let novaMensagem;
+    try {
+      novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        conversa_id: conversa.id,
+        empresa_id: empresaId,
+        remetente: 'cliente',
+        tipo_conteudo: tipo,
+        texto: conteudo || '',
+        whatsapp_message_id: messageId,
+        data_envio: new Date().toISOString(),
+        status: 'entregue'
+      });
+
+      if (!novaMensagem || !novaMensagem.id) {
+        throw new Error('Mensagem criada mas sem ID válido');
+      }
+    } catch (createMsgErr) {
+      console.error('❌ ERRO AO CRIAR MENSAGEM:', createMsgErr.message);
+      throw createMsgErr;
+    }
 
     console.log('='.repeat(100));
-    console.log('✅ MENSAGEM SALVA COM SUCESSO!');
-    console.log('ID:', novaMensagem.id);
+    console.log('✅✅✅ MENSAGEM SALVA COM SUCESSO!');
+    console.log('ID Mensagem:', novaMensagem.id);
     console.log('Conversa ID:', novaMensagem.conversa_id);
-    console.log('Texto:', novaMensagem.texto);
+    console.log('Empresa ID:', novaMensagem.empresa_id);
+    console.log('Remetente:', novaMensagem.remetente);
     console.log('Tipo:', novaMensagem.tipo_conteudo);
+    console.log('Conteudo:', novaMensagem.texto?.substring(0, 100));
+    console.log('WhatsApp Message ID:', novaMensagem.whatsapp_message_id);
     console.log('='.repeat(100));
 
     return Response.json({
