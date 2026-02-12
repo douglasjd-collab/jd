@@ -25,29 +25,39 @@ Deno.serve(async (req) => {
     // Ler body
     const bodyText = await req.text();
     console.log('📥 Body recebido (length):', bodyText.length);
-    console.log('📥 Body raw:', bodyText.substring(0, 500));
+    console.log('📥 Body raw completo:', bodyText);
     
-    const body = JSON.parse(bodyText);
+    let body;
+    try {
+      body = JSON.parse(bodyText);
+    } catch (e) {
+      console.log('❌ Erro ao parsear JSON:', e.message);
+      console.log('📥 Body texto:', bodyText);
+      return Response.json({ success: false, error: 'Invalid JSON' }, { status: 400 });
+    }
+    
     console.log('✅ JSON parseado');
     console.log('📋 Event type:', body.event);
+    console.log('📋 Instance:', body.instance);
+    console.log('📋 Dados:', JSON.stringify(body.data, null, 2).substring(0, 500));
 
     // Ignorar eventos não relevantes
-    if (body.event === 'messages.update') {
-      console.log('⏭️ Ignorado: messages.update');
+    if (body.event === 'messages.update' || body.event === 'MESSAGE_UPDATE') {
+      console.log('⏭️ Ignorado: messages.update/MESSAGE_UPDATE (status)');
       return Response.json({ success: true, skipped: 'status_update' });
     }
 
     // Aceitar tanto 'messages.upsert' quanto 'MESSAGES_UPSERT'
-    const isMessageUpsert = body.event === 'messages.upsert' || body.event === 'MESSAGES_UPSERT';
+    const isMessageUpsert = body.event === 'messages.upsert' || body.event === 'MESSAGES_UPSERT' || body.event === 'messages';
     
     if (isMessageUpsert && body.data?.key?.fromMe === true) {
-      console.log('⏭️ Ignorado: Mensagem do bot');
+      console.log('⏭️ Ignorado: Mensagem enviada pelo bot (fromMe === true)');
       return Response.json({ success: true, skipped: 'from_bot' });
     }
 
     if (!isMessageUpsert) {
-      console.log('⚠️ Evento não suportado:', body.event);
-      return Response.json({ success: true, skipped: 'unknown_event' });
+      console.log('⚠️ Evento não suportado:', body.event, '- Aceitando mesmo assim');
+      // Deixar continuar mesmo se não for reconhecido - pode ser outro formato
     }
 
     // Processar mensagem
