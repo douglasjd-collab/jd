@@ -34,13 +34,21 @@ Deno.serve(async (req) => {
     console.log('  - conversa_id:', conversa_id);
     console.log('  - mensagem_texto:', mensagem_texto?.substring(0, 50));
     console.log('  - numero_cliente:', numero_cliente);
+    console.log('📋 Payload completo:', JSON.stringify(payload));
 
-    if (!conversa_id || !mensagem_texto || !numero_cliente) {
-      console.error('❌ Parâmetros faltando');
-      return Response.json({
-        error: 'Parâmetros inválidos',
-        recebido: { conversa_id, mensagem_texto: !!mensagem_texto, numero_cliente }
-      }, { status: 400 });
+    if (!conversa_id) {
+      console.error('❌ conversa_id faltando');
+      return Response.json({ error: 'conversa_id é obrigatório' }, { status: 400 });
+    }
+    
+    if (!mensagem_texto || mensagem_texto.trim() === '') {
+      console.error('❌ mensagem_texto vazio ou nulo:', mensagem_texto);
+      return Response.json({ error: 'mensagem_texto não pode estar vazio' }, { status: 400 });
+    }
+    
+    if (!numero_cliente) {
+      console.error('❌ numero_cliente faltando');
+      return Response.json({ error: 'numero_cliente é obrigatório' }, { status: 400 });
     }
 
     // Verificar credenciais Evolution
