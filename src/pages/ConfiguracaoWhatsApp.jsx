@@ -42,30 +42,44 @@ export default function ConfiguracaoWhatsApp() {
       const me = await base44.auth.me();
       setUser(me);
 
-      if (me?.empresa_id) {
+      // Se é super_admin, listar todas as empresas
+      if (me?.role === 'super_admin' || me?.perfil === 'super_admin') {
+        const todasEmpresas = await base44.entities.Empresa.list('-created_date', 100);
+        setEmpresas(todasEmpresas || []);
+        
+        // Selecionar a primeira empresa por padrão
+        if (todasEmpresas && todasEmpresas.length > 0) {
+          const empresaData = todasEmpresas[0];
+          setSelectedEmpresaId(empresaData.id);
+          carregarEmpresa(empresaData);
+        }
+      } else if (me?.empresa_id) {
+        // Usuário normal - carregar sua empresa
         const emp = await base44.entities.Empresa.filter({ id: me.empresa_id });
         if (emp && emp.length > 0) {
           const empresaData = emp[0];
-          setEmpresa(empresaData);
-          setEvolutionUrl(empresaData.evolution_url || '');
-          setInstanceName(empresaData.evolution_instance_name || '');
-          setApiKey(empresaData.evolution_api_key || '');
-          
-          // Gerar URL webhook com instance name da empresa
-          if (empresaData.evolution_instance_name) {
-            const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
-            setWebhookUrl(webhookGerada);
-          }
+          setSelectedEmpresaId(empresaData.id);
+          carregarEmpresa(empresaData);
         }
       }
-
-      // Gerar webhook URL com base na empresa
-      obterUrlCorretaAuto();
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar configurações');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const carregarEmpresa = (empresaData) => {
+    setEmpresa(empresaData);
+    setEvolutionUrl(empresaData.evolution_url || '');
+    setInstanceName(empresaData.evolution_instance_name || '');
+    setApiKey(empresaData.evolution_api_key || '');
+    
+    // Gerar URL webhook com instance name da empresa
+    if (empresaData.evolution_instance_name) {
+      const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
+      setWebhookUrl(webhookGerada);
     }
   };
 
