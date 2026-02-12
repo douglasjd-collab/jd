@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, MessageCircle, Search, MoreVertical, UserCog, Ban, Users, Tag, CheckSquare, FileText, UserCheck } from 'lucide-react';
+import { Loader2, MessageCircle, Search, MoreVertical, UserCog, Ban, Users, Tag, CheckSquare, FileText, UserCheck, Plus, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
@@ -23,6 +24,7 @@ export default function BatePapo() {
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
   const [searchConversas, setSearchConversas] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('todas');
   const messagesEndRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -171,10 +173,14 @@ export default function BatePapo() {
     }
   });
 
-  const conversasFiltradas = conversas.filter(c =>
-    (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
-    (c.cliente_telefone || '').includes(searchConversas)
-  );
+  const conversasFiltradas = conversas.filter(c => {
+    const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
+      (c.cliente_telefone || '').includes(searchConversas);
+    
+    const matchStatus = filtroStatus === 'todas' || c.status === filtroStatus;
+    
+    return matchSearch && matchStatus;
+  });
 
   if (!user || !empresaId) {
     return (
@@ -234,6 +240,27 @@ export default function BatePapo() {
         {/* Lista de Conversas */}
         <div className="w-80 bg-white border-r flex flex-col">
           <div className="p-4 border-b space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold text-slate-900">Conversas</h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full h-8 w-8"
+                  onClick={() => toast.info('Filtros em desenvolvimento')}
+                >
+                  <Filter className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  className="rounded-full bg-blue-500 hover:bg-blue-600 h-10 w-10"
+                  onClick={() => toast.info('Iniciar nova conversa em desenvolvimento')}
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
@@ -243,6 +270,14 @@ export default function BatePapo() {
                 className="pl-10 bg-slate-50 border-slate-200"
               />
             </div>
+
+            <Tabs value={filtroStatus} onValueChange={setFiltroStatus} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100">
+                <TabsTrigger value="todas" className="text-xs">Todas</TabsTrigger>
+                <TabsTrigger value="ativa" className="text-xs">Ativas</TabsTrigger>
+                <TabsTrigger value="arquivada" className="text-xs">Arquivadas</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
           
           <div className="flex-1 overflow-y-auto">
