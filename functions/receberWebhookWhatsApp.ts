@@ -6,20 +6,10 @@ Deno.serve(async (req) => {
   console.log('='.repeat(100));
   console.log(`🔔 WEBHOOK RECEBIDO - ${timestamp}`);
   console.log('='.repeat(100));
-  console.log('Método:', req.method);
-  console.log('URL completa:', req.url);
-  console.log('Headers:', JSON.stringify({
-    'content-type': req.headers.get('content-type'),
-    'user-agent': req.headers.get('user-agent')
-  }));
-  
-  // Extrair nome da instância da URL
-  const url = new URL(req.url);
-  const instanceName = url.searchParams.get('instance');
-  console.log('Instance Name extraído da URL:', instanceName);
   
   // Suporte a GET (verificação/challenge)
   if (req.method === 'GET') {
+    const url = new URL(req.url);
     const challenge = url.searchParams.get('challenge') || url.searchParams.get('hub.challenge');
     console.log('✅ GET request - Challenge:', challenge);
     return new Response(challenge || 'OK', { status: 200 });
@@ -32,65 +22,60 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Ler e parsear body
-    console.log('📥 Lendo body da requisição...');
+    // Ler body
     const bodyText = await req.text();
-    console.log('Body length:', bodyText.length, 'bytes');
-    console.log('Body raw (primeiros 1000 chars):', bodyText.substring(0, 1000));
+    console.log('📥 Body recebido (length):', bodyText.length);
+    console.log('📥 Body raw:', bodyText.substring(0, 500));
     
     const body = JSON.parse(bodyText);
-    console.log('✅ JSON parseado com sucesso');
-    console.log('Event type:', body.event);
-    console.log('Body completo:', JSON.stringify(body, null, 2));
+    console.log('✅ JSON parseado');
+    console.log('📋 Event type:', body.event);
 
     // Ignorar eventos não relevantes
     if (body.event === 'messages.update') {
-      console.log('⏭️ Ignorado: messages.update (apenas status)');
+      console.log('⏭️ Ignorado: messages.update');
       return Response.json({ success: true, skipped: 'status_update' });
     }
 
     if (body.event === 'messages.upsert' && body.data?.key?.fromMe === true) {
-      console.log('⏭️ Ignorado: Mensagem enviada pelo bot');
+      console.log('⏭️ Ignorado: Mensagem do bot');
       return Response.json({ success: true, skipped: 'from_bot' });
     }
 
-    // Processar mensagem
     if (body.event !== 'messages.upsert') {
-      console.log('⚠️ Evento não reconhecido:', body.event);
+      console.log('⚠️ Evento desconhecido:', body.event);
       return Response.json({ success: true, skipped: 'unknown_event' });
     }
 
+    // Processar mensagem
     console.log('💬 Processando mensagem...');
     
-    // Extrair dados da mensagem
     const message = body.data?.message;
     const key = body.data?.key;
     const pushName = body.data?.pushName || 'Cliente';
     
     if (!message || !key) {
-      console.log('❌ Mensagem sem dados válidos');
-      return Response.json({ success: false, error: 'Invalid message data' }, { status: 400 });
+      console.log('❌ Dados inválidos');
+      return Response.json({ success: false, error: 'Invalid data' }, { status: 400 });
     }
 
     const telefone = key.remoteJid;
     const messageId = key.id;
     
     console.log('📞 Telefone:', telefone);
-    console.log('📧 Message ID:', messageId);
-    console.log('👤 Push Name:', pushName);
+    console.log('🆔 Message ID:', messageId);
+    console.log('👤 Nome:', pushName);
 
     // Determinar tipo e conteúdo
-    let tipo = 'text';
+    let tipo = 'texto';
     let conteudo = '';
     
     if (message.conversation) {
-      tipo = 'text';
       conteudo = message.conversation;
     } else if (message.extendedTextMessage?.text) {
-      tipo = 'text';
       conteudo = message.extendedTextMessage.text;
     } else if (message.imageMessage) {
-      tipo = 'image';
+      tipo = 'imagem';
       conteudo = message.imageMessage.caption || 'Imagem';
     } else if (message.audioMessage) {
       tipo = 'audio';
@@ -99,35 +84,53 @@ Deno.serve(async (req) => {
       tipo = 'video';
       conteudo = message.videoMessage.caption || 'Vídeo';
     } else if (message.documentMessage) {
-      tipo = 'document';
+      tipo = 'pdf';
       conteudo = message.documentMessage.title || 'Documento';
+    } else {
+      conteudo = 'Mensagem não suportada';
     }
 
-    console.log('Tipo:', tipo);
-    console.log('Conteúdo:', conteudo);
+    console.log('📝 Tipo:', tipo);
+    console.log('📝 Conteúdo:', conteudo);
 
     // Limpar telefone
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
-    console.log('Telefone limpo:', telefoneLimpo);
+    console.log('📱 Telefone limpo:', telefoneLimpo);
 
-    // Inicializar SDK
+    // SDK
     const base44 = createClientFromRequest(req);
     
-    // Buscar empresa
-    console.log('🏢 Buscando empresa...');
+    // Buscar TODAS as empresas ativas
+    console.log('🏢 Buscando empresas...');
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
+    console.log('🏢 Empresas encontradas:', empresas.length);
+    
     if (!empresas || empresas.length === 0) {
-      console.log('❌ Nenhuma empresa ativa encontrada');
-      return Response.json({ success: false, error: 'No active company' }, { status: 400 });
+      console.log('❌ Nenhuma empresa ativa');
+      return Response.json({ success: false, error: 'No company' }, { status: 400 });
     }
+    
     const empresaId = empresas[0].id;
     console.log('✅ Empresa ID:', empresaId);
 
+    // Verificar se JÁ EXISTE esta mensagem (evitar duplicatas)
+    console.log('🔍 Verificando duplicatas...');
+    const mensagensExistentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+      whatsapp_message_id: messageId
+    });
+    
+    if (mensagensExistentes.length > 0) {
+      console.log('⏭️ Mensagem já existe, ignorando duplicata');
+      return Response.json({ success: true, skipped: 'duplicate' });
+    }
+
     // Buscar ou criar conversa
     console.log('💬 Buscando conversa...');
-    const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+    let conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+      empresa_id: empresaId,
       cliente_telefone: telefoneLimpo
     });
+    console.log('💬 Conversas encontradas:', conversas.length);
 
     let conversa;
     if (conversas.length === 0) {
@@ -139,28 +142,30 @@ Deno.serve(async (req) => {
         cliente_telefone: telefoneLimpo,
         whatsapp_id: messageId,
         status: 'ativa',
-        ultima_mensagem: conteudo,
+        ultima_mensagem: conteudo.substring(0, 200),
         data_ultima_mensagem: new Date().toISOString()
       });
       console.log('✅ Conversa criada:', conversa.id);
     } else {
       conversa = conversas[0];
       console.log('✅ Conversa existente:', conversa.id);
+      
+      // Atualizar última mensagem
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-        ultima_mensagem: conteudo,
-        data_ultima_mensagem: new Date().toISOString()
+        ultima_mensagem: conteudo.substring(0, 200),
+        data_ultima_mensagem: new Date().toISOString(),
+        status: 'ativa'
       });
+      console.log('✅ Conversa atualizada');
     }
 
-    // Criar mensagem
-    console.log('💾 Salvando mensagem...');
-    const tipoConteudo = tipo === 'image' ? 'imagem' : tipo === 'document' ? 'pdf' : tipo;
-    
+    // CRIAR MENSAGEM
+    console.log('💾 Criando mensagem...');
     const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
       conversa_id: conversa.id,
       empresa_id: empresaId,
       remetente: 'cliente',
-      tipo_conteudo: tipoConteudo,
+      tipo_conteudo: tipo,
       texto: conteudo,
       whatsapp_message_id: messageId,
       data_envio: new Date().toISOString(),
@@ -169,30 +174,30 @@ Deno.serve(async (req) => {
 
     console.log('='.repeat(100));
     console.log('✅ MENSAGEM SALVA COM SUCESSO!');
-    console.log('ID da mensagem:', novaMensagem.id);
+    console.log('ID:', novaMensagem.id);
     console.log('Conversa ID:', novaMensagem.conversa_id);
     console.log('Texto:', novaMensagem.texto);
+    console.log('Tipo:', novaMensagem.tipo_conteudo);
     console.log('='.repeat(100));
 
     return Response.json({
       success: true,
       message_id: novaMensagem.id,
       conversa_id: conversa.id,
+      telefone: telefoneLimpo,
       timestamp: timestamp
     });
 
   } catch (error) {
     console.log('='.repeat(100));
     console.log('❌ ERRO CRÍTICO');
-    console.log('Timestamp:', timestamp);
     console.log('Mensagem:', error.message);
     console.log('Stack:', error.stack);
     console.log('='.repeat(100));
     
     return Response.json({
       success: false,
-      error: error.message,
-      timestamp: timestamp
+      error: error.message
     }, { status: 500 });
   }
 });
