@@ -460,10 +460,10 @@ export default function ConfiguracaoWhatsApp() {
                   </div>
                   <div className="p-3 bg-green-100 border border-green-300 rounded-lg">
                     <p className="text-xs text-green-900 font-semibold">
-                      ✅ Esta URL inclui automaticamente: <code className="bg-white px-2 py-1 rounded">?instance=TESTEWAZE</code>
+                      ✅ URL gerada dinamicamente com o nome da instância: <code className="bg-white px-2 py-1 rounded">?instance={instanceName || 'SUA_INSTANCIA'}</code>
                     </p>
                     <p className="text-xs text-green-800 mt-1">
-                      Mensagens enviadas e recebidas serão processadas por esta URL
+                      Cada subconta terá sua própria instância no Evolution API, garantindo isolamento de dados
                     </p>
                   </div>
                 </>
