@@ -206,6 +206,28 @@ export default function ConfiguracaoWhatsApp() {
     }
   };
 
+  const reconfigurarWebhook = async () => {
+    setAtualizandoWebhook(true);
+    try {
+      const { data } = await base44.functions.invoke('reconfigurarWebhookEvolution');
+      console.log('⚙️ Reconfiguração webhook:', data);
+
+      if (data.success) {
+        toast.success('✅ Webhook reconfigurado!', {
+          description: 'Aguarde 2-3 minutos e envie uma mensagem de teste',
+          duration: 7000
+        });
+      } else {
+        toast.error('❌ Erro: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao reconfigurar webhook:', error);
+      toast.error('Erro: ' + error.message);
+    } finally {
+      setAtualizandoWebhook(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
