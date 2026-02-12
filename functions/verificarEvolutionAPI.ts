@@ -93,13 +93,25 @@ Deno.serve(async (req) => {
     const webhookUrl = `${baseUrl}/webhook/list/${instanceName}`;
     console.log('   URL:', webhookUrl);
     
-    const webhookResponse = await fetch(webhookUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'apikey': evolutionKey
-      }
-    });
+    const controller2 = new AbortController();
+    const timeoutId2 = setTimeout(() => controller2.abort(), 5000);
+    
+    let webhookResponse;
+    try {
+      webhookResponse = await fetch(webhookUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'apikey': evolutionKey
+        },
+        signal: controller2.signal
+      });
+    } catch (e) {
+      clearTimeout(timeoutId2);
+      console.log('   ❌ Erro na requisição:', e.message);
+      webhookResponse = { ok: false, status: 0 };
+    }
+    clearTimeout(timeoutId2);
     
     console.log('   Status:', webhookResponse.status);
     
