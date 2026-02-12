@@ -51,6 +51,19 @@ export default function BatePapo() {
       setUser(me);
 
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        // Se é super admin SEM empresa_id, buscar JD PROMOTORA
+        if (!me.empresa_id) {
+          const jd = await base44.asServiceRole.entities.Empresa.filter(
+            { nome: { $regex: 'JD.*Promotora' } }
+          );
+          if (jd && jd.length > 0) {
+            setEmpresaId(jd[0].id);
+            console.log('✅ Super admin sem empresa, usando JD PROMOTORA:', jd[0].id);
+            return;
+          }
+        }
+        
+        // Fallback: primeira empresa ativa
         const empresas = await base44.entities.Empresa.filter({ status: 'ativa' });
         if (empresas.length > 0) setEmpresaId(empresas[0].id);
       } else {
