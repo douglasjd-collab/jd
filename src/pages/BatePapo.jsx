@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
+import NovaConversaModal from '@/components/chat/NovaConversaModal';
 
 export default function BatePapo() {
   const [user, setUser] = useState(null);
@@ -25,6 +26,7 @@ export default function BatePapo() {
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
+  const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -128,6 +130,32 @@ export default function BatePapo() {
       unsubscribe();
     };
   }, [conversaSelecionada?.id, empresaId, queryClient]);
+
+  const criarConversaMutation = useMutation({
+    mutationFn: async ({ telefone, nome }) => {
+      // Criar nova conversa
+      const novaConversa = await base44.entities.ConversaWhatsapp.create({
+        empresa_id: empresaId,
+        cliente_id: '',
+        cliente_nome: nome,
+        cliente_telefone: telefone,
+        whatsapp_id: `conv_${Date.now()}`,
+        status: 'ativa',
+        ultima_mensagem: '',
+        data_ultima_mensagem: new Date().toISOString()
+      });
+      return novaConversa;
+    },
+    onSuccess: (conversa) => {
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      setConversaSelecionada(conversa);
+      setNovaConversaOpen(false);
+      toast.success('Conversa criada! Envie a primeira mensagem.');
+    },
+    onError: (error) => {
+      toast.error('Erro ao criar conversa: ' + error.message);
+    }
+  });
 
   const enviarMensagemMutation = useMutation({
     mutationFn: async ({ texto, arquivo }) => {
@@ -237,6 +265,13 @@ export default function BatePapo() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
+      <NovaConversaModal
+        open={novaConversaOpen}
+        onOpenChange={setNovaConversaOpen}
+        onCriar={(dados) => criarConversaMutation.mutate(dados)}
+        isLoading={criarConversaMutation.isPending}
+      />
+
       <div className="flex-1 flex overflow-hidden">
         {/* Lista de Conversas */}
         <div className="w-80 bg-white border-r flex flex-col">
@@ -255,7 +290,7 @@ export default function BatePapo() {
                 <Button
                   size="icon"
                   className="rounded-full bg-blue-500 hover:bg-blue-600 h-10 w-10"
-                  onClick={() => toast.info('Iniciar nova conversa em desenvolvimento')}
+                  onClick={() => setNovaConversaOpen(true)}
                 >
                   <Plus className="w-5 h-5" />
                 </Button>
