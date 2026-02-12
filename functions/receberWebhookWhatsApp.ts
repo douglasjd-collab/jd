@@ -37,26 +37,35 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, skipped: 'status_update' });
     }
 
-    if (body.event === 'messages.upsert' && body.data?.key?.fromMe === true) {
+    // Aceitar tanto 'messages.upsert' quanto 'MESSAGES_UPSERT'
+    const isMessageUpsert = body.event === 'messages.upsert' || body.event === 'MESSAGES_UPSERT';
+    
+    if (isMessageUpsert && body.data?.key?.fromMe === true) {
       console.log('⏭️ Ignorado: Mensagem do bot');
       return Response.json({ success: true, skipped: 'from_bot' });
     }
 
-    if (body.event !== 'messages.upsert') {
-      console.log('⚠️ Evento desconhecido:', body.event);
+    if (!isMessageUpsert) {
+      console.log('⚠️ Evento não suportado:', body.event);
       return Response.json({ success: true, skipped: 'unknown_event' });
     }
 
     // Processar mensagem
     console.log('💬 Processando mensagem...');
+    console.log('📋 Body completo:', JSON.stringify(body, null, 2).substring(0, 1000));
     
     const message = body.data?.message;
     const key = body.data?.key;
-    const pushName = body.data?.pushName || 'Cliente';
+    const pushName = body.data?.pushName || body.data?.senderName || 'Cliente';
+    
+    console.log('📨 Message:', message ? 'OK' : 'FALTANDO');
+    console.log('🔑 Key:', key ? 'OK' : 'FALTANDO');
+    console.log('👤 PushName:', pushName);
     
     if (!message || !key) {
-      console.log('❌ Dados inválidos');
-      return Response.json({ success: false, error: 'Invalid data' }, { status: 400 });
+      console.log('❌ Dados inválidos - message:', !!message, 'key:', !!key);
+      console.log('📋 Body.data:', body.data);
+      return Response.json({ success: false, error: 'Invalid data', recebido: { message: !!message, key: !!key } }, { status: 400 });
     }
 
     const telefone = key.remoteJid;
