@@ -20,6 +20,7 @@ export default function ConfiguracaoWhatsApp() {
   const [tempInstance, setTempInstance] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
   const [saving, setSaving] = useState(false);
+  const [atualizandoWebhook, setAtualizandoWebhook] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -77,6 +78,49 @@ export default function ConfiguracaoWhatsApp() {
     setCopied(name);
     toast.success('Copiado!');
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const atualizarWebhookEvolution = async () => {
+    setAtualizandoWebhook(true);
+    try {
+      // Buscar a URL correta do deployment
+      const urlResponse = await base44.functions.invoke('getWebhookUrlCorreto');
+      const urlCorreta = urlResponse.data.webhook_url;
+      
+      // Atualizar webhook na Evolution API
+      const response = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': apiKey
+        },
+        body: JSON.stringify({
+          url: urlCorreta,
+          webhook_by_events: false,
+          events: [
+            'MESSAGES_UPSERT',
+            'MESSAGES_UPDATE',
+            'SEND_MESSAGE'
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Erro ${response.status}: ${error}`);
+      }
+
+      const result = await response.json();
+      console.log('Webhook atualizado:', result);
+      
+      setWebhookUrl(urlCorreta);
+      toast.success('✅ Webhook configurado com sucesso na Evolution API!');
+    } catch (error) {
+      console.error('Erro ao atualizar webhook:', error);
+      toast.error('❌ Erro: ' + error.message);
+    } finally {
+      setAtualizandoWebhook(false);
+    }
   };
 
   return (
@@ -262,6 +306,29 @@ export default function ConfiguracaoWhatsApp() {
                   </p>
                 </>
               )}
+            </div>
+
+            <div className="pt-4 border-t">
+              <Button 
+                onClick={atualizarWebhookEvolution}
+                disabled={atualizandoWebhook || !evolutionUrl || !instanceName || !apiKey}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+              >
+                {atualizandoWebhook ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Configurando Webhook...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Configurar Webhook Automaticamente
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-center text-slate-500 mt-2">
+                Clique para configurar o webhook automaticamente na Evolution API
+              </p>
             </div>
           </CardContent>
         </Card>
