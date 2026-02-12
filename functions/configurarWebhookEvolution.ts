@@ -57,14 +57,14 @@ Deno.serve(async (req) => {
     }
 
     const baseUrl = `${protocol}://${host}`;
-    const webhookUrl = `${baseUrl}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
+    const webhookUrl = `${baseUrl}/functions/receberWebhookWhatsApp?instance=${finalInstanceName}`;
 
     console.log('🎯 Webhook URL Gerada:', webhookUrl);
     console.log('🌐 Base URL:', baseUrl);
-    console.log('📝 Instance:', instanceName);
+    console.log('📝 Instance Final:', finalInstanceName);
 
     // Endpoint da Evolution API
-    const endpoint = `${evolutionUrl.replace(/\/$/, '')}/webhook/set/${instanceName}`;
+    const endpoint = `${evolutionUrl.replace(/\/$/, '')}/webhook/set/${finalInstanceName}`;
     console.log('🔗 Endpoint Evolution:', endpoint);
 
     // Payload
