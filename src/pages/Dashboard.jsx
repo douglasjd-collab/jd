@@ -41,6 +41,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const COLORS = ['#1e3a5f', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -332,6 +333,7 @@ export default function Dashboard() {
   const [selectedStatus, setSelectedStatus] = React.useState(null);
   const [gruposModalOpen, setGruposModalOpen] = React.useState(false);
   const [grupoSelecionado, setGrupoSelecionado] = React.useState('');
+  const [filtroVendas, setFiltroVendas] = React.useState('entrada');
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -560,12 +562,28 @@ export default function Dashboard() {
         {/* Vendas Recentes */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Vendas do Mês</CardTitle>
+            <div className="flex items-center justify-between mb-4">
+              <CardTitle className="text-lg font-semibold">Vendas do Mês</CardTitle>
+            </div>
+            <Tabs value={filtroVendas} onValueChange={setFiltroVendas} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="entrada">Entrada</TabsTrigger>
+                <TabsTrigger value="esperando">Esperando</TabsTrigger>
+                <TabsTrigger value="finalizados">Finalizados</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {vendasMes.length > 0 ? (
-                vendasMes.slice(0, 5).map((v) => (
+              {(() => {
+                const vendasFiltradas = vendasMes.filter(v => {
+                  if (filtroVendas === 'entrada') return v.status === 'pendente' || v.status === 'aguardando_aprovacao';
+                  if (filtroVendas === 'esperando') return v.status === 'ativa' || v.status === 'em_atraso';
+                  if (filtroVendas === 'finalizados') return v.status === 'contemplada' || v.status === 'cancelada';
+                  return true;
+                });
+                return vendasFiltradas.length > 0 ? (
+                  vendasFiltradas.slice(0, 5).map((v) => (
                   <div key={v.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#1e3a5f]/10 rounded-full flex items-center justify-center">
@@ -585,10 +603,11 @@ export default function Dashboard() {
                       <StatusBadge status={v.status} />
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-center text-slate-500 py-8">Nenhuma venda no mês</p>
-              )}
+                  ))
+                ) : (
+                  <p className="text-center text-slate-500 py-8">Nenhuma venda nesta categoria</p>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
