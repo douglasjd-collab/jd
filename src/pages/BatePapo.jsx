@@ -5,8 +5,15 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, MessageCircle, Search } from 'lucide-react';
+import { Loader2, MessageCircle, Search, MoreVertical, UserCog, Ban, Users, Tag, CheckSquare, FileText, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
@@ -285,14 +292,59 @@ export default function BatePapo() {
           <div className="flex-1 flex flex-col bg-slate-50">
             {/* Header do Chat */}
             <div className="bg-white border-b px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                  {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase() || '?'}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                    {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900">{conversaSelecionada.cliente_nome}</h3>
+                    <p className="text-xs text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">{conversaSelecionada.cliente_nome}</h3>
-                  <p className="text-xs text-slate-500">{conversaSelecionada.cliente_telefone}</p>
-                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => toast.info('Funcionalidade em desenvolvimento')}>
+                      <UserCog className="w-4 h-4 mr-2" />
+                      Alterar Dados do Lead
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info('Funcionalidade em desenvolvimento')}>
+                      <UserCheck className="w-4 h-4 mr-2" />
+                      Responsável pelo Lead
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => toast.info('Funcionalidade em desenvolvimento')}>
+                      <Tag className="w-4 h-4 mr-2" />
+                      Gerenciar Tags
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info('Funcionalidade em desenvolvimento')}>
+                      <CheckSquare className="w-4 h-4 mr-2" />
+                      Criar Tarefa
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info('Funcionalidade em desenvolvimento')}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Criar Proposta
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => toast.info('Funcionalidade em desenvolvimento')}>
+                      <Users className="w-4 h-4 mr-2" />
+                      Transferir Atendimento
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => toast.warning('Contato bloqueado')}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      <Ban className="w-4 h-4 mr-2" />
+                      Bloquear Contato
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
