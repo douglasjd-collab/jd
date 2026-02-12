@@ -142,6 +142,24 @@ export default function TesteWhatsApp() {
         </Button>
       </div>
 
+      {/* URL Correta do Webhook */}
+      <Card className="bg-amber-50 border-amber-200">
+        <CardHeader>
+          <CardTitle className="text-amber-900">⚠️ URL CORRETA do Webhook</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm mb-2 text-amber-800">Use esta URL na Evolution API:</p>
+          <div className="p-3 bg-white rounded border-2 border-amber-300">
+            <code className="text-sm break-all text-blue-600 font-mono">
+              https://windy-sheep-96-y3gedbkzg1xs.deno.dev/functions/receberWebhookWhatsApp?instance=TESTEWAZE
+            </code>
+          </div>
+          <p className="text-xs text-amber-700 mt-2">
+            ⚠️ A URL deve ser exatamente esta. Domínios diferentes não funcionarão.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Teste Evolution API */}
       <Card>
         <CardHeader>
