@@ -247,7 +247,7 @@ export default function ConfiguracaoWhatsApp() {
     <div className="space-y-6">
       <PageHeader
         title="Configuração WhatsApp"
-        subtitle="Integração com Evolution API"
+        subtitle={empresa ? `Integração com Evolution API - ${empresa.nome}` : "Carregando..."}
       />
 
       <div className="grid grid-cols-1 gap-6">
