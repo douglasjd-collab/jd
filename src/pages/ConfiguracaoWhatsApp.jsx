@@ -445,6 +445,25 @@ export default function ConfiguracaoWhatsApp() {
               </Button>
 
               <Button 
+                onClick={verificarEvolutionAPI}
+                disabled={atualizandoWebhook}
+                variant="outline"
+                className="w-full border-2 border-orange-500 text-orange-600 hover:bg-orange-50"
+              >
+                {atualizandoWebhook ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Verificar Evolution API
+                  </>
+                )}
+              </Button>
+
+              <Button 
                 onClick={testarRecebimento}
                 disabled={atualizandoWebhook}
                 variant="outline"
