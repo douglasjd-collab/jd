@@ -197,57 +197,30 @@ export default function BatePapo() {
     retryDelay: 500
   });
 
-  // Subscrição em tempo real para novas mensagens - REGRA RIGOROSA
+  // Subscrição em tempo real para novas mensagens - SIMPLIFICADA
   useEffect(() => {
-    console.log('[Real-time] 📡 Iniciando subscrição em tempo real');
+    if (!empresaId) return;
+    
+    console.log('[Real-time] 📡 Iniciando subscrição');
+    let mounted = true;
     
     const unsubscribe = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      console.log('[Real-time] 📨 EVENTO RECEBIDO:', event.type, 'ID:', event.id);
+      if (!mounted) return;
       
-      // VALIDAÇÕES RIGOROSAS
-      if (!event || !event.type) {
-        console.warn('[Real-time] ⚠️ Evento sem tipo válido');
-        return;
-      }
-      
-      if (event.type === 'create') {
-        const temConversa = event.data?.conversa_id;
-        const temConteudo = event.data?.texto || event.data?.arquivo_url;
-        const temRemetente = event.data?.remetente;
-        const temTipo = event.data?.tipo_conteudo;
-        
-        console.log('[Real-time] ✅ CREATE:', { temConversa, temConteudo, temRemetente, temTipo });
-        
-        if (!temConversa) {
-          console.warn('[Real-time] ⚠️ Mensagem sem conversa_id, ignorando');
-          return;
-        }
-        
-        // ATUALIZAR OBRIGATORIAMENTE
-        console.log('[Real-time] 🔄 Invalidando conversas...');
+      if (event?.type === 'create' && event.data?.conversa_id) {
         queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
         
-        // Se é a conversa atual, atualizar mensagens
         if (event.data.conversa_id === conversaSelecionada?.id) {
-          console.log('[Real-time] 🔄 Atualizando mensagens da conversa ATUAL');
           queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id, empresaId] });
-        } else {
-          console.log('[Real-time] 📬 Mensagem de conversa diferente:', event.data.conversa_id);
         }
-      } else if (event.type === 'update') {
-        console.log('[Real-time] 🔄 UPDATE de mensagem');
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId] });
-      } else if (event.type === 'delete') {
-        console.log('[Real-time] 🗑️ DELETE de mensagem');
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId] });
       }
     });
 
     return () => {
-      console.log('[Real-time] 🔌 Desinscrevendo');
+      mounted = false;
       unsubscribe();
     };
-  }, [conversaSelecionada?.id, empresaId, queryClient]);
+  }, [empresaId, conversaSelecionada?.id, queryClient]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
