@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Pencil, Trash2, Upload } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Upload, History, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -36,12 +36,15 @@ export default function TabelasEmprestimo() {
   const [searchTerm, setSearchTerm] = useState('');
   const [importText, setImportText] = useState('');
   const [arquivoCSV, setArquivoCSV] = useState(null);
+  const [showHistoricoModal, setShowHistoricoModal] = useState(false);
+  const [tabelaSelecionada, setTabelaSelecionada] = useState(null);
+  const [novaComissao, setNovaComissao] = useState('');
+  const [dataVigencia, setDataVigencia] = useState('');
   const [formData, setFormData] = useState({
     codigo: '',
     nome: '',
     convenio_id: '',
     banco: '',
-    comissao_corretor: '',
     comissao_empresa: ''
   });
 
@@ -80,20 +83,39 @@ export default function TabelasEmprestimo() {
     queryFn: () => base44.entities.Banco.filter({ empresa_id: empresaId, ativo: true })
   });
 
+  const { data: historicos = [] } = useQuery({
+    queryKey: ['historico-comissao', tabelaSelecionada?.id],
+    enabled: !!tabelaSelecionada?.id,
+    queryFn: () => base44.entities.HistoricoComissaoTabela.filter(
+      { tabela_id: tabelaSelecionada.id, ativo: true },
+      '-data_vigencia'
+    )
+  });
+
   const criarMutation = useMutation({
     mutationFn: async (dados) => {
       const convenioSelecionado = convenios.find(c => c.id === dados.convenio_id);
-      return await base44.entities.TabelaEmprestimo.create({
+      const tabela = await base44.entities.TabelaEmprestimo.create({
         empresa_id: empresaId,
         codigo: dados.codigo,
         nome: dados.nome,
         convenio_id: dados.convenio_id || null,
         convenio_nome: convenioSelecionado?.nome || '',
         banco: dados.banco,
-        comissao_corretor: parseFloat(dados.comissao_corretor),
         comissao_empresa: parseFloat(dados.comissao_empresa),
         ativo: true
       });
+
+      // Criar primeiro registro de histórico
+      await base44.entities.HistoricoComissaoTabela.create({
+        empresa_id: empresaId,
+        tabela_id: tabela.id,
+        comissao_empresa: parseFloat(dados.comissao_empresa),
+        data_vigencia: new Date().toISOString().split('T')[0],
+        ativo: true
+      });
+
+      return tabela;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tabelas-emprestimo', empresaId] });
@@ -115,7 +137,6 @@ export default function TabelasEmprestimo() {
         convenio_id: dados.convenio_id || null,
         convenio_nome: convenioSelecionado?.nome || '',
         banco: dados.banco,
-        comissao_corretor: parseFloat(dados.comissao_corretor),
         comissao_empresa: parseFloat(dados.comissao_empresa)
       });
     },
@@ -206,13 +227,41 @@ export default function TabelasEmprestimo() {
     }
   });
 
+  const adicionarComissaoMutation = useMutation({
+    mutationFn: async ({ tabelaId, comissao, dataVig }) => {
+      // Criar novo histórico
+      await base44.entities.HistoricoComissaoTabela.create({
+        empresa_id: empresaId,
+        tabela_id: tabelaId,
+        comissao_empresa: parseFloat(comissao),
+        data_vigencia: dataVig,
+        ativo: true
+      });
+
+      // Atualizar a tabela com a nova comissão
+      await base44.entities.TabelaEmprestimo.update(tabelaId, {
+        comissao_empresa: parseFloat(comissao)
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tabelas-emprestimo', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['historico-comissao'] });
+      toast.success('Comissão atualizada com sucesso!');
+      setShowHistoricoModal(false);
+      setNovaComissao('');
+      setDataVigencia('');
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar comissão: ' + error.message);
+    }
+  });
+
   const resetForm = () => {
     setFormData({
       codigo: '',
       nome: '',
       convenio_id: '',
       banco: '',
-      comissao_corretor: '',
       comissao_empresa: ''
     });
     setEditando(null);
@@ -225,10 +274,27 @@ export default function TabelasEmprestimo() {
       nome: tabela.nome,
       convenio_id: tabela.convenio_id || '',
       banco: tabela.banco || '',
-      comissao_corretor: tabela.comissao_corretor,
       comissao_empresa: tabela.comissao_empresa
     });
     setShowModal(true);
+  };
+
+  const handleAbrirHistorico = (tabela) => {
+    setTabelaSelecionada(tabela);
+    setShowHistoricoModal(true);
+  };
+
+  const handleAdicionarComissao = (e) => {
+    e.preventDefault();
+    if (!novaComissao || !dataVigencia) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+    adicionarComissaoMutation.mutate({
+      tabelaId: tabelaSelecionada.id,
+      comissao: novaComissao,
+      dataVig: dataVigencia
+    });
   };
 
   const handleSubmit = (e) => {
@@ -331,11 +397,18 @@ export default function TabelasEmprestimo() {
                       {tabela.banco && (
                         <span className="text-slate-600">Banco: {tabela.banco}</span>
                       )}
-                      <span className="text-green-600 font-medium">Corretor: {tabela.comissao_corretor}%</span>
-                      <span className="text-blue-600 font-medium">Empresa: {tabela.comissao_empresa}%</span>
+                      <span className="text-blue-600 font-medium">Comissão: {tabela.comissao_empresa}%</span>
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleAbrirHistorico(tabela)}
+                      title="Histórico de Comissões"
+                    >
+                      <History className="w-4 h-4 text-blue-600" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="icon"
@@ -421,29 +494,19 @@ export default function TabelasEmprestimo() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>% Comissão Corretor *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.comissao_corretor}
-                  onChange={(e) => setFormData({ ...formData, comissao_corretor: e.target.value })}
-                  placeholder="8.20"
-                  required
-                />
-              </div>
-              <div>
-                <Label>% Comissão Empresa *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.comissao_empresa}
-                  onChange={(e) => setFormData({ ...formData, comissao_empresa: e.target.value })}
-                  placeholder="10.00"
-                  required
-                />
-              </div>
+            <div>
+              <Label>% Comissão Empresa *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={formData.comissao_empresa}
+                onChange={(e) => setFormData({ ...formData, comissao_empresa: e.target.value })}
+                placeholder="10.00"
+                required
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Esta será a comissão inicial. Você pode atualizar depois através do histórico.
+              </p>
             </div>
 
             <div className="flex gap-3 justify-end pt-4">
@@ -604,6 +667,112 @@ export default function TabelasEmprestimo() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Histórico de Comissões */}
+      <Dialog open={showHistoricoModal} onOpenChange={setShowHistoricoModal}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Histórico de Comissões - {tabelaSelecionada?.nome}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Formulário para adicionar nova comissão */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Adicionar Nova Comissão
+              </h3>
+              
+              <form onSubmit={handleAdicionarComissao} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Nova Comissão Empresa (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={novaComissao}
+                      onChange={(e) => setNovaComissao(e.target.value)}
+                      placeholder="10.50"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Data de Vigência</Label>
+                    <Input
+                      type="date"
+                      value={dataVigencia}
+                      onChange={(e) => setDataVigencia(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button 
+                    type="submit" 
+                    disabled={adicionarComissaoMutation.isPending}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {adicionarComissaoMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Adicionando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Comissão
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Lista de histórico */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Histórico de Alterações</h3>
+              
+              {historicos.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-sm">
+                  Nenhum histórico de comissão registrado
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {historicos.map((hist, idx) => (
+                    <div 
+                      key={hist.id} 
+                      className={`p-4 rounded-lg border ${idx === 0 ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-lg">{hist.comissao_empresa}%</span>
+                            {idx === 0 && (
+                              <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                                Atual
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-600 mt-1">
+                            Vigência: {new Date(hist.data_vigencia).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowHistoricoModal(false)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
