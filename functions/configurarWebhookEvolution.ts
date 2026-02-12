@@ -69,17 +69,15 @@ Deno.serve(async (req) => {
 
     // Payload
     const payload = {
-      webhook: {
-        enabled: true,
-        url: webhookUrl,
-        webhook_by_events: false,
-        webhook_base64: false,
-        events: [
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE',
-          'SEND_MESSAGE'
-        ]
-      }
+      enabled: true,
+      url: webhookUrl,
+      webhook_by_events: false,
+      webhook_base64: false,
+      events: [
+        'MESSAGES_UPSERT',
+        'MESSAGES_UPDATE',
+        'SEND_MESSAGE'
+      ]
     };
 
     console.log('📦 Payload:', JSON.stringify(payload, null, 2));
