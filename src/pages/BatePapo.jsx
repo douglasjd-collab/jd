@@ -260,6 +260,36 @@ export default function BatePapo() {
           </div>
         )}
       </div>
+
+      {/* Modal Nova Conversa */}
+      <NovaConversaModal
+        open={novaConversaOpen}
+        onOpenChange={setNovaConversaOpen}
+        onCriar={async (data) => {
+          setCriarConversaLoading(true);
+          try {
+            const novaConversa = await base44.entities.ConversaWhatsapp.create({
+              empresa_id: empresaId,
+              cliente_telefone: data.numeroFormatado,
+              cliente_nome: data.nome,
+              status: 'ativa',
+              ultima_mensagem: '',
+              data_ultima_mensagem: new Date().toISOString()
+            });
+            
+            toast.success('Conversa criada com sucesso');
+            setNovaConversaOpen(false);
+            setConversaSelecionada(novaConversa);
+            queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+          } catch (error) {
+            console.error('❌ Erro ao criar conversa:', error);
+            toast.error('Erro ao criar conversa');
+          } finally {
+            setCriarConversaLoading(false);
+          }
+        }}
+        isLoading={criarConversaLoading}
+      />
     </div>
   );
 }
