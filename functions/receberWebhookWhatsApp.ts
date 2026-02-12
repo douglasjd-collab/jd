@@ -143,19 +143,35 @@ Deno.serve(async (req) => {
     // Usar empresa do usuário autenticado, senão a primeira
     let empresaId = empresas[0].id;
     
-    // Tentar obter user para pegar empresa_id
-    try {
-      const me = await base44.auth.me();
-      if (me?.empresa_id) {
-        // Validar se empresa existe
-        const empresaUser = empresas.find(e => e.id === me.empresa_id);
-        if (empresaUser) {
-          empresaId = me.empresa_id;
-          console.log('✅ Usando empresa do usuário:', empresaId);
-        }
+    // Tentar extrair instance do URL para identificar a empresa
+    const url = new URL(req.url);
+    const instanceFromUrl = url.searchParams.get('instance');
+    console.log('🔍 Instance do URL:', instanceFromUrl);
+    
+    if (instanceFromUrl) {
+      // Procurar empresa que tenha esta instância
+      const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFromUrl);
+      if (empresaPorInstance) {
+        empresaId = empresaPorInstance.id;
+        console.log('✅ Empresa identificada pela instance:', empresaId, instanceFromUrl);
       }
-    } catch (e) {
-      console.log('⚠️ Não conseguiu obter user, usando primeira empresa');
+    }
+    
+    // Fallback: tentar obter user para pegar empresa_id
+    if (!instanceFromUrl || !empresas.find(e => e.evolution_instance_name === instanceFromUrl)) {
+      try {
+        const me = await base44.auth.me();
+        if (me?.empresa_id) {
+          // Validar se empresa existe
+          const empresaUser = empresas.find(e => e.id === me.empresa_id);
+          if (empresaUser) {
+            empresaId = me.empresa_id;
+            console.log('✅ Usando empresa do usuário:', empresaId);
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Não conseguiu obter user, usando primeira empresa');
+      }
     }
     
     console.log('✅ Empresa ID final:', empresaId);
