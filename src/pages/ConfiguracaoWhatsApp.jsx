@@ -486,6 +486,24 @@ export default function ConfiguracaoWhatsApp() {
               </Button>
 
               <Button 
+                onClick={reconfigurarWebhook}
+                disabled={atualizandoWebhook}
+                className="w-full bg-red-600 hover:bg-red-700 text-white"
+              >
+                {atualizandoWebhook ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Reconfigurando...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Reconfigurar Webhook (Se não recebe mensagens)
+                  </>
+                )}
+              </Button>
+
+              <Button 
                 onClick={testarRecebimento}
                 disabled={atualizandoWebhook}
                 variant="outline"
