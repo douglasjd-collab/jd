@@ -129,51 +129,65 @@ Deno.serve(async (req) => {
 
     // SDK
     const base44 = createClientFromRequest(req);
-    
+
+    // Extrair instance do URL
+    const url = new URL(req.url);
+    const instanceFromUrl = url.searchParams.get('instance');
+    console.log('🔍 Instance do URL:', instanceFromUrl);
+
     // Buscar TODAS as empresas ativas
     console.log('🏢 Buscando empresas...');
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
     console.log('🏢 Empresas encontradas:', empresas.length);
-    
+
     if (!empresas || empresas.length === 0) {
       console.log('❌ Nenhuma empresa ativa');
       return Response.json({ success: false, error: 'No company' }, { status: 400 });
     }
-    
-    // Usar empresa do usuário autenticado, senão a primeira
-    let empresaId = empresas[0].id;
-    
-    // Tentar extrair instance do URL para identificar a empresa
-    const url = new URL(req.url);
-    const instanceFromUrl = url.searchParams.get('instance');
-    console.log('🔍 Instance do URL:', instanceFromUrl);
-    
-    if (instanceFromUrl) {
-      // Procurar empresa que tenha esta instância
+
+    // REGRA CRÍTICA: Se é instância TESTE, sempre ir para JD PROMOTORA
+    let empresaId = null;
+
+    if (instanceFromUrl === 'TESTE') {
+      // Procurar JD Promotora especificamente
+      const jd = empresas.find(e => e.nome?.includes('JD') && e.nome?.includes('Promotora'));
+      if (jd) {
+        empresaId = jd.id;
+        console.log('✅ INSTÂNCIA TESTE → JD PROMOTORA:', empresaId);
+      } else {
+        console.log('⚠️ JD Promotora não encontrada, buscando por ID');
+        // Fallback: usar ID hardcoded de JD Promotora
+        empresaId = '6956c66acff52e4405313375';
+        console.log('✅ JD PROMOTORA (ID hardcoded):', empresaId);
+      }
+    } else if (instanceFromUrl) {
+      // Para outras instâncias, procurar pela instance
       const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFromUrl);
       if (empresaPorInstance) {
         empresaId = empresaPorInstance.id;
-        console.log('✅ Empresa identificada pela instance:', empresaId, instanceFromUrl);
+        console.log('✅ Empresa encontrada pela instance:', empresaId, instanceFromUrl);
       }
     }
-    
-    // Fallback: tentar obter user para pegar empresa_id
-    if (!instanceFromUrl || !empresas.find(e => e.evolution_instance_name === instanceFromUrl)) {
+
+    // Se ainda não identificou, tentar user ou primeira empresa
+    if (!empresaId) {
       try {
         const me = await base44.auth.me();
-        if (me?.empresa_id) {
-          // Validar se empresa existe
-          const empresaUser = empresas.find(e => e.id === me.empresa_id);
-          if (empresaUser) {
-            empresaId = me.empresa_id;
-            console.log('✅ Usando empresa do usuário:', empresaId);
-          }
+        if (me?.empresa_id && empresas.find(e => e.id === me.empresa_id)) {
+          empresaId = me.empresa_id;
+          console.log('✅ Usando empresa do usuário:', empresaId);
         }
       } catch (e) {
-        console.log('⚠️ Não conseguiu obter user, usando primeira empresa');
+        console.log('⚠️ Não conseguiu obter user');
       }
     }
-    
+
+    // Último fallback
+    if (!empresaId) {
+      empresaId = empresas[0].id;
+      console.log('⚠️ Usando primeira empresa:', empresaId);
+    }
+
     console.log('✅ Empresa ID final:', empresaId);
 
     // Verificar se JÁ EXISTE esta mensagem (evitar duplicatas)
