@@ -88,9 +88,14 @@ Deno.serve(async (req) => {
     // Determinar tipo e conteúdo
     let tipo = 'texto';
     let conteudo = '';
-    
+
+    console.log('📋 Estrutura da mensagem:', JSON.stringify(message, null, 2).substring(0, 1000));
+
+    // Tentar encontrar conteúdo em diferentes estruturas
     if (message.conversation) {
       conteudo = message.conversation;
+    } else if (message.text) {
+      conteudo = message.text;
     } else if (message.extendedTextMessage?.text) {
       conteudo = message.extendedTextMessage.text;
     } else if (message.imageMessage) {
@@ -106,7 +111,9 @@ Deno.serve(async (req) => {
       tipo = 'pdf';
       conteudo = message.documentMessage.title || 'Documento';
     } else {
-      conteudo = 'Mensagem não suportada';
+      console.log('⚠️ Estrutura desconhecida, salvando como texto');
+      tipo = 'texto';
+      conteudo = JSON.stringify(message).substring(0, 200);
     }
 
     console.log('📝 Tipo:', tipo);
