@@ -174,6 +174,38 @@ export default function ConfiguracaoWhatsApp() {
     }
   };
 
+  const verificarEvolutionAPI = async () => {
+    setAtualizandoWebhook(true);
+    try {
+      const { data } = await base44.functions.invoke('verificarEvolutionAPI');
+      console.log('🔍 Verificação Evolution API:', data);
+
+      if (data.success) {
+        const { diagnostico } = data;
+
+        if (diagnostico.problemas.length === 0) {
+          toast.success('✅ Tudo OK com Evolution API!', {
+            description: diagnostico.instancia_ativa ? 'Instância conectada e webhooks configurados' : 'Mas instância pode não estar conectada',
+            duration: 5000
+          });
+        } else {
+          const problemas = diagnostico.problemas.join('\n\n');
+          toast.error('⚠️ Problemas encontrados:', {
+            description: problemas,
+            duration: 10000
+          });
+        }
+      } else {
+        toast.error('❌ Erro: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar Evolution API:', error);
+      toast.error('Erro: ' + error.message);
+    } finally {
+      setAtualizandoWebhook(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
