@@ -165,6 +165,13 @@ export default function BatePapo() {
     gcTime: 10000
   });
 
+  // Scroll para última mensagem
+  useEffect(() => {
+    if (messagesEndRef.current && mensagens.length > 0) {
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  }, [mensagens.length]);
+
   // Subscrição em tempo real para novas mensagens - SIMPLIFICADA
   useEffect(() => {
     if (!empresaId) return;
