@@ -261,12 +261,19 @@ Deno.serve(async (req) => {
     console.log('WhatsApp Message ID:', novaMensagem.whatsapp_message_id);
     console.log('='.repeat(100));
 
+    console.log('✅ RETORNANDO SUCESSO AO WEBHOOK');
     return Response.json({
       success: true,
       message_id: novaMensagem.id,
       conversa_id: conversa.id,
       telefone: telefoneLimpo,
-      timestamp: timestamp
+      tipo_conteudo: novaMensagem.tipo_conteudo,
+      timestamp: timestamp,
+      debug: {
+        conversa_criada_agora: conversas.length === 0,
+        total_conversas: conversas.length,
+        telefone_limpo: telefoneLimpo
+      }
     });
 
   } catch (error) {
