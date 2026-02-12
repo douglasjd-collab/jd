@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, MessageCircle, Search } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
@@ -211,32 +212,37 @@ export default function BatePapo() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Bate-papo"
-        subtitle="Converse com seus clientes via WhatsApp"
-      />
+    <div className="h-screen flex flex-col bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Conversas</h1>
+            <p className="text-sm text-slate-500">WhatsApp Business</p>
+          </div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px]">
+      <div className="flex-1 flex overflow-hidden">
         {/* Lista de Conversas */}
-        <Card className="flex flex-col">
-          <div className="p-4 border-b">
+        <div className="w-80 bg-white border-r flex flex-col">
+          <div className="p-4 border-b space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                placeholder="Buscar conversa..."
+                placeholder="Buscar por nome ou telefone"
                 value={searchConversas}
                 onChange={(e) => setSearchConversas(e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-slate-50 border-slate-200"
               />
             </div>
           </div>
           
           <div className="flex-1 overflow-y-auto">
             {conversasFiltradas.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-slate-500">
+              <div className="flex items-center justify-center h-full text-slate-400">
                 <div className="text-center">
-                  <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-40" />
                   <p className="text-sm">Nenhuma conversa</p>
                 </div>
               </div>
@@ -245,69 +251,95 @@ export default function BatePapo() {
                 <button
                   key={conversa.id}
                   onClick={() => setConversaSelecionada(conversa)}
-                  className={`w-full p-4 border-b text-left transition-colors ${
+                  className={`w-full p-4 border-b text-left transition-all hover:bg-slate-50 ${
                     conversaSelecionada?.id === conversa.id
-                      ? 'bg-[#23BE84]/10 border-l-4 border-l-[#23BE84]'
-                      : 'hover:bg-slate-50'
+                      ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                      : ''
                   }`}
                 >
-                  <p className="font-semibold text-slate-900">{conversa.cliente_nome}</p>
-                  <p className="text-sm text-slate-500">{conversa.cliente_telefone}</p>
-                  <p className="text-xs text-slate-400 truncate mt-1">{conversa.ultima_mensagem}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                      {conversa.cliente_nome?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-semibold text-slate-900 truncate">{conversa.cliente_nome}</p>
+                        {conversa.data_ultima_mensagem && (
+                          <span className="text-xs text-slate-400">
+                            {format(new Date(conversa.data_ultima_mensagem), 'HH:mm')}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mb-1">{conversa.cliente_telefone}</p>
+                      <p className="text-sm text-slate-600 truncate">{conversa.ultima_mensagem || 'Sem mensagens'}</p>
+                    </div>
+                  </div>
                 </button>
               ))
             )}
           </div>
-        </Card>
+        </div>
 
-        {/* Chat */}
+        {/* Área de Chat */}
         {conversaSelecionada ? (
-          <Card className="md:col-span-2 flex flex-col h-full">
-            <div className="p-4 border-b bg-slate-50">
-              <h3 className="font-semibold text-slate-900">{conversaSelecionada.cliente_nome}</h3>
-              <p className="text-sm text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+          <div className="flex-1 flex flex-col bg-slate-50">
+            {/* Header do Chat */}
+            <div className="bg-white border-b px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                  {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase() || '?'}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">{conversaSelecionada.cliente_nome}</h3>
+                  <p className="text-xs text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 bg-white space-y-2">
-              <div className="text-xs text-slate-400 mb-4">
-                DEBUG: loading={loadingMensagens} | length={mensagens.length}
-              </div>
-              
+            {/* Mensagens */}
+            <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-slate-50 to-slate-100">
               {loadingMensagens && (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                  <Loader2 className="w-6 h-6 animate-spin" />
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                 </div>
               )}
 
               {!loadingMensagens && mensagens.length === 0 && (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                  <p>Nenhuma mensagem ainda</p>
+                <div className="flex items-center justify-center h-full text-slate-400">
+                  <div className="text-center">
+                    <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-40" />
+                    <p className="text-sm">Nenhuma mensagem ainda</p>
+                    <p className="text-xs mt-1">Envie a primeira mensagem para começar a conversa</p>
+                  </div>
                 </div>
               )}
 
               {!loadingMensagens && mensagens.length > 0 && (
-                <div className="space-y-2">
-                  {mensagens.map((msg, idx) => {
-                    console.log(`[DEBUG] Renderizando msg ${idx}:`, msg);
-                    return <MensagemItem key={msg.id} mensagem={msg} />;
-                  })}
+                <div className="space-y-4">
+                  {mensagens.map((msg) => (
+                    <MensagemItem key={msg.id} mensagem={msg} />
+                  ))}
                   <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
 
+            {/* Campo de Envio */}
             <EnviarMensagemForm
               onEnviar={(dados) => enviarMensagemMutation.mutate(dados)}
               isLoading={enviarMensagemMutation.isPending}
             />
-          </Card>
+          </div>
         ) : (
-          <Card className="md:col-span-2 flex items-center justify-center text-slate-500">
+          <div className="flex-1 flex items-center justify-center bg-white">
             <div className="text-center">
-              <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Selecione uma conversa para começar</p>
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="w-12 h-12 text-blue-500" />
+              </div>
+              <p className="text-lg font-semibold text-slate-900 mb-2">Selecione uma conversa</p>
+              <p className="text-sm text-slate-500">Escolha uma conversa da lista para começar a conversar</p>
             </div>
-          </Card>
+          </div>
         )}
       </div>
     </div>

@@ -34,7 +34,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
   };
 
   return (
-    <form onSubmit={handleEnviar} className="flex gap-2 p-4 border-t">
+    <form onSubmit={handleEnviar} className="bg-white border-t p-4">
       <input
         ref={fileInputRef}
         type="file"
@@ -43,37 +43,41 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
         accept="image/*,audio/*,video/*,application/pdf"
       />
       
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isLoading}
-      >
-        <Paperclip className="w-5 h-5" />
-      </Button>
-
-      <div className="flex-1">
-        <Input
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
+      <div className="flex items-end gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
-          className="w-full"
-        />
-      </div>
+          className="rounded-full hover:bg-slate-100"
+        >
+          <Paperclip className="w-5 h-5 text-slate-600" />
+        </Button>
 
-      <Button
-        type="submit"
-        disabled={isLoading || (!texto.trim() && !arquivo)}
-        className="bg-[#23BE84] hover:bg-[#1da570]"
-      >
-        {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Send className="w-4 h-4" />
-        )}
-      </Button>
+        <div className="flex-1">
+          <Input
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem ou arraste um arquivo...'}
+            disabled={isLoading}
+            className="w-full rounded-full border-slate-300 px-4 py-3 focus:border-blue-500 focus:ring-blue-500"
+          />
+        </div>
+
+        <Button
+          type="submit"
+          disabled={isLoading || (!texto.trim() && !arquivo)}
+          className="rounded-full w-12 h-12 bg-blue-500 hover:bg-blue-600 shadow-lg"
+          size="icon"
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Send className="w-5 h-5" />
+          )}
+        </Button>
+      </div>
     </form>
   );
 }

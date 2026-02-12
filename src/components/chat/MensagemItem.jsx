@@ -73,27 +73,32 @@ export default function MensagemItem({ mensagem }) {
   };
 
   return (
-    <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} mb-4`}>
+    <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
       <div
-        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+        className={`max-w-md px-4 py-3 rounded-2xl shadow-sm ${
           isVendedor
-            ? 'bg-[#23BE84] text-white rounded-br-none'
-            : 'bg-slate-200 text-slate-900 rounded-bl-none'
+            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md'
+            : 'bg-white text-slate-900 rounded-bl-md border border-slate-200'
         }`}
       >
-        {!isVendedor && mensagem.cliente_nome && (
-          <p className="text-xs font-semibold opacity-75 mb-1">{mensagem.cliente_nome}</p>
+        {!isVendedor && mensagem.usuario_nome && (
+          <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
         
-        <div>{renderConteudo()}</div>
+        <div className="mb-1">{renderConteudo()}</div>
         
-        <p className={`text-xs mt-1 ${isVendedor ? 'text-white/70' : 'text-slate-600'}`}>
-          {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm', { locale: ptBR })}
-        </p>
-        
-        {isVendedor && mensagem.status && (
-          <p className="text-xs text-white/70 capitalize">{mensagem.status}</p>
-        )}
+        <div className="flex items-center justify-end gap-1 mt-1">
+          <p className={`text-xs ${isVendedor ? 'text-white/80' : 'text-slate-500'}`}>
+            {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm', { locale: ptBR })}
+          </p>
+          {isVendedor && (
+            <span className="text-white/80 text-xs">
+              {mensagem.status === 'enviada' && '✓'}
+              {mensagem.status === 'entregue' && '✓✓'}
+              {mensagem.status === 'lida' && '✓✓'}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
