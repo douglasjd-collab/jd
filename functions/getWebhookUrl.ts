@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
       webhookUrl: webhookUrl,
       evolutionUrl: evolutionUrl,
       instanceName: instanceName,
-      apiKey: evolutionKey ? '***configurada***' : '',
+      apiKey: evolutionKey,
       deployment_host: currentUrl.host
     });
 
