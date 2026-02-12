@@ -293,12 +293,43 @@ export default function ConfiguracaoWhatsApp() {
     }
   };
 
+  const handleMudarEmpresa = (empresaId) => {
+    setSelectedEmpresaId(empresaId);
+    const emp = empresas.find(e => e.id === empresaId);
+    if (emp) {
+      carregarEmpresa(emp);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Configuração WhatsApp"
         subtitle={empresa ? `Integração com Evolution API - ${empresa.nome}` : "Carregando..."}
       />
+
+      {/* Seletor de Empresa para Super Admin */}
+      {(user?.role === 'super_admin' || user?.perfil === 'super_admin') && empresas.length > 0 && (
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader>
+            <CardTitle className="text-sm">Selecionar Empresa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedEmpresaId || ''} onValueChange={handleMudarEmpresa}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {empresas.map(emp => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.nome} ({emp.codigo})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6">
         {/* Status da Conexão */}
