@@ -115,25 +115,37 @@ export default function ConfiguracaoWhatsApp() {
   const testarRecebimento = async () => {
     setAtualizandoWebhook(true);
     try {
-      const { data } = await base44.functions.invoke('testarRecebimentoWebhook');
-      console.log('📊 Diagnóstico:', data);
+      const { data } = await base44.functions.invoke('diagnosticoCompleto');
+      console.log('📊 Diagnóstico Completo:', data);
       
       if (data.success) {
-        if (data.diagnostico.webhook_configurado) {
-          toast.success('✅ Webhook configurado corretamente!', {
-            description: `${data.diagnostico.banco.total_mensagens} mensagens e ${data.diagnostico.banco.total_conversas} conversas no banco`
-          });
-        } else {
-          toast.warning('⚠️ ' + data.recomendacao, {
-            duration: 8000
-          });
-        }
-        // Mostrar detalhes completos
-        console.table(data.diagnostico);
+        toast.success('✅ Tudo funcionando!', {
+          description: data.resumo,
+          duration: 5000
+        });
       } else {
-        toast.error('Erro: ' + data.error);
+        // Mostrar problemas encontrados
+        const problemas = data.diagnostico.problemas.join('\n');
+        const recomendacoes = data.diagnostico.recomendacoes.join('\n');
+        
+        toast.error('❌ Problemas encontrados', {
+          description: problemas + '\n\n' + recomendacoes,
+          duration: 15000
+        });
       }
+      
+      // Log completo para debug
+      console.log('='.repeat(80));
+      console.log('✅ SUCESSOS:');
+      data.diagnostico.sucessos.forEach(s => console.log('  ' + s));
+      console.log('\n❌ PROBLEMAS:');
+      data.diagnostico.problemas.forEach(p => console.log('  ' + p));
+      console.log('\n🔧 RECOMENDAÇÕES:');
+      data.diagnostico.recomendacoes.forEach(r => console.log('  ' + r));
+      console.log('='.repeat(80));
+      
     } catch (error) {
+      console.error('Erro no diagnóstico:', error);
       toast.error('Erro ao diagnosticar: ' + error.message);
     } finally {
       setAtualizandoWebhook(false);
