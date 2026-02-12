@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, MessageCircle, Search, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,7 @@ export default function BatePapo() {
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [empresaId, setEmpresaId] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef(null);
-  const queryClient = useQueryClient();
 
   // Carregar auth uma única vez
   useEffect(() => {
@@ -100,33 +98,6 @@ export default function BatePapo() {
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     }
   }, [mensagens.length]);
-
-  // Enviar mensagem
-  const handleEnviarMensagem = async (dados) => {
-    if (!conversaSelecionada?.id || !dados.texto?.trim()) {
-      toast.error('Preencha a mensagem');
-      return;
-    }
-
-    setSendingMessage(true);
-    try {
-      await base44.functions.invoke('enviarMensagemWhatsapp', {
-        conversa_id: conversaSelecionada.id,
-        mensagem_texto: dados.texto.trim(),
-        numero_cliente: conversaSelecionada.cliente_telefone,
-        empresa_id: empresaId,
-      });
-
-      toast.success('Mensagem enviada');
-      // Recarrega mensagens
-      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-    } catch (e) {
-      console.error('❌ Erro envio:', e);
-      toast.error('Erro ao enviar mensagem');
-    } finally {
-      setSendingMessage(false);
-    }
-  };
 
   // Filtrar conversas
   const conversasFiltradas = conversas.filter(c => {
@@ -270,7 +241,7 @@ export default function BatePapo() {
             </div>
 
             {/* Campo de Envio */}
-            <EnviarMensagemForm onEnviar={handleEnviarMensagem} isLoading={sendingMessage} />
+            <EnviarMensagemForm onEnviar={() => {}} isLoading={false} />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-white">
