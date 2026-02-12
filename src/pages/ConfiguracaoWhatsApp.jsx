@@ -24,7 +24,19 @@ export default function ConfiguracaoWhatsApp() {
 
   useEffect(() => {
     loadConfig();
+    obterUrlCorretaAuto();
   }, []);
+
+  const obterUrlCorretaAuto = async () => {
+    try {
+      const response = await base44.functions.invoke('getWebhookUrlCorreto');
+      const urlCorreta = response.data.webhook_url;
+      console.log('✅ URL Correta do Deployment:', urlCorreta);
+      setWebhookUrl(urlCorreta);
+    } catch (error) {
+      console.error('Erro ao obter URL:', error);
+    }
+  };
 
   const loadConfig = async () => {
     try {
@@ -252,34 +264,40 @@ export default function ConfiguracaoWhatsApp() {
         </Card>
 
         {/* Configuração do Webhook */}
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span>🔗</span> Webhook URL
+              <span>🔗</span> URL do Webhook (OBRIGATÓRIA)
             </CardTitle>
-            <CardDescription>
-              Configure no painel do Evolution API
+            <CardDescription className="text-green-700 font-semibold">
+              ⚠️ Esta é a URL CORRETA que deve estar configurada na Evolution API
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-amber-100 border-2 border-amber-400 rounded-lg p-4">
               <div className="flex gap-2 items-start mb-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <AlertCircle className="w-6 h-6 text-amber-700 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-blue-900">Instruções de Configuração</p>
-                  <ol className="text-sm text-blue-800 mt-2 space-y-1 list-decimal list-inside">
-                    <li>Acesse o painel do Evolution API</li>
-                    <li>Vá para Configurações → Webhooks</li>
-                    <li>Cole a URL abaixo no campo de webhook</li>
-                    <li>Salve e teste a conexão</li>
+                  <p className="text-sm font-bold text-amber-900">⚠️ ATENÇÃO: URL do Deployment Atual</p>
+                  <p className="text-sm text-amber-800 mt-2">
+                    A URL abaixo é gerada automaticamente pelo seu deployment atual. 
+                    <strong className="block mt-1">Se você configurou uma URL diferente na Evolution API, as mensagens NÃO chegarão.</strong>
+                  </p>
+                  <ol className="text-sm text-amber-900 mt-3 space-y-1 list-decimal list-inside font-semibold">
+                    <li>Copie a URL abaixo (clique no botão copiar)</li>
+                    <li>Vá na Evolution API → Configuração WhatsApp → Webhook URL</li>
+                    <li>Cole esta URL EXATA no campo de webhook</li>
+                    <li>Ou clique no botão "Configurar Automaticamente" abaixo</li>
                   </ol>
                 </div>
               </div>
             </div>
 
             <div>
-              <Label className="mb-2 block">URL do Webhook</Label>
+              <Label className="mb-3 block text-base font-bold text-green-900">
+                📋 URL do Webhook - COPIE E CONFIGURE NA EVOLUTION:
+              </Label>
               {loading ? (
                 <div className="flex items-center gap-2 text-slate-500">
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -287,23 +305,32 @@ export default function ConfiguracaoWhatsApp() {
                 </div>
               ) : (
                 <>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <Input 
                       value={webhookUrl}
                       readOnly 
-                      className="bg-slate-50 font-mono text-sm"
+                      className="bg-white border-2 border-green-500 font-mono text-sm font-bold text-green-700"
                     />
                     <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => copyToClipboard(webhookUrl, 'webhook')}
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        copyToClipboard(webhookUrl, 'webhook');
+                        toast.success('✅ URL copiada! Cole na Evolution API');
+                      }}
                     >
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copiar
                     </Button>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Este URL receberá as mensagens do WhatsApp em tempo real
-                  </p>
+                  <div className="p-3 bg-green-100 border border-green-300 rounded-lg">
+                    <p className="text-xs text-green-900 font-semibold">
+                      ✅ Esta URL inclui automaticamente: <code className="bg-white px-2 py-1 rounded">?instance=TESTEWAZE</code>
+                    </p>
+                    <p className="text-xs text-green-800 mt-1">
+                      Mensagens enviadas e recebidas serão processadas por esta URL
+                    </p>
+                  </div>
                 </>
               )}
             </div>
