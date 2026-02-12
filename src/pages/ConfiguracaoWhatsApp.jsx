@@ -117,7 +117,7 @@ export default function ConfiguracaoWhatsApp() {
     try {
       const { data } = await base44.functions.invoke('diagnosticoCompleto');
       console.log('📊 Diagnóstico Completo:', data);
-      
+
       if (data.success) {
         toast.success('✅ Tudo funcionando!', {
           description: data.resumo,
@@ -127,13 +127,13 @@ export default function ConfiguracaoWhatsApp() {
         // Mostrar problemas encontrados
         const problemas = data.diagnostico.problemas.join('\n');
         const recomendacoes = data.diagnostico.recomendacoes.join('\n');
-        
+
         toast.error('❌ Problemas encontrados', {
           description: problemas + '\n\n' + recomendacoes,
           duration: 15000
         });
       }
-      
+
       // Log completo para debug
       console.log('='.repeat(80));
       console.log('✅ SUCESSOS:');
@@ -143,10 +143,32 @@ export default function ConfiguracaoWhatsApp() {
       console.log('\n🔧 RECOMENDAÇÕES:');
       data.diagnostico.recomendacoes.forEach(r => console.log('  ' + r));
       console.log('='.repeat(80));
-      
+
     } catch (error) {
       console.error('Erro no diagnóstico:', error);
       toast.error('Erro ao diagnosticar: ' + error.message);
+    } finally {
+      setAtualizandoWebhook(false);
+    }
+  };
+
+  const testarWebhookManual = async () => {
+    setAtualizandoWebhook(true);
+    try {
+      const { data } = await base44.functions.invoke('testarWebhookManual');
+      console.log('✅ Teste do webhook:', data);
+
+      if (data.success) {
+        toast.success('✅ Webhook respondeu!', {
+          description: 'Mensagem de teste foi processada. Procure pela conversa "Cliente Teste" no Bate-papo',
+          duration: 5000
+        });
+      } else {
+        toast.error('❌ Erro no webhook: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Erro ao testar webhook:', error);
+      toast.error('Erro: ' + error.message);
     } finally {
       setAtualizandoWebhook(false);
     }
