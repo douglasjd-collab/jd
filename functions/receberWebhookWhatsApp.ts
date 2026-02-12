@@ -3,25 +3,38 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
   console.error('='.repeat(80));
-  console.error(`[WEBHOOK] 📨 NOVA REQUISIÇÃO - ${timestamp}`);
+  console.error(`[WEBHOOK] 🔔 REQUISIÇÃO RECEBIDA - ${timestamp}`);
   console.error('[WEBHOOK] Método:', req.method);
-  console.error('[WEBHOOK] URL:', req.url);
+  console.error('[WEBHOOK] URL completa:', req.url);
+  console.error('[WEBHOOK] Headers:', JSON.stringify({
+    'content-type': req.headers.get('content-type'),
+    'user-agent': req.headers.get('user-agent'),
+    'x-forwarded-for': req.headers.get('x-forwarded-for')
+  }));
   
   if (req.method === 'GET') {
     const url = new URL(req.url);
-    const challenge = url.searchParams.get('challenge');
+    const challenge = url.searchParams.get('challenge') || url.searchParams.get('hub.challenge');
+    console.error('[WEBHOOK] GET - Challenge:', challenge);
+    console.error('[WEBHOOK] ✅ Respondendo GET com challenge');
     if (challenge) return new Response(challenge);
     return new Response('OK');
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    console.error('[WEBHOOK] ❌ Método não permitido:', req.method);
+    return Response.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
   try {
-    console.error('[WEBHOOK] 📥 Parseando body...');
-    const body = await req.json();
-    console.error('[WEBHOOK] ✅ Body parseado com sucesso');
+    console.error('[WEBHOOK] 📥 Lendo body da requisição...');
+    const bodyText = await req.text();
+    console.error('[WEBHOOK] Body length:', bodyText.length, 'bytes');
+    console.error('[WEBHOOK] Body preview (primeiros 500 chars):', bodyText.substring(0, 500));
+    
+    console.error('[WEBHOOK] 🔄 Parseando JSON...');
+    const body = JSON.parse(bodyText);
+    console.error('[WEBHOOK] ✅ JSON parseado com sucesso!');
     console.error('[WEBHOOK] Body completo:', JSON.stringify(body, null, 2));
     
     const url = new URL(req.url);
