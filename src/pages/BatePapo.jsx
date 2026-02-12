@@ -89,8 +89,11 @@ export default function BatePapo() {
         m.texto || m.arquivo_url
       );
     },
-    staleTime: 3000,
-    gcTime: 10000
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false
   });
 
   // Scroll para última mensagem
