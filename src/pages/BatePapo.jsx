@@ -101,6 +101,33 @@ export default function BatePapo() {
     }
   }, [mensagens.length]);
 
+  // Enviar mensagem
+  const handleEnviarMensagem = async (dados) => {
+    if (!conversaSelecionada?.id || !dados.texto?.trim()) {
+      toast.error('Preencha a mensagem');
+      return;
+    }
+
+    setSendingMessage(true);
+    try {
+      await base44.functions.invoke('enviarMensagemWhatsapp', {
+        conversa_id: conversaSelecionada.id,
+        mensagem_texto: dados.texto.trim(),
+        numero_cliente: conversaSelecionada.cliente_telefone,
+        empresa_id: empresaId,
+      });
+
+      toast.success('Mensagem enviada');
+      // Recarrega mensagens
+      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+    } catch (e) {
+      console.error('❌ Erro envio:', e);
+      toast.error('Erro ao enviar mensagem');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   // Filtrar conversas
   const conversasFiltradas = conversas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
