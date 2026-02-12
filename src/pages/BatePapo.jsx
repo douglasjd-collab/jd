@@ -263,9 +263,9 @@ export default function BatePapo() {
 
             <Tabs value={filtroStatus} onValueChange={setFiltroStatus} className="w-full">
               <TabsList className="grid w-full grid-cols-3 bg-slate-100">
-                <TabsTrigger value="todas" className="text-xs">Todas</TabsTrigger>
-                <TabsTrigger value="ativa" className="text-xs">Ativas</TabsTrigger>
-                <TabsTrigger value="arquivada" className="text-xs">Arquivadas</TabsTrigger>
+                <TabsTrigger value="todas" className="text-xs">Entrada</TabsTrigger>
+                <TabsTrigger value="ativa" className="text-xs">Esperando</TabsTrigger>
+                <TabsTrigger value="arquivada" className="text-xs">Finalizados</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
