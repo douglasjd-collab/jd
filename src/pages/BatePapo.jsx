@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, MessageCircle, Search, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
