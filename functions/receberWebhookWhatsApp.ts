@@ -1,7 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
-  console.error('[WEBHOOK] 📨 Requisição:', req.method);
+  const timestamp = new Date().toISOString();
+  console.error('='.repeat(80));
+  console.error(`[WEBHOOK] 📨 NOVA REQUISIÇÃO - ${timestamp}`);
+  console.error('[WEBHOOK] Método:', req.method);
+  console.error('[WEBHOOK] URL:', req.url);
   
   if (req.method === 'GET') {
     const url = new URL(req.url);
@@ -17,11 +21,14 @@ Deno.serve(async (req) => {
   try {
     console.error('[WEBHOOK] 📥 Parseando body...');
     const body = await req.json();
-    console.error('[WEBHOOK] ✅ Body OK');
+    console.error('[WEBHOOK] ✅ Body parseado com sucesso');
+    console.error('[WEBHOOK] Body completo:', JSON.stringify(body, null, 2));
+    
     const url = new URL(req.url);
     const instance = url.searchParams.get('instance');
 
-    console.error('[WEBHOOK] 🔔 Event:', body.event, 'Instance:', instance);
+    console.error('[WEBHOOK] 🔔 Event:', body.event);
+    console.error('[WEBHOOK] Instance:', instance);
 
     // Ignorar eventos de atualização de status (não são mensagens novas)
     if (body.event === 'messages.update') {
@@ -193,13 +200,22 @@ Deno.serve(async (req) => {
         status: 'entregue'
       };
       
-      console.error('[WEBHOOK] 💬 Mensagem:', JSON.stringify(dadosMensagem));
+      console.error('[WEBHOOK] 💬 Criando mensagem...');
+      console.error('[WEBHOOK] Dados:', JSON.stringify(dadosMensagem, null, 2));
       
       try {
         const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create(dadosMensagem);
-        console.error('[WEBHOOK] ✅ Mensagem criada:', novaMensagem.id);
+        console.error('[WEBHOOK] ✅ Mensagem criada com sucesso!');
+        console.error('[WEBHOOK] ID da mensagem:', novaMensagem.id);
+        console.error('[WEBHOOK] Empresa ID:', novaMensagem.empresa_id);
+        console.error('[WEBHOOK] Conversa ID:', novaMensagem.conversa_id);
+        console.error('[WEBHOOK] Texto:', novaMensagem.texto);
+        console.error('[WEBHOOK] Data:', novaMensagem.data_envio);
       } catch (msgErr) {
-        console.error('[WEBHOOK] ❌ Erro mensagem:', msgErr.message, msgErr);
+        console.error('[WEBHOOK] ❌ ERRO ao criar mensagem!');
+        console.error('[WEBHOOK] Mensagem erro:', msgErr.message);
+        console.error('[WEBHOOK] Stack:', msgErr.stack);
+        console.error('[WEBHOOK] Dados tentativa:', JSON.stringify(dadosMensagem, null, 2));
         throw msgErr;
       }
     }
