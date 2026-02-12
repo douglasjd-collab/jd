@@ -54,14 +54,21 @@ export default function ConfiguracaoWhatsApp() {
     }
   };
 
+  const gerarUrlWebhook = (instancia) => {
+    if (!instancia) return '';
+    const baseUrl = 'https://windy-sheep-96-fz7shspqdf18.deno.dev/functions/receberWebhookWhatsApp';
+    return `${baseUrl}?instance=${encodeURIComponent(instancia)}`;
+  };
+
   const obterUrlCorretaAuto = async () => {
     try {
-      const response = await base44.functions.invoke('getWebhookUrlCorreto');
-      const urlCorreta = response.data.webhook_url;
-      console.log('✅ URL Correta do Webhook:', urlCorreta);
-      setWebhookUrl(urlCorreta);
+      if (instanceName) {
+        const urlCorreta = gerarUrlWebhook(instanceName);
+        console.log('✅ URL Webhook Gerada:', urlCorreta);
+        setWebhookUrl(urlCorreta);
+      }
     } catch (error) {
-      console.error('Erro ao obter URL:', error);
+      console.error('Erro ao gerar URL:', error);
     }
   };
 
