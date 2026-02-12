@@ -65,6 +65,30 @@ export default function BatePapo() {
     }
   };
 
+  const sincronizarComEvolutionAPI = async () => {
+    if (!conversaSelecionada?.cliente_telefone) return;
+    
+    try {
+      console.log('🔄 Sincronizando com Evolution API:', conversaSelecionada.cliente_telefone);
+      
+      // Chamar função para sincronizar mensagens da Evolution API
+      const resultado = await base44.functions.invoke('sincronizarMensagensEvolution', {
+        conversa_id: conversaSelecionada.id,
+        telefone: conversaSelecionada.cliente_telefone,
+        empresa_id: empresaId
+      });
+
+      if (resultado.data?.sucesso) {
+        console.log('✅ Sincronização com Evolution API:', resultado.data.mensagens_adicionadas, 'novas mensagens');
+        // Recarregar mensagens
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id, empresaId] });
+      }
+    } catch (error) {
+      console.log('⚠️ Aviso de sincronização (pode ser normal):', error.message);
+      // Não mostrar erro para não assustar o usuário - apenas log
+    }
+  };
+
   const { data: conversas = [], isError: conversasError, error: conversasErrorMsg } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
