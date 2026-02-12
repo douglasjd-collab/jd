@@ -54,13 +54,15 @@ Deno.serve(async (req) => {
     // Buscar empresa e credenciais Evolution
     let evolutionApiKey, evolutionApiUrl, instanceName;
     
-    if (user.empresa_id) {
-      const empresa = await base44.asServiceRole.entities.Empresa.filter({ id: user.empresa_id });
+    const empresaId = payload.empresa_id || user.empresa_id;
+    
+    if (empresaId) {
+      const empresa = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
       if (empresa && empresa.length > 0) {
         evolutionApiKey = empresa[0].evolution_api_key;
         evolutionApiUrl = empresa[0].evolution_url;
         instanceName = empresa[0].evolution_instance_name;
-        console.log('📦 Credenciais da empresa carregadas');
+        console.log('📦 Credenciais da empresa carregadas:', { instanceName });
       }
     }
     
