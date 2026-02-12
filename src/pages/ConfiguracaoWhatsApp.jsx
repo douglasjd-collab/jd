@@ -227,9 +227,9 @@ export default function ConfiguracaoWhatsApp() {
                 <Input 
                   value={editMode ? tempApiKey : apiKey}
                   onChange={(e) => editMode && setTempApiKey(e.target.value)}
-                  type={editMode ? 'text' : 'password'}
+                  type="text"
                   readOnly={!editMode}
-                  className={editMode ? '' : 'bg-slate-50'}
+                  className={editMode ? '' : 'bg-slate-50 font-mono'}
                 />
                 {!editMode && (
                   <Button
