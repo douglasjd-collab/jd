@@ -35,8 +35,10 @@ export default function BatePapo() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversaSelecionada]);
+    if (messagesEndRef.current && mensagens.length > 0) {
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }
+  }, [mensagens.length]);
 
   // Sincronizar mensagens com Evolution API quando abre conversa
   useEffect(() => {
