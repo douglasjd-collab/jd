@@ -61,17 +61,20 @@ export default function BatePapo() {
     enabled: !!empresaId,
     queryFn: async () => {
       try {
-        return await base44.entities.ConversaWhatsapp.filter(
+        console.log('[Conversas] Buscando conversas da empresa:', empresaId);
+        const result = await base44.entities.ConversaWhatsapp.filter(
           { empresa_id: empresaId },
           '-data_ultima_mensagem'
         );
+        console.log('[Conversas] ✅ Total encontradas:', result.length);
+        return result;
       } catch (err) {
-        console.error('Erro ao carregar conversas:', err);
+        console.error('[Conversas] ❌ Erro:', err);
         toast.error('Erro ao carregar conversas: ' + err.message);
         throw err;
       }
     },
-    refetchInterval: 5000
+    refetchInterval: 3000
   });
 
   const { data: mensagens = [], isError: mensagensError, error: msgError, isPending: loadingMensagens } = useQuery({
@@ -108,15 +111,23 @@ export default function BatePapo() {
   useEffect(() => {
     if (!conversaSelecionada?.id) return;
 
+    console.log('[Real-time] Subscrevendo mensagens da conversa:', conversaSelecionada.id);
+    
     const unsubscribe = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      // Se a mensagem é da conversa atual
+      console.log('[Real-time] Evento recebido:', event);
+      
       if (event.data?.conversa_id === conversaSelecionada.id) {
+        console.log('[Real-time] ✅ Mensagem da conversa atual - invalidando cache');
         queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+        queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       }
     });
 
-    return unsubscribe;
-  }, [conversaSelecionada?.id, queryClient]);
+    return () => {
+      console.log('[Real-time] Desinscrevendo da conversa:', conversaSelecionada.id);
+      unsubscribe();
+    };
+  }, [conversaSelecionada?.id, empresaId, queryClient]);
 
   const enviarMensagemMutation = useMutation({
     mutationFn: async ({ texto, arquivo }) => {
