@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function ConfiguracaoWhatsApp() {
   const [copied, setCopied] = useState(null);
