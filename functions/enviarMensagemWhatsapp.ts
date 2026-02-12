@@ -51,10 +51,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'numero_cliente é obrigatório' }, { status: 400 });
     }
 
-    // Verificar credenciais Evolution
-    const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
-    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+    // Buscar empresa e credenciais Evolution
+    let evolutionApiKey, evolutionApiUrl, instanceName;
+    
+    if (user.empresa_id) {
+      const empresa = await base44.asServiceRole.entities.Empresa.filter({ id: user.empresa_id });
+      if (empresa && empresa.length > 0) {
+        evolutionApiKey = empresa[0].evolution_api_key;
+        evolutionApiUrl = empresa[0].evolution_url;
+        instanceName = empresa[0].evolution_instance_name;
+        console.log('📦 Credenciais da empresa carregadas');
+      }
+    }
+    
+    // Fallback para variáveis de ambiente se não encontrar na empresa
+    if (!evolutionApiKey) evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
     console.log('🔐 Verificando credenciais Evolution:');
     console.log('  - URL:', evolutionApiUrl ? '✅' : '❌');
@@ -64,7 +77,7 @@ Deno.serve(async (req) => {
     if (!evolutionApiKey || !evolutionApiUrl || !instanceName) {
       console.error('❌ Credenciais Evolution faltando');
       return Response.json({ 
-        error: 'Evolution API não configurada' 
+        error: 'Evolution API não configurada. Configure na página de Configuração WhatsApp' 
       }, { status: 400 });
     }
 
