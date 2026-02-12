@@ -140,8 +140,25 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'No company' }, { status: 400 });
     }
     
-    const empresaId = empresas[0].id;
-    console.log('✅ Empresa ID:', empresaId);
+    // Usar empresa do usuário autenticado, senão a primeira
+    let empresaId = empresas[0].id;
+    
+    // Tentar obter user para pegar empresa_id
+    try {
+      const me = await base44.auth.me();
+      if (me?.empresa_id) {
+        // Validar se empresa existe
+        const empresaUser = empresas.find(e => e.id === me.empresa_id);
+        if (empresaUser) {
+          empresaId = me.empresa_id;
+          console.log('✅ Usando empresa do usuário:', empresaId);
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Não conseguiu obter user, usando primeira empresa');
+    }
+    
+    console.log('✅ Empresa ID final:', empresaId);
 
     // Verificar se JÁ EXISTE esta mensagem (evitar duplicatas)
     console.log('🔍 Verificando duplicatas...');
