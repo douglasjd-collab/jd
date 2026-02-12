@@ -121,12 +121,27 @@ export default function BatePapo() {
           user_perfil: user?.perfil
         });
         
+        // REGRA RIGOROSA: Buscar e validar mensagens
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionada.id },
           'created_date'
         );
-        console.log('[Chat] ✅ Mensagens carregadas:', msgs.length);
-        return msgs || [];
+
+        // Filtrar apenas mensagens válidas
+        const msgValidas = (msgs || []).filter(m => {
+          const temConteudo = m.texto || m.arquivo_url;
+          const temRemetente = m.remetente && ['cliente', 'vendedor'].includes(m.remetente);
+          const temTipo = m.tipo_conteudo && ['texto', 'imagem', 'audio', 'video', 'pdf', 'documento'].includes(m.tipo_conteudo);
+          
+          if (!temConteudo || !temRemetente || !temTipo) {
+            console.warn('[Chat] ⚠️ Mensagem inválida ignorada:', m.id, { temConteudo, temRemetente, temTipo });
+            return false;
+          }
+          return true;
+        });
+
+        console.log('[Chat] ✅ Mensagens carregadas:', msgValidas.length, '/', msgs.length);
+        return msgValidas;
       } catch (err) {
         console.error('[Chat] ❌ Erro ao carregar:', {
           message: err.message,
@@ -136,7 +151,7 @@ export default function BatePapo() {
         throw err;
       }
     },
-    retry: 1,
+    retry: 2,
     retryDelay: 500
   });
 
