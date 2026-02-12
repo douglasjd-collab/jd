@@ -132,10 +132,9 @@ export default function BatePapo() {
         const conversasValidas = (result || []).filter(c => {
           const temId = !!c.id;
           const temTelefone = !!c.cliente_telefone;
-          const temNome = !!c.cliente_nome;
           
           if (!temId || !temTelefone) {
-            console.warn('[Conversas] ⚠️ Conversa inválida:', c.id, { temId, temTelefone, temNome });
+            console.warn('[Conversas] ⚠️ Conversa inválida:', c.id, { temId, temTelefone });
             return false;
           }
           return true;
@@ -149,7 +148,8 @@ export default function BatePapo() {
         throw err;
       }
     },
-    refetchInterval: 2000  // Reduzido para 2 segundos para detectar conversas novas rapidamente
+    staleTime: 5000,
+    gcTime: 10000
   });
 
   const { data: mensagens = [], isError: mensagensError, error: msgError, isPending: loadingMensagens } = useQuery({
