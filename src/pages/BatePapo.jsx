@@ -334,7 +334,7 @@ export default function BatePapo() {
                           Mais opções
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" side="top" className="w-56 z-50">
+                      <DropdownMenuContent align="start" side="left" sideOffset={5} className="w-56 z-50">
                         <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
                           <UserCheck className="w-4 h-4 mr-2" />
                           Atribuir para mim
