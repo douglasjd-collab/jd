@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Plus, Pencil, Trash2, Building2 } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Building2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Convenios() {
@@ -38,6 +38,7 @@ export default function Convenios() {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     nome: '',
     tipo: 'INSS'
@@ -193,6 +194,19 @@ export default function Convenios() {
         actionIcon={Plus}
       />
 
+      {/* Campo de Busca */}
+      {conveniosAtivos.length > 0 && (
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Buscar convênio..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
@@ -212,38 +226,44 @@ export default function Convenios() {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {conveniosAtivos.map((convenio) => (
-            <Card key={convenio.id} className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-slate-900 mb-2">
-                    {convenio.nome}
-                  </h3>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tipoColors[convenio.tipo]}`}>
-                    {tipoLabels[convenio.tipo]}
-                  </span>
+        <div className="space-y-2">
+          {conveniosAtivos
+            .filter(c => c.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+            .map((convenio) => (
+            <Card key={convenio.id} className="hover:shadow-md transition-shadow">
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900">
+                      {convenio.nome}
+                    </h3>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${tipoColors[convenio.tipo]} mt-1`}>
+                      {tipoLabels[convenio.tipo]}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex gap-2 mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEditar(convenio)}
-                  className="flex-1"
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Editar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDeleteId(convenio.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditar(convenio)}
+                  >
+                    <Pencil className="w-4 h-4 mr-1" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeleteId(convenio.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
