@@ -280,33 +280,49 @@ export default function BatePapo() {
               </div>
             ) : (
               conversasFiltradas.map(conversa => (
-                <button
+                <div
                   key={conversa.id}
-                  onClick={() => setConversaSelecionada(conversa)}
-                  className={`w-full p-4 border-b text-left transition-all hover:bg-slate-50 ${
+                  className={`relative group w-full border-b transition-all ${
                     conversaSelecionada?.id === conversa.id
                       ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                      : ''
+                      : 'hover:bg-slate-50'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                      {conversa.cliente_nome?.charAt(0).toUpperCase() || '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-semibold text-slate-900 truncate">{conversa.cliente_nome}</p>
-                        {conversa.data_ultima_mensagem && (
-                          <span className="text-xs text-slate-400">
-                            {format(new Date(conversa.data_ultima_mensagem), 'HH:mm')}
-                          </span>
-                        )}
+                  <button
+                    onClick={() => setConversaSelecionada(conversa)}
+                    className="w-full p-4 text-left"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {conversa.cliente_nome?.charAt(0).toUpperCase() || '?'}
                       </div>
-                      <p className="text-xs text-slate-500 mb-1">{conversa.cliente_telefone}</p>
-                      <p className="text-sm text-slate-600 truncate">{conversa.ultima_mensagem || 'Sem mensagens'}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-semibold text-slate-900 truncate">{conversa.cliente_nome}</p>
+                          {conversa.data_ultima_mensagem && (
+                            <span className="text-xs text-slate-400">
+                              {format(new Date(conversa.data_ultima_mensagem), 'HH:mm')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mb-1">{conversa.cliente_telefone}</p>
+                        <p className="text-sm text-slate-600 truncate">{conversa.ultima_mensagem || 'Sem mensagens'}</p>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                  
+                  {/* Botão Atribuir para mim */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toast.success('Conversa atribuída para você');
+                    }}
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1"
+                  >
+                    <UserCheck className="w-3 h-3" />
+                    Atribuir para mim
+                  </button>
+                </div>
               ))
             )}
           </div>
