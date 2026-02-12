@@ -110,8 +110,17 @@ export default function ConfiguracaoWhatsApp() {
   const atualizarWebhookEvolution = async () => {
     setAtualizandoWebhook(true);
     try {
-      // Buscar credenciais reais e URL correta através da função backend
-      const configResponse = await base44.functions.invoke('configurarWebhookEvolution');
+      if (!empresa?.id) {
+        toast.error('Erro: Empresa não identificada');
+        return;
+      }
+
+      const configResponse = await base44.functions.invoke('configurarWebhookEvolution', {
+        empresa_id: empresa.id,
+        evolution_url: evolutionUrl,
+        evolution_instance_name: instanceName,
+        evolution_api_key: apiKey
+      });
       
       if (configResponse.data.success) {
         setWebhookUrl(configResponse.data.webhook_url);
