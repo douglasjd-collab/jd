@@ -77,13 +77,8 @@ Deno.serve(async (req) => {
           'MESSAGES_DELETE',
           'SEND_MESSAGE',
           'CONTACTS_SET',
-          'PRESENCE_UPDATE',
-          'TYPING_START',
-          'TYPING_STOP',
-          'READ_MESSAGES',
           'CONNECTION_UPDATE',
-          'CALL',
-          'NEW_JWT_TOKEN'
+          'CALL'
         ]
       }
     };
