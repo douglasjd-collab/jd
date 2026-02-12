@@ -127,22 +127,17 @@ export default function BatePapo() {
     }
   }, [mensagens.length]);
 
-  // Subscrição em tempo real para novas mensagens - SIMPLIFICADA
+  // Subscrição em tempo real - DESATIVADA TEMPORARIAMENTE
   useEffect(() => {
-    if (!empresaId) return;
+    if (!empresaId || !conversaSelecionada?.id) return;
     
-    console.log('[Real-time] 📡 Iniciando subscrição');
     let mounted = true;
     
     const unsubscribe = base44.entities.MensagemWhatsapp.subscribe((event) => {
       if (!mounted) return;
       
-      if (event?.type === 'create' && event.data?.conversa_id) {
-        queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-        
-        if (event.data.conversa_id === conversaSelecionada?.id) {
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id, empresaId] });
-        }
+      if (event?.type === 'create' && event.data?.conversa_id === conversaSelecionada.id) {
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id, empresaId] });
       }
     });
 
@@ -150,7 +145,7 @@ export default function BatePapo() {
       mounted = false;
       unsubscribe();
     };
-  }, [empresaId, conversaSelecionada?.id, queryClient]);
+  }, [conversaSelecionada?.id, empresaId, queryClient]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
