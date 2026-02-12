@@ -35,6 +35,7 @@ export default function TabelasEmprestimo() {
   const [deleteId, setDeleteId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [importText, setImportText] = useState('');
+  const [arquivoCSV, setArquivoCSV] = useState(null);
   const [formData, setFormData] = useState({
     codigo: '',
     nome: '',
@@ -141,6 +142,32 @@ export default function TabelasEmprestimo() {
     }
   });
 
+  const importarCSVMutation = useMutation({
+    mutationFn: async (arquivo) => {
+      const formData = new FormData();
+      formData.append('file', arquivo);
+      
+      const response = await base44.functions.invoke('importarTabelasEmprestimoCSV', formData);
+      return response.data;
+    },
+    onSuccess: (resultado) => {
+      queryClient.invalidateQueries({ queryKey: ['tabelas-emprestimo', empresaId] });
+      
+      if (resultado.erros > 0) {
+        toast.warning(`${resultado.criadas} tabelas importadas. ${resultado.erros} erros encontrados.`);
+        console.log('Erros:', resultado.detalhes_erros);
+      } else {
+        toast.success(`${resultado.criadas} tabelas importadas com sucesso!`);
+      }
+      
+      setShowImportModal(false);
+      setArquivoCSV(null);
+    },
+    onError: (error) => {
+      toast.error('Erro ao importar: ' + error.message);
+    }
+  });
+
   const importarMutation = useMutation({
     mutationFn: async (texto) => {
       const linhas = texto.split('\n').filter(l => l.trim());
@@ -211,6 +238,14 @@ export default function TabelasEmprestimo() {
     } else {
       criarMutation.mutate(formData);
     }
+  };
+
+  const handleImportarCSV = () => {
+    if (!arquivoCSV) {
+      toast.error('Selecione um arquivo CSV');
+      return;
+    }
+    importarCSVMutation.mutate(arquivoCSV);
   };
 
   const handleImportar = () => {
@@ -436,36 +471,114 @@ export default function TabelasEmprestimo() {
             <DialogTitle>Importar Tabelas</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <Label>Cole os dados (formato: Nome [TAB] Comissão Corretor [TAB] Comissão Empresa)</Label>
-              <textarea
-                value={importText}
-                onChange={(e) => setImportText(e.target.value)}
-                className="flex min-h-[200px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono"
-                placeholder="210180 - INSS ML NORMAL - WEB [INSS C6 BANK]	8.20	10.00&#10;210181 - INSS ML ESPECIAL [INSS BMG]	7.50	9.50"
-              />
-              <p className="text-xs text-slate-500 mt-2">
-                Exemplo: Cole do Excel/Planilha com 3 colunas separadas por TAB
-              </p>
+          <div className="space-y-6">
+            {/* Importação via CSV */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-semibold">Importar via Arquivo CSV/Excel</Label>
+                <p className="text-sm text-slate-500 mt-1">
+                  Selecione um arquivo CSV com as colunas: Data, Convenio, Banco, Tabela, Prazo
+                </p>
+              </div>
+
+              <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
+                <Input
+                  type="file"
+                  accept=".csv,.txt"
+                  onChange={(e) => setArquivoCSV(e.target.files?.[0] || null)}
+                  className="max-w-xs mx-auto"
+                />
+                {arquivoCSV && (
+                  <p className="text-sm text-green-600 mt-2">
+                    ✓ {arquivoCSV.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <p className="text-sm font-medium mb-2">Formato esperado do CSV:</p>
+                <div className="text-xs font-mono bg-white p-3 rounded border">
+                  Data,Convenio,Banco,Tabela,Prazo<br/>
+                  01/02/2026,INSS,C6 Bank,INSS ML NORMAL,84<br/>
+                  01/02/2026,Governo PE,BMG,Governo PE Especial,96
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Aceita separação por vírgula (,), ponto-e-vírgula (;) ou tab
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button 
+                  onClick={handleImportarCSV} 
+                  disabled={!arquivoCSV || importarCSVMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {importarCSVMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Importando CSV...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Importar CSV
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
-            <div className="flex gap-3 justify-end pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowImportModal(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleImportar} disabled={importarMutation.isPending}>
-                {importarMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Importando...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Importar
-                  </>
-                )}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-slate-500">ou</span>
+              </div>
+            </div>
+
+            {/* Importação Manual */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-semibold">Importar via Cole e Copia</Label>
+                <p className="text-sm text-slate-500 mt-1">
+                  Cole dados do Excel (formato: Nome [TAB] Comissão Corretor [TAB] Comissão Empresa)
+                </p>
+              </div>
+
+              <div>
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  className="flex min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm font-mono"
+                  placeholder="210180 - INSS ML NORMAL - WEB [INSS C6 BANK]	8.20	10.00&#10;210181 - INSS ML ESPECIAL [INSS BMG]	7.50	9.50"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button onClick={handleImportar} disabled={importarMutation.isPending}>
+                  {importarMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Importar Manual
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-4 border-t">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowImportModal(false);
+                setArquivoCSV(null);
+                setImportText('');
+              }}>
+                Fechar
               </Button>
             </div>
           </div>
