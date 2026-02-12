@@ -306,7 +306,19 @@ export default function BatePapo() {
                           )}
                         </div>
                         <p className="text-xs text-slate-500 mb-1">{conversa.cliente_telefone}</p>
-                        <p className="text-sm text-slate-600 truncate">{conversa.ultima_mensagem || 'Sem mensagens'}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm text-slate-600 truncate flex-1">{conversa.ultima_mensagem || 'Sem mensagens'}</p>
+                          {conversa.usuario_responsavel_nome && (
+                            <div className="flex items-center -space-x-2">
+                              <div 
+                                className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 border-2 border-white flex items-center justify-center text-white text-xs font-semibold"
+                                title={conversa.usuario_responsavel_nome}
+                              >
+                                {conversa.usuario_responsavel_nome.charAt(0).toUpperCase()}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </button>
