@@ -394,6 +394,25 @@ export default function ConfiguracaoWhatsApp() {
               </Button>
 
               <Button 
+                onClick={testarWebhookManual}
+                disabled={atualizandoWebhook}
+                variant="outline"
+                className="w-full border-2 border-purple-500 text-purple-600 hover:bg-purple-50"
+              >
+                {atualizandoWebhook ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Testando...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Teste Rápido (Simular Mensagem)
+                  </>
+                )}
+              </Button>
+
+              <Button 
                 onClick={testarRecebimento}
                 disabled={atualizandoWebhook}
                 variant="outline"
@@ -407,7 +426,7 @@ export default function ConfiguracaoWhatsApp() {
                 ) : (
                   <>
                     <MessageSquare className="w-4 h-4 mr-2" />
-                    Diagnosticar Por Que Não Recebo Mensagens
+                    Diagnóstico Completo
                   </>
                 )}
               </Button>
