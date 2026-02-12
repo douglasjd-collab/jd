@@ -35,19 +35,18 @@ Deno.serve(async (req) => {
     let endpoint, payload;
 
     if (mensagem.tipo_conteudo === 'texto') {
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText`;
+      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/chat/sendText/${instanceName}`;
       payload = {
         number: telefone.replace(/\D/g, ''),
-        text: mensagem.texto,
-        instance: instanceName
+        text: mensagem.texto
       };
     } else {
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendMedia`;
+      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/chat/sendMedia/${instanceName}`;
       payload = {
         number: telefone.replace(/\D/g, ''),
         mediaUrl: mensagem.arquivo_url,
         mediaType: mensagem.tipo_conteudo,
-        instance: instanceName
+        fileName: mensagem.arquivo_nome || 'file'
       };
     }
 
