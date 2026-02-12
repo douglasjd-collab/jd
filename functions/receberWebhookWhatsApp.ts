@@ -219,11 +219,11 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.log('='.repeat(100));
-    console.log('❌ ERRO CRÍTICO');
+    console.log('█'.repeat(100));
+    console.log('❌❌❌ ERRO CRÍTICO NO WEBHOOK');
     console.log('Mensagem:', error.message);
     console.log('Stack:', error.stack);
-    console.log('='.repeat(100));
+    console.log('█'.repeat(100));
     
     return Response.json({
       success: false,
@@ -231,3 +231,5 @@ Deno.serve(async (req) => {
     }, { status: 500 });
   }
 });
+
+console.log('✅✅✅ WEBHOOK PRONTO PARA RECEBER MENSAGENS');
