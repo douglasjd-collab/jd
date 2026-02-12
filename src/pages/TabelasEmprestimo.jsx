@@ -298,12 +298,15 @@ export default function TabelasEmprestimo() {
   };
 
   const handleBaixarModelo = () => {
-    const csvContent = `Data,Convenio,Banco,Tabela,Comissão E.,Comissão V.
-12/fev,INSS,C6 Bank,NOVO NORMAL TAXA 1.85%,10,8
-12/fev,Governo de PE,BMG,NOVO NORMAL TAXA 1.85%,10,8
-12/fev,Governo de AL,Itaú,NOVO NORMAL TAXA 1.85%,10,8
-12/fev,Prefeitura de Tupanatinga,Digio,NOVO NORMAL TAXA 1.85%,10,8
-12/fev,Prefeitura de Itaiba,Banco do Brasil,NOVO NORMAL TAXA 1.85%,10,8`;
+    const csvContent = `Data;Convenio;Banco;Tabela;PRAZO;Comissão E.;Comissão V.;Parceiro/Vendedor;Empresa
+12/fev;INSS;C6 Bank;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
+;Governo de PE;BMG;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
+;Governo de AL;Itaú;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
+;Prefeitura de Tupanatinga;Digio;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
+;Prefeitura de Itaiba;Banco do Brasil;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
+;;;;;;;;
+;;;;;;;;
+;;;;;;;;`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -610,13 +613,12 @@ export default function TabelasEmprestimo() {
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <p className="text-sm font-medium mb-2">Exemplo do formato CSV:</p>
               <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
-                <div>Data,Convenio,Banco,Tabela,Comissão E.,Comissão V.</div>
-                <div>12/fev,INSS,C6 Bank,NOVO NORMAL TAXA 1.85%,10,8</div>
-                <div>12/fev,Governo de PE,BMG,NOVO NORMAL TAXA 1.85%,10,8</div>
-                <div>12/fev,Governo de AL,Itaú,NOVO NORMAL TAXA 1.85%,10,8</div>
+                <div>Data;Convenio;Banco;Tabela;PRAZO;Comissão E.;Comissão V.;Parceiro/Vendedor;Empresa</div>
+                <div>12/fev;INSS;C6 Bank;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS;TN PROMOTORA</div>
+                <div>;Governo de PE;BMG;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS;TN PROMOTORA</div>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                💡 Aceita separação por vírgula (,), ponto-e-vírgula (;) ou tab
+                💡 Separado por ponto-e-vírgula (;) conforme padrão Excel brasileiro
               </p>
             </div>
 
