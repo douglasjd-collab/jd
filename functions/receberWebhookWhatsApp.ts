@@ -3,9 +3,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
   
-  console.log('='.repeat(100));
-  console.log(`🔔 WEBHOOK RECEBIDO - ${timestamp}`);
-  console.log('='.repeat(100));
+  console.log('\n\n');
+  console.log('█'.repeat(100));
+  console.log(`🔔🔔🔔 WEBHOOK CHAMADO - ${timestamp}`);
+  console.log('█'.repeat(100));
+  console.log(`📍 Método: ${req.method}`);
+  console.log(`📍 URL: ${req.url}`);
+  console.log(`📍 Headers:`, Object.fromEntries(req.headers));
   
   // Suporte a GET (verificação/challenge)
   if (req.method === 'GET') {
