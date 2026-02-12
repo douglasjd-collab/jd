@@ -215,7 +215,11 @@ export default function BatePapo() {
           toast.success('✅ Mensagem enviada via WhatsApp!');
         } catch (error) {
           console.error('❌ Erro ao enviar para Evolution:', error);
-          toast.error('Erro ao enviar via WhatsApp: ' + (error.response?.data?.error || error.message));
+          const errorMsg = error.response?.data?.error || error.message || 'Erro desconhecido';
+          toast.error('Erro ao enviar via WhatsApp: ' + errorMsg);
+          
+          // Ainda assim, marca a mensagem como enviada localmente
+          await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id] });
         }
       }
     },
