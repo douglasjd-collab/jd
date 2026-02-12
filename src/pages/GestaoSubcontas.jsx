@@ -24,7 +24,11 @@ export default function GestaoSubcontas() {
 
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ['empresas'],
-    queryFn: () => base44.asServiceRole.entities.Empresa.list('-created_date', 100),
+    queryFn: async () => {
+      // Buscar todas as empresas sem filtros
+      const allEmpresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 100);
+      return allEmpresas || [];
+    },
   });
 
   const statusMutation = useMutation({
