@@ -13,6 +13,8 @@ export default function TesteWhatsApp() {
   const [mensagens, setMensagens] = useState([]);
   const [telefone, setTelefone] = useState('');
   const [testando, setTestando] = useState(false);
+  const [diagnostico, setDiagnostico] = useState(null);
+  const [carregandoDiag, setCarregandoDiag] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -32,6 +34,19 @@ export default function TesteWhatsApp() {
       toast.error('Erro: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const rodarDiagnostico = async () => {
+    setCarregandoDiag(true);
+    try {
+      const response = await base44.functions.invoke('diagnosticoWebhook');
+      setDiagnostico(response.data);
+      toast.success('Diagnóstico concluído');
+    } catch (error) {
+      toast.error('Erro: ' + error.message);
+    } finally {
+      setCarregandoDiag(false);
     }
   };
 
@@ -76,6 +91,58 @@ export default function TesteWhatsApp() {
           Atualizar
         </Button>
       </div>
+
+      {/* Diagnóstico */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Diagnóstico Completo</span>
+            <Button onClick={rodarDiagnostico} disabled={carregandoDiag} variant="outline">
+              {carregandoDiag ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Rodar Diagnóstico'
+              )}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {diagnostico && (
+            <div className="space-y-4 text-sm">
+              <div className="p-3 bg-slate-50 rounded">
+                <p className="font-semibold mb-2">🔌 Configuração Evolution API</p>
+                <div className="space-y-1 ml-3">
+                  <p>URL: <code className="text-xs bg-white px-2 py-1 rounded">{diagnostico.evolution_config?.url}</code></p>
+                  <p>Instance: <code className="text-xs bg-white px-2 py-1 rounded">{diagnostico.evolution_config?.instance}</code></p>
+                  <p>Key: {diagnostico.evolution_config?.key_exists ? '✅ Configurada' : '❌ Não configurada'}</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded">
+                <p className="font-semibold mb-2">📊 Banco de Dados</p>
+                <div className="space-y-1 ml-3">
+                  <p>Mensagens: {diagnostico.database_check?.ultimas_mensagens}</p>
+                  <p>Conversas: {diagnostico.database_check?.ultimas_conversas}</p>
+                </div>
+              </div>
+
+              {diagnostico.evolution_config?.webhook && (
+                <div className="p-3 bg-slate-50 rounded">
+                  <p className="font-semibold mb-2">🌐 Webhook Evolution</p>
+                  <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
+                    {JSON.stringify(diagnostico.evolution_config.webhook, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                <p className="font-semibold mb-1">📎 URL do Webhook</p>
+                <code className="text-xs break-all">{diagnostico.webhook_url}</code>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Teste de Webhook */}
       <Card>
