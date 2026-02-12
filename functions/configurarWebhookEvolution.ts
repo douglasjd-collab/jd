@@ -26,12 +26,24 @@ Deno.serve(async (req) => {
       throw new Error(`Configure estas variáveis: ${missing.join(', ')}`);
     }
 
-    // Construir URL do webhook
-    const currentUrl = new URL(req.url);
-    const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
+    // Construir URL do webhook - Extrair do header do Deno
+    // A URL correta vem do header X-Forwarded-Proto e Host
+    const protocol = req.headers.get('x-forwarded-proto') || 'https';
+    const host = req.headers.get('host');
+    
+    console.log('🔍 Headers:');
+    console.log('- x-forwarded-proto:', protocol);
+    console.log('- host:', host);
+    console.log('- url:', req.url);
+
+    if (!host) {
+      throw new Error('Não foi possível determinar a URL do servidor');
+    }
+
+    const baseUrl = `${protocol}://${host}`;
     const webhookUrl = `${baseUrl}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
 
-    console.log('🎯 Webhook URL:', webhookUrl);
+    console.log('🎯 Webhook URL Gerada:', webhookUrl);
     console.log('🌐 Base URL:', baseUrl);
     console.log('📝 Instance:', instanceName);
 
