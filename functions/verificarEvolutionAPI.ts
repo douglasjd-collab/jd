@@ -1,0 +1,138 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+
+Deno.serve(async (req) => {
+  console.log('\n\n');
+  console.log('█'.repeat(100));
+  console.log('🔍 VERIFICAÇÃO DE EVOLUTION API - WEBHOOK CONFIGURATION');
+  console.log('█'.repeat(100));
+  
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+    
+    console.log('📋 Credenciais:');
+    console.log('  URL:', evolutionUrl ? '✅ SET' : '❌ MISSING');
+    console.log('  Key:', evolutionKey ? '✅ SET' : '❌ MISSING');
+    console.log('  Instance:', instanceName ? '✅ SET' : '❌ MISSING');
+    
+    if (!evolutionUrl || !evolutionKey || !instanceName) {
+      return Response.json({
+        success: false,
+        error: 'Missing Evolution API credentials',
+        missing: {
+          url: !evolutionUrl,
+          key: !evolutionKey,
+          instance: !instanceName
+        }
+      });
+    }
+    
+    // 1. Testar conexão com Evolution API
+    console.log('\n🔗 1. Testando conexão com Evolution API...');
+    const testUrl = `${evolutionUrl}/instance/info/${instanceName}`;
+    console.log('   URL:', testUrl);
+    
+    const infoResponse = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'apikey': evolutionKey
+      }
+    });
+    
+    console.log('   Status:', infoResponse.status);
+    
+    let instanceInfo = null;
+    if (infoResponse.ok) {
+      instanceInfo = await infoResponse.json();
+      console.log('   ✅ Conectado! Info:', JSON.stringify(instanceInfo, null, 2).substring(0, 500));
+    } else {
+      const errorText = await infoResponse.text();
+      console.log('   ❌ Erro:', errorText.substring(0, 300));
+    }
+    
+    // 2. Listar webhooks configurados
+    console.log('\n📡 2. Verificando webhooks configurados...');
+    const webhookUrl = `${evolutionUrl}/webhook/list/${instanceName}`;
+    console.log('   URL:', webhookUrl);
+    
+    const webhookResponse = await fetch(webhookUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'apikey': evolutionKey
+      }
+    });
+    
+    console.log('   Status:', webhookResponse.status);
+    
+    let webhooksList = null;
+    if (webhookResponse.ok) {
+      webhooksList = await webhookResponse.json();
+      console.log('   ✅ Webhooks encontrados:', JSON.stringify(webhooksList, null, 2));
+    } else {
+      const errorText = await webhookResponse.text();
+      console.log('   ❌ Erro ao listar:', errorText.substring(0, 300));
+    }
+    
+    // 3. Verificar se instance está conectada
+    console.log('\n🟢 3. Status da instância...');
+    if (instanceInfo && instanceInfo.instance) {
+      const status = instanceInfo.instance.state;
+      console.log('   Estado:', status);
+      if (status === 'open' || status === 'connected') {
+        console.log('   ✅ Instância CONECTADA ao WhatsApp');
+      } else {
+        console.log('   ❌ Instância NÃO está conectada! Estado:', status);
+      }
+    }
+    
+    // 4. Sugerir próximos passos
+    console.log('\n📝 4. Diagnóstico:');
+    const diagnostico = {
+      conectado: infoResponse.ok,
+      instancia_ativa: instanceInfo?.instance?.state === 'open' || instanceInfo?.instance?.state === 'connected',
+      webhooks_configurados: webhooksList ? Object.keys(webhooksList).length > 0 : false,
+      problemas: []
+    };
+    
+    if (!infoResponse.ok) {
+      diagnostico.problemas.push('Evolution API não respondeu - verifique URL e API Key');
+    }
+    if (!diagnostico.instancia_ativa) {
+      diagnostico.problemas.push('Instância do WhatsApp não está conectada - reconecte via QR Code');
+    }
+    if (!diagnostico.webhooks_configurados) {
+      diagnostico.problemas.push('Nenhum webhook configurado - clique em "Configurar Webhook Automaticamente"');
+    }
+    
+    console.log('\n' + JSON.stringify(diagnostico, null, 2));
+    console.log('█'.repeat(100));
+    
+    return Response.json({
+      success: true,
+      diagnostico,
+      evolutionInfo: instanceInfo,
+      webhooks: webhooksList
+    });
+    
+  } catch (error) {
+    console.log('█'.repeat(100));
+    console.log('❌ ERRO:', error.message);
+    console.log('Stack:', error.stack);
+    console.log('█'.repeat(100));
+    
+    return Response.json({
+      success: false,
+      error: error.message
+    }, { status: 500 });
+  }
+});
