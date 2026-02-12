@@ -301,7 +301,8 @@ export default function BatePapo() {
           await base44.functions.invoke('enviarMensagemWhatsapp', {
             conversa_id: conversaSelecionada.id,
             mensagem_texto: novaMensagem.texto,
-            numero_cliente: conversaSelecionada.cliente_telefone
+            numero_cliente: conversaSelecionada.cliente_telefone,
+            empresa_id: empresaId
           });
           toast.success('✅ Mensagem enviada via WhatsApp!');
         } catch (error) {

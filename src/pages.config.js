@@ -65,6 +65,7 @@ import Convenios from './pages/Convenios';
 import Dashboard from './pages/Dashboard';
 import EmpresasParceiras from './pages/EmpresasParceiras';
 import FunilVendas from './pages/FunilVendas';
+import GestaoSubcontas from './pages/GestaoSubcontas';
 import HistoricoImportacao from './pages/HistoricoImportacao';
 import HistoricoResultadoAssembleia from './pages/HistoricoResultadoAssembleia';
 import Importacao from './pages/Importacao';
@@ -104,7 +105,6 @@ import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import GestaoSubcontas from './pages/GestaoSubcontas';
 import __Layout from './Layout.jsx';
 
 
@@ -127,6 +127,7 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "EmpresasParceiras": EmpresasParceiras,
     "FunilVendas": FunilVendas,
+    "GestaoSubcontas": GestaoSubcontas,
     "HistoricoImportacao": HistoricoImportacao,
     "HistoricoResultadoAssembleia": HistoricoResultadoAssembleia,
     "Importacao": Importacao,
@@ -166,7 +167,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "GestaoSubcontas": GestaoSubcontas,
 }
 
 export const pagesConfig = {
