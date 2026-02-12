@@ -87,11 +87,14 @@ Deno.serve(async (req) => {
 
     // Fazer requisição
     console.log('📤 Enviando requisição...');
+    console.log('🔑 API Key sendo usada:', evolutionKey.substring(0, 20) + '...');
+    
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': evolutionKey
+        'apiKey': evolutionKey,
+        'api-key': evolutionKey
       },
       body: JSON.stringify(payload)
     });
