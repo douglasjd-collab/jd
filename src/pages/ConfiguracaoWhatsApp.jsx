@@ -113,8 +113,8 @@ export default function ConfiguracaoWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (!user?.empresa_id || !empresa?.id) {
-        toast.error('Erro: Empresa não identificada');
+      if (!selectedEmpresaId || !empresa?.id) {
+        toast.error('Erro: Selecione uma empresa');
         return;
       }
 
