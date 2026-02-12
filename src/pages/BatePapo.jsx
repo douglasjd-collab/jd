@@ -270,7 +270,7 @@ export default function BatePapo() {
             </div>
 
             {/* Campo de Envio */}
-            <EnviarMensagemForm onEnviar={() => {}} isLoading={false} />
+            <EnviarMensagemForm onEnviar={handleEnviarMensagem} isLoading={sendingMessage} />
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-white">
