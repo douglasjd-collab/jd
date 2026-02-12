@@ -50,6 +50,31 @@ export default function TesteWhatsApp() {
     }
   };
 
+  const simularMensagem = async () => {
+    if (!telefone) {
+      toast.error('Digite um telefone');
+      return;
+    }
+
+    setTestando(true);
+    try {
+      const response = await base44.functions.invoke('simularMensagemRecebida', { 
+        telefone: telefone 
+      });
+
+      if (response.data.success) {
+        toast.success('✅ Mensagem simulada e criada no banco!');
+        setTimeout(carregarDados, 500);
+      } else {
+        toast.error('Erro: ' + (response.data.error || 'Desconhecido'));
+      }
+    } catch (error) {
+      toast.error('Erro: ' + error.message);
+    } finally {
+      setTestando(false);
+    }
+  };
+
   const testarWebhook = async () => {
     if (!telefone) {
       toast.error('Digite um telefone');
