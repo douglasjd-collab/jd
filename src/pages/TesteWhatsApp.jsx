@@ -43,40 +43,21 @@ export default function TesteWhatsApp() {
 
     setTestando(true);
     try {
-      // Simular payload de webhook
-      const webhookUrl = await base44.functions.invoke('getWebhookUrl');
-      const payload = {
-        event: 'messages.upsert',
-        data: {
-          key: {
-            remoteJid: telefone + '@s.whatsapp.net',
-            fromMe: false,
-            id: 'TEST_' + Date.now()
-          },
-          message: {
-            conversation: 'Mensagem de teste - ' + new Date().toLocaleString()
-          },
-          pushName: 'Cliente Teste'
-        }
-      };
-
-      console.log('Enviando para webhook:', webhookUrl.data);
-      console.log('Payload:', payload);
-
-      const response = await fetch(webhookUrl.data, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      const response = await base44.functions.invoke('testarWebhookWhatsApp', { 
+        telefone: telefone 
       });
 
-      const result = await response.json();
-      console.log('Resposta webhook:', result);
+      console.log('Resposta teste:', response.data);
 
-      if (result.success) {
-        toast.success('Teste enviado! Aguarde processamento...');
-        setTimeout(carregarDados, 2000);
+      if (response.data.success) {
+        if (response.data.mensagem_criada) {
+          toast.success('✅ Teste OK! Mensagem criada com sucesso');
+        } else {
+          toast.warning('⚠️ Webhook respondeu mas mensagem não foi criada');
+        }
+        setTimeout(carregarDados, 1000);
       } else {
-        toast.error('Erro no webhook: ' + (result.error || 'Desconhecido'));
+        toast.error('Erro: ' + (response.data.error || 'Desconhecido'));
       }
     } catch (error) {
       console.error('Erro teste:', error);

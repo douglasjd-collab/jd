@@ -220,16 +220,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.error('[WEBHOOK] ✨ Sucesso!');
-    return Response.json({ success: true });
+    console.error('[WEBHOOK] ✨ SUCESSO COMPLETO!');
+    console.error('[WEBHOOK] Resumo: Mensagem processada e salva no banco');
+    console.error('='.repeat(80));
+    return Response.json({ 
+      success: true,
+      timestamp: new Date().toISOString(),
+      processed: true
+    });
 
   } catch (error) {
-    console.error('❌ ERRO CRÍTICO no webhook:', error);
+    console.error('='.repeat(80));
+    console.error('❌ ERRO CRÍTICO no webhook!');
+    console.error('Timestamp:', new Date().toISOString());
+    console.error('Mensagem:', error.message);
     console.error('Stack:', error.stack);
+    console.error('='.repeat(80));
     return Response.json({ 
       success: false, 
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
+      timestamp: new Date().toISOString()
     }, { status: 500 });
   }
 });
