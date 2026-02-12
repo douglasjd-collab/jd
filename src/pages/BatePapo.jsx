@@ -134,7 +134,8 @@ export default function BatePapo() {
               <Button
                 size="icon"
                 className="rounded-full bg-blue-500 hover:bg-blue-600 h-10 w-10"
-                onClick={() => toast.info('Em desenvolvimento')}
+                onClick={() => setNovaConversaOpen(true)}
+                disabled={criarConversaLoading}
               >
                 <Plus className="w-5 h-5" />
               </Button>
