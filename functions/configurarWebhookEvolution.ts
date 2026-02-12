@@ -1,70 +1,112 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
+  console.log('='.repeat(80));
+  console.log('🔧 CONFIGURAR WEBHOOK AUTOMATICAMENTE');
+  console.log('='.repeat(80));
+  
   try {
-    console.log('🔧 Iniciando configuração automática do webhook...');
-
     // Obter credenciais do ambiente
     const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'TESTEWAZE';
+    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
-    if (!evolutionUrl || !evolutionKey) {
-      throw new Error('Credenciais da Evolution API não configuradas');
+    console.log('📋 Verificando variáveis de ambiente:');
+    console.log('- EVOLUTION_API_URL:', evolutionUrl ? '✅' : '❌ FALTANDO');
+    console.log('- EVOLUTION_API_KEY:', evolutionKey ? '✅' : '❌ FALTANDO');
+    console.log('- EVOLUTION_INSTANCE_NAME:', instanceName || '❌ FALTANDO');
+
+    if (!evolutionUrl || !evolutionKey || !instanceName) {
+      const missing = [];
+      if (!evolutionUrl) missing.push('EVOLUTION_API_URL');
+      if (!evolutionKey) missing.push('EVOLUTION_API_KEY');
+      if (!instanceName) missing.push('EVOLUTION_INSTANCE_NAME');
+      
+      console.error('❌ Variáveis faltando:', missing.join(', '));
+      throw new Error(`Configure estas variáveis: ${missing.join(', ')}`);
     }
-
-    console.log('Evolution URL:', evolutionUrl);
-    console.log('Instance Name:', instanceName);
-    console.log('API Key:', evolutionKey ? '***configurada***' : 'não configurada');
 
     // Construir URL do webhook
     const currentUrl = new URL(req.url);
     const baseUrl = `${currentUrl.protocol}//${currentUrl.host}`;
     const webhookUrl = `${baseUrl}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
 
-    console.log('Webhook URL a configurar:', webhookUrl);
+    console.log('🎯 Webhook URL:', webhookUrl);
+    console.log('🌐 Base URL:', baseUrl);
+    console.log('📝 Instance:', instanceName);
 
-    // Atualizar webhook na Evolution API
-    const response = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
+    // Endpoint da Evolution API
+    const endpoint = `${evolutionUrl.replace(/\/$/, '')}/webhook/set/${instanceName}`;
+    console.log('🔗 Endpoint Evolution:', endpoint);
+
+    // Payload
+    const payload = {
+      url: webhookUrl,
+      webhook_by_events: false,
+      webhook_base64: false,
+      events: [
+        'MESSAGES_UPSERT',
+        'MESSAGES_UPDATE',
+        'SEND_MESSAGE'
+      ]
+    };
+
+    console.log('📦 Payload:', JSON.stringify(payload, null, 2));
+    console.log('🔑 API Key:', evolutionKey.substring(0, 15) + '...');
+
+    // Fazer requisição
+    console.log('📤 Enviando requisição...');
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': evolutionKey
       },
-      body: JSON.stringify({
-        url: webhookUrl,
-        webhook_by_events: false,
-        webhook_base64: false,
-        events: [
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE',
-          'SEND_MESSAGE'
-        ]
-      })
+      body: JSON.stringify(payload)
     });
 
-    console.log('Status da resposta Evolution:', response.status);
+    console.log('📥 Status:', response.status);
+    const responseText = await response.text();
+    console.log('📥 Resposta (raw):', responseText.substring(0, 500));
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Erro da Evolution API:', errorText);
-      throw new Error(`Erro ${response.status}: ${errorText}`);
+      console.error('❌ Evolution API retornou erro!');
+      throw new Error(`Evolution API erro ${response.status}: ${responseText}`);
     }
 
-    const result = await response.json();
-    console.log('✅ Webhook configurado:', result);
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      result = { raw: responseText };
+    }
+
+    console.log('='.repeat(80));
+    console.log('✅ WEBHOOK CONFIGURADO COM SUCESSO!');
+    console.log('='.repeat(80));
 
     return Response.json({
       success: true,
       webhook_url: webhookUrl,
-      evolution_response: result
+      evolution_response: result,
+      configuracao: {
+        url_evolution: evolutionUrl,
+        instance: instanceName,
+        webhook_configurado: webhookUrl
+      }
     });
 
   } catch (error) {
-    console.error('❌ Erro ao configurar webhook:', error);
+    console.error('='.repeat(80));
+    console.error('❌ ERRO CRÍTICO');
+    console.error('Mensagem:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('='.repeat(80));
+    
     return Response.json({
       success: false,
-      error: error.message
+      error: error.message,
+      detalhes: 'Verifique os logs do servidor para mais informações'
     }, { status: 500 });
   }
 });
