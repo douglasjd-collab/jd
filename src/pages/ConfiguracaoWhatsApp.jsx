@@ -30,6 +30,8 @@ export default function ConfiguracaoWhatsApp() {
   const [atualizandoWebhook, setAtualizandoWebhook] = useState(false);
   const [user, setUser] = useState(null);
   const [empresa, setEmpresa] = useState(null);
+  const [empresas, setEmpresas] = useState([]);
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState(null);
 
   useEffect(() => {
     carregarDados();
