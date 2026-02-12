@@ -54,15 +54,34 @@ Deno.serve(async (req) => {
     // Buscar empresa e credenciais Evolution
     let evolutionApiKey, evolutionApiUrl, instanceName;
     
-    const empresaId = payload.empresa_id || user.empresa_id;
+    // Tentar obter empresa_id do payload ou user
+    let empresaId = payload.empresa_id || user.empresa_id;
     
+    // SE USAR INSTÂNCIA TESTE, DEVE SER JD PROMOTORA
     if (empresaId) {
       const empresa = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
       if (empresa && empresa.length > 0) {
-        evolutionApiKey = empresa[0].evolution_api_key;
-        evolutionApiUrl = empresa[0].evolution_url;
         instanceName = empresa[0].evolution_instance_name;
-        console.log('📦 Credenciais da empresa carregadas:', { instanceName });
+        
+        // Se a instância é TESTE, redirecionar para JD Promotora
+        if (instanceName === 'TESTE') {
+          console.log('🔄 Instância TESTE detectada, redirecionando para JD PROMOTORA');
+          const jd = await base44.asServiceRole.entities.Empresa.filter(
+            { nome: { $regex: 'JD.*Promotora' } }
+          );
+          
+          if (jd && jd.length > 0) {
+            empresaId = jd[0].id;
+            evolutionApiKey = jd[0].evolution_api_key;
+            evolutionApiUrl = jd[0].evolution_url;
+            instanceName = jd[0].evolution_instance_name;
+            console.log('✅ JD PROMOTORA carregada:', { instanceName });
+          }
+        } else {
+          evolutionApiKey = empresa[0].evolution_api_key;
+          evolutionApiUrl = empresa[0].evolution_url;
+          console.log('📦 Credenciais da empresa carregadas:', { instanceName });
+        }
       }
     }
     
