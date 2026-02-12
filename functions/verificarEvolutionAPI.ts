@@ -52,7 +52,9 @@ Deno.serve(async (req) => {
     
     // 1. Testar conexão com Evolution API
     console.log('\n🔗 1. Testando conexão com Evolution API...');
-    const testUrl = `${evolutionUrl}/instance/info/${instanceName}`;
+    // Remover trailing slash da URL para evitar duplicação
+    const baseUrl = evolutionUrl.endsWith('/') ? evolutionUrl.slice(0, -1) : evolutionUrl;
+    const testUrl = `${baseUrl}/instance/info/${instanceName}`;
     console.log('   URL:', testUrl);
     
     const infoResponse = await fetch(testUrl, {
