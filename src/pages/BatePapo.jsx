@@ -136,11 +136,11 @@ export default function BatePapo() {
           user_perfil: user?.perfil
         });
         
-        // REGRA RIGOROSA: Buscar e validar mensagens
-        const msgs = await base44.entities.MensagemWhatsapp.filter(
-          { conversa_id: conversaSelecionada.id },
-          'created_date'
-        );
+        // REGRA RIGOROSA: Buscar e validar mensagens COM FILTRO DE EMPRESA
+         const msgs = await base44.entities.MensagemWhatsapp.filter(
+           { conversa_id: conversaSelecionada.id, empresa_id: empresaId },
+           'created_date'
+         );
 
         // Filtrar apenas mensagens válidas
         const msgValidas = (msgs || []).filter(m => {
