@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, MessageCircle, Search, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
+import NovaConversaModal from '@/components/chat/NovaConversaModal';
 
 export default function BatePapo() {
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
@@ -16,7 +17,10 @@ export default function BatePapo() {
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [empresaId, setEmpresaId] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [novaConversaOpen, setNovaConversaOpen] = useState(false);
+  const [criarConversaLoading, setCriarConversaLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const queryClient = useQueryClient();
 
   // Carregar auth uma única vez
   useEffect(() => {
