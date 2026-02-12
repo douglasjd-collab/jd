@@ -57,13 +57,25 @@ Deno.serve(async (req) => {
     const testUrl = `${baseUrl}/instance/info/${instanceName}`;
     console.log('   URL:', testUrl);
     
-    const infoResponse = await fetch(testUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'apikey': evolutionKey
-      }
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    let infoResponse;
+    try {
+      infoResponse = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'apikey': evolutionKey
+        },
+        signal: controller.signal
+      });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      console.log('   ❌ Erro na requisição:', e.message);
+      infoResponse = { ok: false, status: 0 };
+    }
+    clearTimeout(timeoutId);
     
     console.log('   Status:', infoResponse.status);
     
