@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, MessageCircle, Search, MoreVertical, UserCog, Ban, Users, Tag, CheckSquare, FileText, UserCheck, Plus, Filter } from 'lucide-react';
+import { Loader2, MessageCircle, Search, MoreVertical, UserCog, Ban, Users, Tag, CheckSquare, FileText, UserCheck, Plus, Filter, MailOpen, CheckCheck, Pin, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   DropdownMenu,
@@ -323,17 +323,49 @@ export default function BatePapo() {
                     </div>
                   </button>
                   
-                  {/* Botão Atribuir para mim */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toast.success('Conversa atribuída para você');
-                    }}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1"
-                  >
-                    <UserCheck className="w-3 h-3" />
-                    Atribuir para mim
-                  </button>
+                  {/* Botão Mais opções */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg flex items-center gap-1.5"
+                        >
+                          Mais opções
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          Atribuir para mim
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info('Adicionar etiqueta em desenvolvimento')}>
+                          <Tag className="w-4 h-4 mr-2" />
+                          Adicionar etiqueta
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info('Marcado como não lida')}>
+                          <MailOpen className="w-4 h-4 mr-2" />
+                          Marcar como não lida
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.warning('Contato bloqueado')}>
+                          <Ban className="w-4 h-4 mr-2" />
+                          Bloquear contato
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.success('Conversa finalizada')}>
+                          <CheckCheck className="w-4 h-4 mr-2" />
+                          Finalizar conversa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info('Marcado como esperando')}>
+                          <Clock className="w-4 h-4 mr-2" />
+                          Marcar como esperando
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.success('Conversa fixada')}>
+                          <Pin className="w-4 h-4 mr-2" />
+                          Fixar conversa
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               ))
             )}
