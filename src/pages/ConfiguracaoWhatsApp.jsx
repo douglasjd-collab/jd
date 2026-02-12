@@ -77,16 +77,22 @@ export default function ConfiguracaoWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await base44.functions.invoke('atualizarConfigWhatsApp', {
-        evolutionUrl: tempUrl,
-        instanceName: tempInstance,
-        apiKey: tempApiKey
+      if (!user?.empresa_id || !empresa?.id) {
+        toast.error('Erro: Empresa não identificada');
+        return;
+      }
+
+      await base44.entities.Empresa.update(empresa.id, {
+        evolution_url: tempUrl,
+        evolution_instance_name: tempInstance,
+        evolution_api_key: tempApiKey
       });
+
       setEvolutionUrl(tempUrl);
       setInstanceName(tempInstance);
       setApiKey(tempApiKey);
       setEditMode(false);
-      toast.success('Configurações salvas com sucesso!');
+      toast.success('✅ Configurações WhatsApp salvas para esta empresa!');
     } catch (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } finally {
