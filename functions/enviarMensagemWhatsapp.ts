@@ -1,82 +1,99 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
+  console.log('='.repeat(80));
+  console.log('📤 ENVIAR MENSAGEM WHATSAPP');
+  console.log('='.repeat(80));
+  
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
+    console.log('👤 Usuário:', user?.email);
+
     if (!user) {
+      console.error('❌ Usuário não autenticado');
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { conversa_id, mensagem_id, telefone } = await req.json();
-
-    // Buscar mensagem
-    const mensagem = await base44.entities.MensagemWhatsapp.list().then(
-      msgs => msgs.find(m => m.id === mensagem_id)
-    );
-
-    if (!mensagem) {
-      return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
+    // Ler payload
+    const bodyText = await req.text();
+    console.log('📥 Payload recebido:', bodyText);
+    
+    let payload;
+    try {
+      payload = JSON.parse(bodyText);
+    } catch (e) {
+      console.error('❌ Erro ao parsear JSON:', e.message);
+      return Response.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    // Configurações da Evolution API
+    const { conversa_id, mensagem_texto, numero_cliente } = payload;
+    
+    console.log('📋 Parâmetros:');
+    console.log('  - conversa_id:', conversa_id);
+    console.log('  - mensagem_texto:', mensagem_texto?.substring(0, 50));
+    console.log('  - numero_cliente:', numero_cliente);
+
+    if (!conversa_id || !mensagem_texto || !numero_cliente) {
+      console.error('❌ Parâmetros faltando');
+      return Response.json({
+        error: 'Parâmetros inválidos',
+        recebido: { conversa_id, mensagem_texto: !!mensagem_texto, numero_cliente }
+      }, { status: 400 });
+    }
+
+    // Verificar credenciais Evolution
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
+    console.log('🔐 Verificando credenciais Evolution:');
+    console.log('  - URL:', evolutionApiUrl ? '✅' : '❌');
+    console.log('  - Key:', evolutionApiKey ? '✅' : '❌');
+    console.log('  - Instance:', instanceName ? '✅' : '❌');
+
     if (!evolutionApiKey || !evolutionApiUrl || !instanceName) {
+      console.error('❌ Credenciais Evolution faltando');
       return Response.json({ 
         error: 'Evolution API não configurada' 
       }, { status: 400 });
     }
 
-    // Preparar payload para Evolution API
-    let endpoint, payload;
+    // Formatar número
+    const numeroFormatado = numero_cliente.replace(/\D/g, '');
+    console.log('📱 Número formatado:', numeroFormatado);
 
-    // Formatar número: garantir que tenha o formato correto (5587981404421)
-    const numeroFormatado = telefone.replace(/\D/g, '');
-    
-    console.log('📤 Enviando mensagem:', {
-      tipo: mensagem.tipo_conteudo,
-      telefone: numeroFormatado,
-      texto: mensagem.texto?.substring(0, 50)
-    });
+    // Preparar requisição para Evolution
+    const endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
+    const requestPayload = {
+      number: numeroFormatado,
+      text: mensagem_texto
+    };
 
-    if (mensagem.tipo_conteudo === 'texto') {
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
-      payload = {
-        number: numeroFormatado,
-        text: mensagem.texto
-      };
-    } else {
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
-      payload = {
-        number: numeroFormatado,
-        mediaUrl: mensagem.arquivo_url,
-        mediaType: mensagem.tipo_conteudo,
-        fileName: mensagem.arquivo_nome || 'file'
-      };
-    }
+    console.log('🎯 Endpoint:', endpoint);
+    console.log('📦 Payload Evolution:', JSON.stringify(requestPayload));
 
-    console.log('🔗 Endpoint:', endpoint);
-    console.log('📦 Payload:', payload);
-
+    // Enviar para Evolution API
+    console.log('📤 Enviando para Evolution API...');
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': evolutionApiKey
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(requestPayload)
     });
 
+    console.log('📥 Status Evolution:', response.status);
     const responseText = await response.text();
-    console.log('📥 Response status:', response.status);
-    console.log('📥 Response body:', responseText);
+    console.log('📥 Response body:', responseText.substring(0, 500));
 
     if (!response.ok) {
-      console.error('❌ Evolution API error:', responseText);
+      console.error('❌ Evolution API retornou erro:');
+      console.error('Status:', response.status);
+      console.error('Body:', responseText);
+      
       return Response.json({ 
         error: 'Erro ao enviar via WhatsApp',
         details: responseText,
@@ -84,23 +101,54 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
 
-    const result = JSON.parse(responseText);
+    let result;
+    try {
+      result = JSON.parse(responseText);
+      console.log('✅ Resposta parseada:', result);
+    } catch (e) {
+      console.error('⚠️ Erro ao parsear resposta Evolution:', e.message);
+      result = { raw: responseText };
+    }
 
-    // Atualizar status da mensagem
-    await base44.entities.MensagemWhatsapp.update(mensagem_id, {
-      status: 'enviada',
-      whatsapp_message_id: result.key?.id || result.messageId || result.id
+    // Criar registro de mensagem no banco
+    console.log('💾 Salvando mensagem no banco...');
+    
+    const novaMensagem = await base44.entities.MensagemWhatsapp.create({
+      conversa_id: conversa_id,
+      empresa_id: user.empresa_id || 'default',
+      remetente: 'vendedor',
+      usuario_id: user.id,
+      usuario_nome: user.full_name,
+      tipo_conteudo: 'texto',
+      texto: mensagem_texto,
+      whatsapp_message_id: result.key?.id || result.messageId || result.id || 'pending',
+      data_envio: new Date().toISOString(),
+      status: 'enviada'
     });
 
-    console.log('✅ Mensagem enviada com sucesso!');
+    console.log('✅ Mensagem salva:', novaMensagem.id);
+
+    console.log('='.repeat(80));
+    console.log('✅ SUCESSO!');
+    console.log('='.repeat(80));
 
     return Response.json({ 
-      success: true, 
-      messageId: result.key?.id || result.messageId || result.id 
+      success: true,
+      message_id: novaMensagem.id,
+      whatsapp_id: result.key?.id || result.messageId || result.id
     });
 
   } catch (error) {
-    console.error('Erro:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.log('='.repeat(80));
+    console.log('❌ ERRO CRÍTICO');
+    console.log('Mensagem:', error.message);
+    console.log('Stack:', error.stack);
+    console.log('='.repeat(80));
+    
+    return Response.json({
+      success: false,
+      error: error.message,
+      details: error.stack
+    }, { status: 500 });
   }
 });
