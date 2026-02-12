@@ -34,23 +34,33 @@ Deno.serve(async (req) => {
     // Preparar payload para Evolution API
     let endpoint, payload;
 
+    // Formatar número: garantir que tenha o formato correto (5587981404421)
+    const numeroFormatado = telefone.replace(/\D/g, '');
+    
+    console.log('📤 Enviando mensagem:', {
+      tipo: mensagem.tipo_conteudo,
+      telefone: numeroFormatado,
+      texto: mensagem.texto?.substring(0, 50)
+    });
+
     if (mensagem.tipo_conteudo === 'texto') {
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText`;
+      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
       payload = {
-        instance: instanceName,
-        number: telefone.replace(/\D/g, ''),
+        number: numeroFormatado,
         text: mensagem.texto
       };
     } else {
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendMedia`;
+      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
       payload = {
-        instance: instanceName,
-        number: telefone.replace(/\D/g, ''),
+        number: numeroFormatado,
         mediaUrl: mensagem.arquivo_url,
         mediaType: mensagem.tipo_conteudo,
         fileName: mensagem.arquivo_nome || 'file'
       };
     }
+
+    console.log('🔗 Endpoint:', endpoint);
+    console.log('📦 Payload:', payload);
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -61,26 +71,32 @@ Deno.serve(async (req) => {
       body: JSON.stringify(payload)
     });
 
+    const responseText = await response.text();
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response body:', responseText);
+
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Evolution API error:', error);
+      console.error('❌ Evolution API error:', responseText);
       return Response.json({ 
         error: 'Erro ao enviar via WhatsApp',
-        details: error 
+        details: responseText,
+        status: response.status
       }, { status: 500 });
     }
 
-    const result = await response.json();
+    const result = JSON.parse(responseText);
 
     // Atualizar status da mensagem
     await base44.entities.MensagemWhatsapp.update(mensagem_id, {
       status: 'enviada',
-      whatsapp_message_id: result.messageId || result.id
+      whatsapp_message_id: result.key?.id || result.messageId || result.id
     });
+
+    console.log('✅ Mensagem enviada com sucesso!');
 
     return Response.json({ 
       success: true, 
-      messageId: result.messageId || result.id 
+      messageId: result.key?.id || result.messageId || result.id 
     });
 
   } catch (error) {
