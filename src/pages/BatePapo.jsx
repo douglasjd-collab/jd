@@ -94,20 +94,35 @@ export default function BatePapo() {
     enabled: !!empresaId,
     queryFn: async () => {
       try {
-        console.log('[Conversas] Buscando conversas da empresa:', empresaId);
+        console.log('[Conversas] 🔄 Buscando conversas da empresa:', empresaId);
         const result = await base44.entities.ConversaWhatsapp.filter(
           { empresa_id: empresaId },
           '-data_ultima_mensagem'
         );
         console.log('[Conversas] ✅ Total encontradas:', result.length);
-        return result;
+        
+        // Validação rigorosa
+        const conversasValidas = (result || []).filter(c => {
+          const temId = !!c.id;
+          const temTelefone = !!c.cliente_telefone;
+          const temNome = !!c.cliente_nome;
+          
+          if (!temId || !temTelefone) {
+            console.warn('[Conversas] ⚠️ Conversa inválida:', c.id, { temId, temTelefone, temNome });
+            return false;
+          }
+          return true;
+        });
+        
+        console.log('[Conversas] ✅ Conversas válidas:', conversasValidas.length);
+        return conversasValidas;
       } catch (err) {
         console.error('[Conversas] ❌ Erro:', err);
         toast.error('Erro ao carregar conversas: ' + err.message);
         throw err;
       }
     },
-    refetchInterval: 3000
+    refetchInterval: 2000  // Reduzido para 2 segundos para detectar conversas novas rapidamente
   });
 
   const { data: mensagens = [], isError: mensagensError, error: msgError, isPending: loadingMensagens } = useQuery({
