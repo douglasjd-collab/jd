@@ -371,7 +371,7 @@ export default function Layout({ children, currentPageName }) {
                   )}
                   <div className="flex-1 min-w-0 text-left">
                     <p className="font-medium truncate">{user.nome_perfil || user.full_name}</p>
-                    <p className="text-xs text-white/60 capitalize">{user.perfil === 'super_admin' ? 'JD PROMOTORA - Super Admin' : (user.perfil || 'Vendedor')}</p>
+                    <p className="text-xs text-white/60 capitalize">{user.perfil || 'Vendedor'}</p>
                   </div>
                   <ChevronDown className="w-4 h-4" />
                 </button>
