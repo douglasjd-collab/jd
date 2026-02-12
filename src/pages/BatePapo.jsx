@@ -198,17 +198,25 @@ export default function BatePapo() {
       await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id] });
       await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       
-      // Integrar com Evolution API
-      try {
-        await base44.functions.invoke('enviarMensagemWhatsapp', {
-          conversa_id: conversaSelecionada.id,
-          mensagem_texto: novaMensagem.texto,
-          numero_cliente: conversaSelecionada.cliente_telefone
-        });
-        toast.success('Mensagem enviada!');
-      } catch (error) {
-        console.error('Erro ao enviar para Evolution:', error);
-        toast.error('Erro ao enviar via WhatsApp: ' + error.message);
+      // Integrar com Evolution API (apenas para mensagens de texto)
+      if (novaMensagem.tipo_conteudo === 'texto' && novaMensagem.texto) {
+        try {
+          console.log('📤 Enviando para Evolution API:', {
+            conversa_id: conversaSelecionada.id,
+            mensagem_texto: novaMensagem.texto,
+            numero_cliente: conversaSelecionada.cliente_telefone
+          });
+          
+          await base44.functions.invoke('enviarMensagemWhatsapp', {
+            conversa_id: conversaSelecionada.id,
+            mensagem_texto: novaMensagem.texto,
+            numero_cliente: conversaSelecionada.cliente_telefone
+          });
+          toast.success('✅ Mensagem enviada via WhatsApp!');
+        } catch (error) {
+          console.error('❌ Erro ao enviar para Evolution:', error);
+          toast.error('Erro ao enviar via WhatsApp: ' + (error.response?.data?.error || error.message));
+        }
       }
     },
     onError: (error) => {
