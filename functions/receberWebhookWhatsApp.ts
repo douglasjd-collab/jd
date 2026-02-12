@@ -154,40 +154,66 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, skipped: 'duplicate' });
     }
 
-    // Buscar ou criar conversa
-    console.log('💬 Buscando conversa...');
-    let conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-      empresa_id: empresaId,
-      cliente_telefone: telefoneLimpo
-    });
-    console.log('💬 Conversas encontradas:', conversas.length);
+    // Buscar ou criar conversa - REGRA RIGOROSA
+      console.log('💬 Buscando/criando conversa...');
 
-    let conversa;
-    if (conversas.length === 0) {
-      console.log('➕ Criando nova conversa...');
-      conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+      // Tentar encontrar por telefone
+      let conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
         empresa_id: empresaId,
-        cliente_id: '',
-        cliente_nome: pushName,
-        cliente_telefone: telefoneLimpo,
-        whatsapp_id: messageId,
-        status: 'ativa',
-        ultima_mensagem: conteudo.substring(0, 200),
-        data_ultima_mensagem: new Date().toISOString()
+        cliente_telefone: telefoneLimpo
       });
-      console.log('✅ Conversa criada:', conversa.id);
-    } else {
-      conversa = conversas[0];
-      console.log('✅ Conversa existente:', conversa.id);
-      
-      // Atualizar última mensagem
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-        ultima_mensagem: conteudo.substring(0, 200),
-        data_ultima_mensagem: new Date().toISOString(),
-        status: 'ativa'
-      });
-      console.log('✅ Conversa atualizada');
-    }
+
+      let conversa;
+      if (!conversas || conversas.length === 0) {
+        // Criar OBRIGATORIAMENTE
+        console.log('➕ CRIANDO NOVA CONVERSA (não existia)');
+        try {
+          conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+            empresa_id: empresaId,
+            cliente_id: '',
+            cliente_nome: pushName || 'Cliente',
+            cliente_telefone: telefoneLimpo,
+            whatsapp_id: messageId,
+            status: 'ativa',
+            ultima_mensagem: conteudo.substring(0, 200),
+            data_ultima_mensagem: new Date().toISOString()
+          });
+          console.log('✅ CONVERSA CRIADA COM SUCESSO:', conversa.id);
+        } catch (createErr) {
+          console.error('❌ ERRO AO CRIAR CONVERSA:', createErr.message);
+          // Se falhar, tentar buscar novamente (pode ter sido criada por outro request)
+          conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+            empresa_id: empresaId,
+            cliente_telefone: telefoneLimpo
+          });
+          if (conversas && conversas.length > 0) {
+            conversa = conversas[0];
+            console.log('⚠️ CONVERSA ENCONTRADA NA RETENTATIVA:', conversa.id);
+          } else {
+            throw createErr;
+          }
+        }
+      } else {
+        // Usar existente
+        conversa = conversas[0];
+        console.log('✅ CONVERSA EXISTENTE ENCONTRADA:', conversa.id);
+
+        // SEMPRE atualizar última mensagem
+        try {
+          await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+            ultima_mensagem: conteudo.substring(0, 200),
+            data_ultima_mensagem: new Date().toISOString(),
+            status: 'ativa'
+          });
+          console.log('✅ CONVERSA ATUALIZADA');
+        } catch (updateErr) {
+          console.warn('⚠️ Erro ao atualizar conversa (não crítico):', updateErr.message);
+        }
+      }
+
+      if (!conversa || !conversa.id) {
+        throw new Error('FALHA CRÍTICA: Conversa não tem ID válido');
+      }
 
     // CRIAR MENSAGEM
     console.log('💾 Criando mensagem...');
