@@ -16,7 +16,9 @@ export default function BatePapo() {
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [empresaId, setEmpresaId] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef(null);
+  const queryClient = useQueryClient();
 
   // Carregar auth uma única vez
   useEffect(() => {
