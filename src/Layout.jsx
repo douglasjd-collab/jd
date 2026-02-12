@@ -194,6 +194,7 @@ export default function Layout({ children, currentPageName }) {
       roles: ['master', 'super_admin', 'admin'],
       submenu: [
         { name: 'Usuários', page: 'Usuarios' },
+        { name: 'Convênios', page: 'Convenios' },
         { name: 'Administradoras', page: 'Administradoras' },
         { name: 'Empresas Parceiras', page: 'EmpresasParceiras' },
         { name: 'Tabela de Comissão', page: 'TabelasEmprestimo' },
