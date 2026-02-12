@@ -15,6 +15,8 @@ export default function TesteWhatsApp() {
   const [testando, setTestando] = useState(false);
   const [diagnostico, setDiagnostico] = useState(null);
   const [carregandoDiag, setCarregandoDiag] = useState(false);
+  const [testeEvolution, setTesteEvolution] = useState(null);
+  const [testando2, setTestando2] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -34,6 +36,29 @@ export default function TesteWhatsApp() {
       toast.error('Erro: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testarEvolution = async () => {
+    setTestando2(true);
+    try {
+      const response = await base44.functions.invoke('testarConexaoEvolution');
+      setTesteEvolution(response.data);
+      
+      if (response.data.success) {
+        const todosOk = response.data.testes.every(t => t.sucesso);
+        if (todosOk) {
+          toast.success('✅ Todas credenciais OK!');
+        } else {
+          toast.warning('⚠️ Alguns testes falharam');
+        }
+      } else {
+        toast.error('❌ Credenciais não configuradas');
+      }
+    } catch (error) {
+      toast.error('Erro: ' + error.message);
+    } finally {
+      setTestando2(false);
     }
   };
 
@@ -116,6 +141,78 @@ export default function TesteWhatsApp() {
           Atualizar
         </Button>
       </div>
+
+      {/* Teste Evolution API */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>🔌 Conexão Evolution API</span>
+            <Button onClick={testarEvolution} disabled={testando2}>
+              {testando2 ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Testar Conexão'
+              )}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {testeEvolution && (
+            <div className="space-y-4">
+              {/* Credenciais */}
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <p className="font-semibold mb-3">📋 Credenciais Configuradas</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">URL:</span>
+                    <code className="text-xs bg-white px-2 py-1 rounded">{testeEvolution.credenciais?.url}</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Instance:</span>
+                    <code className="text-xs bg-white px-2 py-1 rounded">{testeEvolution.credenciais?.instance}</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">API Key:</span>
+                    <span>{testeEvolution.credenciais?.key_configurada ? '✅ Configurada' : '❌ Não configurada'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resultados dos Testes */}
+              <div className="space-y-2">
+                {testeEvolution.testes?.map((teste, idx) => (
+                  <div key={idx} className={`p-3 rounded-lg border-2 ${
+                    teste.sucesso 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{teste.nome}</span>
+                      {teste.sucesso ? (
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-600" />
+                      )}
+                    </div>
+                    {teste.sucesso ? (
+                      <div className="text-sm">
+                        <p className="text-slate-600 mb-1">Status: {teste.status}</p>
+                        {teste.dados && (
+                          <pre className="text-xs bg-white p-2 rounded overflow-x-auto max-h-32">
+                            {JSON.stringify(teste.dados, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-red-700">❌ {teste.erro || 'Falha na conexão'}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Diagnóstico */}
       <Card>
