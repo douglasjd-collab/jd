@@ -34,9 +34,9 @@ Deno.serve(async (req) => {
     }
     
     console.log('📋 Credenciais:');
-    console.log('  URL:', evolutionUrl ? '✅ SET' : '❌ MISSING');
-    console.log('  Key:', evolutionKey ? '✅ SET' : '❌ MISSING');
-    console.log('  Instance:', instanceName ? '✅ SET' : '❌ MISSING');
+    console.log('  URL:', evolutionUrl);
+    console.log('  Key:', evolutionKey ? evolutionKey.substring(0, 10) + '***' : '❌ MISSING');
+    console.log('  Instance:', instanceName);
     
     if (!evolutionUrl || !evolutionKey || !instanceName) {
       return Response.json({
