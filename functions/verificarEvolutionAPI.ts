@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     
     // 2. Listar webhooks configurados
     console.log('\n📡 2. Verificando webhooks configurados...');
-    const webhookUrl = `${evolutionUrl}/webhook/list/${instanceName}`;
+    const webhookUrl = `${baseUrl}/webhook/list/${instanceName}`;
     console.log('   URL:', webhookUrl);
     
     const webhookResponse = await fetch(webhookUrl, {
