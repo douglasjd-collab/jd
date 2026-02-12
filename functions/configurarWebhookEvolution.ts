@@ -91,8 +91,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apiKey': evolutionKey,
-        'api-key': evolutionKey
+        'apikey': evolutionKey
       },
       body: JSON.stringify(payload)
     });
