@@ -298,10 +298,12 @@ export default function TabelasEmprestimo() {
   };
 
   const handleBaixarModelo = () => {
-    const csvContent = `Data,Convenio,Banco,Tabela,Prazo
-01/02/2026,INSS,C6 Bank,INSS ML NORMAL - WEB,84
-01/02/2026,Governo PE,BMG,Governo PE Especial,96
-15/02/2026,INSS,Digio,INSS Refin,72`;
+    const csvContent = `Data,Convenio,Banco,Tabela,Comissão E.,Comissão V.
+12/fev,INSS,C6 Bank,NOVO NORMAL TAXA 1.85%,10,8
+12/fev,Governo de PE,BMG,NOVO NORMAL TAXA 1.85%,10,8
+12/fev,Governo de AL,Itaú,NOVO NORMAL TAXA 1.85%,10,8
+12/fev,Prefeitura de Tupanatinga,Digio,NOVO NORMAL TAXA 1.85%,10,8
+12/fev,Prefeitura de Itaiba,Banco do Brasil,NOVO NORMAL TAXA 1.85%,10,8`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -583,7 +585,7 @@ export default function TabelasEmprestimo() {
               <div>
                 <Label className="text-base font-semibold">Selecione o Arquivo CSV</Label>
                 <p className="text-sm text-slate-500 mt-1">
-                  Formato: Data, Convenio, Banco, Tabela, Prazo
+                  Formato: Data, Convenio, Banco, Tabela, Comissão E., Comissão V.
                 </p>
               </div>
 
@@ -608,10 +610,10 @@ export default function TabelasEmprestimo() {
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <p className="text-sm font-medium mb-2">Exemplo do formato CSV:</p>
               <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
-                <div>Data,Convenio,Banco,Tabela,Prazo</div>
-                <div>01/02/2026,INSS,C6 Bank,INSS ML NORMAL - WEB,84</div>
-                <div>01/02/2026,Governo PE,BMG,Governo PE Especial,96</div>
-                <div>15/02/2026,INSS,Digio,INSS Refin,72</div>
+                <div>Data,Convenio,Banco,Tabela,Comissão E.,Comissão V.</div>
+                <div>12/fev,INSS,C6 Bank,NOVO NORMAL TAXA 1.85%,10,8</div>
+                <div>12/fev,Governo de PE,BMG,NOVO NORMAL TAXA 1.85%,10,8</div>
+                <div>12/fev,Governo de AL,Itaú,NOVO NORMAL TAXA 1.85%,10,8</div>
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 💡 Aceita separação por vírgula (,), ponto-e-vírgula (;) ou tab
