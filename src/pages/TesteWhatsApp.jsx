@@ -178,24 +178,39 @@ export default function TesteWhatsApp() {
           <div>
             <Label>Telefone (apenas números)</Label>
             <Input
-              placeholder="5581999999999"
+              placeholder="558781194149"
               value={telefone}
               onChange={(e) => setTelefone(e.target.value.replace(/\D/g, ''))}
             />
           </div>
-          <Button onClick={testarWebhook} disabled={testando}>
-            {testando ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Testando...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4 mr-2" />
-                Enviar Teste
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={simularMensagem} disabled={testando} variant="outline">
+              {testando ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Testando...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Simular Mensagem
+                </>
+              )}
+            </Button>
+            <Button onClick={testarWebhook} disabled={testando}>
+              {testando ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Testando...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Testar Webhook
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
