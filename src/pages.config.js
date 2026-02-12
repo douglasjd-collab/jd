@@ -63,7 +63,6 @@ import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
 import Configuracoes from './pages/Configuracoes';
 import Convenios from './pages/Convenios';
 import Dashboard from './pages/Dashboard';
-import Empresas from './pages/Empresas';
 import EmpresasParceiras from './pages/EmpresasParceiras';
 import FunilVendas from './pages/FunilVendas';
 import HistoricoImportacao from './pages/HistoricoImportacao';
@@ -126,7 +125,6 @@ export const PAGES = {
     "Configuracoes": Configuracoes,
     "Convenios": Convenios,
     "Dashboard": Dashboard,
-    "Empresas": Empresas,
     "EmpresasParceiras": EmpresasParceiras,
     "FunilVendas": FunilVendas,
     "HistoricoImportacao": HistoricoImportacao,

@@ -166,7 +166,6 @@ export default function Layout({ children, currentPageName }) {
 
   const menuItems = [
     { name: 'Gestão de Subcontas', icon: Building2, page: 'GestaoSubcontas', roles: ['super_admin'] },
-    { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Nova Proposta', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { 
