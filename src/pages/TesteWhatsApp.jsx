@@ -17,6 +17,8 @@ export default function TesteWhatsApp() {
   const [carregandoDiag, setCarregandoDiag] = useState(false);
   const [testeEvolution, setTesteEvolution] = useState(null);
   const [testando2, setTestando2] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState(null);
+  const [buscandoUrl, setBuscandoUrl] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -36,6 +38,19 @@ export default function TesteWhatsApp() {
       toast.error('Erro: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const obterUrlCorreta = async () => {
+    setBuscandoUrl(true);
+    try {
+      const response = await base44.functions.invoke('getWebhookUrlCorreto');
+      setWebhookUrl(response.data);
+      toast.success('URL obtida com sucesso!');
+    } catch (error) {
+      toast.error('Erro: ' + error.message);
+    } finally {
+      setBuscandoUrl(false);
     }
   };
 
@@ -143,20 +158,69 @@ export default function TesteWhatsApp() {
       </div>
 
       {/* URL Correta do Webhook */}
-      <Card className="bg-amber-50 border-amber-200">
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300">
         <CardHeader>
-          <CardTitle className="text-amber-900">⚠️ URL CORRETA do Webhook</CardTitle>
+          <CardTitle className="flex items-center justify-between text-blue-900">
+            <span>🎯 URL CORRETA do Webhook</span>
+            <Button onClick={obterUrlCorreta} disabled={buscandoUrl} size="sm" variant="outline">
+              {buscandoUrl ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Obter URL
+                </>
+              )}
+            </Button>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm mb-2 text-amber-800">Use esta URL na Evolution API:</p>
-          <div className="p-3 bg-white rounded border-2 border-amber-300">
-            <code className="text-sm break-all text-blue-600 font-mono">
-              https://windy-sheep-96-y3gedbkzg1xs.deno.dev/functions/receberWebhookWhatsApp?instance=TESTEWAZE
-            </code>
-          </div>
-          <p className="text-xs text-amber-700 mt-2">
-            ⚠️ A URL deve ser exatamente esta. Domínios diferentes não funcionarão.
-          </p>
+          {webhookUrl ? (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium mb-2 text-blue-800">📋 Cole esta URL na Evolution API:</p>
+                  <div className="p-4 bg-white rounded-lg border-2 border-blue-400 shadow-sm">
+                    <code className="text-sm break-all text-blue-600 font-mono font-bold">
+                      {webhookUrl.webhook_url}
+                    </code>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(webhookUrl.webhook_url);
+                      toast.success('✅ URL copiada!');
+                    }}
+                    className="mt-2"
+                    size="sm"
+                  >
+                    Copiar URL
+                  </Button>
+                </div>
+
+                <div className="p-3 bg-blue-100 border border-blue-300 rounded-lg">
+                  <p className="text-xs font-semibold text-blue-900 mb-2">⚡ Deployment Info:</p>
+                  <div className="space-y-1 text-xs text-blue-800">
+                    <div><strong>Host:</strong> {webhookUrl.deployment_info?.host}</div>
+                    <div><strong>Protocol:</strong> {webhookUrl.deployment_info?.protocol}</div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-100 border border-amber-300 rounded-lg">
+                  <p className="text-xs text-amber-900">
+                    ⚠️ <strong>IMPORTANTE:</strong> Se o domínio for diferente do que você configurou na Evolution API, 
+                    os webhooks NÃO chegarão. Reconfigure com esta URL exata.
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-slate-600 mb-3">Clique em "Obter URL" para ver a URL correta do webhook</p>
+              <Button onClick={obterUrlCorreta} disabled={buscandoUrl}>
+                {buscandoUrl ? 'Obtendo...' : 'Obter URL do Webhook'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
