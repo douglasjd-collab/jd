@@ -21,38 +21,47 @@ export default function ConfiguracaoWhatsApp() {
   const [tempApiKey, setTempApiKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [atualizandoWebhook, setAtualizandoWebhook] = useState(false);
+  const [user, setUser] = useState(null);
+  const [empresa, setEmpresa] = useState(null);
 
   useEffect(() => {
-    loadConfig();
-    obterUrlCorretaAuto();
+    carregarDados();
   }, []);
+
+  const carregarDados = async () => {
+    try {
+      const me = await base44.auth.me();
+      setUser(me);
+
+      if (me?.empresa_id) {
+        const emp = await base44.entities.Empresa.filter({ id: me.empresa_id });
+        if (emp && emp.length > 0) {
+          const empresaData = emp[0];
+          setEmpresa(empresaData);
+          setEvolutionUrl(empresaData.evolution_url || '');
+          setInstanceName(empresaData.evolution_instance_name || '');
+          setApiKey(empresaData.evolution_api_key || '');
+        }
+      }
+
+      // Gerar webhook URL com base na empresa
+      obterUrlCorretaAuto();
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast.error('Erro ao carregar configurações');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const obterUrlCorretaAuto = async () => {
     try {
       const response = await base44.functions.invoke('getWebhookUrlCorreto');
       const urlCorreta = response.data.webhook_url;
-      console.log('✅ URL Correta do Deployment:', urlCorreta);
+      console.log('✅ URL Correta do Webhook:', urlCorreta);
       setWebhookUrl(urlCorreta);
     } catch (error) {
       console.error('Erro ao obter URL:', error);
-    }
-  };
-
-  const loadConfig = async () => {
-    try {
-      const response = await base44.functions.invoke('getWebhookUrl');
-      setWebhookUrl(response.data.webhookUrl);
-      setEvolutionUrl(response.data.evolutionUrl);
-      setInstanceName(response.data.instanceName);
-      setApiKey(response.data.apiKey);
-    } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
-      setWebhookUrl('');
-      setEvolutionUrl('');
-      setInstanceName('');
-      setApiKey('');
-    } finally {
-      setLoading(false);
     }
   };
 
