@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, MessageCircle, Search, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -11,66 +11,95 @@ import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 
 export default function BatePapo() {
-  const [user, setUser] = useState(null);
-  const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
+  const [empresaId, setEmpresaId] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
   const messagesEndRef = useRef(null);
-  const queryClient = useQueryClient();
 
+  // Carregar auth uma única vez
   useEffect(() => {
+    let isMounted = true;
+
+    const loadUser = async () => {
+      try {
+        const me = await base44.auth.me();
+        if (isMounted && me?.empresa_id) {
+          setEmpresaId(me.empresa_id);
+        } else if (isMounted && !me?.empresa_id) {
+          toast.error('Empresa não encontrada');
+        }
+      } catch (e) {
+        console.error('❌ Auth error:', e);
+        if (isMounted) toast.error('Erro ao carregar perfil');
+      } finally {
+        if (isMounted) setLoadingAuth(false);
+      }
+    };
+
     loadUser();
+    return () => { isMounted = false; };
   }, []);
 
-  const loadUser = async () => {
-    try {
-      const me = await base44.auth.me();
-      setUser(me);
-      setEmpresaId(me.empresa_id);
-    } catch (e) {
-      console.error('Erro ao carregar usuário:', e);
-    }
-  };
-
+  // Query conversas
   const { data: conversas = [] } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
-    enabled: !!empresaId,
+    enabled: !!empresaId && !loadingAuth,
     queryFn: async () => {
-      const result = await base44.entities.ConversaWhatsapp.filter(
-        { empresa_id: empresaId },
-        '-data_ultima_mensagem'
-      );
-      return (result || []).filter(c => c.id && c.cliente_telefone);
+      if (!empresaId) return [];
+      try {
+        const result = await base44.entities.ConversaWhatsapp.filter(
+          { empresa_id: empresaId },
+          '-data_ultima_mensagem',
+          100
+        );
+        return (result || []).slice(0, 100);
+      } catch (e) {
+        console.error('❌ Conversas error:', e);
+        return [];
+      }
     },
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 60000,
+    gcTime: 300000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
+  // Query mensagens
   const { data: mensagens = [], isPending: loadingMensagens } = useQuery({
-    queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId],
-    enabled: !!conversaSelecionada?.id && !!empresaId,
+    queryKey: ['mensagens-whatsapp', conversaSelecionada?.id],
+    enabled: !!conversaSelecionada?.id,
     queryFn: async () => {
-      const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaSelecionada.id, empresa_id: empresaId },
-        'created_date'
-      );
-      return (msgs || []).filter(m => m.texto || m.arquivo_url);
+      if (!conversaSelecionada?.id) return [];
+      try {
+        const msgs = await base44.entities.MensagemWhatsapp.filter(
+          { conversa_id: conversaSelecionada.id },
+          'created_date',
+          200
+        );
+        return (msgs || []).slice(0, 200);
+      } catch (e) {
+        console.error('❌ Mensagens error:', e);
+        return [];
+      }
     },
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 60000,
+    gcTime: 300000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
+  // Scroll para última mensagem
   useEffect(() => {
-    if (messagesEndRef.current && mensagens.length > 0) {
+    if (mensagens.length > 0) {
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     }
   }, [mensagens.length]);
 
+  // Filtrar conversas
   const conversasFiltradas = conversas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
       (c.cliente_telefone || '').includes(searchConversas);
@@ -78,10 +107,14 @@ export default function BatePapo() {
     return matchSearch && matchStatus;
   });
 
-  if (!user || !empresaId) {
+  // Loading inicial
+  if (loadingAuth) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
+          <p className="text-sm text-slate-600">Carregando...</p>
+        </div>
       </div>
     );
   }
@@ -121,7 +154,7 @@ export default function BatePapo() {
               </TabsList>
             </Tabs>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {conversasFiltradas.length === 0 ? (
               <div className="flex items-center justify-center h-full text-slate-400">
@@ -167,7 +200,7 @@ export default function BatePapo() {
         {/* Área de Chat */}
         {conversaSelecionada ? (
           <div className="flex-1 flex flex-col bg-slate-50">
-            {/* Header do Chat */}
+            {/* Header */}
             <div className="bg-white border-b px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
@@ -193,7 +226,6 @@ export default function BatePapo() {
                   <div className="text-center">
                     <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-40" />
                     <p className="text-sm">Nenhuma mensagem ainda</p>
-                    <p className="text-xs mt-1">Envie a primeira mensagem para começar a conversa</p>
                   </div>
                 </div>
               )}
@@ -218,7 +250,7 @@ export default function BatePapo() {
                 <MessageCircle className="w-12 h-12 text-blue-500" />
               </div>
               <p className="text-lg font-semibold text-slate-900 mb-2">Selecione uma conversa</p>
-              <p className="text-sm text-slate-500">Escolha uma conversa da lista para começar a conversar</p>
+              <p className="text-sm text-slate-500">Escolha uma conversa da lista para começar</p>
             </div>
           </div>
         )}
