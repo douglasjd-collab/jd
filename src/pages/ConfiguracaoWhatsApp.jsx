@@ -95,38 +95,15 @@ export default function ConfiguracaoWhatsApp() {
   const atualizarWebhookEvolution = async () => {
     setAtualizandoWebhook(true);
     try {
-      // Buscar a URL correta do deployment
-      const urlResponse = await base44.functions.invoke('getWebhookUrlCorreto');
-      const urlCorreta = urlResponse.data.webhook_url;
+      // Buscar credenciais reais e URL correta através da função backend
+      const configResponse = await base44.functions.invoke('configurarWebhookEvolution');
       
-      // Atualizar webhook na Evolution API
-      const response = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': apiKey
-        },
-        body: JSON.stringify({
-          url: urlCorreta,
-          webhook_by_events: false,
-          events: [
-            'MESSAGES_UPSERT',
-            'MESSAGES_UPDATE',
-            'SEND_MESSAGE'
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Erro ${response.status}: ${error}`);
+      if (configResponse.data.success) {
+        setWebhookUrl(configResponse.data.webhook_url);
+        toast.success('✅ Webhook configurado com sucesso na Evolution API!');
+      } else {
+        throw new Error(configResponse.data.error || 'Erro ao configurar webhook');
       }
-
-      const result = await response.json();
-      console.log('Webhook atualizado:', result);
-      
-      setWebhookUrl(urlCorreta);
-      toast.success('✅ Webhook configurado com sucesso na Evolution API!');
     } catch (error) {
       console.error('Erro ao atualizar webhook:', error);
       toast.error('❌ Erro: ' + error.message);
