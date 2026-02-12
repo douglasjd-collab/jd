@@ -325,7 +325,7 @@ export default function BatePapo() {
                   
                   {/* Botão Mais opções */}
                   <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DropdownMenu>
+                    <DropdownMenu modal={true}>
                       <DropdownMenuTrigger asChild>
                         <button
                           onClick={(e) => e.stopPropagation()}
@@ -334,7 +334,7 @@ export default function BatePapo() {
                           Mais opções
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" side="left" sideOffset={5} className="w-56 z-50">
+                      <DropdownMenuContent align="start" side="left" sideOffset={5} className="w-56 z-[100]">
                         <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
                           <UserCheck className="w-4 h-4 mr-2" />
                           Atribuir para mim
