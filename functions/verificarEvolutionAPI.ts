@@ -14,9 +14,24 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+    // Buscar credenciais da empresa do usuário
+    let evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+    let evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+    let instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+    
+    try {
+      if (user?.empresa_id) {
+        const empresa = await base44.asServiceRole.entities.Empresa.filter({ id: user.empresa_id });
+        if (empresa?.length > 0) {
+          evolutionUrl = empresa[0].evolution_url || evolutionUrl;
+          evolutionKey = empresa[0].evolution_api_key || evolutionKey;
+          instanceName = empresa[0].evolution_instance_name || instanceName;
+          console.log('✅ Usando credenciais da empresa');
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Usando credenciais de ambiente');
+    }
     
     console.log('📋 Credenciais:');
     console.log('  URL:', evolutionUrl ? '✅ SET' : '❌ MISSING');
