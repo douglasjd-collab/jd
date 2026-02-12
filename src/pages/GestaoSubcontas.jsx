@@ -99,12 +99,8 @@ export default function GestaoSubcontas() {
       <PageHeader
         title="Gestão de Subcontas"
         subtitle="Gerencie todas as licenças de usuários ativas no sistema"
-        action={
-          <Button onClick={() => setNovaSubcontaOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Subconta
-          </Button>
-        }
+        actionLabel="Nova Subconta"
+        onAction={() => setNovaSubcontaOpen(true)}
       />
 
       {/* Filtros */}
