@@ -208,7 +208,23 @@ Deno.serve(async (req) => {
       console.log('⚠️ Usando primeira empresa:', empresaId);
     }
 
-    console.log('✅ Empresa ID final:', empresaId);
+    console.log('='.repeat(80));
+    console.log('✅✅✅ EMPRESA ID FINAL:', empresaId);
+    
+    // Buscar dados da empresa para confirmar
+    try {
+      const empresaFinal = empresas.find(e => e.id === empresaId);
+      if (empresaFinal) {
+        console.log('📋 EMPRESA SELECIONADA:');
+        console.log('   Nome:', empresaFinal.nome);
+        console.log('   Código:', empresaFinal.codigo);
+        console.log('   ID:', empresaFinal.id);
+        console.log('   Instance configurada:', empresaFinal.evolution_instance_name);
+      }
+    } catch (e) {
+      console.log('⚠️ Não conseguiu buscar dados da empresa');
+    }
+    console.log('='.repeat(80));
 
     // Verificar se JÁ EXISTE esta mensagem (evitar duplicatas)
     console.log('🔍 Verificando duplicatas...');
@@ -321,11 +337,26 @@ Deno.serve(async (req) => {
     console.log('✅✅✅ MENSAGEM SALVA COM SUCESSO!');
     console.log('ID Mensagem:', novaMensagem.id);
     console.log('Conversa ID:', novaMensagem.conversa_id);
-    console.log('Empresa ID:', novaMensagem.empresa_id);
+    console.log('🏢 EMPRESA ID:', novaMensagem.empresa_id, '⭐ CRÍTICO');
     console.log('Remetente:', novaMensagem.remetente);
     console.log('Tipo:', novaMensagem.tipo_conteudo);
     console.log('Conteudo:', novaMensagem.texto?.substring(0, 100));
     console.log('WhatsApp Message ID:', novaMensagem.whatsapp_message_id);
+    
+    // VERIFICAÇÃO FINAL: Tentar buscar a mensagem que acabamos de criar
+    try {
+      const verificacao = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+        id: novaMensagem.id
+      });
+      if (verificacao.length > 0) {
+        console.log('✅ VERIFICAÇÃO: Mensagem encontrada no banco!');
+        console.log('   Empresa ID confirmado:', verificacao[0].empresa_id);
+      } else {
+        console.log('❌ VERIFICAÇÃO: Mensagem NÃO encontrada no banco!');
+      }
+    } catch (e) {
+      console.log('⚠️ Erro na verificação:', e.message);
+    }
     console.log('='.repeat(100));
 
     console.log('✅ RETORNANDO SUCESSO AO WEBHOOK');
