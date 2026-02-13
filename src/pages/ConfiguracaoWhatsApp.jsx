@@ -100,7 +100,7 @@ export default function ConfiguracaoWhatsApp() {
 
   const gerarUrlWebhook = (instancia) => {
     if (!instancia) return '';
-    const baseUrl = 'https://windy-sheep-96-fz7shspqdf18.deno.dev/functions/receberWebhookWhatsApp';
+    const baseUrl = 'https://appjdpromorora.base44.app/_functions/receberWebhookWhatsApp';
     return `${baseUrl}?instance=${encodeURIComponent(instancia)}`;
   };
 

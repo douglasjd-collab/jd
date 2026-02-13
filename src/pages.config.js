@@ -79,6 +79,7 @@ import ImportarResultadoAssembleia from './pages/ImportarResultadoAssembleia';
 import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import LancamentoDespesas from './pages/LancamentoDespesas';
 import LancamentoReceitas from './pages/LancamentoReceitas';
+import LogsRecebimento from './pages/LogsRecebimento';
 import MeusDados from './pages/MeusDados';
 import NovaVenda from './pages/NovaVenda';
 import NovaVendaConsignado from './pages/NovaVendaConsignado';
@@ -108,7 +109,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import LogsRecebimento from './pages/LogsRecebimento';
 import __Layout from './Layout.jsx';
 
 
@@ -145,6 +145,7 @@ export const PAGES = {
     "ImprimirSimulacao": ImprimirSimulacao,
     "LancamentoDespesas": LancamentoDespesas,
     "LancamentoReceitas": LancamentoReceitas,
+    "LogsRecebimento": LogsRecebimento,
     "MeusDados": MeusDados,
     "NovaVenda": NovaVenda,
     "NovaVendaConsignado": NovaVendaConsignado,
@@ -174,7 +175,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "LogsRecebimento": LogsRecebimento,
 }
 
 export const pagesConfig = {
