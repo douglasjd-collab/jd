@@ -154,45 +154,29 @@ Deno.serve(async (req) => {
     const instanceFinal = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'JD Promotora conta Super adm';
     console.log('🔍 Instance Final:', instanceFinal);
 
-    // Buscar TODAS as empresas ativas
-    console.log('🏢 Buscando empresas...');
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
-    console.log('🏢 Empresas encontradas:', empresas.length);
-    console.log('📋 Instâncias disponíveis:', empresas.map(e => e.evolution_instance_name).join(', '));
-
-    if (!empresas || empresas.length === 0) {
-      console.log('❌ Nenhuma empresa ativa');
-      return Response.json({ success: false, error: 'No company' }, { status: 400 });
-    }
-
-    // Debug: Listar todas as empresas e suas instâncias
-    console.log('📋 TODAS AS EMPRESAS E SUAS INSTÂNCIAS:');
-    empresas.forEach((e, i) => {
-      console.log(`  [${i+1}] ${e.nome} → Instance: "${e.evolution_instance_name || 'SEM INSTANCE'}"`);
+    // Buscar empresa pela instância configurada
+    console.log('🏢 Buscando empresa com instance:', instanceFinal);
+    const empresas = await base44.asServiceRole.entities.Empresa.filter({ 
+      evolution_instance_name: instanceFinal,
+      status: 'ativa'
     });
 
-    // REGRA CRÍTICA: Identificar empresa pela instância
-    console.log('🔍 Procurando empresa com instance:', instanceFinal);
-
-    let empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFinal);
-    
-    // Se não encontrou, procurar por qualquer empresa ativa (fallback para super admin)
-    if (!empresaPorInstance && empresas.length > 0) {
-      console.log('⚠️ Instance "' + instanceFinal + '" não encontrada, usando primeira empresa disponível');
-      empresaPorInstance = empresas[0];
-    }
-
-    if (!empresaPorInstance) {
-      console.error('❌ ERRO CRÍTICO: Nenhuma empresa encontrada!');
+    if (!empresas || empresas.length === 0) {
+      console.error('❌ Nenhuma empresa encontrada com instance:', instanceFinal);
+      // Listar todas disponíveis para debug
+      const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
+      console.log('📋 Empresas disponíveis:', todasEmpresas.map(e => e.evolution_instance_name).join(', '));
       return Response.json({ 
         success: false, 
-        error: 'Nenhuma empresa disponível',
-        instances_disponiveis: empresas.map(e => e.evolution_instance_name)
+        error: 'Empresa não encontrada',
+        instance_procurado: instanceFinal,
+        instances_disponiveis: todasEmpresas.map(e => e.evolution_instance_name)
       }, { status: 400 });
     }
 
+    const empresaPorInstance = empresas[0];
     const empresaId = empresaPorInstance.id;
-    console.log('✅ Empresa selecionada!');
+    console.log('✅ Empresa encontrada:');
     console.log('   Nome:', empresaPorInstance.nome);
     console.log('   ID:', empresaId);
     console.log('   Instance:', empresaPorInstance.evolution_instance_name);
