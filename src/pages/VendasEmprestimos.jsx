@@ -355,14 +355,14 @@ export default function VendasEmprestimos() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-base">
-                          {venda.cliente_nome}
+                        <div className="flex items-baseline gap-2">
+                          <h3 className="font-semibold text-base">{venda.cliente_nome}</h3>
                           {venda.cliente_cpf && (
-                            <span className="text-sm font-normal text-slate-500 ml-2">
-                              - {venda.cliente_cpf}
+                            <span className="text-sm text-slate-500">
+                              {venda.cliente_cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
                             </span>
                           )}
-                        </h3>
+                        </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 transition-opacity`}>
