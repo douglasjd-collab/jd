@@ -550,75 +550,81 @@ export default function TabelasEmprestimo() {
       </Dialog>
 
       <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Importar Tabelas via CSV</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Botão para baixar modelo */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-sm text-blue-900 mb-1">
-                    📥 Baixe o Modelo de Planilha
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-sm text-blue-900">
+                    📥 Modelo de Planilha
                   </h3>
-                  <p className="text-sm text-blue-700">
-                    Baixe o arquivo CSV modelo para preencher com suas tabelas
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    Baixe o CSV modelo para preencher
                   </p>
                 </div>
                 <Button
+                  size="sm"
                   variant="outline"
                   onClick={handleBaixarModelo}
-                  className="border-blue-300 hover:bg-blue-100"
+                  className="border-blue-300 hover:bg-blue-100 shrink-0"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Baixar Modelo
+                  Baixar
                 </Button>
               </div>
             </div>
 
             {/* Upload do arquivo */}
-            <div className="space-y-3">
-              <div>
-                <Label className="text-base font-semibold">Selecione o Arquivo CSV</Label>
-                <p className="text-sm text-slate-500 mt-1">
-                  Formato: Data, Convenio, Banco, Codigo Produto, Produto, Codigo Tabela, Tabela, Prazo Inicial, Prazo Final, Valor Inicial, Valor Final, Tipo Agente, Empresa, Tipo de Formalização, Comissão Empresa
-                </p>
-              </div>
-
-              <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center hover:border-slate-300 transition-colors">
-                <Upload className="w-12 h-12 mx-auto mb-3 text-slate-400" />
-                <Input
-                  type="file"
-                  accept=".csv,.txt"
-                  onChange={(e) => setArquivoCSV(e.target.files?.[0] || null)}
-                  className="max-w-sm mx-auto"
-                />
-                {arquivoCSV && (
-                  <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-                    <span className="text-green-600 font-medium">✓</span>
-                    <span className="text-sm text-green-700">{arquivoCSV.name}</span>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Selecione o Arquivo CSV</Label>
+              
+              <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors">
+                <div className="flex flex-col items-center gap-3">
+                  <Upload className="w-8 h-8 text-slate-400" />
+                  <div className="w-full">
+                    <label className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                      <span className="text-sm font-medium text-slate-700">
+                        {arquivoCSV ? arquivoCSV.name : 'Escolher ficheiro CSV'}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".csv,.txt"
+                        onChange={(e) => setArquivoCSV(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
-                )}
+                  {arquivoCSV && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                      <span className="text-green-600 font-medium text-sm">✓</span>
+                      <span className="text-xs text-green-700">Arquivo selecionado</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Exemplo do formato */}
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-              <p className="text-sm font-medium mb-2">Exemplo do formato CSV:</p>
-              <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
-                <div>Data;Convenio;Banco;Codigo Produto;Produto;Codigo Tabela;Tabela;Prazo Inicial;Prazo Final;Valor Inicial;Valor Final;Tipo Agente;Empresa;Tipo de Formalização;Comissão Empresa</div>
-                <div>06/02/2026;INSS;HAPPY CONSIG;;NOVO;76709;HAPPY DIG INSS - ML;96;96;1000;1499.99;Bronze;Prospecta;DIGITAL;6.37</div>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="text-xs font-medium mb-1.5">Exemplo do formato CSV:</p>
+              <div className="text-[10px] leading-tight font-mono bg-white p-2 rounded border overflow-x-auto">
+                <div className="whitespace-nowrap">Data;Convenio;Banco;Codigo Produto;Produto;Codigo Tabela;Tabela;Prazo Inicial;Prazo Final;Valor Inicial;Valor Final;Tipo Agente;Empresa;Tipo de Formalização;Comissão Empresa</div>
+                <div className="whitespace-nowrap mt-1">06/02/2026;INSS;HAPPY CONSIG;;NOVO;76709;HAPPY DIG INSS - ML;96;96;1000;1499.99;Bronze;Prospecta;DIGITAL;6.37</div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                💡 Separado por ponto-e-vírgula (;) conforme padrão Excel brasileiro
+              <p className="text-[10px] text-slate-500 mt-1.5">
+                💡 Separado por ponto-e-vírgula (;)
               </p>
             </div>
 
             {/* Botões de ação */}
-            <div className="flex gap-3 justify-end pt-4 border-t">
+            <div className="flex gap-2 justify-end pt-3 border-t">
               <Button 
+                size="sm"
                 type="button" 
                 variant="outline" 
                 onClick={() => {
@@ -629,6 +635,7 @@ export default function TabelasEmprestimo() {
                 Cancelar
               </Button>
               <Button 
+                size="sm"
                 onClick={handleImportarCSV} 
                 disabled={!arquivoCSV || importarCSVMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
@@ -641,7 +648,7 @@ export default function TabelasEmprestimo() {
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Importar Tabelas
+                    Importar
                   </>
                 )}
               </Button>
