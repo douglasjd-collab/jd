@@ -182,22 +182,6 @@ Deno.serve(async (req) => {
     console.log('   Instance:', empresaPorInstance.evolution_instance_name);
 
     console.log('='.repeat(80));
-    console.log('✅✅✅ EMPRESA ID FINAL:', empresaId);
-    
-    // Buscar dados da empresa para confirmar
-    try {
-      const empresaFinal = empresas.find(e => e.id === empresaId);
-      if (empresaFinal) {
-        console.log('📋 EMPRESA SELECIONADA:');
-        console.log('   Nome:', empresaFinal.nome);
-        console.log('   Código:', empresaFinal.codigo);
-        console.log('   ID:', empresaFinal.id);
-        console.log('   Instance configurada:', empresaFinal.evolution_instance_name);
-      }
-    } catch (e) {
-      console.log('⚠️ Não conseguiu buscar dados da empresa');
-    }
-    console.log('='.repeat(80));
 
     // Verificar se JÁ EXISTE esta mensagem (evitar duplicatas)
     console.log('🔍 Verificando duplicatas...');
