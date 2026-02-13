@@ -77,7 +77,20 @@ export default function VendasEmprestimos() {
             const det = await base44.entities.VendaEmprestimoPessoal.filter({ venda_base_id: vb.id });
             detalhes = det[0];
           }
-          return { ...vb, detalhes };
+          
+          let cliente_cpf = null;
+          if (vb.cliente_id) {
+            try {
+              const cliente = await base44.entities.Cliente.filter({ id: vb.cliente_id });
+              if (cliente.length > 0) {
+                cliente_cpf = cliente[0].cpf || cliente[0].pj_cnpj || null;
+              }
+            } catch (e) {
+              console.log('Erro ao buscar CPF do cliente:', e);
+            }
+          }
+          
+          return { ...vb, detalhes, cliente_cpf };
         })
       );
 
@@ -342,7 +355,14 @@ export default function VendasEmprestimos() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-base">{venda.cliente_nome}</h3>
+                        <h3 className="font-semibold text-base">
+                          {venda.cliente_nome}
+                          {venda.cliente_cpf && (
+                            <span className="text-sm font-normal text-slate-500 ml-2">
+                              - {venda.cliente_cpf}
+                            </span>
+                          )}
+                        </h3>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 transition-opacity`}>
