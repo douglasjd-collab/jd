@@ -129,6 +129,11 @@ export default function SimuladorNormal() {
     queryFn: () => base44.entities.EtapaFunil.filter({ status: 'ativa' }, 'ordem')
   });
 
+  // Estados para o Relógio de Contemplação
+  const [menorLanceHistorico, setMenorLanceHistorico] = useState(null);
+  const [maiorLanceHistorico, setMaiorLanceHistorico] = useState(null);
+  const [relogioContemplacao, setRelogioContemplacao] = useState(null);
+
   // Buscar dados históricos do grupo quando disponível
   useEffect(() => {
     const buscarHistorico = async () => {
@@ -194,6 +199,28 @@ export default function SimuladorNormal() {
 
     buscarHistorico();
   }, [grupo]);
+
+  // Atualizar relógio de contemplação quando houver lance próprio
+  useEffect(() => {
+    if (!usarLanceProprio || !lanceProprio || !menorLanceHistorico || !maiorLanceHistorico) {
+      setRelogioContemplacao(null);
+      return;
+    }
+
+    const lancePercentualNum = parseFloat(lanceProprioPercentual);
+    if (isNaN(lancePercentualNum)) {
+      setRelogioContemplacao(null);
+      return;
+    }
+
+    const relogio = calcularRelogioContemplacao(
+      lancePercentualNum,
+      menorLanceHistorico,
+      maiorLanceHistorico
+    );
+
+    setRelogioContemplacao(relogio);
+  }, [usarLanceProprio, lanceProprio, lanceProprioPercentual, menorLanceHistorico, maiorLanceHistorico]);
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '' }]);
@@ -482,7 +509,13 @@ export default function SimuladorNormal() {
           </Card>
 
           {/* Histórico de Lances do Grupo */}
-          {grupo && <LancesDoGrupoPanel grupo={grupo} />}
+          {grupo && (
+            <LancesDoGrupoPanel 
+              grupo={grupo}
+              onMenorLanceChange={setMenorLanceHistorico}
+              onMaiorLanceChange={setMaiorLanceHistorico}
+            />
+          )}
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
@@ -765,18 +798,8 @@ export default function SimuladorNormal() {
                        </p>
                      </div>
 
-                     {/* Relógio Contemplador */}
-                     {historicoLances && historicoLances.length > 0 && (() => {
-                       const mediaHistorica = historicoLances.find(r => r.modalidade === 'lance_limitado')?.media_lance_percent;
-                       if (!mediaHistorica) return null;
-
-                       const relogio = calcularRelogioContemplacao(
-                         parseFloat(lanceProprioPercentual),
-                         mediaHistorica
-                       );
-
-                       return <RelogioContemplacao relogio={relogio} />;
-                     })()}
+                     {/* Relógio de Contemplação */}
+                     {relogioContemplacao && <RelogioContemplacao relogio={relogioContemplacao} />}
                    </>
                   )}
 
