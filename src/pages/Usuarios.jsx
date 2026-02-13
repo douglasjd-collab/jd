@@ -470,7 +470,7 @@ export default function Usuarios() {
       if (!grupos[empresaId]) {
         grupos[empresaId] = {
           empresa_id: empresaId,
-          empresa_nome: u.empresa_nome || empresas.find(e => e.id === empresaId)?.nome || 'Sem Empresa',
+          empresa_nome: u.empresa_nome || empresas.find(e => e.id === empresaId)?.nome || 'JD Promotora conta Super adm',
           usuarios: []
         };
       }
