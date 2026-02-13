@@ -23,17 +23,28 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Empresa não encontrada' }, { status: 400 });
     }
 
-    // Obter arquivo do FormData
-    const formData = await req.formData();
-    const file = formData.get('file');
+    // Verificar se é FormData ou JSON
+    const contentType = req.headers.get('content-type') || '';
+    let fileContent = null;
 
-    if (!file) {
-      return Response.json({ error: 'Arquivo não enviado' }, { status: 400 });
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      const file = formData.get('file');
+      if (!file) {
+        return Response.json({ error: 'Arquivo não enviado' }, { status: 400 });
+      }
+      fileContent = await file.text();
+    } else {
+      // Espera JSON com campo 'content'
+      const body = await req.json();
+      fileContent = body.content;
+      if (!fileContent) {
+        return Response.json({ error: 'Conteúdo do arquivo não enviado' }, { status: 400 });
+      }
     }
 
-    // Ler conteúdo do arquivo
-    const text = await file.text();
-    const linhas = text.split('\n').filter(l => l.trim());
+    // Processar conteúdo
+    const linhas = fileContent.split('\n').filter(l => l.trim());
 
     if (linhas.length < 2) {
       return Response.json({ error: 'Arquivo vazio ou inválido' }, { status: 400 });

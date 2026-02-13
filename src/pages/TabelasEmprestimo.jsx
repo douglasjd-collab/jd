@@ -165,10 +165,10 @@ export default function TabelasEmprestimo() {
 
   const importarCSVMutation = useMutation({
     mutationFn: async (arquivo) => {
-      const formData = new FormData();
-      formData.append('file', arquivo);
+      // Ler conteúdo do arquivo
+      const content = await arquivo.text();
       
-      const response = await base44.functions.invoke('importarTabelasEmprestimoCSV', formData);
+      const response = await base44.functions.invoke('importarTabelasEmprestimoCSV', { content });
       return response.data;
     },
     onSuccess: (resultado) => {
