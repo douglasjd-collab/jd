@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Pencil, Trash2, Upload, History, Plus, Download } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Upload, History, Plus, Download, Filter, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import {
@@ -43,6 +44,15 @@ export default function TabelasEmprestimo() {
   const [dataVigencia, setDataVigencia] = useState('');
   const [bancosFaltantes, setBancosFaltantes] = useState([]);
   const [showBancosFaltantesModal, setShowBancosFaltantesModal] = useState(false);
+  const [filtros, setFiltros] = useState({
+    tipo: '',
+    banco: '',
+    convenio_id: '',
+    prazo_min: '',
+    prazo_max: ''
+  });
+  const [tabelasSelecionadas, setTabelasSelecionadas] = useState([]);
+  const [showDeleteMultipleDialog, setShowDeleteMultipleDialog] = useState(false);
   const [formData, setFormData] = useState({
     codigo: '',
     nome: '',
@@ -163,6 +173,23 @@ export default function TabelasEmprestimo() {
     },
     onError: (error) => {
       toast.error('Erro ao excluir: ' + error.message);
+    }
+  });
+
+  const deletarMultiplasMutation = useMutation({
+    mutationFn: async (ids) => {
+      for (const id of ids) {
+        await base44.entities.TabelaEmprestimo.update(id, { ativo: false });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tabelas-emprestimo', empresaId] });
+      toast.success(`${tabelasSelecionadas.length} tabelas excluídas!`);
+      setTabelasSelecionadas([]);
+      setShowDeleteMultipleDialog(false);
+    },
+    onError: (error) => {
+      toast.error('Erro ao excluir tabelas: ' + error.message);
     }
   });
 
@@ -360,12 +387,69 @@ export default function TabelasEmprestimo() {
     );
   }
 
-  const tabelasFiltradas = tabelas.filter(t =>
-    (t.nome?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (t.codigo?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (t.banco?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (t.tabela?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-  );
+  const tabelasFiltradas = tabelas.filter(t => {
+    // Filtro de busca
+    const matchSearch = (t.nome?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (t.codigo?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (t.banco?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (t.tabela?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+
+    if (!matchSearch) return false;
+
+    // Filtro de tipo/produto
+    if (filtros.tipo && (t.produto?.toLowerCase() || '') !== filtros.tipo.toLowerCase()) {
+      return false;
+    }
+
+    // Filtro de banco
+    if (filtros.banco && (t.banco?.toLowerCase() || '') !== filtros.banco.toLowerCase()) {
+      return false;
+    }
+
+    // Filtro de convênio
+    if (filtros.convenio_id && t.convenio_id !== filtros.convenio_id) {
+      return false;
+    }
+
+    // Filtro de prazo
+    if (filtros.prazo_min && t.prazo_inicial && t.prazo_inicial < parseInt(filtros.prazo_min)) {
+      return false;
+    }
+    if (filtros.prazo_max && t.prazo_final && t.prazo_final > parseInt(filtros.prazo_max)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const tiposUnicos = [...new Set(tabelas.map(t => t.produto).filter(Boolean))];
+  const bancosUnicos = [...new Set(tabelas.map(t => t.banco).filter(Boolean))];
+
+  const handleSelecionarTodas = (checked) => {
+    if (checked) {
+      setTabelasSelecionadas(tabelasFiltradas.map(t => t.id));
+    } else {
+      setTabelasSelecionadas([]);
+    }
+  };
+
+  const handleSelecionarTabela = (id, checked) => {
+    if (checked) {
+      setTabelasSelecionadas([...tabelasSelecionadas, id]);
+    } else {
+      setTabelasSelecionadas(tabelasSelecionadas.filter(tid => tid !== id));
+    }
+  };
+
+  const limparFiltros = () => {
+    setFiltros({
+      tipo: '',
+      banco: '',
+      convenio_id: '',
+      prazo_min: '',
+      prazo_max: ''
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -384,13 +468,109 @@ export default function TabelasEmprestimo() {
         </Button>
       </PageHeader>
 
+      {/* Busca e Filtros */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-6 space-y-4">
           <Input
             placeholder="Buscar por nome, código ou banco..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+
+          {/* Filtros Avançados */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+              <Filter className="w-4 h-4" />
+              Filtros:
+            </span>
+
+            <select
+              value={filtros.tipo}
+              onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
+              className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            >
+              <option value="">Todos os Tipos</option>
+              {tiposUnicos.map(tipo => (
+                <option key={tipo} value={tipo}>{tipo}</option>
+              ))}
+            </select>
+
+            <select
+              value={filtros.banco}
+              onChange={(e) => setFiltros({ ...filtros, banco: e.target.value })}
+              className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            >
+              <option value="">Todos os Bancos</option>
+              {bancosUnicos.map(banco => (
+                <option key={banco} value={banco}>{banco}</option>
+              ))}
+            </select>
+
+            <select
+              value={filtros.convenio_id}
+              onChange={(e) => setFiltros({ ...filtros, convenio_id: e.target.value })}
+              className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            >
+              <option value="">Todos os Convênios</option>
+              {convenios.map(c => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+
+            <Input
+              type="number"
+              placeholder="Prazo mín"
+              value={filtros.prazo_min}
+              onChange={(e) => setFiltros({ ...filtros, prazo_min: e.target.value })}
+              className="w-28"
+            />
+
+            <Input
+              type="number"
+              placeholder="Prazo máx"
+              value={filtros.prazo_max}
+              onChange={(e) => setFiltros({ ...filtros, prazo_max: e.target.value })}
+              className="w-28"
+            />
+
+            {(filtros.tipo || filtros.banco || filtros.convenio_id || filtros.prazo_min || filtros.prazo_max) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={limparFiltros}
+                className="h-9"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Limpar
+              </Button>
+            )}
+          </div>
+
+          {/* Ações em lote */}
+          {tabelasSelecionadas.length > 0 && (
+            <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <span className="text-sm font-medium text-blue-900">
+                {tabelasSelecionadas.length} {tabelasSelecionadas.length === 1 ? 'tabela selecionada' : 'tabelas selecionadas'}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTabelasSelecionadas([])}
+                >
+                  Desmarcar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteMultipleDialog(true)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir Selecionadas
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -407,58 +587,92 @@ export default function TabelasEmprestimo() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3">
-          {tabelasFiltradas.map((tabela) => (
-            <Card key={tabela.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      {tabela.codigo && (
-                        <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-sm font-mono">
-                          {tabela.codigo}
-                        </span>
-                      )}
-                      <h3 className="font-medium">{tabela.nome}</h3>
+        <div className="space-y-3">
+          {/* Header com checkbox para selecionar todas */}
+          {tabelasFiltradas.length > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-lg border">
+              <Checkbox
+                checked={tabelasSelecionadas.length === tabelasFiltradas.length}
+                onCheckedChange={handleSelecionarTodas}
+              />
+              <span className="text-sm font-medium text-slate-700">
+                Selecionar todas ({tabelasFiltradas.length})
+              </span>
+            </div>
+          )}
+
+          {/* Lista de tabelas */}
+          <div className="grid gap-3">
+            {tabelasFiltradas.map((tabela) => (
+              <Card key={tabela.id} className={tabelasSelecionadas.includes(tabela.id) ? 'ring-2 ring-blue-500' : ''}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="pt-1">
+                      <Checkbox
+                        checked={tabelasSelecionadas.includes(tabela.id)}
+                        onCheckedChange={(checked) => handleSelecionarTabela(tabela.id, checked)}
+                      />
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      {tabela.convenio_nome && (
-                        <span className="text-slate-600">Convênio: {tabela.convenio_nome}</span>
-                      )}
-                      {tabela.banco && (
-                        <span className="text-slate-600">Banco: {tabela.banco}</span>
-                      )}
-                      <span className="text-blue-600 font-medium">Comissão: {tabela.comissao_empresa}%</span>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        {tabela.codigo && (
+                          <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-sm font-mono">
+                            {tabela.codigo}
+                          </span>
+                        )}
+                        {tabela.produto && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                            {tabela.produto}
+                          </span>
+                        )}
+                        <h3 className="font-medium">{tabela.tabela || tabela.nome}</h3>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm flex-wrap">
+                        {tabela.convenio_nome && (
+                          <span className="text-slate-600">📋 {tabela.convenio_nome}</span>
+                        )}
+                        {tabela.banco && (
+                          <span className="text-slate-600">🏦 {tabela.banco}</span>
+                        )}
+                        {(tabela.prazo_inicial || tabela.prazo_final) && (
+                          <span className="text-slate-600">
+                            ⏱️ {tabela.prazo_inicial || 0}-{tabela.prazo_final || 0} meses
+                          </span>
+                        )}
+                        <span className="text-blue-600 font-medium">💰 {tabela.comissao_empresa}%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleAbrirHistorico(tabela)}
+                        title="Histórico de Comissões"
+                      >
+                        <History className="w-4 h-4 text-blue-600" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEditar(tabela)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setDeleteId(tabela.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleAbrirHistorico(tabela)}
-                      title="Histórico de Comissões"
-                    >
-                      <History className="w-4 h-4 text-blue-600" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEditar(tabela)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setDeleteId(tabela.id)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 
@@ -733,6 +947,36 @@ export default function TabelasEmprestimo() {
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de exclusão múltipla */}
+      <AlertDialog open={showDeleteMultipleDialog} onOpenChange={setShowDeleteMultipleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão em lote</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir {tabelasSelecionadas.length} {tabelasSelecionadas.length === 1 ? 'tabela' : 'tabelas'}?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletarMultiplasMutation.mutate(tabelasSelecionadas)}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deletarMultiplasMutation.isPending}
+            >
+              {deletarMultiplasMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir Todas'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
