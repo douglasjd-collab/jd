@@ -102,6 +102,14 @@ export default function ConfiguracaoWhatsApp() {
   };
 
   const handleEditMode = () => {
+    const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
+    
+    // Super Admin não pode editar
+    if (isSuperAdmin) {
+      toast.error('Configurações do Super Admin são gerenciadas via Secrets do sistema');
+      return;
+    }
+    
     if (!editMode) {
       setTempUrl(evolutionUrl);
       setTempInstance(instanceName);
@@ -354,69 +362,75 @@ export default function ConfiguracaoWhatsApp() {
           </CardHeader>
           <CardContent className="space-y-4">
             
-            <div>
-              <Label className="mb-2 block">URL da API</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={editMode ? tempUrl : evolutionUrl}
-                  onChange={(e) => editMode && setTempUrl(e.target.value)}
-                  readOnly={!editMode}
-                  className={editMode ? '' : 'bg-slate-50'}
-                />
-                {!editMode && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => copyToClipboard(evolutionUrl, 'url')}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                )}
+            {evolutionUrl && (
+              <div>
+                <Label className="mb-2 block">URL da API</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={editMode ? tempUrl : evolutionUrl}
+                    onChange={(e) => editMode && setTempUrl(e.target.value)}
+                    readOnly={!editMode}
+                    className={editMode ? '' : 'bg-slate-50'}
+                  />
+                  {!editMode && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(evolutionUrl, 'url')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <Label className="mb-2 block">Nome da Instância</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={editMode ? tempInstance : instanceName}
-                  onChange={(e) => editMode && setTempInstance(e.target.value)}
-                  readOnly={!editMode}
-                  className={editMode ? '' : 'bg-slate-50'}
-                />
-                {!editMode && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => copyToClipboard(instanceName, 'instance')}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                )}
+            {instanceName && (
+              <div>
+                <Label className="mb-2 block">Nome da Instância</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={editMode ? tempInstance : instanceName}
+                    onChange={(e) => editMode && setTempInstance(e.target.value)}
+                    readOnly={!editMode}
+                    className={editMode ? '' : 'bg-slate-50'}
+                  />
+                  {!editMode && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(instanceName, 'instance')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <Label className="mb-2 block">Chave de API</Label>
-              <div className="flex gap-2">
-                <Input 
-                  value={editMode ? tempApiKey : apiKey}
-                  onChange={(e) => editMode && setTempApiKey(e.target.value)}
-                  type="text"
-                  readOnly={!editMode}
-                  className={editMode ? '' : 'bg-slate-50 font-mono'}
-                />
-                {!editMode && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => copyToClipboard(apiKey, 'key')}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                )}
+            {apiKey && (
+              <div>
+                <Label className="mb-2 block">Chave de API</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={editMode ? tempApiKey : apiKey}
+                    onChange={(e) => editMode && setTempApiKey(e.target.value)}
+                    type="text"
+                    readOnly={!editMode}
+                    className={editMode ? '' : 'bg-slate-50 font-mono'}
+                  />
+                  {!editMode && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(apiKey, 'key')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {editMode && (
               <div className="flex gap-2 justify-end pt-4 border-t">
