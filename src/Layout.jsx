@@ -195,6 +195,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'Usuários', page: 'Usuarios' },
         { name: 'Convênios', page: 'Convenios' },
+        { name: 'Bancos', page: 'Bancos' },
         { name: 'Administradoras', page: 'Administradoras' },
         { name: 'Empresas Parceiras', page: 'EmpresasParceiras' },
         { name: 'Tabela de Comissão', page: 'TabelasEmprestimo' },
