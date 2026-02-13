@@ -42,22 +42,17 @@ Deno.serve(async (req) => {
       throw new Error(`Configure estas variáveis: ${missing.join(', ')}`);
     }
 
-    // Construir URL do webhook - Extrair do header do Deno
-    // A URL correta vem do header X-Forwarded-Proto e Host
-    const protocol = req.headers.get('x-forwarded-proto') || 'https';
-    const host = req.headers.get('host');
+    // Construir URL do webhook - Usar domínio público do app
+    // Para evitar loop, sempre usar domínio público em produção
+    const protocol = 'https';
+    const host = 'appjdpromorora.base44.app'; // Seu domínio público
     
-    console.log('🔍 Headers:');
-    console.log('- x-forwarded-proto:', protocol);
-    console.log('- host:', host);
-    console.log('- url:', req.url);
-
-    if (!host) {
-      throw new Error('Não foi possível determinar a URL do servidor');
-    }
+    console.log('🔍 Webhook URL:');
+    console.log('- Protocol:', protocol);
+    console.log('- Host:', host);
 
     const baseUrl = `${protocol}://${host}`;
-    const webhookUrl = `${baseUrl}/functions/receberWebhookWhatsApp?instance=${finalInstanceName}`;
+    const webhookUrl = `${baseUrl}/_functions/receberWebhookWhatsApp?instance=${encodeURIComponent(finalInstanceName)}`;
 
     console.log('🎯 Webhook URL Gerada:', webhookUrl);
     console.log('🌐 Base URL:', baseUrl);
