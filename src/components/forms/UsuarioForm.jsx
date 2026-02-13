@@ -34,6 +34,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       perfil: 'vendedor',
       gerente_id: '',
       empresa_id: '',
+      tipo_agente: 'agente_loja',
+      percentual_comissao_agente: null,
       status: 'ativo'
     }
   });
@@ -64,6 +66,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
         perfil: 'vendedor',
         gerente_id: '',
         empresa_id: '',
+        tipo_agente: 'agente_loja',
+        percentual_comissao_agente: null,
         status: 'ativo'
       });
     }
@@ -292,23 +296,66 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
             </div>
             
             {perfil === 'vendedor' && (
-              <div className="col-span-2">
-                <Label>Gerente Responsável (Opcional)</Label>
-                <Select
-                  value={watch('gerente_id') || 'sem-gerente'}
-                  onValueChange={(value) => setValue('gerente_id', value === 'sem-gerente' ? null : value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sem gerente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sem-gerente">Sem gerente</SelectItem>
-                    {gerentes.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="col-span-2">
+                  <Label>Gerente Responsável (Opcional)</Label>
+                  <Select
+                    value={watch('gerente_id') || 'sem-gerente'}
+                    onValueChange={(value) => setValue('gerente_id', value === 'sem-gerente' ? null : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem gerente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sem-gerente">Sem gerente</SelectItem>
+                      {gerentes.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <Label>Tipo de Agente *</Label>
+                  <Select
+                    value={watch('tipo_agente') || 'agente_loja'}
+                    onValueChange={(value) => {
+                      setValue('tipo_agente', value);
+                      // Limpar comissão personalizada ao mudar tipo
+                      setValue('percentual_comissao_agente', null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="agente_loja">Agente Loja - 20%</SelectItem>
+                      <SelectItem value="agente_bronze">Agente Bronze - 60%</SelectItem>
+                      <SelectItem value="agente_prata">Agente Prata - 70%</SelectItem>
+                      <SelectItem value="agente_ouro">Agente Ouro - 80%</SelectItem>
+                      <SelectItem value="agente_diamante">Agente Diamante - 85%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Define o percentual padrão de comissão do vendedor sobre a comissão da empresa
+                  </p>
+                </div>
+
+                <div className="col-span-2">
+                  <Label>Comissão Personalizada (%)</Label>
+                  <Input
+                    type="number"
+                    {...register('percentual_comissao_agente')}
+                    placeholder="Ex: 75"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Opcional: sobrescreve o percentual padrão do tipo de agente
+                  </p>
+                </div>
+              </>
             )}
             </div>
           </div>
