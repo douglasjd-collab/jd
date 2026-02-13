@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,8 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Banknote, Wallet, Plus, Loader2, Search } from 'lucide-react';
 import { createPageUrl } from '@/utils';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function VendasEmprestimos() {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('todos');
@@ -118,6 +126,48 @@ export default function VendasEmprestimos() {
     aguardando_pagamento: 'Aguardando Pagamento',
     pago: 'Pago',
     cancelado: 'Cancelado'
+  };
+
+  const statusOptions = [
+    { value: 'em_andamento', label: 'Em Andamento' },
+    { value: 'pendente', label: 'Pendente' },
+    { value: 'aguardando_formalizacao', label: 'Aguardando Formalização' },
+    { value: 'aguardando_cip', label: 'Aguardando CIP' },
+    { value: 'saldo_retornado', label: 'Saldo Retornado' },
+    { value: 'aguardando_pagamento', label: 'Aguardando Pagamento' },
+    { value: 'pago', label: 'Pago' },
+    { value: 'cancelado', label: 'Cancelado' }
+  ];
+
+  const atualizarStatusMutation = useMutation({
+    mutationFn: async ({ vendaBaseId, vendaDetalheId, novoStatus, isConsignado }) => {
+      await base44.entities.VendaBase.update(vendaBaseId, { status: novoStatus });
+      
+      if (isConsignado) {
+        await base44.entities.VendaConsignado.update(vendaDetalheId, { status: novoStatus });
+      } else {
+        await base44.entities.VendaEmprestimoPessoal.update(vendaDetalheId, { status: novoStatus });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
+      toast.success('Status atualizado com sucesso!');
+    },
+    onError: () => {
+      toast.error('Erro ao atualizar status');
+    }
+  });
+
+  const handleStatusChange = (venda, novoStatus) => {
+    if (venda.status === novoStatus) return;
+    
+    const isConsignado = venda.produto === 'EMPRESTIMO_CONSIGNADO';
+    atualizarStatusMutation.mutate({
+      vendaBaseId: venda.id,
+      vendaDetalheId: venda.detalhes?.id,
+      novoStatus,
+      isConsignado
+    });
   };
 
   if (!user || !empresaId) {
@@ -296,9 +346,25 @@ export default function VendasEmprestimos() {
                         </p>
                       </div>
                     </div>
-                    <Badge className={statusColors[venda.status]}>
-                      {statusLabels[venda.status]}
-                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 transition-opacity`}>
+                          {statusLabels[venda.status]}
+                        </Badge>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {statusOptions.map((option) => (
+                          <DropdownMenuItem
+                            key={option.value}
+                            onClick={() => handleStatusChange(venda, option.value)}
+                            className={venda.status === option.value ? 'bg-slate-100 font-medium' : ''}
+                          >
+                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[option.value].split(' ')[0].replace('bg-', 'bg-')}`} />
+                            {option.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
