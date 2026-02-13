@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, User, Building, Calendar, DollarSign, FileText, Percent } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, User, Building, Calendar, DollarSign, FileText, Percent, Edit, Save, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function VendaEmprestimoDetalhes() {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
+  const [empresaId, setEmpresaId] = useState(null);
+  const [editando, setEditando] = useState(false);
+  const [formData, setFormData] = useState({});
   const urlParams = new URLSearchParams(window.location.search);
   const vendaId = urlParams.get('id');
 
@@ -17,8 +26,26 @@ export default function VendaEmprestimoDetalhes() {
 
   const loadUser = async () => {
     const me = await base44.auth.me();
-    setUser(me);
+    
+    if (me.perfil === 'super_admin' || me.perfil === 'master') {
+      setUser({ ...me, perfil: me.perfil || 'super_admin' });
+      setEmpresaId(null);
+      return;
+    }
+
+    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+    if (colabs.length > 0) {
+      const colab = colabs[0];
+      setUser({ ...me, perfil: colab.perfil });
+      setEmpresaId(colab.empresa_id);
+    }
   };
+
+  const { data: statusPropostas = [] } = useQuery({
+    queryKey: ['status-propostas', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.StatusProposta.filter({ empresa_id: empresaId, ativo: true }, 'ordem')
+  });
 
   const { data: venda, isLoading } = useQuery({
     queryKey: ['venda-emprestimo-detalhes', vendaId],
@@ -41,6 +68,59 @@ export default function VendaEmprestimoDetalhes() {
       return { ...vb, detalhes };
     }
   });
+
+  useEffect(() => {
+    if (venda) {
+      setFormData({
+        status: venda.status,
+        observacoes: venda.observacoes || '',
+        ...venda.detalhes
+      });
+    }
+  }, [venda]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data) => {
+      await base44.entities.VendaBase.update(vendaId, {
+        status: data.status,
+        observacoes: data.observacoes
+      });
+
+      if (venda.detalhes) {
+        const detalhesUpdate = { ...data };
+        delete detalhesUpdate.status;
+        delete detalhesUpdate.observacoes;
+        
+        if (venda.produto === 'EMPRESTIMO_CONSIGNADO') {
+          await base44.entities.VendaConsignado.update(venda.detalhes.id, detalhesUpdate);
+        } else if (venda.produto === 'EMPRESTIMO_PESSOAL') {
+          await base44.entities.VendaEmprestimoPessoal.update(venda.detalhes.id, detalhesUpdate);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['venda-emprestimo-detalhes', vendaId]);
+      queryClient.invalidateQueries(['vendas-emprestimos']);
+      toast.success('Proposta atualizada com sucesso!');
+      setEditando(false);
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar proposta: ' + error.message);
+    }
+  });
+
+  const handleSave = () => {
+    updateMutation.mutate(formData);
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      status: venda.status,
+      observacoes: venda.observacoes || '',
+      ...venda.detalhes
+    });
+    setEditando(false);
+  };
 
   const statusColors = {
     em_andamento: 'bg-blue-100 text-blue-800',
@@ -85,10 +165,43 @@ export default function VendaEmprestimoDetalhes() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={`${isConsignado ? 'Empréstimo Consignado' : 'Empréstimo Pessoal'} - ${venda.cliente_nome}`}
-        backTo="VendasEmprestimos"
-      />
+      <div className="flex items-center justify-between mb-8">
+        <PageHeader
+          title={`${isConsignado ? 'Empréstimo Consignado' : 'Empréstimo Pessoal'} - ${venda.cliente_nome}`}
+          backTo="VendasEmprestimos"
+        />
+        <div className="flex gap-2">
+          {!editando ? (
+            <Button onClick={() => setEditando(true)} className="gap-2">
+              <Edit className="w-4 h-4" />
+              Editar
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={handleCancel}
+                variant="outline"
+                className="gap-2"
+              >
+                <X className="w-4 h-4" />
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={updateMutation.isPending}
+                className="gap-2 bg-green-600 hover:bg-green-700"
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Salvar
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
       <div className="grid gap-6">
         {/* Informações do Cliente */}
@@ -107,11 +220,36 @@ export default function VendaEmprestimoDetalhes() {
               </div>
               <div>
                 <span className="text-sm text-slate-500">Status</span>
-                <div className="mt-1">
-                  <Badge className={statusColors[venda.status]}>
-                    {statusLabels[venda.status]}
-                  </Badge>
-                </div>
+                {editando ? (
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm mt-1"
+                  >
+                    {statusPropostas.length > 0 ? (
+                      statusPropostas.map(status => (
+                        <option key={status.id} value={status.codigo}>{status.nome}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="aguardando_formalizacao">Aguardando formalização</option>
+                        <option value="aguardando_cip">Aguardando CIP</option>
+                        <option value="saldo_retornado">Saldo retornado</option>
+                        <option value="aguardando_pagamento">Aguardando pagamento</option>
+                        <option value="pago">Pago</option>
+                        <option value="cancelado">Cancelado</option>
+                      </>
+                    )}
+                  </select>
+                ) : (
+                  <div className="mt-1">
+                    <Badge className={statusColors[venda.status]}>
+                      {statusLabels[venda.status]}
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -181,12 +319,22 @@ export default function VendaEmprestimoDetalhes() {
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {det.valor_liberado && (
+              {(det.valor_liberado || editando) && (
                 <div>
-                  <span className="text-sm text-slate-500">Valor Liberado</span>
-                  <p className="font-medium text-lg text-green-600">
-                    R$ {det.valor_liberado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
+                  <Label>Valor Liberado</Label>
+                  {editando ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.valor_liberado || ''}
+                      onChange={(e) => setFormData({ ...formData, valor_liberado: parseFloat(e.target.value) })}
+                      className="mt-1"
+                    />
+                  ) : (
+                    <p className="font-medium text-lg text-green-600 mt-1">
+                      R$ {det.valor_liberado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
                 </div>
               )}
               {det.valor_bruto && (
@@ -205,12 +353,22 @@ export default function VendaEmprestimoDetalhes() {
                   </p>
                 </div>
               )}
-              {det.parcela && (
+              {(det.parcela || editando) && (
                 <div>
-                  <span className="text-sm text-slate-500">Parcela</span>
-                  <p className="font-medium">
-                    R$ {det.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
+                  <Label>Parcela</Label>
+                  {editando ? (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.parcela || ''}
+                      onChange={(e) => setFormData({ ...formData, parcela: parseFloat(e.target.value) })}
+                      className="mt-1"
+                    />
+                  ) : (
+                    <p className="font-medium mt-1">
+                      R$ {det.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
                 </div>
               )}
               {det.prazo && (
@@ -340,12 +498,21 @@ export default function VendaEmprestimoDetalhes() {
                 </div>
               )}
             </div>
-            {venda.observacoes && (
-              <div className="mt-4 pt-4 border-t">
-                <span className="text-sm text-slate-500">Observações</span>
-                <p className="font-medium mt-1 text-slate-700">{venda.observacoes}</p>
-              </div>
-            )}
+            <div className="mt-4 pt-4 border-t">
+              <Label>Observações</Label>
+              {editando ? (
+                <Textarea
+                  value={formData.observacoes || ''}
+                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                  className="mt-1 min-h-[100px]"
+                  placeholder="Adicione observações sobre esta proposta..."
+                />
+              ) : (
+                <p className="font-medium mt-1 text-slate-700">
+                  {venda.observacoes || 'Nenhuma observação'}
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
