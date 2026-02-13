@@ -81,11 +81,34 @@ export default function ClienteDetalhes() {
     }
   ];
 
+  // Determinar nome e identificação baseado no tipo de pessoa
+  const nomeExibicao = cliente.tipo_pessoa === 'Jurídica' 
+    ? (cliente.pj_razao_social || cliente.pj_nome_fantasia)
+    : cliente.nome_completo;
+  
+  const identificacao = cliente.tipo_pessoa === 'Jurídica' 
+    ? cliente.pj_cnpj 
+    : cliente.cpf;
+
+  const telefone = cliente.tipo_pessoa === 'Jurídica'
+    ? (cliente.pj_celular || cliente.pj_telefone_fixo)
+    : (cliente.celular || cliente.telefone_fixo);
+
+  const email = cliente.tipo_pessoa === 'Jurídica'
+    ? cliente.pj_email
+    : cliente.email;
+
+  const endereco = cliente.tipo_pessoa === 'Jurídica'
+    ? [cliente.pj_endereco, cliente.pj_numero, cliente.pj_bairro, cliente.pj_cidade, cliente.pj_uf]
+        .filter(Boolean).join(', ')
+    : [cliente.res_endereco, cliente.res_numero, cliente.res_bairro, cliente.res_cidade, cliente.res_uf]
+        .filter(Boolean).join(', ');
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={cliente.nome}
-        subtitle={cliente.cpf}
+        title={nomeExibicao}
+        subtitle={identificacao}
         backTo="Clientes"
       />
 
@@ -100,7 +123,7 @@ export default function ClienteDetalhes() {
               <User className="w-5 h-5 text-slate-400" />
               <div>
                 <p className="text-sm text-slate-500">Nome</p>
-                <p className="font-medium">{cliente.nome}</p>
+                <p className="font-medium">{nomeExibicao || '-'}</p>
               </div>
             </div>
 
@@ -108,7 +131,7 @@ export default function ClienteDetalhes() {
               <Phone className="w-5 h-5 text-slate-400" />
               <div>
                 <p className="text-sm text-slate-500">Telefone</p>
-                <p className="font-medium">{cliente.telefone || '-'}</p>
+                <p className="font-medium">{telefone || '-'}</p>
               </div>
             </div>
 
@@ -116,7 +139,7 @@ export default function ClienteDetalhes() {
               <Mail className="w-5 h-5 text-slate-400" />
               <div>
                 <p className="text-sm text-slate-500">Email</p>
-                <p className="font-medium">{cliente.email || '-'}</p>
+                <p className="font-medium">{email || '-'}</p>
               </div>
             </div>
 
@@ -124,7 +147,7 @@ export default function ClienteDetalhes() {
               <MapPin className="w-5 h-5 text-slate-400" />
               <div>
                 <p className="text-sm text-slate-500">Endereço</p>
-                <p className="font-medium">{cliente.endereco || '-'}</p>
+                <p className="font-medium">{endereco || '-'}</p>
               </div>
             </div>
 
