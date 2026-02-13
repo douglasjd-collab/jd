@@ -150,16 +150,9 @@ Deno.serve(async (req) => {
     // SDK
     const base44 = createClientFromRequest(req);
 
-    // Extrair instance do URL OU dos secrets (para super admin)
-    const url = new URL(req.url);
-    const instanceFromUrl = url.searchParams.get('instance');
-    const instanceFromSecret = Deno.env.get('EVOLUTION_INSTANCE_NAME');
-    const instanceFinal = instanceFromUrl || instanceFromSecret || 'JD Promotora conta Super adm';
-    
-    console.log('🔍 Instance origem:');
-    console.log('   - URL param:', instanceFromUrl || 'VAZIO');
-    console.log('   - Secret env:', instanceFromSecret || 'VAZIO');
-    console.log('   - USANDO:', instanceFinal);
+    // Usar SEMPRE o EVOLUTION_INSTANCE_NAME do secret
+    const instanceFinal = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'JD Promotora conta Super adm';
+    console.log('🔍 Instance Final:', instanceFinal);
 
     // Buscar TODAS as empresas ativas
     console.log('🏢 Buscando empresas...');
