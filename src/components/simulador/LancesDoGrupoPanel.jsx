@@ -142,7 +142,7 @@ export default function LancesDoGrupoPanel({
     <Card className="border-emerald-200">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">
-          Histórico de lances do GRUPO {grupo}
+          Histórico de lances do GRUPO {String(grupo).replace(/\./g, '')}
         </CardTitle>
         {ultimoHistorico && (
           <Badge variant="secondary">
