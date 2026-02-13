@@ -46,6 +46,7 @@ export default function SimuladorConsorcio() {
   const [maiorLanceLimitado, setMaiorLanceLimitado] = useState(null);
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
   const [cartaIndex, setCartaIndex] = useState(null);
+  const [planoSelecionadoInfo, setPlanoSelecionadoInfo] = useState('');
 
   useEffect(() => {
     loadUser();
@@ -559,6 +560,7 @@ export default function SimuladorConsorcio() {
         prazo: plano.prazo.toString()
       };
       setCartas(novasCartas);
+      setPlanoSelecionadoInfo(plano.nome_bem || '');
       toast.success(`Plano selecionado: ${plano.nome_bem}`);
     }
   };
@@ -752,6 +754,12 @@ export default function SimuladorConsorcio() {
 
               {/* Totais */}
               <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
+                {planoSelecionadoInfo && (
+                  <div className="mb-2 pb-2 border-b border-blue-300">
+                    <p className="text-xs text-blue-700 font-semibold">📋 Plano Selecionado</p>
+                    <p className="text-sm font-medium text-blue-900">{planoSelecionadoInfo}</p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <p className="text-xs text-blue-700">💰 Crédito Total</p>

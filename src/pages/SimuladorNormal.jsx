@@ -38,6 +38,7 @@ export default function SimuladorNormal() {
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
   const [cartaIndex, setCartaIndex] = useState(null);
   const [historicoLances, setHistoricoLances] = useState(null);
+  const [planoSelecionadoInfo, setPlanoSelecionadoInfo] = useState('');
 
   useEffect(() => {
     loadUser();
@@ -419,6 +420,7 @@ export default function SimuladorNormal() {
         prazo: plano.prazo.toString()
       };
       setCartas(novasCartas);
+      setPlanoSelecionadoInfo(plano.nome_bem || '');
       toast.success(`Plano selecionado: ${plano.nome_bem}`);
     }
   };
@@ -570,6 +572,12 @@ export default function SimuladorNormal() {
                 </div>
               ))}
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                {planoSelecionadoInfo && (
+                  <div className="mb-3 pb-3 border-b border-blue-300">
+                    <p className="text-xs text-blue-700 font-semibold">📋 Plano Selecionado</p>
+                    <p className="text-sm font-medium text-blue-900">{planoSelecionadoInfo}</p>
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-xs text-blue-700">💰 Crédito Total</p>
