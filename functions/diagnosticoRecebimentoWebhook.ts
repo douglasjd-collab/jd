@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     // 5. Info do Webhook
     console.log('\n🔗 INFORMAÇÕES DO WEBHOOK...');
-    const webhookUrl = 'https://windy-sheep-96-fz7shspqdf18.deno.dev/functions/receberWebhookWhatsApp?instance=TESTE';
+    const webhookUrl = 'https://windy-sheep-96-p6d620a4408h.deno.dev/functions/receberWebhookWhatsApp?instance=TESTE';
     console.log('URL do Webhook:', webhookUrl);
     console.log('Instance:', 'TESTE');
     console.log('Esta é a URL que deve estar configurada na Evolution API');
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
         } : null,
         total_conversas: conversas.length,
         total_mensagens: mensagens.length,
-        webhook_url: 'https://windy-sheep-96-fz7shspqdf18.deno.dev/functions/receberWebhookWhatsApp?instance=TESTE',
+        webhook_url: 'https://windy-sheep-96-p6d620a4408h.deno.dev/functions/receberWebhookWhatsApp?instance=TESTE',
         ultimas_mensagens: mensagens.slice(0, 3).map(m => ({
           id: m.id,
           remetente: m.remetente,
