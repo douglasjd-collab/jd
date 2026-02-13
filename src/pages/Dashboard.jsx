@@ -24,7 +24,7 @@ import {
   Plus,
   Banknote
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -46,6 +46,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 const COLORS = ['#1e3a5f', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [dateRange, setDateRange] = useState({
     start: startOfMonth(new Date()),
@@ -713,9 +714,10 @@ export default function Dashboard() {
                   return (
                     <div 
                       key={cliente.id} 
-                      className={`flex items-center justify-between p-3 rounded-xl ${
-                        ehHoje ? 'bg-amber-100 border-2 border-amber-400' : 'bg-slate-50'
+                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
+                        ehHoje ? 'bg-amber-100 border-2 border-amber-400 hover:bg-amber-200' : 'bg-slate-50 hover:bg-slate-100'
                       }`}
+                      onDoubleClick={() => navigate(`/ClienteDetalhes?id=${cliente.id}`)}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
