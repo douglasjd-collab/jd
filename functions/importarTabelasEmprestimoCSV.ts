@@ -53,12 +53,40 @@ Deno.serve(async (req) => {
     // Pular cabeçalho
     const linhasDados = linhas.slice(1);
     
+    // Buscar todos os convênios e bancos da empresa
+    const convenios = await base44.entities.Convenio.filter({ empresa_id: empresaId, ativo: true });
+    const bancosDB = await base44.entities.Banco.filter({ empresa_id: empresaId, ativo: true });
+    
+    // Validar bancos antes de importar
+    const bancosNaoEncontrados = new Set();
+    
+    for (const linha of linhasDados) {
+      const colunas = linha.split(';').map(c => c.trim());
+      const banco = colunas[2]; // Banco está na coluna 2
+      
+      if (banco) {
+        const bancoExiste = bancosDB.some(b => 
+          b.nome.toLowerCase() === banco.toLowerCase()
+        );
+        
+        if (!bancoExiste) {
+          bancosNaoEncontrados.add(banco);
+        }
+      }
+    }
+    
+    // Se houver bancos não cadastrados, retornar erro
+    if (bancosNaoEncontrados.size > 0) {
+      return Response.json({
+        error: 'Bancos não cadastrados',
+        bancos_faltantes: Array.from(bancosNaoEncontrados),
+        message: 'Por favor, cadastre os bancos antes de importar'
+      }, { status: 400 });
+    }
+    
     let criadas = 0;
     let erros = 0;
     const detalhesErros = [];
-
-    // Buscar todos os convênios da empresa
-    const convenios = await base44.entities.Convenio.filter({ empresa_id: empresaId, ativo: true });
 
     for (const linha of linhasDados) {
       try {

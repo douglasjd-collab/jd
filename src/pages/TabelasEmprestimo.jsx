@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Pencil, Trash2, Upload, History, Plus, Download } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -40,6 +41,8 @@ export default function TabelasEmprestimo() {
   const [tabelaSelecionada, setTabelaSelecionada] = useState(null);
   const [novaComissao, setNovaComissao] = useState('');
   const [dataVigencia, setDataVigencia] = useState('');
+  const [bancosFaltantes, setBancosFaltantes] = useState([]);
+  const [showBancosFaltantesModal, setShowBancosFaltantesModal] = useState(false);
   const [formData, setFormData] = useState({
     codigo: '',
     nome: '',
@@ -185,7 +188,13 @@ export default function TabelasEmprestimo() {
       setArquivoCSV(null);
     },
     onError: (error) => {
-      toast.error('Erro ao importar: ' + error.message);
+      // Verificar se é erro de bancos não cadastrados
+      if (error.response?.data?.bancos_faltantes) {
+        setBancosFaltantes(error.response.data.bancos_faltantes);
+        setShowBancosFaltantesModal(true);
+      } else {
+        toast.error('Erro ao importar: ' + error.message);
+      }
     }
   });
 
@@ -652,6 +661,57 @@ export default function TabelasEmprestimo() {
                     Importar
                   </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Bancos Faltantes */}
+      <Dialog open={showBancosFaltantesModal} onOpenChange={setShowBancosFaltantesModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bancos Não Cadastrados</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm text-amber-900 mb-3">
+                Os seguintes bancos não estão cadastrados no sistema:
+              </p>
+              <ul className="space-y-2">
+                {bancosFaltantes.map((banco, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-sm">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                    <span className="font-medium">{banco}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <p className="text-sm text-slate-600">
+              Por favor, cadastre estes bancos antes de fazer a importação.
+            </p>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowBancosFaltantesModal(false);
+                  setBancosFaltantes([]);
+                }}
+              >
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowBancosFaltantesModal(false);
+                  // Redirecionar para página de cadastro de bancos
+                  window.location.href = createPageUrl('Bancos');
+                }}
+                className="bg-[#23BE84] hover:bg-[#1da570]"
+              >
+                Cadastrar Bancos
               </Button>
             </div>
           </div>
