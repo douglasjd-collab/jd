@@ -285,7 +285,18 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
               {/* Dados Pessoais */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Dados Pessoais</CardTitle>
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>Dados Pessoais</span>
+                      <div className="bg-amber-50 border-2 border-amber-400 rounded-lg px-4 py-2 shadow-md">
+                        <Label className="text-xs font-medium text-amber-900 mb-1 block">🔐 Senha GOV</Label>
+                        <Input
+                          {...register('senha_gov')}
+                          type="text"
+                          placeholder="Digite a senha GOV"
+                          className="h-9 w-48 bg-white border-amber-300 focus:border-amber-500"
+                        />
+                      </div>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
