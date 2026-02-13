@@ -127,6 +127,16 @@ export default function ClienteDetalhes() {
               </div>
             </div>
 
+            {cliente.senha_gov && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <User className="w-5 h-5 text-slate-400" />
+                <div>
+                  <p className="text-sm text-slate-500">Senha GOV</p>
+                  <p className="font-medium">{cliente.senha_gov}</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
               <Phone className="w-5 h-5 text-slate-400" />
               <div>
