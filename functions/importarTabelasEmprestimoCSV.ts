@@ -120,10 +120,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Converter valores
-        const comissaoEmpresa = parseFloat(comissaoEmpresaStr.replace(',', '.'));
+        // Converter valores numéricos
+        const comissaoEmpresa = parseFloat((comissaoEmpresaStr || '0').replace(',', '.'));
+        const prazoInicial = prazoInicialStr ? parseFloat(prazoInicialStr.replace(',', '.')) : null;
+        const prazoFinal = prazoFinalStr ? parseFloat(prazoFinalStr.replace(',', '.')) : null;
+        const valorInicial = valorInicialStr ? parseFloat(valorInicialStr.replace(/\./g, '').replace(',', '.')) : null;
+        const valorFinal = valorFinalStr ? parseFloat(valorFinalStr.replace(/\./g, '').replace(',', '.')) : null;
         
-        if (isNaN(comissaoEmpresa)) {
+        if (isNaN(comissaoEmpresa) || comissaoEmpresa === 0) {
           erros++;
           detalhesErros.push(`Comissão inválida: ${comissaoEmpresaStr} - ${tabela}`);
           continue;
@@ -170,24 +174,24 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Preparar dados
+        // Preparar dados - garantir que todos os campos sejam preenchidos
         const dadosTabela = {
           empresa_id: empresaId,
           data: data,
           convenio_id: convenioId,
-          convenio_nome: convenioNome || null,
-          banco: banco || null,
-          codigo_produto: codigoProduto || null,
-          produto: produto || null,
-          codigo_tabela: codigoTabela || null,
-          tabela: tabela,
-          prazo_inicial: prazoInicialStr ? parseFloat(prazoInicialStr) : null,
-          prazo_final: prazoFinalStr ? parseFloat(prazoFinalStr) : null,
-          valor_inicial: valorInicialStr ? parseFloat(valorInicialStr.replace(',', '.')) : null,
-          valor_final: valorFinalStr ? parseFloat(valorFinalStr.replace(',', '.')) : null,
-          tipo_agente: tipoAgente || null,
-          empresa_nome: empresaNome || null,
-          tipo_formalizacao: tipoFormalizacao || null,
+          convenio_nome: convenioNome?.trim() || null,
+          banco: banco?.trim() || null,
+          codigo_produto: codigoProduto?.trim() || null,
+          produto: produto?.trim() || null,
+          codigo_tabela: codigoTabela?.trim() || null,
+          tabela: tabela.trim(),
+          prazo_inicial: prazoInicial,
+          prazo_final: prazoFinal,
+          valor_inicial: valorInicial,
+          valor_final: valorFinal,
+          tipo_agente: tipoAgente?.trim() || null,
+          empresa_nome: empresaNome?.trim() || null,
+          tipo_formalizacao: tipoFormalizacao?.trim() || null,
           comissao_empresa: comissaoEmpresa,
           ativo: true
         };
