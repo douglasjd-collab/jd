@@ -335,60 +335,21 @@ export default function VendasEmprestimos() {
                 className="hover:shadow-lg transition-shadow cursor-pointer"
                 onDoubleClick={() => navigate(createPageUrl('VendaEmprestimoDetalhes') + `?id=${venda.id}`)}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgColor} flex items-center justify-center flex-shrink-0`}>
                       <Icon className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg mb-1">{venda.cliente_nome}</h3>
-                      <p className="text-sm text-slate-500 mb-3">
-                        {isConsignado ? 'Consignado' : 'Empréstimo Pessoal'} - {venda.tipo}
-                      </p>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-slate-500">Banco</span>
-                      <p className="font-medium">{venda.detalhes?.banco || venda.detalhes?.banco_anterior || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Valor Liberado</span>
-                      <p className="font-medium">
-                        {venda.detalhes?.valor_liberado 
-                          ? `R$ ${venda.detalhes.valor_liberado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                          : '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Parcela</span>
-                      <p className="font-medium">
-                        {venda.detalhes?.parcela 
-                          ? `R$ ${venda.detalhes.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                          : '-'}
-                      </p>
-                    </div>
-                        <div>
-                          <span className="text-slate-500">
-                            {isConsignado ? 'Convênio' : 'Contrato'}
-                          </span>
-                          <p className="font-medium">
-                            {isConsignado 
-                              ? (venda.detalhes?.convenio_nome || '-')
-                              : (venda.detalhes?.numero_contrato || '-')}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-base">{venda.cliente_nome}</h3>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Badge className={statusColors[venda.status]}>
-                                {statusLabels[venda.status]}
-                              </Badge>
-                            </Button>
+                            <Badge className={`${statusColors[venda.status]} cursor-pointer`}>
+                              {statusLabels[venda.status]}
+                            </Badge>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
+                          <DropdownMenuContent align="end">
                             {statusOptions.map((option) => (
                               <DropdownMenuItem
                                 key={option.value}
@@ -400,6 +361,17 @@ export default function VendasEmprestimos() {
                             ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-slate-600">
+                        <span>{isConsignado ? 'Consignado' : 'Empréstimo Pessoal'} - {venda.tipo}</span>
+                        <span className="text-slate-400">|</span>
+                        <span><strong>Banco:</strong> {venda.detalhes?.banco || venda.detalhes?.banco_anterior || '-'}</span>
+                        <span className="text-slate-400">|</span>
+                        <span><strong>Valor Liberado:</strong> {venda.detalhes?.valor_liberado ? `R$ ${venda.detalhes.valor_liberado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</span>
+                        <span className="text-slate-400">|</span>
+                        <span><strong>Parcela:</strong> {venda.detalhes?.parcela ? `R$ ${venda.detalhes.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</span>
+                        <span className="text-slate-400">|</span>
+                        <span><strong>{isConsignado ? 'Convênio' : 'Contrato'}:</strong> {isConsignado ? (venda.detalhes?.convenio_nome || '-') : (venda.detalhes?.numero_contrato || '-')}</span>
                       </div>
                     </div>
                   </div>
