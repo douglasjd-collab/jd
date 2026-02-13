@@ -156,11 +156,12 @@ Deno.serve(async (req) => {
       instance: e.evolution_instance_name
     })));
 
-    if (instanceFromUrl === 'TESTE') {
-      // TESTE → CONTA SUPER ADMIN (sem empresa_id = null)
+    if (instanceFromUrl === 'TESTE' || !instanceFromUrl) {
+      // TESTE (ou sem instance) → CONTA SUPER ADMIN (sem empresa_id = null)
       // A conta super admin NÃO tem empresa_id, por isso deixamos null
       empresaId = null;
       console.log('✅ INSTÂNCIA TESTE → CONTA SUPER ADMIN (empresa_id = null)');
+      console.log('   Instance recebida:', instanceFromUrl || 'NÃO INFORMADA');
     } else if (instanceFromUrl) {
       // Para outras instâncias, procurar pela instance EXATAMENTE na subconta
       const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFromUrl);
@@ -177,8 +178,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Se empresaId ainda é null e não era TESTE, algo está errado
-    if (empresaId === null && instanceFromUrl !== 'TESTE') {
+    // Se empresaId ainda é null e não era TESTE/vazio, algo está errado
+    if (empresaId === null && instanceFromUrl && instanceFromUrl !== 'TESTE') {
       console.error('❌ ERRO: Não foi possível identificar a empresa para a instance:', instanceFromUrl);
       console.log('⚠️ ATENÇÃO: Mensagem será rejeitada - configure a instance na empresa!');
       return Response.json({ 
