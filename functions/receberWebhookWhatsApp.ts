@@ -157,11 +157,20 @@ Deno.serve(async (req) => {
     })));
 
     if (instanceFromUrl === 'TESTE' || !instanceFromUrl) {
-      // TESTE (ou sem instance) → CONTA SUPER ADMIN (sem empresa_id = null)
-      // A conta super admin NÃO tem empresa_id, por isso deixamos null
-      empresaId = null;
-      console.log('✅ INSTÂNCIA TESTE → CONTA SUPER ADMIN (empresa_id = null)');
-      console.log('   Instance recebida:', instanceFromUrl || 'NÃO INFORMADA');
+      // TESTE (ou sem instance) → CONTA SUPER ADMIN
+      // Buscar empresa JD Promotora com instance TESTE para pegar o ID correto
+      const empresaTeste = empresas.find(e => e.evolution_instance_name === 'TESTE');
+      if (empresaTeste) {
+        empresaId = empresaTeste.id;
+        console.log('✅ INSTÂNCIA TESTE → Empresa JD Promotora encontrada');
+        console.log('   Empresa ID:', empresaId);
+      } else {
+        console.error('❌ ERRO: Empresa com instance TESTE não encontrada!');
+        return Response.json({ 
+          success: false, 
+          error: 'Empresa com instance TESTE não configurada'
+        }, { status: 400 });
+      }
     } else if (instanceFromUrl) {
       // Para outras instâncias, procurar pela instance EXATAMENTE na subconta
       const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFromUrl);
@@ -178,41 +187,32 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Se empresaId ainda é null e não era TESTE/vazio, algo está errado
-    if (empresaId === null && instanceFromUrl && instanceFromUrl !== 'TESTE') {
-      console.error('❌ ERRO: Não foi possível identificar a empresa para a instance:', instanceFromUrl);
-      console.log('⚠️ ATENÇÃO: Mensagem será rejeitada - configure a instance na empresa!');
+    // Se empresaId ainda é null, algo está errado
+    if (!empresaId) {
+      console.error('❌ ERRO: empresaId não foi definido!');
+      console.log('Instance:', instanceFromUrl);
       return Response.json({ 
         success: false, 
-        error: 'Instance não configurada em nenhuma empresa',
-        instance: instanceFromUrl,
-        empresas_disponiveis: empresas.map(e => ({
-          nome: e.nome,
-          instance: e.evolution_instance_name || 'NÃO CONFIGURADA'
-        }))
+        error: 'Não foi possível identificar a empresa para processar a mensagem',
+        instance: instanceFromUrl
       }, { status: 400 });
     }
 
     console.log('='.repeat(80));
-    console.log('✅✅✅ EMPRESA ID FINAL:', empresaId === null ? 'NULL (CONTA SUPER ADMIN)' : empresaId);
+    console.log('✅✅✅ EMPRESA ID FINAL:', empresaId);
     
     // Buscar dados da empresa para confirmar
-    if (empresaId === null) {
-      console.log('📋 DESTINO: CONTA SUPER ADMIN (JD Promotora conta Super adm)');
-      console.log('   - Mensagens ficarão visíveis apenas para super_admin');
-    } else {
-      try {
-        const empresaFinal = empresas.find(e => e.id === empresaId);
-        if (empresaFinal) {
-          console.log('📋 SUBCONTA SELECIONADA:');
-          console.log('   Nome:', empresaFinal.nome);
-          console.log('   Código:', empresaFinal.codigo);
-          console.log('   ID:', empresaFinal.id);
-          console.log('   Instance configurada:', empresaFinal.evolution_instance_name);
-        }
-      } catch (e) {
-        console.log('⚠️ Não conseguiu buscar dados da empresa');
+    try {
+      const empresaFinal = empresas.find(e => e.id === empresaId);
+      if (empresaFinal) {
+        console.log('📋 EMPRESA SELECIONADA:');
+        console.log('   Nome:', empresaFinal.nome);
+        console.log('   Código:', empresaFinal.codigo);
+        console.log('   ID:', empresaFinal.id);
+        console.log('   Instance configurada:', empresaFinal.evolution_instance_name);
       }
+    } catch (e) {
+      console.log('⚠️ Não conseguiu buscar dados da empresa');
     }
     console.log('='.repeat(80));
 
