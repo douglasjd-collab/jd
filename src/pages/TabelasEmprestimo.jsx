@@ -298,15 +298,10 @@ export default function TabelasEmprestimo() {
   };
 
   const handleBaixarModelo = () => {
-    const csvContent = `Data;Convenio;Banco;Codigo Produto;Produto;Codigo Tabela;Tabela;Prazo;Comissao E;Comissao V;Parceiro/Vendedor;Empresa
-12/fev;INSS;C6 Bank;;NOVO;;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
-;Governo de PE;BMG;;NOVO;;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
-;Governo de AL;Itaú;;NOVO;;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
-;Prefeitura de Tupanatinga;Digio;;NOVO;;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
-;Prefeitura de Itaiba;Banco do Brasil;;NOVO;;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS C DA ROCHA;TN PROMOTORA
-;;;;;;;;;;;;
-;;;;;;;;;;;;
-;;;;;;;;;;;;`;
+    const csvContent = `Data;Convenio;Banco;Codigo Produto;Produto;Codigo Tabela;Tabela;Prazo Inicial;Prazo Final;Valor Inicial;Valor Final;Tipo Agente;Empresa;Tipo de Formalização;Comissão Empresa
+06/02/2026;INSS;HAPPY CONSIG;;NOVO;75173;HAPPY DIG - INSS NOVO INDICADO;1;120;;;Bronze;Prospecta;DIGITAL;0
+06/02/2026;INSS;HAPPY CONSIG;;NOVO;76709;HAPPY DIG INSS - MARGEM LIVRE - SEM SEGURO - TKT 1.000,00 A 1.499,99 - TX 1,85%;96;96;1000;1499.99;Bronze;Prospecta;DIGITAL;6.37
+06/02/2026;INSS;HAPPY CONSIG;;NOVO;76710;HAPPY DIG INSS - MARGEM LIVRE - SEM SEGURO - TKT MIN 1.500,00 - TX 1,85%;96;96;1500;999999.99;Bronze;Prospecta;DIGITAL;8.82`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -588,7 +583,7 @@ export default function TabelasEmprestimo() {
               <div>
                 <Label className="text-base font-semibold">Selecione o Arquivo CSV</Label>
                 <p className="text-sm text-slate-500 mt-1">
-                  Formato: Data, Convenio, Banco, Codigo Produto, Produto, Codigo Tabela, Tabela, Prazo, Comissao E, Comissao V, Parceiro/Vendedor, Empresa
+                  Formato: Data, Convenio, Banco, Codigo Produto, Produto, Codigo Tabela, Tabela, Prazo Inicial, Prazo Final, Valor Inicial, Valor Final, Tipo Agente, Empresa, Tipo de Formalização, Comissão Empresa
                 </p>
               </div>
 
@@ -613,9 +608,8 @@ export default function TabelasEmprestimo() {
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <p className="text-sm font-medium mb-2">Exemplo do formato CSV:</p>
               <div className="text-xs font-mono bg-white p-3 rounded border overflow-x-auto">
-                <div>Data;Convenio;Banco;Codigo Produto;Produto;Codigo Tabela;Tabela;Prazo;Comissao E;Comissao V;Parceiro/Vendedor;Empresa</div>
-                <div>12/fev;INSS;C6 Bank;;NOVO;;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS;TN PROMOTORA</div>
-                <div>;Governo de PE;BMG;;NOVO;;NOVO NORMAL TAXA 1,85%;96;10;8;JOSE DOUGLAS;TN PROMOTORA</div>
+                <div>Data;Convenio;Banco;Codigo Produto;Produto;Codigo Tabela;Tabela;Prazo Inicial;Prazo Final;Valor Inicial;Valor Final;Tipo Agente;Empresa;Tipo de Formalização;Comissão Empresa</div>
+                <div>06/02/2026;INSS;HAPPY CONSIG;;NOVO;76709;HAPPY DIG INSS - ML;96;96;1000;1499.99;Bronze;Prospecta;DIGITAL;6.37</div>
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 💡 Separado por ponto-e-vírgula (;) conforme padrão Excel brasileiro

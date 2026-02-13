@@ -49,6 +49,7 @@
  */
 import Administradoras from './pages/Administradoras';
 import Agenda from './pages/Agenda';
+import Bancos from './pages/Bancos';
 import BatePapo from './pages/BatePapo';
 import CartasContempladas from './pages/CartasContempladas';
 import ClienteDetalhes from './pages/ClienteDetalhes';
@@ -105,13 +106,13 @@ import VendaDetalhes from './pages/VendaDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import Bancos from './pages/Bancos';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Administradoras": Administradoras,
     "Agenda": Agenda,
+    "Bancos": Bancos,
     "BatePapo": BatePapo,
     "CartasContempladas": CartasContempladas,
     "ClienteDetalhes": ClienteDetalhes,
@@ -168,7 +169,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "Bancos": Bancos,
 }
 
 export const pagesConfig = {

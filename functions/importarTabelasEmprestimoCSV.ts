@@ -9,16 +9,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    // Obter empresa_id do usuário
+    // Buscar empresa_id do usuário
     let empresaId = null;
     if (user.role === 'super_admin' || user.perfil === 'super_admin') {
-      const empresas = await base44.entities.Empresa.filter({ status: 'ativa' });
+      const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
       if (empresas.length > 0) empresaId = empresas[0].id;
     } else {
-      const colabs = await base44.entities.Colaborador.filter({ 
-        user_id: user.id, 
-        status: 'ativo' 
-      });
+      const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: 'ativo' });
       if (colabs.length > 0) empresaId = colabs[0].empresa_id;
     }
 
@@ -26,98 +23,156 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Empresa não encontrada' }, { status: 400 });
     }
 
+    // Obter arquivo do FormData
     const formData = await req.formData();
-    const arquivo = formData.get('file');
+    const file = formData.get('file');
 
-    if (!arquivo) {
+    if (!file) {
       return Response.json({ error: 'Arquivo não enviado' }, { status: 400 });
     }
 
     // Ler conteúdo do arquivo
-    const texto = await arquivo.text();
-    const linhas = texto.split('\n').filter(l => l.trim());
+    const text = await file.text();
+    const linhas = text.split('\n').filter(l => l.trim());
 
-    if (linhas.length === 0) {
-      return Response.json({ error: 'Arquivo vazio' }, { status: 400 });
+    if (linhas.length < 2) {
+      return Response.json({ error: 'Arquivo vazio ou inválido' }, { status: 400 });
     }
 
-    // Buscar convênios e bancos existentes
-    const convenios = await base44.asServiceRole.entities.Convenio.filter({ 
-      empresa_id: empresaId, 
-      ativo: true 
-    });
-    const bancos = await base44.asServiceRole.entities.Banco.filter({ 
-      empresa_id: empresaId, 
-      ativo: true 
-    });
-
-    const criadas = [];
-    const erros = [];
-
-    // Pular primeira linha se for cabeçalho
-    const primeiraLinha = linhas[0].toLowerCase();
-    const temCabecalho = primeiraLinha.includes('data') || 
-                         primeiraLinha.includes('convenio') || 
-                         primeiraLinha.includes('banco') ||
-                         primeiraLinha.includes('tabela') ||
-                         primeiraLinha.includes('prazo');
+    // Pular cabeçalho
+    const linhasDados = linhas.slice(1);
     
-    const linhasDados = temCabecalho ? linhas.slice(1) : linhas;
+    let criadas = 0;
+    let erros = 0;
+    const detalhesErros = [];
 
-    for (let i = 0; i < linhasDados.length; i++) {
-      const linha = linhasDados[i];
-      const indice = i + (temCabecalho ? 2 : 1); // Número da linha para erro
-      
-      // Suporta separação por vírgula, ponto-e-vírgula ou tab
-      const separador = linha.includes('\t') ? '\t' : 
-                       linha.includes(';') ? ';' : ',';
-      const campos = linha.split(separador).map(c => c.trim());
+    // Buscar todos os convênios da empresa
+    const convenios = await base44.entities.Convenio.filter({ empresa_id: empresaId, ativo: true });
 
-      if (campos.length < 5) {
-        erros.push(`Linha ${indice}: Formato inválido (esperado: Data, Convenio, Banco, Tabela, Prazo)`);
-        continue;
-      }
-
-      const [data, convenioNome, bancoNome, tabelaNome, prazo] = campos;
-
-      // Buscar convênio
-      const convenio = convenios.find(c => 
-        c.nome.toLowerCase().includes(convenioNome.toLowerCase())
-      );
-
-      // Criar dados da tabela
-      const tabelaData = {
-        empresa_id: empresaId,
-        nome: tabelaNome,
-        banco: bancoNome,
-        convenio_id: convenio?.id || null,
-        convenio_nome: convenio?.nome || convenioNome,
-        codigo: prazo, // Usando prazo como código
-        comissao_corretor: 0,
-        comissao_empresa: 0,
-        ativo: true
-      };
-
+    for (const linha of linhasDados) {
       try {
-        const tabela = await base44.asServiceRole.entities.TabelaEmprestimo.create(tabelaData);
-        criadas.push(tabela);
-      } catch (error) {
-        erros.push(`Linha ${indice}: ${error.message}`);
+        // Separar por ponto-e-vírgula
+        const colunas = linha.split(';').map(c => c.trim());
+
+        // Estrutura do CSV:
+        // Data;Convenio;Banco;Codigo Produto;Produto;Codigo Tabela;Tabela;Prazo Inicial;Prazo Final;Valor Inicial;Valor Final;Tipo Agente;Empresa;Tipo de Formalização;Comissão Empresa
+        const [
+          dataStr,
+          convenioNome,
+          banco,
+          codigoProduto,
+          produto,
+          codigoTabela,
+          tabela,
+          prazoInicialStr,
+          prazoFinalStr,
+          valorInicialStr,
+          valorFinalStr,
+          tipoAgente,
+          empresaNome,
+          tipoFormalizacao,
+          comissaoEmpresaStr
+        ] = colunas;
+
+        // Validar campos obrigatórios
+        if (!tabela || !comissaoEmpresaStr) {
+          erros++;
+          detalhesErros.push(`Linha ignorada: falta tabela ou comissão - ${linha.substring(0, 50)}`);
+          continue;
+        }
+
+        // Converter valores
+        const comissaoEmpresa = parseFloat(comissaoEmpresaStr.replace(',', '.'));
+        
+        if (isNaN(comissaoEmpresa)) {
+          erros++;
+          detalhesErros.push(`Comissão inválida: ${comissaoEmpresaStr} - ${tabela}`);
+          continue;
+        }
+
+        // Buscar convênio
+        let convenioId = null;
+        if (convenioNome) {
+          const conv = convenios.find(c => 
+            c.nome.toLowerCase().includes(convenioNome.toLowerCase()) ||
+            convenioNome.toLowerCase().includes(c.nome.toLowerCase())
+          );
+          if (conv) convenioId = conv.id;
+        }
+
+        // Converter data se presente (formato dd/mmm)
+        let data = null;
+        if (dataStr) {
+          try {
+            // Exemplo: "06/02/2026" ou "12/fev"
+            const partes = dataStr.split('/');
+            if (partes.length >= 2) {
+              const dia = partes[0].padStart(2, '0');
+              let mes = partes[1];
+              let ano = partes[2] || new Date().getFullYear().toString();
+              
+              // Converter mês abreviado para número
+              const meses = {
+                'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04',
+                'mai': '05', 'jun': '06', 'jul': '07', 'ago': '08',
+                'set': '09', 'out': '10', 'nov': '11', 'dez': '12'
+              };
+              
+              if (meses[mes.toLowerCase()]) {
+                mes = meses[mes.toLowerCase()];
+              } else {
+                mes = mes.padStart(2, '0');
+              }
+              
+              data = `${ano}-${mes}-${dia}`;
+            }
+          } catch (e) {
+            console.log('Erro ao converter data:', dataStr, e);
+          }
+        }
+
+        // Preparar dados
+        const dadosTabela = {
+          empresa_id: empresaId,
+          data: data,
+          convenio_id: convenioId,
+          convenio_nome: convenioNome || null,
+          banco: banco || null,
+          codigo_produto: codigoProduto || null,
+          produto: produto || null,
+          codigo_tabela: codigoTabela || null,
+          tabela: tabela,
+          prazo_inicial: prazoInicialStr ? parseFloat(prazoInicialStr) : null,
+          prazo_final: prazoFinalStr ? parseFloat(prazoFinalStr) : null,
+          valor_inicial: valorInicialStr ? parseFloat(valorInicialStr.replace(',', '.')) : null,
+          valor_final: valorFinalStr ? parseFloat(valorFinalStr.replace(',', '.')) : null,
+          tipo_agente: tipoAgente || null,
+          empresa_nome: empresaNome || null,
+          tipo_formalizacao: tipoFormalizacao || null,
+          comissao_empresa: comissaoEmpresa,
+          ativo: true
+        };
+
+        // Criar tabela
+        await base44.entities.TabelaEmprestimo.create(dadosTabela);
+        criadas++;
+
+      } catch (err) {
+        erros++;
+        detalhesErros.push(`Erro na linha: ${linha.substring(0, 50)} - ${err.message}`);
+        console.error('Erro ao processar linha:', err);
       }
     }
 
     return Response.json({
       success: true,
-      total: linhasDados.length,
-      criadas: criadas.length,
-      erros: erros.length,
-      detalhes_erros: erros
+      criadas,
+      erros,
+      detalhes_erros: detalhesErros.slice(0, 10) // Limitar a 10 erros
     });
 
   } catch (error) {
-    console.error('Erro ao importar CSV:', error);
-    return Response.json({ 
-      error: error.message 
-    }, { status: 500 });
+    console.error('Erro na importação:', error);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });
