@@ -42,17 +42,32 @@ export default function ConfiguracaoWhatsApp() {
       const me = await base44.auth.me();
       setUser(me);
 
-      // Se é super_admin, configurar para conta super admin (sem empresa)
+      // Se é super_admin, buscar empresa JD Promotora com instance TESTE
       if (me?.role === 'super_admin' || me?.perfil === 'super_admin') {
-        // Super Admin não tem empresa - usa secrets globais
-        setEvolutionUrl(process.env.EVOLUTION_API_URL || '');
-        setInstanceName(process.env.EVOLUTION_INSTANCE_NAME || 'TESTE');
-        setApiKey(process.env.EVOLUTION_API_KEY || '');
-        
-        // Gerar URL webhook com instance name global
-        const instanceGlobal = process.env.EVOLUTION_INSTANCE_NAME || 'TESTE';
-        const webhookGerada = gerarUrlWebhook(instanceGlobal);
-        setWebhookUrl(webhookGerada);
+        try {
+          // Buscar a empresa JD Promotora (instance TESTE)
+          const empresasJD = await base44.entities.Empresa.filter(
+            { evolution_instance_name: 'TESTE' },
+            '-created_date',
+            1
+          );
+          
+          if (empresasJD && empresasJD.length > 0) {
+            const empresaData = empresasJD[0];
+            setEmpresa(empresaData);
+            carregarEmpresa(empresaData);
+            console.log('✅ Super Admin - Carregou JD Promotora (TESTE):', empresaData.nome);
+          } else {
+            console.warn('⚠️ Empresa TESTE não encontrada');
+            setEvolutionUrl('');
+            setInstanceName('TESTE');
+            setApiKey('');
+            setWebhookUrl(gerarUrlWebhook('TESTE'));
+          }
+        } catch (e) {
+          console.error('Erro ao buscar empresa TESTE:', e);
+          setWebhookUrl(gerarUrlWebhook('TESTE'));
+        }
       } else if (me?.empresa_id) {
         // Usuário normal - carregar sua empresa
         const emp = await base44.entities.Empresa.filter({ id: me.empresa_id });
