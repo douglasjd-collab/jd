@@ -352,9 +352,10 @@ export default function TabelasEmprestimo() {
   }
 
   const tabelasFiltradas = tabelas.filter(t =>
-    t.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.banco?.toLowerCase().includes(searchTerm.toLowerCase())
+    (t.nome?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (t.codigo?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (t.banco?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (t.tabela?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
   return (
