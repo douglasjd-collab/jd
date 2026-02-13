@@ -284,7 +284,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
             <>
               {/* Dados Pessoais */}
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center justify-between">
                       <span>Dados Pessoais</span>
                       <div className="bg-amber-50 border-2 border-amber-400 rounded-lg px-4 py-2 shadow-md">
@@ -298,7 +298,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       </div>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-3">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
                         <Label htmlFor="nome_completo">Nome Completo *</Label>
