@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
     // Extrair instance do URL
     const url = new URL(req.url);
     const instanceFromUrl = url.searchParams.get('instance');
-    console.log('🔍 Instance do URL:', instanceFromUrl);
+    console.log('🔍 Instance do URL:', instanceFromUrl || 'VAZIO');
 
     // Buscar TODAS as empresas ativas
     console.log('🏢 Buscando empresas...');
@@ -145,56 +145,34 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'No company' }, { status: 400 });
     }
 
+    // Debug: Listar todas as empresas e suas instâncias
+    console.log('📋 TODAS AS EMPRESAS E SUAS INSTÂNCIAS:');
+    empresas.forEach((e, i) => {
+      console.log(`  [${i+1}] ${e.nome} → Instance: "${e.evolution_instance_name || 'SEM INSTANCE'}"`);
+    });
+
     // REGRA CRÍTICA: Identificar empresa pela instância
     let empresaId = null;
 
-    console.log('🔍 Identificando empresa...');
-    console.log('📍 Instance do URL:', instanceFromUrl);
-    console.log('📊 Empresas disponíveis:', empresas.map(e => ({
-      id: e.id,
-      nome: e.nome,
-      instance: e.evolution_instance_name
-    })));
+    // Se não houver instance no URL, procurar por 'TESTE' por padrão
+    const instanceParaProcurar = instanceFromUrl && instanceFromUrl.trim() !== '' ? instanceFromUrl : 'TESTE';
+    console.log('🔍 Procurando empresa com instance:', instanceParaProcurar);
 
-    if (instanceFromUrl === 'TESTE' || !instanceFromUrl) {
-      // TESTE (ou sem instance) → CONTA SUPER ADMIN
-      // Buscar empresa JD Promotora com instance TESTE para pegar o ID correto
-      const empresaTeste = empresas.find(e => e.evolution_instance_name === 'TESTE');
-      if (empresaTeste) {
-        empresaId = empresaTeste.id;
-        console.log('✅ INSTÂNCIA TESTE → Empresa JD Promotora encontrada');
-        console.log('   Empresa ID:', empresaId);
-      } else {
-        console.error('❌ ERRO: Empresa com instance TESTE não encontrada!');
-        return Response.json({ 
-          success: false, 
-          error: 'Empresa com instance TESTE não configurada'
-        }, { status: 400 });
-      }
-    } else if (instanceFromUrl) {
-      // Para outras instâncias, procurar pela instance EXATAMENTE na subconta
-      const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFromUrl);
-      if (empresaPorInstance) {
-        empresaId = empresaPorInstance.id;
-        console.log('✅ Empresa/Subconta encontrada pela instance:', empresaPorInstance.nome, '(ID:', empresaId, ')');
-      } else {
-        console.error('❌ EMPRESA NÃO ENCONTRADA PARA INSTANCE:', instanceFromUrl);
-        console.log('📋 Instances configuradas:', empresas.filter(e => e.evolution_instance_name).map(e => ({
-          nome: e.nome,
-          instance: e.evolution_instance_name
-        })));
-        // Não usar fallback - se não encontrou, é porque a instance não está configurada
-      }
-    }
-
-    // Se empresaId ainda é null, algo está errado
-    if (!empresaId) {
-      console.error('❌ ERRO: empresaId não foi definido!');
-      console.log('Instance:', instanceFromUrl);
+    const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceParaProcurar);
+    if (empresaPorInstance) {
+      empresaId = empresaPorInstance.id;
+      console.log('✅ Empresa encontrada!');
+      console.log('   Nome:', empresaPorInstance.nome);
+      console.log('   ID:', empresaId);
+      console.log('   Instance:', empresaPorInstance.evolution_instance_name);
+    } else {
+      console.error('❌ ERRO: Empresa com instance "' + instanceParaProcurar + '" não encontrada!');
+      console.log('📋 Instances disponíveis:', empresas.map(e => e.evolution_instance_name || 'SEM INSTANCE'));
       return Response.json({ 
         success: false, 
-        error: 'Não foi possível identificar a empresa para processar a mensagem',
-        instance: instanceFromUrl
+        error: 'Empresa com instance "' + instanceParaProcurar + '" não encontrada',
+        instance_procurada: instanceParaProcurar,
+        instances_disponiveis: empresas.map(e => e.evolution_instance_name)
       }, { status: 400 });
     }
 
