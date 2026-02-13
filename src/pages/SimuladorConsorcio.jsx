@@ -73,6 +73,11 @@ export default function SimuladorConsorcio() {
           setGrupo(plano.grupo);
         }
         
+        // Salvar informação do plano para verificar desconto embutido
+        if (plano.nome_bem) {
+          setPlanoSelecionadoInfo(plano.nome_bem);
+        }
+        
         localStorage.removeItem('planoSelecionado');
       } catch (e) {
         console.error('Erro ao carregar plano selecionado:', e);
