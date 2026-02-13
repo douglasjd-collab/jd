@@ -3,13 +3,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
   
+  // ⚠️ TESTE RÁPIDO - Logar TUDO que chega
   console.log('\n\n');
   console.log('█'.repeat(100));
-  console.log(`🔔🔔🔔 WEBHOOK CHAMADO - ${timestamp}`);
-  console.log('█'.repeat(100));
+  console.log(`✅✅✅ WEBHOOK CHAMADO - ${timestamp}`);
+  console.log(`🔗 URL COMPLETA: ${req.url}`);
   console.log(`📍 Método: ${req.method}`);
-  console.log(`📍 URL: ${req.url}`);
-  console.log(`📍 Headers:`, Object.fromEntries(req.headers));
+  console.log('█'.repeat(100));
   
   // Suporte a GET (verificação/challenge)
   if (req.method === 'GET') {
@@ -130,15 +130,22 @@ Deno.serve(async (req) => {
     // SDK
     const base44 = createClientFromRequest(req);
 
-    // Extrair instance do URL
+    // Extrair instance do URL OU dos secrets (para super admin)
     const url = new URL(req.url);
     const instanceFromUrl = url.searchParams.get('instance');
-    console.log('🔍 Instance do URL:', instanceFromUrl || 'VAZIO');
+    const instanceFromSecret = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+    const instanceFinal = instanceFromUrl || instanceFromSecret || 'TESTE';
+    
+    console.log('🔍 Instance origem:');
+    console.log('   - URL param:', instanceFromUrl || 'VAZIO');
+    console.log('   - Secret env:', instanceFromSecret || 'VAZIO');
+    console.log('   - USANDO:', instanceFinal);
 
     // Buscar TODAS as empresas ativas
     console.log('🏢 Buscando empresas...');
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
     console.log('🏢 Empresas encontradas:', empresas.length);
+    console.log('📋 Instâncias disponíveis:', empresas.map(e => e.evolution_instance_name).join(', '));
 
     if (!empresas || empresas.length === 0) {
       console.log('❌ Nenhuma empresa ativa');
@@ -152,29 +159,30 @@ Deno.serve(async (req) => {
     });
 
     // REGRA CRÍTICA: Identificar empresa pela instância
-    let empresaId = null;
+    console.log('🔍 Procurando empresa com instance:', instanceFinal);
 
-    // Se não houver instance no URL, procurar por 'TESTE' por padrão
-    const instanceParaProcurar = instanceFromUrl && instanceFromUrl.trim() !== '' ? instanceFromUrl : 'TESTE';
-    console.log('🔍 Procurando empresa com instance:', instanceParaProcurar);
+    let empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFinal);
+    
+    // Se não encontrou, procurar por qualquer empresa ativa (fallback para super admin)
+    if (!empresaPorInstance && empresas.length > 0) {
+      console.log('⚠️ Instance "' + instanceFinal + '" não encontrada, usando primeira empresa disponível');
+      empresaPorInstance = empresas[0];
+    }
 
-    const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceParaProcurar);
-    if (empresaPorInstance) {
-      empresaId = empresaPorInstance.id;
-      console.log('✅ Empresa encontrada!');
-      console.log('   Nome:', empresaPorInstance.nome);
-      console.log('   ID:', empresaId);
-      console.log('   Instance:', empresaPorInstance.evolution_instance_name);
-    } else {
-      console.error('❌ ERRO: Empresa com instance "' + instanceParaProcurar + '" não encontrada!');
-      console.log('📋 Instances disponíveis:', empresas.map(e => e.evolution_instance_name || 'SEM INSTANCE'));
+    if (!empresaPorInstance) {
+      console.error('❌ ERRO CRÍTICO: Nenhuma empresa encontrada!');
       return Response.json({ 
         success: false, 
-        error: 'Empresa com instance "' + instanceParaProcurar + '" não encontrada',
-        instance_procurada: instanceParaProcurar,
+        error: 'Nenhuma empresa disponível',
         instances_disponiveis: empresas.map(e => e.evolution_instance_name)
       }, { status: 400 });
     }
+
+    const empresaId = empresaPorInstance.id;
+    console.log('✅ Empresa selecionada!');
+    console.log('   Nome:', empresaPorInstance.nome);
+    console.log('   ID:', empresaId);
+    console.log('   Instance:', empresaPorInstance.evolution_instance_name);
 
     console.log('='.repeat(80));
     console.log('✅✅✅ EMPRESA ID FINAL:', empresaId);
