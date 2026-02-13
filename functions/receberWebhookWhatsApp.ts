@@ -157,72 +157,61 @@ Deno.serve(async (req) => {
     })));
 
     if (instanceFromUrl === 'TESTE') {
-      // TESTE → JD PROMOTORA (buscar de forma mais flexível)
-      const jd = empresas.find(e => 
-        e.nome?.toUpperCase().includes('JD') || 
-        e.codigo === 'EMP001' ||
-        e.id === '6956c66acff52e4405313375'
-      );
-      
-      if (jd) {
-        empresaId = jd.id;
-        console.log('✅ INSTÂNCIA TESTE → Empresa:', jd.nome, '(ID:', empresaId, ')');
-      } else {
-        console.error('❌ JD Promotora NÃO ENCONTRADA!');
-        console.log('📋 Empresas existentes:', empresas.map(e => e.nome).join(', '));
-        // Usar primeira empresa como fallback
-        empresaId = empresas[0].id;
-        console.log('⚠️ USANDO PRIMEIRA EMPRESA:', empresas[0].nome);
-      }
+      // TESTE → CONTA SUPER ADMIN (sem empresa_id = null)
+      // A conta super admin NÃO tem empresa_id, por isso deixamos null
+      empresaId = null;
+      console.log('✅ INSTÂNCIA TESTE → CONTA SUPER ADMIN (empresa_id = null)');
     } else if (instanceFromUrl) {
-      // Para outras instâncias, procurar pela instance EXATAMENTE
+      // Para outras instâncias, procurar pela instance EXATAMENTE na subconta
       const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFromUrl);
       if (empresaPorInstance) {
         empresaId = empresaPorInstance.id;
-        console.log('✅ Empresa encontrada pela instance:', empresaPorInstance.nome, instanceFromUrl);
+        console.log('✅ Empresa/Subconta encontrada pela instance:', empresaPorInstance.nome, '(ID:', empresaId, ')');
       } else {
         console.error('❌ EMPRESA NÃO ENCONTRADA PARA INSTANCE:', instanceFromUrl);
         console.log('📋 Instances configuradas:', empresas.filter(e => e.evolution_instance_name).map(e => ({
           nome: e.nome,
           instance: e.evolution_instance_name
         })));
+        // Não usar fallback - se não encontrou, é porque a instance não está configurada
       }
     }
 
-    // Se ainda não identificou, tentar user ou primeira empresa
-    if (!empresaId) {
-      try {
-        const me = await base44.auth.me();
-        if (me?.empresa_id && empresas.find(e => e.id === me.empresa_id)) {
-          empresaId = me.empresa_id;
-          console.log('✅ Usando empresa do usuário:', empresaId);
-        }
-      } catch (e) {
-        console.log('⚠️ Não conseguiu obter user');
-      }
-    }
-
-    // Último fallback
-    if (!empresaId) {
-      empresaId = empresas[0].id;
-      console.log('⚠️ Usando primeira empresa:', empresaId);
+    // Se empresaId ainda é null e não era TESTE, algo está errado
+    if (empresaId === null && instanceFromUrl !== 'TESTE') {
+      console.error('❌ ERRO: Não foi possível identificar a empresa para a instance:', instanceFromUrl);
+      console.log('⚠️ ATENÇÃO: Mensagem será rejeitada - configure a instance na empresa!');
+      return Response.json({ 
+        success: false, 
+        error: 'Instance não configurada em nenhuma empresa',
+        instance: instanceFromUrl,
+        empresas_disponiveis: empresas.map(e => ({
+          nome: e.nome,
+          instance: e.evolution_instance_name || 'NÃO CONFIGURADA'
+        }))
+      }, { status: 400 });
     }
 
     console.log('='.repeat(80));
-    console.log('✅✅✅ EMPRESA ID FINAL:', empresaId);
+    console.log('✅✅✅ EMPRESA ID FINAL:', empresaId === null ? 'NULL (CONTA SUPER ADMIN)' : empresaId);
     
     // Buscar dados da empresa para confirmar
-    try {
-      const empresaFinal = empresas.find(e => e.id === empresaId);
-      if (empresaFinal) {
-        console.log('📋 EMPRESA SELECIONADA:');
-        console.log('   Nome:', empresaFinal.nome);
-        console.log('   Código:', empresaFinal.codigo);
-        console.log('   ID:', empresaFinal.id);
-        console.log('   Instance configurada:', empresaFinal.evolution_instance_name);
+    if (empresaId === null) {
+      console.log('📋 DESTINO: CONTA SUPER ADMIN (JD Promotora conta Super adm)');
+      console.log('   - Mensagens ficarão visíveis apenas para super_admin');
+    } else {
+      try {
+        const empresaFinal = empresas.find(e => e.id === empresaId);
+        if (empresaFinal) {
+          console.log('📋 SUBCONTA SELECIONADA:');
+          console.log('   Nome:', empresaFinal.nome);
+          console.log('   Código:', empresaFinal.codigo);
+          console.log('   ID:', empresaFinal.id);
+          console.log('   Instance configurada:', empresaFinal.evolution_instance_name);
+        }
+      } catch (e) {
+        console.log('⚠️ Não conseguiu buscar dados da empresa');
       }
-    } catch (e) {
-      console.log('⚠️ Não conseguiu buscar dados da empresa');
     }
     console.log('='.repeat(80));
 
