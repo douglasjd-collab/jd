@@ -17,6 +17,7 @@ export default function DataTable({
   isLoading, 
   emptyMessage = 'Nenhum registro encontrado',
   onRowClick,
+  onRowDoubleClick,
   className 
 }) {
   if (isLoading) {
@@ -77,9 +78,10 @@ export default function DataTable({
               <TableRow 
                 key={row.id || i}
                 onClick={() => onRowClick?.(row)}
+                onDoubleClick={() => onRowDoubleClick?.(row)}
                 className={cn(
                   "transition-colors",
-                  onRowClick && "cursor-pointer hover:bg-slate-50"
+                  (onRowClick || onRowDoubleClick) && "cursor-pointer hover:bg-slate-50"
                 )}
               >
                 {columns.map((col, j) => (
