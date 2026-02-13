@@ -96,6 +96,7 @@ import Saques from './pages/Saques';
 import SimuladorConsorcio from './pages/SimuladorConsorcio';
 import SimuladorEscolha from './pages/SimuladorEscolha';
 import SimuladorNormal from './pages/SimuladorNormal';
+import StatusPropostas from './pages/StatusPropostas';
 import SyncTests from './pages/SyncTests';
 import TabelasComissaoEmprestimo from './pages/TabelasComissaoEmprestimo';
 import TabelasConsorcio from './pages/TabelasConsorcio';
@@ -103,11 +104,10 @@ import TabelasEmprestimo from './pages/TabelasEmprestimo';
 import TesteWhatsApp from './pages/TesteWhatsApp';
 import Usuarios from './pages/Usuarios';
 import VendaDetalhes from './pages/VendaDetalhes';
+import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import StatusPropostas from './pages/StatusPropostas';
-import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import __Layout from './Layout.jsx';
 
 
@@ -161,6 +161,7 @@ export const PAGES = {
     "SimuladorConsorcio": SimuladorConsorcio,
     "SimuladorEscolha": SimuladorEscolha,
     "SimuladorNormal": SimuladorNormal,
+    "StatusPropostas": StatusPropostas,
     "SyncTests": SyncTests,
     "TabelasComissaoEmprestimo": TabelasComissaoEmprestimo,
     "TabelasConsorcio": TabelasConsorcio,
@@ -168,11 +169,10 @@ export const PAGES = {
     "TesteWhatsApp": TesteWhatsApp,
     "Usuarios": Usuarios,
     "VendaDetalhes": VendaDetalhes,
+    "VendaEmprestimoDetalhes": VendaEmprestimoDetalhes,
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "StatusPropostas": StatusPropostas,
-    "VendaEmprestimoDetalhes": VendaEmprestimoDetalhes,
 }
 
 export const pagesConfig = {

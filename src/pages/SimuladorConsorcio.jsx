@@ -15,15 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X, Copy } from 'lucide-react';
+import { Calculator, Plus, Trash2, Download, Loader2, TrendingUp, X, Copy, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
 import RelogioContemplacao from '@/components/simulador/RelogioContemplacao';
 import { calcularRelogioContemplacao } from '@/components/utils/calcularRelogioContemplacao';
+import SelecionarPlanoCanopusModal from '@/components/simulador/SelecionarPlanoCanopusModal';
 
 export default function SimuladorConsorcio() {
   const [currentUser, setCurrentUser] = useState(null);
+  const [empresaId, setEmpresaId] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
@@ -42,6 +44,8 @@ export default function SimuladorConsorcio() {
   const [maiorLanceLivre, setMaiorLanceLivre] = useState(null);
   const [menorLanceLimitado, setMenorLanceLimitado] = useState(null);
   const [maiorLanceLimitado, setMaiorLanceLimitado] = useState(null);
+  const [planoModalOpen, setPlanoModalOpen] = useState(false);
+  const [cartaIndex, setCartaIndex] = useState(null);
 
   useEffect(() => {
     loadUser();
@@ -78,6 +82,18 @@ export default function SimuladorConsorcio() {
   const loadUser = async () => {
     const user = await base44.auth.me();
     setCurrentUser(user);
+    
+    // Buscar empresa_id do colaborador
+    if (user) {
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: user.id, status: 'ativo' },
+        '-created_date',
+        1
+      );
+      if (colabs?.length) {
+        setEmpresaId(colabs[0].empresa_id);
+      }
+    }
   };
 
   const { data: etapas = [] } = useQuery({
@@ -524,6 +540,25 @@ export default function SimuladorConsorcio() {
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const handleAbrirPlanoModal = (index) => {
+    setCartaIndex(index);
+    setPlanoModalOpen(true);
+  };
+
+  const handleSelecionarPlano = (plano) => {
+    if (cartaIndex !== null) {
+      const novasCartas = [...cartas];
+      novasCartas[cartaIndex] = {
+        ...novasCartas[cartaIndex],
+        credito: plano.credito.toString(),
+        parcela: plano.parcela.toString(),
+        prazo: plano.prazo.toString()
+      };
+      setCartas(novasCartas);
+      toast.success(`Plano selecionado: ${plano.nome_bem}`);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="text-center mb-3">
@@ -602,42 +637,62 @@ export default function SimuladorConsorcio() {
                 <CardTitle className="flex items-center gap-2 text-lg">
                   💳 Cartas de Crédito (Multi-Cotas)
                 </CardTitle>
-                <Button
-                  onClick={adicionarCarta}
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Adicionar Carta
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleAbrirPlanoModal(cartas.length - 1)}
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    Selecionar Plano
+                  </Button>
+                  <Button
+                    onClick={adicionarCarta}
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Adicionar Carta
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {cartas.map((carta, index) => (
                <div key={index} className="relative p-2 bg-slate-50 rounded-lg border">
-                  <div className="absolute top-1 right-1 flex gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => duplicarCarta(index)}
-                      className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      title="Duplicar carta"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    {cartas.length > 1 && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => removerCarta(index)}
-                        className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        title="Remover carta"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                 <div className="absolute top-1 right-1 flex gap-1">
+                   <Button
+                     size="icon"
+                     variant="ghost"
+                     onClick={() => handleAbrirPlanoModal(index)}
+                     className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                     title="Selecionar Plano"
+                   >
+                     <ShoppingBag className="w-4 h-4" />
+                   </Button>
+                   <Button
+                     size="icon"
+                     variant="ghost"
+                     onClick={() => duplicarCarta(index)}
+                     className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                     title="Duplicar carta"
+                   >
+                     <Copy className="w-4 h-4" />
+                   </Button>
+                   {cartas.length > 1 && (
+                     <Button
+                       size="icon"
+                       variant="ghost"
+                       onClick={() => removerCarta(index)}
+                       className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                       title="Remover carta"
+                     >
+                       <X className="w-4 h-4" />
+                     </Button>
+                   )}
+                 </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div>
@@ -1031,6 +1086,14 @@ export default function SimuladorConsorcio() {
           </Card>
         </div>
       </div>
+
+      {/* Modal Seleção de Plano */}
+      <SelecionarPlanoCanopusModal
+        open={planoModalOpen}
+        onOpenChange={setPlanoModalOpen}
+        onSelectPlano={handleSelecionarPlano}
+        empresaId={empresaId}
+      />
     </div>
   );
 }
