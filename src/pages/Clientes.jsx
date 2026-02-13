@@ -16,7 +16,7 @@ import {
 import { Search, MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Clientes() {
+  const navigate = useNavigate();
   const [clienteParaEditar, setClienteParaEditar] = useState(null);
   const [clienteParaExcluir, setClienteParaExcluir] = useState(null);
   const [openForm, setOpenForm] = useState(false);
@@ -328,6 +329,7 @@ export default function Clientes() {
         data={filteredClientes}
         isLoading={isLoading}
         emptyMessage="Nenhum cliente encontrado"
+        onRowDoubleClick={(row) => navigate(createPageUrl(`ClienteDetalhes?id=${row.id}`))}
       />
 
       {/* Form Modal */}
