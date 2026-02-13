@@ -107,6 +107,7 @@ import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
 import StatusPropostas from './pages/StatusPropostas';
+import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import __Layout from './Layout.jsx';
 
 
@@ -171,6 +172,7 @@ export const PAGES = {
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
     "StatusPropostas": StatusPropostas,
+    "VendaEmprestimoDetalhes": VendaEmprestimoDetalhes,
 }
 
 export const pagesConfig = {

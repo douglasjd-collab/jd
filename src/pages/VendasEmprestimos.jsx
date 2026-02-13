@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export default function VendasEmprestimos() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
@@ -329,7 +330,11 @@ export default function VendasEmprestimos() {
             const bgColor = isConsignado ? 'from-purple-500 to-purple-600' : 'from-orange-500 to-orange-600';
             
             return (
-              <Card key={venda.id} className="hover:shadow-lg transition-shadow">
+              <Card 
+                key={venda.id} 
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+                onDoubleClick={() => navigate(createPageUrl('VendaEmprestimoDetalhes') + `?id=${venda.id}`)}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
