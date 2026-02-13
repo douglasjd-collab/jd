@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const instanceFromUrl = url.searchParams.get('instance');
     const instanceFromSecret = Deno.env.get('EVOLUTION_INSTANCE_NAME');
-    const instanceFinal = instanceFromUrl || instanceFromSecret || 'TESTE';
+    const instanceFinal = instanceFromUrl || instanceFromSecret || 'JD Promotora conta Super adm';
     
     console.log('🔍 Instance origem:');
     console.log('   - URL param:', instanceFromUrl || 'VAZIO');
