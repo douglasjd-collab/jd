@@ -345,7 +345,7 @@ export default function VendasEmprestimos() {
                         <h3 className="font-semibold text-base">{venda.cliente_nome}</h3>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Badge className={`${statusColors[venda.status]} cursor-pointer`}>
+                            <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 transition-opacity`}>
                               {statusLabels[venda.status]}
                             </Badge>
                           </DropdownMenuTrigger>
@@ -353,7 +353,10 @@ export default function VendasEmprestimos() {
                             {statusOptions.map((option) => (
                               <DropdownMenuItem
                                 key={option.value}
-                                onClick={() => handleStatusChange(venda, option.value)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(venda, option.value);
+                                }}
                                 className={venda.status === option.value ? 'bg-slate-100 font-medium' : ''}
                               >
                                 {option.label}
