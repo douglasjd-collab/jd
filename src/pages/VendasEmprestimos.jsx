@@ -365,11 +365,14 @@ export default function VendasEmprestimos() {
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 transition-opacity`}>
+                            <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 hover:shadow-md transition-all`}>
                               {statusLabels[venda.status]}
                             </Badge>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="w-56">
+                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-b">
+                              Alterar Status
+                            </div>
                             {statusOptions.map((option) => (
                               <DropdownMenuItem
                                 key={option.value}
@@ -377,9 +380,11 @@ export default function VendasEmprestimos() {
                                   e.stopPropagation();
                                   handleStatusChange(venda, option.value);
                                 }}
-                                className={venda.status === option.value ? 'bg-slate-100 font-medium' : ''}
+                                className={`cursor-pointer ${venda.status === option.value ? 'bg-slate-100 font-medium' : 'hover:bg-slate-50'}`}
                               >
-                                {option.label}
+                                <Badge className={`mr-2 ${statusColors[option.value]}`}>
+                                  {option.label}
+                                </Badge>
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuContent>
