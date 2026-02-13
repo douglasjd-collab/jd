@@ -46,6 +46,12 @@ export default function VendasEmprestimos() {
 
   const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
 
+  const { data: statusPropostas = [] } = useQuery({
+    queryKey: ['status-propostas', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.StatusProposta.filter({ empresa_id: empresaId, ativo: true }, 'ordem')
+  });
+
   const { data: vendas = [], isLoading } = useQuery({
     queryKey: ['vendas-emprestimos', empresaId, isSuperAdmin],
     enabled: !!user && (isSuperAdmin || !!empresaId),
@@ -106,38 +112,29 @@ export default function VendasEmprestimos() {
     return true;
   });
 
-  const statusColors = {
-    em_andamento: 'bg-blue-100 text-blue-800',
-    pendente: 'bg-yellow-100 text-yellow-800',
-    aguardando_formalizacao: 'bg-orange-100 text-orange-800',
-    aguardando_cip: 'bg-indigo-100 text-indigo-800',
-    saldo_retornado: 'bg-teal-100 text-teal-800',
-    aguardando_pagamento: 'bg-purple-100 text-purple-800',
-    pago: 'bg-emerald-100 text-emerald-800',
-    cancelado: 'bg-red-100 text-red-800'
+  // Gerar cores e labels dinamicamente dos status cadastrados
+  const statusColors = {};
+  const statusLabels = {};
+  const statusOptions = [];
+
+  const corParaClasses = {
+    blue: 'bg-blue-100 text-blue-800',
+    green: 'bg-green-100 text-green-800',
+    red: 'bg-red-100 text-red-800',
+    yellow: 'bg-yellow-100 text-yellow-800',
+    purple: 'bg-purple-100 text-purple-800',
+    orange: 'bg-orange-100 text-orange-800',
+    teal: 'bg-teal-100 text-teal-800',
+    indigo: 'bg-indigo-100 text-indigo-800',
+    emerald: 'bg-emerald-100 text-emerald-800',
+    slate: 'bg-slate-100 text-slate-800'
   };
 
-  const statusLabels = {
-    em_andamento: 'Em Andamento',
-    pendente: 'Pendente',
-    aguardando_formalizacao: 'Aguardando Formalização',
-    aguardando_cip: 'Aguardando CIP',
-    saldo_retornado: 'Saldo Retornado',
-    aguardando_pagamento: 'Aguardando Pagamento',
-    pago: 'Pago',
-    cancelado: 'Cancelado'
-  };
-
-  const statusOptions = [
-    { value: 'em_andamento', label: 'Em Andamento' },
-    { value: 'pendente', label: 'Pendente' },
-    { value: 'aguardando_formalizacao', label: 'Aguardando Formalização' },
-    { value: 'aguardando_cip', label: 'Aguardando CIP' },
-    { value: 'saldo_retornado', label: 'Saldo Retornado' },
-    { value: 'aguardando_pagamento', label: 'Aguardando Pagamento' },
-    { value: 'pago', label: 'Pago' },
-    { value: 'cancelado', label: 'Cancelado' }
-  ];
+  statusPropostas.forEach(status => {
+    statusColors[status.codigo] = corParaClasses[status.cor] || 'bg-slate-100 text-slate-800';
+    statusLabels[status.codigo] = status.nome;
+    statusOptions.push({ value: status.codigo, label: status.nome });
+  });
 
   const atualizarStatusMutation = useMutation({
     mutationFn: async ({ vendaBaseId, vendaDetalheId, novoStatus, isConsignado }) => {

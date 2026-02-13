@@ -109,6 +109,12 @@ export default function NovaVendaConsignado() {
     queryFn: () => base44.entities.EmpresaParceira.filter({ empresa_id: empresaId, ativo: true }, 'nome')
   });
 
+  const { data: statusPropostas = [] } = useQuery({
+    queryKey: ['status-propostas', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.StatusProposta.filter({ empresa_id: empresaId, ativo: true }, 'ordem')
+  });
+
   const criarVendaMutation = useMutation({
     mutationFn: async (dados) => {
       const convenioSelecionado = convenios.find(c => c.id === dados.convenio_id);
@@ -820,14 +826,22 @@ export default function NovaVendaConsignado() {
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
               >
-                <option value="em_andamento">Em andamento</option>
-                <option value="pendente">Pendente</option>
-                <option value="aguardando_formalizacao">Aguardando formalização</option>
-                <option value="aguardando_cip">Aguardando CIP</option>
-                <option value="saldo_retornado">Saldo retornado</option>
-                <option value="aguardando_pagamento">Aguardando pagamento</option>
-                <option value="pago">Pago</option>
-                <option value="cancelado">Cancelado</option>
+                {statusPropostas.length > 0 ? (
+                  statusPropostas.map(status => (
+                    <option key={status.id} value={status.codigo}>{status.nome}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="em_andamento">Em andamento</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="aguardando_formalizacao">Aguardando formalização</option>
+                    <option value="aguardando_cip">Aguardando CIP</option>
+                    <option value="saldo_retornado">Saldo retornado</option>
+                    <option value="aguardando_pagamento">Aguardando pagamento</option>
+                    <option value="pago">Pago</option>
+                    <option value="cancelado">Cancelado</option>
+                  </>
+                )}
               </select>
             </div>
 
