@@ -42,17 +42,17 @@ export default function ConfiguracaoWhatsApp() {
       const me = await base44.auth.me();
       setUser(me);
 
-      // Se é super_admin, listar todas as empresas
+      // Se é super_admin, configurar para conta super admin (sem empresa)
       if (me?.role === 'super_admin' || me?.perfil === 'super_admin') {
-        const todasEmpresas = await base44.entities.Empresa.list('-created_date', 100);
-        setEmpresas(todasEmpresas || []);
+        // Super Admin não tem empresa - usa secrets globais
+        setEvolutionUrl(process.env.EVOLUTION_API_URL || '');
+        setInstanceName(process.env.EVOLUTION_INSTANCE_NAME || 'TESTE');
+        setApiKey(process.env.EVOLUTION_API_KEY || '');
         
-        // Selecionar a primeira empresa por padrão
-        if (todasEmpresas && todasEmpresas.length > 0) {
-          const empresaData = todasEmpresas[0];
-          setSelectedEmpresaId(empresaData.id);
-          carregarEmpresa(empresaData);
-        }
+        // Gerar URL webhook com instance name global
+        const instanceGlobal = process.env.EVOLUTION_INSTANCE_NAME || 'TESTE';
+        const webhookGerada = gerarUrlWebhook(instanceGlobal);
+        setWebhookUrl(webhookGerada);
       } else if (me?.empresa_id) {
         // Usuário normal - carregar sua empresa
         const emp = await base44.entities.Empresa.filter({ id: me.empresa_id });
@@ -113,6 +113,13 @@ export default function ConfiguracaoWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Super Admin não pode editar - valores vêm dos secrets
+      if (user?.role === 'super_admin' || user?.perfil === 'super_admin') {
+        toast.error('Configurações do Super Admin são gerenciadas via Secrets do sistema');
+        setEditMode(false);
+        return;
+      }
+
       if (!selectedEmpresaId || !empresa?.id) {
         toast.error('Erro: Selecione uma empresa');
         return;
@@ -151,13 +158,11 @@ export default function ConfiguracaoWhatsApp() {
   const atualizarWebhookEvolution = async () => {
     setAtualizandoWebhook(true);
     try {
-      if (!empresa?.id) {
-        toast.error('Erro: Empresa não identificada');
-        return;
-      }
-
+      // Super Admin: usar secrets globais
+      const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
+      
       const configResponse = await base44.functions.invoke('configurarWebhookEvolution', {
-        empresa_id: empresa.id,
+        empresa_id: isSuperAdmin ? null : empresa?.id,
         evolution_url: evolutionUrl,
         evolution_instance_name: instanceName,
         evolution_api_key: apiKey
@@ -305,31 +310,10 @@ export default function ConfiguracaoWhatsApp() {
     <div className="space-y-6">
       <PageHeader
         title="Configuração WhatsApp"
-        subtitle={empresa ? `Integração com Evolution API - ${empresa.nome}` : "Carregando..."}
+        subtitle={(user?.role === 'super_admin' || user?.perfil === 'super_admin') 
+          ? "Integração com Evolution API - Conta Super Admin (JD Promotora)" 
+          : empresa ? `Integração com Evolution API - ${empresa.nome}` : "Carregando..."}
       />
-
-      {/* Seletor de Empresa para Super Admin */}
-      {(user?.role === 'super_admin' || user?.perfil === 'super_admin') && empresas.length > 0 && (
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader>
-            <CardTitle className="text-sm">Selecionar Empresa</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select value={selectedEmpresaId || ''} onValueChange={handleMudarEmpresa}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {empresas.map(emp => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.nome} ({emp.codigo})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid grid-cols-1 gap-6">
         {/* Status da Conexão */}
@@ -356,14 +340,16 @@ export default function ConfiguracaoWhatsApp() {
               <CardTitle className="flex items-center gap-2">
                 <span>⚙️</span> Dados da Evolution API
               </CardTitle>
-              <Button
-                variant={editMode ? 'outline' : 'default'}
-                size="sm"
-                onClick={handleEditMode}
-                disabled={saving}
-              >
-                {editMode ? 'Cancelar' : 'Editar'}
-              </Button>
+              {!(user?.role === 'super_admin' || user?.perfil === 'super_admin') && (
+                <Button
+                  variant={editMode ? 'outline' : 'default'}
+                  size="sm"
+                  onClick={handleEditMode}
+                  disabled={saving}
+                >
+                  {editMode ? 'Cancelar' : 'Editar'}
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
