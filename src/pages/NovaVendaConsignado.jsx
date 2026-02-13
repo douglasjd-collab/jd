@@ -306,12 +306,6 @@ export default function NovaVendaConsignado() {
                   required
                 >
                   <option value="">Selecione...</option>
-                  <option value="C6 Bank">C6 Bank</option>
-                  <option value="Digio">Digio</option>
-                  <option value="BMG">BMG</option>
-                  <option value="Finanto">Finanto</option>
-                  <option value="BRB">BRB</option>
-                  <option value="Happy">Happy</option>
                   {bancos.map(b => (
                     <option key={b.id} value={b.nome}>{b.nome}</option>
                   ))}
@@ -393,12 +387,6 @@ export default function NovaVendaConsignado() {
                   required
                 >
                   <option value="">Selecione...</option>
-                  <option value="C6 Bank">C6 Bank</option>
-                  <option value="Digio">Digio</option>
-                  <option value="BMG">BMG</option>
-                  <option value="Finanto">Finanto</option>
-                  <option value="BRB">BRB</option>
-                  <option value="Happy">Happy</option>
                   {bancos.map(b => (
                     <option key={b.id} value={b.nome}>{b.nome}</option>
                   ))}
@@ -464,12 +452,6 @@ export default function NovaVendaConsignado() {
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                 >
                   <option value="">Selecione...</option>
-                  <option value="C6 Bank">C6 Bank</option>
-                  <option value="Digio">Digio</option>
-                  <option value="BMG">BMG</option>
-                  <option value="Finanto">Finanto</option>
-                  <option value="BRB">BRB</option>
-                  <option value="Happy">Happy</option>
                   {bancos.map(b => (
                     <option key={b.id} value={b.nome}>{b.nome}</option>
                   ))}
@@ -520,12 +502,6 @@ export default function NovaVendaConsignado() {
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                 >
                   <option value="">Selecione...</option>
-                  <option value="C6 Bank">C6 Bank</option>
-                  <option value="Digio">Digio</option>
-                  <option value="BMG">BMG</option>
-                  <option value="Finanto">Finanto</option>
-                  <option value="BRB">BRB</option>
-                  <option value="Happy">Happy</option>
                   {bancos.map(b => (
                     <option key={b.id} value={b.nome}>{b.nome}</option>
                   ))}
