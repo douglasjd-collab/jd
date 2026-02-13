@@ -52,9 +52,19 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
 
   useEffect(() => {
     if (usuario) {
-      Object.keys(usuario).forEach(key => {
-        setValue(key, usuario[key]);
-      });
+      // Garantir valores padrão para campos novos
+      setValue('nome', usuario.nome || '');
+      setValue('email', usuario.email || '');
+      setValue('cpf_cnpj', usuario.cpf_cnpj || '');
+      setValue('telefone', usuario.telefone || '');
+      setValue('codigo_vendedor', usuario.codigo_vendedor || '');
+      setValue('usuario_canopus', usuario.usuario_canopus || '');
+      setValue('perfil', usuario.perfil || 'vendedor');
+      setValue('gerente_id', usuario.gerente_id || '');
+      setValue('empresa_id', usuario.empresa_id || '');
+      setValue('tipo_agente', usuario.tipo_agente || 'agente_loja');
+      setValue('percentual_comissao_agente', usuario.percentual_comissao_agente || null);
+      setValue('status', usuario.status || 'ativo');
     } else {
       reset({
         nome: '',
