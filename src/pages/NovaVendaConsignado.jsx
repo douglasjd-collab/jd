@@ -297,31 +297,6 @@ export default function NovaVendaConsignado() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Banco *</Label>
-              <div className="flex gap-2">
-                <select
-                  value={formData.banco}
-                  onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {bancos.map(b => (
-                    <option key={b.id} value={b.nome}>{b.nome}</option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowBancoModal(true)}
-                  title="Cadastrar novo banco"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <div>
               <Label>Valor Liberado *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
@@ -378,31 +353,6 @@ export default function NovaVendaConsignado() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Banco Anterior *</Label>
-              <div className="flex gap-2">
-                <select
-                  value={formData.banco_anterior}
-                  onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  required
-                >
-                  <option value="">Selecione...</option>
-                  {bancos.map(b => (
-                    <option key={b.id} value={b.nome}>{b.nome}</option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowBancoModal(true)}
-                  title="Cadastrar novo banco"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <div>
               <Label>Saldo Devedor *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
@@ -444,30 +394,6 @@ export default function NovaVendaConsignado() {
           <CardTitle className="text-lg mt-4">Dados da Portabilidade</CardTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Banco Anterior</Label>
-              <div className="flex gap-2">
-                <select
-                  value={formData.banco_anterior}
-                  onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                >
-                  <option value="">Selecione...</option>
-                  {bancos.map(b => (
-                    <option key={b.id} value={b.nome}>{b.nome}</option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowBancoModal(true)}
-                  title="Cadastrar novo banco"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-            <div>
               <Label>Saldo Devedor</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
@@ -493,30 +419,6 @@ export default function NovaVendaConsignado() {
 
           <CardTitle className="text-lg mt-4">Dados do Refinanciamento</CardTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Banco</Label>
-              <div className="flex gap-2">
-                <select
-                  value={formData.banco}
-                  onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                >
-                  <option value="">Selecione...</option>
-                  {bancos.map(b => (
-                    <option key={b.id} value={b.nome}>{b.nome}</option>
-                  ))}
-                </select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowBancoModal(true)}
-                  title="Cadastrar novo banco"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
             <div>
               <Label>Valor Liberado</Label>
               <div className="relative">
@@ -625,6 +527,31 @@ export default function NovaVendaConsignado() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <Label>Banco *</Label>
+                <div className="flex gap-2">
+                  <select
+                    value={formData.banco}
+                    onChange={(e) => setFormData({ ...formData, banco: e.target.value, tabela_emprestimo_id: '' })}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                    required
+                  >
+                    <option value="">Selecione...</option>
+                    {bancos.map(b => (
+                      <option key={b.id} value={b.nome}>{b.nome}</option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowBancoModal(true)}
+                    title="Cadastrar novo banco"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
                 <Label>Tipo de Consignado *</Label>
                 <select
                   value={formData.tipo_consignado}
@@ -638,12 +565,15 @@ export default function NovaVendaConsignado() {
                   <option value="REFIN_PORTABILIDADE">Refin + Portabilidade</option>
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Convênio *</Label>
                 <div className="flex gap-2">
                   <select
                     value={formData.convenio_id}
-                    onChange={(e) => setFormData({ ...formData, convenio_id: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, convenio_id: e.target.value, tabela_emprestimo_id: '' })}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                     required
                   >
@@ -663,22 +593,29 @@ export default function NovaVendaConsignado() {
                   </Button>
                 </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Tabela</Label>
                 <select
                   value={formData.tabela_emprestimo_id}
                   onChange={(e) => handleTabelaChange(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  disabled={!formData.banco || !formData.convenio_id}
                 >
                   <option value="">Selecione...</option>
-                  {tabelasEmprestimo.map(t => (
-                    <option key={t.id} value={t.id}>{t.nome}</option>
-                  ))}
+                  {tabelasEmprestimo
+                    .filter(t => {
+                      const bancoMatch = !formData.banco || t.banco === formData.banco;
+                      const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
+                      return bancoMatch && convenioMatch;
+                    })
+                    .map(t => (
+                      <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
+                    ))}
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Número do Benefício</Label>
                 <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
