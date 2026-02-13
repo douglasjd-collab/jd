@@ -1,5 +1,25 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+// Função auxiliar para registrar eventos
+async function registrarEvento(base44, empresaId, tipoEvento, dados) {
+  try {
+    await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+      empresa_id: empresaId || '',
+      tipo_evento: tipoEvento,
+      telefone: dados.telefone || '',
+      conteudo: dados.conteudo || '',
+      status: dados.status || 'sucesso',
+      mensagem_erro: dados.erro || '',
+      mensagem_id: dados.mensagem_id || '',
+      conversa_id: dados.conversa_id || '',
+      instancia: dados.instancia || '',
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('⚠️ Erro ao registrar evento:', e.message);
+  }
+}
+
 Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
   
@@ -335,6 +355,16 @@ Deno.serve(async (req) => {
     }
     console.log('='.repeat(100));
 
+    // Registrar evento de sucesso
+    await registrarEvento(base44, empresaId, 'mensagem_recebida', {
+      telefone: telefoneLimpo,
+      conteudo: conteudo.substring(0, 100),
+      status: 'sucesso',
+      mensagem_id: novaMensagem.id,
+      conversa_id: conversa.id,
+      instancia: instanceFinal
+    });
+
     console.log('✅ RETORNANDO SUCESSO AO WEBHOOK');
     return Response.json({
       success: true,
@@ -356,6 +386,20 @@ Deno.serve(async (req) => {
     console.log('Mensagem:', error.message);
     console.log('Stack:', error.stack);
     console.log('█'.repeat(100));
+    
+    // Tentar registrar erro
+    try {
+      const base44 = createClientFromRequest(req);
+      const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
+      if (empresas.length > 0) {
+        await registrarEvento(base44, empresas[0].id, 'erro', {
+          status: 'erro',
+          erro: error.message
+        });
+      }
+    } catch (logErr) {
+      console.error('⚠️ Erro ao registrar erro:', logErr.message);
+    }
     
     return Response.json({
       success: false,
