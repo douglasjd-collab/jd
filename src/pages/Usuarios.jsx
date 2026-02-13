@@ -141,13 +141,15 @@ export default function Usuarios() {
         if (isMasterOrSuperAdmin) {
           colaboradores = await base44.entities.Colaborador.list('-created_date');
         } else {
+          // Admin vê apenas usuários da sua empresa
           colaboradores = await base44.entities.Colaborador.filter(
             { empresa_id: currentUser.empresa_id },
             '-created_date'
           );
         }
 
-        // Se for admin, buscar também usuários sem Colaborador (pendentes)
+        // Se for master/super_admin, buscar usuários sem Colaborador (pendentes)
+        // Se for admin, buscar apenas os pendentes convidados para SUA empresa
         if (isMasterOrSuperAdmin || currentUser?.perfil === 'admin') {
           try {
             // Buscar todos os Users usando service role
@@ -160,7 +162,7 @@ export default function Usuarios() {
             const idsComColab = new Set(colaboradores.map(c => c.user_id).filter(Boolean));
             
             // Usuários sem Colaborador
-            const usuariosSemColab = todosUsuarios
+            let usuariosSemColab = todosUsuarios
               .filter(u => !idsComColab.has(u.id) && u.role !== 'super_admin')
               .map(u => ({
                 id: u.id,
@@ -168,7 +170,7 @@ export default function Usuarios() {
                 nome: u.full_name || u.email,
                 email: u.email,
                 perfil: null,
-                empresa_id: null,
+                empresa_id: u.empresa_id || null, // Pode ter empresa_id se foi convidado
                 empresa_nome: null,
                 status: 'pendente',
                 cpf_cnpj: null,
@@ -178,6 +180,13 @@ export default function Usuarios() {
                 aguardando_configuracao: true,
                 created_date: u.created_date
               }));
+
+            // Se for admin (não master/super_admin), filtrar apenas pendentes da sua empresa
+            if (currentUser?.perfil === 'admin' && currentUser?.empresa_id) {
+              usuariosSemColab = usuariosSemColab.filter(u => 
+                u.empresa_id === currentUser.empresa_id
+              );
+            }
 
             console.log('Usuários sem colab:', usuariosSemColab);
 
