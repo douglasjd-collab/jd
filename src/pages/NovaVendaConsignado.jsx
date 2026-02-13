@@ -606,7 +606,20 @@ export default function NovaVendaConsignado() {
                     .filter(t => {
                       const bancoMatch = !formData.banco || t.banco === formData.banco;
                       const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
-                      return bancoMatch && convenioMatch;
+                      
+                      // Filtrar por tipo de consignado
+                      let tipoMatch = true;
+                      if (formData.tipo_consignado === 'NOVO') {
+                        tipoMatch = t.produto === 'NOVO' || t.produto === 'Margem Livre';
+                      } else if (formData.tipo_consignado === 'REFINANCIAMENTO') {
+                        tipoMatch = t.produto === 'REFINANCIAMENTO';
+                      } else if (formData.tipo_consignado === 'PORTABILIDADE_PURA') {
+                        tipoMatch = t.produto === 'PORTABILIDADE';
+                      } else if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
+                        tipoMatch = t.produto === 'REFIN/PORTABILIDADE';
+                      }
+                      
+                      return bancoMatch && convenioMatch && tipoMatch;
                     })
                     .map(t => (
                       <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
