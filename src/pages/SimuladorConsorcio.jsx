@@ -243,10 +243,15 @@ export default function SimuladorConsorcio() {
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = prazoNum * parcelaTotal;
 
+    // Verificar se o plano tem desconto embutido (50% ou 70%)
+    const planoTemDescontoEmbutido = planoSelecionadoInfo && 
+      (planoSelecionadoInfo.includes('50%') || planoSelecionadoInfo.includes('70%'));
+
     let novaParcelaCalculada = parcelaTotal;
     let mesesCobrados = prazoNum;
     let saldoDevedorTotal = totalPlano;
     let lanceProprioValor = 0;
+    let lanceEmbutidoAplicado = planoTemDescontoEmbutido ? 0 : lanceEmbutidoValor;
 
     if (usarLanceProprio) {
       lanceProprioValor = parseFloat(lanceProprio);
@@ -257,9 +262,10 @@ export default function SimuladorConsorcio() {
         toast.warning('Lance próprio ajustado para o valor máximo do plano');
       }
 
-      // Calcular saldo devedor correto:
-      // Total a pagar - 1ª parcela no ato - Lance total (embutido + próprio)
-      const lanceTotalCompleto = lanceEmbutidoValor + lanceProprioValor;
+      // Calcular saldo devedor:
+      // Se plano tem 50% ou 70%, NÃO descontar lance embutido (já foi descontado no plano)
+      // Total a pagar - 1ª parcela no ato - Lance embutido (se aplicável) - Lance próprio
+      const lanceTotalCompleto = lanceEmbutidoAplicado + lanceProprioValor;
       saldoDevedorTotal = totalPlano - parcelaTotal - lanceTotalCompleto;
 
       // Calcular meses cobrados
@@ -278,7 +284,7 @@ export default function SimuladorConsorcio() {
       creditoAReceber: creditoAReceber,
       parcelaTotal,
       totalPlano,
-      lanceEmbutidoValor,
+      lanceEmbutidoValor: lanceEmbutidoAplicado,
       administradora,
       lanceEmbutidoPercentual,
       prazoOriginal: prazoNum,
@@ -287,7 +293,8 @@ export default function SimuladorConsorcio() {
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
       mesesCobrados,
-      aplicarRegraCanopus: aplicarRegraCanopus && administradora === 'canopus'
+      aplicarRegraCanopus: aplicarRegraCanopus && administradora === 'canopus',
+      planoTemDescontoEmbutido
     });
   };
 
@@ -997,6 +1004,15 @@ export default function SimuladorConsorcio() {
 
                   {resultado.usarLanceProprio && (
                     <>
+                      {resultado.planoTemDescontoEmbutido && (
+                        <div className="p-2 bg-amber-50 rounded-lg border border-amber-200">
+                          <p className="text-xs text-amber-700 font-semibold mb-1">⚠️ Plano com Desconto Embutido</p>
+                          <p className="text-xs text-amber-800">
+                            Este plano já possui desconto de 50% ou 70% aplicado. O lance embutido NÃO será descontado novamente.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="p-2 bg-purple-50 rounded-lg border border-purple-200">
                         <p className="text-xs text-purple-700 font-semibold mb-1">💎 Lance Próprio</p>
                         <p className="text-lg font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
@@ -1005,22 +1021,30 @@ export default function SimuladorConsorcio() {
                         </p>
                       </div>
 
-                      <div className="p-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg text-white">
-                        <p className="text-xs font-semibold">🎯 Percentual Total Ofertado</p>
-                        <p className="text-2xl font-bold">{percentualTotalOfertado}%</p>
-                        <p className="text-xs mt-0.5 opacity-90">
-                          Lance Embutido ({resultado.lanceEmbutidoPercentual}%) + Lance Próprio ({lanceProprioPercentual}%)
-                        </p>
-                      </div>
+                      {!resultado.planoTemDescontoEmbutido && (
+                        <div className="p-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg text-white">
+                          <p className="text-xs font-semibold">🎯 Percentual Total Ofertado</p>
+                          <p className="text-2xl font-bold">{percentualTotalOfertado}%</p>
+                          <p className="text-xs mt-0.5 opacity-90">
+                            Lance Embutido ({resultado.lanceEmbutidoPercentual}%) + Lance Próprio ({lanceProprioPercentual}%)
+                          </p>
+                        </div>
+                      )}
 
                       <div className="p-2 bg-slate-50 rounded-lg space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span className="text-slate-600">Total a pagar:</span>
                           <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
                         </div>
+                        {!resultado.planoTemDescontoEmbutido && resultado.lanceEmbutidoValor > 0 && (
+                          <div className="flex justify-between text-red-600">
+                            <span>(-)Lance embutido:</span>
+                            <span className="font-semibold">-{formatCurrency(resultado.lanceEmbutidoValor)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-red-600">
-                          <span>(-)Lance total:</span>
-                          <span className="font-semibold">-{formatCurrency(resultado.lanceEmbutidoValor + resultado.lanceProprio)}</span>
+                          <span>(-)Lance próprio:</span>
+                          <span className="font-semibold">-{formatCurrency(resultado.lanceProprio)}</span>
                         </div>
                         <div className="flex justify-between text-red-600">
                           <span>(-)1ª parcela na contratação:</span>
@@ -1028,7 +1052,7 @@ export default function SimuladorConsorcio() {
                         </div>
                         <div className="flex justify-between border-t pt-1">
                           <span className="text-slate-900 font-semibold">Saldo devedor:</span>
-                          <span className="font-bold">{formatCurrency(resultado.totalPlano - resultado.parcelaTotal - (resultado.lanceEmbutidoValor + resultado.lanceProprio))}</span>
+                          <span className="font-bold">{formatCurrency(resultado.saldoDevedor)}</span>
                         </div>
                         <div className="flex justify-between text-xs mt-1 pt-1 border-t">
                           <span className="text-slate-600">Meses Cobrados:</span>
