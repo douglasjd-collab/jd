@@ -145,27 +145,47 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'No company' }, { status: 400 });
     }
 
-    // REGRA CRÍTICA: Se é instância TESTE, sempre ir para JD PROMOTORA
+    // REGRA CRÍTICA: Identificar empresa pela instância
     let empresaId = null;
 
+    console.log('🔍 Identificando empresa...');
+    console.log('📍 Instance do URL:', instanceFromUrl);
+    console.log('📊 Empresas disponíveis:', empresas.map(e => ({
+      id: e.id,
+      nome: e.nome,
+      instance: e.evolution_instance_name
+    })));
+
     if (instanceFromUrl === 'TESTE') {
-      // Procurar JD Promotora especificamente
-      const jd = empresas.find(e => e.nome?.includes('JD') && e.nome?.includes('Promotora'));
+      // TESTE → JD PROMOTORA (buscar de forma mais flexível)
+      const jd = empresas.find(e => 
+        e.nome?.toUpperCase().includes('JD') || 
+        e.codigo === 'EMP001' ||
+        e.id === '6956c66acff52e4405313375'
+      );
+      
       if (jd) {
         empresaId = jd.id;
-        console.log('✅ INSTÂNCIA TESTE → JD PROMOTORA:', empresaId);
+        console.log('✅ INSTÂNCIA TESTE → Empresa:', jd.nome, '(ID:', empresaId, ')');
       } else {
-        console.log('⚠️ JD Promotora não encontrada, buscando por ID');
-        // Fallback: usar ID hardcoded de JD Promotora
-        empresaId = '6956c66acff52e4405313375';
-        console.log('✅ JD PROMOTORA (ID hardcoded):', empresaId);
+        console.error('❌ JD Promotora NÃO ENCONTRADA!');
+        console.log('📋 Empresas existentes:', empresas.map(e => e.nome).join(', '));
+        // Usar primeira empresa como fallback
+        empresaId = empresas[0].id;
+        console.log('⚠️ USANDO PRIMEIRA EMPRESA:', empresas[0].nome);
       }
     } else if (instanceFromUrl) {
-      // Para outras instâncias, procurar pela instance
+      // Para outras instâncias, procurar pela instance EXATAMENTE
       const empresaPorInstance = empresas.find(e => e.evolution_instance_name === instanceFromUrl);
       if (empresaPorInstance) {
         empresaId = empresaPorInstance.id;
-        console.log('✅ Empresa encontrada pela instance:', empresaId, instanceFromUrl);
+        console.log('✅ Empresa encontrada pela instance:', empresaPorInstance.nome, instanceFromUrl);
+      } else {
+        console.error('❌ EMPRESA NÃO ENCONTRADA PARA INSTANCE:', instanceFromUrl);
+        console.log('📋 Instances configuradas:', empresas.filter(e => e.evolution_instance_name).map(e => ({
+          nome: e.nome,
+          instance: e.evolution_instance_name
+        })));
       }
     }
 
