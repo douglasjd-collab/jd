@@ -336,40 +336,17 @@ export default function VendasEmprestimos() {
                 onDoubleClick={() => navigate(createPageUrl('VendaEmprestimoDetalhes') + `?id=${venda.id}`)}
               >
                 <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgColor} flex items-center justify-center`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">{venda.cliente_nome}</h3>
-                        <p className="text-sm text-slate-600">
-                          {isConsignado ? 'Consignado' : 'Pessoal'} - {venda.tipo}
-                        </p>
-                      </div>
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgColor} flex items-center justify-center flex-shrink-0`}>
+                      <Icon className="w-6 h-6 text-white" />
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 transition-opacity`}>
-                          {statusLabels[venda.status]}
-                        </Badge>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {statusOptions.map((option) => (
-                          <DropdownMenuItem
-                            key={option.value}
-                            onClick={() => handleStatusChange(venda, option.value)}
-                            className={venda.status === option.value ? 'bg-slate-100 font-medium' : ''}
-                          >
-                            <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[option.value].split(' ')[0].replace('bg-', 'bg-')}`} />
-                            {option.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-1">{venda.cliente_nome}</h3>
+                      <p className="text-sm text-slate-500 mb-3">
+                        {isConsignado ? 'Consignado' : 'Empréstimo Pessoal'} - {venda.tipo}
+                      </p>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <span className="text-slate-500">Banco</span>
                       <p className="font-medium">{venda.detalhes?.banco || venda.detalhes?.banco_anterior || '-'}</p>
@@ -390,15 +367,40 @@ export default function VendasEmprestimos() {
                           : '-'}
                       </p>
                     </div>
-                    <div>
-                      <span className="text-slate-500">
-                        {isConsignado ? 'Convênio' : 'Contrato'}
-                      </span>
-                      <p className="font-medium">
-                        {isConsignado 
-                          ? (venda.detalhes?.convenio_nome || '-')
-                          : (venda.detalhes?.numero_contrato || '-')}
-                      </p>
+                        <div>
+                          <span className="text-slate-500">
+                            {isConsignado ? 'Convênio' : 'Contrato'}
+                          </span>
+                          <p className="font-medium">
+                            {isConsignado 
+                              ? (venda.detalhes?.convenio_nome || '-')
+                              : (venda.detalhes?.numero_contrato || '-')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Badge className={statusColors[venda.status]}>
+                                {statusLabels[venda.status]}
+                              </Badge>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {statusOptions.map((option) => (
+                              <DropdownMenuItem
+                                key={option.value}
+                                onClick={() => handleStatusChange(venda, option.value)}
+                                className={venda.status === option.value ? 'bg-slate-100 font-medium' : ''}
+                              >
+                                {option.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
