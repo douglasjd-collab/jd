@@ -117,14 +117,6 @@ export default function ConfiguracaoWhatsApp() {
   };
 
   const handleEditMode = () => {
-    const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
-    
-    // Super Admin não pode editar
-    if (isSuperAdmin) {
-      toast.error('Configurações do Super Admin são gerenciadas via Secrets do sistema');
-      return;
-    }
-    
     if (!editMode) {
       setTempUrl(evolutionUrl);
       setTempInstance(instanceName);
@@ -136,19 +128,15 @@ export default function ConfiguracaoWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Super Admin não pode editar - valores vêm dos secrets
-      if (user?.role === 'super_admin' || user?.perfil === 'super_admin') {
-        toast.error('Configurações do Super Admin são gerenciadas via Secrets do sistema');
-        setEditMode(false);
+      const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
+      const empresaId = isSuperAdmin ? empresa?.id : (selectedEmpresaId || empresa?.id);
+
+      if (!empresaId) {
+        toast.error('Erro: Empresa não definida');
         return;
       }
 
-      if (!selectedEmpresaId || !empresa?.id) {
-        toast.error('Erro: Selecione uma empresa');
-        return;
-      }
-
-      await base44.entities.Empresa.update(empresa.id, {
+      await base44.entities.Empresa.update(empresaId, {
         evolution_url: tempUrl,
         evolution_instance_name: tempInstance,
         evolution_api_key: tempApiKey
@@ -363,16 +351,14 @@ export default function ConfiguracaoWhatsApp() {
               <CardTitle className="flex items-center gap-2">
                 <span>⚙️</span> Dados da Evolution API
               </CardTitle>
-              {!(user?.role === 'super_admin' || user?.perfil === 'super_admin') && (
-                <Button
-                  variant={editMode ? 'outline' : 'default'}
-                  size="sm"
-                  onClick={handleEditMode}
-                  disabled={saving}
-                >
-                  {editMode ? 'Cancelar' : 'Editar'}
-                </Button>
-              )}
+              <Button
+                variant={editMode ? 'outline' : 'default'}
+                size="sm"
+                onClick={handleEditMode}
+                disabled={saving}
+              >
+                {editMode ? 'Cancelar' : 'Editar'}
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
