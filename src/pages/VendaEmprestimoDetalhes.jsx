@@ -165,41 +165,71 @@ export default function VendaEmprestimoDetalhes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-8">
-        <PageHeader
-          title={`${isConsignado ? 'Empréstimo Consignado' : 'Empréstimo Pessoal'} - ${venda.cliente_nome}`}
-          backTo="VendasEmprestimos"
-        />
-        <div className="flex gap-2">
-          {!editando ? (
-            <Button onClick={() => setEditando(true)} className="gap-2">
-              <Edit className="w-4 h-4" />
-              Editar
-            </Button>
-          ) : (
-            <>
-              <Button
-                onClick={handleCancel}
-                variant="outline"
-                className="gap-2"
+      <div className="mb-8">
+        <div className="flex items-start justify-between mb-4">
+          <PageHeader
+            title={`${isConsignado ? 'Empréstimo Consignado' : 'Empréstimo Pessoal'} - ${venda.cliente_nome}`}
+            backTo="VendasEmprestimos"
+          />
+          <div className="flex items-center gap-3">
+            {editando ? (
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="flex h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
               >
-                <X className="w-4 h-4" />
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={updateMutation.isPending}
-                className="gap-2 bg-green-600 hover:bg-green-700"
-              >
-                {updateMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                {statusPropostas.length > 0 ? (
+                  statusPropostas.map(status => (
+                    <option key={status.id} value={status.codigo}>{status.nome}</option>
+                  ))
                 ) : (
-                  <Save className="w-4 h-4" />
+                  <>
+                    <option value="em_andamento">Em andamento</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="aguardando_formalizacao">Aguardando formalização</option>
+                    <option value="aguardando_cip">Aguardando CIP</option>
+                    <option value="saldo_retornado">Saldo retornado</option>
+                    <option value="aguardando_pagamento">Aguardando pagamento</option>
+                    <option value="pago">Pago</option>
+                    <option value="cancelado">Cancelado</option>
+                  </>
                 )}
-                Salvar
+              </select>
+            ) : (
+              <Badge className={statusColors[venda.status]}>
+                {statusLabels[venda.status]}
+              </Badge>
+            )}
+            {!editando ? (
+              <Button onClick={() => setEditando(true)} className="gap-2">
+                <Edit className="w-4 h-4" />
+                Editar
               </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button
+                  onClick={handleCancel}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending}
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Salvar
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -213,44 +243,9 @@ export default function VendaEmprestimoDetalhes() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm text-slate-500">Nome</span>
-                <p className="font-medium">{venda.cliente_nome}</p>
-              </div>
-              <div>
-                <span className="text-sm text-slate-500">Status</span>
-                {editando ? (
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm mt-1"
-                  >
-                    {statusPropostas.length > 0 ? (
-                      statusPropostas.map(status => (
-                        <option key={status.id} value={status.codigo}>{status.nome}</option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="em_andamento">Em andamento</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="aguardando_formalizacao">Aguardando formalização</option>
-                        <option value="aguardando_cip">Aguardando CIP</option>
-                        <option value="saldo_retornado">Saldo retornado</option>
-                        <option value="aguardando_pagamento">Aguardando pagamento</option>
-                        <option value="pago">Pago</option>
-                        <option value="cancelado">Cancelado</option>
-                      </>
-                    )}
-                  </select>
-                ) : (
-                  <div className="mt-1">
-                    <Badge className={statusColors[venda.status]}>
-                      {statusLabels[venda.status]}
-                    </Badge>
-                  </div>
-                )}
-              </div>
+            <div>
+              <span className="text-sm text-slate-500">Nome</span>
+              <p className="font-medium">{venda.cliente_nome}</p>
             </div>
           </CardContent>
         </Card>
