@@ -327,20 +327,20 @@ export default function SimuladorConsorcio() {
         }
         
         // Buscar empresa_id
-        let empresaId = colab.empresa_id;
+        let empresaIdFinal = colab.empresa_id;
         
         // Se não tiver empresa_id, buscar primeira empresa disponível
-        if (!empresaId) {
+        if (!empresaIdFinal) {
           const empresas = await base44.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 1);
           if (empresas.length > 0) {
-            empresaId = empresas[0].id;
+            empresaIdFinal = empresas[0].id;
           } else {
             throw new Error('Nenhuma empresa encontrada. Configure uma empresa primeiro.');
           }
         }
 
       // 1. Salvar simulação
-      const lanceTotal = lanceEmbutidoValor + (resultado.usarLanceProprio ? resultado.lanceProprio : 0);
+      const lanceTotalCalc = lanceEmbutidoValor + (resultado.usarLanceProprio ? resultado.lanceProprio : 0);
       
       // Calcula o total da primeira parcela reduzida somando todas as cartas
       const primeira_parcela_reduzida_total = cartas.reduce(
