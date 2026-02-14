@@ -254,10 +254,12 @@ export default function SimuladorNormal() {
   // Define qual parcela usar no ato: reduzida (se houver) ou normal
   const primeiraParcelaNoAto = parcelaReduzidaTotal > 0 ? parcelaReduzidaTotal : parcelaTotal;
   
-  // Calcular percentual do lance próprio em cima do crédito
-  const lanceProprioPercentual = lanceProprio && creditoTotal > 0 
-    ? ((parseFloat(lanceProprio) / creditoTotal) * 100).toFixed(2) 
-    : '0';
+  // Calcular percentual do lance próprio em cima do crédito - USAR useMemo para evitar loop
+  const lanceProprioPercentual = React.useMemo(() => {
+    return lanceProprio && creditoTotal > 0 
+      ? ((parseFloat(lanceProprio) / creditoTotal) * 100).toFixed(2) 
+      : '0';
+  }, [lanceProprio, creditoTotal]);
 
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
