@@ -833,7 +833,12 @@ export default function SimuladorNormal() {
                      </div>
 
                      {/* Relógio de Contemplação */}
-                     {relogioContemplacao && <RelogioContemplacao relogio={relogioContemplacao} />}
+                     {relogioContemplacao && (
+                       <RelogioContemplacao 
+                         relogio={relogioContemplacao}
+                         lanceOfertado={parseFloat(lanceProprioPercentual)}
+                       />
+                     )}
                    </>
                   )}
 
