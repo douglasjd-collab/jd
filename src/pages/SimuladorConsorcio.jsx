@@ -409,7 +409,7 @@ export default function SimuladorConsorcio() {
           `\nAdministradora: ${administradora}`;
         
         await base44.entities.Oportunidade.update(oportunidadeDuplicada.id, {
-          empresa_id: oportunidadeDuplicada.empresa_id || empresaId,
+          empresa_id: oportunidadeDuplicada.empresa_id || empresaIdFinal,
           titulo: oportunidadeDuplicada.titulo,
           etapa_id: oportunidadeDuplicada.etapa_id,
           vendedor_id: oportunidadeDuplicada.vendedor_id,
