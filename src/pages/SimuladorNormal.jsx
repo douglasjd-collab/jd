@@ -439,14 +439,46 @@ export default function SimuladorNormal() {
     setPlanoModalOpen(true);
   };
 
-  const handleSelecionarPlano = (plano) => {
+  const handleSelecionarPlano = async (plano) => {
     if (cartaIndex !== null) {
+      // Verificar se o plano NÃO é de 50% nem 70%
+      const nomeBem = plano.nome_bem?.toUpperCase() || '';
+      const is50ou70 = nomeBem.includes('50%') || nomeBem.includes('70%');
+      
+      let parcelaReduzida = '';
+      
+      // Se não for 50% nem 70%, buscar o equivalente de 50%
+      if (!is50ou70 && plano.credito && plano.prazo && empresaId) {
+        try {
+          // Buscar plano de 50% com mesmo valor e prazo
+          const planos50 = await base44.entities.PlanoCanopus.filter({
+            empresa_id: empresaId,
+            valor_bem: plano.credito,
+            prazo_meses: plano.prazo,
+            status: 'ativo'
+          });
+          
+          // Encontrar o plano que contém "50%" no nome
+          const plano50 = planos50.find(p => 
+            p.nome_bem?.toUpperCase().includes('50%')
+          );
+          
+          if (plano50?.parcela) {
+            parcelaReduzida = plano50.parcela.toString();
+            toast.success('Parcela reduzida (50%) preenchida automaticamente!');
+          }
+        } catch (e) {
+          console.error('Erro ao buscar plano 50%:', e);
+        }
+      }
+      
       const novasCartas = [...cartas];
       novasCartas[cartaIndex] = {
         ...novasCartas[cartaIndex],
         credito: plano.credito.toString(),
         parcela: plano.parcela.toString(),
-        prazo: plano.prazo.toString()
+        prazo: plano.prazo.toString(),
+        parcelaReduzida: parcelaReduzida
       };
       setCartas(novasCartas);
       setPlanoSelecionadoInfo(plano.nome_bem || '');
