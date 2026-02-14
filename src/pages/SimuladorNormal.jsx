@@ -252,11 +252,11 @@ export default function SimuladorNormal() {
       return;
     }
 
-    const relogio = calcularRelogioContemplacao(
-      lancePercentualNum,
-      menorLanceHistorico,
-      maiorLanceHistorico
-    );
+    const relogio = calcularRelogioContemplacao({
+      lanceCliente: lancePercentualNum,
+      menorLance: menorLanceHistorico,
+      maiorLance: maiorLanceHistorico
+    });
 
     setRelogioContemplacao(relogio);
   }, [usarLanceProprio, lanceProprio, lanceProprioPercentual, menorLanceHistorico, maiorLanceHistorico]);
