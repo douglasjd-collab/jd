@@ -354,7 +354,7 @@ export default function SimuladorConsorcio() {
         primeira_parcela_reduzida_total > 0 ? primeira_parcela_reduzida_total : parcelaTotal;
       
       const simulacao = await base44.entities.Simulacao.create({
-        empresa_id: empresaId,
+        empresa_id: empresaIdFinal,
         cliente_nome: clienteNome,
         telefone: telefone,
         tipo_grupo: tipoGrupo,
@@ -367,7 +367,7 @@ export default function SimuladorConsorcio() {
         lance_embutido_valor: lanceEmbutidoValor,
         lance_proprio_ativo: resultado.usarLanceProprio || false,
         lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
-        lance_total: lanceTotal,
+        lance_total: lanceTotalCalc,
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.usarLanceProprio ? resultado.mesesCobrados : resultado.prazoOriginal,
         nova_parcela: resultado.novaParcela,
