@@ -182,16 +182,36 @@ export default function ImportacaoComissao() {
             console.warn("⚠️ Grupo ou Cota inválidos:", grupoRaw, cotaRaw);
             motivoDivergencia = 'Grupo ou cota com formato inválido';
           } else {
-            const grupo = Number(String(grupoRaw).trim());
-            const cota = Number(String(cotaRaw).trim());
-            
-            console.log("🔍 Buscando:", { grupo, cota, administradora: selectedAdmin });
-            
-            const vendasMatch = await base44.entities.VendaConsorcio.filter({
-              grupo,
-              cota,
-              administradora: selectedAdmin
+            const grupoStr = String(grupoRaw).trim();
+            const cotaStr = String(cotaRaw).trim();
+
+            console.log("🔍 Buscando STRING:", { grupoStr, cotaStr, administradora_id: selectedAdmin });
+
+            let vendasMatch = await base44.entities.VendaConsorcio.filter({
+              grupo: grupoStr,
+              cota: cotaStr,
+              administradora_id: selectedAdmin
             });
+
+            console.log("📊 Encontradas (STRING):", vendasMatch.length);
+
+            // Se não achar, tenta como NUMBER
+            if (vendasMatch.length === 0) {
+              const grupoNum = Number(grupoStr);
+              const cotaNum = Number(cotaStr);
+
+              if (!isNaN(grupoNum) && !isNaN(cotaNum)) {
+                console.log("🔍 Buscando NUMBER:", { grupoNum, cotaNum, administradora_id: selectedAdmin });
+
+                vendasMatch = await base44.entities.VendaConsorcio.filter({
+                  grupo: grupoNum,
+                  cota: cotaNum,
+                  administradora_id: selectedAdmin
+                });
+
+                console.log("📊 Encontradas (NUMBER):", vendasMatch.length);
+              }
+            }
             
             console.log("📊 Encontradas:", vendasMatch.length, vendasMatch);
             
