@@ -524,8 +524,8 @@ export default function Vendas() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Vendas"
-        subtitle={`${filteredVendas.length} vendas`}
+        title="Propostas"
+        subtitle={`${filteredVendas.length} propostas`}
         actionLabel="Nova Proposta"
         onAction={() => {
           setSelectedVenda(null);
