@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
                 // 9. Preparar dados para Venda
                 const saleToSave = {
                     empresa_id: user.empresa_id,
-                    external_id: saleSummary.contrato,
+                    external_id: `canopus_${saleSummary.contrato}`,
                     cliente_id: clienteId,
                     cliente_nome: saleSummary.clienteNome,
                     cliente_cpf: clientData.cpf,
