@@ -866,9 +866,9 @@ export default function SimuladorConsorcio() {
                         </div>
 
                         {aplicarRegraCanopus && (
-                          <div className="grid grid-cols-2 gap-2">
-                                   <div>
-                                     <Label className="text-xs">Parcelas de Carência</Label>
+                          <div className="space-y-2">
+                            <div>
+                              <Label className="text-xs">Parcelas de Carência</Label>
                               <Input
                                 type="number"
                                 min="0"
@@ -892,37 +892,37 @@ export default function SimuladorConsorcio() {
                       </>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                       <div>
-                         <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
-                        <Input
-                          type="text"
-                          value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
-                          onChange={(e) => {
-                            const valorNumerico = handleMoedaInput(e.target.value);
-                            setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
-                          }}
-                          placeholder="0,00"
-                        />
-                        {lanceProprio && parseFloat(lanceProprio) > 0 && (
-                          <div className="mt-1 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                            <p className="text-xs text-purple-700">💎 Lance Próprio</p>
-                            <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
-                            <p className="text-xs text-purple-700 mt-1">
-                              {lanceProprioPercentual}% do crédito total
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                    <div>
+                      <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                      <Input
+                        type="text"
+                        value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                        onChange={(e) => {
+                          const valorNumerico = handleMoedaInput(e.target.value);
+                          setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                        }}
+                        placeholder="0,00"
+                      />
+                      {lanceProprio && parseFloat(lanceProprio) > 0 && (
+                        <div className="mt-1 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                          <p className="text-xs text-purple-700">💎 Lance Próprio</p>
+                          <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                          <p className="text-xs text-purple-700 mt-1">
+                            {lanceProprioPercentual}% do crédito total
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
-                      {/* Relógio de Contemplação */}
-                      {relogio && (
+                    {/* Relógio de Contemplação */}
+                    {relogio && (
+                      <div className="mt-4">
                         <RelogioContemplacao
                           relogio={relogio}
                           lanceOfertado={lancePercentualTotal}
                         />
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </>
                 )}
               </CardContent>
