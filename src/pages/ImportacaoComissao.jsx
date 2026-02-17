@@ -127,9 +127,16 @@ export default function ImportacaoComissao() {
         let vendaConsorcioEncontrada = null;
         let motivoDivergencia = '';
 
-        // Normalizar grupo e cota (remover zeros à esquerda, manter apenas números)
-        const grupoNormalizado = grupoRaw ? String(parseInt(grupoRaw) || 0) : '';
-        const cotaNormalizada = cotaRaw ? String(parseInt(cotaRaw) || 0) : '';
+        // Função para normalizar strings: remove espaços, converte para número
+        const normalizar = (valor) => {
+          if (!valor) return '';
+          const str = String(valor).trim().replace(/\s+/g, '');
+          const num = parseInt(str);
+          return isNaN(num) ? str : String(num);
+        };
+
+        const grupoNormalizado = normalizar(grupoRaw);
+        const cotaNormalizada = normalizar(cotaRaw);
 
         console.log('🔍 Processando item:', { 
           contrato, 
@@ -141,10 +148,10 @@ export default function ImportacaoComissao() {
         });
 
         if (contrato) {
-          const vendasMatch = vendasConsorcio.filter(vc => 
-            vc.contrato && String(vc.contrato).trim() === contrato && 
-            vc.administradora_id === selectedAdmin
-          );
+          const vendasMatch = vendasConsorcio.filter(vc => {
+            const contratoVenda = normalizar(vc.contrato);
+            return contratoVenda === contrato && vc.administradora_id === selectedAdmin;
+          });
           console.log(`📊 Busca por contrato "${contrato}":`, vendasMatch.length, 'encontradas');
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
@@ -156,13 +163,13 @@ export default function ImportacaoComissao() {
             cota: vc.cota,
             contrato: vc.contrato,
             admin_id: vc.administradora_id,
-            grupoNorm: vc.grupo ? String(parseInt(vc.grupo) || 0) : '',
-            cotaNorm: vc.cota ? String(parseInt(vc.cota) || 0) : ''
+            grupoNorm: normalizar(vc.grupo),
+            cotaNorm: normalizar(vc.cota)
           })));
           
           const vendasMatch = vendasConsorcio.filter(vc => {
-            const grupoVenda = vc.grupo ? String(parseInt(vc.grupo) || 0) : '';
-            const cotaVenda = vc.cota ? String(parseInt(vc.cota) || 0) : '';
+            const grupoVenda = normalizar(vc.grupo);
+            const cotaVenda = normalizar(vc.cota);
             const match = grupoVenda === grupoNormalizado &&
                    cotaVenda === cotaNormalizada &&
                    vc.administradora_id === selectedAdmin;
@@ -170,6 +177,8 @@ export default function ImportacaoComissao() {
             console.log(`  Verificando venda ${vc.id}:`, {
               grupoVenda, 
               cotaVenda, 
+              grupoNormalizado,
+              cotaNormalizada,
               admin: vc.administradora_id,
               match
             });
