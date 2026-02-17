@@ -57,9 +57,24 @@ export default function LancesDoGrupoPanel({
 
         console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, todosDetalhesDoGrupo.length);
         
-        // DEBUG: Mostrar primeiros 5 grupos diferentes para comparação
-        const gruposUnicos = [...new Set(todosDetalhes.map(d => d.grupo))].slice(0, 10);
-        console.log('📋 Primeiros 10 grupos no banco:', gruposUnicos);
+        // DEBUG ESPECÍFICO: Comparar grupos 8110 vs 8120
+        if (grupoNormalizado === '8110' || grupoNormalizado === '8120') {
+          console.log(`🔬 ANÁLISE DETALHADA GRUPO ${grupoNormalizado}:`);
+          console.log('Todos os registros:', todosDetalhesDoGrupo);
+          
+          todosDetalhesDoGrupo.forEach((d, idx) => {
+            console.log(`  [${idx}] modalidade="${d.modalidade}" lance_percent=${d.lance_percent} (tipo: ${typeof d.lance_percent})`);
+          });
+          
+          // Buscar no banco bruto como está o grupo
+          const gruposComMesmoNumero = todosDetalhes.filter(d => {
+            const g = String(d.grupo);
+            return g.includes('8110') || g.includes('8120');
+          });
+          console.log('📦 Grupos no banco que contêm 8110 ou 8120:', 
+            [...new Set(gruposComMesmoNumero.map(d => `"${d.grupo}"`))]
+          );
+        }
         
         // DEBUG: Verificar modalidades disponíveis
         const modalidadesEncontradas = [...new Set(todosDetalhesDoGrupo.map(d => d.modalidade))];
@@ -68,13 +83,8 @@ export default function LancesDoGrupoPanel({
         // DEBUG: Mostrar detalhes por modalidade
         modalidadesEncontradas.forEach(mod => {
           const detalhesModalidade = todosDetalhesDoGrupo.filter(d => d.modalidade === mod);
-          console.log(`📊 [${mod}] ${detalhesModalidade.length} registros - Exemplos:`, 
-            detalhesModalidade.slice(0, 2).map(d => ({ 
-              grupo: d.grupo, 
-              lance_percent: d.lance_percent,
-              historico_id: d.historico_id 
-            }))
-          );
+          const lances = detalhesModalidade.map(d => d.lance_percent).filter(l => l !== null && l !== undefined);
+          console.log(`📊 [${mod}] ${detalhesModalidade.length} registros - lances:`, lances);
         });
 
         if (!todosDetalhesDoGrupo || todosDetalhesDoGrupo.length === 0) {
