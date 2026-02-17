@@ -71,8 +71,9 @@ function parseCanopus(textRaw) {
     /(IM[ÓO]VEL[^-]{0,80}-\s*R\$\s*\d{1,3}(\.\d{3})*,\d{2})/i,
   ]);
 
-  // Valor do crédito (pega o maior "110.000,00" que aparece)
+  // Valor do crédito (busca específico no campo "Valor do Bem/Crédito na Adesão")
   const creditoStr = pickFirst(text, [
+    /Valor\s+do\s+Bem\s*\/\s*Crédito\s+na\s+Adesão\s+R\$\s*(\d{1,3}(\.\d{3})*,\d{2})/i,
     /\bR\$\s*(\d{1,3}(\.\d{3})*,\d{2})\b/,
     /\b(\d{1,3}(\.\d{3})*,\d{2})\s*cento\b/i,
   ]);
