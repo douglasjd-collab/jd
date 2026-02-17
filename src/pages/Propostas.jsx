@@ -233,9 +233,19 @@ export default function Propostas() {
        header: 'Grupo/Cota',
        className: 'text-center',
        cell: (row) => (
-         <div className="text-center">
-           {row.contrato && <p>{row.contrato}</p>}
-           {row.grupo && row.cota && <p className="text-xs text-slate-500">{row.grupo} / {row.cota}</p>}
+         <div className="text-center space-y-1">
+           {row.contrato && (
+             <>
+               <p className="text-xs text-slate-500 font-medium">Contrato</p>
+               <p>{row.contrato}</p>
+             </>
+           )}
+           {row.grupo && row.cota && (
+             <>
+               <p className="text-xs text-slate-500 font-medium">Grupo/Cota</p>
+               <p>{row.grupo} / {row.cota}</p>
+             </>
+           )}
            {!row.contrato && (!row.grupo || !row.cota) && <p className="text-slate-500">-</p>}
          </div>
        )
