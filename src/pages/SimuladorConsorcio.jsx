@@ -200,10 +200,14 @@ export default function SimuladorConsorcio() {
     }
 
     // Calcula e atualiza o relógio
+    // Se tem lance próprio ativo, usa tipo 'limitado', senão usa 'livre'
+    const tipoLanceCalculo = (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) ? 'limitado' : 'livre';
+    
     const resultado = calcularRelogioContemplacao({
       lanceCliente: lancePercentualTotal,
       menorLance: menorLanceAtivo,
-      maiorLance: maiorLanceAtivo
+      maiorLance: maiorLanceAtivo,
+      tipoLance: tipoLanceCalculo
     });
 
     setRelogio(resultado);
