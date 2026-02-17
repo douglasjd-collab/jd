@@ -174,60 +174,52 @@ export default function ImportacaoComissao() {
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
         } else if (grupoRaw && cotaRaw) {
-          // Normaliza valores vindos do CSV para Number
-          const grupo = Number(String(grupoRaw).trim());
-          const cota = Number(String(cotaRaw).trim());
-          
-          // Validação: se não for número válido, não buscar
-          if (isNaN(grupo) || isNaN(cota)) {
-            console.warn("⚠️ Grupo ou Cota inválidos:", grupoRaw, cotaRaw);
-            motivoDivergencia = 'Grupo ou cota com formato inválido';
-          } else {
-            const grupoStr = String(grupoRaw).trim();
-            const cotaStr = String(cotaRaw).trim();
+          const grupoStr = String(grupoRaw).trim();
+          const cotaStr = String(cotaRaw).trim();
 
-            console.log(`\n🔎 BUSCA GRUPO/COTA (STRING):`, { grupoStr, cotaStr, administradora_id: selectedAdmin });
+          console.log(`\n🔎 BUSCA GRUPO/COTA (STRING):`, { grupoStr, cotaStr, administradora_id: selectedAdmin });
 
-            let vendasMatch = await base44.entities.VendaConsorcio.filter({
-              grupo: grupoStr,
-              cota: cotaStr,
-              administradora_id: selectedAdmin
-            });
+          let vendasMatch = await base44.entities.Proposta.filter({
+            produto: 'consorcio',
+            grupo: grupoStr,
+            cota: cotaStr,
+            administradora_id: selectedAdmin
+          });
 
-            console.log("📊 Resultado (STRING):", vendasMatch.length, vendasMatch);
+          console.log("📊 Resultado (STRING):", vendasMatch.length, vendasMatch);
 
-            // Se não achar, tenta como NUMBER
-            if (vendasMatch.length === 0) {
-              const grupoNum = Number(grupoStr);
-              const cotaNum = Number(cotaStr);
+          // Se não achar, tenta como NUMBER
+          if (vendasMatch.length === 0) {
+            const grupoNum = Number(grupoStr);
+            const cotaNum = Number(cotaStr);
 
-              if (!isNaN(grupoNum) && !isNaN(cotaNum)) {
-                console.log(`🔎 BUSCA GRUPO/COTA (NUMBER):`, { grupoNum, cotaNum, administradora_id: selectedAdmin });
+            if (!isNaN(grupoNum) && !isNaN(cotaNum)) {
+              console.log(`🔎 BUSCA GRUPO/COTA (NUMBER):`, { grupoNum, cotaNum, administradora_id: selectedAdmin });
 
-                vendasMatch = await base44.entities.VendaConsorcio.filter({
-                  grupo: grupoNum,
-                  cota: cotaNum,
-                  administradora_id: selectedAdmin
-                });
+              vendasMatch = await base44.entities.Proposta.filter({
+                produto: 'consorcio',
+                grupo: grupoNum.toString(),
+                cota: cotaNum.toString(),
+                administradora_id: selectedAdmin
+              });
 
-                console.log("📊 Resultado (NUMBER):", vendasMatch.length, vendasMatch);
-              } else {
-                console.warn("⚠️ Grupo/Cota não convertíveis:", { grupoStr, cotaStr });
-              }
+              console.log("📊 Resultado (NUMBER):", vendasMatch.length, vendasMatch);
+            } else {
+              console.warn("⚠️ Grupo/Cota não convertíveis:", { grupoStr, cotaStr });
             }
+          }
 
-            if (vendasMatch.length === 1) {
-              vendaConsorcioEncontrada = vendasMatch[0];
-              console.log("✅ VENDA ENCONTRADA:", vendaConsorcioEncontrada);
-            }
-            else if (vendasMatch.length > 1) {
-              motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
-              console.warn("⚠️ AMBÍGUO - Múltiplas encontradas");
-            }
-            else {
-              motivoDivergencia = 'Venda não encontrada por grupo/cota';
-              console.error("❌ NÃO ENCONTRADA - Verificar se existe no banco com estes valores");
-            }
+          if (vendasMatch.length === 1) {
+            vendaConsorcioEncontrada = vendasMatch[0];
+            console.log("✅ PROPOSTA ENCONTRADA:", vendaConsorcioEncontrada);
+          }
+          else if (vendasMatch.length > 1) {
+            motivoDivergencia = 'Múltiplas propostas encontradas por grupo/cota';
+            console.warn("⚠️ AMBÍGUO - Múltiplas encontradas");
+          }
+          else {
+            motivoDivergencia = 'Proposta não encontrada por grupo/cota';
+            console.error("❌ NÃO ENCONTRADA - Verificar se existe no banco com estes valores");
           }
         } else {
           motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
