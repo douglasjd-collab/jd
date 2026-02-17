@@ -129,6 +129,17 @@ export default function Propostas() {
     }
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }) => base44.entities.Proposta.update(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['propostas'] });
+      toast.success('Status alterado com sucesso!');
+    },
+    onError: () => {
+      toast.error('Erro ao alterar status');
+    }
+  });
+
   const handleEdit = (proposta) => {
     setPropostaToEdit(proposta);
     setEditModalOpen(true);
