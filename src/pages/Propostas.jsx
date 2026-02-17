@@ -45,6 +45,8 @@ export default function Propostas() {
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [propostaToEdit, setPropostaToEdit] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
