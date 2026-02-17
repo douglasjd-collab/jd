@@ -124,17 +124,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Salvar detalhes
-    const detalhesParaCriar = slice.map(r => ({
-      empresa_id: imp.empresa_id,
-      historico_id,
-      qt: r.qt,
-      grupo: r.grupo,
-      descricao: r.descricao,
-      credito: r.credito,
-      modalidade: r.modalidade,
-      lance_percent: r.lance_percent
-    }));
+    // Salvar detalhes - normalizando lance_percent
+    const detalhesParaCriar = slice.map(r => {
+      let lancePercent = r.lance_percent;
+      
+      // Normalizar se for string
+      if (typeof lancePercent === 'string') {
+        lancePercent = parseFloat(lancePercent.replace('%', '').replace(',', '.').trim());
+      }
+      
+      // Validar número
+      if (isNaN(lancePercent) || lancePercent == null) {
+        lancePercent = null;
+      }
+      
+      return {
+        empresa_id: imp.empresa_id,
+        historico_id,
+        qt: r.qt,
+        grupo: r.grupo,
+        descricao: r.descricao,
+        credito: r.credito,
+        modalidade: r.modalidade,
+        lance_percent: lancePercent
+      };
+    });
     
     await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(detalhesParaCriar);
 
