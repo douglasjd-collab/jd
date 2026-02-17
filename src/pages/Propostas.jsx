@@ -225,10 +225,10 @@ export default function Propostas() {
            {row.grupo && row.cota ? (
              <>
                <p className="font-medium">{row.grupo} / {row.cota}</p>
-               {row.contrato && <p className="text-xs text-slate-500">{row.contrato}</p>}
+               {row.contrato && <p className="text-xs text-slate-500">Contrato: {row.contrato}</p>}
              </>
            ) : row.contrato ? (
-             <p className="font-medium">{row.contrato}</p>
+             <p className="font-medium">Contrato: {row.contrato}</p>
            ) : (
              <p className="text-slate-500">-</p>
            )}
