@@ -192,7 +192,7 @@ export default function Propostas() {
       cell: (row) => (
         <div>
           <p className="font-medium text-slate-900">{row.cliente_nome || '-'}</p>
-          {row.cliente_id && <p className="text-xs text-slate-500">{row.cliente_id}</p>}
+          {row.cliente_id && <p className="text-xs text-slate-500">{getClienteCpf(row.cliente_id)}</p>}
         </div>
       )
     },
