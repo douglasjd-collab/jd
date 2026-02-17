@@ -43,17 +43,24 @@ async function buscarVendaFlex(base44, args) {
     emprestimos: base44.entities.VendaConsignado,
   };
 
-  // Se veio produto, tenta primeiro a tabela certa
+  // Se veio produto, tenta primeiro a tabela certa (com empresa)
   if (args.produto && tables[args.produto]) {
     const venda = await findFirstFlexible(tables[args.produto], filterBase, grupo, cota);
     if (venda) return { venda, motivo: null, produtoEncontrado: args.produto };
   }
 
-  // Fallback: tenta nas 3
+  // Fallback SEM empresa_id (para super_admin ou divergências)
+  const filterBaseGlobal = {};
+  if (args.produto && tables[args.produto]) {
+    const vendaGlobal = await findFirstFlexible(tables[args.produto], filterBaseGlobal, grupo, cota);
+    if (vendaGlobal) return { venda: vendaGlobal, motivo: null, produtoEncontrado: args.produto };
+  }
+
+  // Fallback final: tenta nas 3 tabelas (sem filtro empresa)
   const [vC, vF, vE] = await Promise.all([
-    findFirstFlexible(tables.consorcio, filterBase, grupo, cota),
-    findFirstFlexible(tables.financiamento, filterBase, grupo, cota),
-    findFirstFlexible(tables.emprestimos, filterBase, grupo, cota),
+    findFirstFlexible(tables.consorcio, filterBaseGlobal, grupo, cota),
+    findFirstFlexible(tables.financiamento, filterBaseGlobal, grupo, cota),
+    findFirstFlexible(tables.emprestimos, filterBaseGlobal, grupo, cota),
   ]);
 
   const found = [
