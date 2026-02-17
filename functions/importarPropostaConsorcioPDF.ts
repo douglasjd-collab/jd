@@ -124,7 +124,7 @@ function parseCanopus(textRaw) {
     cpf,
     dataNascimento,
     email,
-    telefone,
+    telefone: telefoneFormatado || telefone,
     planoCodigo,
     produto,
     valorCredito,
