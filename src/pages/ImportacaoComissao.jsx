@@ -116,9 +116,10 @@ export default function ImportacaoComissao() {
       const vendasParaAtualizar = {};
 
       for (const item of previewData.items) {
-        const contrato = String(item.contrato || '').trim();
-        const grupo = String(item.grupo || '').trim();
-        const cota = String(item.cota || '').trim();
+        const contratoRaw = String(item.contrato || '').trim();
+        const contrato = contratoRaw && contratoRaw !== '-' ? contratoRaw : '';
+        const grupoRaw = String(item.grupo || '').trim();
+        const cotaRaw = String(item.cota || '').trim();
         const parcelaInformada = parseInt(item.parcela) || null;
         const valorRecebido = parseFloat(item.valor) || 0;
         const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
@@ -126,33 +127,26 @@ export default function ImportacaoComissao() {
         let vendaConsorcioEncontrada = null;
         let motivoDivergencia = '';
 
-        // Debug: Log para verificar o que está sendo buscado
-        console.log('🔍 Buscando venda:', { contrato, grupo, cota, admin: selectedAdmin });
-        console.log('📊 Total de VendaConsorcio carregadas:', vendasConsorcio.length);
+        // Normalizar grupo e cota (remover zeros à esquerda, manter apenas números)
+        const grupoNormalizado = grupoRaw ? String(parseInt(grupoRaw) || 0) : '';
+        const cotaNormalizada = cotaRaw ? String(parseInt(cotaRaw) || 0) : '';
 
         if (contrato) {
           const vendasMatch = vendasConsorcio.filter(vc => 
-            vc.contrato === contrato && vc.administradora_id === selectedAdmin
+            vc.contrato && String(vc.contrato).trim() === contrato && 
+            vc.administradora_id === selectedAdmin
           );
-          console.log(`✅ Busca por contrato "${contrato}": ${vendasMatch.length} encontradas`);
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
-        } else if (grupo && cota) {
-          // Log todas as vendas para debug
-          console.log('🔍 Vendas disponíveis:', vendasConsorcio.map(vc => ({ 
-            id: vc.id, 
-            grupo: vc.grupo, 
-            cota: vc.cota, 
-            admin: vc.administradora_id 
-          })));
-          
-          const vendasMatch = vendasConsorcio.filter(vc => 
-            String(vc.grupo).trim() === grupo &&
-            String(vc.cota).trim() === cota &&
-            vc.administradora_id === selectedAdmin
-          );
-          console.log(`✅ Busca por grupo "${grupo}" e cota "${cota}": ${vendasMatch.length} encontradas`);
+        } else if (grupoNormalizado && cotaNormalizada) {
+          const vendasMatch = vendasConsorcio.filter(vc => {
+            const grupoVenda = vc.grupo ? String(parseInt(vc.grupo) || 0) : '';
+            const cotaVenda = vc.cota ? String(parseInt(vc.cota) || 0) : '';
+            return grupoVenda === grupoNormalizado &&
+                   cotaVenda === cotaNormalizada &&
+                   vc.administradora_id === selectedAdmin;
+          });
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
           else motivoDivergencia = 'Venda não encontrada por grupo/cota';
