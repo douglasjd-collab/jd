@@ -169,7 +169,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Nova Proposta', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Propostas de Consórcio', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Propostas', icon: FileText, page: 'Propostas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
 
     { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Simulador', icon: Calculator, page: 'SimuladorEscolha', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
