@@ -1,190 +1,268 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/ui/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import DataTable from '@/components/ui/DataTable';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Banknote, Wallet, Plus, Loader2, Search } from 'lucide-react';
-import { createPageUrl } from '@/utils';
-import { toast } from 'sonner';
+import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, MoreHorizontal, Pencil, Filter, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import PropostaEditModal from '@/components/forms/PropostaEditModal';
 
 export default function VendasEmprestimos() {
-  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [filterTipo, setFilterTipo] = useState('consignado');
+  const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterAdministradora, setFilterAdministradora] = useState('todas');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [propostaToDelete, setPropostaToDelete] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [propostaToEdit, setPropostaToEdit] = useState(null);
   const queryClient = useQueryClient();
-  const [user, setUser] = useState(null);
-  const [empresaId, setEmpresaId] = useState(null);
-  const [filtroStatus, setFiltroStatus] = useState('todos');
-  const [filtroSubtipo, setFiltroSubtipo] = useState('todos');
-  const [buscaNome, setBuscaNome] = useState('');
-  const [buscaCpf, setBuscaCpf] = useState('');
-  const [buscaBanco, setBuscaBanco] = useState('');
 
   useEffect(() => {
     loadUser();
   }, []);
 
   const loadUser = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
+    try {
+      const me = await base44.auth.me();
 
-    if (me.role === 'super_admin' || me.perfil === 'super_admin') {
-      const empresas = await base44.entities.Empresa.filter({ status: 'ativa' });
-      if (empresas.length > 0) setEmpresaId(empresas[0].id);
-    } else {
-      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-      if (colabs.length > 0) setEmpresaId(colabs[0].empresa_id);
-    }
-  };
-
-  const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
-
-  const { data: statusPropostas = [] } = useQuery({
-    queryKey: ['status-propostas', empresaId],
-    enabled: !!empresaId,
-    queryFn: () => base44.entities.StatusProposta.filter({ empresa_id: empresaId, ativo: true }, 'ordem')
-  });
-
-  const { data: vendas = [], isLoading } = useQuery({
-    queryKey: ['vendas-emprestimos', empresaId, isSuperAdmin],
-    enabled: !!user && (isSuperAdmin || !!empresaId),
-    queryFn: async () => {
-      let vendasBase;
-      if (isSuperAdmin) {
-        vendasBase = await base44.entities.VendaBase.list('-created_date', 5000);
-        vendasBase = vendasBase.filter(v => v.produto === 'EMPRESTIMO_CONSIGNADO' || v.produto === 'EMPRESTIMO_PESSOAL');
-      } else {
-        const consignados = await base44.entities.VendaBase.filter({ empresa_id: empresaId, produto: 'EMPRESTIMO_CONSIGNADO' });
-        const pessoais = await base44.entities.VendaBase.filter({ empresa_id: empresaId, produto: 'EMPRESTIMO_PESSOAL' });
-        vendasBase = [...consignados, ...pessoais];
+      if (me.role === 'super_admin') {
+        setCurrentUser({
+          ...me,
+          auth_id: me.id,
+          empresa_id: null,
+          perfil: 'super_admin',
+        });
+        return;
       }
 
-      const vendasComDetalhes = await Promise.all(
-        vendasBase.map(async (vb) => {
-          let detalhes = null;
-          if (vb.produto === 'EMPRESTIMO_CONSIGNADO') {
-            const det = await base44.entities.VendaConsignado.filter({ venda_base_id: vb.id });
-            detalhes = det[0];
-          } else if (vb.produto === 'EMPRESTIMO_PESSOAL') {
-            const det = await base44.entities.VendaEmprestimoPessoal.filter({ venda_base_id: vb.id });
-            detalhes = det[0];
-          }
-          
-          let cliente_cpf = null;
-          if (vb.cliente_id) {
-            try {
-              const cliente = await base44.entities.Cliente.filter({ id: vb.cliente_id });
-              if (cliente.length > 0) {
-                cliente_cpf = cliente[0].cpf || cliente[0].pj_cnpj || null;
-              }
-            } catch (e) {
-              console.log('Erro ao buscar CPF do cliente:', e);
-            }
-          }
-          
-          return { ...vb, detalhes, cliente_cpf };
-        })
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: me.id, status: 'ativo' },
+        '-created_date'
       );
 
-      return vendasComDetalhes.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-    }
-  });
+      if (!colabs || colabs.length === 0) {
+        setCurrentUser({
+          ...me,
+          auth_id: me.id,
+          empresa_id: null,
+          perfil: 'vendedor',
+        });
+        return;
+      }
 
-  const vendasFiltradas = vendas.filter(v => {
-    // Filtro por status
-    if (filtroStatus !== 'todos' && v.status !== filtroStatus) return false;
-    
-    // Filtro por subtipo (tipo de consignado)
-    if (filtroSubtipo !== 'todos') {
-      if (v.produto !== 'EMPRESTIMO_CONSIGNADO') return false;
-      if (v.tipo !== filtroSubtipo) return false;
-    }
-    
-    // Busca por nome
-    if (buscaNome && !v.cliente_nome?.toLowerCase().includes(buscaNome.toLowerCase())) return false;
-    
-    // Busca por CPF (nos detalhes do cliente)
-    if (buscaCpf) {
-      const cpfBusca = buscaCpf.replace(/\D/g, '');
-      if (!v.cliente_nome?.includes(cpfBusca)) return false;
-    }
-    
-    // Busca por banco
-    if (buscaBanco) {
-      const banco = v.detalhes?.banco || v.detalhes?.banco_anterior || '';
-      if (!banco.toLowerCase().includes(buscaBanco.toLowerCase())) return false;
-    }
-    
-    return true;
-  });
+      const colab = colabs[0];
 
-  // Gerar cores e labels dinamicamente dos status cadastrados
-  const statusColors = {};
-  const statusLabels = {};
-  const statusOptions = [];
-
-  const corParaClasses = {
-    blue: 'bg-blue-100 text-blue-800',
-    green: 'bg-green-100 text-green-800',
-    red: 'bg-red-100 text-red-800',
-    yellow: 'bg-yellow-100 text-yellow-800',
-    purple: 'bg-purple-100 text-purple-800',
-    orange: 'bg-orange-100 text-orange-800',
-    teal: 'bg-teal-100 text-teal-800',
-    indigo: 'bg-indigo-100 text-indigo-800',
-    emerald: 'bg-emerald-100 text-emerald-800',
-    slate: 'bg-slate-100 text-slate-800'
+      setCurrentUser({
+        ...me,
+        auth_id: me.id,
+        empresa_id: colab.empresa_id || null,
+        perfil: colab.perfil || 'vendedor',
+        colaborador_id: colab.id,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
+    }
   };
 
-  statusPropostas.forEach(status => {
-    statusColors[status.codigo] = corParaClasses[status.cor] || 'bg-slate-100 text-slate-800';
-    statusLabels[status.codigo] = status.nome;
-    statusOptions.push({ value: status.codigo, label: status.nome });
+  const { data: propostas = [], isLoading } = useQuery({
+    queryKey: ['vendas-emprestimos'],
+    queryFn: () => base44.entities.Proposta.filter({ produto: ['emprestimo'] }),
   });
 
-  const atualizarStatusMutation = useMutation({
-    mutationFn: async ({ vendaBaseId, vendaDetalheId, novoStatus, isConsignado }) => {
-      await base44.entities.VendaBase.update(vendaBaseId, { status: novoStatus });
-      
-      if (isConsignado) {
-        await base44.entities.VendaConsignado.update(vendaDetalheId, { status: novoStatus });
-      } else {
-        await base44.entities.VendaEmprestimoPessoal.update(vendaDetalheId, { status: novoStatus });
-      }
-    },
+  const { data: administradoras = [] } = useQuery({
+    queryKey: ['administradoras'],
+    queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
+  });
+
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes-emprestimos'],
+    queryFn: () => base44.entities.Cliente.list(),
+  });
+
+  const getClienteCpf = (clienteId) => {
+    const cliente = clientes.find(c => c.id === clienteId);
+    return cliente?.cpf || cliente?.pj_cnpj || '-';
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.Proposta.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
-      toast.success('Status atualizado com sucesso!');
+      setDeleteDialogOpen(false);
+      setPropostaToDelete(null);
+      toast.success('Venda excluída com sucesso!');
     },
     onError: () => {
-      toast.error('Erro ao atualizar status');
+      toast.error('Erro ao excluir venda');
     }
   });
 
-  const handleStatusChange = (venda, novoStatus) => {
-    if (venda.status === novoStatus) return;
-    
-    const isConsignado = venda.produto === 'EMPRESTIMO_CONSIGNADO';
-    atualizarStatusMutation.mutate({
-      vendaBaseId: venda.id,
-      vendaDetalheId: venda.detalhes?.id,
-      novoStatus,
-      isConsignado
-    });
+  const handleEdit = (proposta) => {
+    setPropostaToEdit(proposta);
+    setEditModalOpen(true);
   };
 
-  if (!user || !empresaId) {
+  const handleDelete = (proposta) => {
+    setPropostaToDelete(proposta);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (propostaToDelete) {
+      deleteMutation.mutate(propostaToDelete.id);
+    }
+  };
+
+  const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
+
+  // Filtrar por perfil
+  const filteredByRole = propostas.filter(p => {
+    if (isAdmin) return true;
+    return p.vendedor_id === currentUser?.colaborador_id;
+  });
+
+  // Filtrar por critérios
+  const filteredPropostas = filteredByRole.filter(p => {
+    const matchSearch =
+      p.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
+      p.contrato?.includes(search);
+    const matchTipo = filterTipo === 'todos' || (
+      filterTipo === 'consignado' && p.emprestimo_tipo && ['NOVO', 'REFINANCIAMENTO', 'PORTABILIDADE_PURA', 'REFIN_PORTABILIDADE'].includes(p.emprestimo_tipo)
+    ) || (
+      filterTipo === 'pessoal' && !p.emprestimo_tipo
+    );
+    const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
+    const matchAdministradora = filterAdministradora === 'todas' || p.administradora_id === filterAdministradora;
+    return matchSearch && matchTipo && matchStatus && matchAdministradora;
+  });
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  const getTipoPrestamo = (proposta) => {
+    if (proposta.emprestimo_tipo) {
+      const tipos = {
+        'NOVO': 'Novo',
+        'REFINANCIAMENTO': 'Refinanciamento',
+        'PORTABILIDADE_PURA': 'Portabilidade',
+        'REFIN_PORTABILIDADE': 'Refin + Portabilidade'
+      };
+      return tipos[proposta.emprestimo_tipo] || proposta.emprestimo_tipo;
+    }
+    return 'Pessoal';
+  };
+
+  const columns = [
+    {
+      header: 'Cliente',
+      cell: (row) => (
+        <div>
+          <p className="font-medium text-slate-900">{row.cliente_nome || '-'}</p>
+          {row.cliente_id && <p className="text-xs text-slate-500">{getClienteCpf(row.cliente_id)}</p>}
+        </div>
+      )
+    },
+    {
+      header: 'Tipo',
+      cell: (row) => (
+        <span className="px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
+          {getTipoPrestamo(row)}
+        </span>
+      )
+    },
+    {
+      header: 'Banco',
+      cell: (row) => row.administradora_nome || '-'
+    },
+    {
+      header: 'Valor',
+      cell: (row) => formatCurrency(row.valor_credito)
+    },
+    {
+      header: 'Vendedor',
+      cell: (row) => row.vendedor_nome || '-'
+    },
+    {
+      header: 'Data',
+      cell: (row) => {
+        if (!row.data_venda) return '-';
+        const date = new Date(row.data_venda + 'T12:00:00');
+        return format(date, 'dd/MM/yyyy');
+      }
+    },
+    {
+      header: 'Status',
+      cell: (row) => <StatusBadge status={row.status} />
+    },
+    {
+      header: '',
+      className: 'w-12',
+      cell: (row) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleEdit(row)}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar
+            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem 
+                onClick={() => handleDelete(row)}
+                className="text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+  ];
+
+  if (!currentUser) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#23BE84]"></div>
       </div>
     );
   }
@@ -192,223 +270,154 @@ export default function VendasEmprestimos() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Empréstimos"
-        subtitle="Gestão de propostas de empréstimos consignados e pessoais"
-      >
-        <Link to={createPageUrl('NovaVendaEmprestimo')}>
-          <Button className="bg-[#23BE84] hover:bg-[#1da570]">
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Venda
-          </Button>
-        </Link>
-      </PageHeader>
+        title="Vendas de Empréstimos"
+        subtitle={`${filteredPropostas.length} vendas`}
+      />
 
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          {/* Filtros por Status */}
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              variant={filtroStatus === 'todos' ? 'default' : 'outline'}
-              onClick={() => setFiltroStatus('todos')}
-              className="bg-teal-600 hover:bg-teal-700"
-            >
-              Todos
-            </Button>
-            <Button 
-              variant={filtroStatus === 'aguardando_cip' ? 'default' : 'outline'}
-              onClick={() => setFiltroStatus('aguardando_cip')}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              Aguardando CIP
-            </Button>
-            <Button 
-              variant={filtroStatus === 'pendente' ? 'default' : 'outline'}
-              onClick={() => setFiltroStatus('pendente')}
-              className="bg-yellow-600 hover:bg-yellow-700"
-            >
-              Pendente
-            </Button>
-            <Button 
-              variant={filtroStatus === 'aguardando_formalizacao' ? 'default' : 'outline'}
-              onClick={() => setFiltroStatus('aguardando_formalizacao')}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              Aguardando Formalização
-            </Button>
-            <Button 
-              variant={filtroStatus === 'em_andamento' ? 'default' : 'outline'}
-              onClick={() => setFiltroStatus('em_andamento')}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Em Andamento
-            </Button>
-            <Button 
-              variant={filtroStatus === 'pago' ? 'default' : 'outline'}
-              onClick={() => setFiltroStatus('pago')}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              Pago
-            </Button>
-          </div>
+      {/* Tabs */}
+      <Tabs value={filterTipo} onValueChange={setFilterTipo} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="consignado">Consignados</TabsTrigger>
+          <TabsTrigger value="pessoal">Pessoais</TabsTrigger>
+        </TabsList>
 
-          {/* Filtros por Tipo de Consignado */}
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            <span className="text-sm font-medium text-slate-600 self-center mr-2">Tipo de Consignado:</span>
-            <Button 
-              size="sm"
-              variant={filtroSubtipo === 'todos' ? 'default' : 'outline'}
-              onClick={() => setFiltroSubtipo('todos')}
-            >
-              Todos
-            </Button>
-            <Button 
-              size="sm"
-              variant={filtroSubtipo === 'NOVO' ? 'default' : 'outline'}
-              onClick={() => setFiltroSubtipo('NOVO')}
-            >
-              Novo
-            </Button>
-            <Button 
-              size="sm"
-              variant={filtroSubtipo === 'REFINANCIAMENTO' ? 'default' : 'outline'}
-              onClick={() => setFiltroSubtipo('REFINANCIAMENTO')}
-            >
-              Refinanciamento
-            </Button>
-            <Button 
-              size="sm"
-              variant={filtroSubtipo === 'PORTABILIDADE_PURA' ? 'default' : 'outline'}
-              onClick={() => setFiltroSubtipo('PORTABILIDADE_PURA')}
-            >
-              Portabilidade Pura
-            </Button>
-            <Button 
-              size="sm"
-              variant={filtroSubtipo === 'REFIN_PORTABILIDADE' ? 'default' : 'outline'}
-              onClick={() => setFiltroSubtipo('REFIN_PORTABILIDADE')}
-            >
-              Portabilidade + Refin
-            </Button>
-          </div>
-
-          {/* Campos de Busca */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Buscar por nome..."
-                value={buscaNome}
-                onChange={(e) => setBuscaNome(e.target.value)}
-                className="pl-10"
-              />
+        <TabsContent value="consignado" className="space-y-4">
+          {/* Filters */}
+          <Card className="p-4 border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por cliente ou contrato..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos Bancos</SelectItem>
+                  {administradoras.map(adm => (
+                    <SelectItem key={adm.id} value={adm.id}>
+                      {adm.nome_fantasia || adm.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-40">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos Status</SelectItem>
+                  <SelectItem value="ativa">Ativas</SelectItem>
+                  <SelectItem value="pendente">Pendentes</SelectItem>
+                  <SelectItem value="cancelada">Canceladas</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Buscar por CPF..."
-                value={buscaCpf}
-                onChange={(e) => setBuscaCpf(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Buscar por banco..."
-                value={buscaBanco}
-                onChange={(e) => setBuscaBanco(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </Card>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        </div>
-      ) : vendasFiltradas.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Banknote className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-            <p className="text-slate-500">Nenhum empréstimo cadastrado</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {vendasFiltradas.map((venda) => {
-            const isConsignado = venda.produto === 'EMPRESTIMO_CONSIGNADO';
-            const Icon = isConsignado ? Banknote : Wallet;
-            const bgColor = isConsignado ? 'from-purple-500 to-purple-600' : 'from-orange-500 to-orange-600';
-            
-            return (
-              <Card 
-                key={venda.id} 
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-                onDoubleClick={() => navigate(createPageUrl('VendaEmprestimoDetalhes') + `?id=${venda.id}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${bgColor} flex items-center justify-center flex-shrink-0`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-baseline gap-2">
-                          <h3 className="font-semibold text-base">{venda.cliente_nome}</h3>
-                          {venda.cliente_cpf && (
-                            <span className="text-sm text-slate-500">
-                              {venda.cliente_cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
-                            </span>
-                          )}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Badge className={`${statusColors[venda.status]} cursor-pointer hover:opacity-80 hover:shadow-md transition-all`}>
-                              {statusLabels[venda.status]}
-                            </Badge>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-b">
-                              Alterar Status
-                            </div>
-                            {statusOptions.map((option) => (
-                              <DropdownMenuItem
-                                key={option.value}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusChange(venda, option.value);
-                                }}
-                                className={`cursor-pointer ${venda.status === option.value ? 'bg-slate-100 font-medium' : 'hover:bg-slate-50'}`}
-                              >
-                                <Badge className={`mr-2 ${statusColors[option.value]}`}>
-                                  {option.label}
-                                </Badge>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-slate-600">
-                        <span>{isConsignado ? 'Consignado' : 'Empréstimo Pessoal'} - {venda.tipo}</span>
-                        <span className="text-slate-400">|</span>
-                        <span><strong>Banco:</strong> {venda.detalhes?.banco || venda.detalhes?.banco_anterior || '-'}</span>
-                        <span className="text-slate-400">|</span>
-                        <span><strong>Valor Liberado:</strong> {venda.detalhes?.valor_liberado ? `R$ ${venda.detalhes.valor_liberado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</span>
-                        <span className="text-slate-400">|</span>
-                        <span><strong>Parcela:</strong> {venda.detalhes?.parcela ? `R$ ${venda.detalhes.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}</span>
-                        <span className="text-slate-400">|</span>
-                        <span><strong>{isConsignado ? 'Convênio' : 'Contrato'}:</strong> {isConsignado ? (venda.detalhes?.convenio_nome || '-') : (venda.detalhes?.numero_contrato || '-')}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+          {/* Table */}
+          <DataTable
+            columns={columns}
+            data={filteredPropostas}
+            isLoading={isLoading}
+            emptyMessage="Nenhuma venda encontrada"
+          />
+        </TabsContent>
+
+        <TabsContent value="pessoal" className="space-y-4">
+          {/* Filters */}
+          <Card className="p-4 border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por cliente ou contrato..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos Bancos</SelectItem>
+                  {administradoras.map(adm => (
+                    <SelectItem key={adm.id} value={adm.id}>
+                      {adm.nome_fantasia || adm.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-40">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos Status</SelectItem>
+                  <SelectItem value="ativa">Ativas</SelectItem>
+                  <SelectItem value="pendente">Pendentes</SelectItem>
+                  <SelectItem value="cancelada">Canceladas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+
+          {/* Table */}
+          <DataTable
+            columns={columns}
+            data={filteredPropostas}
+            isLoading={isLoading}
+            emptyMessage="Nenhuma venda encontrada"
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit Modal */}
+      <PropostaEditModal
+        proposta={propostaToEdit}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta venda?
+              {propostaToDelete && (
+                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                  <p className="font-medium text-slate-900">{propostaToDelete.cliente_nome}</p>
+                  <p className="text-sm text-slate-600">{getTipoPrestamo(propostaToDelete)}</p>
+                </div>
+              )}
+              <p className="mt-3 text-sm text-red-600">
+                Esta ação não pode ser desfeita.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
