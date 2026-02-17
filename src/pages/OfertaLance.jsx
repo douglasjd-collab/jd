@@ -127,7 +127,20 @@ export default function OfertaLance() {
   const vendasPendentes = todasVendas.filter(v => {
     const statusValido = v.status === 'ativa' || v.status === 'pendente';
     const jaOfertado = ofertasAtual.some(o => o.venda_id === v.id);
-    return statusValido && !jaOfertado;
+    const matchSearch = search === '' || 
+      v.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
+      v.cliente_cpf?.includes(search) ||
+      v.grupo?.includes(search) ||
+      v.cota?.includes(search);
+    return statusValido && !jaOfertado && matchSearch;
+  });
+
+  // Ofertas ofertadas com filtro de busca
+  const ofertasFiltered = ofertasAtual.filter(o => {
+    return search === '' || 
+      o.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
+      o.grupo?.includes(search) ||
+      o.cota?.includes(search);
   });
 
   const createMutation = useMutation({
