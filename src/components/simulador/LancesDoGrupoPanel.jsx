@@ -92,30 +92,30 @@ export default function LancesDoGrupoPanel({
 
   const ultimoHistorico = data?.ultimoHistorico || null;
   const todosDetalhes = data?.todosDetalhes || [];
-  const detalhesUltimoHistorico = data?.detalhesUltimoHistorico || [];
+  const historicosOrdenados = data?.historicosOrdenados || [];
 
-  // 1️⃣ MENOR LANCE → apenas do último histórico (piso atual do mercado)
-  const getMenorLanceUltimoHistorico = React.useCallback((modalidade) => {
-    const detalhesModalidade = detalhesUltimoHistorico.filter(d => d.modalidade === modalidade);
-    console.log(`🔍 [${modalidade}] Total de detalhes no último histórico:`, detalhesModalidade.length);
-    
-    if (detalhesModalidade.length > 0) {
-      console.log(`📊 [${modalidade}] Primeiros 3 registros:`, detalhesModalidade.slice(0, 3).map(d => ({
-        lance_percent: d.lance_percent,
-        tipo: typeof d.lance_percent
-      })));
+  // 1️⃣ MENOR LANCE → último valor NÃO-NULO da modalidade (assembleia mais recente que teve lance)
+  const getMenorLanceUltimoNaoNulo = React.useCallback((modalidade) => {
+    // Percorrer históricos do mais recente para o mais antigo
+    for (const historico of historicosOrdenados) {
+      const detalhesModalidade = todosDetalhes.filter(
+        d => d.historico_id === historico.id && d.modalidade === modalidade
+      );
+      
+      const lances = detalhesModalidade
+        .filter(d => typeof d.lance_percent === 'number' && d.lance_percent > 0)
+        .map(d => d.lance_percent);
+      
+      if (lances.length > 0) {
+        const menorLance = Math.min(...lances);
+        console.log(`✅ [${modalidade}] Menor lance encontrado na assembleia ${historico.assembleia_data}:`, menorLance);
+        return menorLance;
+      }
     }
     
-    const lances = detalhesModalidade
-      .filter(d => typeof d.lance_percent === 'number')
-      .map(d => d.lance_percent);
-
-    console.log(`✅ [${modalidade}] Lances válidos encontrados:`, lances);
-    const resultado = lances.length ? Math.min(...lances) : null;
-    console.log(`📍 [${modalidade}] Menor lance calculado:`, resultado);
-
-    return resultado;
-  }, [detalhesUltimoHistorico]);
+    console.log(`⚠️ [${modalidade}] Nenhum lance encontrado em nenhuma assembleia`);
+    return null;
+  }, [todosDetalhes, historicosOrdenados]);
 
   // 2️⃣ MAIOR LANCE → histórico COMPLETO (teto histórico)
   const getMaiorLanceHistoricoCompleto = React.useCallback((modalidade) => {
