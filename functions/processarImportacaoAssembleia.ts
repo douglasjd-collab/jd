@@ -14,8 +14,22 @@ function agruparPorGrupoEModalidade(registros) {
       });
     }
     
-    if (reg.lance_percent !== null) {
-      grupos.get(key).percentuais.push(reg.lance_percent);
+    if (reg.lance_percent !== null && reg.lance_percent !== undefined) {
+      let valor = reg.lance_percent;
+
+      // Se vier como string tipo "61.6789%" ou "61,6789%"
+      if (typeof valor === "string") {
+        valor = valor
+          .replace('%', '')
+          .replace(',', '.')
+          .trim();
+      }
+
+      const numero = parseFloat(valor);
+
+      if (!isNaN(numero)) {
+        grupos.get(key).percentuais.push(numero);
+      }
     }
   }
   
