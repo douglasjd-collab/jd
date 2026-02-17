@@ -255,7 +255,8 @@ export default function SimuladorNormal() {
     const relogio = calcularRelogioContemplacao({
       lanceCliente: lancePercentualNum,
       menorLance: menorLanceHistorico,
-      maiorLance: maiorLanceHistorico
+      maiorLance: maiorLanceHistorico,
+      tipoLance: 'limitado'
     });
 
     setRelogioContemplacao(relogio);
