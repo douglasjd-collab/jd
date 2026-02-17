@@ -219,20 +219,22 @@ export default function Propostas() {
        }
      },
     {
-      header: 'Grupo/Cota',
-      cell: (row) => (
-        <div>
-          {row.grupo && row.cota ? (
-            <>
-              <p className="font-medium">{row.grupo} / {row.cota}</p>
-              {row.contrato && <p className="text-sm text-slate-500">Contrato: {row.contrato}</p>}
-            </>
-          ) : (
-            <p className="text-slate-500">-</p>
-          )}
-        </div>
-      )
-    },
+       header: 'Grupo/Cota',
+       cell: (row) => (
+         <div>
+           {row.grupo && row.cota ? (
+             <>
+               <p className="font-medium">{row.grupo} / {row.cota}</p>
+               {row.contrato && <p className="text-xs text-slate-500">{row.contrato}</p>}
+             </>
+           ) : row.contrato ? (
+             <p className="font-medium">{row.contrato}</p>
+           ) : (
+             <p className="text-slate-500">-</p>
+           )}
+         </div>
+       )
+     },
     {
       header: 'Banco',
       cell: (row) => row.administradora_nome || '-'
