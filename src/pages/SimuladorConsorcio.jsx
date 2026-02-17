@@ -180,34 +180,19 @@ export default function SimuladorConsorcio() {
       return;
     }
 
-    let menorLanceAtivo = null;
-    let maiorLanceAtivo = null;
-
-    // REGRA: Se tem lance próprio ativo, usa histórico LIMITADO
-    if (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) {
-      menorLanceAtivo = menorLanceLimitado;
-      maiorLanceAtivo = maiorLanceLimitado;
-    } else if (lanceEmbutidoPercentual > 0) {
-      // Senão, se tem lance embutido, usa histórico LIVRE
-      menorLanceAtivo = menorLanceLivre;
-      maiorLanceAtivo = maiorLanceLivre;
-    }
-
-    // Se não tem histórico disponível, limpa o relógio
-    if (!menorLanceAtivo || !maiorLanceAtivo) {
+    // REGRA: Lance embutido sempre usa histórico de LANCE LIVRE
+    // O lance total (embutido + próprio) é comparado com o lance livre histórico
+    if (!menorLanceLivre || !maiorLanceLivre) {
       setRelogio(null);
       return;
     }
 
-    // Calcula e atualiza o relógio
-    // Se tem lance próprio ativo, usa tipo 'limitado', senão usa 'livre'
-    const tipoLanceCalculo = (usarLanceProprio && lanceProprio && parseFloat(lanceProprio) > 0) ? 'limitado' : 'livre';
-    
+    // Calcula e atualiza o relógio usando sempre tipo 'livre'
     const resultado = calcularRelogioContemplacao({
       lanceCliente: lancePercentualTotal,
-      menorLance: menorLanceAtivo,
-      maiorLance: maiorLanceAtivo,
-      tipoLance: tipoLanceCalculo
+      menorLance: menorLanceLivre,
+      maiorLance: maiorLanceLivre,
+      tipoLance: 'livre'
     });
 
     setRelogio(resultado);
