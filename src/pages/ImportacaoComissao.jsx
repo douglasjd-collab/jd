@@ -155,29 +155,29 @@ export default function ImportacaoComissao() {
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
         } else if (grupoRaw && cotaRaw) {
-          // Converter grupo e cota para Number para garantir match exato
-          const grupo = Number(grupoRaw.trim());
-          const cota = Number(cotaRaw.trim());
+          // Normaliza valores vindos do CSV para Number
+          const grupo = Number(String(grupoRaw).trim());
+          const cota = Number(String(cotaRaw).trim());
           
-          console.log("🔍 Buscando venda por grupo/cota:", {
-            grupo,
-            cota,
-            administradora_id: selectedAdmin,
-            tipoGrupo: typeof grupo,
-            tipoCota: typeof cota
-          });
-          
-          const vendasMatch = await base44.entities.VendaConsorcio.filter({
-            grupo: grupo,
-            cota: cota,
-            administradora_id: selectedAdmin
-          });
-          
-          console.log(`📊 Busca por grupo ${grupo} e cota ${cota}:`, vendasMatch.length, 'encontradas', vendasMatch);
-          
-          if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
-          else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
-          else motivoDivergencia = 'Venda não encontrada por grupo/cota';
+          // Validação: se não for número válido, não buscar
+          if (isNaN(grupo) || isNaN(cota)) {
+            console.warn("⚠️ Grupo ou Cota inválidos:", grupoRaw, cotaRaw);
+            motivoDivergencia = 'Grupo ou cota com formato inválido';
+          } else {
+            console.log(`🔍 Buscando proposta grupo ${grupo} e cota ${cota}`);
+            
+            const vendasMatch = await base44.entities.VendaConsorcio.filter({
+              grupo,
+              cota,
+              administradora_id: selectedAdmin
+            });
+            
+            console.log(`📊 Resultado busca:`, vendasMatch.length, vendasMatch);
+            
+            if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
+            else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
+            else motivoDivergencia = 'Venda não encontrada por grupo/cota';
+          }
         } else {
           motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
         }
