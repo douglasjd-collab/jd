@@ -312,11 +312,29 @@ export default function VendaDetalhes() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <Hash className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-500">Grupo / Cota / Contrato</p>
-                <p className="font-medium">{venda.grupo} / {venda.cota} / {venda.contrato || '-'}</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl">
+                <Hash className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-500">Grupo</p>
+                  <p className="font-medium truncate">{venda.grupo || '-'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl">
+                <Hash className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-500">Cota</p>
+                  <p className="font-medium truncate">{venda.cota || '-'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl">
+                <Hash className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-500">Contrato</p>
+                  <p className="font-medium truncate">{venda.contrato || '-'}</p>
+                </div>
               </div>
             </div>
 
