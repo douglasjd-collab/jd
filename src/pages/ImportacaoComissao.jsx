@@ -26,7 +26,7 @@ import { Upload, Loader2, AlertTriangle, Eye, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from './utils';
+import { createPageUrl } from '../utils';
 
 export default function ImportacaoComissao() {
   const [selectedAdmin, setSelectedAdmin] = useState('');
