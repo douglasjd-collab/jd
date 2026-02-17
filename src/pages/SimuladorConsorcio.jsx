@@ -865,79 +865,69 @@ export default function SimuladorConsorcio() {
                           <Switch checked={aplicarRegraCanopus} onCheckedChange={setAplicarRegraCanopus} />
                         </div>
 
-                        {aplicarRegraCanopus && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <div>
-                                <Label className="text-xs">Parcelas de Carência</Label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={parcelasCarencia}
-                                  onChange={(e) => setParcelasCarencia(parseInt(e.target.value) || 0)}
-                                  className="h-9"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs">Parcela no Ato</Label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={parcelaAtoContratacao}
-                                  onChange={(e) => setParcelaAtoContratacao(parseInt(e.target.value) || 0)}
-                                  className="h-9"
-                                />
-                              </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            {aplicarRegraCanopus && (
+                              <>
+                                <div>
+                                  <Label className="text-xs">Parcelas de Carência</Label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={parcelasCarencia}
+                                    onChange={(e) => setParcelasCarencia(parseInt(e.target.value) || 0)}
+                                    className="h-9"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Parcela no Ato</Label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={parcelaAtoContratacao}
+                                    onChange={(e) => setParcelaAtoContratacao(parseInt(e.target.value) || 0)}
+                                    className="h-9"
+                                  />
+                                </div>
+                              </>
+                            )}
+                            
+                            <div>
+                              <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
+                              <Input
+                                type="text"
+                                value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                                onChange={(e) => {
+                                  const valorNumerico = handleMoedaInput(e.target.value);
+                                  setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                                }}
+                                placeholder="0,00"
+                              />
                             </div>
 
-                            {/* Relógio ao lado da regra Canopus */}
-                            {relogio && (
-                              <div className="flex items-center justify-center">
-                                <RelogioContemplacao
-                                  relogio={relogio}
-                                  lanceOfertado={lancePercentualTotal}
-                                />
+                            {lanceProprio && parseFloat(lanceProprio) > 0 && (
+                              <div className="p-2 bg-purple-50 rounded-lg border border-purple-200">
+                                <p className="text-xs text-purple-700">💎 Lance Próprio</p>
+                                <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
+                                <p className="text-xs text-purple-700 mt-1">
+                                  {lanceProprioPercentual}% do crédito total
+                                </p>
                               </div>
                             )}
                           </div>
-                        )}
+
+                          {/* Relógio ao lado */}
+                          {relogio && (
+                            <div className="flex items-center justify-center">
+                              <RelogioContemplacao
+                                relogio={relogio}
+                                lanceOfertado={lancePercentualTotal}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </>
                     )}
-
-                    {/* Lance Próprio com relógio ao lado quando não tem regra Canopus */}
-                    <div className={`grid grid-cols-1 ${!aplicarRegraCanopus && relogio ? 'md:grid-cols-2' : ''} gap-4`}>
-                      <div>
-                        <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
-                        <Input
-                          type="text"
-                          value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
-                          onChange={(e) => {
-                            const valorNumerico = handleMoedaInput(e.target.value);
-                            setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
-                          }}
-                          placeholder="0,00"
-                        />
-                        {lanceProprio && parseFloat(lanceProprio) > 0 && (
-                          <div className="mt-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                            <p className="text-xs text-purple-700">💎 Lance Próprio</p>
-                            <p className="text-2xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
-                            <p className="text-xs text-purple-700 mt-1">
-                              {lanceProprioPercentual}% do crédito total
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Relógio ao lado quando não tem regra Canopus */}
-                      {!aplicarRegraCanopus && relogio && (
-                        <div className="flex items-center justify-center">
-                          <RelogioContemplacao
-                            relogio={relogio}
-                            lanceOfertado={lancePercentualTotal}
-                          />
-                        </div>
-                      )}
-                    </div>
                   </>
                 )}
               </CardContent>
