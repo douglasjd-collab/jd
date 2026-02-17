@@ -163,31 +163,31 @@ export default function ImportacaoComissao() {
           cota,
           parcela: parcelaInformada || 0,
           valor_recebido: valorRecebido,
-          venda_id: vendaEncontrada?.id,
+          venda_id: vendaConsorcioEncontrada?.venda_base_id,
           parcela_id: null,
-          status: vendaEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
+          status: vendaConsorcioEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
           motivo_divergencia: motivoDivergencia || null
         });
 
-        if (vendaEncontrada && !motivoDivergencia) {
-          const hashDuplicidade = `${vendaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
+        if (vendaConsorcioEncontrada && !motivoDivergencia) {
+          const hashDuplicidade = `${vendaConsorcioEncontrada.venda_base_id}_${dataRecebimento}_${valorRecebido}`;
           const valorAPagar = valorRecebido * (percentualPadrao / 100);
           
           const recebimentoId = `temp_${previewData.items.indexOf(item)}`;
           
           recebimentosParaCriar.push({
             _tempId: recebimentoId,
-            empresa_id: vendaEncontrada.empresa_id,
-            venda_id: vendaEncontrada.id,
-            cliente_id: vendaEncontrada.cliente_id,
-            cliente_nome: vendaEncontrada.cliente_nome,
-            vendedor_id: vendaEncontrada.vendedor_id,
-            vendedor_nome: vendaEncontrada.vendedor_nome,
+            empresa_id: vendaConsorcioEncontrada.empresa_id,
+            venda_id: vendaConsorcioEncontrada.venda_base_id,
+            cliente_id: vendaConsorcioEncontrada.cliente_id,
+            cliente_nome: vendaConsorcioEncontrada.cliente_nome,
+            vendedor_id: vendaConsorcioEncontrada.vendedor_id,
+            vendedor_nome: vendaConsorcioEncontrada.vendedor_nome,
             administradora_id: selectedAdmin,
             administradora_nome: admin.nome_fantasia || admin.razao_social,
-            grupo: vendaEncontrada.grupo,
-            cota: vendaEncontrada.cota,
-            contrato: vendaEncontrada.contrato,
+            grupo: vendaConsorcioEncontrada.grupo,
+            cota: vendaConsorcioEncontrada.cota,
+            contrato: vendaConsorcioEncontrada.contrato,
             data_recebimento: dataRecebimento,
             valor_recebido: valorRecebido,
             parcela_informada: parcelaInformada,
@@ -202,31 +202,31 @@ export default function ImportacaoComissao() {
 
           comissoesParaCriar.push({
             _recebimentoTempId: recebimentoId,
-            empresa_id: vendaEncontrada.empresa_id,
-            venda_id: vendaEncontrada.id,
-            cliente_id: vendaEncontrada.cliente_id,
-            cliente_nome: vendaEncontrada.cliente_nome,
-            vendedor_id: vendaEncontrada.vendedor_id,
-            vendedor_nome: vendaEncontrada.vendedor_nome,
+            empresa_id: vendaConsorcioEncontrada.empresa_id,
+            venda_id: vendaConsorcioEncontrada.venda_base_id,
+            cliente_id: vendaConsorcioEncontrada.cliente_id,
+            cliente_nome: vendaConsorcioEncontrada.cliente_nome,
+            vendedor_id: vendaConsorcioEncontrada.vendedor_id,
+            vendedor_nome: vendaConsorcioEncontrada.vendedor_nome,
             administradora_id: selectedAdmin,
             administradora_nome: admin.nome_fantasia || admin.razao_social,
-            grupo: vendaEncontrada.grupo,
-            cota: vendaEncontrada.cota,
-            contrato: vendaEncontrada.contrato,
+            grupo: vendaConsorcioEncontrada.grupo,
+            cota: vendaConsorcioEncontrada.cota,
+            contrato: vendaConsorcioEncontrada.contrato,
             parcela_numero: parcelaInformada,
             data_recebimento: dataRecebimento,
             valor_recebido: valorRecebido,
             percentual_comissao: percentualPadrao,
             valor_a_pagar: valorAPagar,
-            status_pagamento: 'a_pagar'
+            status_pagamento: 'a_apagar'
           });
 
-          if (!vendasParaAtualizar[vendaEncontrada.id]) {
-            vendasParaAtualizar[vendaEncontrada.id] = {
-              comissao_total_recebida: vendaEncontrada.comissao_total_recebida || 0
+          if (!vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id]) {
+            vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id] = {
+              comissao_total_recebida: vendaConsorcioEncontrada.comissao_total_recebida || 0
             };
           }
-          vendasParaAtualizar[vendaEncontrada.id].comissao_total_recebida += valorRecebido;
+          vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id].comissao_total_recebida += valorRecebido;
 
           processados++;
           valorTotal += valorRecebido;
@@ -259,8 +259,8 @@ export default function ImportacaoComissao() {
         }
       }
 
-      for (const [vendaId, updateData] of Object.entries(vendasParaAtualizar)) {
-        await base44.entities.Venda.update(vendaId, updateData);
+      for (const [vendaBaseId, updateData] of Object.entries(vendasParaAtualizar)) {
+        await base44.entities.Venda.update(vendaBaseId, updateData);
       }
 
       await base44.entities.Importacao.update(importacao.id, {
