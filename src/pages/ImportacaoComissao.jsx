@@ -47,9 +47,9 @@ export default function ImportacaoComissao() {
     queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
   });
 
-  const { data: vendas = [] } = useQuery({
-    queryKey: ['vendas'],
-    queryFn: () => base44.entities.Venda.filter({ status: 'ativa' }),
+  const { data: vendasConsorcio = [] } = useQuery({
+    queryKey: ['vendasConsorcio'],
+    queryFn: () => base44.entities.VendaConsorcio.list(),
   });
 
   const handleFileUpload = async (e) => {
@@ -123,34 +123,34 @@ export default function ImportacaoComissao() {
         const valorRecebido = parseFloat(item.valor) || 0;
         const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
 
-        let vendaEncontrada = null;
+        let vendaConsorcioEncontrada = null;
         let motivoDivergencia = '';
 
         if (contrato) {
-          const vendasMatch = vendas.filter(v => 
-            v.contrato === contrato && v.administradora_id === selectedAdmin
+          const vendasMatch = vendasConsorcio.filter(vc => 
+            vc.contrato === contrato && vc.administradora_id === selectedAdmin
           );
-          if (vendasMatch.length === 1) vendaEncontrada = vendasMatch[0];
+          if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada';
         } else if (grupo && cota) {
-          const vendasMatch = vendas.filter(v => 
-            String(v.grupo).trim() === grupo &&
-            String(v.cota).trim() === cota &&
-            v.administradora_id === selectedAdmin
+          const vendasMatch = vendasConsorcio.filter(vc => 
+            String(vc.grupo).trim() === grupo &&
+            String(vc.cota).trim() === cota &&
+            vc.administradora_id === selectedAdmin
           );
-          if (vendasMatch.length === 1) vendaEncontrada = vendasMatch[0];
+          if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada';
         } else {
           motivoDivergencia = 'Dados insuficientes';
         }
 
-        if (vendaEncontrada) {
-          const hashDuplicidade = `${vendaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
+        if (vendaConsorcioEncontrada) {
+          const hashDuplicidade = `${vendaConsorcioEncontrada.venda_base_id}_${dataRecebimento}_${valorRecebido}`;
           if (hashesExistentes.has(hashDuplicidade)) {
             motivoDivergencia = 'Recebimento duplicado';
-            vendaEncontrada = null;
+            vendaConsorcioEncontrada = null;
           }
         }
 
