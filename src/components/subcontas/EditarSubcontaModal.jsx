@@ -173,6 +173,32 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
             </div>
           </div>
 
+          {/* Vinculação de Empresa JD */}
+          <div className="border-t pt-4">
+            <h3 className="font-semibold text-sm mb-4">Trazer Empresa JD para Subconta</h3>
+            <div>
+              <Label>Selecionar Empresa JDPromotora</Label>
+              <div className="flex gap-2">
+                <Select onValueChange={(value) => vinculaMutation.mutate(value)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder={loadingEmpresas ? "Carregando..." : "Selecione uma empresa JD"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresasJD.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {vinculaMutation.isPending && <Loader2 className="w-5 h-5 animate-spin text-blue-600" />}
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Isso irá copiar os dados de CPF/CNPJ e endereço da empresa JD para esta subconta.
+              </p>
+            </div>
+          </div>
+
           {/* Observações */}
           <div className="border-t pt-4">
             <Label>Observações</Label>
