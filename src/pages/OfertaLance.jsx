@@ -332,13 +332,25 @@ export default function OfertaLance() {
         subtitle={`Competência: ${format(new Date(competenciaAtual + '-01'), 'MMMM/yyyy')}`}
       />
 
+      <Card className="p-4 border-0 shadow-sm mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Buscar por cliente, CPF, grupo ou cota..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </Card>
+
       <Tabs defaultValue="pendentes" className="space-y-4">
         <TabsList>
           <TabsTrigger value="pendentes">
             Pendentes ({vendasPendentes.length})
           </TabsTrigger>
           <TabsTrigger value="ofertados">
-            Já Ofertados ({ofertasAtual.length})
+            Já Ofertados ({ofertasFiltered.length})
           </TabsTrigger>
         </TabsList>
 
@@ -357,7 +369,7 @@ export default function OfertaLance() {
           <Card className="p-6">
             <DataTable
               columns={columnsOfertados}
-              data={ofertasAtual}
+              data={ofertasFiltered}
               isLoading={loadingOfertas}
               emptyMessage="Nenhum lance ofertado neste mês"
             />
