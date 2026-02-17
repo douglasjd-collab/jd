@@ -155,12 +155,26 @@ export default function ImportacaoComissao() {
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
         } else if (grupoRaw && cotaRaw) {
+          // Converter grupo e cota para Number para garantir match exato
+          const grupo = Number(grupoRaw.trim());
+          const cota = Number(cotaRaw.trim());
+          
+          console.log("🔍 Buscando venda por grupo/cota:", {
+            grupo,
+            cota,
+            administradora_id: selectedAdmin,
+            tipoGrupo: typeof grupo,
+            tipoCota: typeof cota
+          });
+          
           const vendasMatch = await base44.entities.VendaConsorcio.filter({
-            grupo: grupoRaw,
-            cota: cotaRaw,
+            grupo: grupo,
+            cota: cota,
             administradora_id: selectedAdmin
           });
-          console.log(`📊 Busca por grupo "${grupoRaw}" e cota "${cotaRaw}":`, vendasMatch.length, 'encontradas', vendasMatch);
+          
+          console.log(`📊 Busca por grupo ${grupo} e cota ${cota}:`, vendasMatch.length, 'encontradas', vendasMatch);
+          
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
           else motivoDivergencia = 'Venda não encontrada por grupo/cota';
