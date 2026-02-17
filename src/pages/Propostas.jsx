@@ -216,7 +216,7 @@ export default function Propostas() {
       )
     },
     {
-      header: 'Administradora',
+      header: 'Banco',
       cell: (row) => row.administradora_nome || '-'
     },
     {
