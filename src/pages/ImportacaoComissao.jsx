@@ -131,22 +131,53 @@ export default function ImportacaoComissao() {
         const grupoNormalizado = grupoRaw ? String(parseInt(grupoRaw) || 0) : '';
         const cotaNormalizada = cotaRaw ? String(parseInt(cotaRaw) || 0) : '';
 
+        console.log('🔍 Processando item:', { 
+          contrato, 
+          grupoRaw, 
+          cotaRaw, 
+          grupoNormalizado, 
+          cotaNormalizada,
+          adminSelecionada: selectedAdmin 
+        });
+
         if (contrato) {
           const vendasMatch = vendasConsorcio.filter(vc => 
             vc.contrato && String(vc.contrato).trim() === contrato && 
             vc.administradora_id === selectedAdmin
           );
+          console.log(`📊 Busca por contrato "${contrato}":`, vendasMatch.length, 'encontradas');
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
         } else if (grupoNormalizado && cotaNormalizada) {
+          console.log('🔍 Todas as vendas de consórcio disponíveis:', vendasConsorcio.map(vc => ({
+            id: vc.id,
+            grupo: vc.grupo,
+            cota: vc.cota,
+            contrato: vc.contrato,
+            admin_id: vc.administradora_id,
+            grupoNorm: vc.grupo ? String(parseInt(vc.grupo) || 0) : '',
+            cotaNorm: vc.cota ? String(parseInt(vc.cota) || 0) : ''
+          })));
+          
           const vendasMatch = vendasConsorcio.filter(vc => {
             const grupoVenda = vc.grupo ? String(parseInt(vc.grupo) || 0) : '';
             const cotaVenda = vc.cota ? String(parseInt(vc.cota) || 0) : '';
-            return grupoVenda === grupoNormalizado &&
+            const match = grupoVenda === grupoNormalizado &&
                    cotaVenda === cotaNormalizada &&
                    vc.administradora_id === selectedAdmin;
+            
+            console.log(`  Verificando venda ${vc.id}:`, {
+              grupoVenda, 
+              cotaVenda, 
+              admin: vc.administradora_id,
+              match
+            });
+            
+            return match;
           });
+          
+          console.log(`📊 Busca por grupo "${grupoNormalizado}" e cota "${cotaNormalizada}":`, vendasMatch.length, 'encontradas');
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
           else motivoDivergencia = 'Venda não encontrada por grupo/cota';
