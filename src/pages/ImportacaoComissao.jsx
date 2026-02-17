@@ -126,24 +126,38 @@ export default function ImportacaoComissao() {
         let vendaConsorcioEncontrada = null;
         let motivoDivergencia = '';
 
+        // Debug: Log para verificar o que está sendo buscado
+        console.log('🔍 Buscando venda:', { contrato, grupo, cota, admin: selectedAdmin });
+        console.log('📊 Total de VendaConsorcio carregadas:', vendasConsorcio.length);
+
         if (contrato) {
           const vendasMatch = vendasConsorcio.filter(vc => 
             vc.contrato === contrato && vc.administradora_id === selectedAdmin
           );
+          console.log(`✅ Busca por contrato "${contrato}": ${vendasMatch.length} encontradas`);
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
-          else motivoDivergencia = 'Venda não encontrada';
+          else motivoDivergencia = 'Venda não encontrada pelo contrato';
         } else if (grupo && cota) {
+          // Log todas as vendas para debug
+          console.log('🔍 Vendas disponíveis:', vendasConsorcio.map(vc => ({ 
+            id: vc.id, 
+            grupo: vc.grupo, 
+            cota: vc.cota, 
+            admin: vc.administradora_id 
+          })));
+          
           const vendasMatch = vendasConsorcio.filter(vc => 
             String(vc.grupo).trim() === grupo &&
             String(vc.cota).trim() === cota &&
             vc.administradora_id === selectedAdmin
           );
+          console.log(`✅ Busca por grupo "${grupo}" e cota "${cota}": ${vendasMatch.length} encontradas`);
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
-          else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
-          else motivoDivergencia = 'Venda não encontrada';
+          else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
+          else motivoDivergencia = 'Venda não encontrada por grupo/cota';
         } else {
-          motivoDivergencia = 'Dados insuficientes';
+          motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
         }
 
         if (vendaConsorcioEncontrada) {
