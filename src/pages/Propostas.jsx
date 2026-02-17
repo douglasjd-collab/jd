@@ -223,7 +223,7 @@ export default function Propostas() {
        className: 'text-center',
        cell: (row) => (
          <div className="text-center">
-           {row.contrato && <p className="font-medium">{row.contrato}</p>}
+           {row.contrato && <p>{row.contrato}</p>}
            {row.grupo && row.cota && <p className="text-xs text-slate-500">{row.grupo} / {row.cota}</p>}
            {!row.contrato && (!row.grupo || !row.cota) && <p className="text-slate-500">-</p>}
          </div>
