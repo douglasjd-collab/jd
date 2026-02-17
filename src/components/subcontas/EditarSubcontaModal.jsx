@@ -33,6 +33,42 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
     observacoes: empresa?.observacoes || '',
   });
 
+  // Buscar empresas JD (para trazer para subconta)
+  const { data: empresasJD = [], isLoading: loadingEmpresas } = useQuery({
+    queryKey: ['empresas-jd'],
+    queryFn: async () => {
+      const all = await base44.asServiceRole.entities.Empresa.list('-created_date');
+      return all.filter(e => e.nome && e.nome.toLowerCase().includes('jd'));
+    },
+    enabled: open,
+  });
+
+  // Mutation para vincular empresa JD à subconta
+  const vinculaMutation = useMutation({
+    mutationFn: async (empresaJdId) => {
+      const empresaJd = empresasJD.find(e => e.id === empresaJdId);
+      if (!empresaJd) throw new Error('Empresa JD não encontrada');
+      
+      // Copiar dados relevantes da empresa JD para a subconta
+      const dadosVinculacao = {
+        cpf_cnpj: empresaJd.cpf_cnpj,
+        endereco_rua: empresaJd.endereco_rua,
+        endereco_numero: empresaJd.endereco_numero,
+        endereco_complemento: empresaJd.endereco_complemento,
+        endereco_cep: empresaJd.endereco_cep,
+        endereco_cidade: empresaJd.endereco_cidade,
+        endereco_estado: empresaJd.endereco_estado,
+      };
+      
+      return base44.asServiceRole.entities.Empresa.update(empresa.id, dadosVinculacao);
+    },
+    onSuccess: () => {
+      toast.success('Empresa vinculada à subconta com sucesso!');
+      onSuccess();
+    },
+    onError: (error) => toast.error('Erro ao vincular empresa: ' + error.message),
+  });
+
   const updateMutation = useMutation({
     mutationFn: (data) => base44.asServiceRole.entities.Empresa.update(empresa.id, data),
     onSuccess: () => {
