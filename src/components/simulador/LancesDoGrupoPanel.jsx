@@ -199,47 +199,45 @@ export default function LancesDoGrupoPanel({
           const isLanceFixo = (modalidade) => modalidade?.startsWith('lance_fixo_');
 
           return (
-            <>
-              <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
-                <div className="grid grid-cols-2 gap-4">
-                  {modalidadesDisponiveis.map(modalidade => {
-                    const menorLance = getMenorLanceUltimoNaoNulo(modalidade);
-                    const maiorLance = getMaiorLanceHistoricoCompleto(modalidade);
+            <div className="mt-3 p-3 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border border-slate-200">
+              <div className="grid grid-cols-3 gap-3">
+                {modalidadesDisponiveis.map(modalidade => {
+                  const menorLance = getMenorLanceUltimoNaoNulo(modalidade);
+                  const maiorLance = getMaiorLanceHistoricoCompleto(modalidade);
 
-                    if (menorLance === null && maiorLance === null) return null;
+                  if (menorLance === null && maiorLance === null) return null;
 
-                    const cor = getCorOuPadrao(modalidade);
-                    const titulo = label(modalidade);
-                    const fixo = isLanceFixo(modalidade);
+                  const cor = getCorOuPadrao(modalidade);
+                  const titulo = label(modalidade);
+                  const fixo = isLanceFixo(modalidade);
 
-                    return (
-                      <div key={modalidade} className={`bg-white rounded-lg px-4 py-3 border-2 ${cor.border} shadow-sm`}>
-                        <p className="text-xs font-semibold text-slate-600 text-center mb-2">{titulo}</p>
-                        {fixo ? (
-                          <div className="py-2">
-                            <p className={`text-[10px] font-medium ${cor.text} text-center uppercase mb-1`}>Lance Fixo</p>
-                            <p className={`text-3xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance || maiorLance)}</p>
+                  return (
+                    <div key={modalidade} className={`bg-white rounded-lg px-3 py-2 border ${cor.border}`}>
+                      <p className="text-[10px] font-semibold text-slate-600 text-center mb-1">{titulo}</p>
+                      {fixo ? (
+                        <div>
+                          <p className={`text-[9px] font-medium ${cor.text} text-center uppercase`}>Lance Fixo</p>
+                          <p className={`text-2xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance || maiorLance)}</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="border-b border-slate-200 pb-1 mb-1">
+                            <p className={`text-[9px] font-medium ${cor.text} text-center uppercase`}>Menor Lance</p>
+                            <p className={`text-2xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance)}</p>
                           </div>
-                        ) : (
-                          <>
-                            <div className="border-b border-slate-200 pb-2 mb-2">
-                              <p className={`text-[10px] font-medium ${cor.text} text-center uppercase`}>Menor Lance</p>
-                              <p className={`text-3xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance)}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
-                              <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLance)}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                          <div>
+                            <p className="text-[9px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
+                            <p className="text-sm font-semibold text-slate-600 text-center">{fmt(maiorLance)}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </>
+            </div>
           );
-        })()}
+          })()}
       </CardContent>
     </Card>
   );
