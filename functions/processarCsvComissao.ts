@@ -1,5 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+// Helper: normaliza grupo/cota (remove não-numéricos)
+function normalizeGC(value) {
+  const s = String(value ?? '').trim();
+  const onlyDigits = s.replace(/\D/g, '');
+  return onlyDigits || null;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
