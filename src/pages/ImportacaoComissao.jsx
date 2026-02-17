@@ -127,66 +127,29 @@ export default function ImportacaoComissao() {
         let vendaConsorcioEncontrada = null;
         let motivoDivergencia = '';
 
-        // Função para normalizar strings: remove espaços, converte para número
-        const normalizar = (valor) => {
-          if (!valor) return '';
-          const str = String(valor).trim().replace(/\s+/g, '');
-          const num = parseInt(str);
-          return isNaN(num) ? str : String(num);
-        };
-
-        const grupoNormalizado = normalizar(grupoRaw);
-        const cotaNormalizada = normalizar(cotaRaw);
-
         console.log('🔍 Processando item:', { 
           contrato, 
           grupoRaw, 
-          cotaRaw, 
-          grupoNormalizado, 
-          cotaNormalizada,
+          cotaRaw,
           adminSelecionada: selectedAdmin 
         });
 
         if (contrato) {
-          const vendasMatch = vendasConsorcio.filter(vc => {
-            const contratoVenda = normalizar(vc.contrato);
-            return contratoVenda === contrato && vc.administradora_id === selectedAdmin;
+          const vendasMatch = await base44.entities.VendaConsorcio.filter({
+            contrato: contrato,
+            administradora_id: selectedAdmin
           });
           console.log(`📊 Busca por contrato "${contrato}":`, vendasMatch.length, 'encontradas');
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
-        } else if (grupoNormalizado && cotaNormalizada) {
-          console.log('🔍 Todas as vendas de consórcio disponíveis:', vendasConsorcio.map(vc => ({
-            id: vc.id,
-            grupo: vc.grupo,
-            cota: vc.cota,
-            contrato: vc.contrato,
-            admin_id: vc.administradora_id,
-            grupoNorm: normalizar(vc.grupo),
-            cotaNorm: normalizar(vc.cota)
-          })));
-          
-          const vendasMatch = vendasConsorcio.filter(vc => {
-            const grupoVenda = normalizar(vc.grupo);
-            const cotaVenda = normalizar(vc.cota);
-            const match = grupoVenda === grupoNormalizado &&
-                   cotaVenda === cotaNormalizada &&
-                   vc.administradora_id === selectedAdmin;
-            
-            console.log(`  Verificando venda ${vc.id}:`, {
-              grupoVenda, 
-              cotaVenda, 
-              grupoNormalizado,
-              cotaNormalizada,
-              admin: vc.administradora_id,
-              match
-            });
-            
-            return match;
+        } else if (grupoRaw && cotaRaw) {
+          const vendasMatch = await base44.entities.VendaConsorcio.filter({
+            grupo: grupoRaw,
+            cota: cotaRaw,
+            administradora_id: selectedAdmin
           });
-          
-          console.log(`📊 Busca por grupo "${grupoNormalizado}" e cota "${cotaNormalizada}":`, vendasMatch.length, 'encontradas');
+          console.log(`📊 Busca por grupo "${grupoRaw}" e cota "${cotaRaw}":`, vendasMatch.length, 'encontradas', vendasMatch);
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
           else motivoDivergencia = 'Venda não encontrada por grupo/cota';
