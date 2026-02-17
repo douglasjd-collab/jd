@@ -172,44 +172,48 @@ export default function LancesDoGrupoPanel({
         ) : null}
 
         {todosDetalhes.length > 0 && ultimoHistorico && (() => {
-          // Lance Livre: menor (última assembleia) + maior (histórico completo)
-          const menorLanceLivre = getMenorLanceUltimoHistorico('lance_livre');
-          const maiorLanceLivre = getMaiorLanceHistoricoCompleto('lance_livre');
-
-          // Lance Limitado: menor (última assembleia) + maior (histórico completo)
-          const menorLanceLimitado = getMenorLanceUltimoHistorico('lance_limitado');
-          const maiorLanceLimitado = getMaiorLanceHistoricoCompleto('lance_limitado');
+          // Obter todas as modalidades únicas disponíveis
+          const modalidadesDisponiveis = [...new Set(todosDetalhes.map(d => d.modalidade))].filter(Boolean);
+          
+          const cores = {
+            'lance_livre': { border: 'border-emerald-200', text: 'text-emerald-600', textBold: 'text-emerald-700' },
+            'lance_limitado': { border: 'border-blue-200', text: 'text-blue-600', textBold: 'text-blue-700' },
+            'sorteio': { border: 'border-purple-200', text: 'text-purple-600', textBold: 'text-purple-700' },
+            'lance_fixo_15': { border: 'border-orange-200', text: 'text-orange-600', textBold: 'text-orange-700' },
+            'lance_fixo_30': { border: 'border-amber-200', text: 'text-amber-600', textBold: 'text-amber-700' },
+            'lance_fixo_50': { border: 'border-red-200', text: 'text-red-600', textBold: 'text-red-700' },
+          };
+          
+          const getCorOuPadrao = (modalidade) => 
+            cores[modalidade] || { border: 'border-slate-200', text: 'text-slate-600', textBold: 'text-slate-700' };
 
           return (
             <>
               <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
                 <div className="grid grid-cols-2 gap-4">
-                  {menorLanceLivre !== null && (
-                    <div className="bg-white rounded-lg px-4 py-3 border-2 border-emerald-200 shadow-sm">
-                      <p className="text-xs font-semibold text-slate-600 text-center mb-2">Lance Livre (Embutido)</p>
-                      <div className="border-b border-slate-200 pb-2 mb-2">
-                        <p className="text-[10px] font-medium text-emerald-600 text-center uppercase">Menor Lance</p>
-                        <p className="text-3xl font-bold text-emerald-700 text-center">{fmt(menorLanceLivre)}</p>
+                  {modalidadesDisponiveis.map(modalidade => {
+                    const menorLance = getMenorLanceUltimoHistorico(modalidade);
+                    const maiorLance = getMaiorLanceHistoricoCompleto(modalidade);
+                    
+                    if (menorLance === null && maiorLance === null) return null;
+                    
+                    const cor = getCorOuPadrao(modalidade);
+                    const titulo = label(modalidade);
+                    
+                    return (
+                      <div key={modalidade} className={`bg-white rounded-lg px-4 py-3 border-2 ${cor.border} shadow-sm`}>
+                        <p className="text-xs font-semibold text-slate-600 text-center mb-2">{titulo}</p>
+                        <div className="border-b border-slate-200 pb-2 mb-2">
+                          <p className={`text-[10px] font-medium ${cor.text} text-center uppercase`}>Menor Lance</p>
+                          <p className={`text-3xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
+                          <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLance)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
-                        <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLanceLivre)}</p>
-                      </div>
-                    </div>
-                  )}
-                  {menorLanceLimitado !== null && (
-                    <div className="bg-white rounded-lg px-4 py-3 border-2 border-blue-200 shadow-sm">
-                      <p className="text-xs font-semibold text-slate-600 text-center mb-2">Lance Limitado (Próprio)</p>
-                      <div className="border-b border-slate-200 pb-2 mb-2">
-                        <p className="text-[10px] font-medium text-blue-600 text-center uppercase">Menor Lance</p>
-                        <p className="text-3xl font-bold text-blue-700 text-center">{fmt(menorLanceLimitado)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
-                        <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLanceLimitado)}</p>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             </>
