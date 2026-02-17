@@ -833,23 +833,13 @@ export default function SimuladorNormal() {
                   </div>
 
                   {resultado.usarLanceProprio && (
-                   <>
-                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                       <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
-                       <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
-                       <p className="text-xs text-purple-700 mt-1">
-                         {lanceProprioPercentual}% do crédito total
-                       </p>
-                     </div>
-
-                     {/* Relógio de Contemplação */}
-                     {relogioContemplacao && (
-                       <RelogioContemplacao 
-                         relogio={relogioContemplacao}
-                         lanceOfertado={parseFloat(lanceProprioPercentual)}
-                       />
-                     )}
-                   </>
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
+                      <p className="text-2xl font-bold text-purple-900">{formatCurrency(resultado.lanceProprio)}</p>
+                      <p className="text-xs text-purple-700 mt-1">
+                        {lanceProprioPercentual}% do crédito total
+                      </p>
+                    </div>
                   )}
 
                   {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio) && (
