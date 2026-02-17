@@ -55,6 +55,10 @@ export default function LancesDoGrupoPanel({
         });
 
         console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, todosDetalhesDoGrupo.length);
+        
+        // DEBUG: Verificar modalidades disponíveis
+        const modalidadesEncontradas = [...new Set(todosDetalhesDoGrupo.map(d => d.modalidade))];
+        console.log('🎯 Modalidades disponíveis:', modalidadesEncontradas);
 
         if (!todosDetalhesDoGrupo || todosDetalhesDoGrupo.length === 0) {
           return { ultimoHistorico: null, todosDetalhes: [], detalhesUltimoHistorico: [] };
