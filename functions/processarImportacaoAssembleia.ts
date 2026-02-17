@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Salvar detalhes - normalizando lance_percent
+    // Salvar detalhes - normalizando lance_percent e grupo
     const detalhesParaCriar = slice.map(r => {
       let lancePercent = r.lance_percent;
       
@@ -138,11 +138,14 @@ Deno.serve(async (req) => {
         lancePercent = null;
       }
       
+      // Normalizar grupo removendo zeros à esquerda
+      const grupoNormalizado = r.grupo ? String(r.grupo).replace(/^0+/, '') || '0' : null;
+      
       return {
         empresa_id: imp.empresa_id,
         historico_id,
         qt: r.qt,
-        grupo: r.grupo,
+        grupo: grupoNormalizado,
         descricao: r.descricao,
         credito: r.credito,
         modalidade: r.modalidade,
