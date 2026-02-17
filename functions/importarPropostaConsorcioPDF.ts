@@ -53,11 +53,11 @@ function parseCanopus(textRaw) {
     /\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/i,
   ]);
 
-  // Telefone (pega o primeiro)
+  // Telefone (pega o primeiro - mantém formatação)
   const telefone = pickFirst(text, [
-    /\(\d{2}\)\s*\d{4,5}-\d{4}/,
-    /(\(\d{2}\)\s*\d{4,5}-\d{4})/,
+    /\((\d{2})\)\s*(\d{4,5})-(\d{4})/,
   ]);
+  const telefoneFormatado = telefone ? `(${telefone.match(/\d{2}/)}) ${telefone.match(/\d{4,5}/)}-${telefone.match(/\d{4}$/)}` : null;
 
   // Plano: CR#### (ex. CR5502)
   const planoCodigo = pickFirst(text, [
