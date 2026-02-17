@@ -389,8 +389,12 @@ export default function VendaDetalhes() {
 
         {/* Parcelas de Comissão Recebidas */}
         <Card className="border-0 shadow-sm">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Parcelas de Comissão</CardTitle>
+            <ImportarComissaoVenda 
+              venda={venda}
+              onSuccess={() => queryClient.invalidateQueries({ queryKey: ['recebimentos-comissao', vendaId] })}
+            />
           </CardHeader>
           <CardContent>
             {recebimentos.length > 0 ? (
