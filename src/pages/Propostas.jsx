@@ -30,17 +30,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, MoreHorizontal, Pencil, Eye, Filter, Trash2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Download, Plus, Filter, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
 
 export default function Propostas() {
   const [search, setSearch] = useState('');
-  const [filterProduto, setFilterProduto] = useState('consorcio');
   const [filterStatus, setFilterStatus] = useState('todos');
   const [filterAdministradora, setFilterAdministradora] = useState('todas');
   const [currentUser, setCurrentUser] = useState(null);
@@ -49,6 +47,7 @@ export default function Propostas() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [propostaToEdit, setPropostaToEdit] = useState(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadUser();
@@ -98,8 +97,8 @@ export default function Propostas() {
   };
 
   const { data: propostas = [], isLoading } = useQuery({
-    queryKey: ['propostas'],
-    queryFn: () => base44.entities.Proposta.list('-created_date'),
+    queryKey: ['propostas-consorcio'],
+    queryFn: () => base44.entities.Proposta.filter({ produto: 'consorcio' }, '-created_date'),
   });
 
   const { data: administradoras = [] } = useQuery({
@@ -120,24 +119,13 @@ export default function Propostas() {
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Proposta.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['propostas'] });
+      queryClient.invalidateQueries({ queryKey: ['propostas-consorcio'] });
       setDeleteDialogOpen(false);
       setPropostaToDelete(null);
       toast.success('Proposta excluída com sucesso!');
     },
     onError: () => {
       toast.error('Erro ao excluir proposta');
-    }
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.Proposta.update(id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['propostas'] });
-      toast.success('Status alterado com sucesso!');
-    },
-    onError: () => {
-      toast.error('Erro ao alterar status');
     }
   });
 
@@ -158,12 +146,10 @@ export default function Propostas() {
   };
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
-  const isGerente = currentUser?.perfil === 'gerente';
 
   // Filtrar por perfil
   const filteredByRole = propostas.filter(p => {
     if (isAdmin) return true;
-    if (isGerente) return p.vendedor_id === currentUser?.colaborador_id;
     return p.vendedor_id === currentUser?.colaborador_id;
   });
 
@@ -174,10 +160,9 @@ export default function Propostas() {
       p.grupo?.includes(search) ||
       p.cota?.includes(search) ||
       p.contrato?.includes(search);
-    const matchProduto = filterProduto === 'todos' || p.produto === filterProduto;
     const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
     const matchAdministradora = filterAdministradora === 'todas' || p.administradora_id === filterAdministradora;
-    return matchSearch && matchProduto && matchStatus && matchAdministradora;
+    return matchSearch && matchStatus && matchAdministradora;
   });
 
   const formatCurrency = (value) => {
@@ -185,25 +170,6 @@ export default function Propostas() {
       style: 'currency',
       currency: 'BRL'
     }).format(value || 0);
-  };
-
-  const produtoLabels = {
-    consorcio: 'Consórcio',
-    emprestimo: 'Empréstimo',
-    financiamento: 'Financiamento'
-  };
-
-  const getTipoProduto = (proposta) => {
-    if (proposta.produto === 'emprestimo' && proposta.emprestimo_tipo) {
-      const tipos = {
-        'NOVO': 'Novo',
-        'REFINANCIAMENTO': 'Refin',
-        'PORTABILIDADE_PURA': 'Portabilidade',
-        'REFIN_PORTABILIDADE': 'Refin + Portabilidade'
-      };
-      return tipos[proposta.emprestimo_tipo] || proposta.emprestimo_tipo;
-    }
-    return null;
   };
 
   const columns = [
@@ -217,21 +183,24 @@ export default function Propostas() {
       )
     },
     {
-       header: 'Produto',
-       cell: (row) => {
-         const tipo = getTipoProduto(row);
-         return (
-           <div className="text-center">
-             <span className="px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
-               {produtoLabels[row.produto] || row.produto}
-             </span>
-             {tipo && <p className="text-xs text-slate-500 mt-1">{tipo}</p>}
-           </div>
-         );
-       }
-     },
+      header: 'Tipo',
+      cell: (row) => (
+        <span className="px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
+          Automóvel
+        </span>
+      )
+    },
     {
-      header: 'Banco',
+      header: 'Grupo/Cota',
+      cell: (row) => (
+        <div>
+          <p className="font-medium text-slate-900">{row.grupo || '-'} / {row.cota || '-'}</p>
+          {row.contrato && <p className="text-xs text-slate-500">Contrato: {row.contrato}</p>}
+        </div>
+      )
+    },
+    {
+      header: 'Administrador',
       cell: (row) => row.administradora_nome || '-'
     },
     {
@@ -294,169 +263,72 @@ export default function Propostas() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Propostas"
-        subtitle={`${filteredPropostas.length} propostas`}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Propostas</h1>
+          <p className="text-sm text-slate-500 mt-1">{filteredPropostas.length} propostas</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Importar Proposta PDF
+          </Button>
+          <Button 
+            className="bg-[#23BE84] hover:bg-[#1fa870] gap-2"
+            onClick={() => navigate(createPageUrl('NovaVenda'))}
+          >
+            <Plus className="w-4 h-4" />
+            Nova Proposta
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <Card className="p-4 border-0 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por cliente, CPF, grupo, cota ou contrato..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Administradora" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas Administradoras</SelectItem>
+              {administradoras.map(adm => (
+                <SelectItem key={adm.id} value={adm.id}>
+                  {adm.nome_fantasia || adm.razao_social}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="ativa">Ativa</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="cancelada">Cancelada</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
+      {/* Table */}
+      <DataTable
+        columns={columns}
+        data={filteredPropostas}
+        isLoading={isLoading}
+        emptyMessage="Nenhuma proposta encontrada"
       />
-
-      {/* Tabs */}
-      <Tabs value={filterProduto} onValueChange={setFilterProduto} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="consorcio">Consórcio</TabsTrigger>
-          <TabsTrigger value="emprestimo">Empréstimos</TabsTrigger>
-          <TabsTrigger value="financiamento">Financiamentos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="consorcio" className="space-y-4">
-          {/* Filters */}
-          <Card className="p-4 border-0 shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar por cliente, grupo, cota ou contrato..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todos Bancos</SelectItem>
-                  {administradoras.map(adm => (
-                    <SelectItem key={adm.id} value={adm.id}>
-                      {adm.nome_fantasia || adm.razao_social}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Status</SelectItem>
-                  <SelectItem value="ativa">Ativas</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="cancelada">Canceladas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
-
-          {/* Table */}
-          <DataTable
-            columns={columns}
-            data={filteredPropostas}
-            isLoading={isLoading}
-            emptyMessage="Nenhuma proposta encontrada"
-          />
-        </TabsContent>
-
-        <TabsContent value="emprestimo" className="space-y-4">
-          {/* Filters */}
-          <Card className="p-4 border-0 shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar por cliente, grupo, cota ou contrato..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todos Bancos</SelectItem>
-                  {administradoras.map(adm => (
-                    <SelectItem key={adm.id} value={adm.id}>
-                      {adm.nome_fantasia || adm.razao_social}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Status</SelectItem>
-                  <SelectItem value="ativa">Ativas</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="cancelada">Canceladas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
-
-          {/* Table */}
-          <DataTable
-            columns={columns}
-            data={filteredPropostas}
-            isLoading={isLoading}
-            emptyMessage="Nenhuma proposta encontrada"
-          />
-        </TabsContent>
-
-        <TabsContent value="financiamento" className="space-y-4">
-          {/* Filters */}
-          <Card className="p-4 border-0 shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar por cliente, grupo, cota ou contrato..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todos Bancos</SelectItem>
-                  {administradoras.map(adm => (
-                    <SelectItem key={adm.id} value={adm.id}>
-                      {adm.nome_fantasia || adm.razao_social}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Status</SelectItem>
-                  <SelectItem value="ativa">Ativas</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="cancelada">Canceladas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
-
-          {/* Table */}
-          <DataTable
-            columns={columns}
-            data={filteredPropostas}
-            isLoading={isLoading}
-            emptyMessage="Nenhuma proposta encontrada"
-          />
-        </TabsContent>
-      </Tabs>
 
       {/* Edit Modal */}
       <PropostaEditModal
@@ -475,7 +347,7 @@ export default function Propostas() {
               {propostaToDelete && (
                 <div className="mt-3 p-3 bg-slate-50 rounded-lg">
                   <p className="font-medium text-slate-900">{propostaToDelete.cliente_nome}</p>
-                  <p className="text-sm text-slate-600">{produtoLabels[propostaToDelete.produto]}</p>
+                  <p className="text-sm text-slate-600">{propostaToDelete.grupo} / {propostaToDelete.cota}</p>
                 </div>
               )}
               <p className="mt-3 text-sm text-red-600">
