@@ -52,6 +52,35 @@ export default function GestaoSubcontas() {
     onError: () => toast.error('Erro ao deletar subconta'),
   });
 
+  const migrarUsuariosMutation = useMutation({
+    mutationFn: async (subconta) => {
+      // Buscar empresa JD
+      const empresasJd = await base44.asServiceRole.entities.Empresa.filter({});
+      const empresaJd = empresasJd.find(e => e.nome && e.nome.toLowerCase().includes('jd'));
+      
+      if (!empresaJd) {
+        throw new Error('Empresa JDPromotora não encontrada');
+      }
+
+      // Chamar função backend
+      const response = await base44.functions.invoke('migrarUsuariosJDParaSubconta', {
+        empresa_jd_id: empresaJd.id,
+        subconta_id: subconta.id
+      });
+
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['empresas'] });
+      toast.success('Usuários migrados com sucesso!');
+      setMigrandoSubconta(null);
+    },
+    onError: (error) => {
+      toast.error('Erro ao migrar usuários: ' + (error.message || 'desconhecido'));
+      setMigrandoSubconta(null);
+    },
+  });
+
   const filteredEmpresas = empresas.filter(e => {
     const matchSearch = e.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         e.email.toLowerCase().includes(searchTerm.toLowerCase());
