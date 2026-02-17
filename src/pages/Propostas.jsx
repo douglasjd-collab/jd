@@ -299,64 +299,164 @@ export default function Propostas() {
         subtitle={`${filteredPropostas.length} propostas`}
       />
 
-      {/* Filters */}
-      <Card className="p-4 border-0 shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por cliente, grupo, cota ou contrato..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={filterProduto} onValueChange={setFilterProduto}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Produtos</SelectItem>
-              <SelectItem value="consorcio">Consórcio</SelectItem>
-              <SelectItem value="emprestimo">Empréstimo</SelectItem>
-              <SelectItem value="financiamento">Financiamento</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Banco" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todos Bancos</SelectItem>
-              {administradoras.map(adm => (
-                <SelectItem key={adm.id} value={adm.id}>
-                  {adm.nome_fantasia || adm.razao_social}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-40">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Status</SelectItem>
-              <SelectItem value="ativa">Ativas</SelectItem>
-              <SelectItem value="pendente">Pendentes</SelectItem>
-              <SelectItem value="cancelada">Canceladas</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </Card>
+      {/* Tabs */}
+      <Tabs value={filterProduto} onValueChange={setFilterProduto} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="consorcio">Consórcio</TabsTrigger>
+          <TabsTrigger value="emprestimo">Empréstimos</TabsTrigger>
+          <TabsTrigger value="financiamento">Financiamentos</TabsTrigger>
+        </TabsList>
 
-      {/* Table */}
-      <DataTable
-        columns={columns}
-        data={filteredPropostas}
-        isLoading={isLoading}
-        emptyMessage="Nenhuma proposta encontrada"
-      />
+        <TabsContent value="consorcio" className="space-y-4">
+          {/* Filters */}
+          <Card className="p-4 border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por cliente, grupo, cota ou contrato..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos Bancos</SelectItem>
+                  {administradoras.map(adm => (
+                    <SelectItem key={adm.id} value={adm.id}>
+                      {adm.nome_fantasia || adm.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-40">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos Status</SelectItem>
+                  <SelectItem value="ativa">Ativas</SelectItem>
+                  <SelectItem value="pendente">Pendentes</SelectItem>
+                  <SelectItem value="cancelada">Canceladas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+
+          {/* Table */}
+          <DataTable
+            columns={columns}
+            data={filteredPropostas}
+            isLoading={isLoading}
+            emptyMessage="Nenhuma proposta encontrada"
+          />
+        </TabsContent>
+
+        <TabsContent value="emprestimo" className="space-y-4">
+          {/* Filters */}
+          <Card className="p-4 border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por cliente, grupo, cota ou contrato..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos Bancos</SelectItem>
+                  {administradoras.map(adm => (
+                    <SelectItem key={adm.id} value={adm.id}>
+                      {adm.nome_fantasia || adm.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-40">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos Status</SelectItem>
+                  <SelectItem value="ativa">Ativas</SelectItem>
+                  <SelectItem value="pendente">Pendentes</SelectItem>
+                  <SelectItem value="cancelada">Canceladas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+
+          {/* Table */}
+          <DataTable
+            columns={columns}
+            data={filteredPropostas}
+            isLoading={isLoading}
+            emptyMessage="Nenhuma proposta encontrada"
+          />
+        </TabsContent>
+
+        <TabsContent value="financiamento" className="space-y-4">
+          {/* Filters */}
+          <Card className="p-4 border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar por cliente, grupo, cota ou contrato..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos Bancos</SelectItem>
+                  {administradoras.map(adm => (
+                    <SelectItem key={adm.id} value={adm.id}>
+                      {adm.nome_fantasia || adm.razao_social}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-40">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos Status</SelectItem>
+                  <SelectItem value="ativa">Ativas</SelectItem>
+                  <SelectItem value="pendente">Pendentes</SelectItem>
+                  <SelectItem value="cancelada">Canceladas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+
+          {/* Table */}
+          <DataTable
+            columns={columns}
+            data={filteredPropostas}
+            isLoading={isLoading}
+            emptyMessage="Nenhuma proposta encontrada"
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Modal */}
       <PropostaEditModal
