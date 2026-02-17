@@ -268,6 +268,10 @@ export default function Propostas() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleEdit(row)}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar
+            </DropdownMenuItem>
             {isAdmin && (
               <DropdownMenuItem 
                 onClick={() => handleDelete(row)}
