@@ -712,6 +712,16 @@ export default function SimuladorNormal() {
                       </p>
                     </div>
                   )}
+
+                  {/* Relógio de Contemplação */}
+                  {relogioContemplacao && grupo && (
+                    <div className="mt-4">
+                      <RelogioContemplacao 
+                        relogio={relogioContemplacao}
+                        lanceOfertado={parseFloat(lanceProprioPercentual)}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
