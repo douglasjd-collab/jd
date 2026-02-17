@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TrendingUp, CheckCircle2, Loader2 } from 'lucide-react';
+import { TrendingUp, CheckCircle2, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -34,6 +34,7 @@ export default function OfertaLance() {
   const [percentual, setPercentual] = useState('');
   const [tipoLance, setTipoLance] = useState('livre');
   const [observacao, setObservacao] = useState('');
+  const [search, setSearch] = useState('');
   const queryClient = useQueryClient();
 
   // Competência atual (YYYY-MM)
