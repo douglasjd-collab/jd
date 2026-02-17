@@ -30,20 +30,25 @@ import { createPageUrl } from '../utils';
 
 export default function ImportacaoComissao() {
   const [selectedAdmin, setSelectedAdmin] = useState('');
-  const [file, setFile] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
-  const queryClient = useQueryClient();
+   const [file, setFile] = useState(null);
+   const [isProcessing, setIsProcessing] = useState(false);
+   const [previewData, setPreviewData] = useState(null);
+   const [currentUser, setCurrentUser] = useState(null);
+   const [currentEmpresa, setCurrentEmpresa] = useState(null);
+   const queryClient = useQueryClient();
 
   useEffect(() => {
-    loadUser();
-  }, []);
+     loadUser();
+   }, []);
 
-  const loadUser = async () => {
-    const user = await base44.auth.me();
-    setCurrentUser(user);
-  };
+   const loadUser = async () => {
+     const user = await base44.auth.me();
+     setCurrentUser(user);
+     if (user?.empresa_id) {
+       const empresa = await base44.entities.Empresa.get(user.empresa_id);
+       setCurrentEmpresa(empresa);
+     }
+   };
 
   const { data: administradoras = [] } = useQuery({
     queryKey: ['administradoras'],
@@ -72,7 +77,11 @@ export default function ImportacaoComissao() {
 
     try {
        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
-       const result = await base44.functions.invoke('processarCsvComissao', { file_url, produto: 'consorcio' });
+       const result = await base44.functions.invoke('processarCsvComissao', { 
+         file_url, 
+         produto: 'consorcio',
+         empresa_id: currentUser?.empresa_id || currentEmpresa?.id
+       });
 
       if (result.data.status === 'success' && result.data.items) {
         setPreviewData({
@@ -98,16 +107,25 @@ export default function ImportacaoComissao() {
     try {
       const admin = administradoras.find(a => a.id === selectedAdmin);
       
-      const importacao = await base44.entities.Importacao.create({
-        administradora_id: selectedAdmin,
-        administradora_nome: admin?.nome_fantasia || admin?.razao_social,
-        usuario_id: currentUser?.id,
-        usuario_nome: currentUser?.full_name,
-        arquivo_nome: file?.name,
-        arquivo_url: previewData.file_url,
-        total_registros: previewData.items.length,
-        status: 'processando'
-      });
+      const empresaIdFinal = currentUser?.empresa_id || currentEmpresa?.id;
+       if (!empresaIdFinal) {
+         toast.error('Empresa não vinculada ao usuário');
+         setIsProcessing(false);
+         return;
+       }
+
+       const importacao = await base44.entities.Importacao.create({
+         empresa_id: empresaIdFinal,
+         produto: 'consorcio',
+         administradora_id: selectedAdmin,
+         administradora_nome: admin?.nome_fantasia || admin?.razao_social,
+         usuario_id: currentUser?.id,
+         usuario_nome: currentUser?.full_name,
+         arquivo_nome: file?.name,
+         arquivo_url: previewData.file_url,
+         total_registros: previewData.items.length,
+         status: 'processando'
+       });
 
       const configVendedor = await base44.entities.ConfiguracaoComissao.filter({ 
         tipo: 'vendedor', 

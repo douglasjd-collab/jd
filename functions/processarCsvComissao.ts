@@ -81,10 +81,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { file_url, produto } = await req.json();
+    const { file_url, produto, empresa_id } = await req.json();
 
     if (!file_url) {
       return Response.json({ error: 'file_url é obrigatório' }, { status: 400 });
+    }
+
+    if (!produto || !['consorcio', 'financiamento', 'emprestimos'].includes(produto)) {
+      return Response.json({ error: 'Produto inválido. Use: consorcio, financiamento ou emprestimos' }, { status: 400 });
+    }
+
+    if (!empresa_id) {
+      return Response.json({ error: 'empresa_id é obrigatório' }, { status: 400 });
     }
 
     // Baixar o arquivo
