@@ -183,7 +183,7 @@ export default function LancesDoGrupoPanel({
         {todosDetalhes.length > 0 && ultimoHistorico && (() => {
           // Obter todas as modalidades únicas disponíveis
           const modalidadesDisponiveis = [...new Set(todosDetalhes.map(d => d.modalidade))].filter(Boolean);
-          
+
           const cores = {
             'lance_livre': { border: 'border-emerald-200', text: 'text-emerald-600', textBold: 'text-emerald-700' },
             'lance_limitado': { border: 'border-blue-200', text: 'text-blue-600', textBold: 'text-blue-700' },
@@ -192,10 +192,10 @@ export default function LancesDoGrupoPanel({
             'lance_fixo_30': { border: 'border-amber-200', text: 'text-amber-600', textBold: 'text-amber-700' },
             'lance_fixo_50': { border: 'border-red-200', text: 'text-red-600', textBold: 'text-red-700' },
           };
-          
+
           const getCorOuPadrao = (modalidade) => 
             cores[modalidade] || { border: 'border-slate-200', text: 'text-slate-600', textBold: 'text-slate-700' };
-          
+
           const isLanceFixo = (modalidade) => modalidade?.startsWith('lance_fixo_');
 
           return (
@@ -203,15 +203,15 @@ export default function LancesDoGrupoPanel({
               <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg border-2 border-slate-200">
                 <div className="grid grid-cols-2 gap-4">
                   {modalidadesDisponiveis.map(modalidade => {
-                    const menorLance = getMenorLanceUltimoHistorico(modalidade);
+                    const menorLance = getMenorLanceUltimoNaoNulo(modalidade);
                     const maiorLance = getMaiorLanceHistoricoCompleto(modalidade);
-                    
+
                     if (menorLance === null && maiorLance === null) return null;
-                    
+
                     const cor = getCorOuPadrao(modalidade);
                     const titulo = label(modalidade);
                     const fixo = isLanceFixo(modalidade);
-                    
+
                     return (
                       <div key={modalidade} className={`bg-white rounded-lg px-4 py-3 border-2 ${cor.border} shadow-sm`}>
                         <p className="text-xs font-semibold text-slate-600 text-center mb-2">{titulo}</p>
