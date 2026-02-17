@@ -129,6 +129,11 @@ export default function Propostas() {
     }
   });
 
+  const handleEdit = (proposta) => {
+    setPropostaToEdit(proposta);
+    setEditModalOpen(true);
+  };
+
   const handleDelete = (proposta) => {
     setPropostaToDelete(proposta);
     setDeleteDialogOpen(true);
