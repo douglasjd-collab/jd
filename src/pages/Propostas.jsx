@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import PropostaEditModal from '@/components/forms/PropostaEditModal';
 
 export default function Propostas() {
   const [search, setSearch] = useState('');
