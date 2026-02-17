@@ -71,8 +71,8 @@ export default function ImportacaoComissao() {
     setIsProcessing(true);
 
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
-      const result = await base44.functions.invoke('processarCsvComissao', { file_url });
+       const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
+       const result = await base44.functions.invoke('processarCsvComissao', { file_url, produto: 'consorcio' });
 
       if (result.data.status === 'success' && result.data.items) {
         setPreviewData({
