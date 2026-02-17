@@ -27,9 +27,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Subconta não encontrada' }, { status: 404 });
     }
 
-    // Buscar todos os colaboradores da empresa JD
+    // Buscar todos os colaboradores da empresa JD (sem filtro de status para incluir todos)
     const colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
-      { empresa_id: empresa_jd_id, status: 'ativo' },
+      { empresa_id: empresa_jd_id },
       '-created_date'
     );
 
