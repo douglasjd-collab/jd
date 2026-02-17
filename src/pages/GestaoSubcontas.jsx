@@ -20,6 +20,8 @@ export default function GestaoSubcontas() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [novaSubcontaOpen, setNovaSubcontaOpen] = useState(false);
   const [editandoSubconta, setEditandoSubconta] = useState(null);
+  const [migrandoSubconta, setMigrandoSubconta] = useState(null);
+  const [migratingLoading, setMigratingLoading] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: empresas = [], isLoading } = useQuery({
