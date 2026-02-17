@@ -98,14 +98,25 @@ export default function LancesDoGrupoPanel({
 
   // 1️⃣ MENOR LANCE → apenas do último histórico (piso atual do mercado)
   const getMenorLanceUltimoHistorico = React.useCallback((modalidade) => {
-    const lances = detalhesUltimoHistorico
-      .filter(d =>
-        d.modalidade === modalidade &&
-        typeof d.lance_percent === 'number'
-      )
+    const detalhesModalidade = detalhesUltimoHistorico.filter(d => d.modalidade === modalidade);
+    console.log(`🔍 [${modalidade}] Total de detalhes no último histórico:`, detalhesModalidade.length);
+    
+    if (detalhesModalidade.length > 0) {
+      console.log(`📊 [${modalidade}] Primeiros 3 registros:`, detalhesModalidade.slice(0, 3).map(d => ({
+        lance_percent: d.lance_percent,
+        tipo: typeof d.lance_percent
+      })));
+    }
+    
+    const lances = detalhesModalidade
+      .filter(d => typeof d.lance_percent === 'number')
       .map(d => d.lance_percent);
 
-    return lances.length ? Math.min(...lances) : null;
+    console.log(`✅ [${modalidade}] Lances válidos encontrados:`, lances);
+    const resultado = lances.length ? Math.min(...lances) : null;
+    console.log(`📍 [${modalidade}] Menor lance calculado:`, resultado);
+
+    return resultado;
   }, [detalhesUltimoHistorico]);
 
   // 2️⃣ MAIOR LANCE → histórico COMPLETO (teto histórico)
