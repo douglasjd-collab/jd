@@ -40,7 +40,7 @@ import PropostaEditModal from '@/components/forms/PropostaEditModal';
 
 export default function Propostas() {
   const [search, setSearch] = useState('');
-  const [filterProduto, setFilterProduto] = useState('todos');
+  const [filterProduto, setFilterProduto] = useState('consorcio');
   const [filterStatus, setFilterStatus] = useState('todos');
   const [filterAdministradora, setFilterAdministradora] = useState('todas');
   const [currentUser, setCurrentUser] = useState(null);
