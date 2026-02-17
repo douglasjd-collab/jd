@@ -103,6 +103,16 @@ export default function Propostas() {
     queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
   });
 
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes-propostas'],
+    queryFn: () => base44.entities.Cliente.list(),
+  });
+
+  const getClienteCpf = (clienteId) => {
+    const cliente = clientes.find(c => c.id === clienteId);
+    return cliente?.cpf || cliente?.pj_cnpj || '-';
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Proposta.delete(id),
     onSuccess: () => {
