@@ -197,6 +197,8 @@ export default function LancesDoGrupoPanel({
           
           const getCorOuPadrao = (modalidade) => 
             cores[modalidade] || { border: 'border-slate-200', text: 'text-slate-600', textBold: 'text-slate-700' };
+          
+          const isLanceFixo = (modalidade) => modalidade?.startsWith('lance_fixo_');
 
           return (
             <>
@@ -210,18 +212,28 @@ export default function LancesDoGrupoPanel({
                     
                     const cor = getCorOuPadrao(modalidade);
                     const titulo = label(modalidade);
+                    const fixo = isLanceFixo(modalidade);
                     
                     return (
                       <div key={modalidade} className={`bg-white rounded-lg px-4 py-3 border-2 ${cor.border} shadow-sm`}>
                         <p className="text-xs font-semibold text-slate-600 text-center mb-2">{titulo}</p>
-                        <div className="border-b border-slate-200 pb-2 mb-2">
-                          <p className={`text-[10px] font-medium ${cor.text} text-center uppercase`}>Menor Lance</p>
-                          <p className={`text-3xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance)}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
-                          <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLance)}</p>
-                        </div>
+                        {fixo ? (
+                          <div className="py-2">
+                            <p className={`text-[10px] font-medium ${cor.text} text-center uppercase mb-1`}>Lance Fixo</p>
+                            <p className={`text-3xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance || maiorLance)}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="border-b border-slate-200 pb-2 mb-2">
+                              <p className={`text-[10px] font-medium ${cor.text} text-center uppercase`}>Menor Lance</p>
+                              <p className={`text-3xl font-bold ${cor.textBold} text-center`}>{fmt(menorLance)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-500 text-center uppercase">Maior Lance</p>
+                              <p className="text-lg font-semibold text-slate-600 text-center">{fmt(maiorLance)}</p>
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   })}
