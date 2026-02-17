@@ -393,8 +393,12 @@ export default function Vendas() {
       cell: (row) => tipoLabels[row.tipo] || row.tipo || '-'
     },
     {
-      header: 'Grupo/Cota',
-      cell: (row) => <p className="font-medium">{row.grupo} / {row.cota}</p>
+      header: 'Grupo',
+      cell: (row) => <p className="font-medium">{row.grupo || '-'}</p>
+    },
+    {
+      header: 'Cota',
+      cell: (row) => <p className="font-medium">{row.cota || '-'}</p>
     },
     {
       header: 'Contrato',
