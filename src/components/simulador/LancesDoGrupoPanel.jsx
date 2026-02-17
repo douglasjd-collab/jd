@@ -47,6 +47,7 @@ export default function LancesDoGrupoPanel({
         console.log('📊 Total de históricos:', todosHistoricos?.length || 0);
 
         const grupoNormalizado = String(grupo).replace(/^0+/, '') || '0';
+        console.log(`🔍 Buscando grupo normalizado: "${grupoNormalizado}" (original: "${grupo}")`);
 
         // 2) Filtrar TODOS os detalhes do grupo (histórico completo)
         const todosDetalhesDoGrupo = todosDetalhes.filter(d => {
@@ -56,9 +57,25 @@ export default function LancesDoGrupoPanel({
 
         console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, todosDetalhesDoGrupo.length);
         
+        // DEBUG: Mostrar primeiros 5 grupos diferentes para comparação
+        const gruposUnicos = [...new Set(todosDetalhes.map(d => d.grupo))].slice(0, 10);
+        console.log('📋 Primeiros 10 grupos no banco:', gruposUnicos);
+        
         // DEBUG: Verificar modalidades disponíveis
         const modalidadesEncontradas = [...new Set(todosDetalhesDoGrupo.map(d => d.modalidade))];
         console.log('🎯 Modalidades disponíveis:', modalidadesEncontradas);
+        
+        // DEBUG: Mostrar detalhes por modalidade
+        modalidadesEncontradas.forEach(mod => {
+          const detalhesModalidade = todosDetalhesDoGrupo.filter(d => d.modalidade === mod);
+          console.log(`📊 [${mod}] ${detalhesModalidade.length} registros - Exemplos:`, 
+            detalhesModalidade.slice(0, 2).map(d => ({ 
+              grupo: d.grupo, 
+              lance_percent: d.lance_percent,
+              historico_id: d.historico_id 
+            }))
+          );
+        });
 
         if (!todosDetalhesDoGrupo || todosDetalhesDoGrupo.length === 0) {
           return { ultimoHistorico: null, todosDetalhes: [], detalhesUltimoHistorico: [] };
