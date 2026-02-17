@@ -305,10 +305,10 @@ export default function Propostas() {
           </Select>
           <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Administradora" />
+              <SelectValue placeholder="Banco" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Todas Administradoras</SelectItem>
+              <SelectItem value="todas">Todos Bancos</SelectItem>
               {administradoras.map(adm => (
                 <SelectItem key={adm.id} value={adm.id}>
                   {adm.nome_fantasia || adm.razao_social}
