@@ -164,11 +164,12 @@ export default function ImportacaoComissao() {
         });
 
         if (contrato) {
+          console.log(`\n🔎 BUSCA CONTRATO:`, { contrato, administradora_id: selectedAdmin });
           const vendasMatch = await base44.entities.VendaConsorcio.filter({
             contrato: contrato,
             administradora_id: selectedAdmin
           });
-          console.log(`📊 Busca por contrato "${contrato}":`, vendasMatch.length, 'encontradas');
+          console.log(`📊 Resultado:`, vendasMatch.length, 'encontrada(s)', vendasMatch);
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
@@ -185,7 +186,7 @@ export default function ImportacaoComissao() {
             const grupoStr = String(grupoRaw).trim();
             const cotaStr = String(cotaRaw).trim();
 
-            console.log("🔍 Buscando STRING:", { grupoStr, cotaStr, administradora_id: selectedAdmin });
+            console.log(`\n🔎 BUSCA GRUPO/COTA (STRING):`, { grupoStr, cotaStr, administradora_id: selectedAdmin });
 
             let vendasMatch = await base44.entities.VendaConsorcio.filter({
               grupo: grupoStr,
@@ -193,7 +194,7 @@ export default function ImportacaoComissao() {
               administradora_id: selectedAdmin
             });
 
-            console.log("📊 Encontradas (STRING):", vendasMatch.length);
+            console.log("📊 Resultado (STRING):", vendasMatch.length, vendasMatch);
 
             // Se não achar, tenta como NUMBER
             if (vendasMatch.length === 0) {
@@ -201,7 +202,7 @@ export default function ImportacaoComissao() {
               const cotaNum = Number(cotaStr);
 
               if (!isNaN(grupoNum) && !isNaN(cotaNum)) {
-                console.log("🔍 Buscando NUMBER:", { grupoNum, cotaNum, administradora_id: selectedAdmin });
+                console.log(`🔎 BUSCA GRUPO/COTA (NUMBER):`, { grupoNum, cotaNum, administradora_id: selectedAdmin });
 
                 vendasMatch = await base44.entities.VendaConsorcio.filter({
                   grupo: grupoNum,
@@ -209,14 +210,25 @@ export default function ImportacaoComissao() {
                   administradora_id: selectedAdmin
                 });
 
-                console.log("📊 Encontradas (NUMBER):", vendasMatch.length);
+                console.log("📊 Resultado (NUMBER):", vendasMatch.length, vendasMatch);
+              } else {
+                console.warn("⚠️ Grupo/Cota não convertíveis:", { grupoStr, cotaStr });
               }
             }
 
-            if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
-            else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
-            else motivoDivergencia = 'Venda não encontrada por grupo/cota';
+            if (vendasMatch.length === 1) {
+              vendaConsorcioEncontrada = vendasMatch[0];
+              console.log("✅ VENDA ENCONTRADA:", vendaConsorcioEncontrada);
             }
+            else if (vendasMatch.length > 1) {
+              motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
+              console.warn("⚠️ AMBÍGUO - Múltiplas encontradas");
+            }
+            else {
+              motivoDivergencia = 'Venda não encontrada por grupo/cota';
+              console.error("❌ NÃO ENCONTRADA - Verificar se existe no banco com estes valores");
+            }
+          }
         } else {
           motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
         }
@@ -426,7 +438,12 @@ export default function ImportacaoComissao() {
 
           {previewData && (
             <div>
-              <Label>Pré-visualização ({previewData.items.length} registros)</Label>
+              <Label>
+                Pré-visualização ({previewData.items.length} registros)
+                <span className="text-xs text-slate-500 ml-2">
+                  (Compare GRUPO/COTA aqui com os valores no Menu > Propostas > Consórcio)
+                </span>
+              </Label>
               <div className="mt-2 border rounded-xl overflow-hidden max-h-64 overflow-y-auto">
                 <Table>
                   <TableHeader>
