@@ -197,19 +197,19 @@ export default function Propostas() {
       )
     },
     {
-      header: 'Produto',
-      cell: (row) => {
-        const tipo = getTipoProduto(row);
-        return (
-          <div>
-            <span className="px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
-              {produtoLabels[row.produto] || row.produto}
-            </span>
-            {tipo && <p className="text-xs text-slate-500 mt-1">{tipo}</p>}
-          </div>
-        );
-      }
-    },
+       header: 'Produto',
+       cell: (row) => {
+         const tipo = getTipoProduto(row);
+         return (
+           <div className="text-center">
+             <span className="px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
+               {produtoLabels[row.produto] || row.produto}
+             </span>
+             {tipo && <p className="text-xs text-slate-500 mt-1">{tipo}</p>}
+           </div>
+         );
+       }
+     },
     {
       header: 'Grupo/Cota',
       cell: (row) => (
