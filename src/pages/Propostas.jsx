@@ -163,6 +163,19 @@ export default function Propostas() {
     financiamento: 'Financiamento'
   };
 
+  const getTipoProduto = (proposta) => {
+    if (proposta.produto === 'emprestimo' && proposta.emprestimo_tipo) {
+      const tipos = {
+        'NOVO': 'Novo',
+        'REFINANCIAMENTO': 'Refin',
+        'PORTABILIDADE_PURA': 'Portabilidade',
+        'REFIN_PORTABILIDADE': 'Refin + Portabilidade'
+      };
+      return tipos[proposta.emprestimo_tipo] || proposta.emprestimo_tipo;
+    }
+    return null;
+  };
+
   const columns = [
     {
       header: 'Cliente',

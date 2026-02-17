@@ -90,6 +90,7 @@ import OfertaLance from './pages/OfertaLance';
 import OportunidadeDetalhes from './pages/OportunidadeDetalhes';
 import PlanosCanopus from './pages/PlanosCanopus';
 import PlanosConsorcio from './pages/PlanosConsorcio';
+import Propostas from './pages/Propostas';
 import RecebimentoComissao from './pages/RecebimentoComissao';
 import Relatorios from './pages/Relatorios';
 import RelatoriosFinanceiros from './pages/RelatoriosFinanceiros';
@@ -109,7 +110,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import Propostas from './pages/Propostas';
 import __Layout from './Layout.jsx';
 
 
@@ -157,6 +157,7 @@ export const PAGES = {
     "OportunidadeDetalhes": OportunidadeDetalhes,
     "PlanosCanopus": PlanosCanopus,
     "PlanosConsorcio": PlanosConsorcio,
+    "Propostas": Propostas,
     "RecebimentoComissao": RecebimentoComissao,
     "Relatorios": Relatorios,
     "RelatoriosFinanceiros": RelatoriosFinanceiros,
@@ -176,7 +177,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "Propostas": Propostas,
 }
 
 export const pagesConfig = {
