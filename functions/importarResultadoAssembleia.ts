@@ -72,7 +72,7 @@ function parseLinhaAssembleia(linha) {
   
   return {
     qt,
-    grupo,
+    grupo: grupo ? grupo.replace(/^0+/, '') || '0' : null,
     descricao,
     credito,
     modalidade,
