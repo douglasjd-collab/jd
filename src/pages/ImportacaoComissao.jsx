@@ -164,15 +164,15 @@ export default function ImportacaoComissao() {
             console.warn("⚠️ Grupo ou Cota inválidos:", grupoRaw, cotaRaw);
             motivoDivergencia = 'Grupo ou cota com formato inválido';
           } else {
-            console.log(`🔍 Buscando proposta grupo ${grupo} e cota ${cota}`);
+            console.log(`🔍 Buscando proposta grupo ${grupo} e cota ${cota} (SEM filtro administradora - TESTE)`);
             
+            // TESTE: removendo administradora_id para diagnóstico
             const vendasMatch = await base44.entities.VendaConsorcio.filter({
               grupo,
-              cota,
-              administradora_id: selectedAdmin
+              cota
             });
             
-            console.log(`📊 Resultado busca:`, vendasMatch.length, vendasMatch);
+            console.log(`📊 Resultado busca SEM administradora:`, vendasMatch.length, vendasMatch);
             
             if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
             else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
