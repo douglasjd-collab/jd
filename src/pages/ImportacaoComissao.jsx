@@ -212,13 +212,11 @@ export default function ImportacaoComissao() {
                 console.log("📊 Encontradas (NUMBER):", vendasMatch.length);
               }
             }
-            
-            console.log("📊 Encontradas:", vendasMatch.length, vendasMatch);
-            
+
             if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
             else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas por grupo/cota';
             else motivoDivergencia = 'Venda não encontrada por grupo/cota';
-          }
+            }
         } else {
           motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
         }
