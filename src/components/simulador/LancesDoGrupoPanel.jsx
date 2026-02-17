@@ -56,65 +56,36 @@ export default function LancesDoGrupoPanel({
         });
 
         console.log(`✅ Detalhes encontrados para grupo "${grupo}":`, todosDetalhesDoGrupo.length);
-        
-        // DEBUG ESPECÍFICO: Comparar grupos 8110 vs 8120
-        if (grupoNormalizado === '8110' || grupoNormalizado === '8120') {
-          console.log(`🔬 ANÁLISE DETALHADA GRUPO ${grupoNormalizado}:`);
-          console.log('Todos os registros:', todosDetalhesDoGrupo);
-          
-          todosDetalhesDoGrupo.forEach((d, idx) => {
-            console.log(`  [${idx}] modalidade="${d.modalidade}" lance_percent=${d.lance_percent} (tipo: ${typeof d.lance_percent})`);
-          });
-          
-          // Buscar no banco bruto como está o grupo
-          const gruposComMesmoNumero = todosDetalhes.filter(d => {
-            const g = String(d.grupo);
-            return g.includes('8110') || g.includes('8120');
-          });
-          console.log('📦 Grupos no banco que contêm 8110 ou 8120:', 
-            [...new Set(gruposComMesmoNumero.map(d => `"${d.grupo}"`))]
-          );
-        }
-        
-        // DEBUG: Verificar modalidades disponíveis
-        const modalidadesEncontradas = [...new Set(todosDetalhesDoGrupo.map(d => d.modalidade))];
-        console.log('🎯 Modalidades disponíveis:', modalidadesEncontradas);
-        
-        // DEBUG: Mostrar detalhes por modalidade
-        modalidadesEncontradas.forEach(mod => {
-          const detalhesModalidade = todosDetalhesDoGrupo.filter(d => d.modalidade === mod);
-          const lances = detalhesModalidade.map(d => d.lance_percent).filter(l => l !== null && l !== undefined);
-          console.log(`📊 [${mod}] ${detalhesModalidade.length} registros - lances:`, lances);
-        });
 
         if (!todosDetalhesDoGrupo || todosDetalhesDoGrupo.length === 0) {
-          return { ultimoHistorico: null, todosDetalhes: [], detalhesUltimoHistorico: [] };
+          return { 
+            ultimoHistorico: null, 
+            todosDetalhes: [], 
+            historicosOrdenados: [] 
+          };
         }
 
-        // 3) Encontrar o histórico mais recente para este grupo
+        // 3) Ordenar históricos por data decrescente (mais recente primeiro)
         const historicosDoGrupo = todosHistoricos
           .filter(h => todosDetalhesDoGrupo.some(d => d.historico_id === h.id))
           .sort((a, b) => new Date(b.assembleia_data) - new Date(a.assembleia_data));
 
         if (historicosDoGrupo.length === 0) {
-          return { ultimoHistorico: null, todosDetalhes: [], detalhesUltimoHistorico: [] };
+          return { 
+            ultimoHistorico: null, 
+            todosDetalhes: [], 
+            historicosOrdenados: [] 
+          };
         }
 
         const ultimoHistorico = historicosDoGrupo[0];
         console.log('✅ Histórico mais recente:', ultimoHistorico.assembleia_data);
-
-        // 4) Detalhes do último histórico (para menor lance)
-        const detalhesUltimoHistorico = todosDetalhesDoGrupo.filter(
-          d => d.historico_id === ultimoHistorico.id
-        );
-
-        console.log('📊 Detalhes do último histórico:', detalhesUltimoHistorico.length);
-        console.log('📊 Detalhes de TODO o histórico:', todosDetalhesDoGrupo.length);
+        console.log('📊 Total de históricos encontrados:', historicosDoGrupo.length);
 
         return {
           ultimoHistorico,
           todosDetalhes: todosDetalhesDoGrupo,
-          detalhesUltimoHistorico
+          historicosOrdenados: historicosDoGrupo
         };
       },
   });
