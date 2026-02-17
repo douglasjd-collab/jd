@@ -70,9 +70,12 @@ function parseLinhaAssembleia(linha) {
     .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/g, '')
     .trim();
   
+  // Normalizar grupo removendo zeros à esquerda
+  const grupoNormalizado = grupo ? grupo.replace(/^0+/, '') || grupo : null;
+  
   return {
     qt,
-    grupo: grupo ? grupo.replace(/^0+/, '') || '0' : null,
+    grupo: grupoNormalizado,
     descricao,
     credito,
     modalidade,
