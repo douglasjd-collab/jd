@@ -361,6 +361,13 @@ export default function Propostas() {
         emptyMessage="Nenhuma proposta encontrada"
       />
 
+      {/* Edit Modal */}
+      <PropostaEditModal
+        proposta={propostaToEdit}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+      />
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
