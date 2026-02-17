@@ -238,6 +238,7 @@ export default function Usuarios() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      refetchUsuarios();
       toast.success('Usuário atualizado com sucesso!');
       safeCloseForm();
     },
