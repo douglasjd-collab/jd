@@ -601,27 +601,29 @@ export default function SimuladorConsorcio() {
                   <Input value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" />
                 </div>
               </div>
-              <div>
-                <Label className="mb-2 block">Tipo do Consórcio *</Label>
-                <Select value={tipoGrupo} onValueChange={setTipoGrupo}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="automovel">Automóvel</SelectItem>
-                    <SelectItem value="imovel">Imóvel</SelectItem>
-                    <SelectItem value="motocicleta">Motocicleta</SelectItem>
-                    <SelectItem value="servico">Serviço</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Número do Grupo</Label>
-                <Input 
-                  value={grupo} 
-                  onChange={(e) => setGrupo(e.target.value)} 
-                  placeholder="Ex: 8320"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <Label className="mb-2 block">Tipo do Consórcio *</Label>
+                  <Select value={tipoGrupo} onValueChange={setTipoGrupo}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="automovel">Automóvel</SelectItem>
+                      <SelectItem value="imovel">Imóvel</SelectItem>
+                      <SelectItem value="motocicleta">Motocicleta</SelectItem>
+                      <SelectItem value="servico">Serviço</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Número do Grupo</Label>
+                  <Input 
+                    value={grupo} 
+                    onChange={(e) => setGrupo(e.target.value)} 
+                    placeholder="Ex: 8120"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
