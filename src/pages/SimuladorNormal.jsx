@@ -546,8 +546,8 @@ export default function SimuladorNormal() {
           {grupo && (
             <LancesDoGrupoPanel 
               grupo={grupo}
-              onMenorLanceLivreChange={setMenorLanceHistorico}
-              onMaiorLanceLivreChange={setMaiorLanceHistorico}
+              onMenorLanceLimitadoChange={setMenorLanceHistorico}
+              onMaiorLanceLimitadoChange={setMaiorLanceHistorico}
             />
           )}
 
