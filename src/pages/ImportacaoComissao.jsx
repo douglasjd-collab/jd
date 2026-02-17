@@ -21,9 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Upload, Loader2, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Upload, Loader2, AlertTriangle, Eye, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from './utils';
 
 export default function ImportacaoComissao() {
   const [selectedAdmin, setSelectedAdmin] = useState('');
@@ -50,6 +53,14 @@ export default function ImportacaoComissao() {
   const { data: vendasConsorcio = [] } = useQuery({
     queryKey: ['vendasConsorcio'],
     queryFn: () => base44.entities.VendaConsorcio.list(),
+  });
+
+  const { data: importacoes = [] } = useQuery({
+    queryKey: ['importacoes-comissao'],
+    queryFn: async () => {
+      const all = await base44.entities.Importacao.list('-created_date');
+      return all;
+    },
   });
 
   const handleFileUpload = async (e) => {
@@ -424,6 +435,92 @@ export default function ImportacaoComissao() {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-}
+
+      {/* Histórico de Importações */}
+      <Card className="border-0 shadow-sm mt-8">
+        <CardContent className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Histórico de Importações</h3>
+
+          {importacoes.length === 0 ? (
+            <p className="text-slate-500 text-center py-8">Nenhuma importação realizada ainda</p>
+          ) : (
+            <div className="border rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Administradora</TableHead>
+                    <TableHead>Arquivo</TableHead>
+                    <TableHead>Registros</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {importacoes.map((imp) => (
+                    <TableRow key={imp.id}>
+                      <TableCell className="font-medium">
+                        {imp.created_date ? format(new Date(imp.created_date), 'dd/MM/yyyy HH:mm') : '-'}
+                      </TableCell>
+                      <TableCell>{imp.administradora_nome || '-'}</TableCell>
+                      <TableCell className="max-w-xs truncate">{imp.arquivo_nome || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-green-600 font-medium">{imp.registros_processados || 0}</span>
+                          <span className="text-slate-400">/</span>
+                          <span className="text-amber-600 font-medium">{imp.registros_divergencia || 0}</span>
+                          <span className="text-slate-400">/</span>
+                          <span className="text-slate-600">{imp.total_registros || 0}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatCurrency(imp.valor_total)}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          className={
+                            imp.status === 'concluida' ? 'bg-green-100 text-green-800' :
+                            imp.status === 'processando' ? 'bg-blue-100 text-blue-800' :
+                            'bg-red-100 text-red-800'
+                          }
+                        >
+                          {imp.status === 'concluida' ? 'Concluída' :
+                           imp.status === 'processando' ? 'Processando' : 'Erro'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link to={createPageUrl('ImportacaoDetalhes') + `?id=${imp.id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={async () => {
+                              if (!confirm('Deseja realmente excluir esta importação?')) return;
+                              try {
+                                await base44.entities.Importacao.delete(imp.id);
+                                queryClient.invalidateQueries(['importacoes-comissao']);
+                                toast.success('Importação excluída');
+                              } catch (e) {
+                                toast.error('Erro ao excluir importação');
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      </div>
+      );
+      }
