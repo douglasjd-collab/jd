@@ -93,7 +93,21 @@ Deno.serve(async (req) => {
 
         const venda = vendasEncontradas[0];
 
-        // Validar campos obrigatórios
+         // Validar se usuário é super_admin (não pode receber comissão)
+         if (comissao.usuario_perfil === 'super_admin') {
+           errors.push({
+             index: i,
+             external_id,
+             type: 'COMISSAO',
+             field: 'usuario_perfil',
+             message: 'Usuário super_admin não pode receber comissão',
+             suggestion: 'Apenas usuários com perfil admin, gerente ou vendedor podem receber comissão',
+             raw_data: comissao
+           });
+           continue;
+         }
+
+         // Validar campos obrigatórios
         const camposObrigatorios = ['usuario_id', 'tipo', 'valor', 'tipo_comissao'];
         let campoFaltando = null;
         for (const campo of camposObrigatorios) {
