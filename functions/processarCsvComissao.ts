@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { file_url } = await req.json();
+    const { file_url, produto } = await req.json();
 
     if (!file_url) {
       return Response.json({ error: 'file_url é obrigatório' }, { status: 400 });
@@ -170,28 +170,31 @@ Deno.serve(async (req) => {
       
       // strict_mode: false - aceitar qualquer quantidade de colunas
       // Mapeamento: Data, Contrato, Grupo, Cota, Valor, Nº Parcela
-      const data_recebimento = cleanedValues[0] || '';
-      const contrato = cleanedValues[1] || '';
-      const grupo = cleanedValues[2] || '';
-      const cota = cleanedValues[3] || '';
-      const valorStr = cleanedValues[4] || '';
-      const parcelaStr = cleanedValues[5] || '';
+       const data_recebimento = cleanedValues[0] || '';
+       const contratoRaw = cleanedValues[1] || '';
+       const grupoRaw = cleanedValues[2] || '';
+       const cotaRaw = cleanedValues[3] || '';
+       const valorStr = cleanedValues[4] || '';
+       const parcelaStr = cleanedValues[5] || '';
+
+       // Normaliza contrato (remover espaços)
+       const contrato = String(contratoRaw).trim();
       
       // Validar dados mínimos (ignore_errors: true - não bloqueia processamento)
-      if (!contrato && !grupo) {
-        errors.push(`Linha ${i + 1}: Sem contrato nem grupo - dados: ${cleanedValues.slice(0, 6).join(', ')}`);
-        // Adicionar mesmo assim para mostrar na pré-visualização
-        items.push({
-          data_recebimento,
-          contrato,
-          grupo,
-          cota,
-          valor: 0,
-          parcela: 1,
-          _error: 'Sem contrato nem grupo'
-        });
-        continue;
-      }
+       if (!contrato && !grupoRaw) {
+         errors.push(`Linha ${i + 1}: Sem contrato nem grupo - dados: ${cleanedValues.slice(0, 6).join(', ')}`);
+         // Adicionar mesmo assim para mostrar na pré-visualização
+         items.push({
+           data_recebimento,
+           contrato,
+           grupo: grupoRaw,
+           cota: cotaRaw,
+           valor: 0,
+           parcela: 1,
+           _error: 'Sem contrato nem grupo'
+         });
+         continue;
+       }
       
       // NORMALIZAÇÃO DE VALOR (formato brasileiro: R$ 1.000,00)
       let valor = 0;
@@ -231,13 +234,13 @@ Deno.serve(async (req) => {
       }
       
       const item = {
-        data_recebimento,
-        contrato,
-        grupo,
-        cota,
-        valor,
-        parcela
-      };
+         data_recebimento,
+         contrato,
+         grupo: grupoRaw,
+         cota: cotaRaw,
+         valor,
+         parcela
+       };
       
       // Marcar erro se houver
       if (valorError) {
