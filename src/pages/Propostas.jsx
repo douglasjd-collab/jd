@@ -261,8 +261,27 @@ export default function Propostas() {
       }
     },
     {
-      header: 'Status',
-      cell: (row) => <StatusBadge status={row.status} />
+       header: 'Status',
+       cell: (row) => (
+         <DropdownMenu>
+           <DropdownMenuTrigger asChild>
+             <button className="cursor-pointer hover:opacity-80 transition-opacity">
+               <StatusBadge status={row.status} />
+             </button>
+           </DropdownMenuTrigger>
+           <DropdownMenuContent align="end">
+             <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'ativa' })}>
+               Ativa
+             </DropdownMenuItem>
+             <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'pendente' })}>
+               Pendente
+             </DropdownMenuItem>
+             <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: row.id, status: 'cancelada' })}>
+               Cancelada
+             </DropdownMenuItem>
+           </DropdownMenuContent>
+         </DropdownMenu>
+       )
     },
     {
       header: '',
