@@ -129,7 +129,7 @@ export default function Usuarios() {
   const isGerente = currentUser?.perfil === 'gerente';
   const podeListar = isAdmin || isGerente;
 
-  const { data: usuarios = [], isLoading } = useQuery({
+  const { data: usuarios = [], isLoading, refetch: refetchUsuarios } = useQuery({
     queryKey: ['usuarios', currentUser?.empresa_id, currentUser?.perfil],
     enabled: !!currentUser && podeListar,
     queryFn: async () => {
@@ -139,10 +139,10 @@ export default function Usuarios() {
         // Buscar Colaboradores
         let colaboradores = [];
         if (isMasterOrSuperAdmin) {
-          colaboradores = await base44.entities.Colaborador.list('-created_date');
+          colaboradores = await base44.asServiceRole.entities.Colaborador.list('-created_date');
         } else {
           // Admin vê apenas usuários da sua empresa
-          colaboradores = await base44.entities.Colaborador.filter(
+          colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
             { empresa_id: currentUser.empresa_id },
             '-created_date'
           );
