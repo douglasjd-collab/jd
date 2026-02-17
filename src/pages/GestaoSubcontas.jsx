@@ -337,6 +337,19 @@ export default function GestaoSubcontas() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => {
+                        setMigrandoSubconta(empresa);
+                        migrarUsuariosMutation.mutate(empresa);
+                      }}
+                      disabled={migrarUsuariosMutation.isPending}
+                    >
+                      <Users className="w-3 h-3 mr-1" />
+                      Migrar Usuários JD
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => setEditandoSubconta(empresa)}
                     >
                       <Edit className="w-3 h-3 mr-1" />
