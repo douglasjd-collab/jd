@@ -394,12 +394,11 @@ export default function Vendas() {
     },
     {
       header: 'Grupo/Cota',
-      cell: (row) => (
-        <div>
-          <p className="font-medium">{row.grupo} / {row.cota}</p>
-          {row.contrato && <p className="text-sm text-slate-500">Contrato: {row.contrato}</p>}
-        </div>
-      )
+      cell: (row) => <p className="font-medium">{row.grupo} / {row.cota}</p>
+    },
+    {
+      header: 'Contrato',
+      cell: (row) => row.contrato || '-'
     },
     {
       header: 'Administradora',
