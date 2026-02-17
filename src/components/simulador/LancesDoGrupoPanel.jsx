@@ -131,8 +131,8 @@ export default function LancesDoGrupoPanel({
 
   // Notificar o componente pai quando os valores mudarem
   React.useEffect(() => {
-    const menorLanceLivre = getMenorLanceUltimoHistorico('lance_livre');
-    const menorLanceLimitado = getMenorLanceUltimoHistorico('lance_limitado');
+    const menorLanceLivre = getMenorLanceUltimoNaoNulo('lance_livre');
+    const menorLanceLimitado = getMenorLanceUltimoNaoNulo('lance_limitado');
     const maiorLanceLivre = getMaiorLanceHistoricoCompleto('lance_livre');
     const maiorLanceLimitado = getMaiorLanceHistoricoCompleto('lance_limitado');
 
@@ -141,7 +141,7 @@ export default function LancesDoGrupoPanel({
     if (onMenorLanceLimitadoChange) onMenorLanceLimitadoChange(menorLanceLimitado);
     if (onMaiorLanceLimitadoChange) onMaiorLanceLimitadoChange(maiorLanceLimitado);
   }, [
-    getMenorLanceUltimoHistorico, 
+    getMenorLanceUltimoNaoNulo, 
     getMaiorLanceHistoricoCompleto, 
     onMenorLanceLivreChange, 
     onMaiorLanceLivreChange,
