@@ -168,7 +168,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Gestão de Subcontas', icon: Building2, page: 'GestaoSubcontas', roles: ['super_admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Propostas de Consórcio', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Consórcio', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Propostas de Empréstimos', icon: FileText, page: 'VendasEmprestimos', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
 
     { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
