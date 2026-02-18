@@ -30,7 +30,7 @@ import {
   Search, MoreHorizontal, Pencil, Trash2, Plus, Upload,
         User, Calendar, Building2, FileText, MessageCircle,
         TrendingUp, Clock, CheckCircle2, Settings,
-        AlignJustify, Kanban, ArrowRightLeft
+        AlignJustify, Kanban, ArrowRightLeft, DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
