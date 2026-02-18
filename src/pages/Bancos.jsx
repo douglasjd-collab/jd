@@ -34,8 +34,10 @@ export default function Bancos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     codigo: '',
-    nome: ''
+    nome: '',
+    logo_url: ''
   });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const queryClient = useQueryClient();
 
