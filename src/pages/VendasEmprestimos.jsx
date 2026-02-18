@@ -114,6 +114,11 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.Cliente.list(),
   });
 
+  const { data: statusList = [] } = useQuery({
+    queryKey: ['status-propostas-emprestimos'],
+    queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
+  });
+
   const getClienteCpf = (clienteId) => {
     const cliente = clientes.find(c => c.id === clienteId);
     return cliente?.cpf || cliente?.pj_cnpj || '-';
