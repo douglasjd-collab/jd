@@ -199,14 +199,27 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
               {statusSelecionado?.nome}
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-              <p className="text-blue-800 font-medium">⏱ Prazo de retorno calculado:</p>
-              <p className="text-blue-700 mt-1">
-                <strong>5 dias úteis</strong> a partir de hoje
-                {' → '}
-                <strong>{format(adicionarDiasUteis(new Date(), 5), 'dd/MM/yyyy')}</strong>
-              </p>
+            <div>
+              <Label className="text-sm">Data de entrada no CIP *</Label>
+              <Input
+                type="date"
+                value={cipDataEntrada}
+                onChange={(e) => setCipDataEntrada(e.target.value)}
+                className="mt-1"
+                autoFocus
+              />
             </div>
+
+            {cipDataEntrada && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <p className="text-blue-800 font-medium">⏱ Prazo de retorno calculado:</p>
+                <p className="text-blue-700 mt-1">
+                  <strong>5 dias úteis</strong> a partir de {format(new Date(cipDataEntrada + 'T12:00:00'), 'dd/MM/yyyy')}
+                  {' → '}
+                  <strong>{format(adicionarDiasUteis(new Date(cipDataEntrada + 'T12:00:00'), 5), 'dd/MM/yyyy')}</strong>
+                </p>
+              </div>
+            )}
 
             <div>
               <Label className="text-sm">Valor do saldo previsto para retorno (R$)</Label>
