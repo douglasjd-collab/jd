@@ -649,6 +649,65 @@ ${textoVariacoes}
                       <Calculator className="w-4 h-4" />
                       Simulador
                     </Button>
+                    <Button
+                      className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
+                      size="sm"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!selectedGroup) return;
+                        setBuyLoading(true);
+                        try {
+                          // Buscar ou criar tabela de consórcio
+                          const administradora_id = 'canopus'; // Padrão Canopus
+                          const tabelas = await base44.entities.TabelaConsorcio.filter({
+                            administradora_id,
+                            ativo: true
+                          });
+
+                          let tabela_id = tabelas.length > 0 ? tabelas[0].id : null;
+
+                          if (!tabela_id) {
+                            // Criar tabela automaticamente
+                            const newTabela = await base44.entities.TabelaConsorcio.create({
+                              administradora_id,
+                              administradora_nome: 'Canopus',
+                              nome: 'Tabela Canopus',
+                              tipo_bem: selectedGroup.produto_id === '101' ? 'automovel' : selectedGroup.produto_id === '102' ? 'imovel' : 'motocicleta',
+                              prazo: variacao.prazo_meses,
+                              taxa_adm: variacao.taxa_adm || 0,
+                              valor_minimo: 0,
+                              valor_maximo: selectedGroup.valor_bem,
+                              ativo: true
+                            });
+                            tabela_id = newTabela.id;
+                          }
+
+                          // Navegar para nova venda com parâmetros
+                          const params = new URLSearchParams({
+                            valor_credito: selectedGroup.valor_bem,
+                            prazo: variacao.prazo_meses,
+                            taxa_adm: variacao.taxa_adm || 0,
+                            administradora_id,
+                            administradora_nome: 'Canopus',
+                            tabela_id,
+                            tipo_bem: selectedGroup.produto_id === '101' ? 'automovel' : selectedGroup.produto_id === '102' ? 'imovel' : 'motocicleta',
+                            grupo: selectedGroup.plano?.split('|')[0]?.trim() || ''
+                          });
+
+                          navigate(createPageUrl(`NovaVendaConsignado?${params.toString()}`));
+                        } catch (error) {
+                          console.error('Erro ao preparar compra:', error);
+                          toast.error('Erro ao preparar a compra');
+                        } finally {
+                          setBuyLoading(false);
+                        }
+                      }}
+                      disabled={buyLoading}
+                    >
+                      {buyLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <ShoppingCart className="w-4 h-4" />
+                      Comprar
+                    </Button>
                   </div>
                 </div>
               ))}
