@@ -196,6 +196,21 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
+  // Propostas CIP com retorno previsto para hoje
+  const { data: propostasCip = [] } = useQuery({
+    queryKey: ['propostas-cip-retorno', user?.empresa_id],
+    enabled: !!user?.empresa_id,
+    queryFn: async () => {
+      const hoje = format(new Date(), 'yyyy-MM-dd');
+      const lista = await base44.entities.Proposta.filter({
+        empresa_id: user.empresa_id,
+        cip_data_retorno_prevista: hoje,
+      });
+      return lista;
+    },
+    staleTime: 60000,
+  });
+
   const { data: importacoes = [] } = useQuery({
     queryKey: ['importacoes-assembleia-dashboard', user?.empresa_id],
     enabled: !!user?.empresa_id,
