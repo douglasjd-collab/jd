@@ -561,7 +561,62 @@ export default function PlanosConsorcio() {
                   <Plus className="w-4 h-4" />
                   Duplicar
                 </Button>
-                <Button className="flex-1 bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2">
+                <Button 
+                  className="flex-1 bg-[#23BE84] hover:bg-[#1da570] gap-2"
+                  onClick={async () => {
+                    if (!selectedModalPlano) return;
+                    setBuyLoading(true);
+                    try {
+                      // Buscar ou criar tabela de consórcio
+                      const administradora_id = selectedModalPlano.administradora_id;
+                      const tabelas = await base44.entities.TabelaConsorcio.filter({
+                        administradora_id,
+                        ativo: true
+                      });
+                      
+                      let tabela_id = tabelas.length > 0 ? tabelas[0].id : null;
+                      
+                      if (!tabela_id) {
+                        // Criar tabela automaticamente
+                        const adminNome = getAdminNome(administradora_id);
+                        const newTabela = await base44.entities.TabelaConsorcio.create({
+                          administradora_id,
+                          administradora_nome: adminNome,
+                          nome: `Tabela ${adminNome}`,
+                          tipo_bem: selectedModalPlano.tipo_bem || 'automovel',
+                          prazo: selectedModalPlano.prazo,
+                          taxa_adm: selectedModalPlano.taxa_adm || 0,
+                          valor_minimo: 0,
+                          valor_maximo: selectedModalPlano.valor_carta,
+                          ativo: true
+                        });
+                        tabela_id = newTabela.id;
+                      }
+                      
+                      // Navegar para nova venda com parâmetros
+                      const params = new URLSearchParams({
+                        plano_id: selectedModalPlano.id,
+                        tabela_id,
+                        administradora_id,
+                        administradora_nome: getAdminNome(administradora_id),
+                        valor_credito: selectedModalPlano.valor_carta,
+                        prazo: selectedModalPlano.prazo,
+                        taxa_adm: selectedModalPlano.taxa_adm || 0,
+                        tipo_bem: selectedModalPlano.tipo_bem || 'automovel',
+                        grupo: selectedModalPlano.grupo
+                      });
+                      
+                      navigate(createPageUrl(`NovaVendaConsignado?${params.toString()}`));
+                    } catch (error) {
+                      console.error('Erro ao preparar compra:', error);
+                      toast.error('Erro ao preparar a compra');
+                    } finally {
+                      setBuyLoading(false);
+                    }
+                  }}
+                  disabled={buyLoading}
+                >
+                  {buyLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   <ShoppingCart className="w-4 h-4" />
                   Comprar
                 </Button>
