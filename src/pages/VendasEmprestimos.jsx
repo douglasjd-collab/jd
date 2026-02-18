@@ -525,9 +525,9 @@ export default function VendasEmprestimos() {
                     variant="outline"
                     size="sm"
                     className="flex-1 text-xs gap-1 border-slate-200 text-slate-600 hover:bg-slate-50"
-                    onClick={() => { setPropostaToEdit(p); setEditModalOpen(true); }}
+                    onClick={() => { setPropostaStatus(p); setStatusModalOpen(true); }}
                   >
-                    <ThumbsUp className="w-3.5 h-3.5" /> Aprovar
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Status
                   </Button>
                   <Button
                     size="sm"
