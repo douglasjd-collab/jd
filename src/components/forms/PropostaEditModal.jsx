@@ -310,23 +310,54 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
               </div>
             </div>
 
+            {/* Vendedor e Data */}
+            <div>
+              <h3 className="text-sm font-semibold mb-4 text-slate-700">Vendedor e Data</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Vendedor</Label>
+                  <Select
+                    value={formData.vendedor_id || ''}
+                    onValueChange={(value) => {
+                      const vend = vendedores.find(v => v.id === value);
+                      setFormData({ ...formData, vendedor_id: value, vendedor_nome: vend?.nome || '' });
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Data da Venda</Label>
+                  <Input type="date" value={formData.data_venda || ''} onChange={(e) => setFormData({ ...formData, data_venda: e.target.value })} />
+                </div>
+              </div>
+            </div>
+
             {/* Status e Observações */}
             <div>
               <h3 className="text-sm font-semibold mb-4 text-slate-700">Status e Observações</h3>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="status">Status</Label>
+                  <Label>Status</Label>
                   <Select
-                    value={formData.status || 'ativa'}
+                    value={formData.status || ''}
                     onValueChange={(value) => setFormData({ ...formData, status: value })}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ativa">Ativa</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                      {statusList.length > 0
+                        ? statusList.sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => (
+                            <SelectItem key={s.id} value={s.codigo}>{s.nome}</SelectItem>
+                          ))
+                        : <>
+                            <SelectItem value="ativa">Ativa</SelectItem>
+                            <SelectItem value="pendente">Pendente</SelectItem>
+                            <SelectItem value="cancelada">Cancelada</SelectItem>
+                          </>
+                      }
                     </SelectContent>
                   </Select>
                 </div>
