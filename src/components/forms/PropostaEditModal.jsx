@@ -121,6 +121,17 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
     }).format(value || 0);
   };
 
+  const parseCurrency = (str) => {
+    if (!str) return 0;
+    return parseFloat(str.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+  };
+
+  const formatInputCurrency = (value) => {
+    if (value === '' || value === null || value === undefined) return '';
+    const num = typeof value === 'string' ? parseCurrency(value) : value;
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+  };
+
   const produtoLabels = {
     consorcio: 'Consórcio',
     emprestimo: 'Empréstimo',
