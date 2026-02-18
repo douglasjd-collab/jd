@@ -29,7 +29,8 @@ import {
 import {
   Search, MoreHorizontal, Pencil, Trash2, Plus, Upload,
   User, Calendar, Building2, FileText, ThumbsUp, MessageCircle,
-  TrendingUp, Clock, CheckCircle2, DollarSign, Settings
+  TrendingUp, Clock, CheckCircle2, DollarSign, Settings,
+  AlignJustify, Kanban
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
