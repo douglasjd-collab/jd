@@ -163,7 +163,7 @@ export default function VendasEmprestimos() {
       filterTipo === 'pessoal' && !p.emprestimo_tipo
     );
     const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
-    const matchAdministradora = filterAdministradora === 'todas' || p.administradora_id === filterAdministradora;
+    const matchAdministradora = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     return matchSearch && matchTipo && matchStatus && matchAdministradora;
   });
 
