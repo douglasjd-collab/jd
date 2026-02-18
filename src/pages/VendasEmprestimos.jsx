@@ -183,11 +183,12 @@ export default function VendasEmprestimos() {
   const todayPropostas = filteredByRole.filter(p => p.data_venda === today && (p.valor_credito || 0) > 0);
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   
-  // Propostas pagas no mês (por comissão_recebida > 0)
+  // Propostas pagas no mês (status = pago, paga ou pago_vendedor)
   const propostas_pagas_mes = filteredByRole.filter(p => 
-    p.data_venda?.substring(0, 7) === currentMonth && (p.comissao_recebida || 0) > 0
+    p.data_venda?.substring(0, 7) === currentMonth && 
+    ['pago', 'paga', 'pago_vendedor'].includes(p.status)
   );
-  const valor_pagas_mes = propostas_pagas_mes.reduce((acc, p) => acc + (p.comissao_recebida || 0), 0);
+  const valor_pagas_mes = propostas_pagas_mes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   
   // Em andamento: todas as propostas MENOS canceladas MENOS pagas
   const emAndamento = filteredByRole.filter(p => 
