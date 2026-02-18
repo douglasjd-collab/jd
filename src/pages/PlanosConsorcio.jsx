@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function PlanosConsorcio() {
+  const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedPlano, setSelectedPlano] = useState(null);
   const [search, setSearch] = useState('');
@@ -55,6 +56,7 @@ export default function PlanosConsorcio() {
   const [modalGroupName, setModalGroupName] = useState(null);
   const [selectedModalPlano, setSelectedModalPlano] = useState(null);
   const [importPrintOpen, setImportPrintOpen] = useState(false);
+  const [buyLoading, setBuyLoading] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
