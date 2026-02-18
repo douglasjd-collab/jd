@@ -292,23 +292,37 @@ export default function VendasEmprestimos() {
         </Button>
       </PageHeader>
 
-      {/* Filtros rápidos por tipo */}
+      {/* Filtros rápidos por status */}
       <div className="flex flex-wrap gap-2">
-        {[
-          { value: 'todos', label: 'Todos', bg: 'bg-slate-100 text-slate-700 hover:bg-slate-200', active: 'bg-slate-700 text-white' },
-          { value: 'NOVO', label: 'Novo', bg: 'bg-blue-100 text-blue-700 hover:bg-blue-200', active: 'bg-blue-600 text-white' },
-          { value: 'REFINANCIAMENTO', label: 'Refinanciamento', bg: 'bg-purple-100 text-purple-700 hover:bg-purple-200', active: 'bg-purple-600 text-white' },
-          { value: 'PORTABILIDADE_PURA', label: 'Portabilidade', bg: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200', active: 'bg-emerald-600 text-white' },
-          { value: 'REFIN_PORTABILIDADE', label: 'Refin + Portabilidade', bg: 'bg-orange-100 text-orange-700 hover:bg-orange-200', active: 'bg-orange-600 text-white' },
-        ].map(({ value, label, bg, active }) => (
-          <button
-            key={value}
-            onClick={() => setFilterTipo(value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filterTipo === value ? active : bg}`}
-          >
-            {label}
-          </button>
-        ))}
+        <button
+          onClick={() => setFilterStatus('todos')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filterStatus === 'todos' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+        >
+          Todos
+        </button>
+        {statusList.sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => {
+          const colorMap = {
+            blue: { bg: 'bg-blue-100 text-blue-700 hover:bg-blue-200', active: 'bg-blue-600 text-white' },
+            green: { bg: 'bg-green-100 text-green-700 hover:bg-green-200', active: 'bg-green-600 text-white' },
+            red: { bg: 'bg-red-100 text-red-700 hover:bg-red-200', active: 'bg-red-600 text-white' },
+            yellow: { bg: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', active: 'bg-yellow-600 text-white' },
+            purple: { bg: 'bg-purple-100 text-purple-700 hover:bg-purple-200', active: 'bg-purple-600 text-white' },
+            orange: { bg: 'bg-orange-100 text-orange-700 hover:bg-orange-200', active: 'bg-orange-600 text-white' },
+            emerald: { bg: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200', active: 'bg-emerald-600 text-white' },
+            slate: { bg: 'bg-slate-100 text-slate-700 hover:bg-slate-200', active: 'bg-slate-600 text-white' },
+          };
+          const colors = colorMap[s.cor] || colorMap.slate;
+          const isActive = filterStatus === s.codigo;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setFilterStatus(s.codigo)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${isActive ? colors.active : colors.bg}`}
+            >
+              {s.nome}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filtros de busca */}
@@ -323,6 +337,18 @@ export default function VendasEmprestimos() {
               className="pl-10"
             />
           </div>
+          <Select value={filterTipo} onValueChange={setFilterTipo}>
+            <SelectTrigger className="w-full sm:w-52">
+              <SelectValue placeholder="Todos os Tipos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Tipos</SelectItem>
+              <SelectItem value="NOVO">Novo</SelectItem>
+              <SelectItem value="REFINANCIAMENTO">Refinanciamento</SelectItem>
+              <SelectItem value="PORTABILIDADE_PURA">Portabilidade</SelectItem>
+              <SelectItem value="REFIN_PORTABILIDADE">Refin + Portabilidade</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={filterBanco} onValueChange={setFilterBanco}>
             <SelectTrigger className="w-full sm:w-52">
               <SelectValue placeholder="Todos os Bancos" />
