@@ -187,14 +187,12 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                 <h3 className="text-sm font-semibold mb-4 text-slate-700">Dados do Empréstimo</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="tipo">Tipo de Empréstimo</Label>
+                    <Label>Tipo de Empréstimo</Label>
                     <Select
                       value={formData.emprestimo_tipo || 'NOVO'}
                       onValueChange={(value) => setFormData({ ...formData, emprestimo_tipo: value })}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="NOVO">Novo</SelectItem>
                         <SelectItem value="REFINANCIAMENTO">Refinanciamento</SelectItem>
@@ -204,29 +202,47 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="numero_beneficio">Número do Benefício</Label>
-                    <Input
-                      id="numero_beneficio"
-                      value={formData.emprestimo_numero_beneficio || ''}
-                      onChange={(e) => setFormData({ ...formData, emprestimo_numero_beneficio: e.target.value })}
-                    />
+                    <Label>Convênio</Label>
+                    <Select
+                      value={formData.emprestimo_convenio_id || ''}
+                      onValueChange={(value) => {
+                        const conv = convenios.find(c => c.id === value);
+                        setFormData({ ...formData, emprestimo_convenio_id: value, emprestimo_convenio_nome: conv?.nome || '' });
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {convenios.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <Label htmlFor="numero_ade">Número ADE</Label>
-                    <Input
-                      id="numero_ade"
-                      value={formData.emprestimo_numero_ade || ''}
-                      onChange={(e) => setFormData({ ...formData, emprestimo_numero_ade: e.target.value })}
-                    />
+                    <Label>Número do Benefício</Label>
+                    <Input value={formData.emprestimo_numero_beneficio || ''} onChange={(e) => setFormData({ ...formData, emprestimo_numero_beneficio: e.target.value })} />
                   </div>
                   <div>
-                    <Label htmlFor="prazo">Prazo (meses)</Label>
-                    <Input
-                      id="prazo"
-                      type="number"
-                      value={formData.emprestimo_prazo || ''}
-                      onChange={(e) => setFormData({ ...formData, emprestimo_prazo: parseInt(e.target.value) || 0 })}
-                    />
+                    <Label>Número ADE</Label>
+                    <Input value={formData.emprestimo_numero_ade || ''} onChange={(e) => setFormData({ ...formData, emprestimo_numero_ade: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Prazo (meses)</Label>
+                    <Input type="number" value={formData.emprestimo_prazo || ''} onChange={(e) => setFormData({ ...formData, emprestimo_prazo: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  {(formData.emprestimo_tipo === 'PORTABILIDADE_PURA' || formData.emprestimo_tipo === 'REFIN_PORTABILIDADE') && (
+                    <>
+                      <div>
+                        <Label>Banco Anterior</Label>
+                        <Input value={formData.emprestimo_banco_anterior || ''} onChange={(e) => setFormData({ ...formData, emprestimo_banco_anterior: e.target.value })} />
+                      </div>
+                      <div>
+                        <Label>Saldo Devedor</Label>
+                        <Input type="number" step="0.01" value={formData.emprestimo_saldo_devedor || ''} onChange={(e) => setFormData({ ...formData, emprestimo_saldo_devedor: parseFloat(e.target.value) })} />
+                      </div>
+                    </>
+                  )}
+                  <div>
+                    <Label>Data de Liberação</Label>
+                    <Input type="date" value={formData.emprestimo_data_liberacao || ''} onChange={(e) => setFormData({ ...formData, emprestimo_data_liberacao: e.target.value })} />
                   </div>
                 </div>
               </div>
