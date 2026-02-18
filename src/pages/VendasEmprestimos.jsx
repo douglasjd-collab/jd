@@ -193,6 +193,22 @@ export default function VendasEmprestimos() {
           <p className="text-slate-500 mt-1">{filteredPropostas.length} propostas encontradas</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* View mode toggle */}
+          <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'cards' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <AlignJustify className="w-4 h-4" /> Tabela
+            </button>
+            <div className="w-px h-6 bg-slate-200" />
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${viewMode === 'kanban' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <Kanban className="w-4 h-4" /> Kanban
+            </button>
+          </div>
           <Button variant="outline" className="gap-2" onClick={() => setImportarLoteOpen(true)}>
             <Upload className="w-4 h-4" />
             Importar em Lote
