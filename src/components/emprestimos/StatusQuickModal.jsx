@@ -65,6 +65,7 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
     setStatusSelecionado(null);
     setDataPagamento('');
     setCipValorPrevisto('');
+    setCipDataEntrada('');
     onOpenChange(false);
   };
 
