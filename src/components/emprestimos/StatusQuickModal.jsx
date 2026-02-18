@@ -39,6 +39,7 @@ function adicionarDiasUteis(dataInicio, dias) {
 export default function StatusQuickModal({ open, onOpenChange, proposta, empresaId }) {
   const [dataPagamento, setDataPagamento] = useState('');
   const [cipValorPrevisto, setCipValorPrevisto] = useState('');
+  const [cipDataEntrada, setCipDataEntrada] = useState('');
   const [aguardandoExtra, setAguardandoExtra] = useState(null); // 'pago' | 'cip'
   const [statusSelecionado, setStatusSelecionado] = useState(null);
   const queryClient = useQueryClient();
