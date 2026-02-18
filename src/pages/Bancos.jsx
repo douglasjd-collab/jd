@@ -110,7 +110,8 @@ export default function Bancos() {
     mutationFn: async ({ id, dados }) => {
       return await base44.entities.Banco.update(id, {
         codigo: dados.codigo,
-        nome: dados.nome
+        nome: dados.nome,
+        logo_url: dados.logo_url || ''
       });
     },
     onSuccess: () => {
