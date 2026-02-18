@@ -49,6 +49,16 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
     },
   });
 
+  const { data: statusList = [] } = useQuery({
+    queryKey: ['status-propostas-edit'],
+    queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
+  });
+
+  const { data: convenios = [] } = useQuery({
+    queryKey: ['convenios-edit'],
+    queryFn: () => base44.entities.Convenio.filter({ ativo: true }),
+  });
+
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Proposta.update(proposta.id, data),
     onSuccess: () => {
