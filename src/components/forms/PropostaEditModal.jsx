@@ -288,29 +288,36 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="administradora">Banco/Administradora</Label>
-                  <Select
-                    value={formData.administradora_id || ''}
-                    onValueChange={(value) => {
-                      const admin = administradoras.find(a => a.id === value);
-                      setFormData({
-                        ...formData,
-                        administradora_id: value,
-                        administradora_nome: admin?.nome_fantasia || admin?.razao_social || ''
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {administradoras.map(adm => (
-                        <SelectItem key={adm.id} value={adm.id}>
-                          {adm.nome_fantasia || adm.razao_social}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>{formData.produto === 'emprestimo' ? 'Banco' : 'Administradora'}</Label>
+                  {formData.produto === 'emprestimo' ? (
+                    <Select
+                      value={formData.administradora_id || ''}
+                      onValueChange={(value) => {
+                        const banco = bancos.find(b => b.id === value);
+                        setFormData({ ...formData, administradora_id: value, administradora_nome: banco?.nome || '' });
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {bancos.map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select
+                      value={formData.administradora_id || ''}
+                      onValueChange={(value) => {
+                        const admin = administradoras.find(a => a.id === value);
+                        setFormData({ ...formData, administradora_id: value, administradora_nome: admin?.nome_fantasia || admin?.razao_social || '' });
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {administradoras.map(adm => (
+                          <SelectItem key={adm.id} value={adm.id}>{adm.nome_fantasia || adm.razao_social}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </div>
