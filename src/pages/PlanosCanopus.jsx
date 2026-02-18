@@ -69,6 +69,7 @@ export default function PlanosCanopusPage() {
   const [filtroGrupo, setFiltroGrupo] = useState('');
   const [planoParaExcluir, setPlanoParaExcluir] = useState(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [buyLoading, setBuyLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
