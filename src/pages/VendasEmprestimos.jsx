@@ -435,23 +435,33 @@ export default function VendasEmprestimos() {
                     </DropdownMenu>
                   </div>
 
-                  {/* Tags row */}
+                  {/* Tags row: Banco > Convênio > Tipo */}
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Banco com logo */}
+                      {p.administradora_nome && (() => {
+                        const banco = getBanco(p.administradora_id);
+                        return (
+                          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            {banco?.logo_url ? (
+                              <img src={banco.logo_url} alt={p.administradora_nome} className="w-4 h-4 object-contain rounded-sm flex-shrink-0" />
+                            ) : (
+                              <Building2 className="w-3 h-3 text-slate-400" />
+                            )}
+                            {p.administradora_nome}
+                          </span>
+                        );
+                      })()}
+                      {/* Convênio */}
                       {p.emprestimo_convenio_nome && (
                         <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-700">
-                          <Building2 className="w-3 h-3" />
                           {p.emprestimo_convenio_nome}
                         </span>
                       )}
+                      {/* Tipo */}
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${tipoColor}`}>
                         {tipoLabel}
                       </span>
-                      {p.administradora_nome && (
-                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                          {p.administradora_nome}
-                        </span>
-                      )}
                     </div>
                     <p className="font-bold text-slate-900 text-base">{formatCurrency(p.valor_credito)}</p>
                   </div>
