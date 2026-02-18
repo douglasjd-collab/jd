@@ -141,10 +141,7 @@ export default function Bancos() {
   });
 
   const resetForm = () => {
-    setFormData({
-      codigo: '',
-      nome: ''
-    });
+    setFormData({ codigo: '', nome: '', logo_url: '' });
     setEditando(null);
   };
 
