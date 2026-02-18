@@ -347,6 +347,7 @@ export default function Dashboard() {
     });
   }, [clientes]);
 
+  const [cipModalOpen, setCipModalOpen] = React.useState(false);
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState(null);
   const [gruposModalOpen, setGruposModalOpen] = React.useState(false);
