@@ -543,7 +543,7 @@ export default function Vendas() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Propostas"
+        title="Consórcio"
         subtitle={`${filteredVendas.length} propostas`}
         actionLabel="Nova Proposta"
         onAction={() => {
