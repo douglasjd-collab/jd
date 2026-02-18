@@ -231,9 +231,13 @@ export default function Bancos() {
             <Card key={banco.id} className="hover:shadow-md transition-shadow">
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1">
-                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-5 h-5 text-green-600" />
-                  </div>
+                   <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-200">
+                     {banco.logo_url ? (
+                       <img src={banco.logo_url} alt={banco.nome} className="w-full h-full object-contain p-1" />
+                     ) : (
+                       <Building2 className="w-5 h-5 text-green-600" />
+                     )}
+                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900">
                       {banco.nome}
