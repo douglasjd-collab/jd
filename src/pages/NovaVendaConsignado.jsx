@@ -120,61 +120,39 @@ export default function NovaVendaConsignado() {
       const convenioSelecionado = convenios.find(c => c.id === dados.convenio_id);
       const vendedorSelecionado = vendedores.find(v => v.id === dados.vendedor_parceiro_id);
 
-      const vendaBase = await base44.entities.VendaBase.create({
+      const proposta = await base44.entities.Proposta.create({
         empresa_id: empresaId,
-        produto: 'EMPRESTIMO_CONSIGNADO',
-        tipo: dados.tipo_consignado,
+        produto: 'emprestimo',
         cliente_id: clienteSelecionado.id,
         cliente_nome: clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social,
-        usuario_digitador_id: user.id,
-        usuario_digitador_nome: user.full_name,
         vendedor_id: vendedorSelecionado?.id || user.id,
         vendedor_nome: vendedorSelecionado?.nome || user.full_name,
-        empresa_parceira: dados.empresa_parceira || dados.banco,
+        administradora_id: '',
+        administradora_nome: dados.banco || '',
+        contrato: dados.numero_contrato,
         status: dados.status,
-        valor_total: parseFloat(dados.valor_liberado) || 0,
         data_venda: new Date().toISOString().split('T')[0],
-        observacoes: dados.observacoes
+        valor_credito: parseFloat(dados.valor_liberado) || 0,
+        valor_comissao: parseFloat(dados.comissao_empresa_prevista) || 0,
+        comissao_recebida: parseFloat(dados.comissao_empresa_recebida) || 0,
+        observacoes: dados.observacoes,
+        emprestimo_tipo: dados.tipo_consignado,
+        emprestimo_convenio_id: dados.convenio_id,
+        emprestimo_convenio_nome: convenioSelecionado?.nome || '',
+        emprestimo_numero_beneficio: dados.numero_beneficio,
+        emprestimo_numero_ade: dados.numero_ade,
+        emprestimo_prazo: parseInt(dados.prazo) || 0,
+        emprestimo_saldo_devedor: parseFloat(dados.saldo_devedor) || 0,
+        emprestimo_data_liberacao: dados.data_liberacao || null,
+        emprestimo_banco_anterior: dados.banco_anterior,
       });
 
-      await base44.entities.VendaConsignado.create({
-        venda_base_id: vendaBase.id,
-        tipo_consignado: dados.tipo_consignado,
-        numero_ade: dados.numero_ade,
-        numero_contrato: dados.numero_contrato,
-        convenio_id: dados.convenio_id,
-        convenio_nome: convenioSelecionado?.nome || '',
-        numero_beneficio: dados.numero_beneficio,
-        banco: dados.banco,
-        valor_liberado: parseFloat(dados.valor_liberado) || 0,
-        valor_bruto: parseFloat(dados.valor_bruto) || 0,
-        prazo: parseInt(dados.prazo) || 0,
-        parcela: parseFloat(dados.parcela) || 0,
-        data_liberacao: dados.data_liberacao || null,
-        banco_anterior: dados.banco_anterior,
-        saldo_devedor: parseFloat(dados.saldo_devedor) || 0,
-        prazo_restante: parseInt(dados.prazo_restante) || 0,
-        prazo_original: parseInt(dados.prazo_original) || 0,
-        contrato_anterior: dados.contrato_anterior,
-        data_inicio: dados.data_inicio || null,
-        vendedor_parceiro_id: dados.vendedor_parceiro_id || null,
-        vendedor_parceiro_nome: vendedorSelecionado?.nome || '',
-        tabela_comissao_id: dados.tabela_comissao_id || null,
-        percentual_comissao_empresa: parseFloat(dados.percentual_comissao_empresa) || 0,
-        comissao_empresa_prevista: parseFloat(dados.comissao_empresa_prevista) || 0,
-        comissao_empresa_recebida: parseFloat(dados.comissao_empresa_recebida) || 0,
-        percentual_comissao_vendedor: parseFloat(dados.percentual_comissao_vendedor) || 0,
-        comissao_vendedor_prevista: parseFloat(dados.comissao_vendedor_prevista) || 0,
-        comissao_vendedor_paga: parseFloat(dados.comissao_vendedor_paga) || 0,
-        status: dados.status
-      });
-
-      return vendaBase;
+      return proposta;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendas'] });
+      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
       toast.success('Empréstimo consignado cadastrado com sucesso!');
-      navigate('/VendasEmprestimos');
+      navigate(createPageUrl('VendasEmprestimos'));
     },
     onError: (error) => {
       toast.error('Erro ao criar empréstimo: ' + error.message);
