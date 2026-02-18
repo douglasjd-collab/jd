@@ -295,14 +295,12 @@ export default function Bancos() {
                   )}
                 </div>
                 <div className="flex-1 space-y-1">
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                    <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingLogo} asChild={false}
-                      onClick={(e) => { e.preventDefault(); e.currentTarget.previousElementSibling?.click?.(); e.currentTarget.closest('label')?.querySelector('input')?.click?.(); }}>
-                      {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {uploadingLogo ? 'Enviando...' : 'Enviar Logo'}
-                    </Button>
-                  </label>
+                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                  <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingLogo}
+                    onClick={() => logoInputRef.current?.click()}>
+                    {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    {uploadingLogo ? 'Enviando...' : 'Enviar Logo'}
+                  </Button>
                   {formData.logo_url && (
                     <button type="button" onClick={() => setFormData(p => ({ ...p, logo_url: '' }))}
                       className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
