@@ -169,7 +169,8 @@ export default function VendasEmprestimos() {
       getClienteCpf(p.cliente_id)?.includes(q);
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
-    return matchQuery && matchBanco && matchTipo;
+    const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
+    return matchQuery && matchBanco && matchTipo && matchStatus;
   });
 
   const formatCurrency = (value) => {
