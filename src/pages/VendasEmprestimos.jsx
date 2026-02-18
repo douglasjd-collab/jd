@@ -41,6 +41,7 @@ import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropost
 import KanbanConfigModal from '@/components/emprestimos/KanbanConfigModal';
 import ComentariosModal from '@/components/emprestimos/ComentariosModal';
 import StatusQuickModal from '@/components/emprestimos/StatusQuickModal';
+import PortabilidadeHojeModal from '@/components/emprestimos/PortabilidadeHojeModal';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
