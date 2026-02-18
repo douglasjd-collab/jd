@@ -40,7 +40,7 @@ export default function VendasEmprestimos() {
   const [search, setSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState('consignado');
   const [filterStatus, setFilterStatus] = useState('todos');
-  const [filterAdministradora, setFilterAdministradora] = useState('todas');
+  const [filterBanco, setFilterBanco] = useState('todos');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
