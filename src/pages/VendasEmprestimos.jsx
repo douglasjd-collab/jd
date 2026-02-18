@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import PageHeader from '@/components/ui/PageHeader';
-import DataTable from '@/components/ui/DataTable';
-import StatusBadge from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +19,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, Pencil, Trash2, Plus, Upload, ChevronDown } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -31,6 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Search, MoreHorizontal, Pencil, Trash2, Plus, Upload,
+  User, Calendar, Building2, FileText, ThumbsUp, MessageCircle,
+  TrendingUp, Clock, CheckCircle2, DollarSign, Settings
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -38,12 +38,39 @@ import { createPageUrl } from '@/utils';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
 import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropostasLoteModal';
 
+const TIPO_LABELS = {
+  NOVO: 'Novo',
+  REFINANCIAMENTO: 'Refinanciamento',
+  PORTABILIDADE_PURA: 'Portabilidade',
+  REFIN_PORTABILIDADE: 'Refin + Port',
+};
+
+const TIPO_COLORS = {
+  NOVO: 'bg-blue-100 text-blue-700',
+  REFINANCIAMENTO: 'bg-purple-100 text-purple-700',
+  PORTABILIDADE_PURA: 'bg-emerald-100 text-emerald-700',
+  REFIN_PORTABILIDADE: 'bg-orange-100 text-orange-700',
+};
+
+const STATUS_COLOR_MAP = {
+  blue: 'bg-blue-100 text-blue-700',
+  green: 'bg-green-100 text-green-700',
+  red: 'bg-red-500 text-white',
+  yellow: 'bg-yellow-100 text-yellow-700',
+  purple: 'bg-purple-100 text-purple-700',
+  orange: 'bg-orange-100 text-orange-700',
+  emerald: 'bg-emerald-100 text-emerald-700',
+  slate: 'bg-slate-100 text-slate-700',
+};
+
 export default function VendasEmprestimos() {
   const navigate = useNavigate();
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterBanco, setFilterBanco] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchNome, setSearchNome] = useState('');
+  const [searchCpf, setSearchCpf] = useState('');
+  const [searchBancoText, setSearchBancoText] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
@@ -52,48 +79,22 @@ export default function VendasEmprestimos() {
   const [importarLoteOpen, setImportarLoteOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    loadUser();
-  }, []);
+  useEffect(() => { loadUser(); }, []);
 
   const loadUser = async () => {
     try {
       const me = await base44.auth.me();
-
       if (me.role === 'super_admin') {
-        setCurrentUser({
-          ...me,
-          auth_id: me.id,
-          empresa_id: null,
-          perfil: 'super_admin',
-        });
+        setCurrentUser({ ...me, auth_id: me.id, empresa_id: null, perfil: 'super_admin' });
         return;
       }
-
-      const colabs = await base44.entities.Colaborador.filter(
-        { user_id: me.id, status: 'ativo' },
-        '-created_date'
-      );
-
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' }, '-created_date');
       if (!colabs || colabs.length === 0) {
-        setCurrentUser({
-          ...me,
-          auth_id: me.id,
-          empresa_id: null,
-          perfil: 'vendedor',
-        });
+        setCurrentUser({ ...me, auth_id: me.id, empresa_id: null, perfil: 'vendedor' });
         return;
       }
-
       const colab = colabs[0];
-
-      setCurrentUser({
-        ...me,
-        auth_id: me.id,
-        empresa_id: colab.empresa_id || null,
-        perfil: colab.perfil || 'vendedor',
-        colaborador_id: colab.id,
-      });
+      setCurrentUser({ ...me, auth_id: me.id, empresa_id: colab.empresa_id || null, perfil: colab.perfil || 'vendedor', colaborador_id: colab.id });
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
     }
@@ -119,10 +120,13 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
 
+  const getCliente = (clienteId) => clientes.find(c => c.id === clienteId);
   const getClienteCpf = (clienteId) => {
-    const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.cpf || cliente?.pj_cnpj || '-';
+    const c = getCliente(clienteId);
+    return c?.cpf || c?.pj_cnpj || '';
   };
+
+  const getStatusConfig = (statusCode) => statusList.find(s => s.codigo === statusCode);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Proposta.delete(id),
@@ -130,140 +134,45 @@ export default function VendasEmprestimos() {
       queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
       setDeleteDialogOpen(false);
       setPropostaToDelete(null);
-      toast.success('Venda excluída com sucesso!');
+      toast.success('Proposta excluída com sucesso!');
     },
-    onError: () => {
-      toast.error('Erro ao excluir venda');
-    }
+    onError: () => toast.error('Erro ao excluir proposta'),
   });
-
-  const handleEdit = (proposta) => {
-    setPropostaToEdit(proposta);
-    setEditModalOpen(true);
-  };
-
-  const handleDelete = (proposta) => {
-    setPropostaToDelete(proposta);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (propostaToDelete) {
-      deleteMutation.mutate(propostaToDelete.id);
-    }
-  };
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
 
-  // Filtrar por perfil
   const filteredByRole = propostas.filter(p => {
     if (isAdmin) return true;
     return p.vendedor_id === currentUser?.colaborador_id;
   });
 
-  // Filtrar por critérios
   const filteredPropostas = filteredByRole.filter(p => {
-    const q = searchQuery.toLowerCase();
-    const matchQuery = !searchQuery ||
-      p.cliente_nome?.toLowerCase().includes(q) ||
-      getClienteCpf(p.cliente_id)?.includes(q);
+    const cpf = getClienteCpf(p.cliente_id);
+    const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
+    const matchCpf = !searchCpf || cpf.includes(searchCpf);
+    const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
     const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
-    return matchQuery && matchBanco && matchTipo && matchStatus;
+    return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus;
   });
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value || 0);
-  };
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 
-  const getTipoPrestamo = (proposta) => {
-    if (proposta.emprestimo_tipo) {
-      const tipos = {
-        'NOVO': 'Novo',
-        'REFINANCIAMENTO': 'Refinanciamento',
-        'PORTABILIDADE_PURA': 'Portabilidade',
-        'REFIN_PORTABILIDADE': 'Refin + Portabilidade'
-      };
-      return tipos[proposta.emprestimo_tipo] || proposta.emprestimo_tipo;
-    }
-    return 'Pessoal';
-  };
+  const getTipoLabel = (proposta) => TIPO_LABELS[proposta.emprestimo_tipo] || proposta.emprestimo_tipo || 'Pessoal';
 
-  const columns = [
-    {
-      header: 'Cliente',
-      cell: (row) => (
-        <div>
-          <p className="font-medium text-slate-900">{row.cliente_nome || '-'}</p>
-          {row.cliente_id && <p className="text-xs text-slate-500">{getClienteCpf(row.cliente_id)}</p>}
-        </div>
-      )
-    },
-    {
-      header: 'Tipo',
-      cell: (row) => (
-        <span className="px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800">
-          {getTipoPrestamo(row)}
-        </span>
-      )
-    },
-    {
-      header: 'Banco',
-      cell: (row) => row.administradora_nome || '-'
-    },
-    {
-      header: 'Valor',
-      cell: (row) => formatCurrency(row.valor_credito)
-    },
-    {
-      header: 'Vendedor',
-      cell: (row) => row.vendedor_nome || '-'
-    },
-    {
-      header: 'Data',
-      cell: (row) => {
-        if (!row.data_venda) return '-';
-        const date = new Date(row.data_venda + 'T12:00:00');
-        return format(date, 'dd/MM/yyyy');
-      }
-    },
-    {
-      header: 'Status',
-      cell: (row) => <StatusBadge status={row.status} />
-    },
-    {
-      header: '',
-      className: 'w-12',
-      cell: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEdit(row)}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar
-            </DropdownMenuItem>
-            {isAdmin && (
-              <DropdownMenuItem 
-                onClick={() => handleDelete(row)}
-                className="text-red-600 focus:text-red-600"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Excluir
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    }
-  ];
+  // Summary stats
+  const today = new Date().toISOString().slice(0, 10);
+  const todayPropostas = filteredByRole.filter(p => p.data_venda === today);
+  const emAndamento = filteredByRole.filter(p => ['em_andamento', 'pendente', 'aguardando_formalizacao'].includes(p.status));
+  const aprovadas = filteredByRole.filter(p => ['aprovado', 'pago', 'liberado'].includes(p.status));
+  const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+
+  // Counts per tipo for filter pills
+  const countByTipo = (tipo) => tipo === 'todos'
+    ? filteredByRole.length
+    : filteredByRole.filter(p => p.emprestimo_tipo === tipo).length;
 
   if (!currentUser) {
     return (
@@ -274,139 +183,290 @@ export default function VendasEmprestimos() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Propostas de Empréstimos"
-        subtitle={`${filteredPropostas.length} propostas`}
-        actionLabel="Nova Venda"
-        actionIcon={Plus}
-        onAction={() => navigate(createPageUrl('NovaVendaConsignado'))}
-      >
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => setImportarLoteOpen(true)}
-        >
-          <Upload className="w-4 h-4" />
-          Importar em Lote
-        </Button>
-      </PageHeader>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Propostas de Empréstimos</h1>
+          <p className="text-slate-500 mt-1">{filteredPropostas.length} propostas encontradas</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setImportarLoteOpen(true)}>
+            <Upload className="w-4 h-4" />
+            Importar em Lote
+          </Button>
+          <Button
+            className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
+            onClick={() => navigate(createPageUrl('NovaVendaConsignado'))}
+          >
+            <Plus className="w-4 h-4" />
+            Nova Venda
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Hoje</p>
+              <p className="font-bold text-slate-900">{todayPropostas.length} propostas</p>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">{filteredByRole.length} total</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Em andamento</p>
+              <p className="font-bold text-slate-900">{emAndamento.length}</p>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">{emAndamento.length} propostas</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Aprovadas</p>
+              <p className="font-bold text-slate-900">{aprovadas.length}</p>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">{aprovadas.length} propostas</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Valor total do dia</p>
+              <p className="font-bold text-slate-900 text-sm">{formatCurrency(valorHoje)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Filtros rápidos por status */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setFilterStatus('todos')}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filterStatus === 'todos' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${filterStatus === 'todos' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
         >
-          Todos
+          Todos <span className="bg-white/20 text-inherit px-1.5 py-0.5 rounded-full text-xs">{filteredByRole.length}</span>
         </button>
-        {statusList.sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => {
-          const colorMap = {
-            blue: { bg: 'bg-blue-100 text-blue-700 hover:bg-blue-200', active: 'bg-blue-600 text-white' },
-            green: { bg: 'bg-green-100 text-green-700 hover:bg-green-200', active: 'bg-green-600 text-white' },
-            red: { bg: 'bg-red-100 text-red-700 hover:bg-red-200', active: 'bg-red-600 text-white' },
-            yellow: { bg: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200', active: 'bg-yellow-600 text-white' },
-            purple: { bg: 'bg-purple-100 text-purple-700 hover:bg-purple-200', active: 'bg-purple-600 text-white' },
-            orange: { bg: 'bg-orange-100 text-orange-700 hover:bg-orange-200', active: 'bg-orange-600 text-white' },
-            emerald: { bg: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200', active: 'bg-emerald-600 text-white' },
-            slate: { bg: 'bg-slate-100 text-slate-700 hover:bg-slate-200', active: 'bg-slate-600 text-white' },
-          };
-          const colors = colorMap[s.cor] || colorMap.slate;
+        {[...statusList].sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => {
+          const colorClass = STATUS_COLOR_MAP[s.cor] || STATUS_COLOR_MAP.slate;
           const isActive = filterStatus === s.codigo;
+          const count = filteredByRole.filter(p => p.status === s.codigo).length;
           return (
             <button
               key={s.id}
               onClick={() => setFilterStatus(s.codigo)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${isActive ? colors.active : colors.bg}`}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${isActive ? colorClass.replace('100', '500').replace('700', 'white') : colorClass}`}
+              style={isActive ? {} : {}}
             >
-              {s.nome}
+              {s.nome} <span className="opacity-70 text-xs">{count}</span>
             </button>
           );
         })}
+        <button className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center ml-auto">
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Filtros de busca */}
-      <Card className="p-4 border-0 shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-3">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-3">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por nome ou CPF..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Buscar por nome..." value={searchNome} onChange={(e) => setSearchNome(e.target.value)} className="pl-9 border-0 bg-slate-50" />
+          </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Buscar por CPF..." value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} className="pl-9 border-0 bg-slate-50" />
+          </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Buscar por banco..." value={searchBancoText} onChange={(e) => setSearchBancoText(e.target.value)} className="pl-9 border-0 bg-slate-50" />
           </div>
           <Select value={filterTipo} onValueChange={setFilterTipo}>
-            <SelectTrigger className="w-full sm:w-52">
-              <SelectValue placeholder="Todos os Tipos" />
+            <SelectTrigger className="w-full sm:w-44 border-0 bg-slate-50">
+              <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os Tipos</SelectItem>
               <SelectItem value="NOVO">Novo</SelectItem>
               <SelectItem value="REFINANCIAMENTO">Refinanciamento</SelectItem>
               <SelectItem value="PORTABILIDADE_PURA">Portabilidade</SelectItem>
-              <SelectItem value="REFIN_PORTABILIDADE">Refin + Portabilidade</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterBanco} onValueChange={setFilterBanco}>
-            <SelectTrigger className="w-full sm:w-52">
-              <SelectValue placeholder="Todos os Bancos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Bancos</SelectItem>
-              {bancos.map(banco => (
-                <SelectItem key={banco.id} value={banco.nome}>{banco.nome}</SelectItem>
-              ))}
+              <SelectItem value="REFIN_PORTABILIDADE">Refin + Port</SelectItem>
             </SelectContent>
           </Select>
         </div>
-      </Card>
+      </div>
 
-      {/* Table */}
-      <DataTable
-        columns={columns}
-        data={filteredPropostas}
-        isLoading={isLoading}
-        emptyMessage="Nenhuma proposta encontrada"
-      />
+      {/* Cards Grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 animate-pulse h-44" />
+          ))}
+        </div>
+      ) : filteredPropostas.length === 0 ? (
+        <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-slate-100">
+          <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="text-slate-500 font-medium">Nenhuma proposta encontrada</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredPropostas.map(p => {
+            const cpf = getClienteCpf(p.cliente_id);
+            const statusConfig = getStatusConfig(p.status);
+            const statusColorClass = statusConfig ? (STATUS_COLOR_MAP[statusConfig.cor] || STATUS_COLOR_MAP.slate) : 'bg-slate-100 text-slate-600';
+            const tipoColor = TIPO_COLORS[p.emprestimo_tipo] || 'bg-slate-100 text-slate-600';
+            const tipoLabel = getTipoLabel(p);
 
-      <ImportarPropostasLoteModal
-        open={importarLoteOpen}
-        onOpenChange={setImportarLoteOpen}
-      />
+            return (
+              <div key={p.id} className="bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                {/* Card Header */}
+                <div className="p-4 pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+                        {p.cliente_nome?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm leading-tight">{p.cliente_nome || '-'}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{cpf || '-'}</p>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => { setPropostaToEdit(p); setEditModalOpen(true); }}>
+                          <Pencil className="w-4 h-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        {isAdmin && (
+                          <DropdownMenuItem onClick={() => { setPropostaToDelete(p); setDeleteDialogOpen(true); }} className="text-red-600 focus:text-red-600">
+                            <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
-      {/* Edit Modal */}
+                  {/* Tags row */}
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {p.emprestimo_convenio_nome && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-700">
+                          <Building2 className="w-3 h-3" />
+                          {p.emprestimo_convenio_nome}
+                        </span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${tipoColor}`}>
+                        {tipoLabel}
+                      </span>
+                    </div>
+                    <p className="font-bold text-slate-900 text-base">{formatCurrency(p.valor_credito)}</p>
+                  </div>
+
+                  {/* Info row */}
+                  <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
+                    <div className="flex items-center gap-1">
+                      <User className="w-3.5 h-3.5" />
+                      <span>{p.vendedor_nome || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {p.data_venda && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{format(new Date(p.data_venda + 'T12:00:00'), 'dd/MM/yyyy')}</span>
+                        </div>
+                      )}
+                      {statusConfig && (
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${statusColorClass}`}>
+                          {statusConfig.nome}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Footer / Actions */}
+                <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs gap-1 border-blue-200 text-blue-700 hover:bg-blue-50"
+                    onClick={() => navigate(createPageUrl(`VendaEmprestimoDetalhes?id=${p.id}`))}
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Ver Detalhes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs gap-1 border-slate-200 text-slate-600 hover:bg-slate-50"
+                    onClick={() => { setPropostaToEdit(p); setEditModalOpen(true); }}
+                  >
+                    <ThumbsUp className="w-3.5 h-3.5" /> Aprovar
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 text-xs gap-1 bg-green-500 hover:bg-green-600 text-white"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modals */}
+      <ImportarPropostasLoteModal open={importarLoteOpen} onOpenChange={setImportarLoteOpen} />
+
       <PropostaEditModal
         proposta={propostaToEdit}
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
       />
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir esta venda?
+              Tem certeza que deseja excluir esta proposta?
               {propostaToDelete && (
                 <div className="mt-3 p-3 bg-slate-50 rounded-lg">
                   <p className="font-medium text-slate-900">{propostaToDelete.cliente_nome}</p>
-                  <p className="text-sm text-slate-600">{getTipoPrestamo(propostaToDelete)}</p>
+                  <p className="text-sm text-slate-600">{getTipoLabel(propostaToDelete)}</p>
                 </div>
               )}
-              <p className="mt-3 text-sm text-red-600">
-                Esta ação não pode ser desfeita.
-              </p>
+              <p className="mt-3 text-sm text-red-600">Esta ação não pode ser desfeita.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={() => propostaToDelete && deleteMutation.mutate(propostaToDelete.id)} className="bg-red-600 hover:bg-red-700">
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
