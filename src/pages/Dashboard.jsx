@@ -198,15 +198,15 @@ export default function Dashboard() {
 
   // Propostas CIP com retorno previsto para hoje
   const { data: propostasCip = [] } = useQuery({
-    queryKey: ['propostas-cip-retorno', user?.empresa_id],
-    enabled: !!user?.empresa_id,
+    queryKey: ['propostas-cip-retorno', user?.empresa_id, user?.perfil],
+    enabled: !!user,
     queryFn: async () => {
       const hoje = format(new Date(), 'yyyy-MM-dd');
-      const lista = await base44.entities.Proposta.filter({
-        empresa_id: user.empresa_id,
-        cip_data_retorno_prevista: hoje,
-      });
-      return lista;
+      // Buscar todas propostas com status aguardando CIP e filtrar pelo retorno previsto
+      const filtro = { produto: 'emprestimo' };
+      if (user.empresa_id) filtro.empresa_id = user.empresa_id;
+      const todas = await base44.entities.Proposta.filter(filtro, '-created_date', 500);
+      return todas.filter(p => p.cip_data_retorno_prevista === hoje);
     },
     staleTime: 60000,
   });
