@@ -273,8 +273,11 @@ export default function VendasEmprestimos() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Vendas de Empréstimos"
-        subtitle={`${filteredPropostas.length} vendas`}
+        title="Propostas de Empréstimos"
+        subtitle={`${filteredPropostas.length} propostas`}
+        actionLabel="Nova Venda"
+        actionIcon={Plus}
+        onAction={() => navigate(createPageUrl('NovaVendaConsignado'))}
       />
 
       {/* Tabs */}
