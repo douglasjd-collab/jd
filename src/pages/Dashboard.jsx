@@ -25,7 +25,8 @@ import {
   Banknote
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, isWeekend, addDays } from 'date-fns';
+import CipRetornoModal from '@/components/emprestimos/CipRetornoModal';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart,
