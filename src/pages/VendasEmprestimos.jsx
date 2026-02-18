@@ -335,8 +335,47 @@ export default function VendasEmprestimos() {
         </div>
       </div>
 
+      {/* Kanban View */}
+      {viewMode === 'kanban' && (
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {[...statusList].sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => {
+              const colPropostas = filteredPropostas.filter(p => p.status === s.codigo);
+              const colColor = STATUS_COLOR_MAP[s.cor] || STATUS_COLOR_MAP.slate;
+              return (
+                <div key={s.id} className="w-72 flex-shrink-0">
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-t-lg ${colColor}`}>
+                    <span className="font-semibold text-sm">{s.nome}</span>
+                    <span className="text-xs font-bold opacity-70">{colPropostas.length}</span>
+                  </div>
+                  <div className="bg-slate-100 rounded-b-lg p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
+                    {colPropostas.map(p => (
+                      <div key={p.id} className="bg-white rounded-lg p-3 shadow-sm border border-slate-100 cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => navigate(createPageUrl(`VendaEmprestimoDetalhes?id=${p.id}`))}>
+                        <p className="font-semibold text-xs text-slate-900 leading-tight">{p.cliente_nome}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{getClienteCpf(p.cliente_id)}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${TIPO_COLORS[p.emprestimo_tipo] || 'bg-slate-100 text-slate-600'}`}>
+                            {getTipoLabel(p)}
+                          </span>
+                          <span className="text-xs font-bold text-slate-800">{formatCurrency(p.valor_credito)}</span>
+                        </div>
+                        {p.vendedor_nome && <p className="text-xs text-slate-400 mt-1">{p.vendedor_nome}</p>}
+                      </div>
+                    ))}
+                    {colPropostas.length === 0 && (
+                      <div className="text-center py-6 text-slate-400 text-xs">Nenhuma proposta</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Cards Grid */}
-      {isLoading ? (
+      {viewMode === 'cards' && isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 animate-pulse h-44" />
