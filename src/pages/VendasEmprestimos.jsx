@@ -239,7 +239,7 @@ export default function VendasEmprestimos() {
               <CheckCircle2 className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Aprovadas</p>
+              <p className="text-xs text-slate-500">Pagas</p>
               <p className="font-bold text-slate-900">{aprovadas.length}</p>
             </div>
           </div>
