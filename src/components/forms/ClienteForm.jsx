@@ -174,12 +174,22 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       .replace(/(-\d{2})\d+?$/, '$1');
   };
 
-  const formatPhone = (value) => {
-    return value
-      .replace(/\D/g, '')
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{5})(\d)/, '$1-$2')
-      .replace(/(-\d{4})\d+?$/, '$1');
+  const formatPhone = (value, countryCode = '+55') => {
+    const numbers = value.replace(/\D/g, '');
+    
+    if (countryCode === '+55') {
+      // Brasil: (XX) XXXXX-XXXX
+      return numbers
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{4})\d+?$/, '$1');
+    } else {
+      // Outros países: XXX XXX XXX (ou menos dígitos)
+      return numbers
+        .replace(/(\d{3})(\d)/, '$1 $2')
+        .replace(/(\d{3}\s\d{3})(\d)/, '$1 $2')
+        .replace(/(\d{3}\s\d{3}\s\d{3})\d+?$/, '$1');
+    }
   };
 
   const countryCodeOptions = [
