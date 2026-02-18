@@ -495,7 +495,6 @@ export default function VendasEmprestimos() {
           })}
         </div>
       ) : null}
-
       {/* Modals */}
       <ImportarPropostasLoteModal open={importarLoteOpen} onOpenChange={setImportarLoteOpen} />
 
