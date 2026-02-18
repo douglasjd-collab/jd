@@ -401,31 +401,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Alerta CIP - Retorno de Saldo */}
-      {propostasCip.length > 0 && (
-        <button
-          onClick={() => setCipModalOpen(true)}
-          className="w-full text-left"
-        >
-          <Card className="border-l-4 border-l-orange-500 bg-orange-50/60 hover:bg-orange-50 transition-colors cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <DollarSign className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-orange-900">💰 Retorno de Saldo CIP — Hoje!</h3>
-                  <p className="text-sm text-orange-700 mt-1">
-                    <strong>{propostasCip.length} proposta(s)</strong> com retorno de saldo previsto para hoje.
-                    Clique para visualizar.
-                  </p>
-                </div>
-                <span className="text-orange-600 text-sm font-bold bg-orange-100 px-3 py-1 rounded-full border border-orange-300">
-                  Ver
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </button>
-      )}
+
 
       {/* Alerta Aniversariantes do Dia */}
       {aniversariantesHoje.length > 0 && (
