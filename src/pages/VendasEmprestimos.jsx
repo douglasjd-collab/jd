@@ -29,7 +29,7 @@ import {
 import {
   Search, MoreHorizontal, Pencil, Trash2, Plus, Upload,
         User, Calendar, Building2, FileText, MessageCircle,
-        TrendingUp, Clock, CheckCircle2, Settings,
+        TrendingUp, Clock, CheckCircle2, Settings, Loader2,
         AlignJustify, Kanban, ArrowRightLeft, DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -178,7 +178,7 @@ export default function VendasEmprestimos() {
 
   // Summary stats
   const today = new Date().toISOString().slice(0, 10);
-  const todayPropostas = filteredByRole.filter(p => p.data_venda === today);
+  const todayPropostas = filteredByRole.filter(p => p.data_venda === today && (p.valor_credito || 0) > 0);
   const emAndamento = filteredByRole.filter(p => ['em_andamento', 'pendente', 'aguardando_formalizacao'].includes(p.status));
   const aprovadas = filteredByRole.filter(p => ['pago', 'paga', 'pago_vendedor'].includes(p.status));
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
@@ -240,7 +240,7 @@ export default function VendasEmprestimos() {
           </Button>
           <Button
             className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
-            onClick={() => navigate(createPageUrl('NovaVendaConsignado'))}
+            onClick={() => navigate(createPageUrl('NovaVendaEmprestimo'))}
           >
             <Plus className="w-4 h-4" />
             Nova Venda
