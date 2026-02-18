@@ -31,6 +31,8 @@ import {
 import { Search, MoreHorizontal, Pencil, Trash2, Loader2, Zap, Plus, Upload, ChevronDown, ShoppingCart, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import {
   AlertDialog,
   AlertDialogAction,
