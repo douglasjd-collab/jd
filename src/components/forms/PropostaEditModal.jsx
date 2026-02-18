@@ -38,6 +38,11 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
     queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
   });
 
+  const { data: bancos = [] } = useQuery({
+    queryKey: ['bancos-edit'],
+    queryFn: () => base44.entities.Banco.filter({ ativo: true }),
+  });
+
   const { data: vendedores = [] } = useQuery({
     queryKey: ['vendedores'],
     queryFn: async () => {
