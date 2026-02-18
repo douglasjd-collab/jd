@@ -39,6 +39,7 @@ import { createPageUrl } from '@/utils';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
 
 export default function VendasEmprestimos() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState('consignado');
   const [filterStatus, setFilterStatus] = useState('todos');
