@@ -38,6 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
 import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropostasLoteModal';
+import KanbanConfigModal from '@/components/emprestimos/KanbanConfigModal';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
