@@ -78,6 +78,7 @@ export default function VendasEmprestimos() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [propostaToEdit, setPropostaToEdit] = useState(null);
   const [importarLoteOpen, setImportarLoteOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'kanban'
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
