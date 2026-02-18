@@ -40,6 +40,7 @@ import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import AntiTranslateGuard from '@/components/AntiTranslateGuard';
 import { Toaster } from 'sonner';
+import VendaForm from '@/components/forms/VendaForm';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
