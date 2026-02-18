@@ -177,6 +177,30 @@ export default function Clientes() {
         return;
       }
       
+      // Verificar duplicatas se for um novo cliente
+      if (!clienteParaEditar) {
+        const tipopessoa = data.tipo_pessoa;
+        let clienteJaExiste = false;
+        
+        if (tipopessoa === 'Física' && data.cpf) {
+          clienteJaExiste = clientes.some(c => 
+            c.tipo_pessoa === 'Física' && c.cpf === data.cpf
+          );
+          if (clienteJaExiste) {
+            toast.error('Já existe um cliente com este CPF cadastrado.');
+            return;
+          }
+        } else if (tipopessoa === 'Jurídica' && data.pj_cnpj) {
+          clienteJaExiste = clientes.some(c => 
+            c.tipo_pessoa === 'Jurídica' && c.pj_cnpj === data.pj_cnpj
+          );
+          if (clienteJaExiste) {
+            toast.error('Já existe um cliente com este CNPJ cadastrado.');
+            return;
+          }
+        }
+      }
+      
       let empresa_id = user.empresa_id || null;
       let vendedor_id = user.id;
       let vendedor_nome = user.full_name;
