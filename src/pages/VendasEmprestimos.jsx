@@ -166,7 +166,7 @@ export default function VendasEmprestimos() {
   const today = new Date().toISOString().slice(0, 10);
   const todayPropostas = filteredByRole.filter(p => p.data_venda === today);
   const emAndamento = filteredByRole.filter(p => ['em_andamento', 'pendente', 'aguardando_formalizacao'].includes(p.status));
-  const aprovadas = filteredByRole.filter(p => ['aprovado', 'pago', 'liberado'].includes(p.status));
+  const aprovadas = filteredByRole.filter(p => ['pago', 'paga', 'pago_vendedor'].includes(p.status));
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
   // Counts per tipo for filter pills
