@@ -305,7 +305,7 @@ export default function VendasEmprestimos() {
             </div>
             <div>
               <p className="text-xs text-slate-500">Em andamento</p>
-              <p className="font-bold text-slate-900">{emAndamento.length}</p>
+              <p className="font-bold text-slate-900 text-sm">{formatCurrency(valor_em_andamento)}</p>
             </div>
           </div>
           <p className="text-xs text-slate-400 mt-2">{emAndamento.length} propostas</p>
