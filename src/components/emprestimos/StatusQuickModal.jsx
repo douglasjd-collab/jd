@@ -100,14 +100,18 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
   };
 
   const handleConfirmarCip = () => {
-    const hoje = new Date();
-    const dataRetorno = adicionarDiasUteis(hoje, 5);
+    if (!cipDataEntrada) {
+      toast.error('Informe a data de entrada no CIP');
+      return;
+    }
+    const dataBase = new Date(cipDataEntrada + 'T12:00:00');
+    const dataRetorno = adicionarDiasUteis(dataBase, 5);
     const dataRetornoStr = format(dataRetorno, 'yyyy-MM-dd');
     const valorNum = parseFloat(cipValorPrevisto.replace(/\./g, '').replace(',', '.')) || 0;
 
     updateMutation.mutate({
       status: statusSelecionado.codigo,
-      cip_data_entrada: format(hoje, 'yyyy-MM-dd'),
+      cip_data_entrada: cipDataEntrada,
       cip_data_retorno_prevista: dataRetornoStr,
       cip_valor_previsto: valorNum || undefined,
     });
