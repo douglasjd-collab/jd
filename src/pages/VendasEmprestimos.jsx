@@ -31,12 +31,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, MoreHorizontal, Pencil, Filter, Trash2, Plus } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Filter, Trash2, Plus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
+import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropostasLoteModal';
 
 export default function VendasEmprestimos() {
   const navigate = useNavigate();
