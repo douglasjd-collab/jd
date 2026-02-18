@@ -114,6 +114,8 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.Banco.filter({ ativo: true }),
   });
 
+  const getBanco = (administradoraId) => bancos.find(b => b.id === administradoraId);
+
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-emprestimos'],
     queryFn: () => base44.entities.Cliente.list(),
