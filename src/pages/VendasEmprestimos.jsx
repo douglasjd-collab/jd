@@ -242,6 +242,29 @@ export default function VendasEmprestimos() {
         </div>
       </div>
 
+      {/* CIP Retorno Alert */}
+      {propostasCip.length > 0 && (
+        <button
+          onClick={() => setPortabilidadeHojeOpen(true)}
+          className="w-full text-left"
+        >
+          <div className="bg-white rounded-xl shadow-sm border border-orange-100 hover:border-orange-200 p-4 transition-colors cursor-pointer">
+            <div className="flex items-start gap-3">
+              <DollarSign className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-900">💰 Retorno de Saldo CIP — Hoje!</h3>
+                <p className="text-sm text-orange-700 mt-1">
+                  <strong>{propostasCip.length} proposta(s)</strong> com retorno de saldo previsto para hoje.
+                </p>
+              </div>
+              <span className="text-orange-600 text-sm font-bold bg-orange-100 px-3 py-1 rounded-full border border-orange-300">
+                Ver
+              </span>
+            </div>
+          </div>
+        </button>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
