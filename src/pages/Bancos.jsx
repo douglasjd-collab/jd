@@ -71,12 +71,27 @@ export default function Bancos() {
     queryFn: () => base44.entities.Banco.filter({ empresa_id: empresaId }, 'nome')
   });
 
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData(prev => ({ ...prev, logo_url: file_url }));
+    } catch (err) {
+      toast.error('Erro ao fazer upload da logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const criarMutation = useMutation({
     mutationFn: async (dados) => {
       return await base44.entities.Banco.create({
         empresa_id: empresaId,
         codigo: dados.codigo,
         nome: dados.nome,
+        logo_url: dados.logo_url || '',
         ativo: true
       });
     },
