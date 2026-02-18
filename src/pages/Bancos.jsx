@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Plus, Pencil, Trash2, Building2, Search } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Building2, Search, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Bancos() {
