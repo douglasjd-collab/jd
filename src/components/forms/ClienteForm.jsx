@@ -1224,20 +1224,52 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
                       <div>
                         <Label>Telefone Fixo</Label>
-                        <Input
-                          {...register('pj_telefone_fixo')}
-                          placeholder="(00) 0000-0000"
-                          onChange={(e) => setValue('pj_telefone_fixo', formatPhone(e.target.value))}
-                        />
+                        <div className="flex gap-2">
+                          <Select
+                            value={watch('pj_telefone_fixo_pais') || '+55'}
+                            onValueChange={(value) => setValue('pj_telefone_fixo_pais', value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countryCodeOptions.map(opt => (
+                                <SelectItem key={opt.code} value={opt.code}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            {...register('pj_telefone_fixo')}
+                            placeholder="(00) 0000-0000"
+                            onChange={(e) => setValue('pj_telefone_fixo', formatPhone(e.target.value))}
+                            className="flex-1"
+                          />
+                        </div>
                       </div>
 
                       <div>
                         <Label>Celular</Label>
-                        <Input
-                          {...register('pj_celular')}
-                          placeholder="(00) 00000-0000"
-                          onChange={(e) => setValue('pj_celular', formatPhone(e.target.value))}
-                        />
+                        <div className="flex gap-2">
+                          <Select
+                            value={watch('pj_celular_pais') || '+55'}
+                            onValueChange={(value) => setValue('pj_celular_pais', value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countryCodeOptions.map(opt => (
+                                <SelectItem key={opt.code} value={opt.code}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            {...register('pj_celular')}
+                            placeholder="(00) 00000-0000"
+                            onChange={(e) => setValue('pj_celular', formatPhone(e.target.value))}
+                            className="flex-1"
+                          />
+                        </div>
                       </div>
 
                       <div className="col-span-2">
