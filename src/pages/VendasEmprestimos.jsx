@@ -40,6 +40,7 @@ import PropostaEditModal from '@/components/forms/PropostaEditModal';
 import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropostasLoteModal';
 import KanbanConfigModal from '@/components/emprestimos/KanbanConfigModal';
 import ComentariosModal from '@/components/emprestimos/ComentariosModal';
+import StatusQuickModal from '@/components/emprestimos/StatusQuickModal';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
