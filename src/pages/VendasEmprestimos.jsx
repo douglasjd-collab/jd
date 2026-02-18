@@ -514,9 +514,9 @@ export default function VendasEmprestimos() {
                     variant="outline"
                     size="sm"
                     className="flex-1 text-xs gap-1 border-blue-200 text-blue-700 hover:bg-blue-50"
-                    onClick={() => navigate(createPageUrl(`VendaEmprestimoDetalhes?id=${p.id}`))}
+                    onClick={() => { setPropostaComentarios(p); setComentariosOpen(true); }}
                   >
-                    <FileText className="w-3.5 h-3.5" /> Ver Detalhes
+                    <MessageCircle className="w-3.5 h-3.5" /> Comentários
                   </Button>
                   <Button
                     variant="outline"
