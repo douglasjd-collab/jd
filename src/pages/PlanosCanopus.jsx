@@ -695,7 +695,7 @@ ${textoVariacoes}
                             grupo: selectedGroup.codigo || ''
                           });
 
-                          navigate(createPageUrl(`NovaVendaConsignado?${params.toString()}`));
+                          navigate(createPageUrl(`NovaVenda?${params.toString()}`));
                         } catch (error) {
                           console.error('Erro ao preparar compra:', error);
                           toast.error('Erro ao preparar a compra');
