@@ -654,23 +654,25 @@ ${textoVariacoes}
                       size="sm"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (!selectedGroup) return;
+                        if (!selectedGroup || !user) return;
                         setBuyLoading(true);
                         try {
                           // Buscar ou criar tabela de consórcio
-                          const administradora_id = 'canopus'; // Padrão Canopus
+                          const administradora_id = 'canopus';
                           const tabelas = await base44.entities.TabelaConsorcio.filter({
                             administradora_id,
+                            empresa_id: user.empresa_id,
                             ativo: true
                           });
 
                           let tabela_id = tabelas.length > 0 ? tabelas[0].id : null;
 
                           if (!tabela_id) {
-                            // Criar tabela automaticamente
                             const newTabela = await base44.entities.TabelaConsorcio.create({
+                              empresa_id: user.empresa_id,
                               administradora_id,
                               administradora_nome: 'Canopus',
+                              nomeTabela: 'Tabela Canopus',
                               nome: 'Tabela Canopus',
                               tipo_bem: selectedGroup.produto_id === '101' ? 'automovel' : selectedGroup.produto_id === '102' ? 'imovel' : 'motocicleta',
                               prazo: variacao.prazo_meses,
@@ -682,7 +684,6 @@ ${textoVariacoes}
                             tabela_id = newTabela.id;
                           }
 
-                          // Navegar para nova venda com parâmetros
                           const params = new URLSearchParams({
                             valor_credito: selectedGroup.valor_bem,
                             prazo: variacao.prazo_meses,
