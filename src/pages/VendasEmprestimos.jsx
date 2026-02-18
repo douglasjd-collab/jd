@@ -190,6 +190,11 @@ export default function VendasEmprestimos() {
   );
   const valorPortabilidadesHoje = portabilidadesHoje.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
+  // CIP - Retorno de Saldo previsto para hoje
+  const propostasCip = filteredByRole.filter(p =>
+    p.cip_data_retorno_prevista === today && p.cip_valor_previsto
+  );
+
   // Counts per tipo for filter pills
   const countByTipo = (tipo) => tipo === 'todos'
     ? filteredByRole.length
