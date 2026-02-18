@@ -100,9 +100,9 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.Proposta.filter({ produto: ['emprestimo'] }),
   });
 
-  const { data: administradoras = [] } = useQuery({
-    queryKey: ['administradoras'],
-    queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
+  const { data: bancos = [] } = useQuery({
+    queryKey: ['bancos-emprestimos'],
+    queryFn: () => base44.entities.Banco.filter({ ativo: true }),
   });
 
   const { data: clientes = [] } = useQuery({
