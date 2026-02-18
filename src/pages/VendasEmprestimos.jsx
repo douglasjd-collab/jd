@@ -50,6 +50,7 @@ export default function VendasEmprestimos() {
   const [propostaToDelete, setPropostaToDelete] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [propostaToEdit, setPropostaToEdit] = useState(null);
+  const [importarLoteOpen, setImportarLoteOpen] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
