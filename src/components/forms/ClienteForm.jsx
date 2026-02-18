@@ -1250,8 +1250,8 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           </Select>
                           <Input
                             {...register('pj_telefone_fixo')}
-                            placeholder="(00) 0000-0000"
-                            onChange={(e) => setValue('pj_telefone_fixo', formatPhone(e.target.value))}
+                            placeholder={watch('pj_telefone_fixo_pais') === '+55' ? "(00) 0000-0000" : "XXX XXX XXX"}
+                            onChange={(e) => setValue('pj_telefone_fixo', formatPhone(e.target.value, watch('pj_telefone_fixo_pais') || '+55'))}
                             className="flex-1"
                           />
                         </div>
@@ -1275,8 +1275,8 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           </Select>
                           <Input
                             {...register('pj_celular')}
-                            placeholder="(00) 00000-0000"
-                            onChange={(e) => setValue('pj_celular', formatPhone(e.target.value))}
+                            placeholder={watch('pj_celular_pais') === '+55' ? "(00) 00000-0000" : "XXX XXX XXX"}
+                            onChange={(e) => setValue('pj_celular', formatPhone(e.target.value, watch('pj_celular_pais') || '+55'))}
                             className="flex-1"
                           />
                         </div>
