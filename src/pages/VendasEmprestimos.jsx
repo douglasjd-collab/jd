@@ -40,7 +40,6 @@ import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropost
 
 export default function VendasEmprestimos() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterBanco, setFilterBanco] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
