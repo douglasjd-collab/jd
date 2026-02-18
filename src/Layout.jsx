@@ -174,6 +174,7 @@ export default function Layout({ children, currentPageName }) {
       icon: ShoppingCart, 
       roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
       submenu: [
+        { name: '+ Nova Venda', page: 'NovaVenda?tipo=consorcio' },
         { name: 'Propostas', page: 'Vendas' },
         { name: 'Planos Canopus', page: 'PlanosCanopus' },
         { name: 'Simulador', page: 'SimuladorEscolha' },
