@@ -47,7 +47,8 @@ import {
   Filter,
   Calculator,
   ClipboardCopy,
-  Trash2
+  Trash2,
+  ShoppingCart
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { createPageUrl } from '@/utils';
