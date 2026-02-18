@@ -286,113 +286,65 @@ export default function VendasEmprestimos() {
         </Button>
       </PageHeader>
 
-      {/* Tabs */}
-      <Tabs value={filterTipo} onValueChange={setFilterTipo} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="consignado">Consignados</TabsTrigger>
-          <TabsTrigger value="pessoal">Pessoais</TabsTrigger>
-        </TabsList>
+      {/* Filtros rápidos por tipo */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: 'todos', label: 'Todos', bg: 'bg-slate-100 text-slate-700 hover:bg-slate-200', active: 'bg-slate-700 text-white' },
+          { value: 'NOVO', label: 'Novo', bg: 'bg-blue-100 text-blue-700 hover:bg-blue-200', active: 'bg-blue-600 text-white' },
+          { value: 'REFINANCIAMENTO', label: 'Refinanciamento', bg: 'bg-purple-100 text-purple-700 hover:bg-purple-200', active: 'bg-purple-600 text-white' },
+          { value: 'PORTABILIDADE_PURA', label: 'Portabilidade', bg: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200', active: 'bg-emerald-600 text-white' },
+          { value: 'REFIN_PORTABILIDADE', label: 'Refin + Portabilidade', bg: 'bg-orange-100 text-orange-700 hover:bg-orange-200', active: 'bg-orange-600 text-white' },
+        ].map(({ value, label, bg, active }) => (
+          <button
+            key={value}
+            onClick={() => setFilterTipo(value)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filterTipo === value ? active : bg}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-        <TabsContent value="consignado" className="space-y-4">
-          {/* Filters */}
-          <Card className="p-4 border-0 shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar por cliente ou contrato..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterBanco} onValueChange={setFilterBanco}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Bancos</SelectItem>
-                  {bancos.map(banco => (
-                    <SelectItem key={banco.id} value={banco.nome}>
-                      {banco.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Status</SelectItem>
-                  <SelectItem value="ativa">Ativas</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="cancelada">Canceladas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
+      {/* Filtros de busca */}
+      <Card className="p-4 border-0 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por nome..."
+              value={searchNome}
+              onChange={(e) => setSearchNome(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="relative w-full sm:w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por CPF..."
+              value={searchCpf}
+              onChange={(e) => setSearchCpf(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="relative w-full sm:w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por banco..."
+              value={searchBanco}
+              onChange={(e) => setSearchBanco(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+      </Card>
 
-          {/* Table */}
-          <DataTable
-            columns={columns}
-            data={filteredPropostas}
-            isLoading={isLoading}
-            emptyMessage="Nenhuma venda encontrada"
-          />
-        </TabsContent>
-
-        <TabsContent value="pessoal" className="space-y-4">
-          {/* Filters */}
-          <Card className="p-4 border-0 shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar por cliente ou contrato..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterBanco} onValueChange={setFilterBanco}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Bancos</SelectItem>
-                  {bancos.map(banco => (
-                    <SelectItem key={banco.id} value={banco.nome}>
-                      {banco.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Status</SelectItem>
-                  <SelectItem value="ativa">Ativas</SelectItem>
-                  <SelectItem value="pendente">Pendentes</SelectItem>
-                  <SelectItem value="cancelada">Canceladas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </Card>
-
-          {/* Table */}
-          <DataTable
-            columns={columns}
-            data={filteredPropostas}
-            isLoading={isLoading}
-            emptyMessage="Nenhuma venda encontrada"
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Table */}
+      <DataTable
+        columns={columns}
+        data={filteredPropostas}
+        isLoading={isLoading}
+        emptyMessage="Nenhuma proposta encontrada"
+      />
 
       <ImportarPropostasLoteModal
         open={importarLoteOpen}
