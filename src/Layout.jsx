@@ -548,6 +548,21 @@ export default function Layout({ children, currentPageName }) {
         user={user}
         onSuccess={loadUser}
       />
-    </div>
-  );
-}
+
+      {/* Nova Venda Consórcio Modal */}
+      <VendaForm
+        open={novaVendaConsorcioOpen}
+        onOpenChange={setNovaVendaConsorcioOpen}
+        venda={null}
+        onSubmit={async () => {
+          setNovaVendaConsorcioOpen(false);
+          window.location.href = createPageUrl('Vendas');
+        }}
+        isLoading={false}
+        currentUser={user}
+        empresaIdPadrao={user?.empresa_id}
+        oportunidade={null}
+      />
+      </div>
+      );
+      }
