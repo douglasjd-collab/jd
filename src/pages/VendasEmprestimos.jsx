@@ -178,10 +178,21 @@ export default function VendasEmprestimos() {
 
   // Summary stats
   const today = new Date().toISOString().slice(0, 10);
+  const currentMonth = today.substring(0, 7); // YYYY-MM
+  
   const todayPropostas = filteredByRole.filter(p => p.data_venda === today && (p.valor_credito || 0) > 0);
-  const emAndamento = filteredByRole.filter(p => ['em_andamento', 'pendente', 'aguardando_formalizacao'].includes(p.status));
-  const aprovadas = filteredByRole.filter(p => ['pago', 'paga', 'pago_vendedor'].includes(p.status));
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+  
+  // Propostas pagas no mês (por comissão_recebida > 0)
+  const propostas_pagas_mes = filteredByRole.filter(p => 
+    p.data_venda?.substring(0, 7) === currentMonth && (p.comissao_recebida || 0) > 0
+  );
+  const valor_pagas_mes = propostas_pagas_mes.reduce((acc, p) => acc + (p.comissao_recebida || 0), 0);
+  
+  // Em andamento: todas as propostas MENOS canceladas MENOS pagas
+  const emAndamento = filteredByRole.filter(p => 
+    p.status !== 'cancelado' && !['pago', 'paga', 'pago_vendedor'].includes(p.status)
+  );
 
   // Portabilidades previstas para hoje (data_venda === hoje e tipo portabilidade)
   const portabilidadesHoje = filteredByRole.filter(p =>
