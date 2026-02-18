@@ -399,6 +399,11 @@ export default function VendasEmprestimos() {
         </TabsContent>
       </Tabs>
 
+      <ImportarPropostasLoteModal
+        open={importarLoteOpen}
+        onOpenChange={setImportarLoteOpen}
+      />
+
       {/* Edit Modal */}
       <PropostaEditModal
         proposta={propostaToEdit}
