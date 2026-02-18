@@ -573,13 +573,15 @@ export default function Vendas() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="ativa">Ativas</SelectItem>
-              <SelectItem value="pendente">Pendentes</SelectItem>
-              <SelectItem value="cancelada">Canceladas</SelectItem>
-              <SelectItem value="em_atraso">Em Atraso</SelectItem>
-              <SelectItem value="contemplada">Contempladas</SelectItem>
-            </SelectContent>
+               <SelectItem value="todos">Todos</SelectItem>
+               <SelectItem value="ativa">Ativas</SelectItem>
+               <SelectItem value="pendente">Pendentes</SelectItem>
+               <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
+               <SelectItem value="docs_pendentes">Doc. Pendentes</SelectItem>
+               <SelectItem value="cancelada">Canceladas</SelectItem>
+               <SelectItem value="em_atraso">Em Atraso</SelectItem>
+               <SelectItem value="contemplada">Contempladas</SelectItem>
+             </SelectContent>
           </Select>
         </div>
       </Card>
