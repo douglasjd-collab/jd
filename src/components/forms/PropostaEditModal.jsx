@@ -270,33 +270,48 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="valor_credito">Valor do Crédito</Label>
-                  <Input
-                    id="valor_credito"
-                    type="number"
-                    step="0.01"
-                    value={formData.valor_credito || ''}
-                    onChange={(e) => setFormData({ ...formData, valor_credito: parseFloat(e.target.value) })}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
+                    <Input
+                      id="valor_credito"
+                      className="pl-9"
+                      value={formatInputCurrency(formData.valor_credito)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d,]/g, '');
+                        setFormData({ ...formData, valor_credito: parseCurrency(raw) });
+                      }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="valor_comissao">Valor Comissão (estimado)</Label>
-                  <Input
-                    id="valor_comissao"
-                    type="number"
-                    step="0.01"
-                    value={formData.valor_comissao || ''}
-                    onChange={(e) => setFormData({ ...formData, valor_comissao: parseFloat(e.target.value) })}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
+                    <Input
+                      id="valor_comissao"
+                      className="pl-9"
+                      value={formatInputCurrency(formData.valor_comissao)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d,]/g, '');
+                        setFormData({ ...formData, valor_comissao: parseCurrency(raw) });
+                      }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="comissao_recebida">Comissão Recebida</Label>
-                  <Input
-                    id="comissao_recebida"
-                    type="number"
-                    step="0.01"
-                    value={formData.comissao_recebida || ''}
-                    onChange={(e) => setFormData({ ...formData, comissao_recebida: parseFloat(e.target.value) })}
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
+                    <Input
+                      id="comissao_recebida"
+                      className="pl-9"
+                      value={formatInputCurrency(formData.comissao_recebida)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d,]/g, '');
+                        setFormData({ ...formData, comissao_recebida: parseCurrency(raw) });
+                      }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label>{formData.produto === 'emprestimo' ? 'Banco' : 'Administradora'}</Label>
