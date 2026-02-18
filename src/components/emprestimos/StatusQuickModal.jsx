@@ -81,6 +81,7 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
       setAguardandoExtra('pago');
     } else if (isCip) {
       setStatusSelecionado(status);
+      setCipDataEntrada(format(new Date(), 'yyyy-MM-dd'));
       setAguardandoExtra('cip');
     } else {
       updateMutation.mutate({ status: status.codigo });
