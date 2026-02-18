@@ -300,7 +300,11 @@ export default function VendasEmprestimos() {
             </button>
           );
         })}
-        <button className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center ml-auto">
+        <button
+          className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center ml-auto"
+          onClick={() => navigate(createPageUrl('StatusPropostas'))}
+          title="Configurar Status"
+        >
           <Settings className="w-4 h-4" />
         </button>
       </div>
