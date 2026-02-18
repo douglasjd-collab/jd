@@ -30,8 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, MoreHorizontal, Pencil, Filter, Trash2, Plus, Upload } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Plus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
