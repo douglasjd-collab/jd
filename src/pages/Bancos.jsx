@@ -282,6 +282,36 @@ export default function Bancos() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Logo Upload */}
+            <div>
+              <Label>Logo do Banco</Label>
+              <div className="flex items-center gap-3 mt-1">
+                <div className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 bg-slate-50">
+                  {formData.logo_url ? (
+                    <img src={formData.logo_url} alt="logo" className="w-full h-full object-contain p-1" />
+                  ) : (
+                    <Building2 className="w-6 h-6 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                    <Button type="button" variant="outline" size="sm" className="gap-2 w-full" disabled={uploadingLogo} asChild={false}
+                      onClick={(e) => { e.preventDefault(); e.currentTarget.previousElementSibling?.click?.(); e.currentTarget.closest('label')?.querySelector('input')?.click?.(); }}>
+                      {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {uploadingLogo ? 'Enviando...' : 'Enviar Logo'}
+                    </Button>
+                  </label>
+                  {formData.logo_url && (
+                    <button type="button" onClick={() => setFormData(p => ({ ...p, logo_url: '' }))}
+                      className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                      <X className="w-3 h-3" /> Remover logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div>
               <Label>Código do Banco</Label>
               <Input
