@@ -311,30 +311,23 @@ export default function VendasEmprestimos() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Buscar por nome..."
-              value={searchNome}
-              onChange={(e) => setSearchNome(e.target.value)}
+              placeholder="Buscar por nome ou CPF..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
-          <div className="relative w-full sm:w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por CPF..."
-              value={searchCpf}
-              onChange={(e) => setSearchCpf(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="relative w-full sm:w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Buscar por banco..."
-              value={searchBanco}
-              onChange={(e) => setSearchBanco(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <Select value={filterBanco} onValueChange={setFilterBanco}>
+            <SelectTrigger className="w-full sm:w-52">
+              <SelectValue placeholder="Todos os Bancos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Bancos</SelectItem>
+              {bancos.map(banco => (
+                <SelectItem key={banco.id} value={banco.nome}>{banco.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
