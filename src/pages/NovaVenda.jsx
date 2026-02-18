@@ -42,7 +42,7 @@ export default function NovaVenda() {
       descricao: 'Novo, refinanciamento e portabilidade',
       icon: Banknote,
       color: 'from-purple-500 to-purple-600',
-      page: 'NovaVendaConsignado'
+      page: 'VendasEmprestimos'
     },
     {
       id: 'EMPRESTIMO_PESSOAL',
