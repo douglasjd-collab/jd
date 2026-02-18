@@ -294,15 +294,15 @@ export default function VendasEmprestimos() {
                   className="pl-10"
                 />
               </div>
-              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+              <Select value={filterBanco} onValueChange={setFilterBanco}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Banco" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todas">Todos Bancos</SelectItem>
-                  {administradoras.map(adm => (
-                    <SelectItem key={adm.id} value={adm.id}>
-                      {adm.nome_fantasia || adm.razao_social}
+                  <SelectItem value="todos">Todos Bancos</SelectItem>
+                  {bancos.map(banco => (
+                    <SelectItem key={banco.id} value={banco.nome}>
+                      {banco.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -344,15 +344,15 @@ export default function VendasEmprestimos() {
                   className="pl-10"
                 />
               </div>
-              <Select value={filterAdministradora} onValueChange={setFilterAdministradora}>
+              <Select value={filterBanco} onValueChange={setFilterBanco}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Banco" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todas">Todos Bancos</SelectItem>
-                  {administradoras.map(adm => (
-                    <SelectItem key={adm.id} value={adm.id}>
-                      {adm.nome_fantasia || adm.razao_social}
+                  <SelectItem value="todos">Todos Bancos</SelectItem>
+                  {bancos.map(banco => (
+                    <SelectItem key={banco.id} value={banco.nome}>
+                      {banco.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
