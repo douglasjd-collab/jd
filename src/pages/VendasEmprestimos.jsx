@@ -544,6 +544,7 @@ export default function VendasEmprestimos() {
       {/* Modals */}
       <ImportarPropostasLoteModal open={importarLoteOpen} onOpenChange={setImportarLoteOpen} />
     <ComentariosModal open={comentariosOpen} onOpenChange={setComentariosOpen} proposta={propostaComentarios} />
+    <StatusQuickModal open={statusModalOpen} onOpenChange={setStatusModalOpen} proposta={propostaStatus} empresaId={currentUser?.empresa_id} />
       <KanbanConfigModal open={kanbanConfigOpen} onOpenChange={setKanbanConfigOpen} empresaId={currentUser?.empresa_id} />
 
       <PropostaEditModal
