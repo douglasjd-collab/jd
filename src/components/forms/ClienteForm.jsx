@@ -467,8 +467,8 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           <Input
                             id="telefone_fixo"
                             {...register('telefone_fixo')}
-                            placeholder="(00) 0000-0000"
-                            onChange={(e) => setValue('telefone_fixo', formatPhone(e.target.value))}
+                            placeholder={watch('telefone_fixo_pais') === '+55' ? "(00) 0000-0000" : "XXX XXX XXX"}
+                            onChange={(e) => setValue('telefone_fixo', formatPhone(e.target.value, watch('telefone_fixo_pais') || '+55'))}
                             className="flex-1"
                           />
                         </div>
