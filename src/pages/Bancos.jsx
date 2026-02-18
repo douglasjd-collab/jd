@@ -154,7 +154,8 @@ export default function Bancos() {
     setEditando(banco);
     setFormData({
       codigo: banco.codigo || '',
-      nome: banco.nome
+      nome: banco.nome,
+      logo_url: banco.logo_url || ''
     });
     setShowModal(true);
   };
