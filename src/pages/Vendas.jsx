@@ -468,14 +468,30 @@ export default function Vendas() {
               Em Atraso
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onSelect={(e) => {
-                e.preventDefault();
-                updateStatusMutation.mutate({ venda: row, status: 'contemplada' });
-              }}
-            >
-              Contemplada
-            </DropdownMenuItem>
-          </DropdownMenuContent>
+               onSelect={(e) => {
+                 e.preventDefault();
+                 updateStatusMutation.mutate({ venda: row, status: 'aguardando_aprovacao' });
+               }}
+             >
+               Aguardando Aprovação
+             </DropdownMenuItem>
+            <DropdownMenuItem 
+               onSelect={(e) => {
+                 e.preventDefault();
+                 updateStatusMutation.mutate({ venda: row, status: 'docs_pendentes' });
+               }}
+             >
+               Doc. Pendentes
+             </DropdownMenuItem>
+             <DropdownMenuItem 
+               onSelect={(e) => {
+                 e.preventDefault();
+                 updateStatusMutation.mutate({ venda: row, status: 'contemplada' });
+               }}
+             >
+               Contemplada
+             </DropdownMenuItem>
+            </DropdownMenuContent>
         </DropdownMenu>
       )
     },
