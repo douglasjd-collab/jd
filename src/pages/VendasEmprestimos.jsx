@@ -158,11 +158,13 @@ export default function VendasEmprestimos() {
 
   // Filtrar por critérios
   const filteredPropostas = filteredByRole.filter(p => {
-    const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
-    const matchCpf = !searchCpf || getClienteCpf(p.cliente_id)?.includes(searchCpf);
-    const matchBanco = !searchBanco || p.administradora_nome?.toLowerCase().includes(searchBanco.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const matchQuery = !searchQuery ||
+      p.cliente_nome?.toLowerCase().includes(q) ||
+      getClienteCpf(p.cliente_id)?.includes(q);
+    const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
-    return matchNome && matchCpf && matchBanco && matchTipo;
+    return matchQuery && matchBanco && matchTipo;
   });
 
   const formatCurrency = (value) => {
