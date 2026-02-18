@@ -183,6 +183,13 @@ export default function VendasEmprestimos() {
   const aprovadas = filteredByRole.filter(p => ['pago', 'paga', 'pago_vendedor'].includes(p.status));
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
+  // Portabilidades previstas para hoje (data_venda === hoje e tipo portabilidade)
+  const portabilidadesHoje = filteredByRole.filter(p =>
+    ['PORTABILIDADE_PURA', 'REFIN_PORTABILIDADE'].includes(p.emprestimo_tipo) &&
+    p.emprestimo_data_liberacao === today
+  );
+  const valorPortabilidadesHoje = portabilidadesHoje.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+
   // Counts per tipo for filter pills
   const countByTipo = (tipo) => tipo === 'todos'
     ? filteredByRole.length
