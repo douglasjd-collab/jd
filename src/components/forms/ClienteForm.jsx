@@ -182,6 +182,17 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       .replace(/(-\d{4})\d+?$/, '$1');
   };
 
+  const countryCodeOptions = [
+    { code: '+55', label: '+55 Brasil' },
+    { code: '+1', label: '+1 EUA/Canadá' },
+    { code: '+34', label: '+34 Espanha' },
+    { code: '+33', label: '+33 França' },
+    { code: '+44', label: '+44 Reino Unido' },
+    { code: '+39', label: '+39 Itália' },
+    { code: '+49', label: '+49 Alemanha' },
+    { code: '+351', label: '+351 Portugal' },
+  ];
+
   const formatCEP = (value) => {
     return value
       .replace(/\D/g, '')
