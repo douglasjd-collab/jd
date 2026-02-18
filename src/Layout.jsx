@@ -168,16 +168,23 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Gestão de Subcontas', icon: Building2, page: 'GestaoSubcontas', roles: ['super_admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Consórcio', icon: ShoppingCart, page: 'Vendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Empréstimos', icon: FileText, page: 'VendasEmprestimos', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { 
+      name: 'Consórcio', 
+      icon: ShoppingCart, 
+      roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
+      submenu: [
+        { name: 'Propostas', page: 'Vendas' },
+        { name: 'Planos Canopus', page: 'PlanosCanopus' },
+        { name: 'Simulador', page: 'SimuladorEscolha' },
+        { name: 'Resultado de Assembleia', page: 'HistoricoResultadoAssembleia' },
+        { name: 'Oferta de Lance', page: 'OfertaLance' },
+      ]
+    },
 
-    { name: 'Planos Canopus', icon: FileSpreadsheet, page: 'PlanosCanopus', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Simulador', icon: Calculator, page: 'SimuladorEscolha', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Resultado de Assembleia', icon: FileText, page: 'HistoricoResultadoAssembleia', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Oferta de Lance', icon: TrendingUp, page: 'OfertaLance', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Bate-papo', icon: MessageSquare, page: 'BatePapo', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Financeiro', icon: Wallet, page: 'RelatoriosFinanceiros', roles: ['master', 'super_admin', 'admin'] },
