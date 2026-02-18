@@ -374,14 +374,13 @@ export default function VendasEmprestimos() {
         </div>
       )}
 
-      {/* Cards Grid */}
       {viewMode === 'cards' && isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 animate-pulse h-44" />
           ))}
         </div>
-      ) : filteredPropostas.length === 0 ? (
+      ) : viewMode === 'cards' && filteredPropostas.length === 0 ? (
         <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-slate-100">
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">Nenhuma proposta encontrada</p>
