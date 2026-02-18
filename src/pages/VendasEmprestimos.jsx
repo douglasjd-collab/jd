@@ -474,7 +474,7 @@ export default function VendasEmprestimos() {
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 text-sm leading-tight">{p.cliente_nome || '-'}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{cpf || '-'}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{cpf || '-'} {p.contrato ? `| Contrato: ${p.contrato}` : ''}</p>
                       </div>
                     </div>
                     <DropdownMenu>
