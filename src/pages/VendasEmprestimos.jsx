@@ -385,7 +385,7 @@ export default function VendasEmprestimos() {
           <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">Nenhuma proposta encontrada</p>
         </div>
-      ) : (
+      ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredPropostas.map(p => {
             const cpf = getClienteCpf(p.cliente_id);
