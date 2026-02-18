@@ -39,6 +39,7 @@ import { createPageUrl } from '@/utils';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
 import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropostasLoteModal';
 import KanbanConfigModal from '@/components/emprestimos/KanbanConfigModal';
+import ComentariosModal from '@/components/emprestimos/ComentariosModal';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
