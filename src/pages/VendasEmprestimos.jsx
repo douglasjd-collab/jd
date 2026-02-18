@@ -31,9 +31,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, MoreHorizontal, Pencil, Filter, Trash2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Filter, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
 
 export default function VendasEmprestimos() {
