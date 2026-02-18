@@ -84,10 +84,23 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
         grupo: formData.grupo || '',
         cota: formData.cota || '',
         contrato: formData.contrato || '',
+        data_venda: formData.data_venda || '',
+        vendedor_id: formData.vendedor_id || '',
+        vendedor_nome: formData.vendedor_nome || '',
+        administradora_id: formData.administradora_id || '',
+        administradora_nome: formData.administradora_nome || '',
       };
 
-      if (formData.produto === 'emprestimo' && formData.emprestimo_tipo) {
-        dataToUpdate.emprestimo_tipo = formData.emprestimo_tipo;
+      if (formData.produto === 'emprestimo') {
+        dataToUpdate.emprestimo_tipo = formData.emprestimo_tipo || '';
+        dataToUpdate.emprestimo_convenio_id = formData.emprestimo_convenio_id || '';
+        dataToUpdate.emprestimo_convenio_nome = formData.emprestimo_convenio_nome || '';
+        dataToUpdate.emprestimo_numero_beneficio = formData.emprestimo_numero_beneficio || '';
+        dataToUpdate.emprestimo_numero_ade = formData.emprestimo_numero_ade || '';
+        dataToUpdate.emprestimo_prazo = parseInt(formData.emprestimo_prazo) || 0;
+        dataToUpdate.emprestimo_banco_anterior = formData.emprestimo_banco_anterior || '';
+        dataToUpdate.emprestimo_saldo_devedor = parseFloat(formData.emprestimo_saldo_devedor) || 0;
+        dataToUpdate.emprestimo_data_liberacao = formData.emprestimo_data_liberacao || '';
       }
 
       await updateMutation.mutateAsync(dataToUpdate);
