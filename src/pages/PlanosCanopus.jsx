@@ -692,7 +692,7 @@ ${textoVariacoes}
                             administradora_nome: 'Canopus',
                             tabela_id,
                             tipo_bem: selectedGroup.produto_id === '101' ? 'automovel' : selectedGroup.produto_id === '102' ? 'imovel' : 'motocicleta',
-                            grupo: selectedGroup.plano?.split('|')[0]?.trim() || ''
+                            grupo: selectedGroup.codigo || ''
                           });
 
                           navigate(createPageUrl(`NovaVendaConsignado?${params.toString()}`));
