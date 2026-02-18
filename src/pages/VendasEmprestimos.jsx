@@ -160,17 +160,11 @@ export default function VendasEmprestimos() {
 
   // Filtrar por critérios
   const filteredPropostas = filteredByRole.filter(p => {
-    const matchSearch =
-      p.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
-      p.contrato?.includes(search);
-    const matchTipo = filterTipo === 'todos' || (
-      filterTipo === 'consignado' && p.emprestimo_tipo && ['NOVO', 'REFINANCIAMENTO', 'PORTABILIDADE_PURA', 'REFIN_PORTABILIDADE'].includes(p.emprestimo_tipo)
-    ) || (
-      filterTipo === 'pessoal' && !p.emprestimo_tipo
-    );
-    const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
-    const matchAdministradora = filterBanco === 'todos' || p.administradora_nome === filterBanco;
-    return matchSearch && matchTipo && matchStatus && matchAdministradora;
+    const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
+    const matchCpf = !searchCpf || getClienteCpf(p.cliente_id)?.includes(searchCpf);
+    const matchBanco = !searchBanco || p.administradora_nome?.toLowerCase().includes(searchBanco.toLowerCase());
+    const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
+    return matchNome && matchCpf && matchBanco && matchTipo;
   });
 
   const formatCurrency = (value) => {
