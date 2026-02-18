@@ -187,6 +187,10 @@ export default function NovaVendaConsignado() {
       toast.error('Selecione um cliente');
       return;
     }
+    if (!formData.numero_contrato) {
+      toast.error('Número do Contrato é obrigatório');
+      return;
+    }
     if (formData.status === 'pago' && !formData.numero_contrato) {
       toast.error('Para o status Pago é necessário informar o Número do Contrato');
       return;
