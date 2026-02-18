@@ -41,9 +41,11 @@ import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropost
 export default function VendasEmprestimos() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [filterTipo, setFilterTipo] = useState('consignado');
-  const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterTipo, setFilterTipo] = useState('todos');
   const [filterBanco, setFilterBanco] = useState('todos');
+  const [searchNome, setSearchNome] = useState('');
+  const [searchCpf, setSearchCpf] = useState('');
+  const [searchBanco, setSearchBanco] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
