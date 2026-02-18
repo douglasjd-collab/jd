@@ -791,6 +791,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      <CipRetornoModal open={cipModalOpen} onOpenChange={setCipModalOpen} propostas={propostasCip} />
+
       {/* Modal de Vendas por Status */}
       {statusModalOpen && (
         <div 
