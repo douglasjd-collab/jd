@@ -280,7 +280,16 @@ export default function VendasEmprestimos() {
         actionLabel="Nova Venda"
         actionIcon={Plus}
         onAction={() => navigate(createPageUrl('NovaVendaConsignado'))}
-      />
+      >
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => setImportarLoteOpen(true)}
+        >
+          <Upload className="w-4 h-4" />
+          Importar em Lote
+        </Button>
+      </PageHeader>
 
       {/* Tabs */}
       <Tabs value={filterTipo} onValueChange={setFilterTipo} className="w-full">
