@@ -38,6 +38,7 @@ export default function Bancos() {
     logo_url: ''
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = React.useRef(null);
 
   const queryClient = useQueryClient();
 
