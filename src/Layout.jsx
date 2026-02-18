@@ -446,47 +446,51 @@ export default function Layout({ children, currentPageName }) {
           {filteredMenuItems.map((item) => (
             <div key={item.page || item.name}>
               {item.submenu ? (
-                <>
-                  <button
-                    onClick={() => toggleSubmenu(item.name)}
-                    className={cn(
-                      "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all",
-                      "hover:bg-white/10"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.name}</span>
-                    </div>
-                    <ChevronDown className={cn(
-                      "w-4 h-4 transition-transform",
-                      expandedMenus[item.name] && "rotate-180"
-                    )} />
-                  </button>
-                  {expandedMenus[item.name] && (
-                    <div className="ml-6 mt-1 space-y-1">
-                      {item.submenu.map((sub) => (
-                        <Link
-                          key={sub.page}
-                          to={createPageUrl(sub.page)}
-                          onClick={() => {
-                            setSidebarOpen(false);
-                            setExpandedMenus({});
-                          }}
-                          className={cn(
-                            "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm",
-                            currentPageName === sub.page
-                              ? "bg-white/20 text-white"
-                              : "text-white/70 hover:bg-white/10 hover:text-white"
+                        <>
+                          <button
+                            onClick={() => toggleSubmenu(item.name)}
+                            className={cn(
+                              "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all",
+                              "hover:bg-white/10"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <item.icon className="w-5 h-5" />
+                              <span>{item.name}</span>
+                            </div>
+                            <ChevronDown className={cn(
+                              "w-4 h-4 transition-transform",
+                              expandedMenus[item.name] && "rotate-180"
+                            )} />
+                          </button>
+                          {expandedMenus[item.name] && (
+                            <div className="ml-6 mt-1 space-y-1">
+                              {item.submenu.map((sub) => (
+                                <button
+                                  key={sub.page}
+                                  onClick={() => {
+                                    if (sub.page.includes('NovaVenda?tipo=consorcio')) {
+                                      setNovaVendaConsorcioOpen(true);
+                                    } else {
+                                      window.location.href = createPageUrl(sub.page);
+                                    }
+                                    setSidebarOpen(false);
+                                    setExpandedMenus({});
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm text-left",
+                                    currentPageName === sub.page
+                                      ? "bg-white/20 text-white"
+                                      : "text-white/70 hover:bg-white/10 hover:text-white"
+                                  )}
+                                >
+                                  {sub.name}
+                                </button>
+                              ))}
+                            </div>
                           )}
-                        >
-                          {sub.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
+                        </>
+                      ) : (
                 <Link
                   to={createPageUrl(item.page)}
                   onClick={() => setSidebarOpen(false)}
