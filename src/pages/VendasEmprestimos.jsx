@@ -362,10 +362,27 @@ export default function VendasEmprestimos() {
                         onClick={() => navigate(createPageUrl(`VendaEmprestimoDetalhes?id=${p.id}`))}>
                         <p className="font-semibold text-xs text-slate-900 leading-tight">{p.cliente_nome}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{getClienteCpf(p.cliente_id)}</p>
-                        <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          {/* Banco */}
+                          {p.administradora_nome && (() => {
+                            const banco = getBanco(p.administradora_id);
+                            return (
+                              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200">
+                                {banco?.logo_url && <img src={banco.logo_url} alt="" className="w-3 h-3 object-contain" />}
+                                {p.administradora_nome}
+                              </span>
+                            );
+                          })()}
+                          {/* Convênio */}
+                          {p.emprestimo_convenio_nome && (
+                            <span className="px-1.5 py-0.5 rounded text-xs bg-cyan-100 text-cyan-700">{p.emprestimo_convenio_nome}</span>
+                          )}
+                          {/* Tipo */}
                           <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${TIPO_COLORS[p.emprestimo_tipo] || 'bg-slate-100 text-slate-600'}`}>
                             {getTipoLabel(p)}
                           </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1.5">
                           <span className="text-xs font-bold text-slate-800">{formatCurrency(p.valor_credito)}</span>
                         </div>
                         {p.vendedor_nome && <p className="text-xs text-slate-400 mt-1">{p.vendedor_nome}</p>}
