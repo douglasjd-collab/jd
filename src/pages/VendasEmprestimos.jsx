@@ -193,6 +193,7 @@ export default function VendasEmprestimos() {
   const emAndamento = filteredByRole.filter(p => 
     p.status !== 'cancelado' && !['pago', 'paga', 'pago_vendedor'].includes(p.status)
   );
+  const valor_em_andamento = emAndamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
   // Portabilidades previstas para hoje (data_venda === hoje e tipo portabilidade)
   const portabilidadesHoje = filteredByRole.filter(p =>
