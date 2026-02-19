@@ -12,13 +12,17 @@ export default function Empresas() {
   const [migrarOpen, setMigrarOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Buscar colaboradores sem empresa_id (JD Promotora / sem subconta)
+  const JD_EMPRESA_ID = '6956c66acff52e4405313375';
+
+  // Buscar colaboradores da JD Promotora (empresa principal)
   const { data: colaboradoresSemEmpresa = [] } = useQuery({
-    queryKey: ['colaboradores-sem-empresa'],
+    queryKey: ['colaboradores-jd'],
     queryFn: async () => {
-      const todos = await base44.asServiceRole.entities.Colaborador.list('-created_date', 500);
-      // Pega os que não têm empresa_id ou têm empresa_id null
-      return todos.filter(c => !c.empresa_id);
+      return await base44.asServiceRole.entities.Colaborador.filter(
+        { empresa_id: JD_EMPRESA_ID },
+        '-created_date',
+        200
+      );
     },
   });
 
