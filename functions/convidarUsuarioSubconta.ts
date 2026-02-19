@@ -16,24 +16,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Email, nome e empresaId são obrigatórios' }, { status: 400 });
     }
 
-    // Convitar o usuário via base44.users.inviteUser
-    // Isso vai enviar um email com link de registro
-    try {
-      await base44.users.inviteUser(email, 'user');
-    } catch (e) {
-      // Se já existe, continua mesmo assim
-      console.log('Usuário já existe ou erro ao convidar:', e.message);
-    }
-
     // Criar um registro de colaborador pendente que será vinculado após cadastro
-    // Usar a função de backend para fazer isso via service role
     const colaboradorPendente = await base44.asServiceRole.entities.Colaborador.create({
       email: email,
       nome: nome,
       perfil: perfil || 'vendedor',
       empresa_id: empresaId,
       empresa_nome: empresaNome,
-      user_id: null, // Será preenchido após cadastro
+      user_id: 'pending',
       status: 'ativo',
     });
 
