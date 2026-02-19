@@ -196,7 +196,7 @@ export default function Layout({ children, currentPageName }) {
       icon: Building2, 
       roles: ['master', 'super_admin', 'admin'],
       submenu: [
-        { name: 'Empresas', page: 'GestaoSubcontas' },
+        { name: 'Empresas', page: 'Empresas' },
           { name: 'Usuários', page: 'Usuarios' },
           { name: 'Convênios', page: 'Convenios' },
         { name: 'Bancos', page: 'Bancos' },
