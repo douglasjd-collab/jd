@@ -20,6 +20,28 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
+const formatCNPJ = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 14);
+  if (digits.length <= 11) {
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+      .replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3')
+      .replace(/(\d{3})(\d{1,3})/, '$1.$2');
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+};
+
+const formatTelefone = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 10) {
+    return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/\($/, '').replace(/\(\d{0,2}$/, (m) => m);
+  }
+  return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+};
+
 export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
   const [formData, setFormData] = useState({
     codigo: '',
