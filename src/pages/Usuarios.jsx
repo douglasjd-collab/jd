@@ -471,7 +471,7 @@ export default function Usuarios() {
       if (!grupos[empresaId]) {
         grupos[empresaId] = {
           empresa_id: empresaId,
-          empresa_nome: u.empresa_nome || empresas.find(e => e.id === empresaId)?.nome || 'JD Promotora conta Super adm',
+          empresa_nome: u.empresa_nome || empresas.find(e => e.id === empresaId)?.nome || 'JD Promotora',
           usuarios: []
         };
       }
@@ -484,6 +484,13 @@ export default function Usuarios() {
       return a.empresa_nome.localeCompare(b.empresa_nome);
     });
   }, [filteredUsuarios, empresas]);
+
+  // Expandir todos os grupos automaticamente quando carregados
+  React.useEffect(() => {
+    if (usuariosAgrupados.length > 0) {
+      setEmpresasExpandidas(new Set(usuariosAgrupados.map(g => g.empresa_id)));
+    }
+  }, [usuariosAgrupados.length]);
 
   const toggleEmpresa = (empresaId) => {
     setEmpresasExpandidas(prev => {
