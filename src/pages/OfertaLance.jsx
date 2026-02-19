@@ -92,28 +92,19 @@ export default function OfertaLance() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(currentUser?.perfil);
 
-  // Buscar todas as vendas
+  // Buscar todas as vendas (sem filtro de empresa - admin vê tudo)
   const { data: todasVendas = [], isLoading: loadingVendas } = useQuery({
-    queryKey: ['vendas-oferta-lance', currentUser?.empresa_id],
-    enabled: !!currentUser,
+    queryKey: ['vendas-oferta-lance'],
     queryFn: async () => {
-      // Usar asServiceRole para garantir acesso, e retornar todas as vendas ativas/pendentes
-      // Admin vê tudo — o filtro de empresa é feito no frontend abaixo
-      return await base44.asServiceRole.entities.Venda.list('-created_date', 500);
+      return await base44.asServiceRole.entities.Venda.list('-created_date', 1000);
     },
   });
 
-  // Buscar ofertas do mês atual
+  // Buscar ofertas do mês atual (sem filtro de empresa - admin vê tudo)
   const { data: ofertasAtual = [], isLoading: loadingOfertas } = useQuery({
-    queryKey: ['ofertas-lance-atual', competenciaAtual, currentUser?.empresa_id],
-    enabled: !!currentUser,
+    queryKey: ['ofertas-lance-atual', competenciaAtual],
     queryFn: async () => {
-      const isMasterOrSuperAdmin = ['master', 'super_admin'].includes(currentUser?.perfil);
-      const filtro = { competencia: competenciaAtual };
-      if (!isMasterOrSuperAdmin && currentUser?.empresa_id) {
-        filtro.empresa_id = currentUser.empresa_id;
-      }
-      return await base44.asServiceRole.entities.OfertaLance.filter(filtro);
+      return await base44.asServiceRole.entities.OfertaLance.filter({ competencia: competenciaAtual });
     },
   });
 
