@@ -117,9 +117,14 @@ export default function OfertaLance() {
     },
   });
 
+  const isAdminOrAbove = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
+
   // Vendas pendentes (sem oferta no mês atual, status ativa ou pendente)
   const vendasPendentes = todasVendas.filter(v => {
-    const statusValido = v.status === 'ativa' || v.status === 'pendente';
+    // Filtro por empresa: admin vê todas, outros veem apenas da sua empresa
+    if (!isAdminOrAbove && currentUser?.empresa_id && v.empresa_id !== currentUser.empresa_id) return false;
+
+    const statusValido = v.status === 'ativa' || v.status === 'pendente' || v.status === 'aguardando_aprovacao';
     const jaOfertado = ofertasAtual.some(o => o.venda_id === v.id);
     const matchSearch = search === '' || 
       v.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
