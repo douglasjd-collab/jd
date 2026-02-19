@@ -38,7 +38,7 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.asServiceRole.entities.Empresa.create(data),
+    mutationFn: (data) => base44.functions.invoke('createEmpresa', { empresaData: data }),
     onSuccess: () => {
       toast.success('Subconta criada com sucesso!');
       onSuccess();
