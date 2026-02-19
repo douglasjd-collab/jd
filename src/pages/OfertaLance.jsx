@@ -92,19 +92,23 @@ export default function OfertaLance() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(currentUser?.perfil);
 
-  // Buscar todas as vendas (sem filtro de empresa - admin vê tudo)
+  // Buscar todas as vendas via asServiceRole (ignora regras de segurança)
   const { data: todasVendas = [], isLoading: loadingVendas } = useQuery({
     queryKey: ['vendas-oferta-lance'],
     queryFn: async () => {
-      return await base44.asServiceRole.entities.Venda.list('-created_date', 1000);
+      const result = await base44.asServiceRole.entities.Venda.list('-created_date', 1000);
+      console.log('[OfertaLance] Total vendas carregadas:', result.length);
+      return result;
     },
   });
 
-  // Buscar ofertas do mês atual (sem filtro de empresa - admin vê tudo)
+  // Buscar ofertas do mês atual via asServiceRole
   const { data: ofertasAtual = [], isLoading: loadingOfertas } = useQuery({
     queryKey: ['ofertas-lance-atual', competenciaAtual],
     queryFn: async () => {
-      return await base44.asServiceRole.entities.OfertaLance.filter({ competencia: competenciaAtual });
+      const result = await base44.asServiceRole.entities.OfertaLance.filter({ competencia: competenciaAtual });
+      console.log('[OfertaLance] Total ofertas do mês:', result.length);
+      return result;
     },
   });
 
