@@ -319,7 +319,7 @@ export default function OfertaLance() {
     <div className="space-y-6">
       <PageHeader
         title="Oferta de Lance"
-        subtitle={`Competência: ${format(new Date(competenciaAtual + '-01'), 'MMMM/yyyy')}`}
+        subtitle={`Competência: ${hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}`}
       />
 
       <Card className="p-4 border-0 shadow-sm mb-6">
