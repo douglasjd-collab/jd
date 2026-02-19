@@ -33,9 +33,9 @@ Deno.serve(async (req) => {
     // Enviar convite para o usuário
     await base44.users.inviteUser(email, 'user');
 
-    // Criar Colaborador com status "pending" até o usuário aceitar o convite
+    // Criar Colaborador com user_id temporário até o usuário aceitar o convite
     await base44.asServiceRole.entities.Colaborador.create({
-      user_id: null,
+      user_id: 'pending',
       nome: nome,
       email: email,
       perfil: perfil || 'vendedor',
