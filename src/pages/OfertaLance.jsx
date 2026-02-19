@@ -138,8 +138,7 @@ export default function OfertaLance() {
       return await base44.entities.OfertaLance.create(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendas-oferta-lance'] });
-      queryClient.invalidateQueries({ queryKey: ['ofertas-lance-atual'] });
+      queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
       toast.success('Lance ofertado com sucesso!');
       closeForm();
     },
