@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import NovaSubcontaModal from '@/components/subcontas/NovaSubcontaModal';
 import EditarSubcontaModal from '@/components/subcontas/EditarSubcontaModal';
+import UsuariosSubcontaModal from '@/components/subcontas/UsuariosSubcontaModal';
 
 export default function GestaoSubcontas() {
   const [searchTerm, setSearchTerm] = useState('');
