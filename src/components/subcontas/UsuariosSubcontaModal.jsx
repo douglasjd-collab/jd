@@ -121,6 +121,32 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
     }
   };
 
+  const handleConvidar = async () => {
+    if (!convidadoEmail || !convidadoNome) {
+      toast.error('Preencha email e nome');
+      return;
+    }
+    setConvidandoLoading(true);
+    try {
+      await base44.functions.invoke('convidarUsuarioSubconta', {
+        email: convidadoEmail,
+        nome: convidadoNome,
+        perfil: convidadoPerfil,
+        empresaId: empresa.id,
+        empresaNome: empresa.nome,
+      });
+      toast.success('Convite enviado! O usuário será vinculado automaticamente ao se cadastrar.');
+      setConvidadoEmail('');
+      setConvidadoNome('');
+      setConvidadoPerfil('vendedor');
+      setConvidarOpen(false);
+    } catch (e) {
+      toast.error('Erro ao enviar convite: ' + e.message);
+    } finally {
+      setConvidandoLoading(false);
+    }
+  };
+
   if (!empresa) return null;
 
   return (
