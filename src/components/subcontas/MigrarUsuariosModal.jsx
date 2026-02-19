@@ -62,36 +62,23 @@ export default function MigrarUsuariosModal({ open, onOpenChange, usuariosDaJD, 
 
     setLoading(true);
     try {
-      const subconta = empresas.find(e => e.id === subcontaDestino);
-      let sucessos = 0;
-      let erros = 0;
+      const response = await base44.functions.invoke('migrarUsuarios', {
+        colaboradorIds: selecionados,
+        subcontaDestinoId: subcontaDestino,
+      });
 
-      for (const id of selecionados) {
-        const usuario = usuariosDaJD.find(u => u.id === id);
-        if (!usuario) continue;
-        try {
-          await base44.asServiceRole.entities.Colaborador.update(id, {
-            empresa_id: subcontaDestino,
-            empresa_nome: subconta.nome,
-          });
-          // Atualizar User também
-          if (usuario.user_id) {
-            await base44.asServiceRole.entities.User.update(usuario.user_id, {
-              empresa_id: subcontaDestino,
-              empresa_nome: subconta.nome,
-            }).catch(() => {}); // User pode não existir ainda
-          }
-          sucessos++;
-        } catch {
-          erros++;
-        }
+      const result = response.data;
+      if (result?.success) {
+        toast.success(`${result.sucessos} usuário(s) migrado(s) para ${result.subconta_nome}` + (result.erros ? ` (${result.erros} erro(s))` : ''));
+        setSelecionados([]);
+        setSubcontaDestino('');
+        onSuccess?.();
+        onOpenChange(false);
+      } else {
+        toast.error('Erro ao migrar: ' + (result?.error || 'desconhecido'));
       }
-
-      toast.success(`${sucessos} usuário(s) migrado(s) para ${subconta.nome}` + (erros ? ` (${erros} erro(s))` : ''));
-      setSelecionados([]);
-      setSubcontaDestino('');
-      onSuccess?.();
-      onOpenChange(false);
+    } catch (e) {
+      toast.error('Erro ao migrar usuários: ' + (e?.message || 'desconhecido'));
     } finally {
       setLoading(false);
     }
