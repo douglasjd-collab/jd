@@ -42,14 +42,8 @@ export default function GestaoSubcontas() {
     queryKey: ['empresas', currentUser?.perfil],
     enabled: !!currentUser,
     queryFn: async () => {
-      if (currentUser?.perfil === 'super_admin') {
-        const allEmpresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 100);
-        return allEmpresas || [];
-      } else {
-        // Admin vê apenas sua própria empresa
-        const allEmpresas = await base44.entities.Empresa.list('-created_date', 10);
-        return allEmpresas || [];
-      }
+      const response = await base44.functions.invoke('listarEmpresas', {});
+      return response.data?.empresas || [];
     },
   });
 

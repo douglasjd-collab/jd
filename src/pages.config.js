@@ -64,6 +64,7 @@ import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
 import Configuracoes from './pages/Configuracoes';
 import Convenios from './pages/Convenios';
 import Dashboard from './pages/Dashboard';
+import Empresas from './pages/Empresas';
 import EmpresasParceiras from './pages/EmpresasParceiras';
 import FunilVendas from './pages/FunilVendas';
 import GestaoSubcontas from './pages/GestaoSubcontas';
@@ -110,7 +111,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import Empresas from './pages/Empresas';
 import __Layout from './Layout.jsx';
 
 
@@ -132,6 +132,7 @@ export const PAGES = {
     "Configuracoes": Configuracoes,
     "Convenios": Convenios,
     "Dashboard": Dashboard,
+    "Empresas": Empresas,
     "EmpresasParceiras": EmpresasParceiras,
     "FunilVendas": FunilVendas,
     "GestaoSubcontas": GestaoSubcontas,
@@ -178,7 +179,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "Empresas": Empresas,
 }
 
 export const pagesConfig = {
