@@ -55,6 +55,19 @@ Deno.serve(async (req) => {
             }
         }
 
+        // Atualizar contador usuarios_ativos na empresa destino
+        if (sucessos > 0) {
+            try {
+                const subcontaAtualizada = await base44.asServiceRole.entities.Empresa.get(subcontaDestinoId);
+                const totalAtual = subcontaAtualizada?.usuarios_ativos || 0;
+                await base44.asServiceRole.entities.Empresa.update(subcontaDestinoId, {
+                    usuarios_ativos: totalAtual + sucessos,
+                });
+            } catch (e) {
+                console.log('Erro ao atualizar usuarios_ativos:', e.message);
+            }
+        }
+
         return Response.json({ success: true, sucessos, erros, subconta_nome: subconta.nome });
     } catch (error) {
         console.error('Erro geral:', error);
