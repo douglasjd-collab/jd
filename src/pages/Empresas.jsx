@@ -70,7 +70,7 @@ export default function Empresas() {
         onOpenChange={setMigrarOpen}
         usuariosDaJD={colaboradoresSemEmpresa}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['colaboradores-sem-empresa'] });
+          queryClient.invalidateQueries({ queryKey: ['colaboradores-jd'] });
           queryClient.invalidateQueries({ queryKey: ['usuarios'] });
         }}
       />
