@@ -22,14 +22,34 @@ export default function GestaoSubcontas() {
   const [editandoSubconta, setEditandoSubconta] = useState(null);
   const [migrandoSubconta, setMigrandoSubconta] = useState(null);
   const [migratingLoading, setMigratingLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
 
+  React.useEffect(() => {
+    base44.auth.me().then(async (me) => {
+      if (!me) return;
+      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        setCurrentUser({ ...me, perfil: 'super_admin' });
+        return;
+      }
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' }, '-created_date');
+      const colab = colabs?.[0];
+      setCurrentUser({ ...me, perfil: colab?.perfil || 'admin', empresa_id: colab?.empresa_id });
+    });
+  }, []);
+
   const { data: empresas = [], isLoading } = useQuery({
-    queryKey: ['empresas'],
+    queryKey: ['empresas', currentUser?.perfil],
+    enabled: !!currentUser,
     queryFn: async () => {
-      // Buscar todas as empresas sem filtros
-      const allEmpresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 100);
-      return allEmpresas || [];
+      if (currentUser?.perfil === 'super_admin') {
+        const allEmpresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 100);
+        return allEmpresas || [];
+      } else {
+        // Admin vê apenas sua própria empresa
+        const allEmpresas = await base44.entities.Empresa.list('-created_date', 10);
+        return allEmpresas || [];
+      }
     },
   });
 
