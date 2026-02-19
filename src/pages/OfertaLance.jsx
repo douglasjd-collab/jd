@@ -118,13 +118,12 @@ export default function OfertaLance() {
     queryKey: ['ofertas-lance-atual', competenciaAtual, currentUser?.empresa_id],
     enabled: !!currentUser,
     queryFn: async () => {
-      const ofertas = await base44.entities.OfertaLance.filter({ competencia: competenciaAtual });
-      
-      if (currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin') {
-        return ofertas;
+      const isMasterOrSuperAdmin = ['master', 'super_admin'].includes(currentUser?.perfil);
+      const filtro = { competencia: competenciaAtual };
+      if (!isMasterOrSuperAdmin && currentUser?.empresa_id) {
+        filtro.empresa_id = currentUser.empresa_id;
       }
-      
-      return ofertas.filter(o => o.empresa_id === currentUser?.empresa_id);
+      return await base44.asServiceRole.entities.OfertaLance.filter(filtro);
     },
   });
 
