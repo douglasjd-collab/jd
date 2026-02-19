@@ -141,7 +141,7 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
               <Label>Telefone *</Label>
               <Input
                 value={formData.telefone}
-                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, telefone: formatTelefone(e.target.value) })}
                 placeholder="(11) 99999-9999"
               />
             </div>
