@@ -55,16 +55,28 @@ Deno.serve(async (req) => {
             }
         }
 
-        // Atualizar contador usuarios_ativos na empresa destino
-        if (sucessos > 0) {
+        // Recalcular usuarios_ativos reais para todas as empresas envolvidas
+        const empresasParaAtualizar = new Set([subcontaDestinoId, ...colaboradorIds.map(() => null)]);
+        
+        // Recalcular destino
+        try {
+            const colabsDestino = await base44.asServiceRole.entities.Colaborador.filter({ empresa_id: subcontaDestinoId, status: 'ativo' });
+            await base44.asServiceRole.entities.Empresa.update(subcontaDestinoId, {
+                usuarios_ativos: colabsDestino.length,
+            });
+        } catch (e) {
+            console.log('Erro ao atualizar usuarios_ativos destino:', e.message);
+        }
+
+        // Recalcular origem (buscar empresa_id original dos colaboradores migrados)
+        if (colaboradorOrigem) {
             try {
-                const subcontaAtualizada = await base44.asServiceRole.entities.Empresa.get(subcontaDestinoId);
-                const totalAtual = subcontaAtualizada?.usuarios_ativos || 0;
-                await base44.asServiceRole.entities.Empresa.update(subcontaDestinoId, {
-                    usuarios_ativos: totalAtual + sucessos,
+                const colabsOrigem = await base44.asServiceRole.entities.Colaborador.filter({ empresa_id: colaboradorOrigem, status: 'ativo' });
+                await base44.asServiceRole.entities.Empresa.update(colaboradorOrigem, {
+                    usuarios_ativos: colabsOrigem.length,
                 });
             } catch (e) {
-                console.log('Erro ao atualizar usuarios_ativos:', e.message);
+                console.log('Erro ao atualizar usuarios_ativos origem:', e.message);
             }
         }
 
