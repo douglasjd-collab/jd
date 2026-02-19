@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Users, UserPlus, Loader2, Trash2, Building2 } from 'lucide-react';
+import { Users, UserPlus, Loader2, Trash2, Building2, Pencil, Check, X } from 'lucide-react';
 
 const perfilColors = {
   master: 'bg-purple-100 text-purple-700',
