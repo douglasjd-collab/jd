@@ -275,6 +275,10 @@ export default function OfertaLance() {
       )
     },
     {
+      header: 'Administradora',
+      cell: (row) => row.administradora_nome || '-'
+    },
+    {
       header: 'Grupo/Cota',
       cell: (row) => `${row.grupo} / ${row.cota}`
     },
