@@ -230,6 +230,10 @@ export default function OfertaLance() {
       cell: (row) => `${row.grupo} / ${row.cota}`
     },
     {
+      header: 'Administradora',
+      cell: (row) => row.administradora_nome || '-'
+    },
+    {
       header: 'Valor Carta',
       cell: (row) => formatCurrency(row.valorCredito)
     },
