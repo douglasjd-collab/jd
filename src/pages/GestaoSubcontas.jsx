@@ -58,12 +58,12 @@ export default function GestaoSubcontas() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (empresaId) => base44.asServiceRole.entities.Empresa.delete(empresaId),
+    mutationFn: (empresaId) => base44.functions.invoke('deleteEmpresa', { empresaId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       toast.success('Subconta deletada!');
     },
-    onError: () => toast.error('Erro ao deletar subconta'),
+    onError: (err) => toast.error('Erro ao deletar subconta: ' + (err?.message || '')),
   });
 
   const migrarUsuariosMutation = useMutation({
