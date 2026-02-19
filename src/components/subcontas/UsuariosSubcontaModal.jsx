@@ -160,19 +160,30 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4 overflow-hidden flex-1">
-          {/* Header com contador e botão adicionar */}
+          {/* Header com contador e botões */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-500">
               {usuariosDaSubconta.length} / {empresa.limite_usuarios || '∞'} usuários
             </span>
-            <Button
-              size="sm"
-              className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
-              onClick={() => setAdicionarOpen(!adicionarOpen)}
-            >
-              <UserPlus className="w-4 h-4" />
-              Adicionar Usuário
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => setConvidarOpen(!convidarOpen)}
+              >
+                <UserPlus className="w-4 h-4" />
+                Convidar Novo
+              </Button>
+              <Button
+                size="sm"
+                className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
+                onClick={() => setAdicionarOpen(!adicionarOpen)}
+              >
+                <UserPlus className="w-4 h-4" />
+                Adicionar Existente
+              </Button>
+            </div>
           </div>
 
           {/* Painel de adicionar usuário */}
