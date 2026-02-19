@@ -23,12 +23,21 @@ Deno.serve(async (req) => {
       ofertas = await base44.asServiceRole.entities.OfertaLance.list('-created_date', 500);
     }
 
+    // Enriquecer ofertas com dados da venda (administradora_nome)
+    const ofertasEnriquecidas = ofertas.map(oferta => {
+      const venda = vendas.find(v => v.id === oferta.venda_id);
+      return {
+        ...oferta,
+        administradora_nome: venda?.administradora_nome || oferta.administradora_nome || '-'
+      };
+    });
+
     return Response.json({
       vendas,
-      ofertas,
+      ofertas: ofertasEnriquecidas,
       debug: {
         total_vendas: vendas.length,
-        total_ofertas: ofertas.length,
+        total_ofertas: ofertasEnriquecidas.length,
         competencia,
       }
     });
