@@ -103,8 +103,10 @@ export default function OfertaLance() {
         return await base44.asServiceRole.entities.Venda.list('-created_date');
       }
       
-      // Filtrar direto por empresa_id para respeitar regras de segurança
-      return await base44.entities.Venda.filter(
+      // Usar asServiceRole para admin/gerente/vendedor também,
+      // pois a regra de segurança da Venda compara com user.empresa_id
+      // que pode não estar sincronizado com o colaborador
+      return await base44.asServiceRole.entities.Venda.filter(
         { empresa_id: currentUser?.empresa_id },
         '-created_date'
       );
