@@ -24,8 +24,10 @@ const perfilLabels = {
 export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
   const [adicionarOpen, setAdicionarOpen] = useState(false);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState('');
-  const [perfilSelecionado, setPerfilSelecionado] = useState('vendedor');
   const [loading, setLoading] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
+  const [editPerfil, setEditPerfil] = useState('');
+  const [editStatus, setEditStatus] = useState('');
   const queryClient = useQueryClient();
 
   // Usuários vinculados a esta subconta
