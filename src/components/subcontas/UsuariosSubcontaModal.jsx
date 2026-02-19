@@ -53,7 +53,7 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
   const handleRemover = async (colab) => {
     if (!confirm(`Remover ${colab.nome} da subconta ${empresa?.nome}?`)) return;
     try {
-      await base44.asServiceRole.entities.Colaborador.update(colab.id, {
+      await base44.entities.Colaborador.update(colab.id, {
         empresa_id: null,
         empresa_nome: null,
       });
