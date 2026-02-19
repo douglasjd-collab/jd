@@ -167,7 +167,7 @@ export default function Layout({ children, currentPageName }) {
   const isGerente = user?.perfil === 'gerente';
 
   const menuItems = [
-    { name: 'Empresas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Gestão de Subcontas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Empréstimos', icon: FileText, page: 'VendasEmprestimos', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
