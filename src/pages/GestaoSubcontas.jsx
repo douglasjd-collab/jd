@@ -450,6 +450,17 @@ export default function GestaoSubcontas() {
           }}
         />
       )}
+
+      <UsuariosSubcontaModal
+        open={usuariosSubcontaOpen}
+        onOpenChange={(v) => {
+          setUsuariosSubcontaOpen(v);
+          if (!v) {
+            queryClient.invalidateQueries({ queryKey: ['empresas'] });
+          }
+        }}
+        empresa={subcontaSelecionada}
+      />
     </div>
   );
 }
