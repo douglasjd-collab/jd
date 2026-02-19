@@ -23,6 +23,8 @@ export default function GestaoSubcontas() {
   const [editandoSubconta, setEditandoSubconta] = useState(null);
   const [migrandoSubconta, setMigrandoSubconta] = useState(null);
   const [migratingLoading, setMigratingLoading] = useState(false);
+  const [usuariosSubcontaOpen, setUsuariosSubcontaOpen] = useState(false);
+  const [subcontaSelecionada, setSubcontaSelecionada] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
 
