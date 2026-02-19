@@ -355,6 +355,17 @@ export default function GestaoSubcontas() {
                       size="sm"
                       variant="outline"
                       onClick={() => {
+                        setSubcontaSelecionada(empresa);
+                        setUsuariosSubcontaOpen(true);
+                      }}
+                    >
+                      <Users className="w-3 h-3 mr-1" />
+                      Gerenciar Usuários
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
                         setMigrandoSubconta(empresa);
                         migrarUsuariosMutation.mutate(empresa);
                       }}
