@@ -28,6 +28,11 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
   const [editandoId, setEditandoId] = useState(null);
   const [editPerfil, setEditPerfil] = useState('');
   const [editStatus, setEditStatus] = useState('');
+  const [convidarOpen, setConvidarOpen] = useState(false);
+  const [convidadoEmail, setConvidadoEmail] = useState('');
+  const [convidadoNome, setConvidadoNome] = useState('');
+  const [convidadoPerfil, setConvidadoPerfil] = useState('vendedor');
+  const [convidandoLoading, setConvidandoLoading] = useState(false);
   const queryClient = useQueryClient();
 
   // Usuários vinculados a esta subconta
