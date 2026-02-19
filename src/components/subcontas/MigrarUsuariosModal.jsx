@@ -29,7 +29,10 @@ export default function MigrarUsuariosModal({ open, onOpenChange, usuariosDaJD, 
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas-destino'],
-    queryFn: () => base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 100),
+    queryFn: async () => {
+      const response = await base44.functions.invoke('listarEmpresas', {});
+      return (response.data?.empresas || []).filter(e => e.status === 'ativa');
+    },
     enabled: open,
   });
 
