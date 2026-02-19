@@ -31,7 +31,7 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
   // Usuários vinculados a esta subconta
   const { data: usuariosDaSubconta = [], isLoading, refetch } = useQuery({
     queryKey: ['usuarios-subconta', empresa?.id],
-    queryFn: () => base44.asServiceRole.entities.Colaborador.filter(
+    queryFn: () => base44.entities.Colaborador.filter(
       { empresa_id: empresa?.id },
       '-created_date',
       200
