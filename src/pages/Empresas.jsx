@@ -18,7 +18,7 @@ export default function Empresas() {
   const { data: colaboradoresSemEmpresa = [] } = useQuery({
     queryKey: ['colaboradores-jd'],
     queryFn: async () => {
-      return await base44.asServiceRole.entities.Colaborador.filter(
+      return await base44.entities.Colaborador.filter(
         { empresa_id: JD_EMPRESA_ID },
         '-created_date',
         200
