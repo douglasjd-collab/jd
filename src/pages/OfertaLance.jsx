@@ -37,8 +37,9 @@ export default function OfertaLance() {
   const [search, setSearch] = useState('');
   const queryClient = useQueryClient();
 
-  // Competência atual (YYYY-MM)
-  const competenciaAtual = format(new Date(), 'yyyy-MM');
+  // Competência atual (YYYY-MM) - fevereiro 2026
+  const hoje = new Date();
+  const competenciaAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 
   useEffect(() => {
     loadUser();
