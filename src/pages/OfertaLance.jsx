@@ -93,25 +93,19 @@ export default function OfertaLance() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(currentUser?.perfil);
 
-  // Buscar todas as vendas via asServiceRole (ignora regras de segurança)
-  const { data: todasVendas = [], isLoading: loadingVendas } = useQuery({
-    queryKey: ['vendas-oferta-lance'],
+  // Buscar vendas e ofertas via função backend (contorna problema de empresa_id)
+  const { data: dadosLance = { vendas: [], ofertas: [] }, isLoading: loadingVendas } = useQuery({
+    queryKey: ['oferta-lance-data', competenciaAtual],
     queryFn: async () => {
-      const result = await base44.asServiceRole.entities.Venda.list('-created_date', 1000);
-      console.log('[OfertaLance] Total vendas carregadas:', result.length);
-      return result;
+      const res = await base44.functions.invoke('ofertaLanceData', { competencia: competenciaAtual });
+      console.log('[OfertaLance] Debug:', res.data?.debug);
+      return res.data || { vendas: [], ofertas: [] };
     },
   });
 
-  // Buscar ofertas do mês atual via asServiceRole
-  const { data: ofertasAtual = [], isLoading: loadingOfertas } = useQuery({
-    queryKey: ['ofertas-lance-atual', competenciaAtual],
-    queryFn: async () => {
-      const result = await base44.asServiceRole.entities.OfertaLance.filter({ competencia: competenciaAtual });
-      console.log('[OfertaLance] Total ofertas do mês:', result.length);
-      return result;
-    },
-  });
+  const todasVendas = dadosLance.vendas || [];
+  const ofertasAtual = dadosLance.ofertas || [];
+  const loadingOfertas = false;
 
   // Vendas pendentes (sem oferta no mês atual, status ativa/pendente/aguardando_aprovacao)
   const vendasPendentes = todasVendas.filter(v => {
