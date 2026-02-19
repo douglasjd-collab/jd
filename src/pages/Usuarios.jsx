@@ -32,7 +32,8 @@ const perfilLabels = {
   super_admin: 'Super Admin',
   admin: 'Administrador',
   gerente: 'Gerente',
-  vendedor: 'Vendedor'
+  vendedor: 'Vendedor',
+  funcionario: 'Funcionário'
 };
 
 const perfilColors = {
@@ -40,7 +41,8 @@ const perfilColors = {
   super_admin: 'bg-pink-100 text-pink-700',
   admin: 'bg-blue-100 text-blue-700',
   gerente: 'bg-amber-100 text-amber-700',
-  vendedor: 'bg-slate-100 text-slate-700'
+  vendedor: 'bg-slate-100 text-slate-700',
+  funcionario: 'bg-teal-100 text-teal-700'
 };
 
 export default function Usuarios() {
@@ -655,6 +657,7 @@ export default function Usuarios() {
             <SelectItem value="todos">Todos os perfis</SelectItem>
             <SelectItem value="pendente">⏳ Pendentes</SelectItem>
             <SelectItem value="vendedor">Vendedores</SelectItem>
+            <SelectItem value="funcionario">Funcionários</SelectItem>
             <SelectItem value="gerente">Gerentes</SelectItem>
             <SelectItem value="admin">Administradores</SelectItem>
             <SelectItem value="super_admin">Super Admins</SelectItem>
