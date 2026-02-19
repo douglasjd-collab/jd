@@ -14,11 +14,12 @@ const perfilColors = {
   admin: 'bg-blue-100 text-blue-700',
   gerente: 'bg-amber-100 text-amber-700',
   vendedor: 'bg-slate-100 text-slate-700',
+  funcionario: 'bg-teal-100 text-teal-700',
 };
 
 const perfilLabels = {
   master: 'Master', super_admin: 'Super Admin', admin: 'Admin',
-  gerente: 'Gerente', vendedor: 'Vendedor',
+  gerente: 'Gerente', vendedor: 'Vendedor', funcionario: 'Funcionário',
 };
 
 export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
@@ -220,6 +221,7 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="vendedor">Vendedor</SelectItem>
+                    <SelectItem value="funcionario">Funcionário</SelectItem>
                     <SelectItem value="gerente">Gerente</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
@@ -309,6 +311,7 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
                           <SelectItem value="admin">Admin</SelectItem>
                           <SelectItem value="gerente">Gerente</SelectItem>
                           <SelectItem value="vendedor">Vendedor</SelectItem>
+                          <SelectItem value="funcionario">Funcionário</SelectItem>
                         </SelectContent>
                       </Select>
                       <Select value={editStatus} onValueChange={setEditStatus}>
