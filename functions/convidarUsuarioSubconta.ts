@@ -30,35 +30,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Este email já está cadastrado' }, { status: 409 });
     }
 
-    // Enviar email com link de cadastro
-    const appUrl = new URL(req.url).origin;
-    const loginUrl = `${appUrl}/login`;
-    
-    const emailBody = `
-Olá ${nome},
-
-Você foi convidado para se cadastrar na plataforma CRM Consórcio por ${convidadoPorNome} da subconta ${empresaNome}.
-
-Para se cadastrar e acessar o sistema, clique no link abaixo:
-
-${loginUrl}
-
-Seu email: ${email}
-Subconta: ${empresaNome}
-Perfil: ${perfil}
-
-Se você não esperava este convite, ignore este email.
-
-Atenciosamente,
-Equipe CRM Consórcio
-    `;
-
-    await base44.integrations.Core.SendEmail({
-      to: email,
-      subject: `Convite para CRM Consórcio - ${empresaNome}`,
-      body: emailBody,
-      from_name: 'CRM Consórcio'
-    });
+    // Enviar convite para o usuário (que cria o usuário e envia email com link)
+    await base44.asServiceRole.users.inviteUser(email, 'user');
 
     return Response.json({
       success: true,
