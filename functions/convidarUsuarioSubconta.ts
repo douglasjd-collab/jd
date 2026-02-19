@@ -30,9 +30,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Este email já está cadastrado' }, { status: 409 });
     }
 
-    // Registrar convite em cache simples (o usuário será criado ao fazer login/cadastro)
-    // Após se cadastrar, será vinculado à empresa via um webhook ou sincronização
-    console.log(`Convite registrado: ${email} para ${empresaNome}`);
+    // Enviar convite para o usuário
+    await base44.users.inviteUser(email, 'user');
+
+    // Criar Colaborador com status "pending" até o usuário aceitar o convite
+    await base44.asServiceRole.entities.Colaborador.create({
+      user_id: null,
+      nome: nome,
+      email: email,
+      perfil: perfil || 'vendedor',
+      empresa_id: empresaId,
+      empresa_nome: empresaNome,
+      status: 'ativo',
+    });
 
     return Response.json({
       success: true,
