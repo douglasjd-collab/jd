@@ -208,9 +208,8 @@ export default function Usuarios() {
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas-usuarios'],
     queryFn: async () => {
-      const result = await base44.entities.Empresa.filter({ status: 'ativa' });
-      console.log('Empresas carregadas para vincular:', result);
-      return result;
+      const response = await base44.functions.invoke('listarEmpresas', {});
+      return response.data?.empresas || [];
     },
     enabled: ['master', 'super_admin', 'admin'].includes(currentUser?.perfil)
   });
