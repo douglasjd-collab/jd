@@ -186,7 +186,62 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
             </div>
           </div>
 
-          {/* Painel de adicionar usuário */}
+          {/* Painel de convidar novo usuário */}
+          {convidarOpen && (
+            <div className="border rounded-lg p-4 bg-blue-50 space-y-3">
+              <p className="text-sm font-medium text-slate-700">Convidar novo usuário:</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-600 font-medium">Nome</label>
+                  <input
+                    type="text"
+                    placeholder="João Silva"
+                    value={convidadoNome}
+                    onChange={(e) => setConvidadoNome(e.target.value)}
+                    className="w-full px-3 py-2 border rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-600 font-medium">Email</label>
+                  <input
+                    type="email"
+                    placeholder="joao@example.com"
+                    value={convidadoEmail}
+                    onChange={(e) => setConvidadoEmail(e.target.value)}
+                    className="w-full px-3 py-2 border rounded text-sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-slate-600 font-medium">Perfil</label>
+                <Select value={convidadoPerfil} onValueChange={setConvidadoPerfil}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vendedor">Vendedor</SelectItem>
+                    <SelectItem value="gerente">Gerente</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => setConvidarOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={handleConvidar}
+                  disabled={convidandoLoading || !convidadoEmail || !convidadoNome}
+                >
+                  {convidandoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enviar Convite'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Painel de adicionar usuário existente */}
           {adicionarOpen && (
             <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
               <p className="text-sm font-medium text-slate-700">Selecione um colaborador para adicionar:</p>
