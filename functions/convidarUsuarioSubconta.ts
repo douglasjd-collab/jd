@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, nome, perfil, empresaId, empresaNome } = body;
+    const { email, nome, perfil, empresaId, empresaNome, convidadoPorNome } = body;
 
     if (!email || !nome || !empresaId) {
       return Response.json({ error: 'Email, nome e empresaId são obrigatórios' }, { status: 400 });
@@ -30,11 +30,39 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Este email já está cadastrado' }, { status: 409 });
     }
 
-    // Simplificar: apenas retornar sucesso
-    // O admin precisará configurar o colaborador após ele se cadastrar
+    // Enviar email com link de cadastro
+    const appUrl = new URL(req.url).origin;
+    const loginUrl = `${appUrl}/login`;
+    
+    const emailBody = `
+Olá ${nome},
+
+Você foi convidado para se cadastrar na plataforma CRM Consórcio por ${convidadoPorNome} da subconta ${empresaNome}.
+
+Para se cadastrar e acessar o sistema, clique no link abaixo:
+
+${loginUrl}
+
+Seu email: ${email}
+Subconta: ${empresaNome}
+Perfil: ${perfil}
+
+Se você não esperava este convite, ignore este email.
+
+Atenciosamente,
+Equipe CRM Consórcio
+    `;
+
+    await base44.integrations.Core.SendEmail({
+      to: email,
+      subject: `Convite para CRM Consórcio - ${empresaNome}`,
+      body: emailBody,
+      from_name: 'CRM Consórcio'
+    });
+
     return Response.json({
       success: true,
-      message: 'Convite registrado. O usuário será configurado na subconta após se cadastrar.',
+      message: 'Convite enviado com sucesso por email!',
       email: email,
       empresa: empresaNome,
     });
