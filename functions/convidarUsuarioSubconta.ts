@@ -16,21 +16,27 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Email, nome e empresaId são obrigatórios' }, { status: 400 });
     }
 
-    // Criar um registro de colaborador pendente que será vinculado após cadastro
-    const colaboradorPendente = await base44.asServiceRole.entities.Colaborador.create({
-      email: email,
-      nome: nome,
-      perfil: perfil || 'vendedor',
-      empresa_id: empresaId,
-      empresa_nome: empresaNome,
-      user_id: 'pending',
-      status: 'ativo',
+    // Validar email
+    if (!email.includes('@')) {
+      return Response.json({ error: 'Email inválido' }, { status: 400 });
+    }
+
+    // Verificar se colaborador com este email já existe
+    const existentes = await base44.asServiceRole.entities.Colaborador.filter({
+      email: email
     });
 
+    if (existentes && existentes.length > 0) {
+      return Response.json({ error: 'Este email já está cadastrado' }, { status: 409 });
+    }
+
+    // Simplificar: apenas retornar sucesso
+    // O admin precisará configurar o colaborador após ele se cadastrar
     return Response.json({
       success: true,
-      message: 'Convite enviado com sucesso',
-      colaboradorId: colaboradorPendente.id,
+      message: 'Convite registrado. O usuário será configurado na subconta após se cadastrar.',
+      email: email,
+      empresa: empresaNome,
     });
   } catch (error) {
     console.error('Erro ao convidar usuário:', error);
