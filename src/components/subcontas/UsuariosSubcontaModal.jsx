@@ -43,14 +43,8 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
   const { data: todosColaboradores = [] } = useQuery({
     queryKey: ['colaboradores-sem-empresa'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('listarUsuariosPendentes', {});
-      const users = response.data?.users || [];
-      // Buscar colaboradores existentes para filtrar quem já tem empresa
-      const colabs = await base44.asServiceRole.entities.Colaborador.list('-created_date', 500);
-      const idsComEmpresa = new Set(colabs.filter(c => c.empresa_id).map(c => c.user_id));
-      const colabIds = new Set(colabs.map(c => c.user_id).filter(Boolean));
-
-      // Usuários sem empresa (ou que ainda não têm colaborador)
+      const colabs = await base44.entities.Colaborador.list('-created_date', 500);
+      // Retorna colaboradores sem empresa ou com empresa_id vazio
       return colabs.filter(c => !c.empresa_id || c.empresa_id === '');
     },
     enabled: open && adicionarOpen,
