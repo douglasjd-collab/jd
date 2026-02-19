@@ -201,20 +201,51 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
                     <p className="font-medium text-slate-900 truncate">{u.nome}</p>
                     <p className="text-xs text-slate-500 truncate">{u.email}</p>
                   </div>
-                  <Badge className={perfilColors[u.perfil] || perfilColors.vendedor}>
-                    {perfilLabels[u.perfil] || 'Vendedor'}
-                  </Badge>
-                  <Badge className={u.status === 'ativo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-                    {u.status || 'ativo'}
-                  </Badge>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-red-400 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => handleRemover(u)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+
+                  {editandoId === u.id ? (
+                    <>
+                      <Select value={editPerfil} onValueChange={setEditPerfil}>
+                        <SelectTrigger className="w-32 h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="gerente">Gerente</SelectItem>
+                          <SelectItem value="vendedor">Vendedor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={editStatus} onValueChange={setEditStatus}>
+                        <SelectTrigger className="w-24 h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ativo">Ativo</SelectItem>
+                          <SelectItem value="inativo">Inativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button size="icon" variant="ghost" className="text-green-600 hover:bg-green-50 h-7 w-7" onClick={() => handleSalvarEdicao(u)}>
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-slate-400 hover:bg-slate-100 h-7 w-7" onClick={() => setEditandoId(null)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Badge className={perfilColors[u.perfil] || perfilColors.vendedor}>
+                        {perfilLabels[u.perfil] || 'Vendedor'}
+                      </Badge>
+                      <Badge className={u.status === 'ativo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                        {u.status || 'ativo'}
+                      </Badge>
+                      <Button size="icon" variant="ghost" className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 h-7 w-7" onClick={() => handleIniciarEdicao(u)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7" onClick={() => handleRemover(u)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               ))
             )}
