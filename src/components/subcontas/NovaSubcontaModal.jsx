@@ -133,7 +133,7 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
               <Label>CPF/CNPJ</Label>
               <Input
                 value={formData.cpf_cnpj}
-                onChange={(e) => setFormData({ ...formData, cpf_cnpj: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, cpf_cnpj: formatCNPJ(e.target.value) })}
                 placeholder="00.000.000/0000-00"
               />
             </div>
