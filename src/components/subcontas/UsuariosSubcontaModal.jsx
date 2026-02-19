@@ -52,6 +52,26 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
     enabled: open && adicionarOpen,
   });
 
+  const handleIniciarEdicao = (u) => {
+    setEditandoId(u.id);
+    setEditPerfil(u.perfil || 'vendedor');
+    setEditStatus(u.status || 'ativo');
+  };
+
+  const handleSalvarEdicao = async (u) => {
+    try {
+      await base44.entities.Colaborador.update(u.id, {
+        perfil: editPerfil,
+        status: editStatus,
+      });
+      toast.success('Dados atualizados!');
+      setEditandoId(null);
+      refetch();
+    } catch (e) {
+      toast.error('Erro ao salvar: ' + e.message);
+    }
+  };
+
   const handleRemover = async (colab) => {
     if (!confirm(`Remover ${colab.nome} da subconta ${empresa?.nome}?`)) return;
     try {
