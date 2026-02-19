@@ -5,7 +5,7 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
 
-        if (!user || !['master', 'super_admin'].includes(user.perfil)) {
+        if (!user || (!['master', 'super_admin'].includes(user.perfil) && user.role !== 'super_admin')) {
             return Response.json({ error: 'Apenas Master/Super Admin podem criar empresas' }, { status: 403 });
         }
 
