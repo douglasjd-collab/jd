@@ -45,8 +45,24 @@ export default function GestaoSubcontas() {
     queryKey: ['empresas', currentUser?.perfil],
     enabled: !!currentUser,
     queryFn: async () => {
-      const response = await base44.functions.invoke('listarEmpresas', {});
-      return response.data?.empresas || [];
+      const [response, todosColabs] = await Promise.all([
+        base44.functions.invoke('listarEmpresas', {}),
+        base44.entities.Colaborador.list('-created_date', 1000),
+      ]);
+      const lista = response.data?.empresas || [];
+
+      // Recalcula usuarios_ativos contando colaboradores por empresa_id
+      const contagem = {};
+      todosColabs.forEach(c => {
+        if (c.empresa_id && c.status !== 'inativo') {
+          contagem[c.empresa_id] = (contagem[c.empresa_id] || 0) + 1;
+        }
+      });
+
+      return lista.map(e => ({
+        ...e,
+        usuarios_ativos: contagem[e.id] || 0,
+      }));
     },
   });
 
