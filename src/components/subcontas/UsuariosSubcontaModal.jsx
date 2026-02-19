@@ -129,12 +129,15 @@ export default function UsuariosSubcontaModal({ open, onOpenChange, empresa }) {
     }
     setConvidandoLoading(true);
     try {
+      const user = await base44.auth.me();
       await base44.functions.invoke('convidarUsuarioSubconta', {
         email: convidadoEmail,
         nome: convidadoNome,
         perfil: convidadoPerfil,
         empresaId: empresa.id,
         empresaNome: empresa.nome,
+        convidadoPorId: user?.id,
+        convidadoPorNome: user?.full_name,
       });
       toast.success('Convite enviado! O usuário será vinculado automaticamente ao se cadastrar.');
       setConvidadoEmail('');
