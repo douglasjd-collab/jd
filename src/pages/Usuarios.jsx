@@ -141,28 +141,22 @@ export default function Usuarios() {
         if (isMasterOrSuperAdmin) {
           colaboradores = await base44.asServiceRole.entities.Colaborador.list('-created_date');
         } else {
-          // Admin vê apenas usuários da sua empresa
-          colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
+          // Admin/Gerente vê apenas usuários da sua empresa
+          colaboradores = await base44.entities.Colaborador.filter(
             { empresa_id: currentUser.empresa_id },
             '-created_date'
           );
         }
 
-        // Se for master/super_admin, buscar usuários sem Colaborador (pendentes)
-        // Se for admin, buscar apenas os pendentes convidados para SUA empresa
-        if (isMasterOrSuperAdmin || currentUser?.perfil === 'admin') {
+        // Apenas master/super_admin busca usuários pendentes (sem Colaborador) de todo o sistema
+        if (isMasterOrSuperAdmin) {
           try {
-            // Buscar todos os Users usando service role
             const response = await base44.functions.invoke('listarUsuariosPendentes', {});
             const todosUsuarios = response?.data?.users || [];
             
-            console.log('Todos usuários:', todosUsuarios);
-            
-            // IDs de usuários que já têm Colaborador
             const idsComColab = new Set(colaboradores.map(c => c.user_id).filter(Boolean));
             
-            // Usuários sem Colaborador
-            let usuariosSemColab = todosUsuarios
+            const usuariosSemColab = todosUsuarios
               .filter(u => !idsComColab.has(u.id) && u.role !== 'super_admin')
               .map(u => ({
                 id: u.id,
@@ -170,7 +164,7 @@ export default function Usuarios() {
                 nome: u.full_name || u.email,
                 email: u.email,
                 perfil: null,
-                empresa_id: u.empresa_id || null, // Pode ter empresa_id se foi convidado
+                empresa_id: u.empresa_id || null,
                 empresa_nome: null,
                 status: 'pendente',
                 cpf_cnpj: null,
@@ -180,15 +174,6 @@ export default function Usuarios() {
                 aguardando_configuracao: true,
                 created_date: u.created_date
               }));
-
-            // Se for admin (não master/super_admin), filtrar apenas pendentes da sua empresa
-            if (currentUser?.perfil === 'admin' && currentUser?.empresa_id) {
-              usuariosSemColab = usuariosSemColab.filter(u => 
-                u.empresa_id === currentUser.empresa_id
-              );
-            }
-
-            console.log('Usuários sem colab:', usuariosSemColab);
 
             return [...usuariosSemColab, ...colaboradores];
           } catch (err) {
