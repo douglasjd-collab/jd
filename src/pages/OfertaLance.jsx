@@ -97,14 +97,17 @@ export default function OfertaLance() {
     queryKey: ['vendas-oferta-lance', currentUser?.empresa_id],
     enabled: !!currentUser,
     queryFn: async () => {
-      const vendas = await base44.entities.Venda.list('-created_date');
+      const isMasterOrSuperAdmin = ['master', 'super_admin'].includes(currentUser?.perfil);
       
-      // Filtrar por empresa se não for master/super_admin
-      if (currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin') {
-        return vendas;
+      if (isMasterOrSuperAdmin) {
+        return await base44.asServiceRole.entities.Venda.list('-created_date');
       }
       
-      return vendas.filter(v => v.empresa_id === currentUser?.empresa_id);
+      // Filtrar direto por empresa_id para respeitar regras de segurança
+      return await base44.entities.Venda.filter(
+        { empresa_id: currentUser?.empresa_id },
+        '-created_date'
+      );
     },
   });
 
