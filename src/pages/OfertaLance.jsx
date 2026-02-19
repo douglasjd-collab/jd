@@ -97,19 +97,9 @@ export default function OfertaLance() {
     queryKey: ['vendas-oferta-lance', currentUser?.empresa_id],
     enabled: !!currentUser,
     queryFn: async () => {
-      const isMasterOrSuperAdmin = ['master', 'super_admin'].includes(currentUser?.perfil);
-      
-      if (isMasterOrSuperAdmin) {
-        return await base44.asServiceRole.entities.Venda.list('-created_date');
-      }
-      
-      // Usar asServiceRole para admin/gerente/vendedor também,
-      // pois a regra de segurança da Venda compara com user.empresa_id
-      // que pode não estar sincronizado com o colaborador
-      return await base44.asServiceRole.entities.Venda.filter(
-        { empresa_id: currentUser?.empresa_id },
-        '-created_date'
-      );
+      // Usar asServiceRole para garantir acesso, e retornar todas as vendas ativas/pendentes
+      // Admin vê tudo — o filtro de empresa é feito no frontend abaixo
+      return await base44.asServiceRole.entities.Venda.list('-created_date', 500);
     },
   });
 
