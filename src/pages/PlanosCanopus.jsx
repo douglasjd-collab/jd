@@ -82,20 +82,27 @@ export default function PlanosCanopusPage() {
       const me = await base44.auth.me();
       if (!me) return;
 
-      let empresaId = me.empresa_id;
-      if (!empresaId) {
-        const colabs = await base44.entities.Colaborador.filter(
-          { user_id: me.id, status: 'ativo' },
-          '-created_date',
-          1
-        );
-        if (colabs?.length) empresaId = colabs[0].empresa_id;
+      // Se for super_admin pelo role do sistema
+      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        setUser({ ...me, empresa_id: null, perfil: 'super_admin' });
+        return;
       }
+
+      // Buscar Colaborador para obter empresa_id e perfil real
+      const colabs = await base44.entities.Colaborador.filter(
+        { user_id: me.id, status: 'ativo' },
+        '-created_date',
+        1
+      );
+
+      const colab = colabs?.[0];
+      const empresaId = colab?.empresa_id || me.empresa_id || null;
+      const perfil = colab?.perfil || me.role || 'vendedor';
 
       setUser({
         ...me,
         empresa_id: empresaId,
-        perfil: me.perfil || me.role || 'vendedor'
+        perfil,
       });
     } catch (e) {
       console.error('Erro ao carregar usuário:', e);
