@@ -157,6 +157,8 @@ export default function BatePapo() {
         });
         
         console.log('[Conversas] ✅ Conversas válidas:', conversasValidas.length);
+        // Buscar fotos em background
+        buscarFotosContatos(conversasValidas);
         return conversasValidas;
       } catch (err) {
         console.error('[Conversas] ❌ Erro:', err);
