@@ -107,21 +107,22 @@ export default function PlanosCanopusPage() {
     queryFn: async () => {
       if (!user) return [];
       
-      // Busca todos os planos e filtra no cliente para evitar problemas de permissão
-      const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 2000);
-      const lista = Array.isArray(res) ? res : (res?.items ?? []);
-
-      // Super admin / master vê todos
-      if (user.perfil === 'super_admin' || user.perfil === 'master') return lista;
-
-      // Filtra pela empresa do usuário
-      if (user.empresa_id) {
-        return lista.filter(p => p.empresa_id === user.empresa_id);
+      // Super admin / master: lista tudo
+      if (user.perfil === 'super_admin' || user.perfil === 'master') {
+        const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 2000);
+        return Array.isArray(res) ? res : (res?.items ?? []);
       }
-
-      return lista;
+      
+      // Demais perfis: filtra por empresa_id
+      if (!user.empresa_id) return [];
+      const res = await base44.entities.PlanoCanopus.filter(
+        { empresa_id: user.empresa_id },
+        '-ultima_sincronizacao',
+        2000
+      );
+      return Array.isArray(res) ? res : (res?.items ?? []);
     },
-    enabled: !!user
+    enabled: !!user && (user.perfil === 'super_admin' || user.perfil === 'master' || !!user.empresa_id)
   });
 
   // Agrupar planos por código (sem prazo) - ANTES dos early returns
