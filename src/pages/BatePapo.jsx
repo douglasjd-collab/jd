@@ -74,6 +74,39 @@ export default function BatePapo() {
     }
   };
 
+  // Buscar fotos de perfil dos contatos via Evolution API
+  const buscarFotosContatos = async (conversasList) => {
+    if (!empresa?.evolution_url || !empresa?.evolution_api_key || !empresa?.evolution_instance_name) return;
+    
+    const novasFotos = {};
+    for (const conversa of conversasList) {
+      if (!conversa.cliente_telefone) continue;
+      try {
+        const numero = conversa.cliente_telefone.replace(/\D/g, '');
+        const resp = await fetch(
+          `${empresa.evolution_url.replace(/\/$/, '')}/chat/fetchProfilePictureUrl/${empresa.evolution_instance_name}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': empresa.evolution_api_key
+            },
+            body: JSON.stringify({ number: numero })
+          }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.profilePictureUrl) {
+            novasFotos[conversa.cliente_telefone] = data.profilePictureUrl;
+          }
+        }
+      } catch (e) {
+        // silencioso - foto não disponível
+      }
+    }
+    setFotosContatos(prev => ({ ...prev, ...novasFotos }));
+  };
+
   const sincronizarComEvolutionAPI = async () => {
     if (!conversaSelecionada?.cliente_telefone) return;
     
