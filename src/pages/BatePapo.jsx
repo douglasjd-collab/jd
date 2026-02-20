@@ -174,14 +174,13 @@ export default function BatePapo() {
     enabled: !!conversaSelecionada?.id && !!empresaId,
     queryFn: async () => {
       const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaSelecionada.id, empresa_id: empresaId },
+        { conversa_id: conversaSelecionada.id },
         'created_date'
       );
-      return (msgs || []).filter(m => m.texto || m.arquivo_url);
+      return msgs || [];
     },
-    refetchInterval: 3000, // polling a cada 3s para garantir tempo real
+    refetchInterval: 3000,
     retry: 2,
-    retryDelay: 500
   });
 
   // Subscrição em tempo real para novas mensagens - REGRA RIGOROSA
