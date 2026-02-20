@@ -190,7 +190,7 @@ export default function PlanosCanopusPage() {
       if (max < Infinity && valor > max) return false;
       
       // Filtro de tipo de produto
-      if (tipoProduto && g.produto_id !== tipoProduto) return false;
+      if (tipoProduto && tipoProduto !== 'todos' && g.produto_id !== tipoProduto) return false;
       
       // Filtro de grupo
       if (filtroGrupo) {
