@@ -165,6 +165,10 @@ export default function BatePapo() {
     refetchInterval: 3000
   });
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [mensagens]);
+
   const { data: mensagens = [], isError: mensagensError, error: msgError, isPending: loadingMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId],
     enabled: !!conversaSelecionada?.id && !!empresaId,
