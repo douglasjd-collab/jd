@@ -23,7 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2, Landmark } from 'lucide-react';
+import UsuariosBancoModal from '@/components/forms/UsuariosBancoModal';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
