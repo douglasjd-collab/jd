@@ -277,12 +277,12 @@ Deno.serve(async (req) => {
     if (!conversa.id) {
       throw new Error('ERRO CRÍTICO: conversa.id está vazio ou undefined');
     }
-    if (!tipo || !conteudo) {
-      throw new Error('ERRO CRÍTICO: tipo ou conteudo está vazio');
-    }
     if (!messageId) {
       throw new Error('ERRO CRÍTICO: messageId está vazio');
     }
+    // Garantir valores padrão se vazios
+    if (!tipo) tipo = 'texto';
+    if (!conteudo) conteudo = '';
 
     // Determinar remetente: se fromMe=true, é mensagem enviada pelo celular (vendedor)
     const remetente = fromMe ? 'vendedor' : 'cliente';
