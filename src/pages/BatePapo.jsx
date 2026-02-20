@@ -179,6 +179,10 @@ export default function BatePapo() {
     retry: 2,
   });
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [mensagens]);
+
   // Subscrição em tempo real para novas mensagens e conversas
   useEffect(() => {
     const unsubMsg = base44.entities.MensagemWhatsapp.subscribe((event) => {
