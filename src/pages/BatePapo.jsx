@@ -169,14 +169,17 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId],
     enabled: !!conversaSelecionada?.id && !!empresaId,
     queryFn: async () => {
+      console.log('[Mensagens] 🔄 Buscando mensagens da conversa:', conversaSelecionada.id);
       const msgs = await base44.entities.MensagemWhatsapp.filter(
         { conversa_id: conversaSelecionada.id },
-        'created_date'
+        'data_envio'
       );
+      console.log('[Mensagens] ✅ Total encontradas:', msgs?.length);
       return msgs || [];
     },
-    refetchInterval: 3000,
+    refetchInterval: 2000,
     retry: 2,
+    staleTime: 0,
   });
 
   useEffect(() => {
