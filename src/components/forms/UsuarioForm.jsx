@@ -211,30 +211,6 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
             </div>
             
             <div className="col-span-2">
-              <Label htmlFor="usuario_canopus">Usuário Canopus</Label>
-              <Input
-                id="usuario_canopus"
-                {...register('usuario_canopus')}
-                placeholder="Ex: 0000022393"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Código do usuário no sistema Canopus para sincronização de propostas
-              </p>
-            </div>
-
-            <div className="col-span-2">
-              <Label htmlFor="usuario_banco">Usuário Banco / Administradora</Label>
-              <Input
-                id="usuario_banco"
-                {...register('usuario_banco')}
-                placeholder="Ex: JOAO.SILVA ou 00123"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Código/login no banco ou administradora. Propostas importadas com este usuário serão vinculadas automaticamente a este colaborador.
-              </p>
-            </div>
-            
-            <div className="col-span-2">
               <Label htmlFor="codigo_vendedor">Código Vendedor</Label>
               <Input
                 id="codigo_vendedor"
