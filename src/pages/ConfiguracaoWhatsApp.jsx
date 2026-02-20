@@ -97,9 +97,8 @@ export default function ConfiguracaoWhatsApp() {
   };
 
   const gerarUrlWebhook = (instancia) => {
-    if (!instancia) return '';
-    const baseUrl = 'https://appjdpromorora.base44.app/_functions/receberWebhookWhatsApp';
-    return `${baseUrl}?instance=${encodeURIComponent(instancia)}`;
+    const baseUrl = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
+    return baseUrl;
   };
 
   const obterUrlCorretaAuto = async () => {
