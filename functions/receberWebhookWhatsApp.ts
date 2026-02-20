@@ -150,32 +150,47 @@ Deno.serve(async (req) => {
     // SDK
     const base44 = createClientFromRequest(req);
 
-    // Usar SEMPRE o EVOLUTION_INSTANCE_NAME do secret
-    const instanceFinal = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'JD Promotora conta Super adm';
-    console.log('🔍 Instance Final:', instanceFinal);
+    // ID fixo da empresa JD Promotora (super admin)
+    const JD_PROMOTORA_ID = '699696c2c9f5bffc2e67402b';
+    
+    // Tentar encontrar empresa pela instância do payload ou pelo URL param
+    const url = new URL(req.url);
+    const instanceParam = url.searchParams.get('instance');
+    const instancePayload = body.instance;
+    const instanceFinal = instanceParam || instancePayload || '';
+    
+    console.log('🔍 Instance do payload:', instancePayload);
+    console.log('🔍 Instance do param URL:', instanceParam);
+    console.log('🔍 Instance final:', instanceFinal);
 
-    // Buscar empresa pela instância configurada
-    console.log('🏢 Buscando empresa com instance:', instanceFinal);
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({ 
-      evolution_instance_name: instanceFinal,
-      status: 'ativa'
-    });
+    let empresaId = JD_PROMOTORA_ID; // Padrão: JD Promotora
+    let empresaPorInstance = null;
 
-    if (!empresas || empresas.length === 0) {
-      console.error('❌ Nenhuma empresa encontrada com instance:', instanceFinal);
-      // Listar todas disponíveis para debug
-      const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' });
-      console.log('📋 Empresas disponíveis:', todasEmpresas.map(e => e.evolution_instance_name).join(', '));
-      return Response.json({ 
-        success: false, 
-        error: 'Empresa não encontrada',
-        instance_procurado: instanceFinal,
-        instances_disponiveis: todasEmpresas.map(e => e.evolution_instance_name)
-      }, { status: 400 });
+    // Tentar buscar por instance name se disponível
+    if (instanceFinal) {
+      const empresas = await base44.asServiceRole.entities.Empresa.filter({ 
+        evolution_instance_name: instanceFinal
+      });
+      if (empresas && empresas.length > 0) {
+        empresaPorInstance = empresas[0];
+        empresaId = empresaPorInstance.id;
+        console.log('✅ Empresa encontrada por instance:', empresaPorInstance.nome);
+      } else {
+        console.warn('⚠️ Empresa não encontrada por instance, usando JD Promotora como padrão');
+        const jdEmpresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_PROMOTORA_ID });
+        empresaPorInstance = jdEmpresas[0];
+      }
+    } else {
+      // Sem instance: usar JD Promotora direto pelo ID
+      console.log('🏢 Sem instance no payload - usando JD Promotora (ID fixo)');
+      const jdEmpresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_PROMOTORA_ID });
+      empresaPorInstance = jdEmpresas && jdEmpresas.length > 0 ? jdEmpresas[0] : null;
+      if (!empresaPorInstance) {
+        console.error('❌ JD Promotora não encontrada pelo ID!');
+        return Response.json({ success: false, error: 'Empresa JD Promotora não encontrada' }, { status: 400 });
+      }
+      empresaId = empresaPorInstance.id;
     }
-
-    const empresaPorInstance = empresas[0];
-    const empresaId = empresaPorInstance.id;
     console.log('✅ Empresa encontrada:');
     console.log('   Nome:', empresaPorInstance.nome);
     console.log('   ID:', empresaId);
