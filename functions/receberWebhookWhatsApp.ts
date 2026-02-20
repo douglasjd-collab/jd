@@ -284,17 +284,21 @@ Deno.serve(async (req) => {
       throw new Error('ERRO CRÍTICO: messageId está vazio');
     }
 
+    // Determinar remetente: se fromMe=true, é mensagem enviada pelo celular (vendedor)
+    const remetente = fromMe ? 'vendedor' : 'cliente';
+    console.log('👤 Remetente determinado:', remetente);
+
     let novaMensagem;
     try {
       novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
         conversa_id: conversa.id,
         empresa_id: empresaId,
-        remetente: 'cliente',
+        remetente: remetente,
         tipo_conteudo: tipo,
         texto: conteudo || '',
         whatsapp_message_id: messageId,
         data_envio: new Date().toISOString(),
-        status: 'entregue'
+        status: remetente === 'vendedor' ? 'enviada' : 'entregue'
       });
 
       if (!novaMensagem || !novaMensagem.id) {
