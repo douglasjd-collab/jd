@@ -59,6 +59,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       setValue('telefone', usuario.telefone || '');
       setValue('codigo_vendedor', usuario.codigo_vendedor || '');
       setValue('usuario_canopus', usuario.usuario_canopus || '');
+      setValue('usuario_banco', usuario.usuario_banco || '');
       setValue('perfil', usuario.perfil || 'vendedor');
       setValue('gerente_id', usuario.gerente_id || '');
       setValue('empresa_id', usuario.empresa_id || '');
@@ -73,6 +74,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
         telefone: '',
         codigo_vendedor: '',
         usuario_canopus: '',
+        usuario_banco: '',
         perfil: 'vendedor',
         gerente_id: '',
         empresa_id: '',
