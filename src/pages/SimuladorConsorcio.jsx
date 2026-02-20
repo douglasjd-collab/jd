@@ -543,10 +543,6 @@ export default function SimuladorConsorcio() {
   };
 
   const handleAbrirPlanoModal = (index) => {
-    if (!empresaId) {
-      toast.error('Carregando dados da empresa...');
-      return;
-    }
     setCartaIndex(index);
     setPlanoModalOpen(true);
   };
