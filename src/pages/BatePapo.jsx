@@ -581,8 +581,12 @@ export default function BatePapo() {
             <div className="bg-white border-b px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                    {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase() || '?'}
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                    {fotosContatos[conversaSelecionada.cliente_telefone] ? (
+                      <img src={fotosContatos[conversaSelecionada.cliente_telefone]} alt={conversaSelecionada.cliente_nome} className="w-full h-full object-cover" />
+                    ) : (
+                      conversaSelecionada.cliente_nome?.charAt(0).toUpperCase() || '?'
+                    )}
                   </div>
                   <div>
                     <h3 className="font-semibold text-slate-900">{conversaSelecionada.cliente_nome}</h3>
