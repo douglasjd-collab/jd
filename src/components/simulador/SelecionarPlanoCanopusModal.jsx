@@ -35,15 +35,24 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
   const { data: planos = [], isLoading } = useQuery({
     queryKey: ['planos-canopus-modal', empresaId],
     queryFn: async () => {
-      if (!empresaId) return [];
-      const res = await base44.entities.PlanoCanopus.filter(
-        { empresa_id: empresaId, status: 'ativo' },
-        '-ultima_sincronizacao',
-        1000
-      );
+      let res;
+      if (empresaId) {
+        res = await base44.entities.PlanoCanopus.filter(
+          { empresa_id: empresaId, status: 'ativo' },
+          '-ultima_sincronizacao',
+          1000
+        );
+      } else {
+        // Fallback: busca todos os planos ativos (ex: super_admin sem empresa_id)
+        res = await base44.entities.PlanoCanopus.filter(
+          { status: 'ativo' },
+          '-ultima_sincronizacao',
+          1000
+        );
+      }
       return Array.isArray(res) ? res : (res?.items ?? []);
     },
-    enabled: !!empresaId && open
+    enabled: open
   });
 
   const groupedPlanos = React.useMemo(() => {
