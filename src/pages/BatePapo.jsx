@@ -188,20 +188,29 @@ export default function BatePapo() {
 
   // Subscrição em tempo real para novas mensagens e conversas
   useEffect(() => {
+    if (!empresaId) return;
+
+    console.log('[RealTime] 🔔 Inscrevendo em atualizações...');
+
     const unsubMsg = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId] });
+      console.log('[RealTime] 📨 Nova mensagem recebida via subscription:', event.type, event.id);
+      // Invalidar mensagens da conversa atual
+      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] });
+      // Invalidar lista de conversas para atualizar última mensagem
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
     });
 
     const unsubConv = base44.entities.ConversaWhatsapp.subscribe((event) => {
+      console.log('[RealTime] 💬 Conversa atualizada via subscription:', event.type, event.id);
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
     });
 
     return () => {
+      console.log('[RealTime] 🔕 Desinscrevendo...');
       unsubMsg();
       unsubConv();
     };
-  }, [conversaSelecionada?.id, empresaId, queryClient]);
+  }, [empresaId, queryClient]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
