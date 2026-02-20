@@ -42,12 +42,12 @@ export default function ConfiguracaoWhatsApp() {
       const me = await base44.auth.me();
       setUser(me);
 
-      // Se é super_admin, buscar empresa JD Promotora com instance TESTE
+      // Se é super_admin, buscar empresa JD Promotora pelo ID fixo
       if (me?.role === 'super_admin' || me?.perfil === 'super_admin') {
         try {
-          // Buscar a empresa JD Promotora (instance TESTE)
+          // Buscar a empresa JD Promotora pelo ID fixo
           const empresasJD = await base44.entities.Empresa.filter(
-            { evolution_instance_name: 'TESTE' },
+            { id: '699696c2c9f5bffc2e67402b' },
             '-created_date',
             1
           );
@@ -56,17 +56,15 @@ export default function ConfiguracaoWhatsApp() {
             const empresaData = empresasJD[0];
             setEmpresa(empresaData);
             carregarEmpresa(empresaData);
-            console.log('✅ Super Admin - Carregou JD Promotora (TESTE):', empresaData.nome);
+            console.log('✅ Super Admin - Carregou JD Promotora:', empresaData.nome);
           } else {
-            console.warn('⚠️ Empresa TESTE não encontrada');
+            console.warn('⚠️ Empresa JD Promotora não encontrada');
             setEvolutionUrl('');
-            setInstanceName('TESTE');
+            setInstanceName('');
             setApiKey('');
-            setWebhookUrl(gerarUrlWebhook('TESTE'));
           }
         } catch (e) {
-          console.error('Erro ao buscar empresa TESTE:', e);
-          setWebhookUrl(gerarUrlWebhook('TESTE'));
+          console.error('Erro ao buscar empresa JD Promotora:', e);
         }
       } else if (me?.empresa_id) {
         // Usuário normal - carregar sua empresa
