@@ -32,27 +32,20 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [variacoesDialogOpen, setVariacoesDialogOpen] = useState(false);
 
-  const { data: planos = [], isLoading } = useQuery({
-    queryKey: ['planos-canopus-modal', empresaId],
+  const { data: planos = [], isLoading, error } = useQuery({
+    queryKey: ['planos-canopus-modal', empresaId, open],
     queryFn: async () => {
-      let res;
+      // Busca todos planos ativos — sem filtro de empresa para garantir que aparece
+      const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 1000);
+      const lista = Array.isArray(res) ? res : (res?.items ?? []);
+      // Se tiver empresaId, filtra pelo client-side
       if (empresaId) {
-        res = await base44.entities.PlanoCanopus.filter(
-          { empresa_id: empresaId, status: 'ativo' },
-          '-ultima_sincronizacao',
-          1000
-        );
-      } else {
-        // Fallback: busca todos os planos ativos (ex: super_admin sem empresa_id)
-        res = await base44.entities.PlanoCanopus.filter(
-          { status: 'ativo' },
-          '-ultima_sincronizacao',
-          1000
-        );
+        return lista.filter(p => p.empresa_id === empresaId && p.status === 'ativo');
       }
-      return Array.isArray(res) ? res : (res?.items ?? []);
+      return lista.filter(p => p.status === 'ativo');
     },
-    enabled: open
+    enabled: open,
+    staleTime: 0,
   });
 
   const groupedPlanos = React.useMemo(() => {
