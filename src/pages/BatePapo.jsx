@@ -53,14 +53,21 @@ export default function BatePapo() {
       setUser(me);
 
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
-        // Super admin usa sempre a empresa JD Promotora (ID fixo)
-        setEmpresaId('699696c2c9f5bffc2e67402b');
+        const empId = '699696c2c9f5bffc2e67402b';
+        setEmpresaId(empId);
+        const emps = await base44.entities.Empresa.filter({ id: empId });
+        if (emps.length > 0) setEmpresa(emps[0]);
       } else {
         const colabs = await base44.entities.Colaborador.filter({ 
           user_id: me.id, 
           status: 'ativo' 
         });
-        if (colabs.length > 0) setEmpresaId(colabs[0].empresa_id);
+        if (colabs.length > 0) {
+          const empId = colabs[0].empresa_id;
+          setEmpresaId(empId);
+          const emps = await base44.entities.Empresa.filter({ id: empId });
+          if (emps.length > 0) setEmpresa(emps[0]);
+        }
       }
     } catch (e) {
       console.error('Erro ao carregar usuário:', e);
