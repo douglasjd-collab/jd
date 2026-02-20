@@ -776,6 +776,20 @@ export default function Usuarios() {
                                     <Pencil className="w-4 h-4 mr-2" />
                                     Editar
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setUsuarioBanco(usuario);
+                                      setBancoModalOpen(true);
+                                    }}
+                                  >
+                                    <Landmark className="w-4 h-4 mr-2" />
+                                    Usuários Banco
+                                    {usuario.usuarios_banco?.length > 0 && (
+                                      <Badge className="ml-auto bg-blue-100 text-blue-700 text-xs">
+                                        {usuario.usuarios_banco.length}
+                                      </Badge>
+                                    )}
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={() => {
                                       setUsuarioToVincular(usuario);
