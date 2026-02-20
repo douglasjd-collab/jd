@@ -74,10 +74,10 @@ Deno.serve(async (req) => {
     // Aceitar tanto 'messages.upsert' quanto 'MESSAGES_UPSERT'
     const isMessageUpsert = body.event === 'messages.upsert' || body.event === 'MESSAGES_UPSERT' || body.event === 'messages';
     
-    if (isMessageUpsert && body.data?.key?.fromMe === true) {
-      console.log('⏭️ Ignorado: Mensagem enviada pelo bot (fromMe === true)');
-      return Response.json({ success: true, skipped: 'from_bot' });
-    }
+    // Não ignorar mais fromMe=true - mensagens enviadas pelo celular também devem aparecer no CRM
+    // Apenas ignorar se for do próprio servidor/bot (verificar via tipo de JID)
+    const fromMe = body.data?.key?.fromMe === true;
+    console.log('📱 fromMe:', fromMe, '(mensagens do celular serão salvas como "vendedor")');
 
     if (!isMessageUpsert) {
       console.log('⚠️ Evento não suportado:', body.event, '- Aceitando mesmo assim');
