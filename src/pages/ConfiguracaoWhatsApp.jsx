@@ -221,76 +221,61 @@ export default function ConfiguracaoWhatsApp() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            
-            {evolutionUrl && (
-              <div>
-                <Label className="mb-2 block">URL da API</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={editMode ? tempUrl : evolutionUrl}
-                    onChange={(e) => editMode && setTempUrl(e.target.value)}
-                    readOnly={!editMode}
-                    className={editMode ? '' : 'bg-slate-50'}
-                  />
-                  {!editMode && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => copyToClipboard(evolutionUrl, 'url')}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {instanceName && (
-              <div>
-                <Label className="mb-2 block">Nome da Instância</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={editMode ? tempInstance : instanceName}
-                    onChange={(e) => editMode && setTempInstance(e.target.value)}
-                    readOnly={!editMode}
-                    className={editMode ? '' : 'bg-slate-50'}
-                  />
-                  {!editMode && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => copyToClipboard(instanceName, 'instance')}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+            <div>
+              <Label className="mb-2 block">URL da API</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={editMode ? tempUrl : evolutionUrl}
+                  onChange={(e) => editMode && setTempUrl(e.target.value)}
+                  readOnly={!editMode}
+                  placeholder="https://sua-evolution-api.com/"
+                  className={editMode ? '' : 'bg-slate-50'}
+                />
+                {!editMode && evolutionUrl && (
+                  <Button variant="outline" size="icon" onClick={() => copyToClipboard(evolutionUrl, 'url')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
-            )}
+            </div>
 
-            {apiKey && (
-              <div>
-                <Label className="mb-2 block">Chave de API</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={editMode ? tempApiKey : apiKey}
-                    onChange={(e) => editMode && setTempApiKey(e.target.value)}
-                    type="text"
-                    readOnly={!editMode}
-                    className={editMode ? '' : 'bg-slate-50 font-mono'}
-                  />
-                  {!editMode && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => copyToClipboard(apiKey, 'key')}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+            <div>
+              <Label className="mb-2 block">Nome da Instância</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={editMode ? tempInstance : instanceName}
+                  onChange={(e) => editMode && setTempInstance(e.target.value)}
+                  readOnly={!editMode}
+                  placeholder="Nome da instância no Evolution API"
+                  className={editMode ? '' : 'bg-slate-50'}
+                />
+                {!editMode && instanceName && (
+                  <Button variant="outline" size="icon" onClick={() => copyToClipboard(instanceName, 'instance')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
-            )}
+            </div>
+
+            <div>
+              <Label className="mb-2 block">Chave de API (API Key)</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={editMode ? tempApiKey : apiKey}
+                  onChange={(e) => editMode && setTempApiKey(e.target.value)}
+                  type="text"
+                  readOnly={!editMode}
+                  placeholder="Chave de segurança da instância"
+                  className={editMode ? '' : 'bg-slate-50 font-mono'}
+                />
+                {!editMode && apiKey && (
+                  <Button variant="outline" size="icon" onClick={() => copyToClipboard(apiKey, 'key')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
 
             {editMode && (
               <div className="flex gap-2 justify-end pt-4 border-t">
