@@ -51,8 +51,8 @@ export default function BatePapo() {
       setUser(me);
 
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
-        const empresas = await base44.entities.Empresa.filter({ status: 'ativa' });
-        if (empresas.length > 0) setEmpresaId(empresas[0].id);
+        // Super admin usa sempre a empresa JD Promotora (ID fixo)
+        setEmpresaId('699696c2c9f5bffc2e67402b');
       } else {
         const colabs = await base44.entities.Colaborador.filter({ 
           user_id: me.id, 
