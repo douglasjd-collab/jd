@@ -38,7 +38,7 @@ export default function BatePapo() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversaSelecionada]);
+  }, [conversaSelecionada, mensagens]);
 
   // Sincronizar mensagens com Evolution API quando abre conversa
   useEffect(() => {
@@ -174,29 +174,34 @@ export default function BatePapo() {
     enabled: !!conversaSelecionada?.id && !!empresaId,
     queryFn: async () => {
       const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaSelecionada.id },
+        { conversa_id: conversaSelecionada.id, empresa_id: empresaId },
         'created_date'
       );
-      return msgs || [];
+      return (msgs || []).filter(m => m.texto || m.arquivo_url);
     },
-    refetchInterval: 3000,
+    refetchInterval: 3000, // polling a cada 3s para garantir tempo real
     retry: 2,
+    retryDelay: 500
   });
 
-  // Subscrição em tempo real para novas mensagens e conversas
+  // Subscrição em tempo real para novas mensagens
   useEffect(() => {
-    const unsubMsg = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId] });
-      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+    const unsubMensagens = base44.entities.MensagemWhatsapp.subscribe((event) => {
+      if (event.type === 'create' || event.type === 'update') {
+        queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId] });
+      }
     });
 
-    const unsubConv = base44.entities.ConversaWhatsapp.subscribe((event) => {
-      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+    const unsubConversas = base44.entities.ConversaWhatsapp.subscribe((event) => {
+      if (event.type === 'create' || event.type === 'update') {
+        queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      }
     });
 
     return () => {
-      unsubMsg();
-      unsubConv();
+      unsubMensagens();
+      unsubConversas();
     };
   }, [conversaSelecionada?.id, empresaId, queryClient]);
 
