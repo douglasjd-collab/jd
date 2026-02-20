@@ -129,7 +129,7 @@ export default function PlanosCanopusPage() {
       );
       return Array.isArray(res) ? res : (res?.items ?? []);
     },
-    enabled: !!user && (user.perfil === 'super_admin' || user.perfil === 'master' || !!user.empresa_id)
+    enabled: !!user
   });
 
   // Agrupar planos por código (sem prazo) - ANTES dos early returns
