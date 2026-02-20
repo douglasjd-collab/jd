@@ -166,7 +166,7 @@ export default function BatePapo() {
         throw err;
       }
     },
-    refetchInterval: 2000  // Reduzido para 2 segundos para detectar conversas novas rapidamente
+    refetchInterval: 3000
   });
 
   const { data: mensagens = [], isError: mensagensError, error: msgError, isPending: loadingMensagens } = useQuery({
