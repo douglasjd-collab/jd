@@ -856,6 +856,17 @@ export default function Usuarios() {
         }}
       />
 
+      {/* Usuários Banco Modal */}
+      <UsuariosBancoModal
+        open={bancoModalOpen}
+        onOpenChange={setBancoModalOpen}
+        colaborador={usuarioBanco}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+          setUsuarioBanco(null);
+        }}
+      />
+
       {/* Confirmar Exclusão Modal */}
       <ConfirmarExclusaoUsuarioModal
         open={excluirOpen}
