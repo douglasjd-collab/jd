@@ -23,10 +23,12 @@ import NovaConversaModal from '@/components/chat/NovaConversaModal';
 export default function BatePapo() {
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
+  const [empresa, setEmpresa] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
+  const [fotosContatos, setFotosContatos] = useState({});
   const messagesEndRef = useRef(null);
   const queryClient = useQueryClient();
 
