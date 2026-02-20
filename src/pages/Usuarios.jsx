@@ -60,6 +60,8 @@ export default function Usuarios() {
   const [usuarioToVincular, setUsuarioToVincular] = useState(null);
   const [excluirOpen, setExcluirOpen] = useState(false);
   const [usuarioToExcluir, setUsuarioToExcluir] = useState(null);
+  const [bancoModalOpen, setBancoModalOpen] = useState(false);
+  const [usuarioBanco, setUsuarioBanco] = useState(null);
   const [empresasExpandidas, setEmpresasExpandidas] = useState(new Set());
   const queryClient = useQueryClient();
 
