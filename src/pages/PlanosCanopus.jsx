@@ -107,20 +107,19 @@ export default function PlanosCanopusPage() {
     queryFn: async () => {
       if (!user) return [];
       
-      // Super admin vê todos os planos de todas as empresas
-      if (user.perfil === 'super_admin') {
-        const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 1000);
-        return Array.isArray(res) ? res : (res?.items ?? []);
+      // Busca todos os planos e filtra no cliente para evitar problemas de permissão
+      const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 2000);
+      const lista = Array.isArray(res) ? res : (res?.items ?? []);
+
+      // Super admin / master vê todos
+      if (user.perfil === 'super_admin' || user.perfil === 'master') return lista;
+
+      // Filtra pela empresa do usuário
+      if (user.empresa_id) {
+        return lista.filter(p => p.empresa_id === user.empresa_id);
       }
-      
-      // Outros perfis: apenas planos da própria empresa
-      if (!user.empresa_id) return [];
-      const res = await base44.entities.PlanoCanopus.filter(
-        { empresa_id: user.empresa_id },
-        '-ultima_sincronizacao',
-        1000
-      );
-      return Array.isArray(res) ? res : (res?.items ?? []);
+
+      return lista;
     },
     enabled: !!user
   });
