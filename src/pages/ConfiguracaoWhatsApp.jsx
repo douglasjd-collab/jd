@@ -150,8 +150,8 @@ export default function ConfiguracaoWhatsApp() {
       setInstanceName(tempInstance);
       setApiKey(tempApiKey);
       
-      // Gerar novo webhook URL com o novo instance name
-      const novaUrl = gerarUrlWebhook(tempInstance);
+      // Gerar novo webhook URL com o nome da empresa
+      const novaUrl = gerarUrlWebhook(empresa?.nome);
       setWebhookUrl(novaUrl);
       
       setEditMode(false);
