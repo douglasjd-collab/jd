@@ -36,18 +36,18 @@ Deno.serve(async (req) => {
       console.log(`⚠️ Erro ao deletar webhook (pode ser normal): ${e.message}`);
     }
 
-    // Recriar webhook com configuração correta
+    // Recriar webhook com configuração correta (formato Evolution API v2)
     const webhookPayload = {
-      url: webhookUrl,
-      enabled: true,
-      webhookByEvents: false,
-      webhookBase64: false, // DESATIVAR Base64 para receber JSON puro
-      events: [
-        "MESSAGES_UPSERT",
-        "MESSAGES_UPDATE",
-        "MESSAGES_SET",
-        "SEND_MESSAGE"
-      ]
+      webhook: {
+        url: webhookUrl,
+        enabled: true,
+        webhookByEvents: false,
+        webhookBase64: false, // DESATIVAR Base64 para receber JSON puro
+        events: [
+          "MESSAGES_UPSERT",
+          "MESSAGES_UPDATE"
+        ]
+      }
     };
 
     console.log(`📡 Configurando webhook: ${webhookUrl}`);
