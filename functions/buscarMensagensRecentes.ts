@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     let mensagens = null;
     try { mensagens = JSON.parse(respText); } catch (_) { mensagens = respText; }
 
-    // Também verificar chats ativos
+    // Buscar TODOS os chats para inspecionar
     const chatsResp = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
       method: 'POST',
       headers: {
@@ -57,11 +57,13 @@ Deno.serve(async (req) => {
     let chats = null;
     try { chats = JSON.parse(chatsText); } catch (_) { chats = chatsText; }
     
-    // Filtrar pelo número
     let chatDoNumero = null;
+    let primeiros3Chats = [];
     if (Array.isArray(chats)) {
       chatDoNumero = chats.find(c => c.id?.includes(numero) || c.remoteJid?.includes(numero));
+      primeiros3Chats = chats.slice(0, 3);
       console.log(`💬 Total chats: ${chats.length} | Chat do número encontrado: ${!!chatDoNumero}`);
+      console.log(`📋 Primeiros chats: ${JSON.stringify(primeiros3Chats.map(c => c.id || c.remoteJid))}`);
     }
 
     return Response.json({
@@ -69,7 +71,8 @@ Deno.serve(async (req) => {
       instancia: instanceName,
       mensagens_na_evolution: mensagens,
       chat_encontrado: chatDoNumero,
-      total_chats: Array.isArray(chats) ? chats.length : 'erro'
+      total_chats: Array.isArray(chats) ? chats.length : 'erro',
+      primeiros_chats_ids: primeiros3Chats.map(c => c.id || c.remoteJid)
     });
 
   } catch (e) {
