@@ -1,93 +1,87 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
+  const base44 = createClientFromRequest(req);
+
   try {
-    const base44 = createClientFromRequest(req);
-    
-    const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-    const apiKey = Deno.env.get('EVOLUTION_API_KEY');
-    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
-    
-    console.log('🔍 Verificando configuração na Evolution API...');
-    console.log('URL:', evolutionUrl);
-    console.log('Instance:', instanceName);
-    
+    const body = await req.json().catch(() => ({}));
+    const empresaId = body.empresa_id || '699696c2c9f5bffc2e67402b';
+
+    // Buscar empresa no banco
+    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
+    if (!empresas || empresas.length === 0) {
+      return Response.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    }
+
+    const empresa = empresas[0];
+    const evolutionUrl = (empresa.evolution_url || '').replace(/\/$/, '');
+    const apiKey = empresa.evolution_api_key || '';
+    const instanceName = empresa.evolution_instance_name || '';
+
     if (!evolutionUrl || !apiKey || !instanceName) {
       return Response.json({
-        success: false,
-        error: 'Faltam secrets configurados',
-        detalhes: {
-          url_configurada: !!evolutionUrl,
-          api_key_configurada: !!apiKey,
-          instance_configurada: !!instanceName
+        error: 'Empresa sem configuração Evolution completa',
+        empresa: empresa.nome,
+        campos_faltando: {
+          evolution_url: !evolutionUrl,
+          evolution_api_key: !apiKey,
+          evolution_instance_name: !instanceName
         }
       }, { status: 400 });
     }
-    
-    // Tentar conectar na Evolution API para verificar instância e webhooks
-    const instanceUrl = `${evolutionUrl}/instance/info/${instanceName}`;
-    
-    console.log('📍 Chamando:', instanceUrl);
-    
-    const response = await fetch(instanceUrl, {
-      method: 'GET',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    const data = await response.json();
-    
-    console.log('✅ Resposta da Evolution API:', JSON.stringify(data, null, 2));
-    
-    // Verificar se instância existe e status do webhook
-    if (!response.ok) {
-      return Response.json({
-        success: false,
-        status_code: response.status,
-        error: data.message || 'Erro ao conectar na Evolution API',
-        detalhes: data
+
+    // 1. Verificar status da instância
+    let statusInstancia = null;
+    try {
+      const r = await fetch(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
+        headers: { 'apikey': apiKey, 'Content-Type': 'application/json' }
       });
+      statusInstancia = await r.json();
+    } catch (e) {
+      statusInstancia = { error: e.message };
     }
-    
-    // Agora listar webhooks configurados
-    const webhooksUrl = `${evolutionUrl}/webhook/find/${instanceName}`;
-    
-    console.log('📍 Buscando webhooks em:', webhooksUrl);
-    
-    const webhooksResponse = await fetch(webhooksUrl, {
-      method: 'GET',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    const webhooksData = await webhooksResponse.json();
-    
-    console.log('✅ Webhooks configurados:', JSON.stringify(webhooksData, null, 2));
-    
+
+    // 2. Verificar webhook configurado
+    let webhookInfo = null;
+    try {
+      const r = await fetch(`${evolutionUrl}/webhook/find/${instanceName}`, {
+        headers: { 'apikey': apiKey, 'Content-Type': 'application/json' }
+      });
+      webhookInfo = await r.json();
+    } catch (e) {
+      webhookInfo = { error: e.message };
+    }
+
+    const webhookUrlCorreta = `https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp?instance=${instanceName}`;
+    const webhookUrlConfigurada = webhookInfo?.webhook?.url || webhookInfo?.url || '';
+    const webhookCorreto = webhookUrlConfigurada === webhookUrlCorreta;
+    const instanciaConectada = statusInstancia?.instance?.state === 'open';
+
+    const problemas = [];
+    if (!instanciaConectada) {
+      problemas.push(`❌ Instância NÃO conectada. Estado atual: "${statusInstancia?.instance?.state || 'desconhecido'}"`);
+    }
+    if (!webhookUrlConfigurada) {
+      problemas.push('❌ Nenhum webhook configurado na Evolution API');
+    } else if (!webhookCorreto) {
+      problemas.push(`❌ URL do webhook INCORRETA.\n   Configurada: ${webhookUrlConfigurada}\n   Correta:     ${webhookUrlCorreta}`);
+    }
+
     return Response.json({
-      success: true,
-      instancia_info: data,
-      webhooks_configurados: webhooksData,
-      diagnostico: {
-        instancia_existe: !!data.instance,
-        instancia_conectada: data.status === 'open' || data.instance?.state === 'open',
-        webhooks_count: Array.isArray(webhooksData) ? webhooksData.length : 0,
-        mensagem: `Instância "${instanceName}" encontrada. ${Array.isArray(webhooksData) ? webhooksData.length : 0} webhook(s) configurado(s).`
-      }
+      empresa: empresa.nome,
+      instancia: instanceName,
+      instancia_conectada: instanciaConectada,
+      estado_instancia: statusInstancia?.instance?.state,
+      webhook_url_correta: webhookUrlCorreta,
+      webhook_url_configurada: webhookUrlConfigurada,
+      webhook_correto: webhookCorreto,
+      webhook_raw: webhookInfo,
+      status_raw: statusInstancia,
+      problemas,
+      ok: problemas.length === 0
     });
-    
-  } catch (error) {
-    console.error('❌ ERRO:', error.message);
-    console.error('Stack:', error.stack);
-    
-    return Response.json({
-      success: false,
-      error: error.message,
-      tipo_erro: error.constructor.name
-    }, { status: 500 });
+
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
   }
 });
