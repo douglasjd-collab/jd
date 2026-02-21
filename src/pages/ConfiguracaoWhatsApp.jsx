@@ -96,16 +96,9 @@ export default function ConfiguracaoWhatsApp() {
 
   const BASE_WEBHOOK_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
 
-  const gerarUrlWebhook = (nomeEmpresa) => {
-    if (!nomeEmpresa) return BASE_WEBHOOK_URL;
-    // Normalizar nome: remover espaços, acentos e caracteres especiais
-    const nomeNormalizado = nomeEmpresa
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '');
-    return `${BASE_WEBHOOK_URL}?empresa=${nomeNormalizado}`;
+  const gerarUrlWebhook = (instancia) => {
+    if (!instancia) return BASE_WEBHOOK_URL;
+    return `${BASE_WEBHOOK_URL}=${instancia}`;
   };
 
   const obterUrlCorretaAuto = async () => {
