@@ -185,7 +185,9 @@ export default function BatePapo() {
   });
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (mensagens.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [mensagens]);
 
   // Subscrição em tempo real para novas mensagens e conversas
