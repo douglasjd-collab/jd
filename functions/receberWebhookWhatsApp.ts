@@ -370,12 +370,7 @@ Deno.serve(async (req) => {
       conversa_id: conversa.id,
       telefone: telefoneLimpo,
       tipo_conteudo: novaMensagem.tipo_conteudo,
-      timestamp: timestamp,
-      debug: {
-        conversa_criada_agora: conversas.length === 0,
-        total_conversas: conversas.length,
-        telefone_limpo: telefoneLimpo
-      }
+      timestamp: timestamp
     });
 
   } catch (error) {
