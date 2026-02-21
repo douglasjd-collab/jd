@@ -98,7 +98,8 @@ export default function ConfiguracaoWhatsApp() {
 
   const gerarUrlWebhook = (instancia) => {
     if (!instancia) return BASE_WEBHOOK_URL;
-    return `${BASE_WEBHOOK_URL}=${instancia}`;
+    // Usar query string padrão ?instance=NOME (mais compatível com Evolution API)
+    return `${BASE_WEBHOOK_URL}?instance=${encodeURIComponent(instancia)}`;
   };
 
   const obterUrlCorretaAuto = async () => {
