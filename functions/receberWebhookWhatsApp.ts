@@ -52,30 +52,40 @@ Deno.serve(async (req) => {
     console.log('📥 Body raw completo:', bodyText);
     
     let body;
+    // Tentar parsear como JSON primeiro
     try {
       body = JSON.parse(bodyText);
+      console.log('✅ Body parseado como JSON direto');
     } catch (e) {
-      // Tentar decodificar Base64 (quando webhookBase64=true na Evolution)
+      // Tentar decodificar Base64 (Evolution API com webhookBase64=true)
       try {
         const decoded = atob(bodyText.trim());
         body = JSON.parse(decoded);
-        console.log('✅ Body decodificado de Base64');
+        console.log('✅ Body decodificado de Base64 puro');
       } catch (e2) {
-        console.log('❌ Erro ao parsear JSON/Base64:', e.message);
+        console.log('❌ Erro ao parsear JSON/Base64:', e.message, e2.message);
         return Response.json({ success: false, error: 'Invalid JSON' }, { status: 400 });
       }
     }
-    
-    // Se o body inteiro for Base64 dentro de um wrapper
-    if (body?.data && typeof body.data === 'string') {
+
+    // Caso a Evolution envie { event, instance, data: "<base64>" }
+    // com webhookBase64=true, o campo "data" pode ser string Base64
+    if (body && typeof body.data === 'string') {
       try {
         const decoded = atob(body.data);
         const inner = JSON.parse(decoded);
         body = { ...body, data: inner };
         console.log('✅ Campo data decodificado de Base64');
       } catch (e) {
-        // data já é objeto, não precisa decodificar
+        // data já é objeto JSON normal, não precisa decodificar
+        console.log('ℹ️ Campo data não é Base64, mantendo como está');
       }
+    }
+    
+    // Caso o body inteiro seja { data: { event, instance, data: {...} } } (wrapper)
+    if (body && !body.event && body.data?.event) {
+      console.log('🔄 Detectado formato wrapper - unwrapping');
+      body = body.data;
     }
     
     console.log('✅ JSON parseado');
