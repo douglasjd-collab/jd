@@ -15,8 +15,7 @@ export default function LogsRecebimento() {
 
   useEffect(() => {
     carregarLogs();
-    const interval = setInterval(carregarLogs, 5000); // Atualizar a cada 5 segundos
-    return () => clearInterval(interval);
+    // Sem auto-refresh automático — o usuário usa o botão Atualizar
   }, []);
 
   const carregarLogs = async () => {
