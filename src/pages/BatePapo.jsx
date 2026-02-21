@@ -243,7 +243,7 @@ export default function BatePapo() {
   const enviarMensagemMutation = useMutation({
     mutationFn: async ({ texto, arquivo }) => {
       if (arquivo) {
-        // Upload do arquivo
+        // Upload do arquivo - salva no banco mas não envia pela Evolution ainda
         const { file_url } = await base44.integrations.Core.UploadFile({ file: arquivo });
         
         let tipo_conteudo = 'documento';
@@ -265,16 +265,19 @@ export default function BatePapo() {
           data_envio: new Date().toISOString()
         });
       } else if (texto) {
-        return base44.entities.MensagemWhatsapp.create({
+        // Enviar via Evolution API (função backend já salva no banco)
+        const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
           conversa_id: conversaSelecionada.id,
-          empresa_id: empresaId,
-          remetente: 'vendedor',
-          usuario_id: user.id,
-          usuario_nome: user.full_name,
-          tipo_conteudo: 'texto',
-          texto,
-          data_envio: new Date().toISOString()
+          mensagem_texto: texto,
+          numero_cliente: conversaSelecionada.cliente_telefone,
+          empresa_id: empresaId
         });
+
+        if (!resp?.data?.success) {
+          throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');
+        }
+
+        return resp.data;
       }
     },
     onSuccess: async () => {
