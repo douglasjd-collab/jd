@@ -114,8 +114,7 @@ export default function ConfiguracaoWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
-      const empresaId = isSuperAdmin ? empresa?.id : (selectedEmpresaId || empresa?.id);
+      const empresaId = selectedEmpresaId || empresa?.id;
 
       if (!empresaId) {
         toast.error('Erro: Empresa não definida');
