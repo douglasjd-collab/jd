@@ -192,10 +192,11 @@ export default function BatePapo() {
     console.log('[RealTime] 🔔 Inscrevendo em atualizações...');
 
     const unsubMsg = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      console.log('[RealTime] 📨 Evento mensagem:', event.type, event.id);
-      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] });
-      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-    });
+        console.log('[RealTime] 📨 Evento mensagem:', event.type, event.id);
+        // Invalidar TODAS as queries de mensagens (qualquer conversa)
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      });
 
     const unsubConv = base44.entities.ConversaWhatsapp.subscribe((event) => {
       console.log('[RealTime] 💬 Conversa atualizada via subscription:', event.type, event.id);
