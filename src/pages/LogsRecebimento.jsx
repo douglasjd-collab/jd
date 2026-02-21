@@ -22,11 +22,19 @@ export default function LogsRecebimento() {
   const carregarLogs = async () => {
     try {
       setLoading(true);
-      const todosLogs = await base44.entities.LogRecebimentoWebhook.list('-created_date', 100);
+      // Usar função backend para garantir dados mais recentes (sem cache)
+      const resp = await base44.functions.invoke('buscarLogsWebhook', {});
+      const todosLogs = resp?.data?.logs || [];
       setLogs(todosLogs);
     } catch (error) {
       console.error('Erro ao carregar logs:', error);
-      toast.error('Erro ao carregar logs');
+      // Fallback direto
+      try {
+        const todosLogs = await base44.entities.LogRecebimentoWebhook.list('-created_date', 200);
+        setLogs(todosLogs);
+      } catch (e2) {
+        toast.error('Erro ao carregar logs');
+      }
     } finally {
       setLoading(false);
     }
