@@ -50,8 +50,10 @@ Deno.serve(async (req) => {
     } catch (_) {
       // Tentar Base64 puro
       try {
-        body = JSON.parse(atob(bodyText.trim()));
-        console.log('✅ Parseado como Base64 puro');
+        const decoded = atob(bodyText.trim());
+            const bytes = new Uint8Array(decoded.split('').map(c => c.charCodeAt(0)));
+            body = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+            console.log('✅ Parseado como Base64 puro (UTF-8)');
       } catch (e2) {
         console.error('❌ Não foi possível parsear body:', e2.message);
         return Response.json({ success: false, error: 'Invalid body' }, { status: 400 });
