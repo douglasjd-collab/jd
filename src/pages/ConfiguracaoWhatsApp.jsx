@@ -89,8 +89,8 @@ export default function ConfiguracaoWhatsApp() {
     setInstanceName(empresaData.evolution_instance_name || '');
     setApiKey(empresaData.evolution_api_key || '');
     
-    // Gerar URL webhook com nome da empresa (não instance name)
-    const webhookGerada = gerarUrlWebhook(empresaData.nome);
+    // Gerar URL webhook com nome da instância
+    const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
     setWebhookUrl(webhookGerada);
   };
 
