@@ -337,7 +337,7 @@ export default function BatePapo() {
   }
 
   return (
-    <div className="flex flex-col bg-slate-50" style={{ height: 'calc(100vh - 2rem)' }}>
+    <div className="flex flex-col bg-slate-50 -m-4 lg:-m-8" style={{ height: '100vh' }}>
       <NovaConversaModal
         open={novaConversaOpen}
         onOpenChange={setNovaConversaOpen}
