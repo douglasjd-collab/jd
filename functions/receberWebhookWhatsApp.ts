@@ -156,22 +156,16 @@ Deno.serve(async (req) => {
     // Tentar encontrar empresa pela instância do payload ou pelo URL
     const url = new URL(req.url);
     
-    // Suporte ao formato: .../receberWebhookWhatsApp=PROMOTORA
-    // A URL fica como: .../receberWebhookWhatsApp%3DPROMOTORA ou o = vira parte do path
-    // Precisamos extrair da URL original
-    const urlStr = req.url;
-    let instanceFromUrl = '';
+    // Extrair instância da query string: ?instance=NOME
+    let instanceFromUrl = url.searchParams.get('instance') || '';
     
-    // Formato: /receberWebhookWhatsApp=NOME (o = fica no path ou nos searchParams como chave)
-    // Tentar pegar do pathname
-    const pathMatch = urlStr.match(/receberWebhookWhatsApp=([^&?#]+)/);
-    if (pathMatch) {
-      instanceFromUrl = decodeURIComponent(pathMatch[1]);
-    }
-    
-    // Fallback: query string ?instance=
+    // Fallback: formato legado receberWebhookWhatsApp=NOME no path
     if (!instanceFromUrl) {
-      instanceFromUrl = url.searchParams.get('instance') || '';
+      const urlStr = req.url;
+      const pathMatch = urlStr.match(/receberWebhookWhatsApp=([^&?#]+)/);
+      if (pathMatch) {
+        instanceFromUrl = decodeURIComponent(pathMatch[1]);
+      }
     }
     
     const instancePayload = body.instance;
