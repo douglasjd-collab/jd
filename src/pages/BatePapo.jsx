@@ -170,6 +170,7 @@ export default function BatePapo() {
     enabled: !!conversaSelecionada?.id && !!empresaId,
     queryFn: async () => {
       console.log('[Mensagens] 🔄 Buscando mensagens da conversa:', conversaSelecionada.id);
+      // Buscar SEM filtro empresa_id pois algumas msgs antigas foram salvas com 'default'
       const msgs = await base44.entities.MensagemWhatsapp.filter(
         { conversa_id: conversaSelecionada.id },
         'data_envio'
