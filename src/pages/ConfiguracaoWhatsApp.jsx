@@ -332,45 +332,65 @@ export default function ConfiguracaoWhatsApp() {
               </div>
             </div>
 
-            <div>
-              <Label className="mb-3 block text-base font-bold text-green-900">
-                📋 URL do Webhook - COPIE E CONFIGURE NA EVOLUTION:
-              </Label>
-              {loading ? (
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Carregando URL...</span>
+            <div className="space-y-4">
+              {/* URL Base (fixa) */}
+              <div>
+                <Label className="mb-2 block text-sm font-semibold text-slate-700">
+                  🔒 URL Base (fixa — nunca muda):
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value="https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp"
+                    readOnly
+                    className="bg-slate-50 font-mono text-xs text-slate-600"
+                  />
+                  <Button variant="outline" size="icon" onClick={() => copyToClipboard('https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp', 'base')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
                 </div>
-              ) : (
-                <>
-                  <div className="flex gap-2 mb-2">
-                    <Input 
-                      value={webhookUrl}
-                      readOnly 
-                      className="bg-white border-2 border-green-500 font-mono text-sm font-bold text-green-700"
-                    />
-                    <Button
-                      variant="default"
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() => {
-                        copyToClipboard(webhookUrl, 'webhook');
-                        toast.success('✅ URL copiada! Cole na Evolution API');
-                      }}
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copiar
-                    </Button>
+              </div>
+
+              {/* URL da Subconta (com nome da empresa) */}
+              <div>
+                <Label className="mb-2 block text-base font-bold text-green-900">
+                  📋 URL desta Subconta — CONFIGURE NA EVOLUTION API:
+                </Label>
+                {loading ? (
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Carregando URL...</span>
                   </div>
-                  <div className="p-3 bg-green-100 border border-green-300 rounded-lg">
-                    <p className="text-xs text-green-900 font-semibold">
-                      ✅ URL gerada dinamicamente com o nome da instância: <code className="bg-white px-2 py-1 rounded">?instance={instanceName || 'SUA_INSTANCIA'}</code>
-                    </p>
-                    <p className="text-xs text-green-800 mt-1">
-                      Cada subconta terá sua própria instância no Evolution API, garantindo isolamento de dados
-                    </p>
-                  </div>
-                </>
-              )}
+                ) : (
+                  <>
+                    <div className="flex gap-2 mb-2">
+                      <Input
+                        value={webhookUrl}
+                        readOnly
+                        className="bg-white border-2 border-green-500 font-mono text-sm font-bold text-green-700"
+                      />
+                      <Button
+                        variant="default"
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => {
+                          copyToClipboard(webhookUrl, 'webhook');
+                          toast.success('✅ URL copiada! Cole na Evolution API');
+                        }}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copiar
+                      </Button>
+                    </div>
+                    <div className="p-3 bg-green-100 border border-green-300 rounded-lg">
+                      <p className="text-xs text-green-900 font-semibold">
+                        ✅ URL gerada com o nome da empresa: <code className="bg-white px-2 py-1 rounded">?empresa={empresa?.nome ? empresa.nome.toLowerCase().replace(/\s+/g, '_') : 'nome_da_empresa'}</code>
+                      </p>
+                      <p className="text-xs text-green-800 mt-1">
+                        Cada subconta tem sua própria URL com seu nome, permitindo ao webhook identificar qual empresa recebeu a mensagem.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             <p className="text-xs text-center text-slate-500 pt-4">
