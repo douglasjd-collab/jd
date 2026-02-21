@@ -102,8 +102,12 @@ Deno.serve(async (req) => {
     const message = data.message || {};
     const pushName = data.pushName || data.senderName || 'Cliente';
     const fromMe  = key.fromMe === true;
-    const telefone = key.remoteJid || '';
+    // Evolution pode usar LID (@lid) - usar remoteJidAlt se disponível (contém o número real @s.whatsapp.net)
+    const remoteJidRaw = key.remoteJid || '';
+    const remoteJidAlt = key.remoteJidAlt || '';
+    const telefone = (remoteJidRaw.includes('@lid') && remoteJidAlt) ? remoteJidAlt : remoteJidRaw;
     const messageId = key.id || `gen_${Date.now()}`;
+    console.log(`🔍 remoteJid: ${remoteJidRaw} | remoteJidAlt: ${remoteJidAlt} | telefone usado: ${telefone}`);
 
     console.log(`📞 Telefone: ${telefone} | fromMe: ${fromMe} | MsgID: ${messageId}`);
     console.log(`📋 Message keys: ${Object.keys(message).join(', ')}`);
