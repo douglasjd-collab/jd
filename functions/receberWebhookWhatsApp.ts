@@ -55,9 +55,27 @@ Deno.serve(async (req) => {
     try {
       body = JSON.parse(bodyText);
     } catch (e) {
-      console.log('❌ Erro ao parsear JSON:', e.message);
-      console.log('📥 Body texto:', bodyText);
-      return Response.json({ success: false, error: 'Invalid JSON' }, { status: 400 });
+      // Tentar decodificar Base64 (quando webhookBase64=true na Evolution)
+      try {
+        const decoded = atob(bodyText.trim());
+        body = JSON.parse(decoded);
+        console.log('✅ Body decodificado de Base64');
+      } catch (e2) {
+        console.log('❌ Erro ao parsear JSON/Base64:', e.message);
+        return Response.json({ success: false, error: 'Invalid JSON' }, { status: 400 });
+      }
+    }
+    
+    // Se o body inteiro for Base64 dentro de um wrapper
+    if (body?.data && typeof body.data === 'string') {
+      try {
+        const decoded = atob(body.data);
+        const inner = JSON.parse(decoded);
+        body = { ...body, data: inner };
+        console.log('✅ Campo data decodificado de Base64');
+      } catch (e) {
+        // data já é objeto, não precisa decodificar
+      }
     }
     
     console.log('✅ JSON parseado');
