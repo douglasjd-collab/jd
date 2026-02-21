@@ -63,8 +63,10 @@ Deno.serve(async (req) => {
     // A Evolution com webhookBase64=true envia: { event, instance, data: "<base64>" }
     if (body && typeof body.data === 'string') {
       try {
-        body.data = JSON.parse(atob(body.data));
-        console.log('✅ Campo data decodificado de Base64');
+        const decodedData = atob(body.data);
+            const bytesData = new Uint8Array(decodedData.split('').map(c => c.charCodeAt(0)));
+            body.data = JSON.parse(new TextDecoder('utf-8').decode(bytesData));
+            console.log('✅ Campo data decodificado de Base64 (UTF-8)');
       } catch (_) {
         // data já é string normal (não Base64), deixar como está
       }
