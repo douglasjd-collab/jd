@@ -165,17 +165,18 @@ export default function BatePapo() {
     refetchInterval: 3000
   });
 
+  const conversaSelecionadaId = conversaSelecionada?.id || null;
+
   const { data: mensagens = [], isError: mensagensError, error: msgError, isPending: loadingMensagens } = useQuery({
-    queryKey: ['mensagens-whatsapp', conversaSelecionada?.id, empresaId],
-    enabled: !!conversaSelecionada?.id && !!empresaId,
+    queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
+    enabled: !!conversaSelecionadaId,
     queryFn: async () => {
-      console.log('[Mensagens] 🔄 Buscando mensagens da conversa:', conversaSelecionada.id);
-      // Buscar SEM filtro empresa_id pois algumas msgs antigas foram salvas com 'default'
+      console.log('[Mensagens] 🔄 Buscando mensagens da conversa:', conversaSelecionadaId);
       const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaSelecionada.id },
+        { conversa_id: conversaSelecionadaId },
         'data_envio'
       );
-      console.log('[Mensagens] ✅ Total encontradas:', msgs?.length);
+      console.log('[Mensagens] ✅ Total encontradas:', msgs?.length, msgs?.map(m => m.texto));
       return msgs || [];
     },
     refetchInterval: 2000,
