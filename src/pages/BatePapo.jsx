@@ -276,35 +276,9 @@ export default function BatePapo() {
         });
       }
     },
-    onSuccess: async (novaMensagem) => {
-      await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] });
       await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-      
-      // Integrar com Evolution API (apenas para mensagens de texto)
-      if (novaMensagem.tipo_conteudo === 'texto' && novaMensagem.texto) {
-        try {
-          console.log('📤 Enviando para Evolution API:', {
-            conversa_id: conversaSelecionada.id,
-            mensagem_texto: novaMensagem.texto,
-            numero_cliente: conversaSelecionada.cliente_telefone
-          });
-          
-          await base44.functions.invoke('enviarMensagemWhatsapp', {
-            conversa_id: conversaSelecionada.id,
-            mensagem_texto: novaMensagem.texto,
-            numero_cliente: conversaSelecionada.cliente_telefone,
-            empresa_id: empresaId
-          });
-          toast.success('✅ Mensagem enviada via WhatsApp!');
-        } catch (error) {
-          console.error('❌ Erro ao enviar para Evolution:', error);
-          const errorMsg = error.response?.data?.error || error.message || 'Erro desconhecido';
-          toast.error('Erro ao enviar via WhatsApp: ' + errorMsg);
-          
-          // Ainda assim, marca a mensagem como enviada localmente
-          await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id] });
-        }
-      }
     },
     onError: (error) => {
       toast.error('Erro ao enviar: ' + error.message);
