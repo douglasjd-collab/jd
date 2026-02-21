@@ -169,6 +169,35 @@ export default function ConfiguracaoWhatsApp() {
       />
 
       <div className="grid grid-cols-1 gap-6">
+
+        {/* Seletor de Empresa — apenas para super admin */}
+        {isSuperAdmin && empresas.length > 0 && (
+          <Card className="border-l-4 border-l-blue-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>🏢</span> Selecionar Empresa / Subconta
+              </CardTitle>
+              <CardDescription>
+                Como super admin, você pode configurar o WhatsApp de cada empresa separadamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedEmpresaId || ''} onValueChange={handleMudarEmpresa}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma empresa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {empresas.map(e => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.nome} {e.evolution_instance_name ? `— ${e.evolution_instance_name}` : '— sem instância'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Status da Conexão */}
         <Card className="border-l-4 border-l-green-500">
           <CardHeader>
