@@ -458,7 +458,7 @@ export default function BatePapo() {
 
                       <Button
                         onClick={() => {
-                          const input = document.getElementById('message-input') as HTMLTextAreaElement;
+                          const input = document.getElementById('message-input');
                           if (input?.value?.trim()) {
                             enviarMensagemMutation.mutate({ texto: input.value });
                             input.value = '';
