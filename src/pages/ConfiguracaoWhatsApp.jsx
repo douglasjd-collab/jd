@@ -209,8 +209,9 @@ export default function ConfiguracaoWhatsApp() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="text-sm"><strong>Instância:</strong> {instanceName}</p>
-              <p className="text-sm"><strong>Status:</strong> <span className="text-green-600 font-semibold">Conectado</span></p>
+              <p className="text-sm"><strong>Empresa:</strong> {empresa?.nome || '—'}</p>
+              <p className="text-sm"><strong>Instância:</strong> {instanceName || <span className="text-red-500">Não configurada</span>}</p>
+              <p className="text-sm"><strong>Status:</strong> {instanceName ? <span className="text-green-600 font-semibold">Configurado</span> : <span className="text-red-500 font-semibold">Não configurado</span>}</p>
             </div>
           </CardContent>
         </Card>
