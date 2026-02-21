@@ -155,9 +155,13 @@ Deno.serve(async (req) => {
     // Criar registro de mensagem no banco
     console.log('💾 Salvando mensagem no banco...');
     
-    const novaMensagem = await base44.entities.MensagemWhatsapp.create({
+    // Garantir empresa_id correto - nunca usar 'default' ou vazio
+    const empresaIdFinal = empresaId || payload.empresa_id || '699696c2c9f5bffc2e67402b';
+    console.log('🏢 Empresa ID final para salvar mensagem:', empresaIdFinal);
+
+    const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
       conversa_id: conversa_id,
-      empresa_id: empresaId || payload.empresa_id || user.empresa_id || '',
+      empresa_id: empresaIdFinal,
       remetente: 'vendedor',
       usuario_id: user.id,
       usuario_nome: user.full_name,
