@@ -172,14 +172,14 @@ export default function BatePapo() {
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
       console.log('[Mensagens] 🔄 Buscando mensagens da conversa:', conversaSelecionadaId);
-      const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaSelecionadaId },
-        'data_envio'
-      );
-      console.log('[Mensagens] ✅ Total encontradas:', msgs?.length, msgs?.map(m => m.texto));
-      return msgs || [];
+      // Usar função backend com asServiceRole para garantir acesso a todas as mensagens
+      // independente do empresa_id (algumas mensagens antigas têm empresa_id='default')
+      const resp = await base44.functions.invoke('buscarMensagensConversa', { conversa_id: conversaSelecionadaId });
+      const msgs = resp?.data?.mensagens || [];
+      console.log('[Mensagens] ✅ Total encontradas:', msgs.length);
+      return msgs;
     },
-    refetchInterval: 2000,
+    refetchInterval: 3000,
     retry: 2,
     staleTime: 0,
   });
