@@ -153,12 +153,10 @@ export default function ConfiguracaoWhatsApp() {
 
 
 
-  const handleMudarEmpresa = (empresaId) => {
-    setSelectedEmpresaId(empresaId);
-    const emp = empresas.find(e => e.id === empresaId);
-    if (emp) {
-      carregarEmpresa(emp);
-    }
+  const handleMudarEmpresa = (empId) => {
+    setSelectedEmpresaId(empId);
+    const emp = empresas.find(e => e.id === empId);
+    if (emp) carregarEmpresa(emp);
   };
 
   return (
