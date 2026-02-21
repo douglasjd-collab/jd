@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     
     const novaMensagem = await base44.entities.MensagemWhatsapp.create({
       conversa_id: conversa_id,
-      empresa_id: user.empresa_id || 'default',
+      empresa_id: empresaId || payload.empresa_id || user.empresa_id || '',
       remetente: 'vendedor',
       usuario_id: user.id,
       usuario_nome: user.full_name,
