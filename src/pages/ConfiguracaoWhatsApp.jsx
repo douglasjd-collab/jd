@@ -89,11 +89,9 @@ export default function ConfiguracaoWhatsApp() {
     setInstanceName(empresaData.evolution_instance_name || '');
     setApiKey(empresaData.evolution_api_key || '');
     
-    // Gerar URL webhook com instance name da empresa
-    if (empresaData.evolution_instance_name) {
-      const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
-      setWebhookUrl(webhookGerada);
-    }
+    // Gerar URL webhook com nome da empresa (não instance name)
+    const webhookGerada = gerarUrlWebhook(empresaData.nome);
+    setWebhookUrl(webhookGerada);
   };
 
   const BASE_WEBHOOK_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
