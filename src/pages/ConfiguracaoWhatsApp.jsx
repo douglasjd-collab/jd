@@ -159,13 +159,13 @@ export default function ConfiguracaoWhatsApp() {
     if (emp) carregarEmpresa(emp);
   };
 
+  const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Configuração WhatsApp"
-        subtitle={(user?.role === 'super_admin' || user?.perfil === 'super_admin') 
-          ? "Integração com Evolution API - Conta Super Admin (JD Promotora)" 
-          : empresa ? `Integração com Evolution API - ${empresa.nome}` : "Carregando..."}
+        subtitle={empresa ? `Integração com Evolution API — ${empresa.nome}` : "Carregando..."}
       />
 
       <div className="grid grid-cols-1 gap-6">
