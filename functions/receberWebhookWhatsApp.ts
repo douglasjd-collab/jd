@@ -153,14 +153,32 @@ Deno.serve(async (req) => {
     // ID fixo da empresa JD Promotora (super admin)
     const JD_PROMOTORA_ID = '699696c2c9f5bffc2e67402b';
     
-    // Tentar encontrar empresa pela instância do payload ou pelo URL param
+    // Tentar encontrar empresa pela instância do payload ou pelo URL
     const url = new URL(req.url);
-    const instanceParam = url.searchParams.get('instance');
-    const instancePayload = body.instance;
-    const instanceFinal = instanceParam || instancePayload || '';
     
+    // Suporte ao formato: .../receberWebhookWhatsApp=PROMOTORA
+    // A URL fica como: .../receberWebhookWhatsApp%3DPROMOTORA ou o = vira parte do path
+    // Precisamos extrair da URL original
+    const urlStr = req.url;
+    let instanceFromUrl = '';
+    
+    // Formato: /receberWebhookWhatsApp=NOME (o = fica no path ou nos searchParams como chave)
+    // Tentar pegar do pathname
+    const pathMatch = urlStr.match(/receberWebhookWhatsApp=([^&?#]+)/);
+    if (pathMatch) {
+      instanceFromUrl = decodeURIComponent(pathMatch[1]);
+    }
+    
+    // Fallback: query string ?instance=
+    if (!instanceFromUrl) {
+      instanceFromUrl = url.searchParams.get('instance') || '';
+    }
+    
+    const instancePayload = body.instance;
+    const instanceFinal = instanceFromUrl || instancePayload || '';
+    
+    console.log('🔍 Instance da URL (formato =NOME):', instanceFromUrl);
     console.log('🔍 Instance do payload:', instancePayload);
-    console.log('🔍 Instance do param URL:', instanceParam);
     console.log('🔍 Instance final:', instanceFinal);
 
     let empresaId = JD_PROMOTORA_ID; // Padrão: JD Promotora
