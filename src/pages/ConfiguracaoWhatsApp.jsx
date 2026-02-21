@@ -110,8 +110,8 @@ export default function ConfiguracaoWhatsApp() {
 
   const obterUrlCorretaAuto = async () => {
     try {
-      if (instanceName) {
-        const urlCorreta = gerarUrlWebhook(instanceName);
+      if (empresa?.nome) {
+        const urlCorreta = gerarUrlWebhook(empresa.nome);
         console.log('✅ URL Webhook Gerada:', urlCorreta);
         setWebhookUrl(urlCorreta);
       }
