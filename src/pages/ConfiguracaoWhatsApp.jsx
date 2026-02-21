@@ -42,37 +42,25 @@ export default function ConfiguracaoWhatsApp() {
       const me = await base44.auth.me();
       setUser(me);
 
-      // Se é super_admin, buscar empresa JD Promotora pelo ID fixo
       if (me?.role === 'super_admin' || me?.perfil === 'super_admin') {
-        try {
-          // Buscar a empresa JD Promotora pelo ID fixo
-          const empresasJD = await base44.entities.Empresa.filter(
-            { id: '699696c2c9f5bffc2e67402b' },
-            '-created_date',
-            1
-          );
-          
-          if (empresasJD && empresasJD.length > 0) {
-            const empresaData = empresasJD[0];
-            setEmpresa(empresaData);
-            carregarEmpresa(empresaData);
-            console.log('✅ Super Admin - Carregou JD Promotora:', empresaData.nome);
-          } else {
-            console.warn('⚠️ Empresa JD Promotora não encontrada');
-            setEvolutionUrl('');
-            setInstanceName('');
-            setApiKey('');
-          }
-        } catch (e) {
-          console.error('Erro ao buscar empresa JD Promotora:', e);
+        // Super admin: carregar TODAS as empresas para poder configurar cada uma
+        const todasEmpresas = await base44.entities.Empresa.filter({}, '-created_date', 50);
+        setEmpresas(todasEmpresas || []);
+        
+        // Selecionar a primeira empresa por padrão
+        if (todasEmpresas && todasEmpresas.length > 0) {
+          const primeira = todasEmpresas[0];
+          setSelectedEmpresaId(primeira.id);
+          carregarEmpresa(primeira);
         }
       } else if (me?.empresa_id) {
-        // Usuário normal - carregar sua empresa
-        const emp = await base44.entities.Empresa.filter({ id: me.empresa_id });
+        // Usuário normal - carregar apenas sua empresa
+        const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+        const empId = colabs?.[0]?.empresa_id || me.empresa_id;
+        const emp = await base44.entities.Empresa.filter({ id: empId });
         if (emp && emp.length > 0) {
-          const empresaData = emp[0];
-          setSelectedEmpresaId(empresaData.id);
-          carregarEmpresa(empresaData);
+          setSelectedEmpresaId(emp[0].id);
+          carregarEmpresa(emp[0]);
         }
       }
     } catch (error) {
