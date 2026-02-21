@@ -6,7 +6,6 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const empresaId = body.empresa_id || '699696c2c9f5bffc2e67402b';
-    const numero = (body.numero || '5587991426333').replace(/\D/g, '');
 
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
     if (!empresas || empresas.length === 0) {
@@ -18,61 +17,34 @@ Deno.serve(async (req) => {
     const apiKey = empresa.evolution_api_key || '';
     const instanceName = empresa.evolution_instance_name || '';
 
-    console.log(`🔍 Buscando mensagens do número: ${numero}`);
-
-    // Buscar mensagens recentes via Evolution API
-    const resp = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
-      method: 'POST',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        where: {
-          key: {
-            remoteJid: `${numero}@s.whatsapp.net`
-          }
-        },
-        limit: 10
-      })
+    // 1. Verificar status da conexão
+    const statusResp = await fetch(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
+      headers: { 'apikey': apiKey }
     });
+    const status = await statusResp.json();
+    console.log(`📡 Status instância: ${JSON.stringify(status)}`);
 
-    const respText = await resp.text();
-    console.log(`📊 Status: ${resp.status} | Body: ${respText.substring(0, 500)}`);
-
-    let mensagens = null;
-    try { mensagens = JSON.parse(respText); } catch (_) { mensagens = respText; }
-
-    // Buscar TODOS os chats para inspecionar
+    // 2. Listar TODOS os chats
     const chatsResp = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
       method: 'POST',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'apikey': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({ where: {} })
     });
+    const chats = await chatsResp.json();
+    console.log(`💬 Todos os chats: ${JSON.stringify(chats)}`);
 
-    const chatsText = await chatsResp.text();
-    let chats = null;
-    try { chats = JSON.parse(chatsText); } catch (_) { chats = chatsText; }
-    
-    let chatDoNumero = null;
-    let primeiros3Chats = [];
-    if (Array.isArray(chats)) {
-      chatDoNumero = chats.find(c => c.id?.includes(numero) || c.remoteJid?.includes(numero));
-      primeiros3Chats = chats.slice(0, 3);
-      console.log(`💬 Total chats: ${chats.length} | Chat do número encontrado: ${!!chatDoNumero}`);
-      console.log(`📋 Primeiros chats: ${JSON.stringify(primeiros3Chats.map(c => c.id || c.remoteJid))}`);
-    }
+    // 3. Verificar webhook atual
+    const webhookResp = await fetch(`${evolutionUrl}/webhook/find/${instanceName}`, {
+      headers: { 'apikey': apiKey }
+    });
+    const webhook = await webhookResp.json();
+    console.log(`🔗 Webhook: ${JSON.stringify(webhook)}`);
 
     return Response.json({
-      numero_buscado: numero,
       instancia: instanceName,
-      mensagens_na_evolution: mensagens,
-      chat_encontrado: chatDoNumero,
-      total_chats: Array.isArray(chats) ? chats.length : 'erro',
-      primeiros_chats_ids: primeiros3Chats.map(c => c.id || c.remoteJid)
+      status_conexao: status,
+      todos_chats: Array.isArray(chats) ? chats : chats,
+      webhook_config: webhook
     });
 
   } catch (e) {
