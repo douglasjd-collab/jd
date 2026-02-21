@@ -375,10 +375,10 @@ export default function ConfiguracaoWhatsApp() {
                     </div>
                     <div className="p-3 bg-green-100 border border-green-300 rounded-lg">
                       <p className="text-xs text-green-900 font-semibold">
-                        ✅ URL gerada com o nome da empresa: <code className="bg-white px-2 py-1 rounded">?empresa={empresa?.nome ? empresa.nome.toLowerCase().replace(/\s+/g, '_') : 'nome_da_empresa'}</code>
+                        ✅ URL gerada com o nome da instância: <code className="bg-white px-2 py-1 rounded">={instanceName || 'NOME_INSTANCIA'}</code>
                       </p>
                       <p className="text-xs text-green-800 mt-1">
-                        Cada subconta tem sua própria URL com seu nome, permitindo ao webhook identificar qual empresa recebeu a mensagem.
+                        Cada subconta tem sua própria URL com o nome da instância, permitindo ao webhook identificar qual empresa recebeu a mensagem.
                       </p>
                     </div>
                   </>
