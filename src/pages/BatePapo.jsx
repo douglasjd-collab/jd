@@ -521,7 +521,7 @@ export default function BatePapo() {
           {/* Coluna direita - Informações do Lead */}
           {conversaSelecionada && infoLeadAberto && (
             <Card className="flex w-[260px] flex-col overflow-hidden">
-              <CardHeader className="border-b bg-white py-3">
+              <CardHeader className="border-b bg-white py-3 shrink-0 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-semibold">
@@ -534,7 +534,8 @@ export default function BatePapo() {
                 </div>
               </CardHeader>
 
-              <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden px-4 pb-3 pt-3">
+              <ScrollArea className="flex-1">
+              <CardContent className="flex flex-col gap-4 px-4 pb-3 pt-3">
                 {/* Perfil */}
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
