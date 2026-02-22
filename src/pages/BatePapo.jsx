@@ -337,34 +337,34 @@ export default function BatePapo() {
                     </div>
                   ) : (
                     conversasFiltradas.map((c) => (
-                      <button
+                      <div
                         key={c.id}
-                        onClick={() => selecionarConversa(c)}
                         className={classNames(
-                          "flex w-full items-start gap-2 rounded-2xl px-2.5 py-2 text-left text-xs transition",
+                          "flex w-full items-center gap-2 rounded-2xl px-2.5 py-2 text-left text-xs transition cursor-pointer",
                           conversaSelecionada?.id === c.id
                             ? "bg-sky-50 ring-1 ring-sky-100"
                             : "hover:bg-slate-50"
                         )}
+                        onClick={() => selecionarConversa(c)}
                       >
-                        <Avatar className="mt-0.5 h-9 w-9">
+                        <Avatar className="h-10 w-10 flex-shrink-0">
                           <AvatarFallback className="bg-sky-100 text-[11px] font-semibold text-sky-700">
                             {c.cliente_nome?.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="flex flex-1 flex-col min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-base font-semibold">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="truncate text-sm font-semibold text-slate-900">
                               {c.cliente_nome}
                             </p>
                             {c.data_ultima_mensagem && (
-                              <p className="whitespace-nowrap text-sm text-slate-400 flex-shrink-0">
+                              <p className="whitespace-nowrap text-[11px] text-slate-400 flex-shrink-0">
                                 {new Date(c.data_ultima_mensagem).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             )}
                           </div>
-                          <p className="line-clamp-1 text-sm text-slate-600">
+                          <p className="line-clamp-1 text-xs text-slate-500 mt-0.5">
                             {c.ultima_mensagem || ''}
                           </p>
                         </div>
@@ -373,7 +373,7 @@ export default function BatePapo() {
                           <DropdownMenuTrigger asChild>
                             <button 
                               onClick={(e) => e.stopPropagation()}
-                              className="mt-1 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                              className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex-shrink-0"
                             >
                               <MoreVertical className="h-3.5 w-3.5" />
                             </button>
@@ -393,7 +393,7 @@ export default function BatePapo() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </button>
+                      </div>
                     ))
                   )}
                 </div>
