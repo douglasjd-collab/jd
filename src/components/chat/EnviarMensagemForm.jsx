@@ -166,7 +166,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
         {/* Botão enviar */}
         <Button
           type="submit"
-          disabled={!texto.trim() && !arquivo}
+          disabled={(!texto.trim() && !arquivo) || isLoading}
           className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
           size="icon"
         >
