@@ -80,6 +80,12 @@ export default function EnviarMensagemForm({ onEnviar }) {
 
   return (
     <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative">
+      {erro && (
+        <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {erro}
+        </div>
+      )}
       <style>{`
         .msg-textarea::-webkit-scrollbar { width: 4px; }
         .msg-textarea::-webkit-scrollbar-track { background: transparent; }
