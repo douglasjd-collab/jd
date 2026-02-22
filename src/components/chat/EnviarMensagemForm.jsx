@@ -67,8 +67,12 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
     }
   };
 
+  const quickRepliesFiltered = texto === '/'
+    ? quickReplies
+    : quickReplies.filter(r => r.toLowerCase().startsWith(texto.toLowerCase()));
+
   return (
-    <form onSubmit={handleEnviar} className="bg-white border-t p-3">
+    <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative">
       <style>{`
         .msg-textarea::-webkit-scrollbar { width: 4px; }
         .msg-textarea::-webkit-scrollbar-track { background: transparent; }
