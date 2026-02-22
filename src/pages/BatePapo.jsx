@@ -71,7 +71,7 @@ export default function BatePapo() {
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
-  const [fotosContatos, setFotosContatos] = useState({});
+  const [contatosWhatsapp, setContatosWhatsapp] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(true);
   const queryClient = useQueryClient();
   const mensagensEndRef = React.useRef(null);
