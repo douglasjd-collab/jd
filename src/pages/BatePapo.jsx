@@ -204,6 +204,12 @@ export default function BatePapo() {
     }
   });
 
+  React.useEffect(() => {
+    if (mensagensEndRef.current) {
+      mensagensEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [mensagens]);
+
   const conversasFiltradas = conversas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
       (c.cliente_telefone || '').includes(searchConversas);
