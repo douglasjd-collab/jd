@@ -379,12 +379,10 @@ export default function BatePapo() {
                         )}
                         onClick={() => selecionarConversa(c)}
                       >
-                        <Avatar className="h-10 w-10 flex-shrink-0">
-                          <AvatarImage src={fotosContatos[c.id]} alt={c.cliente_nome} />
-                          <AvatarFallback className="bg-sky-100 text-[11px] font-semibold text-sky-700">
-                            {c.cliente_nome?.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <AvatarContato 
+                          contato={contatosWhatsapp[c.id] || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
+                          className="h-10 w-10 flex-shrink-0"
+                        />
 
                         <div className="flex flex-1 flex-col min-w-0">
                           <div className="flex items-center justify-between gap-1">
