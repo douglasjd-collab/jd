@@ -7,7 +7,7 @@ const LINE_HEIGHT = 24;
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-export default function EnviarMensagemForm({ onEnviar }) {
+export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
   const [texto, setTexto] = useState('');
   const [arquivo, setArquivo] = useState(null);
   const [showScroll, setShowScroll] = useState(false);
@@ -19,21 +19,22 @@ export default function EnviarMensagemForm({ onEnviar }) {
   const handleEnviar = async (e) => {
     e.preventDefault();
     if (!texto.trim() && !arquivo) return;
+    if (isLoading) return;
 
     const textoEnviar = texto.trim();
     setErro(null);
-    setTexto('');
-    setArquivo(null);
-    setShowQuickReplies(false);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = '40px';
-    }
-    setShowScroll(false);
-
+    
     try {
       await onEnviar({ texto: textoEnviar, arquivo });
+      setTexto('');
+      setArquivo(null);
+      setShowQuickReplies(false);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '40px';
+      }
+      setShowScroll(false);
     } catch (err) {
-      setErro('Erro ao enviar mensagem. Tente novamente.');
+      setErro(err.message || 'Erro ao enviar mensagem. Tente novamente.');
     }
   };
 
