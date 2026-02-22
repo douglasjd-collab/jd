@@ -8,11 +8,26 @@ export default function MensagemItem({ mensagem }) {
   
   const isVendedor = mensagem.remetente === 'vendedor';
   
+  const formatarTexto = (texto) => {
+    if (!texto) return null;
+    // Aplicar formatações: *negrito*, _itálico_, ~riscado~
+    const parts = texto.split(/(\*[^*]+\*|_[^_]+_|~[^~]+~)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('*') && part.endsWith('*'))
+        return <strong key={i}>{part.slice(1, -1)}</strong>;
+      if (part.startsWith('_') && part.endsWith('_'))
+        return <em key={i}>{part.slice(1, -1)}</em>;
+      if (part.startsWith('~') && part.endsWith('~'))
+        return <s key={i}>{part.slice(1, -1)}</s>;
+      return part;
+    });
+  };
+
   const renderConteudo = () => {
     switch (mensagem.tipo_conteudo) {
       case 'texto':
         return (
-          <p className="break-words whitespace-pre-wrap">{mensagem.texto}</p>
+          <p className="break-words whitespace-pre-wrap">{formatarTexto(mensagem.texto)}</p>
         );
       
       case 'imagem':
