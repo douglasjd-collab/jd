@@ -374,7 +374,7 @@ export default function BatePapo() {
                             )}
                           </div>
                           <p className="line-clamp-1 text-xs text-slate-500 mt-0.5">
-                            {c.ultima_mensagem || ''}
+                            {obterUltimaMensagem(c)}
                           </p>
                         </div>
 
