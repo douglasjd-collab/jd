@@ -27,9 +27,6 @@ import {
   Filter,
   Plus,
   MoreVertical,
-  Paperclip,
-  Smile,
-  Send,
   PhoneCall,
   Star,
   Tag,
@@ -37,13 +34,13 @@ import {
   ArrowRightLeft,
   BellOff,
   Pin,
-  CheckCheck,
   Check,
   Clock,
   Loader2,
   MessageCircle,
   AlignJustify,
 } from "lucide-react";
+import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
