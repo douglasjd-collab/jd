@@ -60,7 +60,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
             onChange={(e) => {
               setTexto(e.target.value);
               e.target.style.height = 'auto';
-              e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+              e.target.style.height = Math.min(e.target.scrollHeight, 240) + 'px';
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
