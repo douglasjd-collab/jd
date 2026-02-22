@@ -238,6 +238,15 @@ export default function BatePapo() {
     return matchSearch && matchStatus;
   });
 
+  const obterUltimaMensagem = (conversa) => {
+    if (conversa.ultima_mensagem) return conversa.ultima_mensagem;
+    if (mensagens.length > 0 && conversaSelecionada?.id === conversa.id) {
+      const ultimaMensagem = mensagens[mensagens.length - 1];
+      return ultimaMensagem?.texto || ultimaMensagem?.arquivo_nome || '';
+    }
+    return '';
+  };
+
   if (!user || !empresaId) {
     return (
       <div className="flex items-center justify-center h-96">
