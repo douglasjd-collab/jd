@@ -325,7 +325,7 @@ export default function BatePapo() {
                     conversasFiltradas.map((c) => (
                       <button
                         key={c.id}
-                        onClick={() => setConversaSelecionada(c)}
+                        onClick={() => selecionarConversa(c)}
                         className={classNames(
                           "flex w-full items-start gap-2 rounded-2xl px-2.5 py-2 text-left text-xs transition",
                           conversaSelecionada?.id === c.id
