@@ -212,6 +212,15 @@ export default function BatePapo() {
       }
       toast.error('Erro ao enviar: ' + error.message);
     },
+    onSuccess: async (data, variables) => {
+      // Atualizar a conversa com a última mensagem
+      if (conversaSelecionada) {
+        await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
+          ultima_mensagem: variables.texto,
+          data_ultima_mensagem: new Date().toISOString()
+        });
+      }
+    },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] });
       await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
