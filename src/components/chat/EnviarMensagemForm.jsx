@@ -34,6 +34,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
 
   return (
     <form onSubmit={handleEnviar} className="bg-white border-t p-4">
+      <style>{`textarea::-webkit-scrollbar-button { display: none; } textarea { scrollbar-width: none; }`}</style>
       <input
         ref={fileInputRef}
         type="file"
