@@ -455,19 +455,27 @@ export default function BatePapo() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
-                          <UserPlus className="mr-2 h-3.5 w-3.5" />
-                          Atribuir responsável
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
-                          <BellOff className="mr-2 h-3.5 w-3.5" />
-                          Silenciar conversa
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
-                          <Pin className="mr-2 h-3.5 w-3.5" />
-                          Fixar conversa
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
+                          <DropdownMenuItem onClick={async () => {
+                            await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'ativa' });
+                            queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                            toast.success('Conversa reaberta');
+                          }}>
+                            <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                            Reabrir conversa
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                            <UserPlus className="mr-2 h-3.5 w-3.5" />
+                            Atribuir responsável
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                            <BellOff className="mr-2 h-3.5 w-3.5" />
+                            Silenciar conversa
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                            <Pin className="mr-2 h-3.5 w-3.5" />
+                            Fixar conversa
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
                     </DropdownMenu>
 
                     <Tooltip>
