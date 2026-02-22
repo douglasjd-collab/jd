@@ -139,21 +139,6 @@ export default function BatePapo() {
           base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {});
         }
 
-        // Carregar foto de perfil do cliente se disponível
-        if (conversaSelecionada?.cliente_id) {
-          try {
-            const cliente = await base44.entities.Cliente.filter({ id: conversaSelecionada.cliente_id });
-            if (cliente.length > 0 && cliente[0].doc_identidade_urls?.length > 0) {
-              setFotosContatos(prev => ({
-                ...prev,
-                [conversaSelecionada.id]: cliente[0].doc_identidade_urls[0]
-              }));
-            }
-          } catch (e) {
-            console.log('Erro ao carregar foto:', e);
-          }
-        }
-
         return msgs;
       },
       initialData: () => {
