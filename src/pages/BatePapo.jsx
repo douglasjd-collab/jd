@@ -105,7 +105,12 @@ export default function BatePapo() {
       );
       return (result || []).filter(c => c.id && c.cliente_telefone);
     },
-    refetchInterval: 3000
+    refetchInterval: 3000,
+    onSuccess: (data) => {
+      if (data.length > 0 && !conversaSelecionada) {
+        setConversaSelecionada(data[0]);
+      }
+    }
   });
 
   const conversaSelecionadaId = conversaSelecionada?.id || null;
