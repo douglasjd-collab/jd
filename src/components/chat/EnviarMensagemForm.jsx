@@ -15,11 +15,11 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
-  const handleEnviar = async (e) => {
+  const handleEnviar = (e) => {
     e.preventDefault();
     if (!texto.trim() && !arquivo) return;
 
-    await onEnviar({ texto: texto.trim(), arquivo });
+    onEnviar({ texto: texto.trim(), arquivo });
 
     setTexto('');
     setArquivo(null);
