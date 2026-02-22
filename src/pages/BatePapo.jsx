@@ -404,6 +404,20 @@ export default function BatePapo() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={infoLeadAberto ? "secondary" : "outline"}
+                          size="icon"
+                          className="h-8 w-8 rounded-md border-slate-200"
+                          onClick={() => setInfoLeadAberto(!infoLeadAberto)}
+                        >
+                          <AlignJustify className="h-4 w-4 text-slate-500" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{infoLeadAberto ? 'Fechar' : 'Abrir'} informações do lead</TooltipContent>
+                    </Tooltip>
                   </div>
                 </CardHeader>
 
