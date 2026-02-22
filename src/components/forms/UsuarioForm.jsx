@@ -65,6 +65,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
       setValue('empresa_id', usuario.empresa_id || '');
       setValue('tipo_agente', usuario.tipo_agente || 'agente_loja');
       setValue('percentual_comissao_agente', usuario.percentual_comissao_agente || null);
+      setValue('evolution_instance_name', usuario.evolution_instance_name || '');
       setValue('status', usuario.status || 'ativo');
     } else {
       reset({
