@@ -249,7 +249,7 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Carregar contato WhatsApp quando a conversa muda
+  // Recarregar contato quando conversa muda (para garantir foto atualizada)
   React.useEffect(() => {
     if (!conversaSelecionada?.cliente_telefone || !empresaId) return;
     
@@ -258,12 +258,14 @@ export default function BatePapo() {
         const contatos = await base44.entities.ContatoWhatsapp.filter({
           empresa_id: empresaId,
           telefone: conversaSelecionada.cliente_telefone.replace(/\D/g, '')
-        });
+        }, '-created_date', 1);
+        
         if (contatos && contatos.length > 0) {
-          console.log('Contato carregado:', contatos[0]);
+          const contato = contatos[0];
+          console.log('Contato carregado:', { nome: contato.nome, foto_url: contato.foto_url });
           setContatosWhatsapp(prev => ({
             ...prev,
-            [conversaSelecionada.id]: contatos[0]
+            [conversaSelecionada.id]: contato
           }));
         }
       } catch (e) {
