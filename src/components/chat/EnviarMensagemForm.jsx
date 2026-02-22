@@ -23,14 +23,24 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
 
     setTexto('');
     setArquivo(null);
+    setShowQuickReplies(false);
     if (textareaRef.current) {
       textareaRef.current.style.height = '40px';
     }
     setShowScroll(false);
   };
 
+  const handleSelectQuickReply = (reply) => {
+    setTexto(reply + ' ');
+    setShowQuickReplies(false);
+    textareaRef.current?.focus();
+  };
+
   const handleChange = (e) => {
-    setTexto(e.target.value);
+    const val = e.target.value;
+    setTexto(val);
+    // Mostrar quick replies se o texto for apenas "/" ou começar com "/"
+    setShowQuickReplies(val === '/' || (val.startsWith('/') && !val.includes(' ')));
     const el = e.target;
     el.style.height = '40px';
     const scrollH = el.scrollHeight;
