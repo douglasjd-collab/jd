@@ -270,12 +270,12 @@ export default function BatePapo() {
                 </div>
               </div>
               <Button 
-                size="sm" 
-                className="gap-1 rounded-full px-3"
+                size="default"
+                className="gap-1.5 rounded-full px-4"
                 onClick={() => setNovaConversaOpen(true)}
               >
                 <Plus className="h-4 w-4" />
-                <span className="text-xs font-medium">Novo</span>
+                <span className="text-sm font-semibold">Novo</span>
               </Button>
             </CardHeader>
 
