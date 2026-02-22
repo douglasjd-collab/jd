@@ -730,7 +730,14 @@ export default function Usuarios() {
                         <td className="px-4 py-3 pl-16">
                           <div className="flex items-center gap-2">
                             <div>
-                              <p className="font-medium text-slate-900">{usuario.nome}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-slate-900">{usuario.nome}</p>
+                                {usuario.evolution_instance_name && (
+                                  <span title={`WhatsApp: ${usuario.evolution_instance_name}`}>
+                                    <Smartphone className="w-4 h-4 text-green-500" />
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-slate-500">{usuario.email}</p>
                             </div>
                             {usuario.aguardando_configuracao && (
