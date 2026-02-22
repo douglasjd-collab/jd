@@ -109,8 +109,8 @@ export default function MensagemItem({ mensagem }) {
             {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm', { locale: ptBR })}
           </p>
           {isVendedor && (
-            <span className="text-white/80 text-xs">
-              {mensagem.status === 'enviada' && '✓'}
+            <span className={`text-xs ${mensagem.status === 'lida' ? 'text-blue-300' : 'text-white/70'}`}>
+              {(mensagem.status === 'pendente' || mensagem.status === 'enviada') && '✓'}
               {mensagem.status === 'entregue' && '✓✓'}
               {mensagem.status === 'lida' && '✓✓'}
             </span>
