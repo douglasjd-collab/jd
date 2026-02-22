@@ -565,12 +565,10 @@ export default function BatePapo() {
                         <div className="flex flex-col gap-4 px-4 pb-4 pt-3">
                           {/* Perfil */}
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={fotosContatos[conversaSelecionada?.id]} alt={conversaSelecionada.cliente_nome} />
-                              <AvatarFallback className="bg-violet-100 text-[12px] font-semibold text-violet-700">
-                                {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <AvatarContato 
+                              contato={contatosWhatsapp[conversaSelecionada?.id] || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone }}
+                              className="h-10 w-10"
+                            />
                             <div className="flex-1">
                               <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_nome}</p>
                               <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
