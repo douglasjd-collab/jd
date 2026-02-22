@@ -2,15 +2,16 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Paperclip, Loader2, Smile } from 'lucide-react';
 
-// Altura de 1 linha (~24px line-height + 16px padding) = 40px
-// 10 linhas = 40 + 9*24 = 256px
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
+
+const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
 export default function EnviarMensagemForm({ onEnviar, isLoading }) {
   const [texto, setTexto] = useState('');
   const [arquivo, setArquivo] = useState(null);
   const [showScroll, setShowScroll] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
