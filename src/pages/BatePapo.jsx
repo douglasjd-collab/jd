@@ -114,7 +114,9 @@ export default function BatePapo() {
     refetchInterval: 3000,
     onSuccess: (data) => {
       if (data.length > 0 && !conversaSelecionada) {
-        setConversaSelecionada(data[0]);
+        const ultimaId = localStorage.getItem('ultimaConversaId');
+        const ultimaConversa = ultimaId ? data.find(c => c.id === ultimaId) : null;
+        setConversaSelecionada(ultimaConversa || data[0]);
       }
     }
   });
