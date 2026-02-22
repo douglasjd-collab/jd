@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Music, Play, Image as ImageIcon } from 'lucide-react';
+import { FileText, Music, Check, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
