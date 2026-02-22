@@ -519,7 +519,7 @@ export default function BatePapo() {
           </Card>
 
           {/* Coluna direita - Informações do Lead */}
-          {conversaSelecionada && (
+          {conversaSelecionada && infoLeadAberto && (
             <Card className="flex w-[260px] flex-col overflow-hidden">
               <CardHeader className="border-b bg-white py-3">
                 <div className="flex items-center justify-between">
