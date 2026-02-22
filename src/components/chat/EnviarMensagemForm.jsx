@@ -1,23 +1,47 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Loader2 } from 'lucide-react';
+import { Send, Paperclip, Loader2, Smile } from 'lucide-react';
+
+// Altura de 1 linha (~24px line-height + 16px padding) = 40px
+// 10 linhas = 40 + 9*24 = 256px
+const MAX_HEIGHT = 256;
+const LINE_HEIGHT = 24;
 
 export default function EnviarMensagemForm({ onEnviar, isLoading }) {
   const [texto, setTexto] = useState('');
   const [arquivo, setArquivo] = useState(null);
+  const [showScroll, setShowScroll] = useState(false);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const handleEnviar = async (e) => {
     e.preventDefault();
     if (!texto.trim() && !arquivo) return;
 
-    await onEnviar({
-      texto: texto.trim(),
-      arquivo
-    });
+    await onEnviar({ texto: texto.trim(), arquivo });
 
     setTexto('');
     setArquivo(null);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '40px';
+    }
+    setShowScroll(false);
+  };
+
+  const handleChange = (e) => {
+    setTexto(e.target.value);
+    const el = e.target;
+    el.style.height = '40px';
+    const scrollH = el.scrollHeight;
+    if (scrollH >= MAX_HEIGHT) {
+      el.style.height = MAX_HEIGHT + 'px';
+      el.style.overflowY = 'auto';
+      setShowScroll(true);
+    } else {
+      el.style.height = scrollH + 'px';
+      el.style.overflowY = 'hidden';
+      setShowScroll(false);
+    }
   };
 
   const handleArquivo = (e) => {
@@ -33,8 +57,13 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
   };
 
   return (
-    <form onSubmit={handleEnviar} className="bg-white border-t p-4">
-      <style>{`textarea::-webkit-scrollbar-button { display: none; } textarea { scrollbar-width: none; }`}</style>
+    <form onSubmit={handleEnviar} className="bg-white border-t p-3">
+      <style>{`
+        .msg-textarea::-webkit-scrollbar { width: 4px; }
+        .msg-textarea::-webkit-scrollbar-track { background: transparent; }
+        .msg-textarea::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .msg-textarea::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+      `}</style>
       <input
         ref={fileInputRef}
         type="file"
@@ -42,29 +71,37 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
         className="hidden"
         accept="image/*,audio/*,video/*,application/pdf"
       />
-      
-      <div className="flex items-end gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading}
-          className="rounded-full hover:bg-slate-100"
-        >
-          <Paperclip className="w-5 h-5 text-slate-600" />
-        </Button>
 
+      <div className="flex items-end gap-2">
+        {/* Botões esquerda: Anexo + Figurinha */}
+        <div className="flex items-center gap-1 pb-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            className="rounded-full hover:bg-slate-100 w-9 h-9"
+          >
+            <Paperclip className="w-5 h-5 text-slate-500" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={isLoading}
+            className="rounded-full hover:bg-slate-100 w-9 h-9"
+          >
+            <Smile className="w-5 h-5 text-slate-500" />
+          </Button>
+        </div>
+
+        {/* Textarea */}
         <div className="flex-1">
           <textarea
+            ref={textareaRef}
             value={texto}
-            onChange={(e) => {
-              setTexto(e.target.value);
-              // Reset para recalcular corretamente
-              e.target.style.height = '38px';
-              const newHeight = Math.min(e.target.scrollHeight, 240);
-              e.target.style.height = newHeight + 'px';
-            }}
+            onChange={handleChange}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -74,21 +111,27 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
             placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
             disabled={isLoading}
             rows={1}
-            className="w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm leading-6"
-            style={{ minHeight: '38px', maxHeight: '240px', overflowY: 'auto', appearance: 'none', MozAppearance: 'none', WebkitAppearance: 'none' }}
+            className="msg-textarea w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm"
+            style={{
+              minHeight: '40px',
+              maxHeight: MAX_HEIGHT + 'px',
+              overflowY: 'hidden',
+              lineHeight: LINE_HEIGHT + 'px',
+            }}
           />
         </div>
 
+        {/* Botão enviar */}
         <Button
           type="submit"
           disabled={isLoading || (!texto.trim() && !arquivo)}
-          className="rounded-full w-12 h-12 bg-blue-500 hover:bg-blue-600 shadow-lg"
+          className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
           size="icon"
         >
           {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           )}
         </Button>
       </div>
