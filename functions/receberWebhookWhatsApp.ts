@@ -21,96 +21,96 @@ async function registrarEvento(base44, empresaId, tipoEvento, dados) {
 
 Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
+  console.log('='.repeat(100));
+  console.log(`📥 WEBHOOK WHATSAPP RECEBIDO - ${timestamp}`);
+  console.log('URL:', req.url);
+  console.log('Método:', req.method);
 
-  console.log('\n' + '='.repeat(80));
-  console.log(`📩 WEBHOOK RECEBIDO - ${timestamp}`);
-  console.log(`📍 Método: ${req.method} | URL: ${req.url}`);
-
-  // GET: verificação/challenge
+  // Evolution às vezes manda GET para teste
   if (req.method === 'GET') {
     const url = new URL(req.url);
-    const challenge = url.searchParams.get('challenge') || url.searchParams.get('hub.challenge');
-    return new Response(challenge || 'OK', { status: 200 });
+    const challenge =
+      url.searchParams.get('challenge') ||
+      url.searchParams.get('hub.challenge') ||
+      'OK';
+    console.log('✅ GET de teste recebido. Challenge:', challenge);
+    return new Response(challenge, { status: 200 });
   }
 
   if (req.method !== 'POST') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+    console.log('❌ Método não suportado:', req.method);
+    return Response.json({ error: 'Método não suportado' }, { status: 405 });
   }
 
   try {
-    const bodyText = await req.text();
-    console.log(`📥 Body length: ${bodyText.length}`);
-    console.log(`📥 Primeiros 500 chars: ${bodyText.substring(0, 500)}`);
+    const url = new URL(req.url);
+    const instanceFromQuery = url.searchParams.get('instance') || undefined;
 
-    // ── Parsear body ──────────────────────────────────────────────────────────
-    let body;
+    const rawBody = await req.text();
+    console.log('📦 RAW BODY:', rawBody.substring(0, 500));
+
+    let payload = {};
     try {
-      body = JSON.parse(bodyText);
-      console.log('✅ Parseado como JSON');
+      payload = rawBody ? JSON.parse(rawBody) : {};
     } catch (_) {
       // Tentar Base64 puro
       try {
-        const decoded = atob(bodyText.trim());
-            const bytes = new Uint8Array(decoded.split('').map(c => c.charCodeAt(0)));
-            body = JSON.parse(new TextDecoder('utf-8').decode(bytes));
-            console.log('✅ Parseado como Base64 puro (UTF-8)');
+        const decoded = atob(rawBody.trim());
+        const bytes = new Uint8Array(decoded.split('').map(c => c.charCodeAt(0)));
+        payload = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+        console.log('✅ Parseado como Base64 puro (UTF-8)');
       } catch (e2) {
         console.error('❌ Não foi possível parsear body:', e2.message);
-        return Response.json({ success: false, error: 'Invalid body' }, { status: 400 });
+        return Response.json({ error: 'JSON inválido' }, { status: 400 });
       }
     }
 
     // A Evolution com webhookBase64=true envia: { event, instance, data: "<base64>" }
-    if (body && typeof body.data === 'string') {
+    if (payload && typeof payload.data === 'string') {
       try {
-        const decodedData = atob(body.data);
-            const bytesData = new Uint8Array(decodedData.split('').map(c => c.charCodeAt(0)));
-            body.data = JSON.parse(new TextDecoder('utf-8').decode(bytesData));
-            console.log('✅ Campo data decodificado de Base64 (UTF-8)');
+        const decodedData = atob(payload.data);
+        const bytesData = new Uint8Array(decodedData.split('').map(c => c.charCodeAt(0)));
+        payload.data = JSON.parse(new TextDecoder('utf-8').decode(bytesData));
+        console.log('✅ Campo data decodificado de Base64 (UTF-8)');
       } catch (_) {
         // data já é string normal (não Base64), deixar como está
       }
     }
 
     // Formato alternativo: wrapper { data: { event, instance, data: {...} } }
-    if (body && !body.event && body.data?.event) {
-      body = body.data;
+    if (payload && !payload.event && payload.data?.event) {
+      payload = payload.data;
       console.log('🔄 Unwrapped do formato wrapper');
     }
 
-    console.log(`📋 Event: ${body.event} | Instance: ${body.instance}`);
-    console.log(`📋 Data keys: ${Object.keys(body.data || {}).join(', ')}`);
+    console.log(`📋 Event: ${payload.event} | Instance: ${payload.instance}`);
+    console.log(`📋 Data keys: ${Object.keys(payload.data || {}).join(', ')}`);
 
     // ── Filtrar eventos ───────────────────────────────────────────────────────
-    const event = (body.event || '').toLowerCase();
+    const event = (payload.event || '').toLowerCase();
 
-    // Ignorar atualizações de status
     if (event === 'messages.update' || event === 'message_update') {
       return Response.json({ success: true, skipped: 'status_update' });
     }
 
-    // Só processar messages.upsert / MESSAGES_UPSERT
     const isUpsert = event === 'messages.upsert' || event === 'messages_upsert' || event === 'messages';
     if (!isUpsert) {
-      console.log(`⏭️ Evento ignorado: ${body.event}`);
-      return Response.json({ success: true, skipped: `event_${body.event}` });
+      console.log(`⏭️ Evento ignorado: ${payload.event}`);
+      return Response.json({ success: true, skipped: `event_${payload.event}` });
     }
 
     // ── Extrair dados da mensagem ─────────────────────────────────────────────
-    const data    = body.data || {};
-    const key     = data.key || {};
+    const data = payload.data || {};
+    const key = data.key || {};
     const message = data.message || {};
     const pushName = data.pushName || data.senderName || 'Cliente';
-    const fromMe  = key.fromMe === true;
-    // Evolution pode usar LID (@lid) - usar remoteJidAlt se disponível (contém o número real @s.whatsapp.net)
+    const fromMe = key.fromMe === true;
     const remoteJidRaw = key.remoteJid || '';
     const remoteJidAlt = key.remoteJidAlt || '';
     const telefone = (remoteJidRaw.includes('@lid') && remoteJidAlt) ? remoteJidAlt : remoteJidRaw;
     const messageId = key.id || `gen_${Date.now()}`;
     console.log(`🔍 remoteJid: ${remoteJidRaw} | remoteJidAlt: ${remoteJidAlt} | telefone usado: ${telefone}`);
-
     console.log(`📞 Telefone: ${telefone} | fromMe: ${fromMe} | MsgID: ${messageId}`);
-    console.log(`📋 Message keys: ${Object.keys(message).join(', ')}`);
 
     if (!telefone || !messageId) {
       console.error('❌ Dados insuficientes - telefone ou messageId faltando');
@@ -156,10 +156,8 @@ Deno.serve(async (req) => {
 
     // ── Identificar empresa e colaborador ─────────────────────────────────────
     const base44 = createClientFromRequest(req);
-    const urlParams = new URL(req.url).searchParams;
-    const instanceUrl = urlParams.get('instance') || '';
-    const instancePayload = body.instance || '';
-    const instanceFinal = instanceUrl || instancePayload || '';
+    const instancePayload = payload.instance || '';
+    const instanceFinal = instanceFromQuery || instancePayload || '';
 
     const JD_ID = '699696c2c9f5bffc2e67402b';
     let empresaId = JD_ID;
@@ -201,7 +199,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Buscar/criar conversa ─────────────────────────────────────────────────
-    let conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+    const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
       empresa_id: empresaId,
       cliente_telefone: telefoneLimpo
     });
@@ -212,9 +210,12 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
         ultima_mensagem: conteudo.substring(0, 200),
         data_ultima_mensagem: new Date().toISOString(),
-        status: 'ativa'
+        status: 'ativa',
+        tipo_conexao: tipoConexao,
+        colaborador_id: colaboradorId || conversa.colaborador_id || '',
+        instancia: instanceFinal
       });
-      console.log(`✅ Conversa existente: ${conversa.id}`);
+      console.log(`✅ Conversa existente atualizada: ${conversa.id}`);
     } else {
       conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
         empresa_id: empresaId,
@@ -232,15 +233,6 @@ Deno.serve(async (req) => {
       console.log(`✅ Conversa criada: ${conversa.id}`);
     }
 
-    // Atualizar tipo_conexao e colaborador_id na conversa existente se necessário
-    if (conversas?.length > 0 && (tipoConexao !== conversas[0].tipo_conexao || colaboradorId !== conversas[0].colaborador_id)) {
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-        tipo_conexao: tipoConexao,
-        colaborador_id: colaboradorId || conversa.colaborador_id || '',
-        instancia: instanceFinal
-      });
-    }
-
     // ── Criar mensagem ────────────────────────────────────────────────────────
     const remetente = fromMe ? 'vendedor' : 'cliente';
     const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
@@ -251,8 +243,7 @@ Deno.serve(async (req) => {
       texto: conteudo,
       whatsapp_message_id: messageId,
       data_envio: new Date().toISOString(),
-      status: remetente === 'vendedor' ? 'enviada' : 'entregue',
-      colaborador_id: colaboradorId || ''
+      status: remetente === 'vendedor' ? 'enviada' : 'entregue'
     });
 
     console.log(`✅ Mensagem salva: ${novaMensagem.id} | Empresa: ${empresaId} | Remetente: ${remetente}`);
