@@ -106,11 +106,19 @@ export default function BatePapo() {
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
-      const result = await base44.entities.ConversaWhatsapp.filter(
-        { empresa_id: empresaId },
-        '-data_ultima_mensagem'
-      );
-      return (result || []).filter(c => c.id && c.cliente_telefone);
+      const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId });
+      const data = resp?.data?.conversas || [];
+      
+      // Atualizar cache de contatos
+      const novoCache = {};
+      data.forEach(conversa => {
+        if (conversa.contato) {
+          novoCache[conversa.id] = conversa.contato;
+        }
+      });
+      setContatosWhatsapp(prev => ({ ...prev, ...novoCache }));
+      
+      return data.filter(c => c.id && c.cliente_telefone);
     },
     refetchInterval: 3000,
     onSuccess: (data) => {
