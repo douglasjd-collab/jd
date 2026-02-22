@@ -243,25 +243,26 @@ export default function BatePapo() {
 
   // Carregar contato WhatsApp quando a conversa muda
   React.useEffect(() => {
-    if (!conversaSelecionada?.cliente_telefone) return;
+    if (!conversaSelecionada?.cliente_telefone || !empresaId) return;
     
     (async () => {
       try {
         const contatos = await base44.entities.ContatoWhatsapp.filter({
           empresa_id: empresaId,
-          telefone: conversaSelecionada.cliente_telefone
+          telefone: conversaSelecionada.cliente_telefone.replace(/\D/g, '')
         });
-        if (contatos.length > 0) {
+        if (contatos && contatos.length > 0) {
+          console.log('Contato carregado:', contatos[0]);
           setContatosWhatsapp(prev => ({
             ...prev,
             [conversaSelecionada.id]: contatos[0]
           }));
         }
       } catch (e) {
-        console.log('Erro ao carregar contato:', e);
+        console.error('Erro ao carregar contato:', e);
       }
     })();
-  }, [conversaSelecionada?.id, empresaId]);
+  }, [conversaSelecionada?.id, conversaSelecionada?.cliente_telefone, empresaId]);
 
   const conversasFiltradas = conversas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
