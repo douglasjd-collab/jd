@@ -369,15 +369,15 @@ export default function BatePapo() {
                           </p>
                         </div>
 
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button 
-                              onClick={(e) => e.stopPropagation()}
-                              className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex-shrink-0"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </button>
-                          </DropdownMenuTrigger>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button 
+                                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex-shrink-0"
+                              >
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
                               <Tag className="mr-2 h-3.5 w-3.5" />
