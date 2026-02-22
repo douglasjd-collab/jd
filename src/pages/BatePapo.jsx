@@ -318,13 +318,13 @@ export default function BatePapo() {
                     value="ativa"
                     className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900"
                   >
-                    Em at.
+                    Em Atendimento
                   </TabsTrigger>
                   <TabsTrigger
                     value="arquivada"
                     className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900"
                   >
-                    Finaliz.
+                    Finalizados
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
