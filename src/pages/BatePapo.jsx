@@ -481,6 +481,7 @@ export default function BatePapo() {
                           {mensagens.map((msg) => (
                             <MensagemItem key={msg.id} mensagem={msg} />
                           ))}
+                          <div ref={mensagensEndRef} />
                         </div>
                       )}
                     </ScrollArea>
