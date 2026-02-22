@@ -421,6 +421,7 @@ export default function BatePapo() {
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <Avatar className="h-11 w-11">
+                        <AvatarImage src={fotosContatos[conversaSelecionada?.id]} alt={conversaSelecionada.cliente_nome} />
                         <AvatarFallback className="bg-violet-600 text-sm font-semibold text-white">
                           {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase()}
                         </AvatarFallback>
