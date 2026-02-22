@@ -109,10 +109,16 @@ export default function MensagemItem({ mensagem }) {
             {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm', { locale: ptBR })}
           </p>
           {isVendedor && (
-            <span className={`text-xs ${mensagem.status === 'lida' ? 'text-blue-300' : 'text-white/70'}`}>
-              {(mensagem.status === 'pendente' || mensagem.status === 'enviada') && '✓'}
-              {mensagem.status === 'entregue' && '✓✓'}
-              {mensagem.status === 'lida' && '✓✓'}
+            <span className="flex items-center">
+              {(!mensagem.status || mensagem.status === 'pendente' || mensagem.status === 'enviada') && (
+                <Check className="w-3.5 h-3.5 text-white/70" />
+              )}
+              {mensagem.status === 'entregue' && (
+                <CheckCheck className="w-3.5 h-3.5 text-white/70" />
+              )}
+              {mensagem.status === 'lida' && (
+                <CheckCheck className="w-3.5 h-3.5 text-sky-300" />
+              )}
             </span>
           )}
         </div>
