@@ -485,7 +485,7 @@ export default function BatePapo() {
                 <div className="flex flex-1 overflow-hidden">
                   {/* Mensagens */}
                   <div className="flex flex-1 flex-col overflow-hidden">
-                    <ScrollArea className="flex-1 px-6 pt-4">
+                    <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 pt-4">
                       {loadingMensagens ? (
                         <div className="flex items-center justify-center h-full">
                           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
