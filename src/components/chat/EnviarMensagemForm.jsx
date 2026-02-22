@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Send, Paperclip, Loader2 } from 'lucide-react';
 
 export default function EnviarMensagemForm({ onEnviar, isLoading }) {
