@@ -236,6 +236,21 @@ Deno.serve(async (req) => {
       cliente_telefone: telefoneLimpo
     });
 
+    // Tentar encontrar cliente pelo telefone
+    let clienteId = '';
+    try {
+      const clientes = await base44.asServiceRole.entities.Cliente.filter({
+        empresa_id: empresaId,
+        celular: telefoneLimpo
+      });
+      if (clientes?.length > 0) {
+        clienteId = clientes[0].id;
+        console.log(`✅ Cliente encontrado: ${clienteId}`);
+      }
+    } catch (e) {
+      console.log('⚠️ Erro ao buscar cliente:', e.message);
+    }
+
     let conversa;
     if (conversas?.length > 0) {
       conversa = conversas[0];
@@ -245,13 +260,14 @@ Deno.serve(async (req) => {
         status: 'ativa',
         tipo_conexao: tipoConexao,
         colaborador_id: colaboradorId || conversa.colaborador_id || '',
+        cliente_id: clienteId || conversa.cliente_id || '',
         instancia: instanceFinal
       });
       console.log(`✅ Conversa existente atualizada: ${conversa.id}`);
     } else {
       conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
         empresa_id: empresaId,
-        cliente_id: '',
+        cliente_id: clienteId,
         cliente_nome: pushName,
         cliente_telefone: telefoneLimpo,
         whatsapp_id: messageId,
