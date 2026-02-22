@@ -630,6 +630,7 @@ export default function BatePapo() {
               </ScrollArea>
             </Card>
           )}
+
         </div>
       </div>
     </TooltipProvider>
