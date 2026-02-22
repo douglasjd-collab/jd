@@ -241,24 +241,27 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Carregar foto do cliente quando a conversa muda
+  // Carregar contato WhatsApp quando a conversa muda
   React.useEffect(() => {
-    if (!conversaSelecionada?.cliente_id) return;
+    if (!conversaSelecionada?.cliente_telefone) return;
     
     (async () => {
       try {
-        const cliente = await base44.entities.Cliente.filter({ id: conversaSelecionada.cliente_id });
-        if (cliente.length > 0 && cliente[0].foto_perfil) {
-          setFotosContatos(prev => ({
+        const contatos = await base44.entities.ContatoWhatsapp.filter({
+          empresa_id: empresaId,
+          telefone: conversaSelecionada.cliente_telefone
+        });
+        if (contatos.length > 0) {
+          setContatosWhatsapp(prev => ({
             ...prev,
-            [conversaSelecionada.id]: cliente[0].foto_perfil
+            [conversaSelecionada.id]: contatos[0]
           }));
         }
       } catch (e) {
-        console.log('Foto não disponível');
+        console.log('Erro ao carregar contato:', e);
       }
     })();
-  }, [conversaSelecionada?.id]);
+  }, [conversaSelecionada?.id, empresaId]);
 
   const conversasFiltradas = conversas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
