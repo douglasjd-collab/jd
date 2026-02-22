@@ -351,7 +351,7 @@ export default function BatePapo() {
             {conversaSelecionada ? (
               <>
                 {/* Header do chat */}
-                <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-white px-5 py-3">
+                <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-white px-5 py-3 sticky top-0 z-10 shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <Avatar className="h-11 w-11">
