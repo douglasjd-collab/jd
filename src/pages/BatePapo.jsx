@@ -68,6 +68,7 @@ export default function BatePapo() {
   const [fotosContatos, setFotosContatos] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(true);
   const queryClient = useQueryClient();
+  const mensagensEndRef = React.useRef(null);
 
   useEffect(() => {
     loadUser();
