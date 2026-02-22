@@ -346,12 +346,12 @@ export default function BatePapo() {
             </CardContent>
           </Card>
 
-          {/* Coluna central - Chat */}
+          {/* Coluna central - Chat + painel lead */}
           <Card className="flex flex-1 flex-col overflow-hidden">
             {conversaSelecionada ? (
               <>
-                {/* Header do chat */}
-                <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-white px-5 py-3 sticky top-0 z-10 shrink-0">
+                {/* Header do chat - fixo */}
+                <div className="flex flex-row items-center justify-between gap-4 border-b bg-white px-5 py-3 shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <Avatar className="h-11 w-11">
@@ -419,93 +419,173 @@ export default function BatePapo() {
                       <TooltipContent>{infoLeadAberto ? 'Fechar' : 'Abrir'} informações do lead</TooltipContent>
                     </Tooltip>
                   </div>
-                </CardHeader>
+                </div>
 
-                {/* Corpo do chat */}
-                <CardContent className="flex flex-1 flex-col pb-3 pl-0 pr-0 pt-0">
-                  <ScrollArea className="flex-1 px-6 pt-4">
-                    {loadingMensagens ? (
-                      <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                      </div>
-                    ) : mensagens.length === 0 ? (
-                      <div className="flex items-center justify-center h-full text-slate-400">
-                        <div className="text-center">
-                          <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-40" />
-                          <p className="text-sm">Nenhuma mensagem ainda</p>
+                {/* Área principal: mensagens + painel lead lado a lado */}
+                <div className="flex flex-1 overflow-hidden">
+                  {/* Mensagens */}
+                  <div className="flex flex-1 flex-col overflow-hidden">
+                    <ScrollArea className="flex-1 px-6 pt-4">
+                      {loadingMensagens ? (
+                        <div className="flex items-center justify-center h-full">
+                          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                         </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {mensagens.map((msg) => (
-                          <MensagemItem key={msg.id} mensagem={msg} />
+                      ) : mensagens.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-slate-400">
+                          <div className="text-center">
+                            <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-40" />
+                            <p className="text-sm">Nenhuma mensagem ainda</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 pb-4">
+                          {mensagens.map((msg) => (
+                            <MensagemItem key={msg.id} mensagem={msg} />
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+
+                    {/* Respostas rápidas */}
+                    <div className="border-t bg-slate-50/60 px-6 py-2 shrink-0">
+                      <div className="flex flex-wrap gap-2">
+                        {quickReplies.map((qr) => (
+                          <button
+                            key={qr}
+                            onClick={() => enviarMensagemMutation.mutate({ texto: qr })}
+                            className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] text-slate-700 shadow-sm hover:bg-slate-50"
+                          >
+                            {qr}
+                          </button>
                         ))}
                       </div>
-                    )}
-                  </ScrollArea>
+                    </div>
 
-                  {/* Respostas rápidas */}
-                  <div className="border-t bg-slate-50/60 px-6 py-2">
-                    <div className="flex flex-wrap gap-2">
-                      {quickReplies.map((qr) => (
-                        <button
-                          key={qr}
-                          onClick={() => enviarMensagemMutation.mutate({ texto: qr })}
-                          className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] text-slate-700 shadow-sm hover:bg-slate-50"
+                    {/* Input de mensagem */}
+                    <div className="border-t bg-white px-4 pb-3 pt-2 shrink-0">
+                      <div className="flex items-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="mb-1 h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
                         >
-                          {qr}
-                        </button>
-                      ))}
+                          <Paperclip className="h-4 w-4" />
+                        </Button>
+
+                        <Textarea
+                          rows={1}
+                          className="max-h-24 min-h-[40px] flex-1 resize-none rounded-2xl bg-slate-50 px-3 py-2 text-xs"
+                          placeholder="Digite sua mensagem..."
+                          id="message-input"
+                        />
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="mb-1 h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
+                        >
+                          <Smile className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          onClick={() => {
+                            const input = document.getElementById('message-input');
+                            if (input?.value?.trim()) {
+                              enviarMensagemMutation.mutate({ texto: input.value });
+                              input.value = '';
+                            }
+                          }}
+                          disabled={enviarMensagemMutation.isPending}
+                          className="mb-1 flex h-9 items-center gap-1 rounded-full px-3"
+                        >
+                          {enviarMensagemMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          <span className="text-xs font-medium">Enviar</span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Input de mensagem */}
-                  <div className="border-t bg-white px-4 pb-3 pt-2">
-                    <div className="flex items-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="mb-1 h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                      </Button>
+                  {/* Painel Informações do Lead - dentro do mesmo Card */}
+                  {infoLeadAberto && (
+                    <div className="flex w-[260px] shrink-0 flex-col border-l overflow-hidden">
+                      <div className="border-b bg-white px-4 py-3 shrink-0">
+                        <p className="text-sm font-semibold">Informações do Lead</p>
+                        <p className="text-[11px] text-slate-500">Detalhes e histórico</p>
+                      </div>
 
-                      <Textarea
-                        rows={1}
-                        className="max-h-24 min-h-[40px] flex-1 resize-none rounded-2xl bg-slate-50 px-3 py-2 text-xs"
-                        placeholder="Digite sua mensagem..."
-                        id="message-input"
-                      />
+                      <ScrollArea className="flex-1">
+                        <div className="flex flex-col gap-4 px-4 pb-4 pt-3">
+                          {/* Perfil */}
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-violet-100 text-[12px] font-semibold text-violet-700">
+                                {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_nome}</p>
+                              <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+                            </div>
+                          </div>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="mb-1 h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
-                      >
-                        <Smile className="h-4 w-4" />
-                      </Button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
+                              <PhoneCall className="h-3.5 w-3.5" />
+                              Ligar
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
+                              <Star className="h-3.5 w-3.5" />
+                              Favorito
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
+                              <Tag className="h-3.5 w-3.5" />
+                              Proposta
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                              Transferir
+                            </Button>
+                          </div>
 
-                      <Button
-                        onClick={() => {
-                          const input = document.getElementById('message-input');
-                          if (input?.value?.trim()) {
-                            enviarMensagemMutation.mutate({ texto: input.value });
-                            input.value = '';
-                          }
-                        }}
-                        disabled={enviarMensagemMutation.isPending}
-                        className="mb-1 flex h-9 items-center gap-1 rounded-full px-3"
-                      >
-                        {enviarMensagemMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                        <span className="text-xs font-medium">Enviar</span>
-                      </Button>
+                          <Separator />
+
+                          {/* Tags */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold">Tags</span>
+                              <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full px-2 text-[11px]">
+                                <Plus className="h-3 w-3" />
+                                Adicionar
+                              </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {tags.map((t) => (
+                                <Badge key={t.label} className={classNames("rounded-full px-2 py-0.5 text-[10px]", t.color)}>
+                                  {t.label}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+
+                          <Separator />
+
+                          {/* Status */}
+                          <div className="space-y-2">
+                            <span className="text-xs font-semibold">Status</span>
+                            <div className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px]">
+                              <span className="capitalize">{conversaSelecionada.status}</span>
+                              <Check className="h-3 w-3 text-emerald-500" />
+                            </div>
+                          </div>
+                        </div>
+                      </ScrollArea>
                     </div>
-                  </div>
-                </CardContent>
+                  )}
+                </div>
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center bg-white">
@@ -517,119 +597,6 @@ export default function BatePapo() {
               </div>
             )}
           </Card>
-
-          {/* Coluna direita - Informações do Lead */}
-          {conversaSelecionada && infoLeadAberto && (
-            <Card className="flex w-[260px] flex-col overflow-hidden">
-              <CardHeader className="border-b bg-white py-3 shrink-0 sticky top-0 z-10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-semibold">
-                      Informações do Lead
-                    </CardTitle>
-                    <p className="text-[11px] text-slate-500">
-                      Detalhes e histórico
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <ScrollArea className="flex-1">
-              <CardContent className="flex flex-col gap-4 px-4 pb-3 pt-3">
-                {/* Perfil */}
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-violet-100 text-[12px] font-semibold text-violet-700">
-                      {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_nome}</p>
-                    <p className="text-[11px] text-slate-500">
-                      {conversaSelecionada.cliente_telefone}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 justify-start gap-1 rounded-lg text-[11px]"
-                  >
-                    <PhoneCall className="h-3.5 w-3.5" />
-                    Ligar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 justify-start gap-1 rounded-lg text-[11px]"
-                  >
-                    <Star className="h-3.5 w-3.5" />
-                    Favorito
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 justify-start gap-1 rounded-lg text-[11px]"
-                  >
-                    <Tag className="h-3.5 w-3.5" />
-                    Proposta
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 justify-start gap-1 rounded-lg text-[11px]"
-                  >
-                    <ArrowRightLeft className="h-3.5 w-3.5" />
-                    Transferir
-                  </Button>
-                </div>
-
-                <Separator />
-
-                {/* Tags */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold">Tags</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 rounded-full px-2 text-[11px]"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Adicionar
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {tags.map((t) => (
-                      <Badge
-                        key={t.label}
-                        className={classNames(
-                          "rounded-full px-2 py-0.5 text-[10px]",
-                          t.color
-                        )}
-                      >
-                        {t.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Status */}
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold">Status</span>
-                  <div className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px]">
-                    <span className="capitalize">{conversaSelecionada.status}</span>
-                    <Check className="h-3 w-3 text-emerald-500" />
-                  </div>
-                </div>
-              </CardContent>
-              </ScrollArea>
-            </Card>
-          )}
 
         </div>
       </div>
