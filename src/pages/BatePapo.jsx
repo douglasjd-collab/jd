@@ -443,21 +443,6 @@ export default function BatePapo() {
                       )}
                     </ScrollArea>
 
-                    {/* Respostas rápidas */}
-                    <div className="border-t bg-slate-50/60 px-6 py-2 shrink-0">
-                      <div className="flex flex-wrap gap-2">
-                        {quickReplies.map((qr) => (
-                          <button
-                            key={qr}
-                            onClick={() => enviarMensagemMutation.mutate({ texto: qr })}
-                            className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] text-slate-700 shadow-sm hover:bg-slate-50"
-                          >
-                            {qr}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* Input de mensagem */}
                     <EnviarMensagemForm
                       onEnviar={({ texto }) => enviarMensagemMutation.mutate({ texto })}
