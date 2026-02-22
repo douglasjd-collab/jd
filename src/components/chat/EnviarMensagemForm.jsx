@@ -74,7 +74,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
             disabled={isLoading}
             rows={1}
             className="w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm leading-6"
-            style={{ minHeight: '38px', maxHeight: '240px', overflowY: 'auto' }}
+            style={{ minHeight: '38px', maxHeight: '240px', overflowY: 'auto', appearance: 'none', MozAppearance: 'none', WebkitAppearance: 'none' }}
           />
         </div>
 
