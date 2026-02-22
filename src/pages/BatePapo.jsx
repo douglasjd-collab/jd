@@ -353,23 +353,20 @@ export default function BatePapo() {
                           </AvatarFallback>
                         </Avatar>
 
-                        <div className="flex flex-1 flex-col gap-1">
+                        <div className="flex flex-1 flex-col min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="truncate text-base font-semibold">
-                                      {c.cliente_nome}
-                                    </p>
-                                    {c.data_ultima_mensagem && (
-                                      <p className="whitespace-nowrap text-sm text-slate-400 flex-shrink-0">
-                                        {new Date(c.data_ultima_mensagem).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <p className="line-clamp-1 text-sm text-slate-600">
-                                    {c.ultima_mensagem || c.cliente_telefone}
-                                  </p>
-                                </div>
+                            <p className="truncate text-base font-semibold">
+                              {c.cliente_nome}
+                            </p>
+                            {c.data_ultima_mensagem && (
+                              <p className="whitespace-nowrap text-sm text-slate-400 flex-shrink-0">
+                                {new Date(c.data_ultima_mensagem).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            )}
+                          </div>
+                          <p className="line-clamp-1 text-sm text-slate-600">
+                            {c.ultima_mensagem || ''}
+                          </p>
                         </div>
 
                         <DropdownMenu>
