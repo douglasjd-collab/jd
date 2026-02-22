@@ -356,22 +356,22 @@ export default function BatePapo() {
                         <div className="flex flex-1 flex-col gap-1">
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                                  <p className="truncate text-sm font-semibold">
+                                  <p className="truncate text-base font-semibold">
                                     {c.cliente_nome}
                                   </p>
-                                  <p className="text-xs text-slate-500">
+                                  <p className="text-sm text-slate-500">
                                     {c.cliente_telefone}
                                   </p>
                                 </div>
                                 {c.data_ultima_mensagem && (
-                                  <p className="whitespace-nowrap text-xs text-slate-400">
+                                  <p className="whitespace-nowrap text-sm text-slate-400">
                                     {new Date(c.data_ultima_mensagem).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                 )}
                               </div>
-                              <p className="line-clamp-1 text-xs text-slate-600">
-                            {c.ultima_mensagem || 'Sem mensagens'}
-                          </p>
+                              <p className="line-clamp-1 text-sm text-slate-600">
+                                {c.ultima_mensagem || ''}
+                              </p>
                         </div>
 
                         <DropdownMenu>
