@@ -349,46 +349,59 @@ export default function BatePapo() {
             {conversaSelecionada ? (
               <>
                 {/* Header do chat */}
-                <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-white py-3">
+                <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-white px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarFallback className="bg-violet-100 text-[11px] font-semibold text-violet-700">
-                        {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-11 w-11">
+                        <AvatarFallback className="bg-violet-600 text-sm font-semibold text-white">
+                          {conversaSelecionada.cliente_nome?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+                    </div>
                     <div>
                       <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_nome}</p>
-                      <p className="text-[11px] text-slate-500">
-                        {conversaSelecionada.cliente_telefone} • Online
-                      </p>
+                      <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
                     </div>
                   </div>
 
-                  <div className="flex flex-1 items-center justify-end gap-2">
-                    <Button variant="outline" size="sm" className="gap-1 rounded-full">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium">
                       <Tag className="h-3.5 w-3.5" />
-                      <span className="text-xs">Adicionar Tag</span>
+                      Criar Proposta
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1 rounded-full">
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium">
                       <Clock className="h-3.5 w-3.5" />
-                      <span className="text-xs">Criar Tarefa</span>
+                      Criar Tarefa
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1 rounded-full">
-                      <Plus className="h-3.5 w-3.5" />
-                      <span className="text-xs">Criar Proposta</span>
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium">
+                      <Search className="h-3.5 w-3.5" />
+                      Adicionar Tag
                     </Button>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full"
-                        >
-                          <PhoneCall className="h-4 w-4" />
+                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-200">
+                      <ArrowRightLeft className="h-4 w-4 text-slate-500" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-200">
+                          <MoreVertical className="h-4 w-4 text-slate-500" />
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Ligar via WhatsApp</TooltipContent>
-                    </Tooltip>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                          <UserPlus className="mr-2 h-3.5 w-3.5" />
+                          Atribuir responsável
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                          <BellOff className="mr-2 h-3.5 w-3.5" />
+                          Silenciar conversa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                          <Pin className="mr-2 h-3.5 w-3.5" />
+                          Fixar conversa
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardHeader>
 
