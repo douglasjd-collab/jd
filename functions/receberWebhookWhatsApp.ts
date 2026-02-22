@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
 
     const telefoneLimpo = telefone.replace(/\D/g, '');
 
-    // ── Identificar empresa ───────────────────────────────────────────────────
+    // ── Identificar empresa e colaborador ─────────────────────────────────────
     const base44 = createClientFromRequest(req);
     const urlParams = new URL(req.url).searchParams;
     const instanceUrl = urlParams.get('instance') || '';
@@ -163,16 +163,31 @@ Deno.serve(async (req) => {
 
     const JD_ID = '699696c2c9f5bffc2e67402b';
     let empresaId = JD_ID;
+    let colaboradorId = null;
+    let tipoConexao = 'empresa';
 
     if (instanceFinal) {
-      const empresas = await base44.asServiceRole.entities.Empresa.filter({
+      // 1) Tentar achar colaborador com essa instância pessoal
+      const colaboradores = await base44.asServiceRole.entities.Colaborador.filter({
         evolution_instance_name: instanceFinal
       });
-      if (empresas?.length > 0) {
-        empresaId = empresas[0].id;
-        console.log(`✅ Empresa: ${empresas[0].nome} (${empresaId})`);
+      if (colaboradores?.length > 0) {
+        const colab = colaboradores[0];
+        tipoConexao = 'usuario';
+        colaboradorId = colab.id;
+        empresaId = colab.empresa_id || JD_ID;
+        console.log(`✅ Instância de COLABORADOR: ${colab.nome} (empresa: ${empresaId})`);
       } else {
-        console.warn(`⚠️ Instância "${instanceFinal}" não encontrada, usando JD Promotora`);
+        // 2) Tentar achar empresa com essa instância
+        const empresas = await base44.asServiceRole.entities.Empresa.filter({
+          evolution_instance_name: instanceFinal
+        });
+        if (empresas?.length > 0) {
+          empresaId = empresas[0].id;
+          console.log(`✅ Instância de EMPRESA: ${empresas[0].nome} (${empresaId})`);
+        } else {
+          console.warn(`⚠️ Instância "${instanceFinal}" não encontrada, usando JD Promotora`);
+        }
       }
     }
 
