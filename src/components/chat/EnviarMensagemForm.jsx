@@ -87,6 +87,22 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
         accept="image/*,audio/*,video/*,application/pdf"
       />
 
+      {/* Quick Replies Popup */}
+      {showQuickReplies && quickRepliesFiltered.length > 0 && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 mx-3 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-10">
+          {quickRepliesFiltered.map((reply) => (
+            <button
+              key={reply}
+              type="button"
+              onClick={() => handleSelectQuickReply(reply)}
+              className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors border-b last:border-0 border-slate-100"
+            >
+              <span className="font-medium text-blue-600">{reply}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-end gap-2">
         {/* Botões esquerda: Anexo + Figurinha */}
         <div className="flex items-center gap-1 pb-1">
