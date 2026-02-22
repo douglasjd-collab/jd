@@ -44,6 +44,7 @@ import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
+import AvatarContato from '@/components/chat/AvatarContato';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
