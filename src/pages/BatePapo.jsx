@@ -127,18 +127,25 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
-      const resp = await base44.functions.invoke('buscarMensagensConversa', { conversa_id: conversaSelecionadaId });
-      const msgs = resp?.data?.mensagens || [];
+        const resp = await base44.functions.invoke('buscarMensagensConversa', { conversa_id: conversaSelecionadaId });
+        const msgs = resp?.data?.mensagens || [];
 
-      // Marcar mensagens do cliente como lidas
-      const naoLidas = msgs.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
-      for (const msg of naoLidas) {
-        base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {});
-      }
+        // Salvar no cache local
+        localStorage.setItem(`msgs_cache_${conversaSelecionadaId}`, JSON.stringify(msgs));
 
-      return msgs;
-    },
-    refetchInterval: 3000,
+        // Marcar mensagens do cliente como lidas
+        const naoLidas = msgs.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
+        for (const msg of naoLidas) {
+          base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {});
+        }
+
+        return msgs;
+      },
+      initialData: () => {
+        const cached = localStorage.getItem(`msgs_cache_${conversaSelecionadaId}`);
+        return cached ? JSON.parse(cached) : undefined;
+      },
+      refetchInterval: 3000,
   });
 
   const criarConversaMutation = useMutation({
