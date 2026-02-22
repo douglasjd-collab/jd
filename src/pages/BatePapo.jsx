@@ -436,10 +436,10 @@ export default function BatePapo() {
                       <Clock className="h-3.5 w-3.5" />
                       Criar Tarefa
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium">
-                      <Search className="h-3.5 w-3.5" />
-                      Adicionar Tag
-                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300" onClick={() => toast.success('Conversa finalizada')}>
+                                      <Check className="h-3.5 w-3.5" />
+                                      Finalizar Conversa
+                                    </Button>
                     <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-200">
                       <ArrowRightLeft className="h-4 w-4 text-slate-500" />
                     </Button>
