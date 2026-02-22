@@ -559,7 +559,9 @@ export default function BatePapo() {
 
                     {/* Input de mensagem */}
                     <EnviarMensagemForm
-                      onEnviar={({ texto }) => enviarMensagemMutation.mutate({ texto })}
+                      onEnviar={async ({ texto }) => {
+                        await enviarMensagemMutation.mutateAsync({ texto });
+                      }}
                       isLoading={enviarMensagemMutation.isPending}
                     />
                   </div>
