@@ -69,6 +69,7 @@ export default function BatePapo() {
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [fotosContatos, setFotosContatos] = useState({});
+  const [infoLeadAberto, setInfoLeadAberto] = useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => {
