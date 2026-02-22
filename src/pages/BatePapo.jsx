@@ -115,7 +115,15 @@ export default function BatePapo() {
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
       const resp = await base44.functions.invoke('buscarMensagensConversa', { conversa_id: conversaSelecionadaId });
-      return resp?.data?.mensagens || [];
+      const msgs = resp?.data?.mensagens || [];
+
+      // Marcar mensagens do cliente como lidas
+      const naoLidas = msgs.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
+      for (const msg of naoLidas) {
+        base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {});
+      }
+
+      return msgs;
     },
     refetchInterval: 3000,
   });
