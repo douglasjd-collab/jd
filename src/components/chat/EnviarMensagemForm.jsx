@@ -1,26 +1,27 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Loader2, Smile } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle } from 'lucide-react';
 
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-export default function EnviarMensagemForm({ onEnviar, isLoading }) {
+export default function EnviarMensagemForm({ onEnviar }) {
   const [texto, setTexto] = useState('');
   const [arquivo, setArquivo] = useState(null);
   const [showScroll, setShowScroll] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [erro, setErro] = useState(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
-  const handleEnviar = (e) => {
+  const handleEnviar = async (e) => {
     e.preventDefault();
     if (!texto.trim() && !arquivo) return;
 
-    onEnviar({ texto: texto.trim(), arquivo });
-
+    const textoEnviar = texto.trim();
+    setErro(null);
     setTexto('');
     setArquivo(null);
     setShowQuickReplies(false);
@@ -28,6 +29,12 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
       textareaRef.current.style.height = '40px';
     }
     setShowScroll(false);
+
+    try {
+      await onEnviar({ texto: textoEnviar, arquivo });
+    } catch (err) {
+      setErro('Erro ao enviar mensagem. Tente novamente.');
+    }
   };
 
   const handleSelectQuickReply = (reply) => {
