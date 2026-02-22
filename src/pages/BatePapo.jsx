@@ -459,51 +459,10 @@ export default function BatePapo() {
                     </div>
 
                     {/* Input de mensagem */}
-                    <div className="border-t bg-white px-4 pb-3 pt-2 shrink-0">
-                      <div className="flex items-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="mb-1 h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
-                        >
-                          <Paperclip className="h-4 w-4" />
-                        </Button>
-
-                        <Textarea
-                          rows={1}
-                          className="max-h-24 min-h-[40px] flex-1 resize-none rounded-2xl bg-slate-50 px-3 py-2 text-xs"
-                          placeholder="Digite sua mensagem..."
-                          id="message-input"
-                        />
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="mb-1 h-9 w-9 rounded-full text-slate-500 hover:bg-slate-100"
-                        >
-                          <Smile className="h-4 w-4" />
-                        </Button>
-
-                        <Button
-                          onClick={() => {
-                            const input = document.getElementById('message-input');
-                            if (input?.value?.trim()) {
-                              enviarMensagemMutation.mutate({ texto: input.value });
-                              input.value = '';
-                            }
-                          }}
-                          disabled={enviarMensagemMutation.isPending}
-                          className="mb-1 flex h-9 items-center gap-1 rounded-full px-3"
-                        >
-                          {enviarMensagemMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Send className="h-4 w-4" />
-                          )}
-                          <span className="text-xs font-medium">Enviar</span>
-                        </Button>
-                      </div>
-                    </div>
+                    <EnviarMensagemForm
+                      onEnviar={({ texto }) => enviarMensagemMutation.mutate({ texto })}
+                      isLoading={enviarMensagemMutation.isPending}
+                    />
                   </div>
 
                   {/* Painel Informações do Lead - dentro do mesmo Card */}
