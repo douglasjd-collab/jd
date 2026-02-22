@@ -242,32 +242,22 @@ export default function BatePapo() {
 
   // Carregar foto do cliente quando a conversa muda
   React.useEffect(() => {
-    if (!conversaSelecionada?.cliente_telefone) return;
+    if (!conversaSelecionada?.cliente_id) return;
     
     (async () => {
       try {
-        const clientes = await base44.entities.Cliente.filter(
-          { empresa_id: empresaId },
-          'created_date',
-          100
-        );
-        
-        const clienteEncontrado = clientes.find(c => 
-          c.nome_completo?.toLowerCase() === conversaSelecionada.cliente_nome?.toLowerCase() ||
-          c.celular === conversaSelecionada.cliente_telefone
-        );
-        
-        if (clienteEncontrado?.foto_perfil) {
+        const cliente = await base44.entities.Cliente.filter({ id: conversaSelecionada.cliente_id });
+        if (cliente.length > 0 && cliente[0].foto_perfil) {
           setFotosContatos(prev => ({
             ...prev,
-            [conversaSelecionada.id]: clienteEncontrado.foto_perfil
+            [conversaSelecionada.id]: cliente[0].foto_perfil
           }));
         }
       } catch (e) {
-        console.log('Erro ao carregar foto:', e);
+        console.log('Foto não disponível');
       }
     })();
-  }, [conversaSelecionada?.id, empresaId]);
+  }, [conversaSelecionada?.id]);
 
   const conversasFiltradas = conversas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
