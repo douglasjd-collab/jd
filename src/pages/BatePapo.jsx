@@ -62,6 +62,11 @@ export default function BatePapo() {
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
+
+  const selecionarConversa = (conversa) => {
+    setConversaSelecionada(conversa);
+    localStorage.setItem('ultimaConversaId', conversa.id);
+  };
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
