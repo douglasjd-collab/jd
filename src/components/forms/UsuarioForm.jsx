@@ -342,6 +342,21 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                 </div>
 
                 <div className="col-span-2">
+                  <Label htmlFor="evolution_instance_name" className="flex items-center gap-1">
+                    <Smartphone className="w-3.5 h-3.5 text-green-600" />
+                    Instância WhatsApp (Evolution)
+                  </Label>
+                  <Input
+                    id="evolution_instance_name"
+                    {...register('evolution_instance_name')}
+                    placeholder="Ex: vendedor-joao"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Preencha se este vendedor tem WhatsApp próprio conectado na Evolution
+                  </p>
+                </div>
+
+                <div className="col-span-2">
                   <Label>Comissão Personalizada (%)</Label>
                   <Input
                     type="number"
