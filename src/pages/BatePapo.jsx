@@ -627,6 +627,7 @@ export default function BatePapo() {
                   </div>
                 </div>
               </CardContent>
+              </ScrollArea>
             </Card>
           )}
         </div>
