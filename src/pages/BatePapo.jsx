@@ -159,12 +159,34 @@ export default function BatePapo() {
         return resp.data;
       }
     },
-    onSuccess: async () => {
+    onMutate: async ({ texto }) => {
+      // Mensagem otimista — aparece imediatamente
+      const queryKey = ['mensagens-whatsapp', conversaSelecionadaId];
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (old = []) => [
+        ...old,
+        {
+          id: `temp_${Date.now()}`,
+          conversa_id: conversaSelecionadaId,
+          remetente: 'vendedor',
+          tipo_conteudo: 'texto',
+          texto,
+          data_envio: new Date().toISOString(),
+          status: 'pendente',
+        }
+      ]);
+      return { previous, queryKey };
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(context.queryKey, context.previous);
+      }
+      toast.error('Erro ao enviar: ' + error.message);
+    },
+    onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] });
       await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-    },
-    onError: (error) => {
-      toast.error('Erro ao enviar: ' + error.message);
     }
   });
 
