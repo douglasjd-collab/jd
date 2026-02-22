@@ -183,18 +183,19 @@ export default function BatePapo() {
 
   const enviarMensagemMutation = useMutation({
     mutationFn: async ({ texto }) => {
-      if (texto) {
-        const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
-          conversa_id: conversaSelecionada.id,
-          mensagem_texto: texto,
-          numero_cliente: conversaSelecionada.cliente_telefone,
-          empresa_id: empresaId
-        });
-        if (!resp?.data?.success) {
-          throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');
-        }
-        return resp.data;
+      if (!texto?.trim()) {
+        throw new Error('Mensagem vazia');
       }
+      const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
+        conversa_id: conversaSelecionada.id,
+        mensagem_texto: texto,
+        numero_cliente: conversaSelecionada.cliente_telefone,
+        empresa_id: empresaId
+      });
+      if (!resp?.data?.success) {
+        throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');
+      }
+      return resp.data;
     },
     onMutate: async ({ texto }) => {
       // Mensagem otimista — aparece imediatamente
@@ -219,7 +220,10 @@ export default function BatePapo() {
       if (context?.previous) {
         queryClient.setQueryData(context.queryKey, context.previous);
       }
-      toast.error('Erro ao enviar: ' + error.message);
+      const errorMsg = error?.message?.includes('Connect') 
+        ? 'API WhatsApp indisponível. Tente novamente em alguns minutos.'
+        : error.message || 'Erro ao enviar mensagem';
+      toast.error(errorMsg);
     },
     onSuccess: async (data, variables) => {
       // Atualizar a conversa com a última mensagem
@@ -229,6 +233,7 @@ export default function BatePapo() {
           data_ultima_mensagem: new Date().toISOString()
         });
       }
+      toast.success('Mensagem enviada');
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] });
