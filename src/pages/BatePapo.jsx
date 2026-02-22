@@ -218,9 +218,16 @@ export default function BatePapo() {
     }
   });
 
+  const scrollAreaRef = React.useRef(null);
+
   React.useEffect(() => {
-    if (mensagensEndRef.current) {
-      mensagensEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!mensagens.length) return;
+    // Rola o viewport interno do ScrollArea até o fim
+    if (scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [mensagens]);
 
