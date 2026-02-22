@@ -224,9 +224,21 @@ Deno.serve(async (req) => {
         whatsapp_id: messageId,
         status: 'ativa',
         ultima_mensagem: conteudo.substring(0, 200),
-        data_ultima_mensagem: new Date().toISOString()
+        data_ultima_mensagem: new Date().toISOString(),
+        tipo_conexao: tipoConexao,
+        colaborador_id: colaboradorId || '',
+        instancia: instanceFinal
       });
       console.log(`✅ Conversa criada: ${conversa.id}`);
+    }
+
+    // Atualizar tipo_conexao e colaborador_id na conversa existente se necessário
+    if (conversas?.length > 0 && (tipoConexao !== conversas[0].tipo_conexao || colaboradorId !== conversas[0].colaborador_id)) {
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+        tipo_conexao: tipoConexao,
+        colaborador_id: colaboradorId || conversa.colaborador_id || '',
+        instancia: instanceFinal
+      });
     }
 
     // ── Criar mensagem ────────────────────────────────────────────────────────
@@ -239,7 +251,8 @@ Deno.serve(async (req) => {
       texto: conteudo,
       whatsapp_message_id: messageId,
       data_envio: new Date().toISOString(),
-      status: remetente === 'vendedor' ? 'enviada' : 'entregue'
+      status: remetente === 'vendedor' ? 'enviada' : 'entregue',
+      colaborador_id: colaboradorId || ''
     });
 
     console.log(`✅ Mensagem salva: ${novaMensagem.id} | Empresa: ${empresaId} | Remetente: ${remetente}`);
