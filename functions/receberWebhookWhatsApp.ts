@@ -251,6 +251,46 @@ Deno.serve(async (req) => {
       console.log('⚠️ Erro ao buscar cliente:', e.message);
     }
 
+    // ── Buscar/criar contato WhatsApp ──────────────────────────────────────────
+    let contato;
+    try {
+      const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+        empresa_id: empresaId,
+        telefone: telefoneLimpo
+      });
+
+      if (contatos?.length > 0) {
+        contato = contatos[0];
+      } else {
+        contato = await base44.asServiceRole.entities.ContatoWhatsapp.create({
+          empresa_id: empresaId,
+          cliente_id: clienteId || '',
+          telefone: telefoneLimpo,
+          nome: pushName || 'Contato WhatsApp',
+          ultima_atualizacao: new Date().toISOString()
+        });
+        console.log(`✅ Contato WhatsApp criado: ${contato.id}`);
+      }
+
+      // Extrair foto do payload
+      const possiblePhotoUrl = 
+        data.profilePicUrl ||
+        data.profilePic ||
+        data.profilePicThumb ||
+        data.profilePicThumbObj?.eurl ||
+        data.avatarUrl;
+
+      if (possiblePhotoUrl && possiblePhotoUrl !== contato.foto_url) {
+        contato = await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
+          foto_url: possiblePhotoUrl,
+          ultima_atualizacao: new Date().toISOString()
+        });
+        console.log(`🖼️ Foto do contato atualizada: ${possiblePhotoUrl}`);
+      }
+    } catch (e) {
+      console.error('⚠️ Erro ao processar contato WhatsApp:', e.message);
+    }
+
     let conversa;
     if (conversas?.length > 0) {
       conversa = conversas[0];
