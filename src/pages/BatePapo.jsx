@@ -42,6 +42,7 @@ import {
   Clock,
   Loader2,
   MessageCircle,
+  AlignJustify,
 } from "lucide-react";
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
