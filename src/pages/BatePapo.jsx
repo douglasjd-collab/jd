@@ -110,7 +110,7 @@ export default function BatePapo() {
 
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
-  const { data: mensagens = [], isPending: loadingMensagens } = useQuery({
+  const { data: mensagens = [], isLoading: loadingMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
