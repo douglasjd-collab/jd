@@ -11,7 +11,9 @@ export default function MensagemItem({ mensagem }) {
   const renderConteudo = () => {
     switch (mensagem.tipo_conteudo) {
       case 'texto':
-        return <p className="break-words">{mensagem.texto}</p>;
+        return (
+          <p className="break-words whitespace-pre-wrap">{mensagem.texto}</p>
+        );
       
       case 'imagem':
         return (
