@@ -155,9 +155,9 @@ export default function BatePapo() {
       });
     },
     onSuccess: (conversa) => {
-      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-      setConversaSelecionada(conversa);
-      setNovaConversaOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+    selecionarConversa(conversa);
+    setNovaConversaOpen(false);
       toast.success('Conversa criada! Envie a primeira mensagem.');
     },
     onError: (error) => {
