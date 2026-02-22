@@ -89,8 +89,40 @@ Deno.serve(async (req) => {
     // ── Filtrar eventos ───────────────────────────────────────────────────────
     const event = (payload.event || '').toLowerCase();
 
-    if (event === 'messages.update' || event === 'message_update') {
-      return Response.json({ success: true, skipped: 'status_update' });
+    // ── Tratar ACK / status de mensagens enviadas ─────────────────────────────
+    if (event === 'messages.update' || event === 'message_update' || event === 'message.ack' || event === 'messages.ack') {
+      const base44 = createClientFromRequest(req);
+      const data = payload.data || {};
+
+      // A Evolution pode mandar array ou objeto único
+      const updates = Array.isArray(data) ? data : [data];
+
+      for (const upd of updates) {
+        const remoteId = upd.key?.id || upd.id || upd.messageId;
+        const rawStatus = (upd.status || upd.ack || '').toString().toUpperCase();
+
+        // Evolution usa: PENDING=0, SENT=1, DELIVERED=2, READ=3, PLAYED=4
+        let novoStatus = null;
+        if (rawStatus === 'SENT' || rawStatus === '1') novoStatus = 'enviada';
+        else if (rawStatus === 'DELIVERED' || rawStatus === '2') novoStatus = 'entregue';
+        else if (rawStatus === 'READ' || rawStatus === '3' || rawStatus === 'PLAYED' || rawStatus === '4') novoStatus = 'lida';
+
+        console.log(`📡 ACK recebido: remoteId=${remoteId} rawStatus=${rawStatus} → ${novoStatus}`);
+
+        if (remoteId && novoStatus) {
+          const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+            { whatsapp_message_id: remoteId }, '-created_date', 1
+          );
+          if (mensagens?.length > 0) {
+            await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagens[0].id, { status: novoStatus });
+            console.log(`✅ Status atualizado para "${novoStatus}" na mensagem ${mensagens[0].id}`);
+          } else {
+            console.warn(`⚠️ Nenhuma mensagem com whatsapp_message_id=${remoteId}`);
+          }
+        }
+      }
+
+      return Response.json({ success: true, handled: 'ack' });
     }
 
     const isUpsert = event === 'messages.upsert' || event === 'messages_upsert' || event === 'messages';
