@@ -378,20 +378,20 @@ export default function BatePapo() {
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </button>
                             </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
-                              <Tag className="mr-2 h-3.5 w-3.5" />
-                              Adicionar tag
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
-                              <Clock className="mr-2 h-3.5 w-3.5" />
-                              Criar tarefa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
-                              <Star className="mr-2 h-3.5 w-3.5" />
-                              Marcar como favorito
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
+                                <Tag className="mr-2 h-3.5 w-3.5" />
+                                Adicionar tag
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
+                                <Clock className="mr-2 h-3.5 w-3.5" />
+                                Criar tarefa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
+                                <Star className="mr-2 h-3.5 w-3.5" />
+                                Marcar como favorito
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
                       </div>
