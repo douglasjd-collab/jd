@@ -124,7 +124,6 @@ export default function EnviarMensagemForm({ onEnviar }) {
             variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
             className="rounded-full hover:bg-slate-100 w-9 h-9"
           >
             <Paperclip className="w-5 h-5 text-slate-500" />
@@ -133,7 +132,6 @@ export default function EnviarMensagemForm({ onEnviar }) {
             type="button"
             variant="ghost"
             size="icon"
-            disabled={isLoading}
             className="rounded-full hover:bg-slate-100 w-9 h-9"
           >
             <Smile className="w-5 h-5 text-slate-500" />
@@ -153,7 +151,6 @@ export default function EnviarMensagemForm({ onEnviar }) {
               }
             }}
             placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
-            disabled={isLoading}
             rows={1}
             className="msg-textarea w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm"
             style={{
@@ -168,15 +165,11 @@ export default function EnviarMensagemForm({ onEnviar }) {
         {/* Botão enviar */}
         <Button
           type="submit"
-          disabled={isLoading || (!texto.trim() && !arquivo)}
+          disabled={!texto.trim() && !arquivo}
           className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
           size="icon"
         >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
+          <Send className="w-4 h-4" />
         </Button>
       </div>
     </form>
