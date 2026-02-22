@@ -392,7 +392,8 @@ export default function BatePapo() {
                               Marcar como favorito
                             </DropdownMenuItem>
                           </DropdownMenuContent>
-                        </DropdownMenu>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     ))
                   )}
