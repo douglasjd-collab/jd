@@ -55,12 +55,24 @@ export default function EnviarMensagemForm({ onEnviar, isLoading }) {
         </Button>
 
         <div className="flex-1">
-          <Input
+          <textarea
             value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem ou arraste um arquivo...'}
+            onChange={(e) => {
+              setTexto(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleEnviar(e);
+              }
+            }}
+            placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
             disabled={isLoading}
-            className="w-full rounded-full border-slate-300 px-4 py-3 focus:border-blue-500 focus:ring-blue-500"
+            rows={1}
+            className="w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none overflow-y-auto text-sm leading-5"
+            style={{ minHeight: '38px', maxHeight: '150px' }}
           />
         </div>
 
