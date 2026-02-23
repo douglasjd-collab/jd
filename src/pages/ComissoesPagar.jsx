@@ -428,13 +428,9 @@ export default function ComissoesPagar() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 border border-white/30"
-                      onClick={() => setExpandedVendedores(prev => ({ ...prev, [vendedor.vendedor_id]: !prev[vendedor.vendedor_id] }))}>
-                      <FileText className="w-4 h-4 mr-1" />Detalhes
-                    </Button>
                     {qtdAPagar > 0 && isAdmin && (
                      <Button size="sm" className="bg-[#23BE84] hover:bg-[#1da872] text-white border-0"
-                       onClick={(e) => abrirModalPagamento(vendedor, e)}>
+                       onClick={(e) => { e.stopPropagation(); abrirModalPagamento(vendedor, e); }}>
                        <CheckCircle2 className="w-4 h-4 mr-1" />Pagar Comissão
                      </Button>
                     )}
