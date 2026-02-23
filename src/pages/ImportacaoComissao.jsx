@@ -113,7 +113,7 @@ export default function ImportacaoComissao() {
     return d.length ? d : null;
   };
 
-  // Busca venda de consórcio por grupo/cota com vários fallbacks
+  // Busca venda de consórcio por grupo/cota — tenta VendaConsorcio e depois Venda (legado)
   const encontrarVendaConsorcioPorGrupoCota = async ({ grupoRaw, cotaRaw, administradora_id, empresa_id }) => {
     const grupoStr = String(grupoRaw ?? '').trim();
     const cotaStr  = String(cotaRaw  ?? '').trim();
@@ -133,25 +133,53 @@ export default function ImportacaoComissao() {
       ...(Number.isFinite(grupoNum) && Number.isFinite(cotaNum) ? [{ grupo: grupoNum, cota: cotaNum }] : []),
     ];
 
-    const filtrosComEmpresa  = combinacoesValores.map(f => ({ ...f, administradora_id, ...(empresa_id ? { empresa_id } : {}) }));
-    const filtrosSemEmpresa  = combinacoesValores.map(f => ({ ...f, administradora_id }));
-    const filtrosSemAdmin    = combinacoesValores.map(f => ({ ...f }));
-    const tentativas = [...filtrosComEmpresa, ...filtrosSemEmpresa, ...filtrosSemAdmin];
+    // Tenta primeiro em VendaConsorcio, depois em Venda (legado)
+    const entidades = [
+      { entity: base44.entities.VendaConsorcio, label: 'VendaConsorcio', idField: 'venda_base_id' },
+      { entity: base44.entities.Venda, label: 'Venda (legado)', idField: 'id' },
+    ];
 
-    for (const filtro of tentativas) {
-      console.log('🔍 Tentando encontrar VendaConsorcio com filtro:', filtro);
-      const lista = await base44.entities.VendaConsorcio.filter(filtro);
-      if (lista.length === 1) {
-        console.log('✅ Venda encontrada por grupo/cota:', { id: lista[0].id, venda_base_id: lista[0].venda_base_id, grupo: lista[0].grupo, cota: lista[0].cota, administradora_id: lista[0].administradora_id, empresa_id: lista[0].empresa_id });
-        return { venda: lista[0], motivo: null };
-      }
-      if (lista.length > 1) {
-        console.log('⚠️ Múltiplas vendas encontradas:', filtro, lista.map(v => v.id));
-        return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
+    for (const { entity, label, idField } of entidades) {
+      const filtrosComEmpresa = combinacoesValores.map(f => ({ ...f, administradora_id, ...(empresa_id ? { empresa_id } : {}) }));
+      const filtrosSemEmpresa = combinacoesValores.map(f => ({ ...f, administradora_id }));
+      const filtrosSemAdmin   = combinacoesValores.map(f => ({ ...f }));
+      const tentativas = [...filtrosComEmpresa, ...filtrosSemEmpresa, ...filtrosSemAdmin];
+
+      for (const filtro of tentativas) {
+        console.log(`🔍 [${label}] Tentando filtro:`, filtro);
+        const lista = await entity.filter(filtro);
+
+        if (lista.length === 1) {
+          const v = lista[0];
+          console.log(`✅ [${label}] Encontrada:`, { id: v.id, grupo: v.grupo, cota: v.cota });
+
+          // Normaliza a venda para o formato esperado pelo restante do código
+          const vendaNormalizada = {
+            ...v,
+            venda_base_id: v.venda_base_id || v.id,
+            empresa_id: v.empresa_id,
+            cliente_id: v.cliente_id,
+            cliente_nome: v.cliente_nome,
+            vendedor_id: v.vendedor_id,
+            vendedor_nome: v.vendedor_nome,
+            administradora_id: v.administradora_id,
+            administradora_nome: v.administradora_nome,
+            grupo: v.grupo,
+            cota: v.cota,
+            contrato: v.contrato,
+            comissao_total_recebida: v.comissao_total_recebida || 0,
+          };
+          return { venda: vendaNormalizada, motivo: null };
+        }
+
+        if (lista.length > 1) {
+          console.log(`⚠️ [${label}] Múltiplas encontradas:`, filtro);
+          return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
+        }
       }
     }
 
-    console.log('❌ Nenhuma venda encontrada após todas tentativas:', { grupoRaw, cotaRaw, administradora_id, empresa_id });
+    console.log('❌ Nenhuma venda encontrada em nenhuma entidade:', { grupoRaw, cotaRaw, administradora_id, empresa_id });
     return { venda: null, motivo: 'Venda não encontrada por grupo/cota' };
   };
 
