@@ -30,18 +30,33 @@ async function findFirstFlexible(entity, filterBase, grupo, cota) {
 async function buscarVendaFlex(base44, args) {
   const grupo = normDigits(args.grupo);
   const cota = normDigits(args.cota);
+  const contrato = args.contrato ? String(args.contrato).trim() : null;
+
+  if (!grupo && !cota && !contrato) {
+    return { venda: null, motivo: "Grupo/cota inválidos no arquivo", produtoEncontrado: null };
+  }
+
+  const filterBase = args.empresa_id ? { empresa_id: args.empresa_id } : {};
+
+  const tables = {
+    consorcio: base44.entities.Venda,
+    financiamento: base44.entities.VendaFinanciamento ?? base44.entities.Venda,
+    emprestimos: base44.entities.VendaConsignado ?? base44.entities.Venda,
+  };
+
+  // 0) Tenta por contrato primeiro (com e sem empresa_id)
+  if (contrato) {
+    const mainTable = tables[args.produto] ?? tables.consorcio;
+    let vendaContrato = await mainTable.findFirst({ filter: { ...filterBase, contrato } });
+    if (vendaContrato) return { venda: vendaContrato, motivo: null, produtoEncontrado: args.produto };
+
+    vendaContrato = await mainTable.findFirst({ filter: { contrato } });
+    if (vendaContrato) return { venda: vendaContrato, motivo: null, produtoEncontrado: args.produto };
+  }
 
   if (!grupo || !cota) {
     return { venda: null, motivo: "Grupo/cota inválidos no arquivo", produtoEncontrado: null };
   }
-
-  const filterBase = { empresa_id: args.empresa_id };
-
-  const tables = {
-    consorcio: base44.entities.VendaConsorcio,
-    financiamento: base44.entities.VendaFinanciamento,
-    emprestimos: base44.entities.VendaConsignado,
-  };
 
   // Se veio produto, tenta primeiro a tabela certa (com empresa)
   if (args.produto && tables[args.produto]) {
