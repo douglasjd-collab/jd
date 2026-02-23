@@ -103,6 +103,37 @@ export default function ImportacaoComissao() {
     }
   };
 
+  // Função utilitária: busca proposta por grupo/cota com fallback sem empresa_id
+  const encontrarPropostaPorGrupoCota = async (grupoRaw, cotaRaw, administradora_id, empresa_id) => {
+    const grupoStr = String(grupoRaw).trim();
+    const cotaStr = String(cotaRaw).trim();
+    const grupoNum = Number(grupoStr.replace(/\D/g, ''));
+    const cotaNum = Number(cotaStr.replace(/\D/g, ''));
+
+    const tentativas = [
+      // 1. String + empresa_id
+      { grupo: grupoStr, cota: cotaStr, administradora_id, empresa_id },
+      // 2. Número + empresa_id
+      ...(!isNaN(grupoNum) && !isNaN(cotaNum)
+        ? [{ grupo: grupoNum.toString(), cota: cotaNum.toString(), administradora_id, empresa_id }]
+        : []),
+      // 3. String sem empresa_id (fallback pós-migração)
+      { grupo: grupoStr, cota: cotaStr, administradora_id },
+      // 4. Número sem empresa_id (fallback pós-migração)
+      ...(!isNaN(grupoNum) && !isNaN(cotaNum)
+        ? [{ grupo: grupoNum.toString(), cota: cotaNum.toString(), administradora_id }]
+        : []),
+    ];
+
+    for (const filtro of tentativas) {
+      const resultado = await base44.entities.Proposta.filter({ produto: 'consorcio', ...filtro });
+      if (resultado.length === 1) return { venda: resultado[0], motivo: null };
+      if (resultado.length > 1) return { venda: null, motivo: 'Múltiplas propostas encontradas por grupo/cota' };
+    }
+
+    return { venda: null, motivo: 'Proposta não encontrada por grupo/cota' };
+  };
+
   const processarImportacao = async () => {
     if (!previewData || !selectedAdmin) return;
 
@@ -111,12 +142,20 @@ export default function ImportacaoComissao() {
     try {
       const admin = administradoras.find(a => a.id === selectedAdmin);
       
-      const empresaIdFinal = currentUser?.empresa_id || currentEmpresa?.id;
-       if (!empresaIdFinal) {
-         toast.error('Empresa não vinculada ao usuário');
-         setIsProcessing(false);
-         return;
-       }
+      const empresaIdFinal = isSuperAdmin
+        ? (empresaSelecionada || null)
+        : (currentUser?.empresa_id || currentEmpresa?.id);
+
+      if (!isSuperAdmin && !empresaIdFinal) {
+        toast.error('Empresa não vinculada ao usuário');
+        setIsProcessing(false);
+        return;
+      }
+      if (isSuperAdmin && !empresaIdFinal) {
+        toast.error('Selecione a empresa para importar');
+        setIsProcessing(false);
+        return;
+      }
 
        const importacao = await base44.entities.Importacao.create({
          empresa_id: empresaIdFinal,
