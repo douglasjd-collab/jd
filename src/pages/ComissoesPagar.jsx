@@ -125,6 +125,7 @@ export default function ComissoesPagar() {
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState('');
   const [editingError, setEditingError] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
