@@ -17,31 +17,37 @@ Deno.serve(async (req) => {
 
     const searchTerm = termo.toLowerCase().trim();
 
-    // Buscar vendas de consórcio (apenas cartas de consórcio ativas/pendentes)
-    const vendas = await base44.asServiceRole.entities.Venda.filter({ 
-      status: { $in: ['ativa', 'pendente', 'aguardando_aprovacao'] }
-    });
+    // Buscar vendas de consórcio (sem filtro de status, traz todos)
+    const vendas = await base44.asServiceRole.entities.Venda.filter({});
     
     // Normalizar busca: remove caracteres especiais
     const normalizar = (str) => {
-      return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     };
 
     const termoBuscaNorm = normalizar(searchTerm);
 
     const contratosEncontrados = vendas.filter((venda) => {
-      const nomeNorm = normalizar(venda.cliente_nome || '');
-      const contratoNorm = normalizar(venda.contrato || '');
-      const grupoNorm = normalizar(venda.grupo || '');
-      const cotaNorm = normalizar(venda.cota || '');
-      const grupoCtaNorm = normalizar(`${venda.grupo || ''}${venda.cota || ''}`);
+      // Verificar se é consórcio
+      if (venda.tipo !== 'automovel' && venda.tipo !== 'imovel' && venda.tipo !== 'motocicleta' && 
+          venda.tipo !== 'servico' && venda.tipo !== 'bens_moveis') {
+        return false;
+      }
+
+      const nomeNorm = normalizar(venda.cliente_nome);
+      const contratoNorm = normalizar(venda.contrato);
+      const grupoNorm = normalizar(venda.grupo);
+      const cotaNorm = normalizar(venda.cota);
+      const cpfNorm = normalizar(venda.cliente_cpf);
+      const grupoCtaNorm = normalizar(`${venda.grupo}${venda.cota}`);
 
       return (
         nomeNorm.includes(termoBuscaNorm) ||
         contratoNorm.includes(termoBuscaNorm) ||
         grupoNorm.includes(termoBuscaNorm) ||
         cotaNorm.includes(termoBuscaNorm) ||
-        grupoCtaNorm.includes(termoBuscaNorm)
+        grupoCtaNorm.includes(termoBuscaNorm) ||
+        cpfNorm.includes(termoBuscaNorm)
       );
     });
 
