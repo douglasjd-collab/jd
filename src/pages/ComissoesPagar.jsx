@@ -445,6 +445,7 @@ export default function ComissoesPagar() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-slate-50 text-slate-600">
+                          <th className="p-3 w-10"></th>
                           <th className="p-3 text-left font-semibold">Data</th>
                           <th className="p-3 text-left font-semibold">Cliente</th>
                           <th className="p-3 text-left font-semibold">Grupo/Cota</th>
