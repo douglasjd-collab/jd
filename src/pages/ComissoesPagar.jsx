@@ -966,11 +966,15 @@ export default function ComissoesPagar() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPagarLoteModal(false)}>
+            <Button variant="outline" onClick={() => setPagarLoteModal(false)} disabled={isPaying}>
               Cancelar
             </Button>
-            <Button onClick={handlePagarLote} className="bg-green-600 hover:bg-green-700">
-              Confirmar Pagamento
+            <Button onClick={handlePagarEGerarPDF} disabled={isPaying} className="bg-green-600 hover:bg-green-700">
+              {isPaying ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processando...</>
+              ) : (
+                <><FileText className="w-4 h-4 mr-2" />Confirmar Pagamento e Gerar PDF</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
