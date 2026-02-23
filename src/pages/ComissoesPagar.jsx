@@ -20,6 +20,7 @@ import { formatDateBR } from '@/components/utils/dateHelpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import VendedorExpandido from '@/components/comissoes/VendedorExpandido';
+import { createPageUrl } from '@/utils';
 
 moment.locale('pt-br');
 
