@@ -425,7 +425,7 @@ export default function ImportacaoComissao() {
                 onChange={handleFileUpload}
                 className="hidden"
                 id="file-upload"
-                disabled={!selectedAdmin}
+                disabled={!selectedAdmin || (isSuperAdmin && !empresaSelecionada)}
               />
               <label htmlFor="file-upload" className="cursor-pointer">
                 {isProcessing ? (
