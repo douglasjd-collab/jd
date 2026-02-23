@@ -13,9 +13,10 @@ export default function VendedorExpandido({
   setFormaPagamento, setObservacao, setPagarModal,
   fmt, formatDateBR,
 }) {
+  const STATUS_A_PAGAR = ['a_pagar', 'a_apagar', 'pendente'];
   const selKey = vendedor.vendedor_id + '_sel';
   const selecionados = expandedVendedores[selKey];
-  const comissoesAPagar = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar');
+  const comissoesAPagar = vendedor.comissoes.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento));
   const todosSel = comissoesAPagar.length > 0 && comissoesAPagar.every(c => selecionados?.has(c.id));
 
   const toggleTodos = () => {
