@@ -106,20 +106,30 @@ export default function ImportacaoComissao() {
     }
   };
 
-  // Função utilitária: busca VendaConsorcio por grupo/cota com fallback sem empresa_id
+  // Função utilitária: busca VendaConsorcio por grupo/cota com fallback inteligente
   const encontrarVendaPorGrupoCota = async (grupoRaw, cotaRaw, administradora_id, empresa_id) => {
-    const grupoDigits = (grupoRaw || '').toString().replace(/\D/g, '');
-    const cotaDigits  = (cotaRaw  || '').toString().replace(/\D/g, '');
+    const grupoStr    = String(grupoRaw ?? '').trim();
+    const cotaStr     = String(cotaRaw  ?? '').trim();
+    const grupoDigits = grupoStr.replace(/\D/g, '');
+    const cotaDigits  = cotaStr.replace(/\D/g, '');
 
     if (!grupoDigits || !cotaDigits) {
       return { venda: null, motivo: 'Grupo/cota inválidos no arquivo' };
     }
 
+    // Combinações de valores: original (com zeros à esquerda) e só dígitos
+    const pares = [
+      { grupo: grupoStr, cota: cotaStr },
+      ...(grupoDigits !== grupoStr || cotaDigits !== cotaStr
+        ? [{ grupo: grupoDigits, cota: cotaDigits }]
+        : []),
+    ];
+
     const tentativas = [
-      // 1. Com empresa_id (caso normal)
-      { grupo: grupoDigits, cota: cotaDigits, administradora_id, ...(empresa_id ? { empresa_id } : {}) },
-      // 2. Sem empresa_id (fallback pós-migração / super_admin)
-      { grupo: grupoDigits, cota: cotaDigits, administradora_id },
+      // Com empresa_id primeiro
+      ...pares.map(p => ({ ...p, administradora_id, ...(empresa_id ? { empresa_id } : {}) })),
+      // Sem empresa_id (fallback pós-migração / super_admin)
+      ...pares.map(p => ({ ...p, administradora_id })),
     ];
 
     for (const filtro of tentativas) {
