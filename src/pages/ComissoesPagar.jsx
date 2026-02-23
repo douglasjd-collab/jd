@@ -484,7 +484,8 @@ export default function ComissoesPagar() {
 
   const handleIniciarPagamento = (vendedor) => {
     const comissoesVendedor = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar');
-    setItensSelecionados(new Set(comissoesVendedor.map(c => c.id)));
+    const novosIds = new Set(comissoesVendedor.map(c => c.id));
+    setItensSelecionados(novosIds);
     setVendedorPagamento(vendedor);
     setPagarLoteModal(true);
   };
