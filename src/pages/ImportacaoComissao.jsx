@@ -30,12 +30,15 @@ import { createPageUrl } from '../utils';
 
 export default function ImportacaoComissao() {
   const [selectedAdmin, setSelectedAdmin] = useState('');
-   const [file, setFile] = useState(null);
-   const [isProcessing, setIsProcessing] = useState(false);
-   const [previewData, setPreviewData] = useState(null);
-   const [currentUser, setCurrentUser] = useState(null);
-   const [currentEmpresa, setCurrentEmpresa] = useState(null);
-   const queryClient = useQueryClient();
+  const [file, setFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentEmpresa, setCurrentEmpresa] = useState(null);
+  const [empresaSelecionada, setEmpresaSelecionada] = useState('');
+  const queryClient = useQueryClient();
+
+  const isSuperAdmin = currentUser?.perfil === 'super_admin' || currentUser?.role === 'super_admin';
 
   useEffect(() => {
      loadUser();
