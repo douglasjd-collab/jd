@@ -533,8 +533,36 @@ export default function ComissoesPagar() {
                         })}
                       </tbody>
                     </table>
-                    <div className="px-4 py-2 text-xs text-slate-400 border-t">
-                      1–{vendedor.comissoes.length} de {vendedor.comissoes.length} comissão(ões)
+                    <div className="px-4 py-3 border-t flex items-center justify-between">
+                      <span className="text-xs text-slate-400">
+                        1–{vendedor.comissoes.length} de {vendedor.comissoes.length} comissão(ões)
+                      </span>
+                      {isAdmin && (() => {
+                        const selKey = vendedor.vendedor_id + '_sel';
+                        const selecionados = expandedVendedores[selKey];
+                        const qtdSel = selecionados?.size || 0;
+                        if (qtdSel === 0) return null;
+                        return (
+                          <Button
+                            size="sm"
+                            className="bg-[#23BE84] hover:bg-[#1da872] text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const selKey = vendedor.vendedor_id + '_sel';
+                              const ids = expandedVendedores[selKey] ? Array.from(expandedVendedores[selKey]) : [];
+                              setVendedorModal(vendedor);
+                              setModalSelecionados(new Set(ids));
+                              setModalSearch('');
+                              setFormaPagamento('PIX');
+                              setObservacao('');
+                              setPagarModal(true);
+                            }}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Pagar {qtdSel} selecionado(s)
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
