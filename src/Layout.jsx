@@ -190,7 +190,17 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
     { name: 'Bate-papo', icon: MessageSquare, page: 'BatePapo', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Financeiro', icon: Wallet, page: 'RelatoriosFinanceiros', roles: ['master', 'super_admin', 'admin'] },
+    { 
+      name: 'Financeiro', 
+      icon: Wallet, 
+      roles: ['master', 'super_admin', 'admin'],
+      submenu: [
+        { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
+        { name: 'Pagar Comissão', page: 'ComissoesPagar' },
+        { name: 'Receber Comissão', page: 'ComissoesRecebidas' },
+        { name: 'Comissões a Pagar', page: 'ComissoesPagar' },
+      ]
+    },
     { 
       name: 'Cadastros', 
       icon: Building2, 
