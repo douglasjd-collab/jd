@@ -11,10 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Search, DollarSign, CheckCircle2, Eye, Receipt, ChevronDown, ChevronUp, User } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, Eye, Receipt, ChevronDown, ChevronUp, User, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 import { formatDateBR } from '@/components/utils/dateHelpers';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // Componente separado para cada linha da tabela
 function ComissaoRow({ comissao, isAdmin, isSelected, onToggleSelect, onVerRecebimento, editingId, editingValue, editingError, onStartEditing, onSaveEditing, onKeyDown, onEditingValueChange }) {
