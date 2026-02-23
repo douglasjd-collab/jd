@@ -200,12 +200,12 @@ export default function ComissoesPagar() {
     }
     doc.setFont('helvetica', 'bold');
     doc.text('Total Recebido (Adm):', 14, 54); doc.text('Total Pago ao Vendedor:', 120, 48);
-    doc.setTextColor(0, 120, 80); doc.text(fmt(totalRecebido), 70, 48);
-    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 200, 48);
+    doc.setTextColor(0, 120, 80); doc.text(fmt(totalRecebido), 70, 54);
+    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 200, 54);
     doc.setTextColor(0, 0, 0);
 
     doc.autoTable({
-      startY: 58,
+      startY: 64,
       head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Recebido', '% Com.', 'Vl. a Pagar', 'Administradora']],
       body: comissoesLista.map(c => [
         c.cliente_nome || '-',
