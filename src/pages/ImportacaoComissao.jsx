@@ -81,10 +81,13 @@ export default function ImportacaoComissao() {
 
     try {
        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
+       const empresaIdParaProcessar = isSuperAdmin
+         ? (empresaSelecionada || null)
+         : (currentUser?.empresa_id || currentEmpresa?.id);
        const result = await base44.functions.invoke('processarCsvComissao', { 
          file_url, 
          produto: 'consorcio',
-         empresa_id: currentUser?.empresa_id || currentEmpresa?.id
+         empresa_id: empresaIdParaProcessar
        });
 
       if (result.data.status === 'success' && result.data.items) {
