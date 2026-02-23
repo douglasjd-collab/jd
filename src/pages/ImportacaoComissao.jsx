@@ -508,7 +508,7 @@ export default function ImportacaoComissao() {
           <div className="flex justify-end gap-3">
             <Button
               onClick={processarImportacao}
-              disabled={!previewData || !selectedAdmin || isProcessing}
+              disabled={!previewData || !selectedAdmin || isProcessing || (isSuperAdmin && !empresaSelecionada)}
               className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
             >
               {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
