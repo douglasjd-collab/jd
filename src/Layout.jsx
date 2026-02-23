@@ -105,8 +105,9 @@ export default function Layout({ children, currentPageName }) {
       }
 
       // Para outros roles, buscar Colaborador
+      // Buscar Colaborador sem filtro de status (pode estar inativo temporariamente)
       let colabs = await base44.entities.Colaborador.filter(
-        { user_id: me.id, status: 'ativo' },
+        { user_id: me.id },
         '-created_date'
       );
 
@@ -126,8 +127,9 @@ export default function Layout({ children, currentPageName }) {
         }
       }
 
-      const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
-      const colab = byEmpresa || colabs[0];
+      // Priorizar ativo, depois qualquer um válido
+      const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id && c.status === 'ativo');
+      const colab = byEmpresa || colabs.find(c => c.status === 'ativo') || colabs[0];
 
       setUser({
         ...me,
