@@ -19,6 +19,7 @@ import 'moment/locale/pt-br';
 import { formatDateBR } from '@/components/utils/dateHelpers';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import VendedorExpandido from '@/components/comissoes/VendedorExpandido';
 
 moment.locale('pt-br');
 
