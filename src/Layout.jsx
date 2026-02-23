@@ -259,62 +259,7 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  // Verificar se usuário está aguardando configuração
-  if (user?.aguardando_configuracao) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <AntiTranslateGuard />
-        <Toaster richColors position="top-right" />
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <UserCircle className="w-10 h-10 text-amber-600" />
-            </div>
-            
-            <h1 className="text-2xl font-bold text-slate-900 mb-3">
-              Aguardando Configuração
-            </h1>
-            
-            <p className="text-slate-600 mb-6">
-              Olá, <strong>{user.full_name}</strong>! 
-            </p>
-            
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-amber-900">
-                Seu cadastro foi recebido com sucesso. Um administrador precisa configurar seu perfil e vincular você a uma empresa antes que você possa acessar o sistema.
-              </p>
-            </div>
 
-            <div className="space-y-3 text-sm text-slate-600 text-left">
-              <div className="flex items-start gap-2">
-                <span className="text-amber-600">✓</span>
-                <span>Seu email foi verificado</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-amber-600">⏳</span>
-                <span>Aguardando aprovação do administrador</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-slate-300">○</span>
-                <span>Você receberá um email quando o acesso for liberado</span>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t">
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                className="w-full"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={cn("min-h-screen transition-colors", darkMode ? "bg-slate-900" : "bg-slate-50")}>
