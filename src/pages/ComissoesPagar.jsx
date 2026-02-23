@@ -682,110 +682,167 @@ export default function ComissoesPagar() {
                 </div>
 
                 {/* Tabela de Comissões */}
-                {isExpanded && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-b">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Data Rec.</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Valor Recebido</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Administradora</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">% Com.</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">A Pagar</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Status</th>
-                          <th className="text-left p-3 font-semibold text-slate-700 text-sm">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {vendedor.comissoes.map((comissao) => (
-                          <tr key={comissao.id} className="border-b hover:bg-slate-50">
-                            <td className="p-3 text-sm">
-                              {formatDateBR(comissao.data_recebimento)}
-                            </td>
-                            <td className="p-3 text-sm">{comissao.cliente_nome || '-'}</td>
-                            <td className="p-3 text-sm">
-                              {comissao.grupo && comissao.cota 
-                                ? `${comissao.grupo}/${comissao.cota}` 
-                                : comissao.contrato || '-'}
-                            </td>
-                            <td className="p-3 text-sm">
-                              {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
-                            </td>
-                            <td className="p-3 font-semibold text-green-600 text-sm">
-                              {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { 
-                                style: 'currency', 
-                                currency: 'BRL' 
-                              })}
-                            </td>
-                            <td className="p-3 text-sm">{comissao.administradora_nome || '-'}</td>
-                            <td className="p-3 text-sm">
-                              {editingId === comissao.id ? (
-                                <div className="flex flex-col gap-1">
-                                  <div className={`inline-flex items-center bg-white rounded-md border ${editingError ? 'border-red-500' : 'border-slate-300'} px-2 py-1`}>
-                                    <Input
-                                      type="number"
-                                      value={editingValue}
-                                      onChange={(e) => setEditingValue(e.target.value)}
-                                      onBlur={() => saveEditing(comissao.id)}
-                                      onKeyDown={(e) => handleKeyDown(e, comissao.id)}
-                                      autoFocus
-                                      onFocus={(e) => e.target.select()}
-                                      className="w-12 h-6 text-sm border-0 p-0 focus-visible:ring-0"
-                                      min="0"
-                                      max="100"
-                                    />
-                                    <span className="text-sm font-medium text-slate-600 ml-1">%</span>
-                                  </div>
-                                  {editingError && (
-                                    <span className="text-xs text-red-600">{editingError}</span>
-                                  )}
-                                </div>
-                              ) : (
-                                <div 
-                                  className={`inline-flex items-center rounded-md border px-2 py-1 min-w-[60px] ${
-                                    comissao.status_pagamento === 'a_pagar' && isAdmin
-                                      ? 'bg-white border-slate-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors'
-                                      : 'bg-slate-100 border-slate-200 cursor-default'
-                                  }`}
-                                  onClick={() => comissao.status_pagamento === 'a_pagar' && isAdmin && startEditing(comissao)}
-                                  title={comissao.status_pagamento === 'a_pagar' && isAdmin ? 'Clique para editar' : ''}
-                                >
-                                  <span className="font-medium text-sm">{comissao.percentual_comissao || 0}%</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-3 font-bold text-blue-600 text-sm">
-                              {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { 
-                                style: 'currency', 
-                                currency: 'BRL' 
-                              })}
-                            </td>
-                            <td className="p-3">
-                              {comissao.status_pagamento === 'paga' ? (
-                                <Badge className="bg-green-100 text-green-800 text-xs">Paga</Badge>
-                              ) : (
-                                <Badge className="bg-orange-100 text-orange-800 text-xs">A Pagar</Badge>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleVerRecebimento(comissao)}
-                                title="Ver recebimento original"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </td>
+                {isExpanded && (() => {
+                  const aPagarDoVendedor = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar');
+                  const selecionadosDoVendedor = aPagarDoVendedor.filter(c => itensSelecionados.has(c.id));
+                  const todosDoVendedorSelecionados = aPagarDoVendedor.length > 0 && selecionadosDoVendedor.length === aPagarDoVendedor.length;
+                  const algunsDoVendedorSelecionados = selecionadosDoVendedor.length > 0 && !todosDoVendedorSelecionados;
+
+                  const toggleSelectAllVendedor = () => {
+                    const newSet = new Set(itensSelecionados);
+                    if (todosDoVendedorSelecionados) {
+                      aPagarDoVendedor.forEach(c => newSet.delete(c.id));
+                    } else {
+                      aPagarDoVendedor.forEach(c => newSet.add(c.id));
+                    }
+                    setItensSelecionados(newSet);
+                  };
+
+                  return (
+                    <div className="overflow-x-auto">
+                      {isAdmin && aPagarDoVendedor.length > 0 && (
+                        <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 border-b">
+                          <Checkbox
+                            checked={todosDoVendedorSelecionados}
+                            onCheckedChange={toggleSelectAllVendedor}
+                            id={`select-all-${vendedor.vendedor_id}`}
+                          />
+                          <label htmlFor={`select-all-${vendedor.vendedor_id}`} className="text-sm text-slate-600 cursor-pointer select-none">
+                            {todosDoVendedorSelecionados
+                              ? 'Desmarcar todos'
+                              : algunsDoVendedorSelecionados
+                              ? `${selecionadosDoVendedor.length} selecionado(s) — Selecionar todos`
+                              : 'Selecionar todos'}
+                          </label>
+                          {selecionadosDoVendedor.length > 0 && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setVendedorPagamento(vendedor);
+                                setPagarLoteModal(true);
+                              }}
+                              className="ml-auto bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              <Receipt className="w-4 h-4 mr-1" />
+                              Pagar {selecionadosDoVendedor.length} selecionado(s)
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      <table className="w-full">
+                        <thead className="bg-slate-50 border-b">
+                          <tr>
+                            {isAdmin && <th className="p-3 w-10"></th>}
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Data Rec.</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Valor Recebido</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Administradora</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">% Com.</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">A Pagar</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Status</th>
+                            <th className="text-left p-3 font-semibold text-slate-700 text-sm">Ações</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        </thead>
+                        <tbody>
+                          {vendedor.comissoes.map((comissao) => {
+                            const isPagar = comissao.status_pagamento === 'a_pagar';
+                            const isSelected = itensSelecionados.has(comissao.id);
+                            return (
+                              <tr key={comissao.id} className={`border-b hover:bg-slate-50 ${isSelected ? 'bg-blue-50' : ''}`}>
+                                {isAdmin && (
+                                  <td className="p-3">
+                                    {isPagar ? (
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleSelectItem(comissao.id)}
+                                      />
+                                    ) : (
+                                      <div className="w-4" />
+                                    )}
+                                  </td>
+                                )}
+                                <td className="p-3 text-sm">
+                                  {formatDateBR(comissao.data_recebimento)}
+                                </td>
+                                <td className="p-3 text-sm">{comissao.cliente_nome || '-'}</td>
+                                <td className="p-3 text-sm">
+                                  {comissao.grupo && comissao.cota 
+                                    ? `${comissao.grupo}/${comissao.cota}` 
+                                    : comissao.contrato || '-'}
+                                </td>
+                                <td className="p-3 text-sm">
+                                  {comissao.parcela_numero ? `${comissao.parcela_numero}º` : '-'}
+                                </td>
+                                <td className="p-3 font-semibold text-green-600 text-sm">
+                                  {(comissao.valor_recebido || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </td>
+                                <td className="p-3 text-sm">{comissao.administradora_nome || '-'}</td>
+                                <td className="p-3 text-sm">
+                                  {editingId === comissao.id ? (
+                                    <div className="flex flex-col gap-1">
+                                      <div className={`inline-flex items-center bg-white rounded-md border ${editingError ? 'border-red-500' : 'border-slate-300'} px-2 py-1`}>
+                                        <Input
+                                          type="number"
+                                          value={editingValue}
+                                          onChange={(e) => setEditingValue(e.target.value)}
+                                          onBlur={() => saveEditing(comissao.id)}
+                                          onKeyDown={(e) => handleKeyDown(e, comissao.id)}
+                                          autoFocus
+                                          onFocus={(e) => e.target.select()}
+                                          className="w-12 h-6 text-sm border-0 p-0 focus-visible:ring-0"
+                                          min="0"
+                                          max="100"
+                                        />
+                                        <span className="text-sm font-medium text-slate-600 ml-1">%</span>
+                                      </div>
+                                      {editingError && (
+                                        <span className="text-xs text-red-600">{editingError}</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div 
+                                      className={`inline-flex items-center rounded-md border px-2 py-1 min-w-[60px] ${
+                                        isPagar && isAdmin
+                                          ? 'bg-white border-slate-200 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors'
+                                          : 'bg-slate-100 border-slate-200 cursor-default'
+                                      }`}
+                                      onClick={() => isPagar && isAdmin && startEditing(comissao)}
+                                      title={isPagar && isAdmin ? 'Clique para editar' : ''}
+                                    >
+                                      <span className="font-medium text-sm">{comissao.percentual_comissao || 0}%</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-3 font-bold text-blue-600 text-sm">
+                                  {(comissao.valor_a_pagar || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </td>
+                                <td className="p-3">
+                                  {comissao.status_pagamento === 'paga' ? (
+                                    <Badge className="bg-green-100 text-green-800 text-xs">Paga</Badge>
+                                  ) : (
+                                    <Badge className="bg-orange-100 text-orange-800 text-xs">A Pagar</Badge>
+                                  )}
+                                </td>
+                                <td className="p-3">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleVerRecebimento(comissao)}
+                                    title="Ver recebimento original"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
               </Card>
             );
           })}
