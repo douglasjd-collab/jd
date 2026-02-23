@@ -207,63 +207,22 @@ export default function ImportacaoComissao() {
         });
 
         if (contrato) {
-          console.log(`\n🔎 BUSCA CONTRATO:`, { contrato, administradora_id: selectedAdmin });
-          const vendasMatch = await base44.entities.VendaConsorcio.filter({
-            contrato: contrato,
-            administradora_id: selectedAdmin
+          // Busca por contrato com fallback sem empresa_id
+          let vendasMatch = await base44.entities.VendaConsorcio.filter({
+            contrato,
+            administradora_id: selectedAdmin,
+            ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {})
           });
-          console.log(`📊 Resultado:`, vendasMatch.length, 'encontrada(s)', vendasMatch);
+          if (vendasMatch.length === 0 && empresaIdFinal) {
+            vendasMatch = await base44.entities.VendaConsorcio.filter({ contrato, administradora_id: selectedAdmin });
+          }
           if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
         } else if (grupoRaw && cotaRaw) {
-          const grupoStr = String(grupoRaw).trim();
-          const cotaStr = String(cotaRaw).trim();
-
-          console.log(`\n🔎 BUSCA GRUPO/COTA (STRING):`, { grupoStr, cotaStr, administradora_id: selectedAdmin });
-
-          let vendasMatch = await base44.entities.Proposta.filter({
-            produto: 'consorcio',
-            grupo: grupoStr,
-            cota: cotaStr,
-            administradora_id: selectedAdmin
-          });
-
-          console.log("📊 Resultado (STRING):", vendasMatch.length, vendasMatch);
-
-          // Se não achar, tenta como NUMBER
-          if (vendasMatch.length === 0) {
-            const grupoNum = Number(grupoStr);
-            const cotaNum = Number(cotaStr);
-
-            if (!isNaN(grupoNum) && !isNaN(cotaNum)) {
-              console.log(`🔎 BUSCA GRUPO/COTA (NUMBER):`, { grupoNum, cotaNum, administradora_id: selectedAdmin });
-
-              vendasMatch = await base44.entities.Proposta.filter({
-                produto: 'consorcio',
-                grupo: grupoNum.toString(),
-                cota: cotaNum.toString(),
-                administradora_id: selectedAdmin
-              });
-
-              console.log("📊 Resultado (NUMBER):", vendasMatch.length, vendasMatch);
-            } else {
-              console.warn("⚠️ Grupo/Cota não convertíveis:", { grupoStr, cotaStr });
-            }
-          }
-
-          if (vendasMatch.length === 1) {
-            vendaConsorcioEncontrada = vendasMatch[0];
-            console.log("✅ PROPOSTA ENCONTRADA:", vendaConsorcioEncontrada);
-          }
-          else if (vendasMatch.length > 1) {
-            motivoDivergencia = 'Múltiplas propostas encontradas por grupo/cota';
-            console.warn("⚠️ AMBÍGUO - Múltiplas encontradas");
-          }
-          else {
-            motivoDivergencia = 'Proposta não encontrada por grupo/cota';
-            console.error("❌ NÃO ENCONTRADA - Verificar se existe no banco com estes valores");
-          }
+          const { venda, motivo } = await encontrarPropostaPorGrupoCota(grupoRaw, cotaRaw, selectedAdmin, empresaIdFinal);
+          vendaConsorcioEncontrada = venda;
+          motivoDivergencia = motivo || '';
         } else {
           motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
         }
