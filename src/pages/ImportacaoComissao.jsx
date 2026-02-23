@@ -217,7 +217,7 @@ export default function ImportacaoComissao() {
           else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
           else motivoDivergencia = 'Venda não encontrada pelo contrato';
         } else if (grupoRaw && cotaRaw) {
-          const { venda, motivo } = await encontrarPropostaPorGrupoCota(grupoRaw, cotaRaw, selectedAdmin, empresaIdFinal);
+          const { venda, motivo } = await encontrarVendaPorGrupoCota(grupoRaw, cotaRaw, selectedAdmin, empresaIdFinal);
           vendaConsorcioEncontrada = venda;
           motivoDivergencia = motivo || '';
         } else {
