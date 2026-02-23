@@ -196,7 +196,6 @@ export default function Layout({ children, currentPageName }) {
       roles: ['master', 'super_admin', 'admin'],
       submenu: [
         { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
-        { name: 'Pagar Comissão', page: 'ComissoesPagar' },
         { name: 'Receber Comissão', page: 'ComissoesRecebidas' },
         { name: 'Comissões a Pagar', page: 'ComissoesPagar' },
         { name: 'Comissões Pagas', page: 'ComissoesPagas' },
