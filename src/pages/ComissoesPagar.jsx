@@ -528,17 +528,6 @@ export default function ComissoesPagar() {
                                   <Badge className="bg-orange-100 text-orange-800 text-xs">A Pagar</Badge>
                                 )}
                               </td>
-                              <td className="p-3 text-center">
-                                <Button size="sm" variant="outline" className="h-7 text-xs"
-                                  onClick={async () => {
-                                    if (comissao.recebimento_id) {
-                                      const recs = await base44.entities.RecebimentoComissao.filter({ id: comissao.recebimento_id });
-                                      if (recs.length > 0) { setRecebimentoDetalhes(recs[0]); setVerRecebimentoModal(true); }
-                                    }
-                                  }}>
-                                  <Eye className="w-3 h-3 mr-1" />Ver
-                                </Button>
-                              </td>
                             </tr>
                           );
                         })}
