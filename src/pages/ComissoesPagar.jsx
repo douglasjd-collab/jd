@@ -106,10 +106,13 @@ export default function ComissoesPagar() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
+  const STATUS_A_PAGAR = ['a_pagar', 'a_apagar', 'pendente'];
+
   const filtered = comissoes.filter((c) => {
     if (user?.perfil === 'vendedor' && c.vendedor_id !== user?.id) return false;
     if (user?.empresa_id && c.empresa_id !== user?.empresa_id) return false;
-    if (statusFilter !== 'todos' && c.status_pagamento !== statusFilter) return false;
+    if (statusFilter === 'a_pagar' && !STATUS_A_PAGAR.includes(c.status_pagamento)) return false;
+    if (statusFilter === 'paga' && c.status_pagamento !== 'paga') return false;
     if (mesFilter !== 'todos' && c.data_recebimento) {
       const mes = moment(c.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM');
       if (mes !== mesFilter) return false;
