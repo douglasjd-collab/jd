@@ -429,10 +429,10 @@ export default function ComissoesPagar() {
                       <FileText className="w-4 h-4 mr-1" />Detalhes
                     </Button>
                     {qtdAPagar > 0 && isAdmin && (
-                      <Button size="sm" className="bg-[#23BE84] hover:bg-[#1da872] text-white border-0"
-                        onClick={(e) => abrirModalPagamento(vendedor, e)}>
-                        <CheckCircle2 className="w-4 h-4 mr-1" />Marcar como Pago
-                      </Button>
+                     <Button size="sm" className="bg-[#23BE84] hover:bg-[#1da872] text-white border-0"
+                       onClick={(e) => abrirModalPagamento(vendedor, e)}>
+                       <CheckCircle2 className="w-4 h-4 mr-1" />Pagar Comissão
+                     </Button>
                     )}
                   </div>
                   <div className="text-white/50 ml-1">
