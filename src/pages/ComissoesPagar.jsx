@@ -268,6 +268,8 @@ export default function ComissoesPagar() {
       setPagarModal(false);
       setModalSelecionados(new Set());
       setVendedorModal(null);
+      // Redirecionar para Comissões Pagas
+      setTimeout(() => { window.location.href = createPageUrl('ComissoesPagas'); }, 1200);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao processar pagamento');
