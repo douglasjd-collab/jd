@@ -288,7 +288,7 @@ export default function ComissoesPagar() {
     .filter(Boolean)
     .reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
-  const aPagarModal = comissoesModal.filter(c => c.status_pagamento === 'a_pagar');
+  const aPagarModal = comissoesModal.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento));
   const todosSelecionadosModal = aPagarModal.length > 0 && aPagarModal.every(c => modalSelecionados.has(c.id));
 
   const toggleModalItem = (id) => {
