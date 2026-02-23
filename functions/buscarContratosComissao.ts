@@ -17,8 +17,10 @@ Deno.serve(async (req) => {
 
     const searchTerm = termo.toLowerCase().trim();
 
-    // Buscar vendas de consórcio
-    const vendas = await base44.asServiceRole.entities.Venda.filter({});
+    // Buscar vendas de consórcio (apenas cartas de consórcio ativas/pendentes)
+    const vendas = await base44.asServiceRole.entities.Venda.filter({ 
+      status: { $in: ['ativa', 'pendente', 'aguardando_aprovacao'] }
+    });
     
     // Normalizar busca: remove caracteres especiais
     const normalizar = (str) => {
