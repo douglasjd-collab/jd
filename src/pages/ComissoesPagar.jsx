@@ -459,7 +459,6 @@ export default function ComissoesPagar() {
                           <th className="p-3 text-center font-semibold">% Com.</th>
                           <th className="p-3 text-right font-semibold">A Pagar</th>
                           <th className="p-3 text-center font-semibold">Status</th>
-                          <th className="p-3 text-center font-semibold">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
