@@ -106,35 +106,29 @@ export default function ImportacaoComissao() {
     }
   };
 
-  // Função utilitária: busca proposta por grupo/cota com fallback sem empresa_id
-  const encontrarPropostaPorGrupoCota = async (grupoRaw, cotaRaw, administradora_id, empresa_id) => {
-    const grupoStr = String(grupoRaw).trim();
-    const cotaStr = String(cotaRaw).trim();
-    const grupoNum = Number(grupoStr.replace(/\D/g, ''));
-    const cotaNum = Number(cotaStr.replace(/\D/g, ''));
+  // Função utilitária: busca VendaConsorcio por grupo/cota com fallback sem empresa_id
+  const encontrarVendaPorGrupoCota = async (grupoRaw, cotaRaw, administradora_id, empresa_id) => {
+    const grupoDigits = (grupoRaw || '').toString().replace(/\D/g, '');
+    const cotaDigits  = (cotaRaw  || '').toString().replace(/\D/g, '');
+
+    if (!grupoDigits || !cotaDigits) {
+      return { venda: null, motivo: 'Grupo/cota inválidos no arquivo' };
+    }
 
     const tentativas = [
-      // 1. String + empresa_id
-      { grupo: grupoStr, cota: cotaStr, administradora_id, empresa_id },
-      // 2. Número + empresa_id
-      ...(!isNaN(grupoNum) && !isNaN(cotaNum)
-        ? [{ grupo: grupoNum.toString(), cota: cotaNum.toString(), administradora_id, empresa_id }]
-        : []),
-      // 3. String sem empresa_id (fallback pós-migração)
-      { grupo: grupoStr, cota: cotaStr, administradora_id },
-      // 4. Número sem empresa_id (fallback pós-migração)
-      ...(!isNaN(grupoNum) && !isNaN(cotaNum)
-        ? [{ grupo: grupoNum.toString(), cota: cotaNum.toString(), administradora_id }]
-        : []),
+      // 1. Com empresa_id (caso normal)
+      { grupo: grupoDigits, cota: cotaDigits, administradora_id, ...(empresa_id ? { empresa_id } : {}) },
+      // 2. Sem empresa_id (fallback pós-migração / super_admin)
+      { grupo: grupoDigits, cota: cotaDigits, administradora_id },
     ];
 
     for (const filtro of tentativas) {
-      const resultado = await base44.entities.Proposta.filter({ produto: 'consorcio', ...filtro });
+      const resultado = await base44.entities.VendaConsorcio.filter(filtro);
       if (resultado.length === 1) return { venda: resultado[0], motivo: null };
-      if (resultado.length > 1) return { venda: null, motivo: 'Múltiplas propostas encontradas por grupo/cota' };
+      if (resultado.length > 1) return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
     }
 
-    return { venda: null, motivo: 'Proposta não encontrada por grupo/cota' };
+    return { venda: null, motivo: 'Venda não encontrada por grupo/cota' };
   };
 
   const processarImportacao = async () => {
