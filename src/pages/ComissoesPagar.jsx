@@ -462,7 +462,23 @@ export default function ComissoesPagar() {
                         {vendedor.comissoes.map((comissao) => {
                           const isPagar = comissao.status_pagamento === 'a_pagar';
                           return (
-                            <tr key={comissao.id} className="border-b hover:bg-slate-50 transition-colors">
+                            <tr key={comissao.id} className={`border-b transition-colors ${expandedVendedores[vendedor.vendedor_id + '_sel']?.has(comissao.id) ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                              <td className="p-3">
+                                {comissao.status_pagamento === 'a_pagar' ? (
+                                  <Checkbox
+                                    checked={!!(expandedVendedores[vendedor.vendedor_id + '_sel']?.has(comissao.id))}
+                                    onCheckedChange={() => {
+                                      setExpandedVendedores(prev => {
+                                        const selKey = vendedor.vendedor_id + '_sel';
+                                        const cur = new Set(prev[selKey] || []);
+                                        cur.has(comissao.id) ? cur.delete(comissao.id) : cur.add(comissao.id);
+                                        return { ...prev, [selKey]: cur };
+                                      });
+                                    }}
+                                    onClick={e => e.stopPropagation()}
+                                  />
+                                ) : <div className="w-4" />}
+                              </td>
                               <td className="p-3 text-slate-600">{formatDateBR(comissao.data_recebimento)}</td>
                               <td className="p-3 font-medium text-slate-800">{comissao.cliente_nome || '-'}</td>
                               <td className="p-3 text-slate-600">
