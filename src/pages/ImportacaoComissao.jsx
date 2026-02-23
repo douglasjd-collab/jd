@@ -58,9 +58,10 @@ export default function ImportacaoComissao() {
     queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
   });
 
-  const { data: vendasConsorcio = [] } = useQuery({
-    queryKey: ['vendasConsorcio'],
-    queryFn: () => base44.entities.VendaConsorcio.list(),
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['empresas-lista'],
+    enabled: !!isSuperAdmin,
+    queryFn: () => base44.entities.Empresa.filter({ status: 'ativa' }),
   });
 
   const { data: importacoes = [] } = useQuery({
