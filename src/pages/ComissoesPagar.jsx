@@ -166,7 +166,7 @@ export default function ComissoesPagar() {
   const abrirModalPagamento = (vendedor, e) => {
     if (e) e.stopPropagation();
     setVendedorModal(vendedor);
-    const aPagar = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar');
+    const aPagar = vendedor.comissoes.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento));
     setModalSelecionados(new Set(aPagar.map(c => c.id)));
     setModalSearch('');
     setFormaPagamento('PIX');
