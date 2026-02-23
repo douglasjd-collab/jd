@@ -106,38 +106,45 @@ export default function ImportacaoComissao() {
     }
   };
 
-  // Função utilitária: busca VendaConsorcio por grupo/cota com fallback inteligente
-  const encontrarVendaPorGrupoCota = async (grupoRaw, cotaRaw, administradora_id, empresa_id) => {
-    const grupoStr    = String(grupoRaw ?? '').trim();
-    const cotaStr     = String(cotaRaw  ?? '').trim();
-    const grupoDigits = grupoStr.replace(/\D/g, '');
-    const cotaDigits  = cotaStr.replace(/\D/g, '');
+  // Normaliza grupo/cota: tira tudo que não for dígito
+  const normDigits = (v) => {
+    const s = String(v ?? '').trim();
+    const d = s.replace(/\D/g, '');
+    return d.length ? d : null;
+  };
 
-    if (!grupoDigits || !cotaDigits) {
+  // Busca venda de consórcio por grupo/cota, com vários fallbacks (string, só dígitos e número)
+  const encontrarVendaConsorcioPorGrupoCota = async ({ grupoRaw, cotaRaw, administradora_id, empresa_id }) => {
+    const grupoStr = String(grupoRaw ?? '').trim();
+    const cotaStr  = String(cotaRaw  ?? '').trim();
+
+    if (!grupoStr || !cotaStr) {
       return { venda: null, motivo: 'Grupo/cota inválidos no arquivo' };
     }
 
-    // Combinações de valores: original (com zeros à esquerda) e só dígitos
-    const pares = [
+    const grupoDigits = normDigits(grupoStr);
+    const cotaDigits  = normDigits(cotaStr);
+    const grupoNum    = grupoDigits ? Number(grupoDigits) : null;
+    const cotaNum     = cotaDigits  ? Number(cotaDigits)  : null;
+
+    const combinacoesValores = [
       { grupo: grupoStr, cota: cotaStr },
-      ...(grupoDigits !== grupoStr || cotaDigits !== cotaStr
-        ? [{ grupo: grupoDigits, cota: cotaDigits }]
-        : []),
+      ...(grupoDigits && cotaDigits ? [{ grupo: grupoDigits, cota: cotaDigits }] : []),
+      ...(Number.isFinite(grupoNum) && Number.isFinite(cotaNum) ? [{ grupo: grupoNum, cota: cotaNum }] : []),
     ];
 
-    const tentativas = [
-      // Com empresa_id primeiro
-      ...pares.map(p => ({ ...p, administradora_id, ...(empresa_id ? { empresa_id } : {}) })),
-      // Sem empresa_id (fallback pós-migração / super_admin)
-      ...pares.map(p => ({ ...p, administradora_id })),
-    ];
+    const filtrosComEmpresa  = combinacoesValores.map(f => ({ ...f, administradora_id, ...(empresa_id ? { empresa_id } : {}) }));
+    const filtrosSemEmpresa  = combinacoesValores.map(f => ({ ...f, administradora_id }));
+    const tentativas = [...filtrosComEmpresa, ...filtrosSemEmpresa];
 
     for (const filtro of tentativas) {
-      const resultado = await base44.entities.VendaConsorcio.filter(filtro);
-      if (resultado.length === 1) return { venda: resultado[0], motivo: null };
-      if (resultado.length > 1) return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
+      console.log('🔍 Tentando VendaConsorcio:', filtro);
+      const lista = await base44.entities.VendaConsorcio.filter(filtro);
+      if (lista.length === 1) { console.log('✅ Encontrada:', lista[0]); return { venda: lista[0], motivo: null }; }
+      if (lista.length > 1)  { console.log('⚠️ Múltiplas:', filtro); return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' }; }
     }
 
+    console.log('❌ Não encontrada:', { grupoRaw, cotaRaw, administradora_id, empresa_id });
     return { venda: null, motivo: 'Venda não encontrada por grupo/cota' };
   };
 
