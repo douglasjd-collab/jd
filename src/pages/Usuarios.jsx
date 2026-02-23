@@ -34,7 +34,7 @@ const perfilLabels = {
   admin: 'Administrador',
   gerente: 'Gerente',
   vendedor: 'Vendedor',
-  funcionario: 'Funcionário'
+  funcionario: 'Colaborador'
 };
 
 const perfilColors = {
@@ -660,7 +660,7 @@ export default function Usuarios() {
             <SelectItem value="todos">Todos os perfis</SelectItem>
             <SelectItem value="pendente">⏳ Pendentes</SelectItem>
             <SelectItem value="vendedor">Vendedores</SelectItem>
-            <SelectItem value="funcionario">Funcionários</SelectItem>
+            <SelectItem value="funcionario">Colaboradores</SelectItem>
             <SelectItem value="gerente">Gerentes</SelectItem>
             <SelectItem value="admin">Administradores</SelectItem>
             <SelectItem value="super_admin">Super Admins</SelectItem>
