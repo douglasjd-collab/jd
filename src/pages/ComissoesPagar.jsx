@@ -660,11 +660,11 @@ export default function ComissoesPagar() {
                     {qtdAPagar > 0 && isAdmin && (
                       <Button
                         size="sm"
-                        onClick={() => handleIniciarPagamento(vendedor)}
+                        onClick={(e) => { e.stopPropagation(); handleIniciarPagamento(vendedor); }}
                         className="bg-green-600 hover:bg-green-700 text-white"
                       >
                         <Receipt className="w-4 h-4 mr-2" />
-                        Pagar Comissões
+                        Pagar Comissões ({qtdAPagar})
                       </Button>
                     )}
                     <Button
