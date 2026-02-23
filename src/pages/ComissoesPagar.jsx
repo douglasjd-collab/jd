@@ -440,31 +440,31 @@ export default function ComissoesPagar() {
                   </div>
                 </div>
 
-                {isExpanded && (() => {
-                  const selKey = vendedor.vendedor_id + '_sel';
-                  const selecionados = expandedVendedores[selKey];
-                  const comissoesAPagar = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar');
-                  const todosSel = comissoesAPagar.length > 0 && comissoesAPagar.every(c => selecionados?.has(c.id));
-                  const toggleTodos = () => {
-                    setExpandedVendedores(prev => {
-                      const cur = new Set(prev[selKey] || []);
-                      if (todosSel) { comissoesAPagar.forEach(c => cur.delete(c.id)); }
-                      else { comissoesAPagar.forEach(c => cur.add(c.id)); }
-                      return { ...prev, [selKey]: cur };
-                    });
-                  };
-                  return (
-                  <div className="overflow-x-auto">
+                {isExpanded && <VendedorExpandido
+                  vendedor={vendedor}
+                  expandedVendedores={expandedVendedores}
+                  setExpandedVendedores={setExpandedVendedores}
+                  editingId={editingId}
+                  editingValue={editingValue}
+                  setEditingValue={setEditingValue}
+                  isAdmin={isAdmin}
+                  startEditing={startEditing}
+                  saveEditing={saveEditing}
+                  cancelEditing={cancelEditing}
+                  setVendedorModal={setVendedorModal}
+                  setModalSelecionados={setModalSelecionados}
+                  setModalSearch={setModalSearch}
+                  setFormaPagamento={setFormaPagamento}
+                  setObservacao={setObservacao}
+                  setPagarModal={setPagarModal}
+                  fmt={fmt}
+                  formatDateBR={formatDateBR}
+                />}
+                {false && <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-slate-50 text-slate-600">
-                          <th className="p-3 w-10">
-                            <Checkbox
-                              checked={todosSel}
-                              onCheckedChange={toggleTodos}
-                              onClick={e => e.stopPropagation()}
-                            />
-                          </th>
+                          <th className="p-3 w-10"></th>
                           <th className="p-3 text-left font-semibold">Data</th>
                           <th className="p-3 text-left font-semibold">Cliente</th>
                           <th className="p-3 text-left font-semibold">Grupo/Cota</th>
