@@ -552,9 +552,7 @@ export default function ComissoesPagar() {
                       <span className="text-xs text-slate-400">
                         1–{vendedor.comissoes.length} de {vendedor.comissoes.length} comissão(ões)
                       </span>
-                      {isAdmin && (() => {
-                        const selKey = vendedor.vendedor_id + '_sel';
-                        const selecionados = expandedVendedores[selKey];
+                      {(() => {
                         const qtdSel = selecionados?.size || 0;
                         if (qtdSel === 0) return null;
                         return (
@@ -563,8 +561,7 @@ export default function ComissoesPagar() {
                             className="bg-[#23BE84] hover:bg-[#1da872] text-white"
                             onClick={(e) => {
                               e.stopPropagation();
-                              const selKey = vendedor.vendedor_id + '_sel';
-                              const ids = expandedVendedores[selKey] ? Array.from(expandedVendedores[selKey]) : [];
+                              const ids = selecionados ? Array.from(selecionados) : [];
                               setVendedorModal(vendedor);
                               setModalSelecionados(new Set(ids));
                               setModalSearch('');
@@ -580,7 +577,8 @@ export default function ComissoesPagar() {
                       })()}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </Card>
             );
           })}
