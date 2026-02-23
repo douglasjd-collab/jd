@@ -72,7 +72,7 @@ export default function VendedorExpandido({
         </thead>
         <tbody>
           {vendedor.comissoes.map((comissao) => {
-            const isPagar = comissao.status_pagamento === 'a_pagar';
+            const isPagar = STATUS_A_PAGAR.includes(comissao.status_pagamento);
             const isSel = !!(selecionados?.has(comissao.id));
             return (
               <tr key={comissao.id} className={`border-b transition-colors ${isSel ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
