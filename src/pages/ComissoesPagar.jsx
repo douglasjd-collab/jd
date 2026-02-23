@@ -732,7 +732,7 @@ export default function ComissoesPagar() {
                       <table className="w-full">
                         <thead className="bg-slate-50 border-b">
                           <tr>
-                            {isAdmin && <th className="p-3 w-10"></th>}
+                            {isAdmin && <th className="p-3 w-10 sticky left-0 bg-slate-50 z-10"></th>}
                             <th className="text-left p-3 font-semibold text-slate-700 text-sm">Data Rec.</th>
                             <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente</th>
                             <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
