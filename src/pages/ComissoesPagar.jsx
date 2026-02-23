@@ -238,7 +238,7 @@ export default function ComissoesPagar() {
     setIsPaying(true);
     try {
       const ids = Array.from(modalSelecionados);
-      const paraPagar = comissoes.filter(c => ids.includes(c.id) && c.status_pagamento === 'a_pagar');
+      const paraPagar = comissoes.filter(c => ids.includes(c.id) && STATUS_A_PAGAR.includes(c.status_pagamento));
       if (paraPagar.length === 0) { toast.error('Nenhuma comissão válida'); return; }
 
       const dataPagamento = moment().format('YYYY-MM-DD');
