@@ -112,19 +112,18 @@ export default function Layout({ children, currentPageName }) {
 
       if (!colabs || colabs.length === 0) {
         console.warn('Usuário sem Colaborador vinculado:', me.email);
-        // Usuário não configurado - marcar como pendente
-        setUser({
-          ...me,
-          auth_id: me.id,
-          colaborador_id: null,
-          empresa_id: null,
-          perfil: null,
-          nome_perfil: me.full_name || '',
-          foto_perfil: null,
-          email: me.email || '',
-          aguardando_configuracao: true
-        });
-        return;
+        // Usuário sem Colaborador - permitir acesso como vendedor padrão
+          setUser({
+            ...me,
+            auth_id: me.id,
+            colaborador_id: null,
+            empresa_id: null,
+            perfil: 'vendedor',
+            nome_perfil: me.full_name || '',
+            foto_perfil: null,
+            email: me.email || '',
+          });
+          return;
       }
 
       const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
