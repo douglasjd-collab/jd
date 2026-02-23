@@ -105,25 +105,25 @@ export default function Layout({ children, currentPageName }) {
       }
 
       // Para outros roles, buscar Colaborador
-      const colabs = await base44.entities.Colaborador.filter(
+      let colabs = await base44.entities.Colaborador.filter(
         { user_id: me.id, status: 'ativo' },
         '-created_date'
       );
 
       if (!colabs || colabs.length === 0) {
-        console.warn('Usuário sem Colaborador vinculado:', me.email);
-        // Usuário sem Colaborador - permitir acesso como vendedor padrão
-          setUser({
-            ...me,
-            auth_id: me.id,
-            colaborador_id: null,
-            empresa_id: null,
-            perfil: 'vendedor',
-            nome_perfil: me.full_name || '',
-            foto_perfil: null,
-            email: me.email || '',
-          });
+        // Tentar criar Colaborador automaticamente
+        try {
+          const respCriar = await base44.functions.invoke('criarColaboradorPrimeiroLogin');
+          if (respCriar.data.success) {
+            colabs = [respCriar.data.colaborador];
+          } else {
+            throw new Error('Falha ao criar colaborador');
+          }
+        } catch (err) {
+          console.error('Erro ao criar colaborador:', err);
+          setUser(null);
           return;
+        }
       }
 
       const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id);
