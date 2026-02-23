@@ -199,8 +199,9 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Pagar Comissão', page: 'ComissoesPagar' },
         { name: 'Receber Comissão', page: 'ComissoesRecebidas' },
         { name: 'Comissões a Pagar', page: 'ComissoesPagar' },
-      ]
-    },
+        { name: 'Comissões Pagas', page: 'ComissoesPagas' },
+        ]
+        },
     { 
       name: 'Cadastros', 
       icon: Building2, 
