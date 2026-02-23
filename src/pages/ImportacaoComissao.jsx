@@ -396,7 +396,7 @@ export default function ImportacaoComissao() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Importação de Comissões"
+        title="IMPC Consórcio"
         subtitle="Importe arquivos CSV de comissões recebidas das administradoras"
         backTo="Importacao"
       />
