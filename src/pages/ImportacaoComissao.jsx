@@ -113,7 +113,7 @@ export default function ImportacaoComissao() {
     return d.length ? d : null;
   };
 
-  // Busca venda de consórcio por grupo/cota, com vários fallbacks (string, só dígitos e número)
+  // Busca venda de consórcio por grupo/cota com vários fallbacks
   const encontrarVendaConsorcioPorGrupoCota = async ({ grupoRaw, cotaRaw, administradora_id, empresa_id }) => {
     const grupoStr = String(grupoRaw ?? '').trim();
     const cotaStr  = String(cotaRaw  ?? '').trim();
@@ -135,16 +135,23 @@ export default function ImportacaoComissao() {
 
     const filtrosComEmpresa  = combinacoesValores.map(f => ({ ...f, administradora_id, ...(empresa_id ? { empresa_id } : {}) }));
     const filtrosSemEmpresa  = combinacoesValores.map(f => ({ ...f, administradora_id }));
-    const tentativas = [...filtrosComEmpresa, ...filtrosSemEmpresa];
+    const filtrosSemAdmin    = combinacoesValores.map(f => ({ ...f }));
+    const tentativas = [...filtrosComEmpresa, ...filtrosSemEmpresa, ...filtrosSemAdmin];
 
     for (const filtro of tentativas) {
-      console.log('🔍 Tentando VendaConsorcio:', filtro);
+      console.log('🔍 Tentando encontrar VendaConsorcio com filtro:', filtro);
       const lista = await base44.entities.VendaConsorcio.filter(filtro);
-      if (lista.length === 1) { console.log('✅ Encontrada:', lista[0]); return { venda: lista[0], motivo: null }; }
-      if (lista.length > 1)  { console.log('⚠️ Múltiplas:', filtro); return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' }; }
+      if (lista.length === 1) {
+        console.log('✅ Venda encontrada por grupo/cota:', { id: lista[0].id, venda_base_id: lista[0].venda_base_id, grupo: lista[0].grupo, cota: lista[0].cota, administradora_id: lista[0].administradora_id, empresa_id: lista[0].empresa_id });
+        return { venda: lista[0], motivo: null };
+      }
+      if (lista.length > 1) {
+        console.log('⚠️ Múltiplas vendas encontradas:', filtro, lista.map(v => v.id));
+        return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
+      }
     }
 
-    console.log('❌ Não encontrada:', { grupoRaw, cotaRaw, administradora_id, empresa_id });
+    console.log('❌ Nenhuma venda encontrada após todas tentativas:', { grupoRaw, cotaRaw, administradora_id, empresa_id });
     return { venda: null, motivo: 'Venda não encontrada por grupo/cota' };
   };
 
