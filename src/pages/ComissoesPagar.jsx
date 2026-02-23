@@ -145,7 +145,7 @@ export default function ComissoesPagar() {
   const totalComissoes = comissoes.reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
   const pagasEsseMes = comissoes.filter(c => c.status_pagamento === 'paga' && c.data_pagamento?.startsWith(mesAtual))
     .reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
-  const pendentes = comissoes.filter(c => c.status_pagamento === 'a_pagar')
+  const pendentes = comissoes.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento))
     .reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
 
   const startEditing = (comissao) => { setEditingId(comissao.id); setEditingValue(String(comissao.percentual_comissao || 0)); setEditingError(''); };
