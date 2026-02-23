@@ -428,7 +428,7 @@ export default function ComissoesPagar() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    {qtdAPagar > 0 && isAdmin && (
+                    {qtdAPagar > 0 && (
                      <Button size="sm" className="bg-[#23BE84] hover:bg-[#1da872] text-white border-0"
                        onClick={(e) => { e.stopPropagation(); abrirModalPagamento(vendedor, e); }}>
                        <CheckCircle2 className="w-4 h-4 mr-1" />Pagar Comissão
