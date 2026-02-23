@@ -382,6 +382,24 @@ export default function ImportacaoComissao() {
 
       <Card className="border-0 shadow-sm">
         <CardContent className="p-6 space-y-6">
+          {isSuperAdmin && (
+            <div>
+              <Label>Empresa / Subconta *</Label>
+              <Select value={empresaSelecionada} onValueChange={setEmpresaSelecionada}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {empresas.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <Label>Administradora *</Label>
             <Select value={selectedAdmin} onValueChange={setSelectedAdmin}>
