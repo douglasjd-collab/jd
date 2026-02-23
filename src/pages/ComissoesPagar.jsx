@@ -411,7 +411,7 @@ export default function ComissoesPagar() {
       ) : (
         <div className="space-y-4">
           {vendedoresComComissoes.map((vendedor) => {
-            const qtdAPagar = vendedor.comissoes.filter(c => c.status_pagamento === 'a_pagar').length;
+            const qtdAPagar = vendedor.comissoes.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento)).length;
             const ultimoRec = vendedor.comissoes.map(c => c.data_recebimento).filter(Boolean).sort().reverse()[0];
             const isExpanded = expandedVendedores[vendedor.vendedor_id];
 
