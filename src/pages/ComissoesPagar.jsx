@@ -194,8 +194,12 @@ export default function ComissoesPagar() {
     doc.text(moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY'), 90, 39);
     doc.text(formaPagto || '-', 160, 39);
     doc.text(String(comissoesLista.length), 230, 39);
+    if (observacao) {
+      doc.setFont('helvetica', 'bold'); doc.text('Observação:', 14, 46);
+      doc.setFont('helvetica', 'normal'); doc.text(observacao, 45, 46);
+    }
     doc.setFont('helvetica', 'bold');
-    doc.text('Total Recebido (Adm):', 14, 48); doc.text('Total Pago ao Vendedor:', 120, 48);
+    doc.text('Total Recebido (Adm):', 14, 54); doc.text('Total Pago ao Vendedor:', 120, 48);
     doc.setTextColor(0, 120, 80); doc.text(fmt(totalRecebido), 70, 48);
     doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 200, 48);
     doc.setTextColor(0, 0, 0);
