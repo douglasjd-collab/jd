@@ -483,16 +483,7 @@ export default function ComissoesPagar() {
     }
   };
 
-  const handlePagarLote = () => {
-    if (itensSelecionados.size === 0 || !vendedorPagamento) return;
-    
-    pagarLoteMutation.mutate({
-      comissoesIds: Array.from(itensSelecionados),
-      data_pagamento: moment().format('YYYY-MM-DD'),
-      forma_pagamento: formaPagamento,
-      observacao,
-    });
-  };
+
 
   const toggleVendedor = (vendedorId) => {
     setExpandedVendedores(prev => ({ ...prev, [vendedorId]: !prev[vendedorId] }));
