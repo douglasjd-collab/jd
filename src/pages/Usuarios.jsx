@@ -786,6 +786,17 @@ export default function Usuarios() {
                                     <Pencil className="w-4 h-4 mr-2" />
                                     Editar
                                   </DropdownMenuItem>
+                                  {isAdmin && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setUsuarioPermissoes(usuario);
+                                        setPermissoesOpen(true);
+                                      }}
+                                    >
+                                      <ShieldCheck className="w-4 h-4 mr-2 text-[#23BE84]" />
+                                      Gerenciar Permissões
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem
                                     onClick={() => {
                                       setUsuarioBanco(usuario);
