@@ -267,8 +267,8 @@ export default function Layout({ children, currentPageName }) {
   const filteredMenuItems = menuItems.filter(item => {
     // Filtrar por role primeiro
     if (!item.roles.includes(user?.perfil || 'vendedor')) return false;
-    // Admin/master/super_admin nunca são bloqueados por permissões customizadas
-    if (['master', 'super_admin', 'admin'].includes(user?.perfil)) return true;
+    // Admin/master/super_admin/gerente nunca são bloqueados por permissões customizadas
+    if (['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil)) return true;
     // Se não há permissões customizadas, libera tudo
     if (!temPermissoesCustomizadas) return true;
     // Menus sem chave de permissão (ex: Gestão de Subcontas, Meus Dados) sempre aparecem
