@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2, Landmark, Smartphone } from 'lucide-react';
 import UsuariosBancoModal from '@/components/forms/UsuariosBancoModal';
+import GerenciarPermissoesModal from '@/components/forms/GerenciarPermissoesModal';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -62,6 +63,8 @@ export default function Usuarios() {
   const [usuarioToExcluir, setUsuarioToExcluir] = useState(null);
   const [bancoModalOpen, setBancoModalOpen] = useState(false);
   const [usuarioBanco, setUsuarioBanco] = useState(null);
+  const [permissoesOpen, setPermissoesOpen] = useState(false);
+  const [usuarioPermissoes, setUsuarioPermissoes] = useState(null);
   const [empresasExpandidas, setEmpresasExpandidas] = useState(new Set());
   const queryClient = useQueryClient();
 
