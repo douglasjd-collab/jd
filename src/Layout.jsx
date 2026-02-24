@@ -168,7 +168,7 @@ export default function Layout({ children, currentPageName }) {
   const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
   const isGerente = user?.perfil === 'gerente';
 
-  const ALL_ROLES = ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'funcionario'];
+  const ALL_ROLES = ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'];
 
   const menuItems = [
     { name: 'Gestão de Subcontas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
@@ -234,9 +234,9 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Histórico Geral', page: 'Importacao' },
       ]
     },
-    { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'funcionario'] },
+    { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario'] },
     { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'super_admin', 'admin', 'gerente'] },
-    { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'funcionario'] },
+    { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ['master', 'super_admin', 'admin'] },
   ];
@@ -268,7 +268,7 @@ export default function Layout({ children, currentPageName }) {
     // Filtrar por role primeiro
     if (!item.roles.includes(user?.perfil || 'vendedor')) return false;
     // Admin/master/super_admin/gerente nunca são bloqueados por permissões customizadas
-    if (['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil)) return true;
+    if (['master', 'super_admin', 'admin', 'gerente', 'vendedor'].includes(user?.perfil)) return true;
     // Se não há permissões customizadas, libera tudo
     if (!temPermissoesCustomizadas) return true;
     // Menus sem chave de permissão (ex: Gestão de Subcontas, Meus Dados) sempre aparecem
