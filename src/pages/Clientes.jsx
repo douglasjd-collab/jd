@@ -109,14 +109,15 @@ export default function Clientes() {
     queryFn: async () => {
       // Super admin e master veem todos os clientes
       if (['super_admin', 'master'].includes(currentUser?.perfil)) {
-        return base44.entities.Cliente.list('-created_date');
+        return base44.entities.Cliente.list('-created_date', 5000);
       }
       
       // Outros usuários veem apenas clientes da sua empresa
       if (currentUser?.empresa_id) {
         return base44.entities.Cliente.filter(
           { empresa_id: currentUser.empresa_id },
-          '-created_date'
+          '-created_date',
+          5000
         );
       }
       
