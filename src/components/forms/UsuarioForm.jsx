@@ -271,6 +271,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="funcionario">Colaborador</SelectItem>
                   <SelectItem value="vendedor">Vendedor</SelectItem>
                   <SelectItem value="gerente">Gerente</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
