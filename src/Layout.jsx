@@ -240,9 +240,41 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ['master', 'super_admin', 'admin'] },
   ];
 
-  const filteredMenuItems = menuItems.filter(item => 
-    item.roles.includes(user?.perfil || 'vendedor')
-  );
+  // Mapa de chave de permissão por nome do menu
+  const menuPermissaoKey = {
+    'Dashboard': 'dashboard',
+    'Nova Venda': 'nova_venda',
+    'Empréstimos': 'emprestimos',
+    'Consórcio': 'consorcio',
+    'Funil de Vendas': 'funil_vendas',
+    'Clientes': 'clientes',
+    'Cartas Contempladas': 'cartas_contempladas',
+    'Agenda': 'agenda',
+    'Bate-papo': 'bate_papo',
+    'Financeiro': 'financeiro',
+    'Cadastros': 'cadastros',
+    'Importação': 'importacao',
+    'Saques': 'saques',
+    'Relatórios': 'relatorios',
+    'Configurações': 'configuracoes',
+    'Configuração WhatsApp': 'configuracao_whatsapp',
+  };
+
+  const menus_permitidos = user?.menus_permitidos || [];
+  const temPermissoesCustomizadas = menus_permitidos.length > 0;
+
+  const filteredMenuItems = menuItems.filter(item => {
+    // Filtrar por role primeiro
+    if (!item.roles.includes(user?.perfil || 'vendedor')) return false;
+    // Admin/master/super_admin nunca são bloqueados por permissões customizadas
+    if (['master', 'super_admin', 'admin'].includes(user?.perfil)) return true;
+    // Se não há permissões customizadas, libera tudo
+    if (!temPermissoesCustomizadas) return true;
+    // Menus sem chave de permissão (ex: Gestão de Subcontas, Meus Dados) sempre aparecem
+    const key = menuPermissaoKey[item.name];
+    if (!key) return true;
+    return menus_permitidos.includes(key);
+  });
 
   const toggleSubmenu = (name) => {
     setExpandedMenus(prev => ({ ...prev, [name]: !prev[name] }));
