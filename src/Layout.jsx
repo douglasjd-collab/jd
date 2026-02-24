@@ -168,15 +168,17 @@ export default function Layout({ children, currentPageName }) {
   const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
   const isGerente = user?.perfil === 'gerente';
 
+  const ALL_ROLES = ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'funcionario'];
+
   const menuItems = [
     { name: 'Gestão de Subcontas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
-    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Empréstimos', icon: FileText, page: 'VendasEmprestimos', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
+    { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ALL_ROLES },
+    { name: 'Empréstimos', icon: FileText, page: 'VendasEmprestimos', roles: ALL_ROLES },
     { 
       name: 'Consórcio', 
       icon: ShoppingCart, 
-      roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'],
+      roles: ALL_ROLES,
       submenu: [
         { name: '+ Nova Venda', page: 'NovaVenda?tipo=consorcio' },
         { name: 'Propostas', page: 'Vendas' },
@@ -186,12 +188,11 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Oferta de Lance', page: 'OfertaLance' },
       ]
     },
-
-    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Clientes', icon: Users, page: 'Clientes', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
-    { name: 'Bate-papo', icon: MessageSquare, page: 'BatePapo', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor'] },
+    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ALL_ROLES },
+    { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
+    { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
+    { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
+    { name: 'Bate-papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { 
       name: 'Financeiro', 
       icon: Wallet, 
@@ -233,9 +234,9 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Histórico Geral', page: 'Importacao' },
       ]
     },
-    { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor'] },
+    { name: 'Saques', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'funcionario'] },
     { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'super_admin', 'admin', 'gerente'] },
-    { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente'] },
+    { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'funcionario'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ['master', 'super_admin', 'admin'] },
   ];
