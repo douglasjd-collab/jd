@@ -132,15 +132,16 @@ export default function Layout({ children, currentPageName }) {
       const colab = byEmpresa || colabs.find(c => c.status === 'ativo') || colabs[0];
 
       setUser({
-        ...me,
-        auth_id: me.id,
-        colaborador_id: colab.id,
-        empresa_id: colab.empresa_id || null,
-        perfil: colab.perfil || 'vendedor',
-        nome_perfil: colab.nome || me.full_name || '',
-        foto_perfil: colab.foto_perfil || null,
-        email: colab.email || me.email || '',
-      });
+          ...me,
+          auth_id: me.id,
+          colaborador_id: colab.id,
+          empresa_id: colab.empresa_id || null,
+          perfil: colab.perfil || 'vendedor',
+          nome_perfil: colab.nome || me.full_name || '',
+          foto_perfil: colab.foto_perfil || null,
+          email: colab.email || me.email || '',
+          menus_permitidos: colab.menus_permitidos || [],
+        });
     } catch (e) {
       console.error('Erro ao carregar usuário:', e);
       setUser(null);
