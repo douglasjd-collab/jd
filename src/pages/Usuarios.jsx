@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2, Landmark, Smartphone } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2, Landmark, Smartphone, ShieldCheck } from 'lucide-react';
 import UsuariosBancoModal from '@/components/forms/UsuariosBancoModal';
 import GerenciarPermissoesModal from '@/components/forms/GerenciarPermissoesModal';
 import { toast } from 'sonner';
