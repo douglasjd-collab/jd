@@ -888,6 +888,17 @@ export default function Usuarios() {
         }}
       />
 
+      {/* Gerenciar Permissões Modal */}
+      <GerenciarPermissoesModal
+        open={permissoesOpen}
+        onOpenChange={setPermissoesOpen}
+        usuario={usuarioPermissoes}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+          setUsuarioPermissoes(null);
+        }}
+      />
+
       {/* Confirmar Exclusão Modal */}
       <ConfirmarExclusaoUsuarioModal
         open={excluirOpen}
