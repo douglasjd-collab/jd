@@ -116,9 +116,19 @@ export default function ComissoesPagar() {
   }, {});
   const vendedoresComComissoes = Object.values(groupedByVendedor);
 
-  const mesesDisponiveis = [...new Set(comissoes.map(c =>
-    c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM') : null
-  ).filter(Boolean))].sort().reverse();
+  // Função auxiliar para parsear data em ambos os formatos
+  const parseMes = (d) => {
+    if (!d) return null;
+    // Formato ISO: 2026-02-24
+    let m = moment(d, 'YYYY-MM-DD', true);
+    if (m.isValid()) return m.format('YYYY-MM');
+    // Formato BR: 24/02/2026
+    m = moment(d, 'DD/MM/YYYY', true);
+    if (m.isValid()) return m.format('YYYY-MM');
+    return null;
+  };
+
+  const mesesDisponiveis = [...new Set(comissoes.map(c => parseMes(c.data_recebimento)).filter(Boolean))].sort().reverse();
 
   const mesAtual = moment().format('YYYY-MM');
   const totalComissoes = comissoes.reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
