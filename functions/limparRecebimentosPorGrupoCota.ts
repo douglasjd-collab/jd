@@ -9,66 +9,89 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const { registros } = await req.json();
-    // registros: [{ grupo, cota, valor, parcela }]
-
-    if (!registros || !Array.isArray(registros)) {
-      return Response.json({ error: 'Parâmetro "registros" obrigatório (array)' }, { status: 400 });
-    }
+    const body = await req.json();
+    // Suporte a: { registros: [{grupo, cota}] } OU { importacao_id: "..." }
+    const { registros, importacao_id } = body;
 
     const log = [];
     let totalRecebimentos = 0;
     let totalComissoes = 0;
     let totalItens = 0;
 
-    // Busca todos de uma vez para não fazer mil requests
-    const todosRecebimentos = await base44.asServiceRole.entities.RecebimentoComissao.list();
-    const todasComissoes = await base44.asServiceRole.entities.ComissaoAPagar.list();
-    const todosItens = await base44.asServiceRole.entities.ImportacaoItem.list();
+    const normGrupoCota = (v) => {
+      const s = String(v ?? '').trim();
+      const d = s.replace(/\D/g, '').replace(/^0+/, '');
+      return d || s;
+    };
 
-    const normGrupoCota = (v) => String(v ?? '').trim().replace(/\D/g, '').replace(/^0+/, '') || String(v ?? '').trim();
+    // ---- Modo 1: por importacao_id ----
+    if (importacao_id) {
+      const recebimentos = await base44.asServiceRole.entities.RecebimentoComissao.filter({ origem_importacao_id: importacao_id });
+      for (const rec of recebimentos) {
+        const comissoes = await base44.asServiceRole.entities.ComissaoAPagar.filter({ recebimento_id: rec.id });
+        for (const com of comissoes) {
+          await base44.asServiceRole.entities.ComissaoAPagar.delete(com.id);
+          totalComissoes++;
+        }
+        await base44.asServiceRole.entities.RecebimentoComissao.delete(rec.id);
+        totalRecebimentos++;
+        log.push(`Removido recebimento id=${rec.id} grupo=${rec.grupo} cota=${rec.cota}`);
+      }
+      const itens = await base44.asServiceRole.entities.ImportacaoItem.filter({ importacao_id });
+      for (const item of itens) {
+        await base44.asServiceRole.entities.ImportacaoItem.delete(item.id);
+        totalItens++;
+      }
+      // Remove a importação também
+      await base44.asServiceRole.entities.Importacao.delete(importacao_id);
+      log.push(`Importação ${importacao_id}: ${totalRecebimentos} recebimentos, ${totalItens} itens removidos`);
+
+      return Response.json({ success: true, totalRecebimentos, totalComissoes, totalItens, log });
+    }
+
+    // ---- Modo 2: por lista de grupo/cota ----
+    if (!registros || !Array.isArray(registros)) {
+      return Response.json({ error: 'Parâmetro "registros" ou "importacao_id" obrigatório' }, { status: 400 });
+    }
 
     for (const reg of registros) {
       const grupoNorm = normGrupoCota(reg.grupo);
       const cotaNorm = normGrupoCota(reg.cota);
 
-      // Filtra recebimentos que batem com grupo/cota
-      const recsFiltrados = todosRecebimentos.filter(r => {
-        return normGrupoCota(r.grupo) === grupoNorm && normGrupoCota(r.cota) === cotaNorm;
-      });
+      // Busca filtrada por grupo e cota (evita listar tudo)
+      const recsFiltrados = await base44.asServiceRole.entities.RecebimentoComissao.filter({ grupo: reg.grupo, cota: reg.cota });
 
-      for (const rec of recsFiltrados) {
-        // Remove comissões vinculadas
-        const comissoesDesse = todasComissoes.filter(c => c.recebimento_id === rec.id);
-        for (const com of comissoesDesse) {
+      // Também tenta variações de formato
+      const recsGrupoNorm = await base44.asServiceRole.entities.RecebimentoComissao.filter({ grupo: grupoNorm, cota: cotaNorm });
+      
+      // Mescla e deduplica por id
+      const todosRecs = [...recsFiltrados, ...recsGrupoNorm].filter((r, i, arr) => arr.findIndex(x => x.id === r.id) === i);
+
+      for (const rec of todosRecs) {
+        const comissoes = await base44.asServiceRole.entities.ComissaoAPagar.filter({ recebimento_id: rec.id });
+        for (const com of comissoes) {
           await base44.asServiceRole.entities.ComissaoAPagar.delete(com.id);
           totalComissoes++;
         }
-        // Remove recebimento
         await base44.asServiceRole.entities.RecebimentoComissao.delete(rec.id);
         totalRecebimentos++;
         log.push(`Removido recebimento grupo=${rec.grupo} cota=${rec.cota} valor=${rec.valor_recebido} data=${rec.data_recebimento}`);
       }
 
       // Remove itens de importação com grupo/cota correspondentes
-      const itensFiltrados = todosItens.filter(i => {
-        return normGrupoCota(i.grupo) === grupoNorm && normGrupoCota(i.cota) === cotaNorm;
-      });
-      for (const item of itensFiltrados) {
+      const itensFiltrados = await base44.asServiceRole.entities.ImportacaoItem.filter({ grupo: reg.grupo, cota: reg.cota });
+      const itensNorm = await base44.asServiceRole.entities.ImportacaoItem.filter({ grupo: grupoNorm, cota: cotaNorm });
+      const todosItens = [...itensFiltrados, ...itensNorm].filter((r, i, arr) => arr.findIndex(x => x.id === r.id) === i);
+
+      for (const item of todosItens) {
         await base44.asServiceRole.entities.ImportacaoItem.delete(item.id);
         totalItens++;
       }
 
-      log.push(`Grupo ${reg.grupo} Cota ${reg.cota}: ${recsFiltrados.length} recebimentos, ${itensFiltrados.length} itens removidos`);
+      log.push(`Grupo ${reg.grupo} Cota ${reg.cota}: ${todosRecs.length} recebimentos, ${todosItens.length} itens removidos`);
     }
 
-    return Response.json({
-      success: true,
-      totalRecebimentos,
-      totalComissoes,
-      totalItens,
-      log
-    });
+    return Response.json({ success: true, totalRecebimentos, totalComissoes, totalItens, log });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
