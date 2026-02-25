@@ -383,14 +383,20 @@ Deno.serve(async (req) => {
 
     console.log(`✅ Mensagem salva: ${novaMensagem.id} | Empresa: ${empresaId} | Remetente: ${remetente}`);
 
-    await registrarEvento(base44, empresaId, 'mensagem_recebida', {
-      telefone: telefoneLimpo,
-      conteudo: conteudo.substring(0, 100),
-      status: 'sucesso',
-      mensagem_id: novaMensagem.id,
-      conversa_id: conversa.id,
-      instancia: instanceFinal
-    });
+    // Registrar evento com erro handling robusto
+    try {
+      await registrarEvento(base44, empresaId, 'mensagem_recebida', {
+        telefone: telefoneLimpo,
+        conteudo: conteudo.substring(0, 100),
+        status: 'sucesso',
+        mensagem_id: novaMensagem.id,
+        conversa_id: conversa.id,
+        instancia: instanceFinal
+      });
+      console.log('✅ Evento registrado com sucesso');
+    } catch (errReg) {
+      console.error('⚠️ Erro ao registrar evento, mas mensagem foi salva:', errReg.message);
+    }
 
     return Response.json({ success: true, message_id: novaMensagem.id, conversa_id: conversa.id });
 
