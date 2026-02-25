@@ -60,8 +60,14 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const instanceFromQuery = url.searchParams.get('instance') || undefined;
+    
+    console.log('🔍 Query params:', {
+      instance: instanceFromQuery,
+      allParams: Object.fromEntries(url.searchParams)
+    });
 
     const rawBody = await req.text();
+    console.log('📦 RAW BODY tamanho:', rawBody.length, 'bytes');
     console.log('📦 RAW BODY:', rawBody.substring(0, 500));
 
     let payload = {};
