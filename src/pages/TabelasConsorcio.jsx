@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -45,13 +45,40 @@ export default function TabelasConsorcio() {
   const [selectedTabela, setSelectedTabela] = useState(null);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [empresaId, setEmpresaId] = useState(null);
+  const [user, setUser] = useState(null);
   const queryClient = useQueryClient();
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm();
 
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const me = await base44.auth.me();
+      setUser(me);
+      
+      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        const empresas = await base44.entities.Empresa.filter({ status: 'ativa' });
+        if (empresas.length > 0) setEmpresaId(empresas[0].id);
+      } else {
+        const colabs = await base44.entities.Colaborador.filter({ 
+          user_id: me.id, 
+          status: 'ativo' 
+        });
+        if (colabs.length > 0) setEmpresaId(colabs[0].empresa_id);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar usuário:', e);
+    }
+  };
+
   const { data: tabelas = [], isLoading } = useQuery({
-    queryKey: ['tabelas-consorcio'],
-    queryFn: () => base44.entities.TabelaConsorcio.list('-created_date'),
+    queryKey: ['tabelas-consorcio', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.TabelaConsorcio.filter({ empresa_id: empresaId }, '-created_date'),
   });
 
   const { data: administradoras = [] } = useQuery({
