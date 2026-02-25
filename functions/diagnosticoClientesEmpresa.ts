@@ -39,15 +39,28 @@ Deno.serve(async (req) => {
     // Corrigir: atualizar todos os clientes sem empresa_id ou com empresa_id errada
     const clientesPraCorrigir = [...semEmpresa, ...comEmpresaErrada];
     let atualizados = 0;
+    const erros = [];
 
     for (const cliente of clientesPraCorrigir) {
       try {
-        await base44.entities.Cliente.update(cliente.id, {
+        const updateData = {
           empresa_id: jdPromotora.id
-        });
+        };
+        
+        // Se tipo_pessoa está faltando, usar 'Física' como padrão
+        if (!cliente.tipo_pessoa) {
+          updateData.tipo_pessoa = 'Física';
+        }
+        
+        await base44.entities.Cliente.update(cliente.id, updateData);
         atualizados++;
       } catch (err) {
         console.error(`Erro ao atualizar cliente ${cliente.id}:`, err.message);
+        erros.push({
+          cliente_id: cliente.id,
+          nome: cliente.nome || cliente.nome_completo,
+          erro: err.message
+        });
       }
     }
 
