@@ -582,14 +582,13 @@ export default function NovaVendaConsignado() {
         {/* Step 2: Detalhes da Proposta */}
         {currentStep === 2 && (
 
-        {/* Módulo Proposta */}
         <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-white">
           <CardHeader className="bg-blue-50/50 border-b">
             <CardTitle className="flex items-center gap-2 text-blue-900">
               <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
                 <span className="text-white text-sm font-bold">2</span>
               </div>
-              Dados da Proposta
+              Detalhes da Proposta
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
