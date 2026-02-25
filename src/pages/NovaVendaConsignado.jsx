@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, ArrowLeft, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
 import ConvenioFormModal from '@/components/forms/ConvenioFormModal';
@@ -18,6 +18,7 @@ export default function NovaVendaConsignado() {
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1);
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showConvenioModal, setShowConvenioModal] = useState(false);
