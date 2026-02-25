@@ -374,9 +374,12 @@ export default function SimuladorConsorcio() {
         pdf_url: `#simulacao-impressao-${simulacao.id}`
       });
 
-      // 3. Verificar se já existe oportunidade para este cliente
+      // 3. Verificar se já existe oportunidade para este cliente (mesma empresa)
       const telefoneLimpo = telefone.replace(/\D/g, '');
-      const oportunidadesExistentes = await base44.entities.Oportunidade.list();
+      const oportunidadesExistentes = await base44.entities.Oportunidade.filter(
+        { empresa_id: empresaIdFinal },
+        '-created_date'
+      );
       
       const oportunidadeDuplicada = oportunidadesExistentes.find(op => {
         const nomeMatch = op.cliente_nome?.toLowerCase() === clienteNome.toLowerCase();
