@@ -155,9 +155,14 @@ export default function Dashboard() {
   const isGerente = user?.perfil === 'gerente';
 
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
-    queryKey: ['vendas-dashboard'],
+    queryKey: ['vendas-dashboard', user?.empresa_id],
     enabled: !!user,
-    queryFn: () => base44.entities.Venda.list('-created_date', 100),
+    queryFn: async () => {
+      if (user?.empresa_id) {
+        return base44.entities.Venda.filter({ empresa_id: user.empresa_id }, '-created_date', 100);
+      }
+      return base44.entities.Venda.list('-created_date', 100);
+    },
     staleTime: 30000,
   });
 
