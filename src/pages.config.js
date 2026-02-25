@@ -64,6 +64,7 @@ import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
 import Configuracoes from './pages/Configuracoes';
 import Convenios from './pages/Convenios';
 import Dashboard from './pages/Dashboard';
+import DiagnosticoWebhook from './pages/DiagnosticoWebhook';
 import Empresas from './pages/Empresas';
 import EmpresasParceiras from './pages/EmpresasParceiras';
 import FunilVendas from './pages/FunilVendas';
@@ -81,6 +82,7 @@ import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import LancamentoDespesas from './pages/LancamentoDespesas';
 import LancamentoReceitas from './pages/LancamentoReceitas';
 import LogsRecebimento from './pages/LogsRecebimento';
+import MapeamentoWebhookCompleto from './pages/MapeamentoWebhookCompleto';
 import MeusDados from './pages/MeusDados';
 import NovaVenda from './pages/NovaVenda';
 import NovaVendaConsignado from './pages/NovaVendaConsignado';
@@ -112,8 +114,7 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import DiagnosticoWebhook from './pages/DiagnosticoWebhook';
-import MapeamentoWebhookCompleto from './pages/MapeamentoWebhookCompleto';
+import MapeamentoMensagensDebug from './pages/MapeamentoMensagensDebug';
 import __Layout from './Layout.jsx';
 
 
@@ -135,6 +136,7 @@ export const PAGES = {
     "Configuracoes": Configuracoes,
     "Convenios": Convenios,
     "Dashboard": Dashboard,
+    "DiagnosticoWebhook": DiagnosticoWebhook,
     "Empresas": Empresas,
     "EmpresasParceiras": EmpresasParceiras,
     "FunilVendas": FunilVendas,
@@ -152,6 +154,7 @@ export const PAGES = {
     "LancamentoDespesas": LancamentoDespesas,
     "LancamentoReceitas": LancamentoReceitas,
     "LogsRecebimento": LogsRecebimento,
+    "MapeamentoWebhookCompleto": MapeamentoWebhookCompleto,
     "MeusDados": MeusDados,
     "NovaVenda": NovaVenda,
     "NovaVendaConsignado": NovaVendaConsignado,
@@ -183,8 +186,7 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "DiagnosticoWebhook": DiagnosticoWebhook,
-    "MapeamentoWebhookCompleto": MapeamentoWebhookCompleto,
+    "MapeamentoMensagensDebug": MapeamentoMensagensDebug,
 }
 
 export const pagesConfig = {
