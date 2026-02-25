@@ -30,9 +30,10 @@ import { createPageUrl } from '../utils';
 
 export default function ImportacaoComissao() {
   const [selectedAdmin, setSelectedAdmin] = useState('');
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [progressoLote, setProgressoLote] = useState(null); // { atual, total, nomeArquivo }
   const [currentUser, setCurrentUser] = useState(null);
   const [currentEmpresa, setCurrentEmpresa] = useState(null);
   const [empresaSelecionada, setEmpresaSelecionada] = useState('');
