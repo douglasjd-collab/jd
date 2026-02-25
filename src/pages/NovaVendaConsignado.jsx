@@ -862,133 +862,87 @@ export default function NovaVendaConsignado() {
 
         {/* Step 4: Revisão Final */}
         {currentStep === 4 && (
-        <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-white">
-          <CardHeader className="bg-orange-50/50 border-b">
-            <CardTitle className="flex items-center gap-2 text-orange-900">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                <span className="text-white text-sm font-bold">4</span>
-              </div>
-              Revisão Final
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Número ADE</Label>
-                <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
-              </div>
-              <div>
-                <Label>Número do Contrato</Label>
-                <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
-              </div>
-            </div>
-
-            <div>
-              <Label>Status</Label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-              >
-                {statusPropostas.length > 0 ? (
-                  statusPropostas.map(status => (
-                    <option key={status.id} value={status.codigo}>{status.nome}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="em_andamento">Em andamento</option>
-                    <option value="pendente">Pendente</option>
-                    <option value="aguardando_formalizacao">Aguardando formalização</option>
-                    <option value="aguardando_cip">Aguardando CIP</option>
-                    <option value="saldo_retornado">Saldo retornado</option>
-                    <option value="aguardando_pagamento">Aguardando pagamento</option>
-                    <option value="pago">Pago</option>
-                    <option value="cancelado">Cancelado</option>
-                  </>
-                )}
-              </select>
-            </div>
-
-            <div>
-              <Label>Observações</Label>
-              <textarea
-                value={formData.observacoes}
-                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-3">Resumo da Proposta</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-slate-600">Cliente</p>
-                    <p className="font-semibold text-slate-900">{clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600">Banco</p>
-                    <p className="font-semibold text-slate-900">{formData.banco}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600">Valor Liberado</p>
-                    <p className="font-semibold text-slate-900">R$ {formatarMoeda(formData.valor_liberado)}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600">Prazo</p>
-                    <p className="font-semibold text-slate-900">{formData.prazo} meses</p>
+          <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-white">
+            <CardHeader className="bg-orange-50/50 border-b">
+              <CardTitle className="flex items-center gap-2 text-orange-900">
+                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">4</span>
+                </div>
+                Revisão Final
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-3">Resumo da Proposta</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-slate-600">Cliente</p>
+                      <p className="font-semibold text-slate-900">{clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-600">Banco</p>
+                      <p className="font-semibold text-slate-900">{formData.banco}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-600">Valor Liberado</p>
+                      <p className="font-semibold text-slate-900">R$ {formatarMoeda(formData.valor_liberado)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-600">Prazo</p>
+                      <p className="font-semibold text-slate-900">{formData.prazo} meses</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Número ADE</Label>
-                <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Número ADE</Label>
+                  <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Número do Contrato</Label>
+                  <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
+                </div>
               </div>
+
               <div>
-                <Label>Número do Contrato</Label>
-                <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
+                <Label>Status</Label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  {statusPropostas.length > 0 ? (
+                    statusPropostas.map(status => (
+                      <option key={status.id} value={status.codigo}>{status.nome}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="em_andamento">Em andamento</option>
+                      <option value="pendente">Pendente</option>
+                      <option value="aguardando_formalizacao">Aguardando formalização</option>
+                      <option value="aguardando_cip">Aguardando CIP</option>
+                      <option value="saldo_retornado">Saldo retornado</option>
+                      <option value="aguardando_pagamento">Aguardando pagamento</option>
+                      <option value="pago">Pago</option>
+                      <option value="cancelado">Cancelado</option>
+                    </>
+                  )}
+                </select>
               </div>
-            </div>
 
-            <div>
-              <Label>Status</Label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-              >
-                {statusPropostas.length > 0 ? (
-                  statusPropostas.map(status => (
-                    <option key={status.id} value={status.codigo}>{status.nome}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="em_andamento">Em andamento</option>
-                    <option value="pendente">Pendente</option>
-                    <option value="aguardando_formalizacao">Aguardando formalização</option>
-                    <option value="aguardando_cip">Aguardando CIP</option>
-                    <option value="saldo_retornado">Saldo retornado</option>
-                    <option value="aguardando_pagamento">Aguardando pagamento</option>
-                    <option value="pago">Pago</option>
-                    <option value="cancelado">Cancelado</option>
-                  </>
-                )}
-              </select>
-            </div>
-
-            <div>
-              <Label>Observações</Label>
-              <textarea
-                value={formData.observacoes}
-                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-              />
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <Label>Observações</Label>
+                <textarea
+                  value={formData.observacoes}
+                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                />
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Botões de Navegação */}
