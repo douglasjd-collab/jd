@@ -121,161 +121,107 @@ Deno.serve(async (req) => {
     }
 
     const arrayBuffer = await fileResponse.arrayBuffer();
-    
-    // Decodificar como ISO-8859-1 (Latin-1)
-    const decoder = new TextDecoder('ISO-8859-1');
-    const csvContent = decoder.decode(arrayBuffer);
+    const uint8 = new Uint8Array(arrayBuffer);
 
-    // Processar CSV linha por linha com encoding ISO-8859-1, delimiter ";"
-    const lines = csvContent.split(/\r?\n/);
-    
+    // Detecta se é Excel (.xlsx/.xls) ou CSV pelo magic bytes
+    const isXlsx = uint8[0] === 0x50 && uint8[1] === 0x4B; // PK = ZIP (xlsx)
+    const isXls  = uint8[0] === 0xD0 && uint8[1] === 0xCF; // OLE2 (xls)
+    const isExcel = isXlsx || isXls;
+
     const items = [];
     const errors = [];
-    let headers = [];
-    let startIndex = 0;
-    
-    // HEADER = TRUE: Primeira linha sempre é cabeçalho
-    if (lines.length > 0) {
-      const firstLine = lines[0];
-      // Parse header
-      const headerValues = [];
-      let currentValue = '';
-      let insideQuotes = false;
-      
-      for (let j = 0; j < firstLine.length; j++) {
-        const char = firstLine[j];
-        if (char === '"') {
-          insideQuotes = !insideQuotes;
-        } else if (char === ';' && !insideQuotes) {
-          headerValues.push(currentValue.trim());
-          currentValue = '';
-        } else {
-          currentValue += char;
-        }
-      }
-      headerValues.push(currentValue.trim());
-      
-      headers = headerValues;
-      startIndex = 1; // Pular cabeçalho
-    }
-    
-    // Processar linhas de dados (ignore_errors: true, allow_multiline: true)
-    for (let i = startIndex; i < lines.length; i++) {
-      const line = lines[i];
-      
-      // Pular linhas vazias
-      if (!line.trim()) continue;
-      
-      // Parse CSV com delimiter ";" e quote "\"" - permite multiline
-      const values = [];
-      let currentValue = '';
-      let insideQuotes = false;
-      
-      for (let j = 0; j < line.length; j++) {
-        const char = line[j];
-        
-        if (char === '"') {
-          insideQuotes = !insideQuotes;
-        } else if (char === ';' && !insideQuotes) {
-          values.push(currentValue);
-          currentValue = '';
-        } else {
-          currentValue += char;
-        }
-      }
-      values.push(currentValue);
-      
-      // Remover aspas e trim
-      const cleanedValues = values.map(v => v.replace(/^"|"$/g, '').trim());
-      
-      console.log(`Linha ${i + 1}: ${cleanedValues.length} colunas - [${cleanedValues.slice(0, 6).join(' | ')}]`);
-      
-      // Validar se não é linha completamente vazia
-      if (cleanedValues.every(v => !v)) {
-        continue;
-      }
-      
-      // strict_mode: false - aceitar qualquer quantidade de colunas
-      // Mapeamento: Data, Contrato, Grupo, Cota, Valor, Nº Parcela
-       const data_recebimento = cleanedValues[0] || '';
-       const contratoRaw = cleanedValues[1] || '';
-       const grupoRaw = cleanedValues[2] || '';
-       const cotaRaw = cleanedValues[3] || '';
-       const valorStr = cleanedValues[4] || '';
-       const parcelaStr = cleanedValues[5] || '';
 
-       // Normaliza contrato (remover espaços)
-       const contrato = String(contratoRaw).trim();
-      
-      // Validar dados mínimos (ignore_errors: true - não bloqueia processamento)
-       if (!contrato && !grupoRaw) {
-         errors.push(`Linha ${i + 1}: Sem contrato nem grupo - dados: ${cleanedValues.slice(0, 6).join(', ')}`);
-         // Adicionar mesmo assim para mostrar na pré-visualização
-         items.push({
-           data_recebimento,
-           contrato,
-           grupo: grupoRaw,
-           cota: cotaRaw,
-           valor: 0,
-           parcela: 1,
-           _error: 'Sem contrato nem grupo'
-         });
-         continue;
-       }
-      
-      // NORMALIZAÇÃO DE VALOR (formato brasileiro: R$ 1.000,00)
-      let valor = 0;
-      let valorError = null;
-      try {
-        let valorLimpo = String(valorStr).trim();
-        // 1. Remover "R$"
-        valorLimpo = valorLimpo.replace(/R\$/g, '');
-        // 2. Remover espaços
-        valorLimpo = valorLimpo.replace(/\s/g, '');
-        // 3. Remover pontos de milhar "."
-        valorLimpo = valorLimpo.replace(/\./g, '');
-        // 4. Substituir vírgula "," por ponto "."
-        valorLimpo = valorLimpo.replace(',', '.');
-        // 5. Converter para número (float)
-        valor = parseFloat(valorLimpo);
+    // ── Função auxiliar: normalizar valor monetário ──────────────────────────
+    const parseValor = (raw) => {
+      let s = String(raw ?? '').trim().replace(/R\$/g, '').replace(/\s/g, '');
+      // Se já é número (Excel numérico)
+      if (typeof raw === 'number') return raw > 0 ? raw : 0;
+      s = s.replace(/\./g, '').replace(',', '.');
+      const n = parseFloat(s);
+      return isNaN(n) || n <= 0 ? 0 : n;
+    };
 
-        if (isNaN(valor) || valor <= 0) {
-          valorError = `Valor inválido: "${valorStr}"`;
-          valor = 0;
+    // ── Função auxiliar: normalizar data ─────────────────────────────────────
+    const parseData = (raw) => {
+      if (!raw) return '';
+      // Excel date serial
+      if (typeof raw === 'number') {
+        const date = XLSX.SSF.parse_date_code(raw);
+        if (date) {
+          const mm = String(date.m).padStart(2, '0');
+          const dd = String(date.d).padStart(2, '0');
+          return `${date.y}-${mm}-${dd}`;
         }
-      } catch (e) {
-        valorError = `Erro ao processar valor: ${e.message}`;
-        valor = 0;
       }
-      
-      // NORMALIZAÇÃO DE PARCELA (tolerar erros)
-      let parcela = 1;
-      try {
-        const parcelaLimpa = String(parcelaStr).trim().replace(/[^\d]/g, '');
-        const parcelaNum = parseInt(parcelaLimpa, 10);
-        if (parcelaNum && !isNaN(parcelaNum) && parcelaNum > 0) {
-          parcela = parcelaNum;
+      const s = String(raw).trim();
+      // dd/mm/yyyy
+      const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+      // yyyy-mm-dd
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      return s;
+    };
+
+    // ── Função auxiliar: processar array de linhas [col0..col5] ──────────────
+    const processarLinhas = (rows, startRow = 1) => {
+      for (let i = startRow; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+
+        const data_recebimento = parseData(row[0]);
+        const contratoRaw      = String(row[1] ?? '').trim();
+        const grupoRaw         = String(row[2] ?? '').trim();
+        const cotaRaw          = String(row[3] ?? '').trim();
+        const valorRaw         = row[4];
+        const parcelaRaw       = row[5];
+
+        const contrato = contratoRaw === '-' ? '' : contratoRaw;
+
+        // Linha completamente vazia?
+        if (!data_recebimento && !contrato && !grupoRaw && !cotaRaw) continue;
+
+        const valor   = parseValor(valorRaw);
+        const parcela = parseInt(String(parcelaRaw ?? '').replace(/\D/g, ''), 10) || 1;
+
+        items.push({ data_recebimento, contrato, grupo: grupoRaw, cota: cotaRaw, valor, parcela });
+      }
+    };
+
+    if (isExcel) {
+      // ── Ler Excel com XLSX (lê TODAS as linhas) ───────────────────────────
+      const workbook = XLSX.read(uint8, { type: 'array', cellDates: false, raw: true });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      // sheet_to_json com header: 1 retorna array de arrays — nunca perde linhas
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
+      console.log(`Excel: ${rows.length} linhas brutas na aba "${sheetName}"`);
+      processarLinhas(rows, 1); // linha 0 = cabeçalho
+
+    } else {
+      // ── Ler CSV ───────────────────────────────────────────────────────────
+      const decoder = new TextDecoder('ISO-8859-1');
+      const csvContent = decoder.decode(uint8);
+      const lines = csvContent.split(/\r?\n/);
+      console.log(`CSV: ${lines.length} linhas brutas`);
+
+      // Detectar delimitador (primeiro que aparecer na 1ª linha)
+      const firstLine = lines[0] || '';
+      const delimiter = firstLine.includes(';') ? ';' : ',';
+
+      const parseLine = (line) => {
+        const values = [];
+        let cur = '', inQ = false;
+        for (const ch of line) {
+          if (ch === '"') { inQ = !inQ; }
+          else if (ch === delimiter && !inQ) { values.push(cur.replace(/^"|"$/g, '').trim()); cur = ''; }
+          else { cur += ch; }
         }
-      } catch (e) {
-        // Usar padrão 1
-      }
-      
-      const item = {
-         data_recebimento,
-         contrato,
-         grupo: grupoRaw,
-         cota: cotaRaw,
-         valor,
-         parcela
-       };
-      
-      // Marcar erro se houver
-      if (valorError) {
-        item._error = valorError;
-        errors.push(`Linha ${i + 1}: ${valorError}`);
-      }
-      
-      items.push(item);
+        values.push(cur.replace(/^"|"$/g, '').trim());
+        return values;
+      };
+
+      const rows = lines.map(l => parseLine(l));
+      processarLinhas(rows, 1); // linha 0 = cabeçalho
     }
 
     return Response.json({
