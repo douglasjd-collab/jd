@@ -43,6 +43,7 @@ export default function FunilVendas() {
   const [selectedOportunidade, setSelectedOportunidade] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('todos');
+  const [filterProduto, setFilterProduto] = useState('consorcio');
   const [alterarResponsavelOpen, setAlterarResponsavelOpen] = useState(false);
   const [comentariosOpen, setComentariosOpen] = useState(false);
   const [oportunidadeComentarios, setOportunidadeComentarios] = useState(null);
