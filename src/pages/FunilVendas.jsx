@@ -151,8 +151,13 @@ export default function FunilVendas() {
   });
 
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
-    queryKey: ['oportunidades'],
-    queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao'),
+    queryKey: ['oportunidades', filterProduto],
+    queryFn: () => {
+      if (filterProduto === 'emprestimo') {
+        return base44.entities.Oportunidade.filter({ produto: 'emprestimo' }, '-data_ultima_movimentacao');
+      }
+      return base44.entities.Oportunidade.filter({ produto: 'consorcio' }, '-data_ultima_movimentacao');
+    },
   });
 
   const { data: clientes = [] } = useQuery({
