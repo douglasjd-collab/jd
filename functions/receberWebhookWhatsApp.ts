@@ -407,48 +407,68 @@ Deno.serve(async (req) => {
       console.error(`⚠️ Erro crítico ao processar contato WhatsApp: ${e.message}`);
     }
 
-    let conversa;
-    if (conversas?.length > 0) {
-      conversa = conversas[0];
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-        ultima_mensagem: conteudo.substring(0, 200),
-        data_ultima_mensagem: new Date().toISOString(),
-        status: 'ativa',
-        tipo_conexao: tipoConexao,
-        colaborador_id: colaboradorId || conversa.colaborador_id || '',
-        cliente_id: clienteId || conversa.cliente_id || '',
-        instancia: instanceFinal
-      });
-      console.log(`✅ Conversa existente atualizada: ${conversa.id}`);
-    } else {
-      conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
-        empresa_id: empresaId,
-        cliente_id: clienteId,
-        cliente_nome: pushName,
-        cliente_telefone: telefoneLimpo,
-        whatsapp_id: messageId,
-        status: 'ativa',
-        ultima_mensagem: conteudo.substring(0, 200),
-        data_ultima_mensagem: new Date().toISOString(),
-        tipo_conexao: tipoConexao,
-        colaborador_id: colaboradorId || '',
-        instancia: instanceFinal
-      });
-      console.log(`✅ Conversa criada: ${conversa.id}`);
+    let conversa = null;
+    try {
+      if (conversas?.length > 0) {
+        conversa = conversas[0];
+        try {
+          await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+            ultima_mensagem: conteudo.substring(0, 200),
+            data_ultima_mensagem: new Date().toISOString(),
+            status: 'ativa',
+            tipo_conexao: tipoConexao,
+            colaborador_id: colaboradorId || conversa.colaborador_id || '',
+            cliente_id: clienteId || conversa.cliente_id || '',
+            instancia: instanceFinal
+          });
+          console.log(`✅ Conversa existente atualizada: ${conversa.id}`);
+        } catch (e) {
+          console.log(`⚠️ Erro ao atualizar conversa: ${e.message}`);
+        }
+      } else {
+        conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+          empresa_id: empresaId,
+          cliente_id: clienteId,
+          cliente_nome: pushName,
+          cliente_telefone: telefoneLimpo,
+          whatsapp_id: messageId,
+          status: 'ativa',
+          ultima_mensagem: conteudo.substring(0, 200),
+          data_ultima_mensagem: new Date().toISOString(),
+          tipo_conexao: tipoConexao,
+          colaborador_id: colaboradorId || '',
+          instancia: instanceFinal
+        });
+        console.log(`✅ Conversa criada: ${conversa.id}`);
+      }
+    } catch (e) {
+      console.error(`❌ ERRO ao criar/atualizar conversa: ${e.message}`);
+      throw e;
     }
 
     // ── Criar mensagem ────────────────────────────────────────────────────────
+    if (!conversa || !conversa.id) {
+      console.error('❌ ERRO: Conversa sem ID válido');
+      return Response.json({ success: false, error: 'Conversa inválida' }, { status: 400 });
+    }
+
     const remetente = fromMe ? 'vendedor' : 'cliente';
-    const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
-      conversa_id: conversa.id,
-      empresa_id: empresaId,
-      remetente,
-      tipo_conteudo: tipo,
-      texto: conteudo,
-      whatsapp_message_id: messageId,
-      data_envio: new Date().toISOString(),
-      status: remetente === 'vendedor' ? 'enviada' : 'entregue'
-    });
+    let novaMensagem;
+    try {
+      novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        conversa_id: conversa.id,
+        empresa_id: empresaId,
+        remetente,
+        tipo_conteudo: tipo,
+        texto: conteudo,
+        whatsapp_message_id: messageId,
+        data_envio: new Date().toISOString(),
+        status: remetente === 'vendedor' ? 'enviada' : 'entregue'
+      });
+    } catch (e) {
+      console.error(`❌ ERRO ao criar mensagem: ${e.message}`);
+      throw e;
+    }
 
     console.log(`✅ Mensagem salva: ${novaMensagem.id} | Empresa: ${empresaId} | Remetente: ${remetente}`);
 
