@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
 
     // 4. Listar últimos logs de recebimento
     const logs = await base44.asServiceRole.entities.LogRecebimentoWebhook.filter(
-      { empresa_id: user.empresa_id, instancia: instanceName },
+      { empresa_id: JD_ID, instancia: instanceName },
       '-created_date',
       10
     );
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
 
     // 5. Verificar se há ConversasWhatsapp para essa instância
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-      empresa_id: user.empresa_id,
+      empresa_id: JD_ID,
       instancia: instanceName
     });
 
