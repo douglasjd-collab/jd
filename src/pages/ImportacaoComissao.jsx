@@ -74,37 +74,188 @@ export default function ImportacaoComissao() {
   });
 
   const handleFileUpload = async (e) => {
-    const uploadedFile = e.target.files[0];
-    if (!uploadedFile) return;
+    const uploadedFiles = Array.from(e.target.files || []);
+    if (!uploadedFiles.length) return;
 
-    setFile(uploadedFile);
-    setIsProcessing(true);
-
-    try {
-       const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
-       const empresaIdParaProcessar = isSuperAdmin
-         ? (empresaSelecionada || null)
-         : (currentUser?.empresa_id || currentEmpresa?.id);
-       const result = await base44.functions.invoke('processarCsvComissao', { 
-         file_url, 
-         produto: 'consorcio',
-         empresa_id: empresaIdParaProcessar
-       });
-
-      if (result.data.status === 'success' && result.data.items) {
-        setPreviewData({
+    // Se apenas 1 arquivo: comportamento original (preview antes de processar)
+    if (uploadedFiles.length === 1) {
+      setFiles(uploadedFiles);
+      setIsProcessing(true);
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFiles[0] });
+        const empresaIdParaProcessar = isSuperAdmin
+          ? (empresaSelecionada || null)
+          : (currentUser?.empresa_id || currentEmpresa?.id);
+        const result = await base44.functions.invoke('processarCsvComissao', {
           file_url,
-          items: result.data.items
+          produto: 'consorcio',
+          empresa_id: empresaIdParaProcessar
         });
-        toast.success(`${result.data.total} registros encontrados no arquivo`);
-      } else {
-        toast.error('Erro ao processar arquivo: ' + (result.data.error || 'Formato inválido'));
+        if (result.data.status === 'success' && result.data.items) {
+          setPreviewData({ file_url, items: result.data.items });
+          toast.success(`${result.data.total} registros encontrados no arquivo`);
+        } else {
+          toast.error('Erro ao processar arquivo: ' + (result.data.error || 'Formato inválido'));
+        }
+      } catch (error) {
+        toast.error('Erro ao fazer upload do arquivo');
+      } finally {
+        setIsProcessing(false);
       }
-    } catch (error) {
-      toast.error('Erro ao fazer upload do arquivo');
-    } finally {
-      setIsProcessing(false);
+      return;
     }
+
+    // Múltiplos arquivos: processar em lote automaticamente
+    setFiles(uploadedFiles);
+    setIsProcessing(true);
+    let totalProcessados = 0;
+    let totalDivergencias = 0;
+    let totalValor = 0;
+    const erros = [];
+
+    for (let i = 0; i < uploadedFiles.length; i++) {
+      const uploadedFile = uploadedFiles[i];
+      setProgressoLote({ atual: i + 1, total: uploadedFiles.length, nomeArquivo: uploadedFile.name });
+
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadedFile });
+        const empresaIdParaProcessar = isSuperAdmin
+          ? (empresaSelecionada || null)
+          : (currentUser?.empresa_id || currentEmpresa?.id);
+
+        // Processar CSV
+        const result = await base44.functions.invoke('processarCsvComissao', {
+          file_url,
+          produto: 'consorcio',
+          empresa_id: empresaIdParaProcessar
+        });
+
+        if (!result.data?.items?.length) {
+          erros.push(`${uploadedFile.name}: sem registros válidos`);
+          continue;
+        }
+
+        const items = result.data.items;
+
+        // Processar importação direto (sem preview)
+        await processarImportacaoLote({
+          file_url,
+          file_name: uploadedFile.name,
+          items,
+          empresaIdFinal: empresaIdParaProcessar,
+          onResult: (p, d, v) => {
+            totalProcessados += p;
+            totalDivergencias += d;
+            totalValor += v;
+          }
+        });
+      } catch (err) {
+        console.error(`Erro no arquivo ${uploadedFile.name}:`, err);
+        erros.push(`${uploadedFile.name}: ${err.message || 'erro desconhecido'}`);
+      }
+    }
+
+    setIsProcessing(false);
+    setProgressoLote(null);
+    setFiles([]);
+    queryClient.invalidateQueries();
+
+    if (erros.length) {
+      toast.warning(`Lote concluído com erros em ${erros.length} arquivo(s). Processados: ${totalProcessados}`);
+    } else {
+      toast.success(`✅ Lote concluído: ${totalProcessados} processados, ${totalDivergencias} divergências, ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValor)}`);
+    }
+  };
+
+  // Processa um conjunto de itens (de 1 arquivo) sem interação de preview
+  const processarImportacaoLote = async ({ file_url, file_name, items, empresaIdFinal, onResult }) => {
+    const admin = administradoras.find(a => a.id === selectedAdmin);
+
+    const importacao = await base44.entities.Importacao.create({
+      empresa_id: empresaIdFinal,
+      produto: 'consorcio',
+      administradora_id: selectedAdmin,
+      administradora_nome: admin?.nome_fantasia || admin?.razao_social,
+      usuario_id: currentUser?.id,
+      usuario_nome: currentUser?.full_name,
+      arquivo_nome: file_name,
+      arquivo_url: file_url,
+      total_registros: items.length,
+      status: 'processando'
+    });
+
+    const configVendedor = await base44.entities.ConfiguracaoComissao.filter({ tipo: 'vendedor', status: 'ativo' });
+    const percentualPadrao = configVendedor.length > 0 ? configVendedor[0].percentual : 100;
+    const recebimentosExistentes = await base44.entities.RecebimentoComissao.filter({ origem_importacao_id: importacao.id });
+    const hashesExistentes = new Set(recebimentosExistentes.map(r => r.hash_duplicidade));
+
+    let processados = 0, divergencias = 0, valorTotal = 0;
+    const itensParaCriar = [], recebimentosParaCriar = [], comissoesParaCriar = [], vendasParaAtualizar = {};
+
+    for (const item of items) {
+      const contratoRaw = String(item.contrato || '').trim();
+      const contrato = contratoRaw && contratoRaw !== '-' ? contratoRaw : '';
+      const grupoRaw = String(item.grupo || '').trim();
+      const cotaRaw = String(item.cota || '').trim();
+      const parcelaInformada = parseInt(item.parcela) || null;
+      const valorRecebido = parseFloat(item.valor) || 0;
+      const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
+      let vendaConsorcioEncontrada = null, motivoDivergencia = '';
+
+      if (contrato) {
+        let vendasMatch = await base44.entities.VendaConsorcio.filter({ contrato, administradora_id: selectedAdmin, ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {}) });
+        if (vendasMatch.length === 0 && empresaIdFinal) vendasMatch = await base44.entities.VendaConsorcio.filter({ contrato, administradora_id: selectedAdmin });
+        if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
+        else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
+        else motivoDivergencia = 'Venda não encontrada pelo contrato';
+      } else if (grupoRaw && cotaRaw) {
+        const { venda, motivo } = await encontrarVendaConsorcioPorGrupoCota({ grupoRaw, cotaRaw, administradora_id: selectedAdmin, empresa_id: empresaIdFinal });
+        vendaConsorcioEncontrada = venda;
+        motivoDivergencia = motivo || '';
+      } else {
+        motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
+      }
+
+      if (vendaConsorcioEncontrada) {
+        const hashDuplicidade = `${vendaConsorcioEncontrada.venda_base_id}_${dataRecebimento}_${valorRecebido}`;
+        if (hashesExistentes.has(hashDuplicidade)) { motivoDivergencia = 'Recebimento duplicado'; vendaConsorcioEncontrada = null; }
+      }
+
+      itensParaCriar.push({
+        importacao_id: importacao.id,
+        linha: items.indexOf(item) + 1,
+        cpf: '', contrato, grupo: grupoRaw, cota: cotaRaw,
+        parcela: parcelaInformada || 0, valor_recebido: valorRecebido,
+        venda_id: vendaConsorcioEncontrada?.venda_base_id, parcela_id: null,
+        status: vendaConsorcioEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
+        motivo_divergencia: motivoDivergencia || null
+      });
+
+      if (vendaConsorcioEncontrada && !motivoDivergencia) {
+        const hashDuplicidade = `${vendaConsorcioEncontrada.venda_base_id}_${dataRecebimento}_${valorRecebido}`;
+        const valorAPagar = valorRecebido * (percentualPadrao / 100);
+        const recebimentoId = `temp_${items.indexOf(item)}`;
+        recebimentosParaCriar.push({ _tempId: recebimentoId, empresa_id: vendaConsorcioEncontrada.empresa_id, venda_id: vendaConsorcioEncontrada.venda_base_id, cliente_id: vendaConsorcioEncontrada.cliente_id, cliente_nome: vendaConsorcioEncontrada.cliente_nome, vendedor_id: vendaConsorcioEncontrada.vendedor_id, vendedor_nome: vendaConsorcioEncontrada.vendedor_nome, administradora_id: vendaConsorcioEncontrada.administradora_id, administradora_nome: vendaConsorcioEncontrada.administradora_nome || admin?.nome_fantasia || admin?.razao_social, grupo: vendaConsorcioEncontrada.grupo, cota: vendaConsorcioEncontrada.cota, contrato: vendaConsorcioEncontrada.contrato, data_recebimento: dataRecebimento, valor_recebido: valorRecebido, parcela_informada: parcelaInformada, origem_importacao_id: importacao.id, linha_importacao: items.indexOf(item) + 1, hash_duplicidade: hashDuplicidade, percentual_comissao: percentualPadrao, valor_a_pagar: valorAPagar, status_recebimento: 'recebida', status_pagamento: 'a_pagar' });
+        comissoesParaCriar.push({ _recebimentoTempId: recebimentoId, empresa_id: vendaConsorcioEncontrada.empresa_id, venda_id: vendaConsorcioEncontrada.venda_base_id, cliente_id: vendaConsorcioEncontrada.cliente_id, cliente_nome: vendaConsorcioEncontrada.cliente_nome, vendedor_id: vendaConsorcioEncontrada.vendedor_id, vendedor_nome: vendaConsorcioEncontrada.vendedor_nome, administradora_id: vendaConsorcioEncontrada.administradora_id, administradora_nome: vendaConsorcioEncontrada.administradora_nome || admin?.nome_fantasia || admin?.razao_social, grupo: vendaConsorcioEncontrada.grupo, cota: vendaConsorcioEncontrada.cota, contrato: vendaConsorcioEncontrada.contrato, parcela_numero: parcelaInformada, data_recebimento: dataRecebimento, valor_recebido: valorRecebido, percentual_comissao: percentualPadrao, valor_a_pagar: valorAPagar, status_pagamento: 'a_apagar' });
+        if (!vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id]) vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id] = { comissao_total_recebida: vendaConsorcioEncontrada.comissao_total_recebida || 0 };
+        vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id].comissao_total_recebida += valorRecebido;
+        processados++; valorTotal += valorRecebido;
+      } else { divergencias++; }
+    }
+
+    if (itensParaCriar.length > 0) await base44.entities.ImportacaoItem.bulkCreate(itensParaCriar);
+    if (recebimentosParaCriar.length > 0) {
+      const recebimentosData = recebimentosParaCriar.map(r => { const { _tempId, ...data } = r; return data; });
+      const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosData);
+      const comissoesData = comissoesParaCriar.map((c, idx) => { const { _recebimentoTempId, ...data } = c; return { ...data, recebimento_id: recebimentosCriados[idx].id }; });
+      if (comissoesData.length > 0) await base44.entities.ComissaoAPagar.bulkCreate(comissoesData);
+    }
+    for (const [vendaBaseId, updateData] of Object.entries(vendasParaAtualizar)) {
+      await base44.entities.Venda.update(vendaBaseId, updateData);
+    }
+    await base44.entities.Importacao.update(importacao.id, { status: 'concluida', registros_processados: processados, registros_divergencia: divergencias, valor_total: valorTotal });
+
+    if (onResult) onResult(processados, divergencias, valorTotal);
   };
 
   // Normaliza grupo/cota: tira tudo que não for dígito
