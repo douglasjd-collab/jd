@@ -265,73 +265,33 @@ export default function ImportacaoComissao() {
     return d.length ? d : null;
   };
 
-  // Busca venda de consórcio por grupo/cota — tenta VendaConsorcio e depois Venda (legado)
-  const encontrarVendaConsorcioPorGrupoCota = async ({ grupoRaw, cotaRaw, administradora_id, empresa_id }) => {
+  // Verifica se dois valores de grupo/cota batem (comparando string limpa e numérico)
+  const gruposCotasBatem = (valorDB, valorArquivo) => {
+    const db  = String(valorDB  ?? '').trim();
+    const arq = String(valorArquivo ?? '').trim();
+    if (db === arq) return true;
+    const dbD  = normDigits(db);
+    const arqD = normDigits(arq);
+    if (dbD && arqD && dbD === arqD) return true;
+    return false;
+  };
+
+  // Busca em cache local de vendas já carregadas — sem requisições adicionais
+  const encontrarVendaEmCache = (vendas, { grupoRaw, cotaRaw, contrato, administradora_id }) => {
     const grupoStr = String(grupoRaw ?? '').trim();
     const cotaStr  = String(cotaRaw  ?? '').trim();
+    const contratoStr = String(contrato ?? '').trim();
 
-    if (!grupoStr || !cotaStr) {
-      return { venda: null, motivo: 'Grupo/cota inválidos no arquivo' };
-    }
-
-    const grupoDigits = normDigits(grupoStr);
-    const cotaDigits  = normDigits(cotaStr);
-    const grupoNum    = grupoDigits ? Number(grupoDigits) : null;
-    const cotaNum     = cotaDigits  ? Number(cotaDigits)  : null;
-
-    const combinacoesValores = [
-      { grupo: grupoStr, cota: cotaStr },
-      ...(grupoDigits && cotaDigits ? [{ grupo: grupoDigits, cota: cotaDigits }] : []),
-      ...(Number.isFinite(grupoNum) && Number.isFinite(cotaNum) ? [{ grupo: grupoNum, cota: cotaNum }] : []),
-    ];
-
-    // Tenta primeiro em VendaConsorcio, depois em Venda (legado)
-    const entidades = [
-      { entity: base44.entities.VendaConsorcio, label: 'VendaConsorcio', idField: 'venda_base_id' },
-      { entity: base44.entities.Venda, label: 'Venda (legado)', idField: 'id' },
-    ];
-
-    for (const { entity, label, idField } of entidades) {
-      const filtrosComEmpresa = combinacoesValores.map(f => ({ ...f, administradora_id, ...(empresa_id ? { empresa_id } : {}) }));
-      const filtrosSemEmpresa = combinacoesValores.map(f => ({ ...f, administradora_id }));
-      const filtrosSemAdmin   = combinacoesValores.map(f => ({ ...f }));
-      const tentativas = [...filtrosComEmpresa, ...filtrosSemEmpresa, ...filtrosSemAdmin];
-
-      for (const filtro of tentativas) {
-        console.log(`🔍 [${label}] Tentando filtro:`, filtro);
-        const lista = await entity.filter(filtro);
-
-        if (lista.length === 1) {
-          const v = lista[0];
-          console.log(`✅ [${label}] Encontrada:`, { id: v.id, grupo: v.grupo, cota: v.cota });
-
-          // Normaliza a venda para o formato esperado pelo restante do código
-          const vendaNormalizada = {
-            ...v,
-            venda_base_id: v.venda_base_id || v.id,
-            empresa_id: v.empresa_id,
-            cliente_id: v.cliente_id,
-            cliente_nome: v.cliente_nome,
-            vendedor_id: v.vendedor_id,
-            vendedor_nome: v.vendedor_nome,
-            administradora_id: v.administradora_id,
-            administradora_nome: v.administradora_nome,
-            grupo: v.grupo,
-            cota: v.cota,
-            contrato: v.contrato,
-            comissao_total_recebida: v.comissao_total_recebida || 0,
-          };
-          return { venda: vendaNormalizada, motivo: null };
-        }
-
-        if (lista.length > 1) {
-          console.log(`⚠️ [${label}] Múltiplas encontradas:`, filtro);
-          return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
-        }
+    const matches = vendas.filter(v => {
+      if (v.administradora_id !== administradora_id) return false;
+      if (contratoStr && contratoStr !== '-') {
+        return String(v.contrato ?? '').trim() === contratoStr;
       }
-    }
+      return gruposCotasBatem(v.grupo, grupoStr) && gruposCotasBatem(v.cota, cotaStr);
+    });
 
-    console.log('❌ Nenhuma venda encontrada em nenhuma entidade:', { grupoRaw, cotaRaw, administradora_id, empresa_id });
+    if (matches.length === 1) return { venda: matches[0], motivo: null };
+    if (matches.length > 1)  return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
     return { venda: null, motivo: 'Venda não encontrada por grupo/cota' };
   };
 
