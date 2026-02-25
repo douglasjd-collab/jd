@@ -554,7 +554,7 @@ export default function ImportacaoComissao() {
 
       queryClient.invalidateQueries();
       setPreviewData(null);
-      setFile(null);
+      setFiles([]);
       setSelectedAdmin('');
       
       toast.success(`✅ Importação concluída: ${processados} processados, ${divergencias} divergências`);
