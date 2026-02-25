@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-const JD_ID = 'JD_DEFAULT_ID'; // Padrão se não encontrar empresa
+const TIMEOUT_PADRAO = 8000; // 8 segundos para cada operação
 
 Deno.serve(async (req) => {
   try {
@@ -16,7 +16,21 @@ Deno.serve(async (req) => {
     // ──────────────────────────────────────────────────────────────────
     console.log('📨 WEBHOOK RECEBIDO', JSON.stringify(payload).substring(0, 500));
 
-    const { event, data, instance } = payload;
+    let event, data, instance;
+    
+    // Suportar múltiplos formatos de payload Evolution
+    if (payload.event) {
+      event = payload.event;
+      data = payload.data;
+      instance = payload.instance;
+    } else if (payload.messages) {
+      event = 'messages.upsert';
+      data = { messages: payload.messages };
+      instance = payload.instance;
+    } else {
+      console.warn('⚠️ Formato de payload desconhecido');
+      return Response.json({ status: 'invalid_format' });
+    }
 
     // Ignorar eventos que não são mensagens
     if (!event?.includes('message') && event !== 'messages.upsert') {
@@ -25,24 +39,29 @@ Deno.serve(async (req) => {
     }
 
     // Extrair informações da mensagem
-    let messageData = data?.message;
-    if (!messageData && data?.messages?.length > 0) {
+    let messageData = null;
+    
+    if (data?.message) {
+      messageData = data.message;
+    } else if (data?.messages?.length > 0) {
       messageData = data.messages[0];
     }
 
     if (!messageData) {
       console.warn('⚠️ Nenhuma mensagem encontrada no payload');
+      await registrarLogErro(base44, null, 'no_message_found', instance);
       return Response.json({ status: 'no_message' });
     }
 
-    const key = messageData.key || data?.key;
-    const message = messageData.message || messageData;
+    // Extrair chave e mensagem com fallbacks
+    const key = messageData.key || data?.key || {};
+    const message = messageData.message || messageData || {};
 
-    const messageId = key?.id || messageData.id;
-    const fromMe = key?.fromMe || message?.fromMe || false;
-    const remoteJid = key?.remoteJid || message?.remoteJid || data?.remoteJid;
-    const pushName = data?.pushName || 'Contato';
-    const timestamp = messageData.messageTimestamp || Math.floor(Date.now() / 1000);
+    const messageId = key?.id || messageData?.id || `msg_${Date.now()}`;
+    const fromMe = key?.fromMe === false ? false : (key?.fromMe || false);
+    const remoteJid = key?.remoteJid || message?.remoteJid || data?.remoteJid || '';
+    const pushName = data?.pushName || messageData?.pushName || 'Contato';
+    const timestamp = messageData?.messageTimestamp || Math.floor(Date.now() / 1000);
 
     console.log(`📱 Mensagem: ${messageId} | De: ${!fromMe ? 'CLIENTE' : 'VENDEDOR'} | JID: ${remoteJid}`);
 
@@ -79,38 +98,57 @@ Deno.serve(async (req) => {
     // ──────────────────────────────────────────────────────────────────
     // 2. VALIDAR E LIMPAR TELEFONE
     // ──────────────────────────────────────────────────────────────────
-    let telefoneLimpo = remoteJid?.replace('@s.whatsapp.net', '').replace('@g.us', '');
+    let telefoneLimpo = remoteJid?.replace('@s.whatsapp.net', '')?.replace('@g.us', '') || '';
+    
     if (!telefoneLimpo) {
       console.error('❌ Telefone não encontrado');
+      await registrarLogErro(base44, null, 'phone_not_found', instance);
       return Response.json({ erro: 'Telefone inválido' }, { status: 400 });
     }
 
     console.log(`📞 Telefone: ${telefoneLimpo}`);
 
     // ──────────────────────────────────────────────────────────────────
-    // 3. ENCONTRAR EMPRESA
+    // 3. ENCONTRAR EMPRESA CORRETA PELA INSTÂNCIA
     // ──────────────────────────────────────────────────────────────────
-    let empresaId = JD_ID;
+    let empresaId = null;
     const instanceFinal = instance || 'DEFAULT';
 
-    if (instanceFinal && instanceFinal !== 'DEFAULT') {
-      try {
-        const empresas = await Promise.race([
-          base44.asServiceRole.entities.Empresa.filter({
-            evolution_instance_name: instanceFinal
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
-        ]);
+    console.log(`🔍 Buscando empresa pela instância: ${instanceFinal}`);
 
-        if (empresas?.length > 0) {
-          empresaId = empresas[0].id;
-          console.log(`✅ Empresa encontrada: ${empresas[0].nome}`);
-        } else {
-          console.log(`⚠️ Instância "${instanceFinal}" não encontrada, usando padrão`);
+    try {
+      // Buscar empresa pela instância com timeout
+      const buscarEmpresa = async () => {
+        const todasEmpresas = await base44.asServiceRole.entities.Empresa.list('-created_date', 100);
+        
+        // Primeiro try: buscar por nome da instância exato
+        let emp = todasEmpresas?.find(e => e.evolution_instance_name === instanceFinal);
+        
+        // Se não encontrar e for DEFAULT, buscar qualquer empresa com WhatsApp conectado
+        if (!emp && instanceFinal === 'DEFAULT') {
+          emp = todasEmpresas?.find(e => e.whatsapp_conectado);
         }
-      } catch (err) {
-        console.log(`⚠️ Erro ao buscar empresa: ${err.message}`);
+        
+        return emp;
+      };
+
+      const emp = await Promise.race([
+        buscarEmpresa(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT ao buscar empresa')), TIMEOUT_PADRAO))
+      ]);
+
+      if (emp) {
+        empresaId = emp.id;
+        console.log(`✅ Empresa encontrada: ${emp.nome} (ID: ${empresaId})`);
+      } else {
+        console.error(`❌ Empresa com instância "${instanceFinal}" não encontrada`);
+        await registrarLogErro(base44, null, 'empresa_not_found', instance);
+        return Response.json({ erro: 'Empresa não encontrada' }, { status: 400 });
       }
+    } catch (err) {
+      console.error(`❌ Erro ao buscar empresa: ${err.message}`);
+      await registrarLogErro(base44, null, `empresa_search_error: ${err.message}`, instance);
+      return Response.json({ erro: 'Erro ao buscar empresa' }, { status: 400 });
     }
 
     // ──────────────────────────────────────────────────────────────────
