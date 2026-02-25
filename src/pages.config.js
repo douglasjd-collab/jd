@@ -113,6 +113,7 @@ import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
 import DiagnosticoWebhook from './pages/DiagnosticoWebhook';
+import MapeamentoWebhookCompleto from './pages/MapeamentoWebhookCompleto';
 import __Layout from './Layout.jsx';
 
 
@@ -183,6 +184,7 @@ export const PAGES = {
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
     "DiagnosticoWebhook": DiagnosticoWebhook,
+    "MapeamentoWebhookCompleto": MapeamentoWebhookCompleto,
 }
 
 export const pagesConfig = {
