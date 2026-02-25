@@ -140,10 +140,9 @@ export default function TabelasConsorcio() {
 
     const admin = administradoras.find(a => a.id === data.administradora_id);
     
-    const user = await base44.auth.me();
     const submitData = {
       ...data,
-      empresa_id: user.empresa_id,
+      empresa_id: empresaId,
       administradora_nome: admin?.nome_fantasia || admin?.razao_social || ''
     };
 
