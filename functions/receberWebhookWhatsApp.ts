@@ -149,6 +149,25 @@ Deno.serve(async (req) => {
     const isUpsert = event === 'messages.upsert' || event === 'messages_upsert' || event === 'messages';
     if (!isUpsert) {
       console.log(`⏭️ Evento ignorado: ${payload.event}`);
+      
+      // Registrar eventos ignorados para diagnóstico
+      try {
+        const b = createClientFromRequest(req);
+        const url = new URL(req.url);
+        const instancia = url.searchParams.get('instance') || 'desconhecida';
+        
+        await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+          empresa_id: '699696c2c9f5bffc2e67402b',
+          tipo_evento: `ignorado_${payload.event}`,
+          status: 'sucesso',
+          conteudo: `Evento ${payload.event} recebido mas ignorado`,
+          instancia: instancia,
+          timestamp: new Date().toISOString()
+        });
+      } catch (_) {
+        console.log('⚠️ Erro ao registrar evento ignorado');
+      }
+      
       return Response.json({ success: true, skipped: `event_${payload.event}` });
     }
 
