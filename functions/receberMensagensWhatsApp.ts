@@ -287,20 +287,23 @@ Deno.serve(async (req) => {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    // 8. REGISTRAR LOG
+    // 8. REGISTRAR LOG DE SUCESSO
     // ──────────────────────────────────────────────────────────────────
     try {
-      await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
-        empresa_id: empresaId,
-        tipo_evento: 'mensagem_recebida',
-        telefone: telefoneLimpo,
-        conteudo: conteudo.substring(0, 500),
-        status: 'sucesso',
-        mensagem_id: mensagemId,
-        conversa_id: conversa.id,
-        instancia: instanceFinal,
-        timestamp: new Date().toISOString()
-      });
+      await Promise.race([
+        base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+          empresa_id: empresaId,
+          tipo_evento: 'mensagem_recebida',
+          telefone: telefoneLimpo,
+          conteudo: conteudo.substring(0, 500),
+          status: 'sucesso',
+          mensagem_id: mensagemId,
+          conversa_id: conversa.id,
+          instancia: instanceFinal,
+          timestamp: new Date().toISOString()
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), TIMEOUT_PADRAO))
+      ]);
       console.log(`✅ Log registrado`);
     } catch (err) {
       console.log(`⚠️ Erro ao registrar log: ${err.message}`);
@@ -312,13 +315,47 @@ Deno.serve(async (req) => {
       success: true,
       message_id: mensagemId,
       conversation_id: conversa.id,
-      status: 'processado'
+      status: 'processado',
+      empresa_id: empresaId,
+      telefone: telefoneLimpo
     });
   } catch (err) {
     console.error(`\n❌❌❌ ERRO CRÍTICO ❌❌❌`, err);
+    
+    // Tentar registrar erro mesmo em caso de falha crítica
+    try {
+      const base44 = createClientFromRequest(req);
+      await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+        empresa_id: 'ERRO',
+        tipo_evento: 'erro',
+        telefone: 'DESCONHECIDO',
+        conteudo: err.message || 'Erro crítico desconhecido',
+        status: 'erro',
+        mensagem_erro: err.message,
+        instancia: 'DESCONHECIDO',
+        timestamp: new Date().toISOString()
+      }).catch(() => {});
+    } catch {}
+
     return Response.json(
       { erro: err.message, type: 'critical' },
       { status: 500 }
     );
   }
 });
+
+// Função auxiliar para registrar erros
+async function registrarLogErro(base44, empresaId, motivo, instancia) {
+  try {
+    await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+      empresa_id: empresaId || 'DESCONHECIDO',
+      tipo_evento: 'erro',
+      telefone: 'DESCONHECIDO',
+      conteudo: motivo,
+      status: 'erro',
+      mensagem_erro: motivo,
+      instancia: instancia || 'DESCONHECIDO',
+      timestamp: new Date().toISOString()
+    }).catch(() => {});
+  } catch {}
+}
