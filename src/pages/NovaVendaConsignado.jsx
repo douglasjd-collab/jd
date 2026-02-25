@@ -464,13 +464,74 @@ export default function NovaVendaConsignado() {
     );
   }
 
+  const stepLabels = ['Informações do Cliente', 'Detalhes da Proposta', 'Estrutura de Comissões', 'Revisão Final'];
+  const stepColors = ['purple', 'blue', 'green', 'orange'];
+
+  const getStepColor = (step) => {
+    const colors = {
+      purple: 'bg-purple-100 text-purple-900 border-purple-200',
+      blue: 'bg-blue-100 text-blue-900 border-blue-200',
+      green: 'bg-green-100 text-green-900 border-green-200',
+      orange: 'bg-orange-100 text-orange-900 border-orange-200'
+    };
+    return colors[stepColors[step - 1]] || colors.purple;
+  };
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Nova Proposta - Empréstimo Consignado"
-        subtitle="Cadastre um novo empréstimo consignado"
-        backTo="NovaVenda"
-      />
+      {/* Header com navegação */}
+      <div className="flex items-center gap-3 mb-6">
+        <button 
+          onClick={() => navigate(-1)}
+          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Nova Proposta de Empréstimo Consignado</h1>
+          <p className="text-sm text-slate-500 mt-1">Preencha as detalhes abaixo para criar uma nova proposta de empréstimo consignado.</p>
+        </div>
+      </div>
+
+      {/* Stepper/Tabs */}
+      <div className="bg-white rounded-lg border border-slate-200 p-4 sticky top-0 z-40">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {stepLabels.map((label, idx) => {
+            const step = idx + 1;
+            const isActive = currentStep === step;
+            const isCompleted = currentStep > step;
+            const color = stepColors[idx];
+            
+            const bgMap = {
+              purple: isActive ? 'bg-purple-100 border-purple-300' : isCompleted ? 'bg-purple-50 border-purple-200' : 'bg-slate-50 border-slate-200',
+              blue: isActive ? 'bg-blue-100 border-blue-300' : isCompleted ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200',
+              green: isActive ? 'bg-green-100 border-green-300' : isCompleted ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200',
+              orange: isActive ? 'bg-orange-100 border-orange-300' : isCompleted ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'
+            };
+
+            const badgeMap = {
+              purple: 'bg-purple-500 text-white',
+              blue: 'bg-blue-500 text-white',
+              green: 'bg-green-500 text-white',
+              orange: 'bg-orange-500 text-white'
+            };
+
+            return (
+              <button
+                key={step}
+                onClick={() => currentStep > step || isActive ? setCurrentStep(step) : null}
+                disabled={currentStep < step}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border whitespace-nowrap transition-all ${bgMap[color]} ${currentStep < step ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'}`}
+              >
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${badgeMap[color]}`}>
+                  {step}
+                </div>
+                <span className="text-sm font-medium">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Módulo Cliente */}
