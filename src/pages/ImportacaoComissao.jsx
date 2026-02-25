@@ -851,6 +851,64 @@ export default function ImportacaoComissao() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de confirmação de exclusão */}
+      <Dialog open={!!excluindoImportacao} onOpenChange={(open) => !open && setExcluindoImportacao(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Importação</DialogTitle>
+            <DialogDescription>
+              <span className="font-medium text-slate-700">{excluindoImportacao?.nome}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-slate-600">Escolha o que deseja excluir:</p>
+
+            <div
+              className={`border rounded-xl p-4 cursor-pointer transition-colors ${tipoExclusao === 'tudo' ? 'border-red-500 bg-red-50' : 'border-slate-200 hover:border-slate-300'}`}
+              onClick={() => setTipoExclusao('tudo')}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 ${tipoExclusao === 'tudo' ? 'border-red-500 bg-red-500' : 'border-slate-300'}`} />
+                <div>
+                  <p className="font-medium text-sm">Excluir tudo</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Remove a importação inteira, todos os recebimentos e comissões gerados. Permite reimportar o arquivo do zero.</p>
+                </div>
+              </div>
+            </div>
+
+            {(excluindoImportacao?.divergencias > 0) && (
+              <div
+                className={`border rounded-xl p-4 cursor-pointer transition-colors ${tipoExclusao === 'apenas_divergencias' ? 'border-amber-500 bg-amber-50' : 'border-slate-200 hover:border-slate-300'}`}
+                onClick={() => setTipoExclusao('apenas_divergencias')}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 ${tipoExclusao === 'apenas_divergencias' ? 'border-amber-500 bg-amber-500' : 'border-slate-300'}`} />
+                  <div>
+                    <p className="font-medium text-sm">Apenas divergências ({excluindoImportacao?.divergencias})</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Remove somente os registros que deram erro/divergência. Os recebimentos processados com sucesso são mantidos.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExcluindoImportacao(null)} disabled={isDeletando}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={excluirImportacao}
+              disabled={isDeletando}
+            >
+              {isDeletando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {tipoExclusao === 'tudo' ? 'Excluir Tudo' : 'Excluir Divergências'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
       );
       }
