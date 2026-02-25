@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
       },
       correcoes: {
         clientes_corrigidos: atualizados,
-        total_para_corrigir: clientesPraCorrigir.length
+        total_para_corrigir: clientesPraCorrigir.length,
+        erros_correcao: erros.length > 0 ? erros : []
       }
     });
   } catch (error) {
