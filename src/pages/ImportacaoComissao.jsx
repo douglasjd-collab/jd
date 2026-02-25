@@ -45,6 +45,9 @@ export default function ImportacaoComissao() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentEmpresa, setCurrentEmpresa] = useState(null);
   const [empresaSelecionada, setEmpresaSelecionada] = useState('');
+  const [excluindoImportacao, setExcluindoImportacao] = useState(null); // { id, nome, status }
+  const [tipoExclusao, setTipoExclusao] = useState('tudo'); // 'tudo' | 'apenas_divergencias'
+  const [isDeletando, setIsDeletando] = useState(false);
   const queryClient = useQueryClient();
 
   const isSuperAdmin = currentUser?.perfil === 'super_admin' || currentUser?.role === 'super_admin';
