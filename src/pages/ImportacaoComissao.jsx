@@ -464,10 +464,11 @@ export default function ImportacaoComissao() {
 
           if (!vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id]) {
             vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id] = {
-              comissao_total_recebida: vendaConsorcioEncontrada.comissao_total_recebida || 0
+              delta: 0,
+              vcId: vendasConsorcio.find(v => v.venda_base_id === vendaConsorcioEncontrada.venda_base_id)?.id || null
             };
           }
-          vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id].comissao_total_recebida += valorRecebido;
+          vendasParaAtualizar[vendaConsorcioEncontrada.venda_base_id].delta += valorRecebido;
 
           processados++;
           valorTotal += valorRecebido;
@@ -500,20 +501,21 @@ export default function ImportacaoComissao() {
         }
       }
 
-      // Atualiza comissao_total_recebida — tenta VendaConsorcio primeiro (pelo venda_base_id),
-      // depois Venda legado. Usa update parcial para não acionar validação de campos obrigatórios.
+      // Atualiza comissao_total_recebida — patch parcial, sem enviar prazo ou campos obrigatórios
       for (const [vendaBaseId, updateData] of Object.entries(vendasParaAtualizar)) {
-        // Verifica se existe em VendaConsorcio
-        const vcMatch = vendasConsorcio.filter(v => v.venda_base_id === vendaBaseId);
-        if (vcMatch.length > 0) {
-          await base44.entities.VendaConsorcio.update(vcMatch[0].id, { comissao_total_recebida: updateData.comissao_total_recebida });
+        // VendaConsorcio
+        if (updateData.vcId) {
+          const vcAtual = vendasConsorcio.find(v => v.id === updateData.vcId);
+          await base44.entities.VendaConsorcio.update(updateData.vcId, {
+            comissao_total_recebida: (vcAtual?.comissao_total_recebida || 0) + updateData.delta
+          });
         }
-        // Sempre atualiza a Venda legado também (se existir), passando todos os campos obrigatórios
+        // Venda legado — patch só no campo de comissão, sem tocar em prazo
         const vLegado = vendasLegado.find(v => v.id === vendaBaseId);
         if (vLegado) {
-          // Patch parcial — só atualiza comissao_total_recebida, não toca em prazo nem outros campos
-          const novoTotal = (vLegado.comissao_total_recebida || 0) + updateData.delta;
-          await base44.entities.Venda.update(vendaBaseId, { comissao_total_recebida: novoTotal });
+          await base44.entities.Venda.update(vendaBaseId, {
+            comissao_total_recebida: (vLegado.comissao_total_recebida || 0) + updateData.delta
+          });
         }
       }
 
