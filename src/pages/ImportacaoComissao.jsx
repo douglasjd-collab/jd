@@ -507,12 +507,23 @@ export default function ImportacaoComissao() {
         const vcMatch = vendasConsorcio.filter(v => v.venda_base_id === vendaBaseId);
         if (vcMatch.length > 0) {
           await base44.entities.VendaConsorcio.update(vcMatch[0].id, { comissao_total_recebida: updateData.comissao_total_recebida });
-        } else {
-          // Venda legado: busca pelo id diretamente
-          const vLegado = vendasLegado.find(v => v.id === vendaBaseId);
-          if (vLegado) {
-            await base44.entities.Venda.update(vendaBaseId, { comissao_total_recebida: updateData.comissao_total_recebida });
-          }
+        }
+        // Sempre atualiza a Venda legado também (se existir), passando todos os campos obrigatórios
+        const vLegado = vendasLegado.find(v => v.id === vendaBaseId);
+        if (vLegado) {
+          await base44.entities.Venda.update(vendaBaseId, {
+            empresa_id: vLegado.empresa_id,
+            cliente_id: vLegado.cliente_id,
+            administradora_id: vLegado.administradora_id,
+            tabela_id: vLegado.tabela_id,
+            grupo: vLegado.grupo,
+            vendedor_id: vLegado.vendedor_id,
+            data_venda: vLegado.data_venda,
+            valorCredito: vLegado.valorCredito,
+            taxaAdministracao: vLegado.taxaAdministracao,
+            prazo: vLegado.prazo,
+            comissao_total_recebida: updateData.comissao_total_recebida
+          });
         }
       }
 
