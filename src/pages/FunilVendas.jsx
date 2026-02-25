@@ -55,6 +55,8 @@ export default function FunilVendas() {
   const [indicadorNome, setIndicadorNome] = useState('');
   const [indicadorTelefone, setIndicadorTelefone] = useState('');
   const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
+  const [criarFunilOpen, setCriarFunilOpen] = useState(false);
+  const [novoFunil, setNovoFunil] = useState({ nome: '', cor: '#3b82f6' });
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
