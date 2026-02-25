@@ -834,15 +834,9 @@ export default function ImportacaoComissao() {
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={async () => {
-                              if (!confirm('Deseja realmente excluir esta importação?')) return;
-                              try {
-                                await base44.entities.Importacao.delete(imp.id);
-                                queryClient.invalidateQueries(['importacoes-comissao']);
-                                toast.success('Importação excluída');
-                              } catch (e) {
-                                toast.error('Erro ao excluir importação');
-                              }
+                            onClick={() => {
+                              setTipoExclusao('tudo');
+                              setExcluindoImportacao({ id: imp.id, nome: imp.arquivo_nome, status: imp.status, divergencias: imp.registros_divergencia || 0 });
                             }}
                           >
                             <Trash2 className="w-4 h-4" />
