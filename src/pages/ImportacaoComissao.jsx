@@ -546,42 +546,46 @@ export default function ImportacaoComissao() {
       // 1. Busca todos os itens da importação
       const itens = await base44.entities.ImportacaoItem.filter({ importacao_id: impId });
 
-      // Define quais itens serão revertidos
-      const itensParaReverter = tipoExclusao === 'apenas_divergencias'
-        ? itens.filter(i => i.status === 'divergencia')
-        : itens;
-
-      // 2. Para cada item processado que será revertido, remove recebimentos e comissões
+      // Itens que geraram recebimentos reais
       const itensProcessados = tipoExclusao === 'apenas_divergencias'
         ? [] // divergências não geram recebimentos
         : itens.filter(i => i.status === 'processado');
 
       if (itensProcessados.length > 0) {
-        // Busca recebimentos desta importação
-        const recebimentos = await base44.entities.RecebimentoComissao.filter({ origem_importacao_id: impId });
+        // Busca recebimentos por origem_importacao_id (método preferencial)
+        let recebimentos = await base44.entities.RecebimentoComissao.filter({ origem_importacao_id: impId });
+
+        // Fallback: se não achou por origem_importacao_id (registros antigos),
+        // busca pelos hashes gerados pelos itens processados
+        if (recebimentos.length === 0) {
+          const todosRec = await base44.entities.RecebimentoComissao.filter({});
+          const vendasIds = new Set(itensProcessados.map(i => i.venda_id).filter(Boolean));
+          recebimentos = todosRec.filter(r => vendasIds.has(r.venda_id));
+        }
 
         for (const rec of recebimentos) {
-          // Remove comissões a pagar vinculadas
-          const comissoes = await base44.entities.ComissaoAPagar.filter({ recebimento_id: rec.id });
-          for (const com of comissoes) {
+          // Remove comissões a pagar vinculadas (busca por recebimento_id ou venda_id+data+valor)
+          const comissoesPorRec = await base44.entities.ComissaoAPagar.filter({ recebimento_id: rec.id });
+          for (const com of comissoesPorRec) {
             await base44.entities.ComissaoAPagar.delete(com.id);
           }
-          // Remove o recebimento
           await base44.entities.RecebimentoComissao.delete(rec.id);
         }
       }
 
-      // 3. Remove os itens
+      // 2. Remove os itens da importação
+      const itensParaReverter = tipoExclusao === 'apenas_divergencias'
+        ? itens.filter(i => i.status === 'divergencia')
+        : itens;
+
       for (const item of itensParaReverter) {
         await base44.entities.ImportacaoItem.delete(item.id);
       }
 
       if (tipoExclusao === 'tudo') {
-        // Excluir o registro de importação inteiro
         await base44.entities.Importacao.delete(impId);
         toast.success('Importação excluída completamente. Pode reimportar sem duplicidade.');
       } else {
-        // Apenas limpa as divergências (itens) — mantém importação e processados
         const restantes = itens.filter(i => i.status === 'processado').length;
         await base44.entities.Importacao.update(impId, {
           registros_divergencia: 0,
