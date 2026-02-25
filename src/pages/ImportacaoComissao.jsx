@@ -511,10 +511,9 @@ export default function ImportacaoComissao() {
         // Sempre atualiza a Venda legado também (se existir), passando todos os campos obrigatórios
         const vLegado = vendasLegado.find(v => v.id === vendaBaseId);
         if (vLegado) {
-          // Patch parcial — envia apenas comissao_total_recebida sem tocar em prazo ou outros campos
-          await base44.entities.Venda.update(vendaBaseId, {
-            comissao_total_recebida: updateData.comissao_total_recebida
-          });
+          // Patch parcial — só atualiza comissao_total_recebida, não toca em prazo nem outros campos
+          const novoTotal = (vLegado.comissao_total_recebida || 0) + updateData.delta;
+          await base44.entities.Venda.update(vendaBaseId, { comissao_total_recebida: novoTotal });
         }
       }
 
