@@ -517,7 +517,7 @@ export default function ComissoesPagar() {
                       <td className="p-3 text-slate-600">{c.parcela_numero ? `${c.parcela_numero}º` : '-'}</td>
                       <td className="p-3 text-slate-600">{c.administradora_nome || '-'}</td>
                       <td className="p-3 text-right">
-                        <Badge className={isPagar ? 'bg-orange-100 text-orange-700 font-semibold' : 'bg-green-100 text-green-700 font-semibold'}>
+                        <Badge className={STATUS_A_PAGAR.includes(c.status_pagamento) ? 'bg-orange-100 text-orange-700 font-semibold' : 'bg-green-100 text-green-700 font-semibold'}>
                           {fmt(c.valor_a_pagar)}
                         </Badge>
                       </td>
