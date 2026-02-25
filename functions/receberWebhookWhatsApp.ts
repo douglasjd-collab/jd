@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
   console.log(`📥 WEBHOOK WHATSAPP RECEBIDO - ${timestamp}`);
   console.log('URL:', req.url);
   console.log('Método:', req.method);
+  console.log('Headers:', Object.fromEntries(req.headers));
 
   // Evolution às vezes manda GET para teste
   if (req.method === 'GET') {
@@ -34,6 +35,20 @@ Deno.serve(async (req) => {
       url.searchParams.get('hub.challenge') ||
       'OK';
     console.log('✅ GET de teste recebido. Challenge:', challenge);
+    
+    const base44 = createClientFromRequest(req);
+    try {
+      await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+        empresa_id: '699696c2c9f5bffc2e67402b',
+        tipo_evento: 'get_teste_webhook',
+        status: 'sucesso',
+        instancia: new URL(req.url).searchParams.get('instance') || 'desconhecida',
+        timestamp
+      });
+    } catch (e) {
+      console.log('Erro ao registrar GET:', e.message);
+    }
+    
     return new Response(challenge, { status: 200 });
   }
 
