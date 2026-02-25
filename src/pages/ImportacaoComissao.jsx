@@ -555,24 +555,45 @@ export default function ImportacaoComissao() {
         : itens.filter(i => i.status === 'processado');
 
       if (itensProcessados.length > 0) {
-        // Busca recebimentos por origem_importacao_id (método preferencial)
+        // Busca recebimentos por origem_importacao_id
         let recebimentos = await base44.entities.RecebimentoComissao.filter({ origem_importacao_id: impId });
 
-        // Fallback: se não achou por origem_importacao_id (registros antigos),
-        // busca pelos hashes gerados pelos itens processados
+        // Fallback para registros antigos sem origem_importacao_id
         if (recebimentos.length === 0) {
-          const todosRec = await base44.entities.RecebimentoComissao.filter({});
           const vendasIds = new Set(itensProcessados.map(i => i.venda_id).filter(Boolean));
+          const todosRec = await base44.entities.RecebimentoComissao.filter({});
           recebimentos = todosRec.filter(r => vendasIds.has(r.venda_id));
         }
 
+        // Agrupa valor a descontar por venda
+        const descontoPorVenda = {};
         for (const rec of recebimentos) {
-          // Remove comissões a pagar vinculadas (busca por recebimento_id ou venda_id+data+valor)
+          descontoPorVenda[rec.venda_id] = (descontoPorVenda[rec.venda_id] || 0) + (rec.valor_recebido || 0);
+        }
+
+        for (const rec of recebimentos) {
+          // Remove ComissaoAPagar vinculada ao recebimento
           const comissoesPorRec = await base44.entities.ComissaoAPagar.filter({ recebimento_id: rec.id });
           for (const com of comissoesPorRec) {
             await base44.entities.ComissaoAPagar.delete(com.id);
           }
           await base44.entities.RecebimentoComissao.delete(rec.id);
+        }
+
+        // Desconta comissao_total_recebida da Venda (patch parcial)
+        for (const [vendaId, valorDesconto] of Object.entries(descontoPorVenda)) {
+          // Tenta Venda legado
+          const vLegado = await base44.entities.Venda.filter({ id: vendaId });
+          if (vLegado.length > 0) {
+            const novoTotal = Math.max(0, (vLegado[0].comissao_total_recebida || 0) - valorDesconto);
+            await base44.entities.Venda.update(vendaId, { comissao_total_recebida: novoTotal });
+          }
+          // Tenta VendaConsorcio
+          const vcList = await base44.entities.VendaConsorcio.filter({ venda_base_id: vendaId });
+          if (vcList.length > 0) {
+            const novoTotal = Math.max(0, (vcList[0].comissao_total_recebida || 0) - valorDesconto);
+            await base44.entities.VendaConsorcio.update(vcList[0].id, { comissao_total_recebida: novoTotal });
+          }
         }
       }
 
