@@ -537,6 +537,69 @@ export default function ImportacaoComissao() {
     }
   };
 
+  const excluirImportacao = async () => {
+    if (!excluindoImportacao) return;
+    setIsDeletando(true);
+    try {
+      const impId = excluindoImportacao.id;
+
+      // 1. Busca todos os itens da importação
+      const itens = await base44.entities.ImportacaoItem.filter({ importacao_id: impId });
+
+      // Define quais itens serão revertidos
+      const itensParaReverter = tipoExclusao === 'apenas_divergencias'
+        ? itens.filter(i => i.status === 'divergencia')
+        : itens;
+
+      // 2. Para cada item processado que será revertido, remove recebimentos e comissões
+      const itensProcessados = tipoExclusao === 'apenas_divergencias'
+        ? [] // divergências não geram recebimentos
+        : itens.filter(i => i.status === 'processado');
+
+      if (itensProcessados.length > 0) {
+        // Busca recebimentos desta importação
+        const recebimentos = await base44.entities.RecebimentoComissao.filter({ origem_importacao_id: impId });
+
+        for (const rec of recebimentos) {
+          // Remove comissões a pagar vinculadas
+          const comissoes = await base44.entities.ComissaoAPagar.filter({ recebimento_id: rec.id });
+          for (const com of comissoes) {
+            await base44.entities.ComissaoAPagar.delete(com.id);
+          }
+          // Remove o recebimento
+          await base44.entities.RecebimentoComissao.delete(rec.id);
+        }
+      }
+
+      // 3. Remove os itens
+      for (const item of itensParaReverter) {
+        await base44.entities.ImportacaoItem.delete(item.id);
+      }
+
+      if (tipoExclusao === 'tudo') {
+        // Excluir o registro de importação inteiro
+        await base44.entities.Importacao.delete(impId);
+        toast.success('Importação excluída completamente. Pode reimportar sem duplicidade.');
+      } else {
+        // Apenas limpa as divergências (itens) — mantém importação e processados
+        const restantes = itens.filter(i => i.status === 'processado').length;
+        await base44.entities.Importacao.update(impId, {
+          registros_divergencia: 0,
+          total_registros: restantes,
+        });
+        toast.success('Divergências removidas. Agora você pode reimportar apenas os registros que falharam.');
+      }
+
+      queryClient.invalidateQueries(['importacoes-comissao']);
+    } catch (e) {
+      toast.error('Erro ao excluir: ' + (e.message || 'tente novamente'));
+      console.error(e);
+    } finally {
+      setIsDeletando(false);
+      setExcluindoImportacao(null);
+    }
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
