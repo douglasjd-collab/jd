@@ -223,28 +223,46 @@ Deno.serve(async (req) => {
     let tipoConexao = 'empresa';
 
     if (instanceFinal) {
+      console.log(`🔎 Buscando instância "${instanceFinal}"...`);
+      
       // 1) Tentar achar colaborador com essa instância pessoal
-      const colaboradores = await base44.asServiceRole.entities.Colaborador.filter({
-        evolution_instance_name: instanceFinal
-      });
-      if (colaboradores?.length > 0) {
-        const colab = colaboradores[0];
-        tipoConexao = 'usuario';
-        colaboradorId = colab.id;
-        empresaId = colab.empresa_id || JD_ID;
-        console.log(`✅ Instância de COLABORADOR: ${colab.nome} (empresa: ${empresaId})`);
-      } else {
-        // 2) Tentar achar empresa com essa instância
-        const empresas = await base44.asServiceRole.entities.Empresa.filter({
+      try {
+        const colaboradores = await base44.asServiceRole.entities.Colaborador.filter({
           evolution_instance_name: instanceFinal
         });
-        if (empresas?.length > 0) {
-          empresaId = empresas[0].id;
-          console.log(`✅ Instância de EMPRESA: ${empresas[0].nome} (${empresaId})`);
+        console.log(`   Colaboradores encontrados: ${colaboradores?.length || 0}`);
+        
+        if (colaboradores?.length > 0) {
+          const colab = colaboradores[0];
+          tipoConexao = 'usuario';
+          colaboradorId = colab.id;
+          empresaId = colab.empresa_id || JD_ID;
+          console.log(`✅ Instância de COLABORADOR: ${colab.nome} (empresa: ${empresaId})`);
         } else {
-          console.warn(`⚠️ Instância "${instanceFinal}" não encontrada, usando JD Promotora`);
+          throw new Error('Nenhum colaborador encontrado');
+        }
+      } catch (err) {
+        console.log(`⚠️ Erro ao buscar colaborador: ${err.message}`);
+        
+        // 2) Tentar achar empresa com essa instância
+        try {
+          const empresas = await base44.asServiceRole.entities.Empresa.filter({
+            evolution_instance_name: instanceFinal
+          });
+          console.log(`   Empresas encontradas: ${empresas?.length || 0}`);
+          
+          if (empresas?.length > 0) {
+            empresaId = empresas[0].id;
+            console.log(`✅ Instância de EMPRESA: ${empresas[0].nome} (${empresaId})`);
+          } else {
+            console.warn(`⚠️ Instância "${instanceFinal}" não encontrada em Empresa, usando JD Promotora`);
+          }
+        } catch (err2) {
+          console.error(`❌ Erro ao buscar empresa: ${err2.message}`);
         }
       }
+    } else {
+      console.log('⚠️ Nenhuma instância informada, usando JD Promotora padrão');
     }
 
     // ── Verificar duplicata ───────────────────────────────────────────────────
