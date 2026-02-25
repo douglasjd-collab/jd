@@ -622,7 +622,7 @@ export default function ImportacaoComissao() {
             <div className="mt-2 border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-slate-300 transition-colors">
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx,.xls"
                 multiple
                 onChange={handleFileUpload}
                 className="hidden"
