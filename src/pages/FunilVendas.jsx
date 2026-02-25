@@ -777,6 +777,31 @@ export default function FunilVendas() {
         )}
       </PageHeader>
 
+      {/* Seletor de Funis em Botões */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          variant={filterProduto === 'todos' ? 'default' : 'outline'}
+          onClick={() => setFilterProduto('todos')}
+          className={filterProduto === 'todos' ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
+        >
+          Todos
+        </Button>
+        <Button
+          variant={filterProduto === 'consorcio' ? 'default' : 'outline'}
+          onClick={() => setFilterProduto('consorcio')}
+          className={filterProduto === 'consorcio' ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
+        >
+          Consórcio
+        </Button>
+        <Button
+          variant={filterProduto === 'emprestimo' ? 'default' : 'outline'}
+          onClick={() => setFilterProduto('emprestimo')}
+          className={filterProduto === 'emprestimo' ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
+        >
+          Empréstimo Consignado
+        </Button>
+      </div>
+
       {/* HU 05 - Indicadores Gerais */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4 border-0 shadow-sm">
