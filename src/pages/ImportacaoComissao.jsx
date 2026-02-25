@@ -331,14 +331,21 @@ export default function ImportacaoComissao() {
          status: 'processando'
        });
 
-      const configVendedor = await base44.entities.ConfiguracaoComissao.filter({ 
-        tipo: 'vendedor', 
-        status: 'ativo' 
-      });
-      const percentualPadrao = configVendedor.length > 0 ? configVendedor[0].percentual : 100;
+      const [configVendedor, recebimentosExistentes, vendasConsorcio, vendasLegado] = await Promise.all([
+        base44.entities.ConfiguracaoComissao.filter({ tipo: 'vendedor', status: 'ativo' }),
+        base44.entities.RecebimentoComissao.filter({ administradora_id: selectedAdmin }),
+        base44.entities.VendaConsorcio.filter({ administradora_id: selectedAdmin }),
+        base44.entities.Venda.filter({ administradora_id: selectedAdmin }),
+      ]);
 
-      const recebimentosExistentes = await base44.entities.RecebimentoComissao.list();
+      const percentualPadrao = configVendedor.length > 0 ? configVendedor[0].percentual : 100;
       const hashesExistentes = new Set(recebimentosExistentes.map(r => r.hash_duplicidade));
+
+      // Cache unificado: VendaConsorcio normalizada + Venda legado normalizada
+      const todasVendas = [
+        ...vendasConsorcio.map(v => ({ ...v, venda_base_id: v.venda_base_id || v.id, comissao_total_recebida: v.comissao_total_recebida || 0 })),
+        ...vendasLegado.map(v => ({ ...v, venda_base_id: v.id, comissao_total_recebida: v.comissao_total_recebida || 0 })),
+      ];
 
       let processados = 0;
       let divergencias = 0;
@@ -360,33 +367,14 @@ export default function ImportacaoComissao() {
         let vendaConsorcioEncontrada = null;
         let motivoDivergencia = '';
 
-        console.log('🔍 Processando item:', { 
-          contrato, 
-          grupoRaw, 
+        const { venda, motivo } = encontrarVendaEmCache(todasVendas, {
+          grupoRaw,
           cotaRaw,
-          adminSelecionada: selectedAdmin 
+          contrato,
+          administradora_id: selectedAdmin,
         });
-
-        if (contrato) {
-          // Busca por contrato com fallback sem empresa_id
-          let vendasMatch = await base44.entities.VendaConsorcio.filter({
-            contrato,
-            administradora_id: selectedAdmin,
-            ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {})
-          });
-          if (vendasMatch.length === 0 && empresaIdFinal) {
-            vendasMatch = await base44.entities.VendaConsorcio.filter({ contrato, administradora_id: selectedAdmin });
-          }
-          if (vendasMatch.length === 1) vendaConsorcioEncontrada = vendasMatch[0];
-          else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
-          else motivoDivergencia = 'Venda não encontrada pelo contrato';
-        } else if (grupoRaw && cotaRaw) {
-          const { venda, motivo } = await encontrarVendaConsorcioPorGrupoCota({ grupoRaw, cotaRaw, administradora_id: selectedAdmin, empresa_id: empresaIdFinal });
-          vendaConsorcioEncontrada = venda;
-          motivoDivergencia = motivo || '';
-        } else {
-          motivoDivergencia = 'Dados insuficientes (sem contrato nem grupo/cota)';
-        }
+        vendaConsorcioEncontrada = venda;
+        motivoDivergencia = motivo || (!grupoRaw && !cotaRaw && !contrato ? 'Dados insuficientes (sem contrato nem grupo/cota)' : motivo || '');
 
         if (vendaConsorcioEncontrada) {
           const hashDuplicidade = `${vendaConsorcioEncontrada.venda_base_id}_${dataRecebimento}_${valorRecebido}`;
