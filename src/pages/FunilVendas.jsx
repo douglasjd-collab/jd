@@ -1655,6 +1655,59 @@ export default function FunilVendas() {
         empresaIdSelecionada={currentUser?.empresa_id}
       />
 
+      {/* Dialog Criar Novo Funil */}
+      <Dialog open={criarFunilOpen} onOpenChange={setCriarFunilOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Funil</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="nome_funil">Nome do Funil *</Label>
+              <Input
+                id="nome_funil"
+                value={novoFunil.nome}
+                onChange={(e) => setNovoFunil({ ...novoFunil, nome: e.target.value })}
+                placeholder="Ex: Funil - Crédito Pessoal"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="cor_funil">Cor</Label>
+              <div className="flex gap-2 items-center">
+                <input
+                  id="cor_funil"
+                  type="color"
+                  value={novoFunil.cor}
+                  onChange={(e) => setNovoFunil({ ...novoFunil, cor: e.target.value })}
+                  className="h-10 w-20 rounded border border-slate-200 cursor-pointer"
+                />
+                <span className="text-sm text-slate-600">{novoFunil.cor}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setCriarFunilOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!novoFunil.nome.trim()) {
+                    toast.error('Digite um nome para o funil');
+                    return;
+                  }
+                  criarFunilMutation.mutate(novoFunil);
+                }}
+                disabled={criarFunilMutation.isPending}
+                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+              >
+                Criar Funil
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog Criar Venda */}
       <Dialog open={vendaFormOpen} onOpenChange={setVendaFormOpen}>
         <DialogContent className="max-w-2xl">
