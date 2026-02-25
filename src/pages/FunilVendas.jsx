@@ -800,7 +800,7 @@ export default function FunilVendas() {
       </PageHeader>
 
       {/* Seletor de Funis em Botões */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 items-center">
         <Button
           variant={filterProduto === 'todos' ? 'default' : 'outline'}
           onClick={() => setFilterProduto('todos')}
@@ -822,6 +822,17 @@ export default function FunilVendas() {
         >
           Empréstimo Consignado
         </Button>
+        {podeAlterarQuadro && (
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setCriarFunilOpen(true)}
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 ml-auto"
+            title="Criar novo funil"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        )}
       </div>
 
       {/* HU 05 - Indicadores Gerais */}
