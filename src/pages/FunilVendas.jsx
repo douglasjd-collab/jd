@@ -743,6 +743,15 @@ export default function FunilVendas() {
           setFormOpen(true);
         }}
       >
+        <Select value={filterProduto} onValueChange={setFilterProduto}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Selecionar funil" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="consorcio">Funil - Consórcio</SelectItem>
+            <SelectItem value="emprestimo">Funil - Empréstimo Consignado</SelectItem>
+          </SelectContent>
+        </Select>
         {podeVerTodos && (
           <>
             <Select value={filterVendedor} onValueChange={setFilterVendedor}>
