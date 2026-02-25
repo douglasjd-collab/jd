@@ -824,7 +824,7 @@ export default function NovaVendaConsignado() {
           </Card>
         )}
 
-        {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && (
+        {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && currentStep === 3 && (
           <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/50 to-white">
             <CardHeader className="bg-amber-50/50 border-b">
               <CardTitle className="flex items-center gap-2 text-amber-900">
@@ -860,14 +860,15 @@ export default function NovaVendaConsignado() {
           </Card>
         )}
 
-        {/* Módulo Finalização */}
-        <Card className="border-l-4 border-l-slate-500 bg-gradient-to-br from-slate-50/50 to-white">
-          <CardHeader className="bg-slate-50/50 border-b">
-            <CardTitle className="flex items-center gap-2 text-slate-900">
-              <div className="w-8 h-8 bg-slate-500 rounded-lg flex items-center justify-center">
+        {/* Step 4: Revisão Final */}
+        {currentStep === 4 && (
+        <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-white">
+          <CardHeader className="bg-orange-50/50 border-b">
+            <CardTitle className="flex items-center gap-2 text-orange-900">
+              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
                 <span className="text-white text-sm font-bold">4</span>
               </div>
-              Finalização
+              Revisão Final
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
