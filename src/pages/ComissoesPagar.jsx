@@ -66,34 +66,10 @@ export default function ComissoesPagar() {
     }
   };
 
+  // sincronizarComissoes: cria ComissaoAPagar para RecebimentoComissao que ainda não têm registro
+  // Não usada mais na query — a importação já cria ComissaoAPagar diretamente
   const sincronizarComissoes = async () => {
-    const recebimentos = await base44.entities.RecebimentoComissao.filter({});
-    const comissoesExistentes = await base44.entities.ComissaoAPagar.filter({});
-    const processados = new Set(comissoesExistentes.map(c => c.recebimento_id));
-    const novos = recebimentos.filter(r => !processados.has(r.id));
-    for (const rec of novos) {
-      const valorAPagar = rec.valor_recebido * (rec.percentual_comissao || 100) / 100;
-      await base44.entities.ComissaoAPagar.create({
-        empresa_id: rec.empresa_id,
-        recebimento_id: rec.id,
-        venda_id: rec.venda_id,
-        cliente_id: rec.cliente_id,
-        cliente_nome: rec.cliente_nome,
-        vendedor_id: rec.vendedor_id,
-        vendedor_nome: rec.vendedor_nome,
-        administradora_id: rec.administradora_id,
-        administradora_nome: rec.administradora_nome,
-        grupo: rec.grupo,
-        cota: rec.cota,
-        contrato: rec.contrato,
-        parcela_numero: rec.parcela_informada,
-        data_recebimento: rec.data_recebimento,
-        valor_recebido: rec.valor_recebido,
-        percentual_comissao: rec.percentual_comissao || 100,
-        valor_a_pagar: valorAPagar,
-        status_pagamento: rec.status_pagamento || 'a_pagar',
-      });
-    }
+    // noop — mantido apenas para compatibilidade; a importação já cria os registros
   };
 
   const { data: comissoes = [], isLoading } = useQuery({
