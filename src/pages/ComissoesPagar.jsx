@@ -93,7 +93,7 @@ export default function ComissoesPagar() {
     if (statusFilter === 'a_pagar' && !STATUS_A_PAGAR.includes(c.status_pagamento)) return false;
     if (statusFilter === 'paga' && c.status_pagamento !== 'paga') return false;
     if (mesFilter !== 'todos' && c.data_recebimento) {
-      const mes = moment(c.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM');
+      const mes = parseMes(c.data_recebimento);
       if (mes !== mesFilter) return false;
     }
     if (searchTerm) {
