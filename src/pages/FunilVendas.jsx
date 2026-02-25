@@ -596,6 +596,7 @@ export default function FunilVendas() {
     const data = {
       ...formData,
       empresa_id: currentUser?.empresa_id || '',
+      produto: filterProduto,
       cliente_nome: cliente?.nome_completo || cliente?.pj_razao_social || '',
       cliente_telefone: cliente?.celular || cliente?.pj_celular || '',
       vendedor_nome: vendedor?.razao_social || vendedor?.full_name || '',
