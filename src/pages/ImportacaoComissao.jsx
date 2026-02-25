@@ -515,13 +515,13 @@ export default function ImportacaoComissao() {
             empresa_id: vLegado.empresa_id,
             cliente_id: vLegado.cliente_id,
             administradora_id: vLegado.administradora_id,
-            tabela_id: vLegado.tabela_id,
+            tabela_id: vLegado.tabela_id || vLegado.administradora_id,
             grupo: vLegado.grupo,
             vendedor_id: vLegado.vendedor_id,
             data_venda: vLegado.data_venda,
-            valorCredito: vLegado.valorCredito,
-            taxaAdministracao: vLegado.taxaAdministracao,
-            prazo: vLegado.prazo,
+            valorCredito: vLegado.valorCredito || 0,
+            taxaAdministracao: vLegado.taxaAdministracao || 0,
+            prazo: vLegado.prazo || 1,
             comissao_total_recebida: updateData.comissao_total_recebida
           });
         }
