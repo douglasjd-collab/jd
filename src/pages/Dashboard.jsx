@@ -188,9 +188,14 @@ export default function Dashboard() {
   });
 
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
-    queryKey: ['oportunidades-dashboard'],
+    queryKey: ['oportunidades-dashboard', user?.empresa_id],
     enabled: !!user,
-    queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao', 100),
+    queryFn: async () => {
+      if (user?.empresa_id) {
+        return base44.entities.Oportunidade.filter({ empresa_id: user.empresa_id }, '-data_ultima_movimentacao', 100);
+      }
+      return base44.entities.Oportunidade.list('-data_ultima_movimentacao', 100);
+    },
     staleTime: 30000,
   });
 
