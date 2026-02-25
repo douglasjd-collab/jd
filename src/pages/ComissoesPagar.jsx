@@ -76,9 +76,11 @@ export default function ComissoesPagar() {
     queryKey: ['comissoes-a-pagar', user?.empresa_id],
     queryFn: async () => {
       const filtro = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
-      return await base44.entities.ComissaoAPagar.filter(filtro, '-data_recebimento', 1000);
+      return await base44.entities.ComissaoAPagar.filter(filtro, '-created_date', 2000);
     },
     enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
