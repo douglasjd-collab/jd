@@ -383,6 +383,26 @@ export default function FunilVendas() {
     }
   });
 
+  const criarFunilMutation = useMutation({
+    mutationFn: async (data) => {
+      return base44.entities.EtapaFunil.create({
+        nome: data.nome,
+        cor: data.cor,
+        status: 'ativa',
+        ordem: (etapas?.length || 0) + 1
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
+      setCriarFunilOpen(false);
+      setNovoFunil({ nome: '', cor: '#3b82f6' });
+      toast.success('Funil criado com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao criar funil: ' + error.message);
+    }
+  });
+
   const excluirOportunidadeMutation = useMutation({
     mutationFn: async (oportunidadeId) => {
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
