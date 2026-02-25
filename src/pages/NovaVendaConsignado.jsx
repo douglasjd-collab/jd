@@ -736,16 +736,17 @@ export default function NovaVendaConsignado() {
 
           </CardContent>
         </Card>
+        )}
 
-        {/* Módulo Comissões */}
-        {(user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') && (
+        {/* Step 3: Estrutura de Comissões */}
+        {currentStep === 3 && (user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') && (
           <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-white">
             <CardHeader className="bg-green-50/50 border-b">
               <CardTitle className="flex items-center gap-2 text-green-900">
                 <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
                   <span className="text-white text-sm font-bold">3</span>
                 </div>
-                Comissões
+                Estrutura de Comissões
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
