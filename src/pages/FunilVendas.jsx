@@ -153,10 +153,10 @@ export default function FunilVendas() {
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
     queryKey: ['oportunidades', filterProduto],
     queryFn: () => {
-      if (filterProduto === 'emprestimo') {
-        return base44.entities.Oportunidade.filter({ produto: 'emprestimo' }, '-data_ultima_movimentacao');
+      if (filterProduto === 'todos') {
+        return base44.entities.Oportunidade.list('-data_ultima_movimentacao');
       }
-      return base44.entities.Oportunidade.filter({ produto: 'consorcio' }, '-data_ultima_movimentacao');
+      return base44.entities.Oportunidade.filter({ produto: filterProduto }, '-data_ultima_movimentacao');
     },
   });
 
