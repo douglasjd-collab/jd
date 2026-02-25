@@ -489,8 +489,20 @@ export default function ImportacaoComissao() {
         }
       }
 
+      // Atualiza comissao_total_recebida — tenta VendaConsorcio primeiro (pelo venda_base_id),
+      // depois Venda legado. Usa update parcial para não acionar validação de campos obrigatórios.
       for (const [vendaBaseId, updateData] of Object.entries(vendasParaAtualizar)) {
-        await base44.entities.Venda.update(vendaBaseId, updateData);
+        // Verifica se existe em VendaConsorcio
+        const vcMatch = vendasConsorcio.filter(v => v.venda_base_id === vendaBaseId);
+        if (vcMatch.length > 0) {
+          await base44.entities.VendaConsorcio.update(vcMatch[0].id, { comissao_total_recebida: updateData.comissao_total_recebida });
+        } else {
+          // Venda legado: busca pelo id diretamente
+          const vLegado = vendasLegado.find(v => v.id === vendaBaseId);
+          if (vLegado) {
+            await base44.entities.Venda.update(vendaBaseId, { comissao_total_recebida: updateData.comissao_total_recebida });
+          }
+        }
       }
 
       await base44.entities.Importacao.update(importacao.id, {
