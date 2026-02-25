@@ -211,6 +211,11 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const instancePayload = payload.instance || '';
     const instanceFinal = instanceFromQuery || instancePayload || '';
+    
+    console.log('🏷️ Identificando empresa...');
+    console.log('   instanceFromQuery:', instanceFromQuery);
+    console.log('   instancePayload:', instancePayload);
+    console.log('   instanceFinal:', instanceFinal);
 
     const JD_ID = '699696c2c9f5bffc2e67402b';
     let empresaId = JD_ID;
