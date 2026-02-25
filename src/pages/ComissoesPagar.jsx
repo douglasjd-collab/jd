@@ -503,8 +503,8 @@ export default function ComissoesPagar() {
               </thead>
               <tbody>
                 {comissoesModal.map(c => {
-                  const isPagar = c.status_pagamento === 'a_pagar';
-                  const isSel = modalSelecionados.has(c.id);
+                   const isPagar = STATUS_A_PAGAR.includes(c.status_pagamento);
+                   const isSel = modalSelecionados.has(c.id);
                   return (
                     <tr key={c.id} className={`border-b transition-colors ${isSel ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
                       <td className="p-3">
