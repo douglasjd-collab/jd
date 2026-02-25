@@ -112,7 +112,7 @@ export default function Clientes() {
         return base44.entities.Cliente.list('-created_date', 5000);
       }
       
-      // Outros usuários veem apenas clientes da sua empresa
+      // Admin, gerente, colaborador e funcionario veem todos os clientes da empresa
       if (currentUser?.empresa_id) {
         return base44.entities.Cliente.filter(
           { empresa_id: currentUser.empresa_id },
