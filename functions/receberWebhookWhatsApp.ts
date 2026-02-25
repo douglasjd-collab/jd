@@ -401,14 +401,35 @@ Deno.serve(async (req) => {
     return Response.json({ success: true, message_id: novaMensagem.id, conversa_id: conversa.id });
 
   } catch (error) {
-    console.error('❌ ERRO CRÍTICO:', error.message, error.stack);
-    try {
-      const b = createClientFromRequest(req);
-      await registrarEvento(b, '699696c2c9f5bffc2e67402b', 'erro', {
-        status: 'erro',
-        erro: error.message.substring(0, 500)
-      });
-    } catch (_) {}
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    console.error('❌ ERRO CRÍTICO:', error.message);
+    console.error('❌ STACK:', error.stack);
+    
+    // Tentar registrar erro mesmo em caso de falha
+    let tentativas = 0;
+    while (tentativas < 3) {
+      try {
+        const b = createClientFromRequest(req);
+        const url = new URL(req.url);
+        const instancia = url.searchParams.get('instance') || 'desconhecida';
+        
+        await registrarEvento(b, '699696c2c9f5bffc2e67402b', 'erro_webhook', {
+          status: 'erro',
+          erro: error.message.substring(0, 500),
+          instancia: instancia,
+          stack: error.stack?.substring(0, 200)
+        });
+        
+        console.log('✅ Erro registrado no LogRecebimentoWebhook');
+        break;
+      } catch (err) {
+        tentativas++;
+        console.error(`❌ Erro ao registrar (tentativa ${tentativas}):`, err.message);
+        if (tentativas >= 3) {
+          console.error('❌ Não foi possível registrar o erro após 3 tentativas');
+        }
+      }
+    }
+    
+    return Response.json({ success: false, error: error.message, stack: error.stack?.substring(0, 200) }, { status: 500 });
   }
 });
