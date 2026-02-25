@@ -534,34 +534,53 @@ export default function NovaVendaConsignado() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Módulo Cliente */}
+        {/* Step 1: Informações do Cliente */}
+        {currentStep === 1 && (
         <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-white">
           <CardHeader className="bg-purple-50/50 border-b">
             <CardTitle className="flex items-center gap-2 text-purple-900">
               <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
                 <span className="text-white text-sm font-bold">1</span>
               </div>
-              Cliente
+              Informações do Cliente
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 space-y-4">
             <div>
               <Label>Cliente *</Label>
               {clienteSelecionado ? (
                 <div className="flex items-center justify-between p-4 bg-purple-100 rounded-lg border-2 border-purple-300">
                   <span className="font-semibold text-purple-900">{clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social}</span>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setShowClienteModal(true)}>
-                    Alterar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowClienteModal(true)}>
+                      Alterar
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <Button type="button" variant="outline" className="w-full h-12 border-2 border-dashed" onClick={() => setShowClienteModal(true)}>
-                  + Selecionar Cliente
-                </Button>
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input 
+                      placeholder="Buscar cliente por nome ou ID" 
+                      className="pl-10"
+                      onClick={() => setShowClienteModal(true)}
+                      readOnly
+                    />
+                  </div>
+                  <Button type="button" className="w-full bg-purple-500 hover:bg-purple-600" onClick={() => setShowClienteModal(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Cliente
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
+        )}
+
+        {/* Step 2: Detalhes da Proposta */}
+        {currentStep === 2 && (
 
         {/* Módulo Proposta */}
         <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-white">
