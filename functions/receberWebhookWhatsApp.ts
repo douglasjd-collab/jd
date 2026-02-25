@@ -320,33 +320,56 @@ Deno.serve(async (req) => {
     }
 
     // ── Buscar/criar conversa ─────────────────────────────────────────────────
-    const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-      empresa_id: empresaId,
-      cliente_telefone: telefoneLimpo
-    });
+    let conversas = [];
+    let clienteId = '';
+    
+    try {
+      conversas = await Promise.race([
+        base44.asServiceRole.entities.ConversaWhatsapp.filter({
+          empresa_id: empresaId,
+          cliente_telefone: telefoneLimpo
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+      ]);
+      console.log(`✅ Conversas encontradas: ${conversas?.length || 0}`);
+    } catch (e) {
+      console.log(`⚠️ Erro ao buscar conversas: ${e.message}`);
+      conversas = [];
+    }
 
     // Tentar encontrar cliente pelo telefone
-    let clienteId = '';
     try {
-      const clientes = await base44.asServiceRole.entities.Cliente.filter({
-        empresa_id: empresaId,
-        celular: telefoneLimpo
-      });
+      const clientes = await Promise.race([
+        base44.asServiceRole.entities.Cliente.filter({
+          empresa_id: empresaId,
+          celular: telefoneLimpo
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+      ]);
+      
       if (clientes?.length > 0) {
         clienteId = clientes[0].id;
         console.log(`✅ Cliente encontrado: ${clienteId}`);
       }
     } catch (e) {
-      console.log('⚠️ Erro ao buscar cliente:', e.message);
+      console.log(`⚠️ Erro ao buscar cliente: ${e.message}`);
     }
 
     // ── Buscar/criar contato WhatsApp ──────────────────────────────────────────
-    let contato;
+    let contato = null;
     try {
-      const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
-        empresa_id: empresaId,
-        telefone: telefoneLimpo
-      });
+      let contatos = [];
+      try {
+        contatos = await Promise.race([
+          base44.asServiceRole.entities.ContatoWhatsapp.filter({
+            empresa_id: empresaId,
+            telefone: telefoneLimpo
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+        ]);
+      } catch (e) {
+        console.log(`⚠️ Erro ao buscar contatos: ${e.message}`);
+      }
 
       if (contatos?.length > 0) {
         contato = contatos[0];
@@ -361,7 +384,7 @@ Deno.serve(async (req) => {
         console.log(`✅ Contato WhatsApp criado: ${contato.id}`);
       }
 
-      // Extrair foto do payload
+      // Extrair foto do payload (sem timeout)
       const possiblePhotoUrl = 
         data.profilePicUrl ||
         data.profilePic ||
@@ -369,15 +392,19 @@ Deno.serve(async (req) => {
         data.profilePicThumbObj?.eurl ||
         data.avatarUrl;
 
-      if (possiblePhotoUrl && possiblePhotoUrl !== contato.foto_url) {
-        contato = await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
-          foto_url: possiblePhotoUrl,
-          ultima_atualizacao: new Date().toISOString()
-        });
-        console.log(`🖼️ Foto do contato atualizada: ${possiblePhotoUrl}`);
+      if (contato && possiblePhotoUrl && possiblePhotoUrl !== contato.foto_url) {
+        try {
+          contato = await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
+            foto_url: possiblePhotoUrl,
+            ultima_atualizacao: new Date().toISOString()
+          });
+          console.log(`🖼️ Foto do contato atualizada`);
+        } catch (e) {
+          console.log(`⚠️ Erro ao atualizar foto: ${e.message}`);
+        }
       }
     } catch (e) {
-      console.error('⚠️ Erro ao processar contato WhatsApp:', e.message);
+      console.error(`⚠️ Erro crítico ao processar contato WhatsApp: ${e.message}`);
     }
 
     let conversa;
