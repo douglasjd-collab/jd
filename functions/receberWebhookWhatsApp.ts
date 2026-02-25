@@ -244,11 +244,22 @@ Deno.serve(async (req) => {
     if (instanceFinal) {
       console.log(`🔎 Buscando instância "${instanceFinal}"...`);
       
-      // 1) Tentar achar colaborador com essa instância pessoal
+      // Com timeout para não travar
+      let instanciaEncontrada = false;
+      
       try {
-        const colaboradores = await base44.asServiceRole.entities.Colaborador.filter({
-          evolution_instance_name: instanceFinal
-        });
+        // 1) Tentar achar colaborador
+        const controller1 = new AbortController();
+        const timeout1 = setTimeout(() => controller1.abort(), 5000);
+        
+        const colaboradores = await Promise.race([
+          base44.asServiceRole.entities.Colaborador.filter({
+            evolution_instance_name: instanceFinal
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+        ]);
+        
+        clearTimeout(timeout1);
         console.log(`   Colaboradores encontrados: ${colaboradores?.length || 0}`);
         
         if (colaboradores?.length > 0) {
@@ -257,28 +268,40 @@ Deno.serve(async (req) => {
           colaboradorId = colab.id;
           empresaId = colab.empresa_id || JD_ID;
           console.log(`✅ Instância de COLABORADOR: ${colab.nome} (empresa: ${empresaId})`);
-        } else {
-          throw new Error('Nenhum colaborador encontrado');
+          instanciaEncontrada = true;
         }
       } catch (err) {
         console.log(`⚠️ Erro ao buscar colaborador: ${err.message}`);
-        
-        // 2) Tentar achar empresa com essa instância
+      }
+      
+      // 2) Se não achou, tentar empresa
+      if (!instanciaEncontrada) {
         try {
-          const empresas = await base44.asServiceRole.entities.Empresa.filter({
-            evolution_instance_name: instanceFinal
-          });
+          const controller2 = new AbortController();
+          const timeout2 = setTimeout(() => controller2.abort(), 5000);
+          
+          const empresas = await Promise.race([
+            base44.asServiceRole.entities.Empresa.filter({
+              evolution_instance_name: instanceFinal
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+          ]);
+          
+          clearTimeout(timeout2);
           console.log(`   Empresas encontradas: ${empresas?.length || 0}`);
           
           if (empresas?.length > 0) {
             empresaId = empresas[0].id;
             console.log(`✅ Instância de EMPRESA: ${empresas[0].nome} (${empresaId})`);
-          } else {
-            console.warn(`⚠️ Instância "${instanceFinal}" não encontrada em Empresa, usando JD Promotora`);
+            instanciaEncontrada = true;
           }
         } catch (err2) {
-          console.error(`❌ Erro ao buscar empresa: ${err2.message}`);
+          console.error(`⚠️ Erro ao buscar empresa: ${err2.message}`);
         }
+      }
+      
+      if (!instanciaEncontrada) {
+        console.warn(`⚠️ Instância "${instanceFinal}" não encontrada, usando JD Promotora padrão`);
       }
     } else {
       console.log('⚠️ Nenhuma instância informada, usando JD Promotora padrão');
