@@ -344,9 +344,12 @@ export default function Vendas() {
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
   const isGerente = currentUser?.perfil === 'gerente';
 
-  // Filtrar vendas por perfil - usar colaborador_id
+  // Filtrar vendas por perfil
   const filteredByRole = vendas.filter(v => {
     if (isAdmin) return true;
+    if (currentUser?.perfil === 'colaborador' || currentUser?.perfil === 'funcionario') {
+      return v.empresa_id === currentUser?.empresa_id;
+    }
     if (isGerente) return v.gerente_id === currentUser?.colaborador_id || v.vendedor_id === currentUser?.colaborador_id;
     return v.vendedor_id === currentUser?.colaborador_id;
   });
