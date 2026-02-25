@@ -365,7 +365,7 @@ export default function ImportacaoComissao() {
          administradora_nome: admin?.nome_fantasia || admin?.razao_social,
          usuario_id: currentUser?.id,
          usuario_nome: currentUser?.full_name,
-         arquivo_nome: file?.name,
+         arquivo_nome: files[0]?.name,
          arquivo_url: previewData.file_url,
          total_registros: previewData.items.length,
          status: 'processando'
