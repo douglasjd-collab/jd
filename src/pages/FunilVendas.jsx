@@ -749,6 +749,7 @@ export default function FunilVendas() {
             <SelectValue placeholder="Selecionar funil" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="todos">Todos os Funis</SelectItem>
             <SelectItem value="consorcio">Funil - Consórcio</SelectItem>
             <SelectItem value="emprestimo">Funil - Empréstimo Consignado</SelectItem>
           </SelectContent>
