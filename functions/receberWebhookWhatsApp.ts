@@ -266,9 +266,12 @@ Deno.serve(async (req) => {
     }
 
     // ── Verificar duplicata ───────────────────────────────────────────────────
+    console.log(`🔎 Verificando duplicata para messageId: ${messageId}`);
     const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
       whatsapp_message_id: messageId
     });
+    console.log(`   Duplicatas encontradas: ${existentes?.length || 0}`);
+    
     if (existentes.length > 0) {
       console.log('⏭️ Duplicata ignorada');
       return Response.json({ success: true, skipped: 'duplicate' });
