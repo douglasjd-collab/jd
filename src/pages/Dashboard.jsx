@@ -200,9 +200,15 @@ export default function Dashboard() {
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes-dashboard'],
+    queryKey: ['clientes-dashboard', user?.empresa_id],
     enabled: !!user,
-    queryFn: () => base44.entities.Cliente.filter({ status: 'ativo' }),
+    queryFn: async () => {
+      const filtro = { status: 'ativo' };
+      if (user?.empresa_id) {
+        filtro.empresa_id = user.empresa_id;
+      }
+      return base44.entities.Cliente.filter(filtro);
+    },
     staleTime: 30000,
   });
 
