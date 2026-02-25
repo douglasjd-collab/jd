@@ -206,9 +206,12 @@ export default function Dashboard() {
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes-dashboard', user?.empresa_id],
+    queryKey: ['clientes-dashboard', user?.empresa_id, user?.perfil],
     enabled: !!user,
     queryFn: async () => {
+      if (user?.perfil === 'super_admin' || user?.perfil === 'master') {
+        return base44.entities.Cliente.filter({ status: 'ativo' });
+      }
       const filtro = { status: 'ativo' };
       if (user?.empresa_id) {
         filtro.empresa_id = user.empresa_id;
