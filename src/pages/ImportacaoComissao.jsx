@@ -618,27 +618,46 @@ export default function ImportacaoComissao() {
           </div>
 
           <div>
-            <Label>Arquivo CSV *</Label>
+            <Label>Arquivo(s) CSV *</Label>
             <div className="mt-2 border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-slate-300 transition-colors">
               <input
                 type="file"
                 accept=".csv"
+                multiple
                 onChange={handleFileUpload}
                 className="hidden"
                 id="file-upload"
-                disabled={!selectedAdmin || (isSuperAdmin && !empresaSelecionada)}
+                disabled={isProcessing || !selectedAdmin || (isSuperAdmin && !empresaSelecionada)}
               />
-              <label htmlFor="file-upload" className="cursor-pointer">
+              <label htmlFor="file-upload" className={`cursor-pointer ${isProcessing ? 'pointer-events-none' : ''}`}>
                 {isProcessing ? (
                   <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
-                    <span className="text-slate-500">Processando arquivo...</span>
+                    <Loader2 className="w-8 h-8 text-[#23BE84] animate-spin" />
+                    {progressoLote ? (
+                      <>
+                        <span className="text-slate-700 font-medium">
+                          Processando {progressoLote.atual} de {progressoLote.total} arquivos...
+                        </span>
+                        <span className="text-sm text-slate-500 truncate max-w-xs">{progressoLote.nomeArquivo}</span>
+                        <div className="w-64 bg-slate-200 rounded-full h-2 mt-1">
+                          <div
+                            className="bg-[#23BE84] h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${(progressoLote.atual / progressoLote.total) * 100}%` }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-slate-500">Processando arquivo...</span>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2">
                     <Upload className="w-8 h-8 text-slate-400" />
-                    <span className="text-slate-500">
-                      {file ? file.name : 'Clique para selecionar arquivo CSV'}
+                    <span className="text-slate-700 font-medium">
+                      {files.length > 0 ? `${files.length} arquivo(s) selecionado(s)` : 'Clique para selecionar arquivo(s) CSV'}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      Selecione um ou vários arquivos de uma vez. Lote de +20 arquivos suportado.
                     </span>
                     <span className="text-xs text-slate-400">
                       Colunas: A=Data, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela
