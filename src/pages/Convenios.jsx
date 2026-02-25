@@ -174,14 +174,16 @@ export default function Convenios() {
     'INSS': 'INSS',
     'GOVERNO_ESTADUAL': 'Governo Estadual',
     'GOVERNO_MUNICIPAL': 'Governo Municipal',
-    'PRIVADO': 'Privado'
+    'PRIVADO': 'Privado',
+    'EMPRESTIMO_PESSOAL': 'Empréstimo Pessoal'
   };
 
   const tipoColors = {
     'INSS': 'bg-blue-100 text-blue-800',
     'GOVERNO_ESTADUAL': 'bg-green-100 text-green-800',
     'GOVERNO_MUNICIPAL': 'bg-purple-100 text-purple-800',
-    'PRIVADO': 'bg-amber-100 text-amber-800'
+    'PRIVADO': 'bg-amber-100 text-amber-800',
+    'EMPRESTIMO_PESSOAL': 'bg-indigo-100 text-indigo-800'
   };
 
   return (
@@ -302,6 +304,7 @@ export default function Convenios() {
                   <SelectItem value="GOVERNO_ESTADUAL">Governo Estadual</SelectItem>
                   <SelectItem value="GOVERNO_MUNICIPAL">Governo Municipal</SelectItem>
                   <SelectItem value="PRIVADO">Privado</SelectItem>
+                  <SelectItem value="EMPRESTIMO_PESSOAL">Empréstimo Pessoal</SelectItem>
                 </SelectContent>
               </Select>
             </div>
