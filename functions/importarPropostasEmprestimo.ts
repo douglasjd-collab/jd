@@ -283,6 +283,9 @@ Deno.serve(async (req) => {
           if (statusEncontrado) statusCodigo = statusEncontrado.codigo;
         }
 
+        // Status: usar valor bruto do arquivo se não encontrar na lista cadastrada
+        const statusFinal = statusVal || statusCodigo;
+
         const proposta = {
           empresa_id:               empresaId,
           produto:                  'emprestimo',
@@ -296,12 +299,13 @@ Deno.serve(async (req) => {
           emprestimo_numero_ade:    adeVal || null,
           emprestimo_numero_beneficio: beneficioVal || null,
           emprestimo_prazo:         prazo,
+          contrato:                 contratoVal || adeVal || null,
           vendedor_id:              vend?.id || colaboradorId || null,
           vendedor_nome:            vend?.nome || vendedorVal || null,
           data_venda:               dataVend,
           valor_credito:            valor,
           valor_comissao:           comissao,
-          status:                   statusCodigo,
+          status:                   statusFinal,
         };
 
         await base44.entities.Proposta.create(proposta);
