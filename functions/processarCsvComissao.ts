@@ -168,20 +168,27 @@ Deno.serve(async (req) => {
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
-        const data_recebimento = parseData(row[0]);
+        // Pular linhas completamente vazias ou que parecem ser cabeçalho extra
+        const rowStr = row.join('').trim();
+        if (!rowStr) continue;
+
+        const data_recebimento = parseData(row[0] ?? '');
         const contratoRaw      = String(row[1] ?? '').trim();
         const grupoRaw         = String(row[2] ?? '').trim();
         const cotaRaw          = String(row[3] ?? '').trim();
-        const valorRaw         = row[4];
-        const parcelaRaw       = row[5];
+        const valorRaw         = row[4] ?? '';
+        const parcelaRaw       = row[5] ?? '';
 
         const contrato = contratoRaw === '-' ? '' : contratoRaw;
 
         // Linha completamente vazia?
         if (!data_recebimento && !contrato && !grupoRaw && !cotaRaw) continue;
+        
+        // Pular linhas de cabeçalho repetido
+        if (contratoRaw?.toLowerCase() === 'contrato' || grupoRaw?.toLowerCase() === 'grupo') continue;
 
         const valor   = parseValor(valorRaw);
-        const parcela = parseInt(String(parcelaRaw ?? '').replace(/\D/g, ''), 10) || 1;
+        const parcela = parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1;
 
         items.push({ data_recebimento, contrato, grupo: grupoRaw, cota: cotaRaw, valor, parcela });
       }
