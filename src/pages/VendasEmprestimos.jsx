@@ -186,7 +186,7 @@ export default function VendasEmprestimos() {
   const today = new Date().toISOString().slice(0, 10);
   const currentMonth = today.substring(0, 7); // YYYY-MM
   
-  const todayPropostas = filteredByRole.filter(p => p.data_venda === today && (p.valor_credito || 0) > 0);
+  const todayPropostas = filteredByRole.filter(p => p.data_venda === today);
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
   // IDs de status com funcao_fluxo 'finalizado' ou nome 'Pago'
