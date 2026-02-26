@@ -320,12 +320,16 @@ export default function LayoutImportacaoConfig() {
       {/* Nome do layout */}
       <div className="max-w-sm">
         <Label>Nome do Layout *</Label>
-        <Input
-          value={nomeLayout}
-          onChange={e => setNomeLayout(e.target.value)}
-          placeholder={`Ex: ${tipo === 'producao' ? 'Produção Consignado INSS' : 'Comissão Mensal'}`}
-          className="mt-1"
-        />
+        {modoEdicao || layoutSelecionadoId === 'novo' ? (
+          <Input
+            value={nomeLayout}
+            onChange={e => setNomeLayout(e.target.value)}
+            placeholder={`Ex: ${tipo === 'producao' ? 'Produção Consignado INSS' : 'Comissão Mensal'}`}
+            className="mt-1"
+          />
+        ) : (
+          <p className="mt-1 px-3 py-2 rounded-md border bg-slate-50 text-slate-700 text-sm">{nomeLayout}</p>
+        )}
       </div>
 
       {/* Tabela de mapeamento */}
