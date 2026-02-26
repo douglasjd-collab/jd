@@ -187,6 +187,14 @@ export default function EmpresasParceiras() {
                     <Button
                       variant="outline"
                       size="icon"
+                      title="Layout de Produção"
+                      onClick={() => window.location.href = createPageUrl(`LayoutImportacaoConfig?empresa_parceira_id=${empresa.id}&tipo=producao`)}
+                    >
+                      <Settings className="w-4 h-4 text-blue-600" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => handleEditar(empresa)}
                     >
                       <Pencil className="w-4 h-4" />
