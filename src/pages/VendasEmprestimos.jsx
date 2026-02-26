@@ -183,16 +183,30 @@ export default function VendasEmprestimos() {
   const todayPropostas = filteredByRole.filter(p => p.data_venda === today && (p.valor_credito || 0) > 0);
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   
-  // Propostas pagas (status = pago, paga ou pago_vendedor)
-  const propostas_pagas_mes = filteredByRole.filter(p => 
-    ['pago', 'paga', 'pago_vendedor'].includes(p.status)
-  );
+  // IDs de status com funcao_fluxo 'finalizado' ou nome 'Pago'
+  const statusPagoIds = statusList
+    .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStr(s.nome)))
+    .map(s => s.id);
+  const normStr = s => String(s || '').toLowerCase().trim();
+
+  const isPaga = (p) =>
+    (p.status_id && statusPagoIds.includes(p.status_id)) ||
+    ['pago', 'paga', 'pago_vendedor'].includes(normStr(p.status));
+
+  // Propostas pagas
+  const propostas_pagas_mes = filteredByRole.filter(isPaga);
   const valor_pagas_mes = propostas_pagas_mes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
-  
+
+  // IDs de status com funcao_fluxo 'cancelado' ou nome 'Cancelado'
+  const statusCanceladoIds = statusList
+    .filter(s => s.funcao_fluxo === 'cancelado' || normStr(s.nome) === 'cancelado')
+    .map(s => s.id);
+  const isCancelada = (p) =>
+    (p.status_id && statusCanceladoIds.includes(p.status_id)) ||
+    normStr(p.status) === 'cancelado';
+
   // Em andamento: todas as propostas MENOS canceladas MENOS pagas
-  const emAndamento = filteredByRole.filter(p => 
-    p.status !== 'cancelado' && !['pago', 'paga', 'pago_vendedor'].includes(p.status)
-  );
+  const emAndamento = filteredByRole.filter(p => !isPaga(p) && !isCancelada(p));
   const valor_em_andamento = emAndamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
   // Portabilidades previstas para hoje (data_venda === hoje e tipo portabilidade)
