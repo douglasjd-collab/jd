@@ -225,6 +225,7 @@ Deno.serve(async (req) => {
 
     const dataRows = rows.slice(headerRowIndex + 1);
     let criadas = 0;
+    let atualizadas = 0;
     let ignoradas = 0;
     const erros = [];
     const previews = [];
