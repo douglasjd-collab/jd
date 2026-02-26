@@ -183,11 +183,12 @@ export default function VendasEmprestimos() {
   const todayPropostas = filteredByRole.filter(p => p.data_venda === today && (p.valor_credito || 0) > 0);
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   
+  const normStr = s => String(s || '').toLowerCase().trim();
+
   // IDs de status com funcao_fluxo 'finalizado' ou nome 'Pago'
   const statusPagoIds = statusList
     .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStr(s.nome)))
     .map(s => s.id);
-  const normStr = s => String(s || '').toLowerCase().trim();
 
   const isPaga = (p) =>
     (p.status_id && statusPagoIds.includes(p.status_id)) ||
