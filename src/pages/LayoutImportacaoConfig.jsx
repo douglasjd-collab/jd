@@ -116,14 +116,17 @@ export default function LayoutImportacaoConfig() {
     if (empresaParceiraId) {
       const ep = await base44.entities.EmpresaParceira.filter({ id: empresaParceiraId });
       if (ep.length > 0) setEmpresaParceira(ep[0]);
-
-      const lays = await base44.entities.LayoutImportacao.filter({
-        empresa_parceira_id: empresaParceiraId,
-        tipo,
-      });
-      setLayouts(lays);
     }
     setLoading(false);
+  };
+
+  const carregarLayouts = async (tipoAtual) => {
+    if (!empresaParceiraId) return;
+    const lays = await base44.entities.LayoutImportacao.filter({
+      empresa_parceira_id: empresaParceiraId,
+      tipo: tipoAtual,
+    });
+    setLayouts(lays);
   };
 
   useEffect(() => {
