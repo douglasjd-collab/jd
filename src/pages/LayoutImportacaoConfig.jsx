@@ -280,14 +280,40 @@ export default function LayoutImportacaoConfig() {
           </Select>
         </div>
 
-        <div className="flex gap-2 self-end">
-          <Button variant="outline" onClick={handleDuplicar} disabled={saving || layoutSelecionadoId === 'novo'} className="gap-2">
-            <Copy className="w-4 h-4" /> Duplicar Layout
-          </Button>
-          <Button onClick={handleSalvar} disabled={saving} className="bg-green-600 hover:bg-green-700 gap-2">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar Configuração
-          </Button>
+        <div className="flex gap-2 self-end flex-wrap">
+          {layoutSelecionadoId !== 'novo' && !modoEdicao && (
+            <>
+              <Button variant="outline" onClick={handleDuplicar} disabled={saving} className="gap-2">
+                <Copy className="w-4 h-4" /> Duplicar
+              </Button>
+              <Button variant="outline" onClick={handleExcluir} disabled={saving} className="gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                <Trash2 className="w-4 h-4" /> Excluir
+              </Button>
+              <Button onClick={() => setModoEdicao(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                Editar Layout
+              </Button>
+            </>
+          )}
+          {(layoutSelecionadoId === 'novo' || modoEdicao) && (
+            <>
+              {modoEdicao && layoutSelecionadoId !== 'novo' && (
+                <Button variant="outline" onClick={() => {
+                  const lay = layouts.find(l => l.id === layoutSelecionadoId);
+                  if (lay) { setNomeLayout(lay.nome); setMapeamento(lay.mapeamento || {}); }
+                  setModoEdicao(false);
+                }} disabled={saving} className="gap-2">
+                  Cancelar
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleDuplicar} disabled={saving || layoutSelecionadoId === 'novo'} className="gap-2">
+                <Copy className="w-4 h-4" /> Duplicar
+              </Button>
+              <Button onClick={handleSalvar} disabled={saving} className="bg-green-600 hover:bg-green-700 gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Salvar Configuração
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
