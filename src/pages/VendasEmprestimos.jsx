@@ -184,7 +184,7 @@ export default function VendasEmprestimos() {
   
   const todayPropostas = filteredByRole.filter(p => p.data_venda === today && (p.valor_credito || 0) > 0);
   const valorHoje = todayPropostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
-  
+
   // IDs de status com funcao_fluxo 'finalizado' ou nome 'Pago'
   const statusPagoIds = statusList
     .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStr(s.nome)))
