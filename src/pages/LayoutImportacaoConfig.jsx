@@ -93,6 +93,7 @@ export default function LayoutImportacaoConfig() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tipo, setTipo] = useState(tipoParam);
+  const [modoEdicao, setModoEdicao] = useState(false);
 
   const campos = tipo === 'producao' ? CAMPOS_PRODUCAO : CAMPOS_COMISSAO;
 
