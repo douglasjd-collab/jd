@@ -97,6 +97,7 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
     }
     updateMutation.mutate({
       status: statusSelecionado.codigo,
+      status_id: statusSelecionado.id,
       emprestimo_data_liberacao: dataPagamento,
     });
   };
