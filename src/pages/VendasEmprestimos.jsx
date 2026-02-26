@@ -363,7 +363,7 @@ export default function VendasEmprestimos() {
         {[...statusList].sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => {
           const colorClass = STATUS_COLOR_MAP[s.cor] || STATUS_COLOR_MAP.slate;
           const isActive = filterStatus === s.codigo;
-          const count = filteredByRole.filter(p => p.status === s.codigo).length;
+          const count = filteredByRole.filter(p => p.status_id === s.id || p.status === s.codigo || normStr(p.status) === normStr(s.nome)).length;
           return (
             <button
               key={s.id}
