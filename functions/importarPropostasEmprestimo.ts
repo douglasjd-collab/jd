@@ -326,8 +326,33 @@ Deno.serve(async (req) => {
           Object.entries(propostaBase).filter(([, v]) => v !== null && v !== undefined)
         );
 
-        await base44.asServiceRole.entities.Proposta.create(proposta);
-        criadas++;
+        // Verificar duplicidade por contrato + banco
+        const contratoFinal = proposta.contrato || null;
+        const administradoraId = proposta.administradora_id || null;
+        const administradoraNome = proposta.administradora_nome || null;
+
+        const propostaExistente = contratoFinal
+          ? propostasExistentes.find(p => {
+              const contratoMatch = p.contrato && p.contrato === contratoFinal;
+              const bancoMatch = (administradoraId && p.administradora_id === administradoraId) ||
+                                 (administradoraNome && p.administradora_nome === administradoraNome);
+              return contratoMatch && bancoMatch;
+            })
+          : null;
+
+        if (propostaExistente) {
+          // Atualizar proposta existente
+          await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, proposta);
+          atualizadas++;
+          // Atualizar cache local
+          const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
+          if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...proposta };
+        } else {
+          await base44.asServiceRole.entities.Proposta.create(proposta);
+          criadas++;
+          // Adicionar ao cache local para evitar duplicatas na mesma importação
+          propostasExistentes.push({ ...proposta, id: '_new_' + i });
+        }
 
         previews.push({
           nome: proposta.cliente_nome,
@@ -335,7 +360,7 @@ Deno.serve(async (req) => {
           tipo,
           valor,
           data: dataVend,
-          status: statusCodigo,
+          status: statusVal,
         });
 
       } catch (err) {
