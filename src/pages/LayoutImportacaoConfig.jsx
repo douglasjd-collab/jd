@@ -98,6 +98,8 @@ export default function LayoutImportacaoConfig() {
 
   useEffect(() => { init(); }, []);
 
+  useEffect(() => { carregarLayouts(tipo); }, [tipo]);
+
   const init = async () => {
     setLoading(true);
     const me = await base44.auth.me();
