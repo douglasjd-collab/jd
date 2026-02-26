@@ -79,43 +79,78 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Arquivo vazio ou sem dados' }, { status: 400 });
     }
 
-    // Detectar cabeçalho — procurar linha com "CPF" ou "Nome" ou "Cliente"
-    let headerRowIndex = 0;
-    for (let i = 0; i < Math.min(5, rows.length); i++) {
-      const rowStr = rows[i].join(' ').toLowerCase();
-      if (rowStr.includes('cpf') || rowStr.includes('nome') || rowStr.includes('cliente')) {
-        headerRowIndex = i;
-        break;
+    // Converter letra de coluna Excel para índice numérico (A=0, B=1, AA=26, ...)
+    const colLetterToIndex = (letter) => {
+      if (!letter || letter === 'Não Usado') return -1;
+      const l = String(letter).toUpperCase().trim();
+      let idx = 0;
+      for (let i = 0; i < l.length; i++) {
+        idx = idx * 26 + (l.charCodeAt(i) - 64);
       }
-    }
-
-    const header = rows[headerRowIndex].map(h => String(h).toLowerCase().trim());
-    console.log('Cabeçalho detectado:', header);
-
-    // Mapeamento flexível de colunas
-    const findCol = (...terms) => {
-      for (const term of terms) {
-        const idx = header.findIndex(h => h.includes(term));
-        if (idx !== -1) return idx;
-      }
-      return -1;
+      return idx - 1;
     };
 
-    const colNome      = findCol('nome', 'cliente');
-    const colCpf       = findCol('cpf', 'cnpj');
-    const colBanco     = findCol('banco', 'financeira', 'administradora');
-    const colConvenio  = findCol('convenio', 'convênio', 'orgao', 'órgão');
-    const colTipo      = findCol('tipo', 'modalidade', 'operacao', 'operação');
-    const colValor     = findCol('valor', 'credito', 'crédito', 'emprestimo', 'empréstimo');
-    const colPrazo     = findCol('prazo', 'parcelas');
-    const colAde       = findCol('ade', 'proposta', 'numero_ade', 'nº ade');
-    const colBeneficio = findCol('beneficio', 'benefício', 'nb', 'matricula', 'matrícula');
-    const colData      = findCol('data', 'dt_venda', 'data venda', 'data_venda');
-    const colVendedor  = findCol('vendedor', 'assessor', 'corretor', 'agente');
-    const colStatus    = findCol('status', 'situacao', 'situação');
-    const colComissao  = findCol('comissao', 'comissão');
+    let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo,
+        colAde, colBeneficio, colData, colVendedor, colStatus, colComissao,
+        colContrato, colParcela, colDataDigitacao;
 
-    console.log('Índices de colunas:', { colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo });
+    if (layout && Object.keys(layout).length > 0) {
+      // Usar layout configurado — mapeamento letra -> índice
+      console.log('Usando layout configurado:', layout);
+      colNome          = colLetterToIndex(layout.nome_completo);
+      colCpf           = colLetterToIndex(layout.cpf);
+      colBanco         = colLetterToIndex(layout.banco);
+      colConvenio      = colLetterToIndex(layout.convenio);
+      colTipo          = colLetterToIndex(layout.tipo_consignado);
+      colValor         = colLetterToIndex(layout.valor_liberado || layout.valor_bruto);
+      colPrazo         = colLetterToIndex(layout.prazo_meses);
+      colAde           = colLetterToIndex(layout.numero_contrato); // numero_contrato mapeado como ADE/contrato
+      colBeneficio     = colLetterToIndex(layout.numero_beneficio);
+      colData          = colLetterToIndex(layout.data_liberacao || layout.data_digitacao);
+      colVendedor      = colLetterToIndex(layout.usuario_digitador);
+      colStatus        = colLetterToIndex(layout.status_contrato);
+      colComissao      = colLetterToIndex(layout.comissao_empresa);
+      colContrato      = colLetterToIndex(layout.numero_contrato);
+      colParcela       = colLetterToIndex(layout.valor_parcela);
+    } else {
+      // Detecção automática por cabeçalho
+      let headerRowIndex = 0;
+      for (let i = 0; i < Math.min(5, rows.length); i++) {
+        const rowStr = rows[i].join(' ').toLowerCase();
+        if (rowStr.includes('cpf') || rowStr.includes('nome') || rowStr.includes('cliente')) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+      const header = rows[headerRowIndex].map(h => String(h).toLowerCase().trim());
+      console.log('Cabeçalho detectado automaticamente:', header);
+
+      const findCol = (...terms) => {
+        for (const term of terms) {
+          const idx = header.findIndex(h => h.includes(term));
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      };
+
+      colNome      = findCol('nome', 'cliente');
+      colCpf       = findCol('cpf', 'cnpj');
+      colBanco     = findCol('banco', 'financeira', 'administradora');
+      colConvenio  = findCol('convenio', 'convênio', 'orgao', 'órgão');
+      colTipo      = findCol('tipo', 'modalidade', 'operacao', 'operação');
+      colValor     = findCol('valor', 'credito', 'crédito', 'emprestimo', 'empréstimo');
+      colPrazo     = findCol('prazo', 'parcelas');
+      colAde       = findCol('ade', 'proposta', 'numero_ade', 'nº ade');
+      colBeneficio = findCol('beneficio', 'benefício', 'nb', 'matricula', 'matrícula');
+      colData      = findCol('data', 'dt_venda', 'data venda', 'data_venda');
+      colVendedor  = findCol('vendedor', 'assessor', 'corretor', 'agente');
+      colStatus    = findCol('status', 'situacao', 'situação');
+      colComissao  = findCol('comissao', 'comissão');
+      colContrato  = -1;
+      colParcela   = -1;
+    }
+
+    console.log('Índices de colunas:', { colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colContrato });
 
     // Buscar dados de referência
     const [bancos, convenios, clientes, vendedores, statusList] = await Promise.all([
