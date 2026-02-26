@@ -140,7 +140,10 @@ export default function VendasEmprestimos() {
     return c?.cpf || c?.pj_cnpj || '';
   };
 
-  const getStatusConfig = (statusCode) => statusList.find(s => s.codigo === statusCode);
+  const getStatusConfig = (proposta) => {
+    if (proposta.status_id) return statusList.find(s => s.id === proposta.status_id);
+    return statusList.find(s => s.codigo === proposta.status || normStr(s.nome) === normStr(proposta.status));
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Proposta.delete(id),
