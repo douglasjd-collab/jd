@@ -276,10 +276,9 @@ Deno.serve(async (req) => {
           if (statusEncontrado) statusCodigo = statusEncontrado.codigo;
         }
 
-        const proposta = {
+        const propostaBase = {
           empresa_id:                  empresaId,
           produto:                     'emprestimo',
-          cliente_id:                  cliente?.id || null,
           cliente_nome:                nomeVal || cliente?.nome_completo || '',
           administradora_id:           banco?.id || null,
           administradora_nome:         banco?.nome || bancoVal || null,
