@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Pencil, Trash2, Mail, Phone } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Mail, Phone, Settings } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import {
   Dialog,
