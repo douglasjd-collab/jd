@@ -270,13 +270,11 @@ Deno.serve(async (req) => {
         // Mapear status do arquivo para ID interno
         let statusId = null;
         if (statusVal) {
-          // Procurar status pelo nome exato primeiro, depois fuzzy
-          const statusEncontrado = statusList.find(s =>
-            normStr(s.nome) === normStr(statusVal)
-          ) || statusList.find(s =>
-            normStr(s.nome).includes(normStr(statusVal)) ||
-            normStr(statusVal).includes(normStr(s.nome))
-          );
+          // Procurar status ativo pelo nome exato primeiro (priorizando substatus ativos, depois principais ativos)
+          const statusEncontrado =
+            statusList.find(s => s.ativo && normStr(s.nome) === normStr(statusVal) && s.tipo === 'substatus') ||
+            statusList.find(s => s.ativo && normStr(s.nome) === normStr(statusVal)) ||
+            statusList.find(s => s.ativo && (normStr(s.nome).includes(normStr(statusVal)) || normStr(statusVal).includes(normStr(s.nome))));
 
           if (statusEncontrado) {
             statusId = statusEncontrado.id;
