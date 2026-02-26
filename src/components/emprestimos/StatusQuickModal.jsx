@@ -86,7 +86,7 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
       setCipDataEntrada(format(new Date(), 'yyyy-MM-dd'));
       setAguardandoExtra('cip');
     } else {
-      updateMutation.mutate({ status: status.codigo });
+      updateMutation.mutate({ status: status.codigo, status_id: status.id });
     }
   };
 
