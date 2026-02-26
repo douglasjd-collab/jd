@@ -372,6 +372,7 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       criadas,
+      atualizadas,
       ignoradas,
       erros: erros.slice(0, 20),
       previews: previews.slice(0, 5),
