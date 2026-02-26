@@ -361,16 +361,22 @@ export default function LayoutImportacaoConfig() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Select value={coluna} onValueChange={val => handleColuna(campo.key, val)}>
-                          <SelectTrigger className="w-32 h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {COLUNAS.map(c => (
-                              <SelectItem key={c} value={c}>{c}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {modoEdicao || layoutSelecionadoId === 'novo' ? (
+                          <Select value={coluna} onValueChange={val => handleColuna(campo.key, val)}>
+                            <SelectTrigger className="w-32 h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {COLUNAS.map(c => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${coluna !== 'Não Usado' ? 'bg-blue-100 text-blue-700' : 'text-slate-400'}`}>
+                            {coluna}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {campo.obrigatorio ? (
