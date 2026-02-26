@@ -174,7 +174,15 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Gestão de Subcontas', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
     { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ALL_ROLES },
-    { name: 'Empréstimos', icon: FileText, page: 'VendasEmprestimos', roles: ALL_ROLES },
+    { 
+      name: 'Empréstimos', 
+      icon: FileText, 
+      roles: ALL_ROLES,
+      submenu: [
+        { name: 'Propostas', page: 'VendasEmprestimos' },
+        { name: 'Propostas sem Vendedor', page: 'PropostasSemVendedor' },
+      ]
+    },
     { 
       name: 'Consórcio', 
       icon: ShoppingCart, 
