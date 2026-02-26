@@ -308,7 +308,8 @@ Deno.serve(async (req) => {
           data_venda:                  dataVend,
           valor_credito:               valor,
           valor_comissao:              comissao,
-          status:                      statusCodigo,
+          status:                      statusVal || null,
+          status_id:                   statusId || null,
         };
 
         // Adicionar IDs somente se existirem (campos string)
