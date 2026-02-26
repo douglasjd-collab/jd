@@ -248,6 +248,7 @@ Deno.serve(async (req) => {
         const valorVal    = colValor    >= 0 ? row[colValor]                          : 0;
         const prazoVal    = colPrazo    >= 0 ? row[colPrazo]                          : null;
         const adeVal      = colAde      >= 0 ? String(row[colAde]      ?? '').trim() : '';
+        const contratoVal = colContrato >= 0 ? String(row[colContrato] ?? '').trim() : '';
         const beneficioVal= colBeneficio>= 0 ? String(row[colBeneficio]?? '').trim() : '';
         const dataVal     = colData     >= 0 ? row[colData]                           : null;
         const vendedorVal = colVendedor >= 0 ? String(row[colVendedor] ?? '').trim() : '';
