@@ -367,7 +367,7 @@ export default function VendasEmprestimos() {
           return (
             <button
               key={s.id}
-              onClick={() => setFilterStatus(s.codigo)}
+              onClick={() => setFilterStatus(s.id)}
               className={`px-4 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${isActive ? colorClass.replace('100', '500').replace('700', 'white') : colorClass}`}
               style={isActive ? {} : {}}
             >
