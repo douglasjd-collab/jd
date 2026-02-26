@@ -198,15 +198,23 @@ Deno.serve(async (req) => {
       processarLinhas(rows, 1); // linha 0 = cabeçalho
 
     } else {
-      // ── Ler CSV ───────────────────────────────────────────────────────────
-      const decoder = new TextDecoder('ISO-8859-1');
-      const csvContent = decoder.decode(uint8);
-      const lines = csvContent.split(/\r?\n/);
+      // ── Ler CSV — tenta UTF-8 primeiro, fallback ISO-8859-1 ──────────────
+      let csvContent = '';
+      try {
+        csvContent = new TextDecoder('utf-8', { fatal: true }).decode(uint8);
+      } catch {
+        csvContent = new TextDecoder('ISO-8859-1').decode(uint8);
+      }
+      
+      // Remove BOM se existir
+      csvContent = csvContent.replace(/^\uFEFF/, '');
+      
+      const lines = csvContent.split(/\r?\n/).filter(l => l.trim() !== '');
       console.log(`CSV: ${lines.length} linhas brutas`);
 
-      // Detectar delimitador (primeiro que aparecer na 1ª linha)
+      // Detectar delimitador (semicolon, comma, tab)
       const firstLine = lines[0] || '';
-      const delimiter = firstLine.includes(';') ? ';' : ',';
+      const delimiter = firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ',';
 
       const parseLine = (line) => {
         const values = [];
