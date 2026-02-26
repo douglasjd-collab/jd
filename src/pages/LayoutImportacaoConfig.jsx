@@ -178,13 +178,25 @@ export default function LayoutImportacaoConfig() {
       toast.success('Layout criado com sucesso!');
       const lays = await base44.entities.LayoutImportacao.filter({ empresa_parceira_id: empresaParceiraId, tipo });
       setLayouts(lays);
-      setLayoutSelecionadoId(criado.id); // Selecionar o layout recém-criado
+      setLayoutSelecionadoId(criado.id);
     } else {
       await base44.entities.LayoutImportacao.update(layoutSelecionadoId, dados);
       toast.success('Layout atualizado!');
       const lays = await base44.entities.LayoutImportacao.filter({ empresa_parceira_id: empresaParceiraId, tipo });
       setLayouts(lays);
     }
+    setModoEdicao(false);
+    setSaving(false);
+  };
+
+  const handleExcluir = async () => {
+    if (!window.confirm('Tem certeza que deseja excluir este layout?')) return;
+    setSaving(true);
+    await base44.entities.LayoutImportacao.delete(layoutSelecionadoId);
+    const lays = await base44.entities.LayoutImportacao.filter({ empresa_parceira_id: empresaParceiraId, tipo });
+    setLayouts(lays);
+    setLayoutSelecionadoId('novo');
+    toast.success('Layout excluído!');
     setSaving(false);
   };
 
