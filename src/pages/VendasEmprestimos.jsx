@@ -219,7 +219,7 @@ export default function VendasEmprestimos() {
   // CIP - Retorno de Saldo previsto para hoje (excluindo propostas com status resolvido)
   const propostasCip = filteredByRole.filter(p =>
     p.cip_data_retorno_prevista === today && p.cip_valor_previsto && 
-    !['saldo_retornado', 'pago', 'paga', 'pago_vendedor', 'cancelado'].includes(p.status)
+    !isPaga(p) && !isCancelada(p) && normStr(p.status) !== 'saldo_retornado'
   );
 
   // Counts per tipo for filter pills
