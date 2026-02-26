@@ -229,7 +229,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'IMPC Consórcio', page: 'ImportacaoComissao' },
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
-        { name: 'Importar Produção', page: 'ImportacaoProducao' },
+        { name: 'Importar Propostas de Empréstimos', page: 'ImportacaoProducao' },
         { name: 'Importar Resultado Assembleia', page: 'ImportarResultadoAssembleia' },
         { name: 'Histórico Geral', page: 'Importacao' },
       ]

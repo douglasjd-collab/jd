@@ -21,8 +21,8 @@ export default function ImportacaoProducao() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Importação de Produção"
-        subtitle="Importe dados de produção e vendas"
+        title="Importar Propostas de Empréstimos"
+        subtitle="Importe propostas de empréstimos"
         backTo="Importacao"
       />
 
