@@ -29,9 +29,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Empresa não encontrada' }, { status: 400 });
     }
 
-    // Receber arquivo via URL ou base64
     const body = await req.json();
-    const { file_url, layout } = body; // layout = mapeamento configurado { campo_interno: 'A', ... }
+    const { file_url, layout } = body;
 
     if (!file_url) {
       return Response.json({ error: 'URL do arquivo não fornecida' }, { status: 400 });
@@ -45,14 +44,12 @@ Deno.serve(async (req) => {
     const arrayBuffer = await fileResp.arrayBuffer();
     const uint8 = new Uint8Array(arrayBuffer);
 
-    // Detectar tipo de arquivo pela extensão da URL
     const isExcel = file_url.toLowerCase().includes('.xlsx') || file_url.toLowerCase().includes('.xls');
     const isCsv = file_url.toLowerCase().includes('.csv');
 
-    let rows = []; // array de arrays
+    let rows = [];
 
-    if (isExcel || (!isCsv)) {
-      // Tentar Excel primeiro
+    if (isExcel) {
       try {
         const workbook = XLSX.read(uint8, { type: 'array', cellDates: true });
         const sheetName = workbook.SheetNames[0];
@@ -71,7 +68,9 @@ Deno.serve(async (req) => {
       }
       csvContent = csvContent.replace(/^\uFEFF/, '');
       const lines = csvContent.split(/\r?\n/).filter(l => l.trim());
-      const delimiter = lines[0]?.includes(';') ? ';' : ',';
+      // Detectar delimitador
+      const firstLine = lines[0] || '';
+      const delimiter = firstLine.includes(';') ? ';' : ',';
       rows = lines.map(l => l.split(delimiter).map(c => c.trim().replace(/^"|"$/g, '')));
     }
 
@@ -81,7 +80,7 @@ Deno.serve(async (req) => {
 
     // Converter letra de coluna Excel para índice numérico (A=0, B=1, AA=26, ...)
     const colLetterToIndex = (letter) => {
-      if (!letter || letter === 'Não Usado') return -1;
+      if (!letter || letter === 'Não Usado' || letter === '') return -1;
       const l = String(letter).toUpperCase().trim();
       let idx = 0;
       for (let i = 0; i < l.length; i++) {
@@ -90,31 +89,29 @@ Deno.serve(async (req) => {
       return idx - 1;
     };
 
-    let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo,
-        colAde, colBeneficio, colData, colVendedor, colStatus, colComissao,
-        colContrato, colParcela, colDataDigitacao;
+    let headerRowIndex = 0;
+    let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo;
+    let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colContrato;
 
     if (layout && Object.keys(layout).length > 0) {
-      // Usar layout configurado — mapeamento letra -> índice
-      console.log('Usando layout configurado:', layout);
-      colNome          = colLetterToIndex(layout.nome_completo);
-      colCpf           = colLetterToIndex(layout.cpf);
-      colBanco         = colLetterToIndex(layout.banco);
-      colConvenio      = colLetterToIndex(layout.convenio);
-      colTipo          = colLetterToIndex(layout.tipo_consignado);
-      colValor         = colLetterToIndex(layout.valor_liberado || layout.valor_bruto);
-      colPrazo         = colLetterToIndex(layout.prazo_meses);
-      colAde           = colLetterToIndex(layout.numero_contrato); // numero_contrato mapeado como ADE/contrato
-      colBeneficio     = colLetterToIndex(layout.numero_beneficio);
-      colData          = colLetterToIndex(layout.data_liberacao || layout.data_digitacao);
-      colVendedor      = colLetterToIndex(layout.usuario_digitador);
-      colStatus        = colLetterToIndex(layout.status_contrato);
-      colComissao      = colLetterToIndex(layout.comissao_empresa);
-      colContrato      = colLetterToIndex(layout.numero_contrato);
-      colParcela       = colLetterToIndex(layout.valor_parcela);
+      // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
+      console.log('Usando layout configurado:', JSON.stringify(layout));
+      colNome      = colLetterToIndex(layout.nome_completo);
+      colCpf       = colLetterToIndex(layout.cpf);
+      colBanco     = colLetterToIndex(layout.banco);
+      colConvenio  = colLetterToIndex(layout.convenio);
+      colTipo      = colLetterToIndex(layout.tipo_consignado || layout.tipo_operacao);
+      colValor     = colLetterToIndex(layout.valor_liberado || layout.valor_bruto || layout.valor_operacao);
+      colPrazo     = colLetterToIndex(layout.prazo_meses);
+      colAde       = colLetterToIndex(layout.numero_proposta || layout.numero_contrato);
+      colBeneficio = colLetterToIndex(layout.numero_beneficio);
+      colData      = colLetterToIndex(layout.data_proposta || layout.data_liberacao || layout.data_digitacao);
+      colVendedor  = colLetterToIndex(layout.usuario_digitador || layout.assessor);
+      colStatus    = colLetterToIndex(layout.status_contrato || layout.status);
+      colComissao  = colLetterToIndex(layout.comissao_empresa);
+      colContrato  = colLetterToIndex(layout.numero_contrato);
     } else {
       // Detecção automática por cabeçalho
-      let headerRowIndex = 0;
       for (let i = 0; i < Math.min(5, rows.length); i++) {
         const rowStr = rows[i].join(' ').toLowerCase();
         if (rowStr.includes('cpf') || rowStr.includes('nome') || rowStr.includes('cliente')) {
@@ -122,8 +119,9 @@ Deno.serve(async (req) => {
           break;
         }
       }
-      const header = rows[headerRowIndex].map(h => String(h).toLowerCase().trim());
-      console.log('Cabeçalho detectado automaticamente:', header);
+      const header = rows[headerRowIndex].map(h => String(h).toLowerCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+      console.log('Cabeçalho detectado:', JSON.stringify(header));
 
       const findCol = (...terms) => {
         for (const term of terms) {
@@ -135,22 +133,21 @@ Deno.serve(async (req) => {
 
       colNome      = findCol('nome', 'cliente');
       colCpf       = findCol('cpf', 'cnpj');
-      colBanco     = findCol('banco', 'financeira', 'administradora');
-      colConvenio  = findCol('convenio', 'convênio', 'orgao', 'órgão');
-      colTipo      = findCol('tipo', 'modalidade', 'operacao', 'operação');
-      colValor     = findCol('valor', 'credito', 'crédito', 'emprestimo', 'empréstimo');
-      colPrazo     = findCol('prazo', 'parcelas');
-      colAde       = findCol('ade', 'proposta', 'numero_ade', 'nº ade');
-      colBeneficio = findCol('beneficio', 'benefício', 'nb', 'matricula', 'matrícula');
-      colData      = findCol('data', 'dt_venda', 'data venda', 'data_venda');
-      colVendedor  = findCol('vendedor', 'assessor', 'corretor', 'agente');
-      colStatus    = findCol('status', 'situacao', 'situação');
-      colComissao  = findCol('comissao', 'comissão');
+      colBanco     = findCol('financeira', 'banco', 'administradora');
+      colConvenio  = findCol('convenio', 'orgao');
+      colTipo      = findCol('tipo de opera', 'tipo de oper', 'tipo oper', 'modalidade');
+      colValor     = findCol('valor da opera', 'valor liqu', 'valor bru', 'valor cred', 'vlr sal');
+      colPrazo     = findCol('prazo');
+      colAde       = findCol('proposta');
+      colBeneficio = findCol('beneficio', 'benefic', 'matricula');
+      colData      = findCol('data da proposta', 'data proposta', 'data venda', 'data status');
+      colVendedor  = findCol('usuario digitador', 'assessor', 'vendedor', 'corretor');
+      colStatus    = findCol('status');
+      colComissao  = findCol('comissao');
       colContrato  = -1;
-      colParcela   = -1;
     }
 
-    console.log('Índices de colunas:', { colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colContrato });
+    console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
 
     // Buscar dados de referência
     const [bancos, convenios, clientes, vendedores, statusList] = await Promise.all([
@@ -161,10 +158,10 @@ Deno.serve(async (req) => {
       base44.entities.StatusProposta.filter({ empresa_id: empresaId }),
     ]);
 
-    // Helpers
-    const normStr = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    const normStr = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const normCpf = cpf => String(cpf || '').replace(/\D/g, '');
-    
+
     const findBanco = (nome) => {
       if (!nome) return null;
       return bancos.find(b => normStr(b.nome).includes(normStr(nome)) || normStr(nome).includes(normStr(b.nome)));
@@ -178,11 +175,11 @@ Deno.serve(async (req) => {
     const findCliente = (cpf, nome) => {
       const cpfNorm = normCpf(cpf);
       if (cpfNorm.length >= 11) {
-        const byСpf = clientes.find(c => normCpf(c.cpf) === cpfNorm || normCpf(c.pj_cnpj) === cpfNorm);
-        if (byСpf) return byСpf;
+        const byCpf = clientes.find(c => normCpf(c.cpf) === cpfNorm || normCpf(c.pj_cnpj) === cpfNorm);
+        if (byCpf) return byCpf;
       }
       if (nome) {
-        return clientes.find(c => normStr(c.nome_completo) === normStr(nome) || normStr(c.pj_razao_social) === normStr(nome));
+        return clientes.find(c => normStr(c.nome_completo) === normStr(nome));
       }
       return null;
     };
@@ -206,14 +203,12 @@ Deno.serve(async (req) => {
       if (!val) return null;
       if (val instanceof Date) return val.toISOString().slice(0, 10);
       const str = String(val).trim();
-      // Formato dd/mm/yyyy ou dd/mm/yy
       const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
       if (match) {
         let [, d, m, y] = match;
         if (y.length === 2) y = '20' + y;
         return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
       }
-      // ISO
       if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
       return null;
     };
@@ -227,7 +222,6 @@ Deno.serve(async (req) => {
       return 'NOVO';
     };
 
-    // Processar linhas de dados
     const dataRows = rows.slice(headerRowIndex + 1);
     let criadas = 0;
     let ignoradas = 0;
@@ -240,22 +234,21 @@ Deno.serve(async (req) => {
       if (!rowStr) continue;
 
       try {
-        const nomeVal     = colNome     >= 0 ? String(row[colNome]     ?? '').trim() : '';
-        const cpfVal      = colCpf      >= 0 ? String(row[colCpf]      ?? '').trim() : '';
-        const bancoVal    = colBanco    >= 0 ? String(row[colBanco]    ?? '').trim() : '';
-        const convenioVal = colConvenio >= 0 ? String(row[colConvenio] ?? '').trim() : '';
-        const tipoVal     = colTipo     >= 0 ? String(row[colTipo]     ?? '').trim() : '';
-        const valorVal    = colValor    >= 0 ? row[colValor]                          : 0;
-        const prazoVal    = colPrazo    >= 0 ? row[colPrazo]                          : null;
-        const adeVal      = colAde      >= 0 ? String(row[colAde]      ?? '').trim() : '';
-        const contratoVal = colContrato >= 0 ? String(row[colContrato] ?? '').trim() : '';
-        const beneficioVal= colBeneficio>= 0 ? String(row[colBeneficio]?? '').trim() : '';
-        const dataVal     = colData     >= 0 ? row[colData]                           : null;
-        const vendedorVal = colVendedor >= 0 ? String(row[colVendedor] ?? '').trim() : '';
-        const statusVal   = colStatus   >= 0 ? String(row[colStatus]   ?? '').trim() : '';
-        const comissaoVal = colComissao >= 0 ? row[colComissao]                       : null;
+        const nomeVal      = colNome      >= 0 ? String(row[colNome]      ?? '').trim() : '';
+        const cpfVal       = colCpf       >= 0 ? String(row[colCpf]       ?? '').trim() : '';
+        const bancoVal     = colBanco     >= 0 ? String(row[colBanco]     ?? '').trim() : '';
+        const convenioVal  = colConvenio  >= 0 ? String(row[colConvenio]  ?? '').trim() : '';
+        const tipoVal      = colTipo      >= 0 ? String(row[colTipo]      ?? '').trim() : '';
+        const valorVal     = colValor     >= 0 ? row[colValor]                           : 0;
+        const prazoVal     = colPrazo     >= 0 ? row[colPrazo]                           : null;
+        const adeVal       = colAde       >= 0 ? String(row[colAde]       ?? '').trim() : '';
+        const contratoVal  = colContrato  >= 0 ? String(row[colContrato]  ?? '').trim() : '';
+        const beneficioVal = colBeneficio >= 0 ? String(row[colBeneficio] ?? '').trim() : '';
+        const dataVal      = colData      >= 0 ? row[colData]                            : null;
+        const vendedorVal  = colVendedor  >= 0 ? String(row[colVendedor]  ?? '').trim() : '';
+        const statusVal    = colStatus    >= 0 ? String(row[colStatus]    ?? '').trim() : '';
+        const comissaoVal  = colComissao  >= 0 ? row[colComissao]                        : null;
 
-        // Nome é obrigatório
         if (!nomeVal && !cpfVal) {
           ignoradas++;
           continue;
@@ -272,8 +265,8 @@ Deno.serve(async (req) => {
         const tipo     = normTipo(tipoVal);
         const comissao = comissaoVal ? parseValor(comissaoVal) : null;
 
-        // Determinar status
-        let statusCodigo = 'digitado';
+        // Mapear status do arquivo para código interno
+        let statusCodigo = statusVal || 'digitado';
         if (statusVal) {
           const statusEncontrado = statusList.find(s =>
             normStr(s.nome).includes(normStr(statusVal)) ||
@@ -283,29 +276,26 @@ Deno.serve(async (req) => {
           if (statusEncontrado) statusCodigo = statusEncontrado.codigo;
         }
 
-        // Status: usar valor bruto do arquivo se não encontrar na lista cadastrada
-        const statusFinal = statusVal || statusCodigo;
-
         const proposta = {
-          empresa_id:               empresaId,
-          produto:                  'emprestimo',
-          cliente_id:               cliente?.id || null,
-          cliente_nome:             nomeVal || cliente?.nome_completo || '',
-          administradora_id:        banco?.id || null,
-          administradora_nome:      banco?.nome || bancoVal || null,
-          emprestimo_convenio_id:   conv?.id || null,
-          emprestimo_convenio_nome: conv?.nome || convenioVal || null,
-          emprestimo_tipo:          tipo,
-          emprestimo_numero_ade:    adeVal || null,
+          empresa_id:                  empresaId,
+          produto:                     'emprestimo',
+          cliente_id:                  cliente?.id || null,
+          cliente_nome:                nomeVal || cliente?.nome_completo || '',
+          administradora_id:           banco?.id || null,
+          administradora_nome:         banco?.nome || bancoVal || null,
+          emprestimo_convenio_id:      conv?.id || null,
+          emprestimo_convenio_nome:    conv?.nome || convenioVal || null,
+          emprestimo_tipo:             tipo,
+          emprestimo_numero_ade:       adeVal || null,
           emprestimo_numero_beneficio: beneficioVal || null,
-          emprestimo_prazo:         prazo,
-          contrato:                 contratoVal || adeVal || null,
-          vendedor_id:              vend?.id || colaboradorId || null,
-          vendedor_nome:            vend?.nome || vendedorVal || null,
-          data_venda:               dataVend,
-          valor_credito:            valor,
-          valor_comissao:           comissao,
-          status:                   statusFinal,
+          emprestimo_prazo:            prazo,
+          contrato:                    contratoVal || adeVal || null,
+          vendedor_id:                 vend?.id || colaboradorId || null,
+          vendedor_nome:               vend?.nome || vendedorVal || null,
+          data_venda:                  dataVend,
+          valor_credito:               valor,
+          valor_comissao:              comissao,
+          status:                      statusCodigo,
         };
 
         await base44.entities.Proposta.create(proposta);
