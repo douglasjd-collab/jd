@@ -190,13 +190,14 @@ export default function LayoutImportacaoConfig() {
     const lay = layouts.find(l => l.id === layoutSelecionadoId);
     if (!lay) return;
     setSaving(true);
-    await base44.entities.LayoutImportacao.create({
-      ...lay,
-      id: undefined,
+    const { id, created_date, updated_date, created_by, ...dadosLay } = lay;
+    const duplicado = await base44.entities.LayoutImportacao.create({
+      ...dadosLay,
       nome: lay.nome + ' (cópia)',
     });
     const lays = await base44.entities.LayoutImportacao.filter({ empresa_parceira_id: empresaParceiraId, tipo });
     setLayouts(lays);
+    setLayoutSelecionadoId(duplicado.id);
     toast.success('Layout duplicado!');
     setSaving(false);
   };
