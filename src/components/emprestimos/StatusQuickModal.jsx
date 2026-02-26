@@ -46,8 +46,10 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
 
   const { data: statusList = [] } = useQuery({
     queryKey: ['status-propostas-quick', empresaId],
-    enabled: open && !!empresaId,
-    queryFn: () => base44.entities.StatusProposta.filter({ empresa_id: empresaId, ativo: true }, 'ordem'),
+    enabled: open,
+    queryFn: () => empresaId
+      ? base44.entities.StatusProposta.filter({ empresa_id: empresaId, ativo: true }, 'ordem')
+      : base44.entities.StatusProposta.filter({ ativo: true }, 'ordem'),
   });
 
   const updateMutation = useMutation({
