@@ -109,7 +109,8 @@ export default function ImportacaoComissao() {
           toast.error('Erro ao processar arquivo: ' + (result.data.error || 'Formato inválido'));
         }
       } catch (error) {
-        toast.error('Erro ao fazer upload do arquivo');
+        toast.error('Erro ao processar arquivo: ' + (error?.message || 'Tente novamente'));
+        console.error('Erro upload/preview:', error);
       } finally {
         setIsProcessing(false);
       }

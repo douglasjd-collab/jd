@@ -82,6 +82,7 @@ import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import LancamentoDespesas from './pages/LancamentoDespesas';
 import LancamentoReceitas from './pages/LancamentoReceitas';
 import LogsRecebimento from './pages/LogsRecebimento';
+import MapeamentoMensagensDebug from './pages/MapeamentoMensagensDebug';
 import MapeamentoWebhookCompleto from './pages/MapeamentoWebhookCompleto';
 import MeusDados from './pages/MeusDados';
 import NovaVenda from './pages/NovaVenda';
@@ -114,7 +115,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import MapeamentoMensagensDebug from './pages/MapeamentoMensagensDebug';
 import __Layout from './Layout.jsx';
 
 
@@ -154,6 +154,7 @@ export const PAGES = {
     "LancamentoDespesas": LancamentoDespesas,
     "LancamentoReceitas": LancamentoReceitas,
     "LogsRecebimento": LogsRecebimento,
+    "MapeamentoMensagensDebug": MapeamentoMensagensDebug,
     "MapeamentoWebhookCompleto": MapeamentoWebhookCompleto,
     "MeusDados": MeusDados,
     "NovaVenda": NovaVenda,
@@ -186,7 +187,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "MapeamentoMensagensDebug": MapeamentoMensagensDebug,
 }
 
 export const pagesConfig = {
