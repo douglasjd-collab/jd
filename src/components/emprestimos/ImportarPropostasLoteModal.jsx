@@ -138,7 +138,8 @@ export default function ImportarPropostasLoteModal({ open, onOpenChange, onSucce
                     <div>
                       <p className="font-semibold text-green-800">Importação concluída!</p>
                       <p className="text-sm text-green-700 mt-1">
-                        <strong>{resultado.criadas}</strong> proposta(s) importada(s)
+                        <strong>{resultado.criadas}</strong> proposta(s) criada(s)
+                        {resultado.atualizadas > 0 && `, ${resultado.atualizadas} atualizada(s)`}
                         {resultado.ignoradas > 0 && `, ${resultado.ignoradas} ignorada(s)`}
                       </p>
                     </div>
