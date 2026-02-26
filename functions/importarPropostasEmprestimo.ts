@@ -150,12 +150,13 @@ Deno.serve(async (req) => {
     console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
 
     // Buscar dados de referência
-    const [bancos, convenios, clientes, vendedores, statusList] = await Promise.all([
+    const [bancos, convenios, clientes, vendedores, statusList, propostasExistentes] = await Promise.all([
       base44.entities.Banco.filter({ empresa_id: empresaId }),
       base44.entities.Convenio.filter({ empresa_id: empresaId }),
       base44.entities.Cliente.filter({ empresa_id: empresaId }),
       base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }),
       base44.entities.StatusProposta.filter({ empresa_id: empresaId }),
+      base44.asServiceRole.entities.Proposta.filter({ empresa_id: empresaId, produto: 'emprestimo' }),
     ]);
 
     const normStr = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ')
