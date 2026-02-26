@@ -294,15 +294,19 @@ Deno.serve(async (req) => {
           status:                      statusCodigo,
         };
 
-        // Adicionar IDs somente se existirem (campos string obrigatórios)
-        if (cliente?.id) propostaBase.cliente_id = cliente.id;
-        if (banco?.id) propostaBase.administradora_id = banco.id;
+        // Adicionar IDs somente se existirem (campos string)
+        propostaBase.cliente_id = cliente?.id || 'importado';
+        propostaBase.administradora_id = banco?.id || null;
         if (conv?.id) propostaBase.emprestimo_convenio_id = conv.id;
         if (vend?.id) propostaBase.vendedor_id = vend.id;
         else if (colaboradorId) propostaBase.vendedor_id = colaboradorId;
 
-        const proposta = propostaBase;
-        await base44.entities.Proposta.create(proposta);
+        // Remover campos null para evitar erro de validação
+        const proposta = Object.fromEntries(
+          Object.entries(propostaBase).filter(([, v]) => v !== null && v !== undefined)
+        );
+
+        await base44.asServiceRole.entities.Proposta.create(proposta);
         criadas++;
 
         previews.push({
