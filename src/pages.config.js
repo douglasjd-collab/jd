@@ -81,6 +81,7 @@ import ImportarResultadoAssembleia from './pages/ImportarResultadoAssembleia';
 import ImprimirSimulacao from './pages/ImprimirSimulacao';
 import LancamentoDespesas from './pages/LancamentoDespesas';
 import LancamentoReceitas from './pages/LancamentoReceitas';
+import LayoutImportacaoConfig from './pages/LayoutImportacaoConfig';
 import LogsRecebimento from './pages/LogsRecebimento';
 import MapeamentoMensagensDebug from './pages/MapeamentoMensagensDebug';
 import MapeamentoWebhookCompleto from './pages/MapeamentoWebhookCompleto';
@@ -115,7 +116,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import LayoutImportacaoConfig from './pages/LayoutImportacaoConfig';
 import __Layout from './Layout.jsx';
 
 
@@ -154,6 +154,7 @@ export const PAGES = {
     "ImprimirSimulacao": ImprimirSimulacao,
     "LancamentoDespesas": LancamentoDespesas,
     "LancamentoReceitas": LancamentoReceitas,
+    "LayoutImportacaoConfig": LayoutImportacaoConfig,
     "LogsRecebimento": LogsRecebimento,
     "MapeamentoMensagensDebug": MapeamentoMensagensDebug,
     "MapeamentoWebhookCompleto": MapeamentoWebhookCompleto,
@@ -188,7 +189,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "LayoutImportacaoConfig": LayoutImportacaoConfig,
 }
 
 export const pagesConfig = {

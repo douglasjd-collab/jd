@@ -265,15 +265,32 @@ Deno.serve(async (req) => {
         const tipo     = normTipo(tipoVal);
         const comissao = comissaoVal ? parseValor(comissaoVal) : null;
 
-        // Mapear status do arquivo para código interno
-        let statusCodigo = statusVal || 'digitado';
+        // Mapear status do arquivo para ID interno
+        let statusId = null;
         if (statusVal) {
+          // Procurar status pelo nome exato primeiro, depois fuzzy
           const statusEncontrado = statusList.find(s =>
+            normStr(s.nome) === normStr(statusVal)
+          ) || statusList.find(s =>
             normStr(s.nome).includes(normStr(statusVal)) ||
-            normStr(statusVal).includes(normStr(s.nome)) ||
-            s.codigo === normStr(statusVal)
+            normStr(statusVal).includes(normStr(s.nome))
           );
-          if (statusEncontrado) statusCodigo = statusEncontrado.codigo;
+
+          if (statusEncontrado) {
+            statusId = statusEncontrado.id;
+          } else {
+            // Criar substatus pendente de vinculação
+            const novoStatus = await base44.asServiceRole.entities.StatusProposta.create({
+              empresa_id: empresaId,
+              nome: statusVal,
+              tipo: 'substatus',
+              ativo: true,
+              origem: 'importacao',
+            });
+            statusId = novoStatus.id;
+            // Adicionar à lista local para evitar duplicatas na mesma importação
+            statusList.push(novoStatus);
+          }
         }
 
         const propostaBase = {
