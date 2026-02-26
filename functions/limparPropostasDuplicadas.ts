@@ -53,8 +53,15 @@ Deno.serve(async (req) => {
     }
 
     if (!dryRun && idsParaExcluir.length > 0) {
-      // Excluir duplicatas em paralelo
-      await Promise.all(idsParaExcluir.map(id => base44.asServiceRole.entities.Proposta.delete(id)));
+      // Excluir duplicatas em lotes para evitar rate limit
+      const LOTE = 5;
+      for (let i = 0; i < idsParaExcluir.length; i += LOTE) {
+        const lote = idsParaExcluir.slice(i, i + LOTE);
+        await Promise.all(lote.map(id => base44.asServiceRole.entities.Proposta.delete(id)));
+        if (i + LOTE < idsParaExcluir.length) {
+          await new Promise(r => setTimeout(r, 500)); // pausa entre lotes
+        }
+      }
     }
 
     return Response.json({
