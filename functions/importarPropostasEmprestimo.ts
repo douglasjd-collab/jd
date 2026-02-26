@@ -280,16 +280,13 @@ Deno.serve(async (req) => {
           empresa_id:                  empresaId,
           produto:                     'emprestimo',
           cliente_nome:                nomeVal || cliente?.nome_completo || '',
-          administradora_id:           banco?.id || null,
           administradora_nome:         banco?.nome || bancoVal || null,
-          emprestimo_convenio_id:      conv?.id || null,
           emprestimo_convenio_nome:    conv?.nome || convenioVal || null,
           emprestimo_tipo:             tipo,
           emprestimo_numero_ade:       adeVal || null,
           emprestimo_numero_beneficio: beneficioVal || null,
           emprestimo_prazo:            prazo,
           contrato:                    contratoVal || adeVal || null,
-          vendedor_id:                 vend?.id || colaboradorId || null,
           vendedor_nome:               vend?.nome || vendedorVal || null,
           data_venda:                  dataVend,
           valor_credito:               valor,
@@ -297,6 +294,14 @@ Deno.serve(async (req) => {
           status:                      statusCodigo,
         };
 
+        // Adicionar IDs somente se existirem (campos string obrigatórios)
+        if (cliente?.id) propostaBase.cliente_id = cliente.id;
+        if (banco?.id) propostaBase.administradora_id = banco.id;
+        if (conv?.id) propostaBase.emprestimo_convenio_id = conv.id;
+        if (vend?.id) propostaBase.vendedor_id = vend.id;
+        else if (colaboradorId) propostaBase.vendedor_id = colaboradorId;
+
+        const proposta = propostaBase;
         await base44.entities.Proposta.create(proposta);
         criadas++;
 
