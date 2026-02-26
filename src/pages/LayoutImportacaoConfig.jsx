@@ -171,16 +171,17 @@ export default function LayoutImportacaoConfig() {
     };
 
     if (layoutSelecionadoId === 'novo') {
-      await base44.entities.LayoutImportacao.create(dados);
+      const criado = await base44.entities.LayoutImportacao.create(dados);
       toast.success('Layout criado com sucesso!');
+      const lays = await base44.entities.LayoutImportacao.filter({ empresa_parceira_id: empresaParceiraId, tipo });
+      setLayouts(lays);
+      setLayoutSelecionadoId(criado.id); // Selecionar o layout recém-criado
     } else {
       await base44.entities.LayoutImportacao.update(layoutSelecionadoId, dados);
       toast.success('Layout atualizado!');
+      const lays = await base44.entities.LayoutImportacao.filter({ empresa_parceira_id: empresaParceiraId, tipo });
+      setLayouts(lays);
     }
-
-    // Recarregar
-    const lays = await base44.entities.LayoutImportacao.filter({ empresa_parceira_id: empresaParceiraId, tipo });
-    setLayouts(lays);
     setSaving(false);
   };
 
