@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     // Receber arquivo via URL ou base64
     const body = await req.json();
-    const { file_url } = body;
+    const { file_url, layout } = body; // layout = mapeamento configurado { campo_interno: 'A', ... }
 
     if (!file_url) {
       return Response.json({ error: 'URL do arquivo não fornecida' }, { status: 400 });
