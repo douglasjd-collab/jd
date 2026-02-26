@@ -489,7 +489,7 @@ export default function VendasEmprestimos() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredPropostas.map(p => {
             const cpf = getClienteCpf(p.cliente_id);
-            const statusConfig = getStatusConfig(p.status);
+            const statusConfig = getStatusConfig(p);
             const statusColorClass = statusConfig ? (STATUS_COLOR_MAP[statusConfig.cor] || STATUS_COLOR_MAP.slate) : 'bg-slate-100 text-slate-600';
             const tipoColor = TIPO_COLORS[p.emprestimo_tipo] || 'bg-slate-100 text-slate-600';
             const tipoLabel = getTipoLabel(p);
