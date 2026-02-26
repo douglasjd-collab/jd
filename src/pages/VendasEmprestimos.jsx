@@ -160,6 +160,8 @@ export default function VendasEmprestimos() {
     return p.vendedor_id === currentUser?.colaborador_id;
   });
 
+  const normStr = s => String(s || '').toLowerCase().trim();
+
   const filteredPropostas = filteredByRole.filter(p => {
     const cpf = getClienteCpf(p.cliente_id);
     const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
