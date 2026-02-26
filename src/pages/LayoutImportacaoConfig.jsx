@@ -136,14 +136,16 @@ export default function LayoutImportacaoConfig() {
     if (layoutSelecionadoId === 'novo') {
       setNomeLayout('');
       setMapeamento({});
+      setModoEdicao(true); // Novo layout começa em modo edição
     } else {
       const lay = layouts.find(l => l.id === layoutSelecionadoId);
       if (lay) {
         setNomeLayout(lay.nome);
         setMapeamento(lay.mapeamento || {});
       }
+      setModoEdicao(false); // Layout existente começa em modo visualização
     }
-  }, [layoutSelecionadoId]);
+  }, [layoutSelecionadoId, layouts]);
 
   const handleColuna = (campo, coluna) => {
     setMapeamento(prev => ({ ...prev, [campo]: coluna === 'Não Usado' ? null : coluna }));
