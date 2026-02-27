@@ -495,6 +495,38 @@ export default function Transacoes() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal Nova Despesa */}
+      <Dialog open={novaDespesaOpen} onOpenChange={setNovaDespesaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Despesa</DialogTitle>
+          </DialogHeader>
+          <EditDespesaForm
+            despesa={{ descricao: '', categoria: '', valor: 0, data: moment().format('YYYY-MM-DD'), status: 'pendente' }}
+            categorias={categoriasDespesa}
+            onSave={(data) => createDespesaMutation.mutate({ ...data, empresa_id: user.empresa_id, responsavel_id: user.id || 'n/a', responsavel_nome: user.nome || user.full_name || '' })}
+            onCancel={() => setNovaDespesaOpen(false)}
+            isNew
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Nova Receita */}
+      <Dialog open={novaReceitaOpen} onOpenChange={setNovaReceitaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Receita</DialogTitle>
+          </DialogHeader>
+          <EditReceitaForm
+            receita={{ descricao: '', valor: 0, data: moment().format('YYYY-MM-DD'), status: 'pendente' }}
+            categorias={categoriasReceita}
+            onSave={(data) => createReceitaMutation.mutate({ ...data, empresa_id: user.empresa_id, categoria_id: data.categoria_id || 'outros', categoria_nome: data.categoria_nome || 'Outros', usuario_id: user.id, usuario_nome: user.nome || user.full_name || '' })}
+            onCancel={() => setNovaReceitaOpen(false)}
+            isNew
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
