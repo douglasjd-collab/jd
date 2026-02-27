@@ -743,10 +743,10 @@ export default function Dashboard() {
 
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ranking Vendedores */}
+        {/* Ranking Consórcio */}
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Ranking do Mês</CardTitle>
+            <CardTitle className="text-lg font-semibold">Ranking do Mês (Consórcio)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -779,6 +779,47 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Ranking Empréstimos */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Ranking do Mês (Empréstimos)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {rankingEmprestimos.length > 0 ? (
+                rankingEmprestimos.map((v, i) => (
+                  <div key={v.nome} className="flex items-center gap-4">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                      i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-slate-400' : i === 2 ? 'bg-amber-700' : 'bg-slate-300'
+                    }`}>
+                      {i + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-900">{v.nome}</p>
+                      <p className="text-sm text-slate-500">{v.propostas} proposta(s) • {formatCurrency(v.valor)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-[#23BE84] mb-1">{formatCurrency(v.valor)}</p>
+                      <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-[#23BE84] rounded-full"
+                          style={{ width: `${(v.valor / (rankingEmprestimos[0]?.valor || 1)) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-slate-500 py-8">Nenhuma proposta paga no período</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Vendas Recentes + Aniversariantes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Vendas Recentes */}
         <Card className="border-0 shadow-sm">
