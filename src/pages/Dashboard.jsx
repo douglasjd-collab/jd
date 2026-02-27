@@ -237,6 +237,29 @@ export default function Dashboard() {
     staleTime: 60000,
   });
 
+  // Propostas de empréstimo para o dashboard
+  const { data: propostasEmprestimo = [] } = useQuery({
+    queryKey: ['propostas-dashboard', user?.empresa_id, user?.perfil],
+    enabled: !!user,
+    queryFn: async () => {
+      const filtro = { produto: 'emprestimo' };
+      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
+      return base44.entities.Proposta.filter(filtro, '-data_venda', 500);
+    },
+    staleTime: 30000,
+  });
+
+  const { data: statusPropostaList = [] } = useQuery({
+    queryKey: ['status-propostas-dashboard', user?.empresa_id],
+    enabled: !!user,
+    queryFn: () => {
+      const filtro = { ativo: true };
+      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
+      return base44.entities.StatusProposta.filter(filtro);
+    },
+    staleTime: 60000,
+  });
+
   const { data: importacoes = [] } = useQuery({
     queryKey: ['importacoes-assembleia-dashboard', user?.empresa_id],
     enabled: !!user?.empresa_id,
