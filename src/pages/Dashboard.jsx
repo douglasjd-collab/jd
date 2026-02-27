@@ -407,13 +407,23 @@ export default function Dashboard() {
 
   const vendasRecentes = filteredVendas.slice(0, 5);
 
+  const isVendedor = user?.perfil === 'vendedor' || user?.perfil === 'colaborador' || user?.perfil === 'funcionario';
+
+  // Filtrar clientes por vendedor (se for vendedor, só vê os seus)
+  const clientesFiltrados = React.useMemo(() => {
+    if (isVendedor && user?.colaborador_id) {
+      return clientes.filter(c => c.vendedor_id === user.colaborador_id);
+    }
+    return clientes;
+  }, [clientes, isVendedor, user]);
+
   // Aniversariantes da semana e do dia
   const aniversariantesSemana = React.useMemo(() => {
     const hoje = new Date();
     const inicioSemana = startOfWeek(hoje, { weekStartsOn: 0 });
     const fimSemana = endOfWeek(hoje, { weekStartsOn: 0 });
     
-    return clientes.filter(c => {
+    return clientesFiltrados.filter(c => {
       if (!c.data_nascimento) return false;
       const nascimento = new Date(c.data_nascimento + 'T12:00:00');
       const aniversarioEsteAno = new Date(hoje.getFullYear(), nascimento.getMonth(), nascimento.getDate());
@@ -423,16 +433,16 @@ export default function Dashboard() {
       const dateB = new Date(b.data_nascimento + 'T12:00:00');
       return dateA.getMonth() * 100 + dateA.getDate() - (dateB.getMonth() * 100 + dateB.getDate());
     });
-  }, [clientes]);
+  }, [clientesFiltrados]);
 
   const aniversariantesHoje = React.useMemo(() => {
     const hoje = new Date();
-    return clientes.filter(c => {
+    return clientesFiltrados.filter(c => {
       if (!c.data_nascimento) return false;
       const nascimento = new Date(c.data_nascimento + 'T12:00:00');
       return nascimento.getDate() === hoje.getDate() && nascimento.getMonth() === hoje.getMonth();
     });
-  }, [clientes]);
+  }, [clientesFiltrados]);
 
   // Lógica das propostas de empréstimo filtradas por mês
   const normStr = s => String(s || '').toLowerCase().trim();
