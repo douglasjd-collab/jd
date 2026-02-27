@@ -18,6 +18,8 @@ export default function RelatoriosFinanceiros() {
   const [dataFim, setDataFim] = useState(moment().endOf('month').format('YYYY-MM-DD'));
   const [darkMode, setDarkMode] = useState(false);
   const [contasModal, setContasModal] = useState(null); // { titulo, contas, cor }
+  const [pagandoConta, setPagandoConta] = useState(null); // { despesa, dataPagamento }
+  const queryClient = useQueryClient();
 
   React.useEffect(() => {
     loadUser();
