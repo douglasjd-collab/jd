@@ -474,10 +474,17 @@ export default function Dashboard() {
     });
   }, [propostasEmprestimo, mesSelecionado, statusPagoIds, statusCanceladoIds]);
 
-  const propostasPagasMes = propostasMes.filter(isPagaProposta);
+  const propostasMesFiltradas = React.useMemo(() => {
+    if (isVendedor && user?.colaborador_id) {
+      return propostasMes.filter(p => p.vendedor_id === user.colaborador_id);
+    }
+    return propostasMes;
+  }, [propostasMes, isVendedor, user]);
+
+  const propostasPagasMes = propostasMesFiltradas.filter(isPagaProposta);
   const valorPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
-  const propostasEmAndamentoMes = propostasMes.filter(p => !isPagaProposta(p));
+  const propostasEmAndamentoMes = propostasMesFiltradas.filter(p => !isPagaProposta(p));
   const valorEmAndamentoMes = propostasEmAndamentoMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
   // Gerar lista dos últimos 12 meses para o select
