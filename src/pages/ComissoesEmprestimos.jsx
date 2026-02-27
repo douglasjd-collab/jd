@@ -483,10 +483,10 @@ export default function ComissoesEmprestimos() {
                           <th className="p-3 text-left font-semibold">Banco</th>
                           <th className="p-3 text-left font-semibold">Data Lib.</th>
                           <th className="p-3 text-right font-semibold">Vl. Crédito</th>
-                          <th className="p-3 text-right font-semibold">% Comissão</th>
-                          <th className="p-3 text-right font-semibold">Vl. Comissão</th>
-                          <th className="p-3 text-right font-semibold">% a Pagar</th>
-                          <th className="p-3 text-right font-semibold">Vl. a Pagar</th>
+                          <th className="p-3 text-right font-semibold">Comissão Empresa %</th>
+                          <th className="p-3 text-right font-semibold">Vl. Comissão Empresa</th>
+                          <th className="p-3 text-right font-semibold">Comissão Vendedor %</th>
+                          <th className="p-3 text-right font-semibold">Vl. a Pagar Vendedor</th>
                           <th className="p-3 text-center font-semibold">Rec. Banco</th>
                           <th className="p-3 text-center font-semibold">Pago Vendedor</th>
                         </tr>
