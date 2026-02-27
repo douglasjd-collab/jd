@@ -396,6 +396,55 @@ export default function Dashboard() {
     });
   }, [clientes]);
 
+  // Lógica das propostas de empréstimo filtradas por mês
+  const normStr = s => String(s || '').toLowerCase().trim();
+  const statusPagoIds = statusPropostaList
+    .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStr(s.nome)))
+    .map(s => s.id);
+  const statusCanceladoIds = statusPropostaList
+    .filter(s => s.funcao_fluxo === 'cancelado' || normStr(s.nome) === 'cancelado')
+    .map(s => s.id);
+
+  const isPagaProposta = (p) =>
+    (p.status_id && statusPagoIds.includes(p.status_id)) ||
+    ['pago', 'paga'].includes(normStr(p.status));
+  const isCanceladaProposta = (p) =>
+    (p.status_id && statusCanceladoIds.includes(p.status_id)) ||
+    normStr(p.status) === 'cancelado';
+
+  const propostasMes = React.useMemo(() => {
+    return propostasEmprestimo.filter(p => {
+      if (isCanceladaProposta(p)) return false;
+      if (isPagaProposta(p)) {
+        // Para pagas, usar data de liberação (pagamento)
+        const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
+        return dataPag.startsWith(mesSelecionado);
+      }
+      // Para em andamento, usar data de venda
+      const dataVenda = p.data_venda || '';
+      return dataVenda.startsWith(mesSelecionado);
+    });
+  }, [propostasEmprestimo, mesSelecionado, statusPagoIds, statusCanceladoIds]);
+
+  const propostasPagasMes = propostasMes.filter(isPagaProposta);
+  const valorPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+
+  const propostasEmAndamentoMes = propostasMes.filter(p => !isPagaProposta(p));
+  const valorEmAndamentoMes = propostasEmAndamentoMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+
+  // Gerar lista dos últimos 12 meses para o select
+  const mesesDisponiveis = React.useMemo(() => {
+    const meses = [];
+    for (let i = 0; i < 12; i++) {
+      const d = subMonths(new Date(), i);
+      meses.push({
+        value: format(d, 'yyyy-MM'),
+        label: format(d, "MMMM 'de' yyyy", { locale: ptBR }),
+      });
+    }
+    return meses;
+  }, []);
+
   const [cipModalOpen, setCipModalOpen] = React.useState(false);
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState(null);
