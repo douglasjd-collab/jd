@@ -113,7 +113,7 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
     const valorNum = parseFloat(cipValorPrevisto.replace(/\./g, '').replace(',', '.')) || 0;
 
     updateMutation.mutate({
-      status: statusSelecionado.codigo,
+      status: statusSelecionado.nome,
       status_id: statusSelecionado.id,
       cip_data_entrada: cipDataEntrada,
       cip_data_retorno_prevista: dataRetornoStr,
