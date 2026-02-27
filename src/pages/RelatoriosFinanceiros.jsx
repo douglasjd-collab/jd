@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { DollarSign, TrendingUp, TrendingDown, Wallet, FileText, AlertCircle, Moon, Sun, ArrowRight, Clock, CalendarDays, CalendarClock } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, Wallet, FileText, AlertCircle, Moon, Sun, ArrowRight, Clock, CalendarDays, CalendarClock, CheckCircle } from 'lucide-react';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
