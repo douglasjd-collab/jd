@@ -159,24 +159,6 @@ export default function Transacoes() {
   const [novaDespesaOpen, setNovaDespesaOpen] = useState(false);
   const [novaReceitaOpen, setNovaReceitaOpen] = useState(false);
 
-  const createDespesaMutation = useMutation({
-    mutationFn: (data) => base44.entities.Despesa.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['despesas-transacoes']);
-      toast.success('Despesa criada!');
-      setNovaDespesaOpen(false);
-    },
-  });
-
-  const createReceitaMutation = useMutation({
-    mutationFn: (data) => base44.entities.Receita.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['receitas-transacoes']);
-      toast.success('Receita criada!');
-      setNovaReceitaOpen(false);
-    },
-  });
-
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
   if (!user || !isAdmin) {
