@@ -198,9 +198,12 @@ export default function ComissoesEmprestimos() {
     }
   };
 
-  const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode) => {
+  const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}) => {
     const doc = new jsPDF({ orientation: 'landscape' });
-    const totalPago = propostasLista.reduce((acc, p) => acc + (p.valor_comissao || 0), 0);
+    const totalPago = propostasLista.reduce((acc, p) => {
+      const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualProposta(p);
+      return acc + (p.valor_credito || 0) * (perc / 100);
+    }, 0);
 
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, 297, 22, 'F');
