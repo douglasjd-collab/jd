@@ -118,6 +118,7 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
+import PropostaEmprestimoDetalhes from './pages/PropostaEmprestimoDetalhes';
 import __Layout from './Layout.jsx';
 
 
@@ -193,6 +194,7 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
+    "PropostaEmprestimoDetalhes": PropostaEmprestimoDetalhes,
 }
 
 export const pagesConfig = {
