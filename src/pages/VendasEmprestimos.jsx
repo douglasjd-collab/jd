@@ -113,8 +113,14 @@ export default function VendasEmprestimos() {
   };
 
   const { data: propostas = [], isLoading } = useQuery({
-    queryKey: ['vendas-emprestimos'],
-    queryFn: () => base44.entities.Proposta.filter({ produto: ['emprestimo'] }, '-data_venda'),
+    queryKey: ['vendas-emprestimos', currentUser?.empresa_id, currentUser?.perfil],
+    enabled: !!currentUser,
+    queryFn: () => {
+      const isSuperAdmin = currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'master';
+      const filter = { produto: 'emprestimo' };
+      if (!isSuperAdmin && currentUser?.empresa_id) filter.empresa_id = currentUser.empresa_id;
+      return base44.entities.Proposta.filter(filter, '-data_venda', 500);
+    },
   });
 
   const { data: bancos = [] } = useQuery({
