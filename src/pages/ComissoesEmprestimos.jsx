@@ -57,6 +57,10 @@ export default function ComissoesEmprestimos() {
   const [propostaMarcar, setPropostaMarcar] = useState(null);
   const [isMarkingBanco, setIsMarkingBanco] = useState(false);
 
+  // Percentuais personalizados por proposta (sobreescrevem o valor_comissao)
+  // key: proposta.id, value: percentual (número)
+  const [percentuaisCustom, setPercentuaisCustom] = useState({});
+
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
