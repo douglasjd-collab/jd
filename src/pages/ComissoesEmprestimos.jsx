@@ -290,7 +290,7 @@ export default function ComissoesEmprestimos() {
   const totalModalSelecionado = Array.from(modalSelecionados)
     .map(id => propostas.find(p => p.id === id))
     .filter(Boolean)
-    .reduce((acc, p) => acc + (p.valor_comissao || 0), 0);
+    .reduce((acc, p) => acc + getValorAPagar(p), 0);
 
   const aptos = propostasModal.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga);
   const todosSelecionados = aptos.length > 0 && aptos.every(p => modalSelecionados.has(p.id));
