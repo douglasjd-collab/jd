@@ -68,7 +68,7 @@ export default function GestaoSubcontas() {
 
   const statusMutation = useMutation({
     mutationFn: ({ empresaId, novoStatus }) =>
-      base44.asServiceRole.entities.Empresa.update(empresaId, { status: novoStatus }),
+      base44.functions.invoke('atualizarStatusEmpresa', { empresaId, novoStatus }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['empresas'] });
       toast.success('Status atualizado com sucesso!');
