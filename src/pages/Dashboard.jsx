@@ -596,10 +596,10 @@ export default function Dashboard() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Vendas por Mês */}
+        {/* Vendas de consórcio (Mês) */}
         <Card className="lg:col-span-2 border-0 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Vendas por Mês</CardTitle>
+            <CardTitle className="text-lg font-semibold">Vendas de consórcio (Mês)</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
