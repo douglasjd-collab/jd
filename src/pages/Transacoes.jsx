@@ -154,6 +154,27 @@ export default function Transacoes() {
   const pendentes = despesasPendentes.length;
   const totalPendentes = despesasPendentes.reduce((a, d) => a + (d.valor || 0), 0);
 
+  const [novaDespesaOpen, setNovaDespesaOpen] = useState(false);
+  const [novaReceitaOpen, setNovaReceitaOpen] = useState(false);
+
+  const createDespesaMutation = useMutation({
+    mutationFn: (data) => base44.entities.Despesa.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['despesas-transacoes']);
+      toast.success('Despesa criada!');
+      setNovaDespesaOpen(false);
+    },
+  });
+
+  const createReceitaMutation = useMutation({
+    mutationFn: (data) => base44.entities.Receita.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['receitas-transacoes']);
+      toast.success('Receita criada!');
+      setNovaReceitaOpen(false);
+    },
+  });
+
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
   if (!user || !isAdmin) {
@@ -168,9 +189,19 @@ export default function Transacoes() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Transações</h1>
-        <p className="text-slate-500 text-sm">Todas as despesas e receitas lançadas</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Transações</h1>
+          <p className="text-slate-500 text-sm">Todas as despesas e receitas lançadas</p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button onClick={() => setNovaDespesaOpen(true)} className="bg-red-600 hover:bg-red-700 text-white">
+            <TrendingDown className="w-4 h-4 mr-1" /> Nova Despesa
+          </Button>
+          <Button onClick={() => setNovaReceitaOpen(true)} className="bg-green-600 hover:bg-green-700 text-white">
+            <TrendingUp className="w-4 h-4 mr-1" /> Nova Receita
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -187,12 +218,18 @@ export default function Transacoes() {
         </Card>
         <Card className="p-4 border-red-200 bg-red-50">
           <p className="text-xs text-red-500 mb-1">Contas Atrasadas</p>
-          <p className="text-xl font-bold text-red-700">{atrasadas}</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-xl font-bold text-red-700">{atrasadas}</p>
+            <p className="text-xs text-red-500 font-medium">{atrasadas > 0 ? totalAtrasadas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}</p>
+          </div>
           <AlertCircle className="w-5 h-5 text-red-400 mt-1" />
         </Card>
         <Card className="p-4 border-yellow-200 bg-yellow-50">
           <p className="text-xs text-yellow-600 mb-1">Contas Pendentes</p>
-          <p className="text-xl font-bold text-yellow-700">{pendentes}</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-xl font-bold text-yellow-700">{pendentes}</p>
+            <p className="text-xs text-yellow-600 font-medium">{pendentes > 0 ? totalPendentes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}</p>
+          </div>
           <Clock className="w-5 h-5 text-yellow-400 mt-1" />
         </Card>
       </div>
