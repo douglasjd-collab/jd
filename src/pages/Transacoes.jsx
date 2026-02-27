@@ -203,16 +203,16 @@ export default function Transacoes() {
         <Card className="p-4 border-red-200 bg-red-50">
           <p className="text-xs text-red-500 mb-1">Contas Atrasadas</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-xl font-bold text-red-700">{atrasadas}</p>
-            <p className="text-xs text-red-500 font-medium">{atrasadas > 0 ? totalAtrasadas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}</p>
+            <p className="text-2xl font-bold text-red-700">{atrasadas > 0 ? totalAtrasadas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}</p>
+            <p className="text-xs text-red-500 font-medium">{atrasadas}</p>
           </div>
           <AlertCircle className="w-5 h-5 text-red-400 mt-1" />
         </Card>
         <Card className="p-4 border-yellow-200 bg-yellow-50">
           <p className="text-xs text-yellow-600 mb-1">Contas Pendentes</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-xl font-bold text-yellow-700">{pendentes}</p>
-            <p className="text-xs text-yellow-600 font-medium">{pendentes > 0 ? totalPendentes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : ''}</p>
+            <p className="text-2xl font-bold text-yellow-700">{pendentes > 0 ? totalPendentes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}</p>
+            <p className="text-xs text-yellow-600 font-medium">{pendentes}</p>
           </div>
           <Clock className="w-5 h-5 text-yellow-400 mt-1" />
         </Card>
