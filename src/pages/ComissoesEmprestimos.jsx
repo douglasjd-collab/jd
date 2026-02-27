@@ -233,9 +233,9 @@ export default function ComissoesEmprestimos() {
 
     doc.autoTable({
       startY: 54,
-      head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Comissão', 'Vl. a Pagar']],
+      head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. a Pagar']],
       body: propostasLista.map(p => {
-        const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualProposta(p);
+        const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
         const valPagar = (p.valor_credito || 0) * (perc / 100);
         return [
           p.cliente_nome || '-',
