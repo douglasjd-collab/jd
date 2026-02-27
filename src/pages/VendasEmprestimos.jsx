@@ -176,8 +176,7 @@ export default function VendasEmprestimos() {
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
       p.status_id === filterStatus || 
-      (filterStatusObj && normStr(p.status) === normStr(filterStatusObj.nome)) ||
-      (filterStatusObj && normStr(p.status) === normStr(filterStatusObj.codigo));
+      (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
     return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus;
   });
 
