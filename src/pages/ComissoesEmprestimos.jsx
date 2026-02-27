@@ -485,7 +485,22 @@ export default function ComissoesEmprestimos() {
                                 : p.data_venda ? moment(p.data_venda).format('DD/MM/YYYY') : '-'}
                             </td>
                             <td className="p-3 text-right font-medium">{fmt(p.valor_credito)}</td>
-                            <td className="p-3 text-right font-semibold text-blue-700">{fmt(p.valor_comissao)}</td>
+                            <td className="p-3 text-right text-slate-500 text-xs">
+                              {getPercentualProposta(p).toFixed(2)}%
+                            </td>
+                            <td className="p-3 text-right font-semibold text-slate-600">{fmt(p.valor_comissao)}</td>
+                            <td className="p-3 text-right">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value={percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualProposta(p).toFixed(2)}
+                                onChange={e => setPercentuaisCustom(prev => ({ ...prev, [p.id]: parseFloat(e.target.value) || 0 }))}
+                                className="w-20 h-7 text-xs text-right p-1"
+                              />
+                            </td>
+                            <td className="p-3 text-right font-semibold text-blue-700">{fmt(getValorAPagar(p))}</td>
                             <td className="p-3 text-center">
                               <button
                                 onClick={() => { setPropostaMarcar(p); setMarcarBancoModal(true); }}
