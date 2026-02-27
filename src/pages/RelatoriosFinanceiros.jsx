@@ -218,6 +218,22 @@ export default function RelatoriosFinanceiros() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
+  const handlePagarConta = async () => {
+    if (!pagandoConta) return;
+    const { despesa, dataPagamento } = pagandoConta;
+    await base44.entities.Despesa.update(despesa.id, {
+      status: 'pago',
+      data_pagamento: dataPagamento || moment().format('YYYY-MM-DD'),
+    });
+    queryClient.invalidateQueries(['despesas-relatorio']);
+    setPagandoConta(null);
+    // Atualiza a lista no modal
+    setContasModal(prev => prev ? {
+      ...prev,
+      contas: prev.contas.filter(c => c.id !== despesa.id)
+    } : null);
+  };
+
   if (!user || !isAdmin) {
     return (
       <div className="p-6">
