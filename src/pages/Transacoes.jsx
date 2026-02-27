@@ -14,6 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { TrendingDown, TrendingUp, Search, Trash2, Edit2, CheckCircle, MoreVertical, AlertCircle, Clock, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
+import ModalNovaDespesa from '@/components/financeiro/ModalNovaDespesa';
+import ModalNovaReceita from '@/components/financeiro/ModalNovaReceita';
 
 export default function Transacoes() {
   const [user, setUser] = useState(null);
