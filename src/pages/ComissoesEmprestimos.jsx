@@ -257,10 +257,14 @@ export default function ComissoesEmprestimos() {
 
       const dataPagamento = moment().format('YYYY-MM-DD');
       for (const p of paraPagar) {
+        const percPagar = percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualProposta(p);
+        const valPagar = (p.valor_credito || 0) * (percPagar / 100);
         await base44.entities.Proposta.update(p.id, {
           comissao_vendedor_paga: true,
           comissao_vendedor_data_pagamento: dataPagamento,
           comissao_vendedor_forma_pagamento: formaPagamento,
+          percentual_comissao_vendedor: percPagar,
+          valor_comissao_vendedor_pago: valPagar,
         });
       }
 
