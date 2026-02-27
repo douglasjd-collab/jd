@@ -208,7 +208,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
         { name: 'Receber Comissão', page: 'ReceberComissao' },
-        { name: 'Comissões a Pagar', page: 'ComissoesPagar' },
+        { name: 'Comissões a Pagar (Consórcio)', page: 'ComissoesPagar' },
         { name: 'Comissões Pagas', page: 'ComissoesPagas' },
       ]
     },
