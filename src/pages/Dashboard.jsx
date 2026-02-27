@@ -403,7 +403,7 @@ export default function Dashboard() {
       .map(([nome, stats]) => ({ nome, propostas: stats.propostas, valor: stats.valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 5);
-  }, [propostasPagasMes]);
+  }, [propostasPagasMesCalc]);
 
   const vendasRecentes = filteredVendas.slice(0, 5);
 
