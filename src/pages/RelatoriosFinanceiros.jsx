@@ -353,6 +353,70 @@ export default function RelatoriosFinanceiros() {
         </div>
       </Card>
 
+      {/* Alerta Inteligente */}
+      {(contasVencendoHoje.length > 0 || contasAtrasadas.length > 0 || contasAVencer7Dias.length > 0) && (
+        <div className={`p-4 mb-6 rounded-xl border space-y-2 ${darkMode ? 'bg-amber-900/20 border-amber-700' : 'bg-amber-50 border-amber-300'}`}>
+          <p className={`font-semibold mb-1 ${darkMode ? 'text-amber-300' : 'text-amber-800'}`}>⚠️ Alertas do Sistema</p>
+          {contasVencendoHoje.length > 0 && (
+            <p className={`text-sm ${darkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
+              ⚠️ Você tem <strong>{contasVencendoHoje.length}</strong> conta(s) vencendo hoje!
+            </p>
+          )}
+          {contasAtrasadas.length > 0 && (
+            <p className={`text-sm ${darkMode ? 'text-red-300' : 'text-red-700'}`}>
+              ⛔ Existem <strong>{contasAtrasadas.length}</strong> conta(s) atrasada(s)!
+            </p>
+          )}
+          {contasAVencer7Dias.length > 0 && (
+            <p className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+              📅 <strong>{contasAVencer7Dias.length}</strong> conta(s) com vencimento nos próximos 7 dias.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Cards de Contas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card className={`p-6 border-l-4 border-yellow-500 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Contas Vencendo Hoje</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {valorVencendoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasVencendoHoje.length} conta(s)</p>
+            </div>
+            <CalendarDays className="w-10 h-10 text-yellow-500" />
+          </div>
+        </Card>
+
+        <Card className={`p-6 border-l-4 border-red-500 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Contas Atrasadas</p>
+              <p className="text-2xl font-bold text-red-600">
+                {valorAtrasadas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasAtrasadas.length} conta(s)</p>
+            </div>
+            <Clock className="w-10 h-10 text-red-500" />
+          </div>
+        </Card>
+
+        <Card className={`p-6 border-l-4 border-blue-500 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>A Vencer (7 dias)</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {valorAVencer7Dias.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasAVencer7Dias.length} conta(s)</p>
+            </div>
+            <CalendarClock className="w-10 h-10 text-blue-500" />
+          </div>
+        </Card>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
