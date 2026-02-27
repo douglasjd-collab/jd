@@ -11,9 +11,14 @@ Deno.serve(async (req) => {
 
         const { email, perfil, nome, cpf_cnpj, telefone, codigo_vendedor, gerente_id, empresa_id, status } = await req.json();
 
+        if (!email || !perfil || !nome) {
+            return Response.json({ error: 'email, perfil e nome são obrigatórios' }, { status: 400 });
+        }
+
         // Determinar role para convite
         const requestedRole = ['admin', 'super_admin', 'master'].includes(perfil) ? 'admin' : 'user';
-        const userCanInviteAdmin = ['admin', 'super_admin', 'master'].includes(user.role);
+        const userPerfil = user.perfil || user.role;
+        const userCanInviteAdmin = ['admin', 'super_admin', 'master'].includes(userPerfil);
 
         if (requestedRole === 'admin' && !userCanInviteAdmin) {
             return Response.json({ error: 'Forbidden: Only admin users can invite other admins.' }, { status: 403 });
@@ -25,31 +30,20 @@ Deno.serve(async (req) => {
 
         // Convidar usuário se não existir
         if (!invitedUser) {
-            // Enviar convite usando o método correto do SDK
-            try {
-                await base44.users.inviteUser(email, requestedRole);
-            } catch (inviteError) {
-                console.error('Erro ao enviar convite:', inviteError);
-                throw new Error('Erro ao enviar convite: ' + inviteError.message);
-            }
+            await base44.asServiceRole.users.inviteUser(email, requestedRole);
 
             // Aguardar e buscar usuário criado com retry
-            const maxRetries = 5;
-            let found = false;
-            
-            for (let i = 0; i < maxRetries; i++) {
-                await new Promise(r => setTimeout(r, 800));
+            for (let i = 0; i < 5; i++) {
+                await new Promise(r => setTimeout(r, 1000));
                 const createdUsers = await base44.asServiceRole.entities.User.filter({ email });
                 if (createdUsers?.length) {
                     invitedUser = createdUsers[0];
-                    found = true;
                     break;
                 }
             }
-            
-            // Se não encontrou após retry, retornar sucesso parcial
-            if (!found) {
-                return Response.json({ 
+
+            if (!invitedUser) {
+                return Response.json({
                     success: true,
                     invited: true,
                     userLinked: false,
@@ -57,16 +51,16 @@ Deno.serve(async (req) => {
                 });
             }
         }
-        
+
         // Criar dados do Colaborador
         let colaboradorData = {
             user_id: invitedUser.id,
             nome: nome || invitedUser.full_name,
             email: invitedUser.email,
-            perfil: perfil,
-            cpf_cnpj: cpf_cnpj || '',
-            telefone: telefone || '',
-            codigo_vendedor: codigo_vendedor || '',
+            perfil,
+            cpf_cnpj: cpf_cnpj || null,
+            telefone: telefone || null,
+            codigo_vendedor: codigo_vendedor || null,
             status: status || 'ativo',
         };
 
@@ -75,12 +69,8 @@ Deno.serve(async (req) => {
             colaboradorData.gerente_id = gerente_id;
             try {
                 const gerente = await base44.asServiceRole.entities.Colaborador.get(gerente_id);
-                if (gerente) {
-                    colaboradorData.gerente_nome = gerente.nome;
-                }
-            } catch (e) {
-                console.log('Gerente não encontrado:', e);
-            }
+                if (gerente) colaboradorData.gerente_nome = gerente.nome;
+            } catch (e) {}
         }
 
         // Adicionar empresa (exceto para super_admin e master)
@@ -88,14 +78,10 @@ Deno.serve(async (req) => {
             colaboradorData.empresa_id = empresa_id;
             try {
                 const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);
-                if (empresa) {
-                    colaboradorData.empresa_nome = empresa.nome;
-                }
-            } catch (e) {
-                console.log('Empresa não encontrada:', e);
-            }
+                if (empresa) colaboradorData.empresa_nome = empresa.nome;
+            } catch (e) {}
         }
-        
+
         // Verificar se já existe Colaborador para este user_id
         const existingColab = await base44.asServiceRole.entities.Colaborador.filter({ user_id: invitedUser.id });
         let colaborador;
@@ -106,21 +92,7 @@ Deno.serve(async (req) => {
             colaborador = await base44.asServiceRole.entities.Colaborador.create(colaboradorData);
         }
 
-        // Log de auditoria
-        await base44.asServiceRole.entities.LogAuditoria.create({
-            usuario_id: user.id,
-            usuario_nome: user.full_name,
-            acao: `Convidou usuário ${invitedUser.email} com perfil ${perfil}`,
-            entidade: 'Colaborador',
-            entidade_id: colaborador.id,
-            tipo: 'criacao'
-        });
-
-        return Response.json({ 
-            success: true, 
-            user: invitedUser, 
-            colaborador 
-        });
+        return Response.json({ success: true, user: invitedUser, colaborador });
 
     } catch (error) {
         console.error('Erro na função inviteUser:', error);
