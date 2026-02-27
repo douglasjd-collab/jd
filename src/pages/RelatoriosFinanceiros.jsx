@@ -191,6 +191,28 @@ export default function RelatoriosFinanceiros() {
   // Resultado Final = (Comissões Recebidas + Receitas) - (Comissões Pagas + Despesas)
   const resultadoFinal = totalComissoesRecebidas + totalReceitas - (totalComissoesPagas + totalDespesas);
 
+  // Indicadores de contas (despesas com data_vencimento)
+  const hoje = moment().format('YYYY-MM-DD');
+  const em7Dias = moment().add(7, 'days').format('YYYY-MM-DD');
+
+  const contasVencendoHoje = despesas.filter(d => {
+    const venc = normalizeDate(d.data_vencimento || d.data);
+    return venc === hoje && d.status !== 'pago' && d.status !== 'paga';
+  });
+  const valorVencendoHoje = contasVencendoHoje.reduce((acc, d) => acc + toNumber(d.valor), 0);
+
+  const contasAtrasadas = despesas.filter(d => {
+    const venc = normalizeDate(d.data_vencimento || d.data);
+    return venc && venc < hoje && d.status !== 'pago' && d.status !== 'paga';
+  });
+  const valorAtrasadas = contasAtrasadas.reduce((acc, d) => acc + toNumber(d.valor), 0);
+
+  const contasAVencer7Dias = despesas.filter(d => {
+    const venc = normalizeDate(d.data_vencimento || d.data);
+    return venc && venc > hoje && venc <= em7Dias && d.status !== 'pago' && d.status !== 'paga';
+  });
+  const valorAVencer7Dias = contasAVencer7Dias.reduce((acc, d) => acc + toNumber(d.valor), 0);
+
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
   if (!user || !isAdmin) {
