@@ -173,7 +173,11 @@ export default function VendasEmprestimos() {
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
-    const matchStatus = filterStatus === 'todos' || p.status_id === filterStatus || p.status === filterStatus || normStr(p.status) === normStr(statusList.find(s => s.id === filterStatus)?.nome);
+    const filterStatusObj = statusList.find(s => s.id === filterStatus);
+    const matchStatus = filterStatus === 'todos' || 
+      p.status_id === filterStatus || 
+      (filterStatusObj && normStr(p.status) === normStr(filterStatusObj.nome)) ||
+      (filterStatusObj && normStr(p.status) === normStr(filterStatusObj.codigo));
     return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus;
   });
 
