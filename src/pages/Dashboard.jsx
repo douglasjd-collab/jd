@@ -873,6 +873,8 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>{/* end Vendas Recentes + Aniversariantes */}
+
       {/* Importações Recentes */}
       {importacoes.length > 0 && (
         <Card className="border-0 shadow-sm">
