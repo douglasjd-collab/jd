@@ -457,16 +457,10 @@ export default function Dashboard() {
         const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
         return dataPag.startsWith(mesKey);
       });
-      const andamento = propostasEmprestimo.filter(p => {
-        if (isCanceladaProposta(p) || isPagaProposta(p)) return false;
-        return (p.data_venda || '').startsWith(mesKey);
-      });
       months.push({
         name: format(date, 'MMM', { locale: ptBR }),
         pagas: pagas.length,
-        andamento: andamento.length,
-        valorPagas: pagas.reduce((acc, p) => acc + (p.valor_credito || 0), 0),
-        valorAndamento: andamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0),
+        valor: pagas.reduce((acc, p) => acc + (p.valor_credito || 0), 0),
       });
     }
     return months;
