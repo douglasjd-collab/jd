@@ -873,6 +873,56 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Aniversariantes da Semana */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Cake className="w-5 h-5 text-pink-500" />
+              Aniversariantes da Semana
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {aniversariantesSemana.length > 0 ? (
+                aniversariantesSemana.map((cliente) => {
+                  const nascimento = new Date(cliente.data_nascimento + 'T12:00:00');
+                  const hoje = new Date();
+                  const ehHoje = nascimento.getDate() === hoje.getDate() && nascimento.getMonth() === hoje.getMonth();
+                  return (
+                    <div
+                      key={cliente.id}
+                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
+                        ehHoje ? 'bg-amber-100 border-2 border-amber-400 hover:bg-amber-200' : 'bg-slate-50 hover:bg-slate-100'
+                      }`}
+                      onDoubleClick={() => navigate(`/ClienteDetalhes?id=${cliente.id}`)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          ehHoje ? 'bg-amber-500 text-white' : 'bg-pink-100 text-pink-600'
+                        }`}>
+                          <Cake className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {cliente.nome_completo || cliente.pj_razao_social}
+                            {ehHoje && <span className="ml-2 text-amber-600 font-bold">🎉 HOJE</span>}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {format(nascimento, 'dd/MM')}
+                            {cliente.celular && ` • ${cliente.celular}`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-center text-slate-500 py-8">Nenhum aniversariante esta semana</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>{/* end Vendas Recentes + Aniversariantes */}
 
       {/* Importações Recentes */}
