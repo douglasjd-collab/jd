@@ -521,8 +521,11 @@ export default function VendasEmprestimos() {
                         {p.cliente_nome?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 text-sm leading-tight">{p.cliente_nome || '-'}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{cpf || '-'} {p.contrato ? `| Contrato: ${p.contrato}` : ''}</p>
+                      <p className="font-bold text-slate-900 text-sm leading-tight">{p.cliente_nome || '-'}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {cpf && <span className="font-medium text-slate-500">CPF: {cpf}</span>}
+                        {p.contrato && <span>{cpf ? ' | ' : ''}Contrato: {p.contrato}</span>}
+                      </p>
                       </div>
                     </div>
                     <DropdownMenu>
