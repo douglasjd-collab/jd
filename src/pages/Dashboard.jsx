@@ -966,97 +966,39 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Bottom Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Oportunidades Recentes */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Oportunidades em Aberto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).length > 0 ? (
-                filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).map((op) => (
-                  <div key={op.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <TrendingUp className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{op.titulo}</p>
-                        <p className="text-sm text-slate-500">
-                          {op.etapa_nome} • {op.vendedor_nome}
-                        </p>
-                      </div>
+      {/* Oportunidades Recentes */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Oportunidades em Aberto</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).length > 0 ? (
+              filteredOportunidades.filter(o => o.status === 'aberta').slice(0, 8).map((op) => (
+                <div key={op.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-purple-600" />
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900">
-                        {formatCurrency(op.valor_estimado || 0)}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {op.data_cadastro_lead ? format(new Date(op.data_cadastro_lead + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
-                      </p>
+                    <div>
+                      <p className="font-medium text-slate-900">{op.titulo}</p>
+                      <p className="text-sm text-slate-500">{op.etapa_nome} • {op.vendedor_nome}</p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-center text-slate-500 py-8">Nenhuma oportunidade em aberto</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Aniversariantes da Semana */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Cake className="w-5 h-5 text-pink-500" />
-              Aniversariantes da Semana
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {aniversariantesSemana.length > 0 ? (
-                aniversariantesSemana.map((cliente) => {
-                  const nascimento = new Date(cliente.data_nascimento + 'T12:00:00');
-                  const hoje = new Date();
-                  const ehHoje = nascimento.getDate() === hoje.getDate() && nascimento.getMonth() === hoje.getMonth();
-                  
-                  return (
-                    <div 
-                      key={cliente.id} 
-                      className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
-                        ehHoje ? 'bg-amber-100 border-2 border-amber-400 hover:bg-amber-200' : 'bg-slate-50 hover:bg-slate-100'
-                      }`}
-                      onDoubleClick={() => navigate(`/ClienteDetalhes?id=${cliente.id}`)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          ehHoje ? 'bg-amber-500 text-white' : 'bg-pink-100 text-pink-600'
-                        }`}>
-                          <Cake className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-900">
-                            {cliente.nome_completo || cliente.pj_razao_social}
-                            {ehHoje && <span className="ml-2 text-amber-600 font-bold">🎉 HOJE</span>}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {format(nascimento, 'dd/MM')}
-                            {cliente.celular && ` • ${cliente.celular}`}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-center text-slate-500 py-8">Nenhum aniversariante esta semana</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-slate-900">{formatCurrency(op.valor_estimado || 0)}</p>
+                    <p className="text-xs text-slate-500">
+                      {op.data_cadastro_lead ? format(new Date(op.data_cadastro_lead + 'T12:00:00'), 'dd/MM/yyyy') : '-'}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-slate-500 py-8">Nenhuma oportunidade em aberto</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <CipRetornoModal open={cipModalOpen} onOpenChange={setCipModalOpen} propostas={propostasCip} />
 
