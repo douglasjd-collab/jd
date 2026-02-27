@@ -156,6 +156,21 @@ export default function ComissoesEmprestimos() {
   const totalRecebidoBanco = propostasPagas.filter(p => p.comissao_banco_recebida).reduce((a, p) => a + (p.valor_comissao || 0), 0);
   const totalPendentePagar = propostasPagas.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga).reduce((a, p) => a + (p.valor_comissao || 0), 0);
 
+  // Calcula o percentual de comissão da proposta (campo percentual_comissao_emp ou derivado)
+  const getPercentualProposta = (p) => {
+    // Se tem valor_comissao e valor_credito, calcula o percentual original do excel
+    if (p.valor_comissao && p.valor_credito) {
+      return parseFloat(((p.valor_comissao / p.valor_credito) * 100).toFixed(4));
+    }
+    return 0;
+  };
+
+  // Calcula o valor a pagar ao vendedor com base no percentual customizado (ou original)
+  const getValorAPagar = (p) => {
+    const perc = percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualProposta(p);
+    return (p.valor_credito || 0) * (perc / 100);
+  };
+
   const abrirModalPagamento = (vendedor, e) => {
     if (e) e.stopPropagation();
     setVendedorModal(vendedor);
