@@ -508,6 +508,33 @@ export default function RelatoriosFinanceiros() {
         </div>
       )}
 
+      {/* Mini-modal confirmar pagamento */}
+      {pagandoConta && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setPagandoConta(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Confirmar Pagamento</h3>
+            <p className="text-sm text-slate-500 mb-4">{pagandoConta.despesa.descricao || pagandoConta.despesa.categoria || 'Despesa'}</p>
+            <p className="text-2xl font-bold text-green-600 mb-4">
+              {toNumber(pagandoConta.despesa.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+            <div className="mb-4">
+              <Label className="text-sm text-slate-700 mb-1 block">Data de Pagamento</Label>
+              <Input
+                type="date"
+                value={pagandoConta.dataPagamento}
+                onChange={e => setPagandoConta(prev => ({ ...prev, dataPagamento: e.target.value }))}
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setPagandoConta(null)}>Cancelar</Button>
+              <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handlePagarConta}>
+                <CheckCircle className="w-4 h-4 mr-1" /> Confirmar Pagamento
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className={`p-6 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
