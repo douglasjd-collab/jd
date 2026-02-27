@@ -368,9 +368,30 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [vendasMes]);
 
+  // propostasPagasMes calculado aqui para uso no useMemo abaixo
+  const propostasPagasMesCalc = React.useMemo(() => {
+    const normStrInner = s => String(s || '').toLowerCase().trim();
+    const pagoIds = statusPropostaList
+      .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStrInner(s.nome)))
+      .map(s => s.id);
+    const canceladoIds = statusPropostaList
+      .filter(s => s.funcao_fluxo === 'cancelado' || normStrInner(s.nome) === 'cancelado')
+      .map(s => s.id);
+    const isPaga = (p) =>
+      (p.status_id && pagoIds.includes(p.status_id)) || ['pago', 'paga'].includes(normStrInner(p.status));
+    const isCancelada = (p) =>
+      (p.status_id && canceladoIds.includes(p.status_id)) || normStrInner(p.status) === 'cancelado';
+    return propostasEmprestimo.filter(p => {
+      if (isCancelada(p)) return false;
+      if (!isPaga(p)) return false;
+      const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
+      return dataPag.startsWith(mesSelecionado);
+    });
+  }, [propostasEmprestimo, statusPropostaList, mesSelecionado]);
+
   const rankingEmprestimos = React.useMemo(() => {
     const vendedorStats = {};
-    propostasPagasMes.forEach(p => {
+    propostasPagasMesCalc.forEach(p => {
       const nome = p.vendedor_nome || 'Sem vendedor';
       if (!vendedorStats[nome]) {
         vendedorStats[nome] = { propostas: 0, valor: 0 };
