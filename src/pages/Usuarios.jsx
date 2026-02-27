@@ -203,8 +203,7 @@ export default function Usuarios() {
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas-usuarios'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('listarEmpresas', {});
-      return response.data?.empresas || [];
+      return await base44.entities.Empresa.list('-created_date', 200);
     },
     enabled: ['master', 'super_admin', 'admin'].includes(currentUser?.perfil)
   });
