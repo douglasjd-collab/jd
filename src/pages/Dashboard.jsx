@@ -626,30 +626,22 @@ export default function Dashboard() {
           <CardTitle className="text-lg font-semibold">Propostas de Empréstimos por Mês</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4 mb-4">
-            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#23BE84]" /><span className="text-sm text-slate-600">Pagas</span></div>
-            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#3b82f6]" /><span className="text-sm text-slate-600">Em Andamento</span></div>
-          </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={propostasEmprestimosPorMes}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
               <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Qtd', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="right" orientation="right" stroke="#64748b" fontSize={12} tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
+              <YAxis yAxisId="right" orientation="right" stroke="#23BE84" fontSize={12} tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
               <Tooltip
                 contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 formatter={(value, name) => {
-                  if (name === 'pagas') return [value, 'Pagas (Qtd)'];
-                  if (name === 'andamento') return [value, 'Em Andamento (Qtd)'];
-                  if (name === 'valorPagas') return [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor Pagas'];
-                  if (name === 'valorAndamento') return [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor Andamento'];
+                  if (name === 'pagas') return [value, 'Quantidade'];
+                  if (name === 'valor') return [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor Total'];
                   return [value, name];
                 }}
               />
-              <Bar dataKey="pagas" fill="#23BE84" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="andamento" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="valorPagas" fill="#16a34a" radius={[4, 4, 0, 0]} yAxisId="right" hide />
-              <Bar dataKey="valorAndamento" fill="#1d4ed8" radius={[4, 4, 0, 0]} yAxisId="right" hide />
+              <Bar dataKey="pagas" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
