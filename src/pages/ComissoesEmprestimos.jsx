@@ -615,8 +615,20 @@ export default function ComissoesEmprestimos() {
                       <td className="p-3 font-medium">{p.cliente_nome || '-'}</td>
                       <td className="p-3 text-slate-600">{p.contrato || '-'}</td>
                       <td className="p-3 text-slate-600">{p.administradora_nome || '-'}</td>
+                      <td className="p-3 text-right text-slate-700 font-medium">{fmt(p.valor_credito)}</td>
                       <td className="p-3 text-right">
-                        <Badge className="bg-blue-100 text-blue-700 font-semibold">{fmt(p.valor_comissao)}</Badge>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualProposta(p).toFixed(2)}
+                          onChange={e => setPercentuaisCustom(prev => ({ ...prev, [p.id]: parseFloat(e.target.value) || 0 }))}
+                          className="w-20 h-7 text-xs text-right p-1"
+                        />
+                      </td>
+                      <td className="p-3 text-right">
+                        <Badge className="bg-blue-100 text-blue-700 font-semibold">{fmt(getValorAPagar(p))}</Badge>
                       </td>
                       <td className="p-3 text-center text-xs">
                         {p.comissao_vendedor_paga
