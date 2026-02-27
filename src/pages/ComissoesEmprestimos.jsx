@@ -269,7 +269,7 @@ export default function ComissoesEmprestimos() {
       }
 
       const loteCode = `EMPC${String(Date.now()).slice(-6)}`;
-      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode);
+      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percentuaisCustom);
       queryClient.invalidateQueries(['propostas-emp-comissoes']);
       toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.`);
       setPagarModal(false);
