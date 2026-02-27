@@ -512,7 +512,11 @@ export default function VendasEmprestimos() {
             const tipoLabel = getTipoLabel(p);
 
             return (
-              <div key={p.id} className="bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+              <div
+                key={p.id}
+                className="bg-white rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow"
+                onDoubleClick={() => navigate(createPageUrl(`PropostaEmprestimoDetalhes?id=${p.id}`))}
+              >
                 {/* Card Header */}
                 <div className="p-4 pb-3">
                   <div className="flex items-start justify-between">
