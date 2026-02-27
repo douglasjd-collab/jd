@@ -378,45 +378,109 @@ export default function RelatoriosFinanceiros() {
 
       {/* Cards de Contas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className={`p-6 border-l-4 border-yellow-500 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+        <Card
+          className={`p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-md transition-shadow ${darkMode ? 'bg-slate-800' : ''}`}
+          onClick={() => setContasModal({ titulo: 'Contas Vencendo Hoje', contas: contasVencendoHoje, cor: 'yellow' })}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Contas Vencendo Hoje</p>
               <p className="text-2xl font-bold text-yellow-600">
                 {valorVencendoHoje.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
-              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasVencendoHoje.length} conta(s)</p>
+              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasVencendoHoje.length} conta(s) — clique para ver</p>
             </div>
             <CalendarDays className="w-10 h-10 text-yellow-500" />
           </div>
         </Card>
 
-        <Card className={`p-6 border-l-4 border-red-500 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+        <Card
+          className={`p-6 border-l-4 border-red-500 cursor-pointer hover:shadow-md transition-shadow ${darkMode ? 'bg-slate-800' : ''}`}
+          onClick={() => setContasModal({ titulo: 'Contas Atrasadas', contas: contasAtrasadas, cor: 'red' })}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Contas Atrasadas</p>
               <p className="text-2xl font-bold text-red-600">
                 {valorAtrasadas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
-              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasAtrasadas.length} conta(s)</p>
+              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasAtrasadas.length} conta(s) — clique para ver</p>
             </div>
             <Clock className="w-10 h-10 text-red-500" />
           </div>
         </Card>
 
-        <Card className={`p-6 border-l-4 border-blue-500 ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+        <Card
+          className={`p-6 border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition-shadow ${darkMode ? 'bg-slate-800' : ''}`}
+          onClick={() => setContasModal({ titulo: 'Contas a Vencer (Próximos 7 dias)', contas: contasAVencer7Dias, cor: 'blue' })}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>A Vencer (7 dias)</p>
               <p className="text-2xl font-bold text-blue-600">
                 {valorAVencer7Dias.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
-              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasAVencer7Dias.length} conta(s)</p>
+              <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{contasAVencer7Dias.length} conta(s) — clique para ver</p>
             </div>
             <CalendarClock className="w-10 h-10 text-blue-500" />
           </div>
         </Card>
       </div>
+
+      {/* Modal de Contas */}
+      {contasModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setContasModal(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className={`p-5 border-b flex items-center justify-between ${
+              contasModal.cor === 'red' ? 'bg-red-50' : contasModal.cor === 'yellow' ? 'bg-yellow-50' : 'bg-blue-50'
+            }`}>
+              <h2 className={`text-lg font-bold ${
+                contasModal.cor === 'red' ? 'text-red-800' : contasModal.cor === 'yellow' ? 'text-yellow-800' : 'text-blue-800'
+              }`}>{contasModal.titulo}</h2>
+              <button onClick={() => setContasModal(null)} className="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(80vh-130px)] p-4 space-y-3">
+              {contasModal.contas.length === 0 ? (
+                <p className="text-center text-slate-500 py-8">Nenhuma conta encontrada</p>
+              ) : (
+                contasModal.contas.map((d, i) => {
+                  const venc = normalizeDate(d.data_vencimento || d.data);
+                  return (
+                    <div key={d.id || i} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-900">{d.descricao || d.categoria || 'Despesa'}</p>
+                        <p className="text-sm text-slate-500">
+                          {d.categoria && <span className="mr-2">{d.categoria}</span>}
+                          {venc && <span>Vencimento: {moment(venc).format('DD/MM/YYYY')}</span>}
+                        </p>
+                        {d.observacoes && <p className="text-xs text-slate-400 mt-1">{d.observacoes}</p>}
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className={`text-lg font-bold ${
+                          contasModal.cor === 'red' ? 'text-red-600' : contasModal.cor === 'yellow' ? 'text-yellow-600' : 'text-blue-600'
+                        }`}>
+                          {toNumber(d.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          d.status === 'pago' || d.status === 'paga' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>{d.status || 'pendente'}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="p-4 border-t flex justify-between items-center">
+              <p className="text-sm text-slate-500">
+                Total: <strong>{contasModal.contas.reduce((acc, d) => acc + toNumber(d.valor), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+              </p>
+              <button onClick={() => setContasModal(null)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-medium transition-colors text-sm">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
