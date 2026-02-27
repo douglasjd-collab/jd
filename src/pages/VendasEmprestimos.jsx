@@ -180,6 +180,15 @@ export default function VendasEmprestimos() {
       p.status_id === filterStatus || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
     return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus;
+  }).sort((a, b) => {
+    if (isPagoFilter) {
+      const dateA = a.emprestimo_data_liberacao || a.data_venda || '';
+      const dateB = b.emprestimo_data_liberacao || b.data_venda || '';
+      return dateB.localeCompare(dateA);
+    }
+    const dateA = a.data_venda || '';
+    const dateB = b.data_venda || '';
+    return dateB.localeCompare(dateA);
   });
 
   const formatCurrency = (value) =>
