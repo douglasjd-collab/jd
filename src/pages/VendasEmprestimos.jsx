@@ -605,29 +605,39 @@ export default function VendasEmprestimos() {
                 </div>
 
                 {/* Card Footer / Actions */}
-                <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-2">
+                <div className="px-4 py-3 border-t border-slate-100 space-y-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-xs gap-1 border-blue-200 text-blue-700 hover:bg-blue-50"
-                    onClick={() => { setPropostaComentarios(p); setComentariosOpen(true); }}
+                    className="w-full text-xs gap-1 border-[#10353C] text-[#10353C] hover:bg-[#10353C] hover:text-white font-semibold"
+                    onClick={() => navigate(createPageUrl(`PropostaEmprestimoDetalhes?id=${p.id}`))}
                   >
-                    <MessageCircle className="w-3.5 h-3.5" /> Comentários
+                    <FileText className="w-3.5 h-3.5" /> Ver Detalhes
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs gap-1 border-slate-200 text-slate-600 hover:bg-slate-50"
-                    onClick={() => { setPropostaStatus(p); setStatusModalOpen(true); }}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Status
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1 text-xs gap-1 bg-green-500 hover:bg-green-600 text-white"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs gap-1 border-blue-200 text-blue-700 hover:bg-blue-50"
+                      onClick={() => { setPropostaComentarios(p); setComentariosOpen(true); }}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> Comentários
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs gap-1 border-slate-200 text-slate-600 hover:bg-slate-50"
+                      onClick={() => { setPropostaStatus(p); setStatusModalOpen(true); }}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Status
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1 text-xs gap-1 bg-green-500 hover:bg-green-600 text-white"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
