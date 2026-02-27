@@ -23,7 +23,8 @@ import {
   Upload,
   Plus,
   Banknote,
-  DollarSign
+  DollarSign,
+  CheckCircle2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, isWeekend, addDays } from 'date-fns';
