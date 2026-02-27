@@ -166,6 +166,8 @@ export default function VendasEmprestimos() {
 
   const normStr = s => String(s || '').toLowerCase().trim();
 
+  const isPagoFilter = filterStatus !== 'todos' && statusList.find(s => s.id === filterStatus && (s.nome?.toLowerCase().includes('pago') || s.funcao_fluxo === 'finalizado'));
+
   const filteredPropostas = filteredByRole.filter(p => {
     const cpf = getClienteCpf(p.cliente_id);
     const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
