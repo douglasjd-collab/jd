@@ -366,14 +366,17 @@ export default function VendasEmprestimos() {
         </button>
         {[...statusList].sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => {
           const colorClass = STATUS_COLOR_MAP[s.cor] || STATUS_COLOR_MAP.slate;
-          const isActive = filterStatus === s.codigo;
+          const isActive = filterStatus === s.id;
           const count = filteredByRole.filter(p => p.status_id === s.id || p.status === s.codigo || normStr(p.status) === normStr(s.nome)).length;
           return (
             <button
               key={s.id}
-              onClick={() => setFilterStatus(s.id)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 ${isActive ? colorClass.replace('100', '500').replace('700', 'white') : colorClass}`}
-              style={isActive ? {} : {}}
+              onClick={() => setFilterStatus(isActive ? 'todos' : s.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 border-2 ${
+                isActive
+                  ? 'border-slate-800 ring-2 ring-slate-800 ring-offset-1 bg-slate-800 text-white'
+                  : `border-transparent ${colorClass}`
+              }`}
             >
               {s.nome} <span className="opacity-70 text-xs">{count}</span>
             </button>
