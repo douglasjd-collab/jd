@@ -464,8 +464,8 @@ export default function RelatoriosFinanceiros() {
                 contasModal.contas.map((d, i) => {
                   const venc = normalizeDate(d.data_vencimento || d.data);
                   return (
-                    <div key={d.id || i} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                      <div className="flex-1">
+                    <div key={d.id || i} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 gap-3">
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-900">{d.descricao || d.categoria || 'Despesa'}</p>
                         <p className="text-sm text-slate-500">
                           {d.categoria && <span className="mr-2">{d.categoria}</span>}
@@ -473,7 +473,7 @@ export default function RelatoriosFinanceiros() {
                         </p>
                         {d.observacoes && <p className="text-xs text-slate-400 mt-1">{d.observacoes}</p>}
                       </div>
-                      <div className="text-right ml-4">
+                      <div className="text-right shrink-0">
                         <p className={`text-lg font-bold ${
                           contasModal.cor === 'red' ? 'text-red-600' : contasModal.cor === 'yellow' ? 'text-yellow-600' : 'text-blue-600'
                         }`}>
@@ -483,6 +483,14 @@ export default function RelatoriosFinanceiros() {
                           d.status === 'pago' || d.status === 'paga' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                         }`}>{d.status || 'pendente'}</span>
                       </div>
+                      <button
+                        onClick={() => setPagandoConta({ despesa: d, dataPagamento: moment().format('YYYY-MM-DD') })}
+                        className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors"
+                        title="Registrar pagamento"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Pagar
+                      </button>
                     </div>
                   );
                 })
