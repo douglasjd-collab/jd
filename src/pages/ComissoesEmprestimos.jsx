@@ -227,16 +227,21 @@ export default function ComissoesEmprestimos() {
 
     doc.autoTable({
       startY: 54,
-      head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', 'Vl. Comissão']],
-      body: propostasLista.map(p => [
-        p.cliente_nome || '-',
-        p.contrato || '-',
-        p.administradora_nome || '-',
-        p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
-        fmt(p.valor_credito),
-        fmt(p.valor_comissao),
-      ]),
-      foot: [['', '', '', '', 'Total:', fmt(totalPago)]],
+      head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Comissão', 'Vl. a Pagar']],
+      body: propostasLista.map(p => {
+        const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualProposta(p);
+        const valPagar = (p.valor_credito || 0) * (perc / 100);
+        return [
+          p.cliente_nome || '-',
+          p.contrato || '-',
+          p.administradora_nome || '-',
+          p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
+          fmt(p.valor_credito),
+          `${perc.toFixed(2)}%`,
+          fmt(valPagar),
+        ];
+      }),
+      foot: [['', '', '', '', '', 'Total:', fmt(totalPago)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold' },
