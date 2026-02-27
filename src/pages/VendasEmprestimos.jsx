@@ -96,7 +96,7 @@ export default function VendasEmprestimos() {
   const loadUser = async () => {
     try {
       const me = await base44.auth.me();
-      if (me.role === 'super_admin') {
+      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
         setCurrentUser({ ...me, auth_id: me.id, empresa_id: null, perfil: 'super_admin' });
         return;
       }

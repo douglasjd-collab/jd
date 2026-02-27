@@ -96,6 +96,7 @@ import OfertaLance from './pages/OfertaLance';
 import OportunidadeDetalhes from './pages/OportunidadeDetalhes';
 import PlanosCanopus from './pages/PlanosCanopus';
 import PlanosConsorcio from './pages/PlanosConsorcio';
+import PropostaEmprestimoDetalhes from './pages/PropostaEmprestimoDetalhes';
 import Propostas from './pages/Propostas';
 import PropostasSemVendedor from './pages/PropostasSemVendedor';
 import ReceberComissao from './pages/ReceberComissao';
@@ -118,7 +119,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import PropostaEmprestimoDetalhes from './pages/PropostaEmprestimoDetalhes';
 import __Layout from './Layout.jsx';
 
 
@@ -172,6 +172,7 @@ export const PAGES = {
     "OportunidadeDetalhes": OportunidadeDetalhes,
     "PlanosCanopus": PlanosCanopus,
     "PlanosConsorcio": PlanosConsorcio,
+    "PropostaEmprestimoDetalhes": PropostaEmprestimoDetalhes,
     "Propostas": Propostas,
     "PropostasSemVendedor": PropostasSemVendedor,
     "ReceberComissao": ReceberComissao,
@@ -194,7 +195,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "PropostaEmprestimoDetalhes": PropostaEmprestimoDetalhes,
 }
 
 export const pagesConfig = {
