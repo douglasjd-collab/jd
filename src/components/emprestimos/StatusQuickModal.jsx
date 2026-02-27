@@ -144,7 +144,7 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
           <div className="space-y-2 pt-1">
             {[...statusList].sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map((s) => {
               const colorClass = STATUS_COLOR_MAP[s.cor] || STATUS_COLOR_MAP.slate;
-              const isAtual = proposta?.status === s.codigo;
+              const isAtual = proposta?.status_id === s.id || proposta?.status === s.nome || proposta?.status === s.codigo;
               return (
                 <button
                   key={s.id}
