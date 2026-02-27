@@ -55,6 +55,7 @@ export default function Dashboard() {
     end: endOfMonth(new Date())
   });
   const [error, setError] = useState(null);
+  const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'));
 
   useEffect(() => {
     let isMounted = true;
