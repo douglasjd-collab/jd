@@ -209,6 +209,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
         { name: 'Receber Comissão', page: 'ReceberComissao' },
         { name: 'Comissões a Pagar (Consórcio)', page: 'ComissoesPagar' },
+        { name: 'Comissões a Pagar (Empréstimos)', page: 'ComissoesEmprestimos' },
         { name: 'Comissões Pagas', page: 'ComissoesPagas' },
       ]
     },
