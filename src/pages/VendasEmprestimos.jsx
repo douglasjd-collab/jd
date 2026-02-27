@@ -114,7 +114,7 @@ export default function VendasEmprestimos() {
 
   const { data: propostas = [], isLoading } = useQuery({
     queryKey: ['vendas-emprestimos'],
-    queryFn: () => base44.entities.Proposta.filter({ produto: ['emprestimo'] }),
+    queryFn: () => base44.entities.Proposta.filter({ produto: ['emprestimo'] }, '-data_venda'),
   });
 
   const { data: bancos = [] } = useQuery({
