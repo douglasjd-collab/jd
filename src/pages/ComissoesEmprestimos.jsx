@@ -246,7 +246,7 @@ export default function ComissoesEmprestimos() {
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
     const ph = doc.internal.pageSize.height;
