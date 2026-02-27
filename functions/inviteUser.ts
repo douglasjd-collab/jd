@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
         // Convidar usuário se não existir
         if (!invitedUser) {
-            await base44.asServiceRole.users.inviteUser(email, requestedRole);
+            await base44.users.inviteUser(email, requestedRole);
 
             // Aguardar e buscar usuário criado com retry
             for (let i = 0; i < 5; i++) {
