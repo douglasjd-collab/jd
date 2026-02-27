@@ -147,8 +147,12 @@ export default function Transacoes() {
 
   const totalDespesas = despesas.reduce((a, d) => a + (d.valor || 0), 0);
   const totalReceitas = receitas.reduce((a, r) => a + (r.valor || 0), 0);
-  const atrasadas = despesas.filter(d => getStatusDespesa(d) === 'atrasada').length;
-  const pendentes = despesas.filter(d => ['pendente', 'vencendo_hoje'].includes(getStatusDespesa(d))).length;
+  const despesasAtrasadas = despesas.filter(d => getStatusDespesa(d) === 'atrasada');
+  const atrasadas = despesasAtrasadas.length;
+  const totalAtrasadas = despesasAtrasadas.reduce((a, d) => a + (d.valor || 0), 0);
+  const despesasPendentes = despesas.filter(d => ['pendente', 'vencendo_hoje'].includes(getStatusDespesa(d)));
+  const pendentes = despesasPendentes.length;
+  const totalPendentes = despesasPendentes.reduce((a, d) => a + (d.valor || 0), 0);
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
