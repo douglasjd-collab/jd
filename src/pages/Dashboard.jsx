@@ -489,7 +489,16 @@ export default function Dashboard() {
             {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <select
+            value={mesSelecionado}
+            onChange={(e) => setMesSelecionado(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#23BE84] capitalize"
+          >
+            {mesesDisponiveis.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
           <Link to="/NovaVenda">
             <Button className="bg-[#23BE84] hover:bg-[#1da570]">
               <Plus className="w-4 h-4 mr-2" />
