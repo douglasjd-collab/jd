@@ -822,7 +822,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Vendas Recentes */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm lg:col-span-1">
           <CardHeader>
             <div className="flex items-center justify-between mb-4">
               <CardTitle className="text-lg font-semibold">Vendas do Mês</CardTitle>
