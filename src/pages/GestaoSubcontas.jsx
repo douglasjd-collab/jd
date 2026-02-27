@@ -45,11 +45,10 @@ export default function GestaoSubcontas() {
     queryKey: ['empresas', currentUser?.perfil],
     enabled: !!currentUser,
     queryFn: async () => {
-      const [response, todosColabs] = await Promise.all([
-        base44.functions.invoke('listarEmpresas', {}),
+      const [lista, todosColabs] = await Promise.all([
+        base44.entities.Empresa.list('-created_date', 200),
         base44.entities.Colaborador.list('-created_date', 1000),
       ]);
-      const lista = response.data?.empresas || [];
 
       // Recalcula usuarios_ativos contando colaboradores por empresa_id
       const contagem = {};
@@ -59,7 +58,7 @@ export default function GestaoSubcontas() {
         }
       });
 
-      return lista.map(e => ({
+      return (lista || []).map(e => ({
         ...e,
         usuarios_ativos: contagem[e.id] || 0,
       }));
