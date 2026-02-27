@@ -446,6 +446,32 @@ export default function Dashboard() {
     return meses;
   }, []);
 
+  // Gráfico de empréstimos por mês (últimos 6 meses)
+  const propostasEmprestimosPorMes = React.useMemo(() => {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = subMonths(new Date(), i);
+      const mesKey = format(date, 'yyyy-MM');
+      const pagas = propostasEmprestimo.filter(p => {
+        if (isCanceladaProposta(p) || !isPagaProposta(p)) return false;
+        const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
+        return dataPag.startsWith(mesKey);
+      });
+      const andamento = propostasEmprestimo.filter(p => {
+        if (isCanceladaProposta(p) || isPagaProposta(p)) return false;
+        return (p.data_venda || '').startsWith(mesKey);
+      });
+      months.push({
+        name: format(date, 'MMM', { locale: ptBR }),
+        pagas: pagas.length,
+        andamento: andamento.length,
+        valorPagas: pagas.reduce((acc, p) => acc + (p.valor_credito || 0), 0),
+        valorAndamento: andamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0),
+      });
+    }
+    return months;
+  }, [propostasEmprestimo, statusPagoIds, statusCanceladoIds]);
+
   const [cipModalOpen, setCipModalOpen] = React.useState(false);
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState(null);
