@@ -73,7 +73,6 @@ export default function VendasEmprestimos() {
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterBanco, setFilterBanco] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
-  const [filterVendedor, setFilterVendedor] = useState('todos');
   const [searchNome, setSearchNome] = useState('');
   const [searchCpf, setSearchCpf] = useState('');
   const [searchBancoText, setSearchBancoText] = useState('');
@@ -141,15 +140,7 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
 
-  const { data: vendedores = [] } = useQuery({
-    queryKey: ['colaboradores-vendedores', currentUser?.empresa_id],
-    enabled: !!currentUser && podeVerTodos,
-    queryFn: () => {
-      const filter = { status: 'ativo' };
-      if (currentUser?.empresa_id) filter.empresa_id = currentUser.empresa_id;
-      return base44.entities.Colaborador.filter(filter, 'nome');
-    },
-  });
+
 
   const getCliente = (clienteId) => clientes.find(c => c.id === clienteId);
   const getClienteCpf = (clienteId) => {
@@ -175,7 +166,16 @@ export default function VendasEmprestimos() {
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
   const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
-  
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores-vendedores', currentUser?.empresa_id],
+    enabled: !!currentUser,
+    queryFn: () => {
+      const filter = { status: 'ativo' };
+      if (currentUser?.empresa_id) filter.empresa_id = currentUser.empresa_id;
+      return base44.entities.Colaborador.filter(filter);
+    },
+  });
 
   const filteredByRole = propostas.filter(p => {
     if (podeVerTodos) return true;
@@ -193,11 +193,11 @@ export default function VendasEmprestimos() {
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
+    const matchVendedor = filterVendedor === 'todos' || p.vendedor_id === filterVendedor;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
       p.status_id === filterStatus || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
-    const matchVendedor = filterVendedor === 'todos' || p.vendedor_id === filterVendedor || (filterVendedor === 'sem_vendedor' && !p.vendedor_id);
     return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus && matchVendedor;
   }).sort((a, b) => {
     if (isPagoFilter) {
@@ -453,14 +453,13 @@ export default function VendasEmprestimos() {
           </Select>
           {podeVerTodos && (
             <Select value={filterVendedor} onValueChange={setFilterVendedor}>
-              <SelectTrigger className="w-full sm:w-48 border-0 bg-slate-50">
+              <SelectTrigger className="w-full sm:w-52 border-0 bg-slate-50">
                 <SelectValue placeholder="Vendedor" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os Vendedores</SelectItem>
-                <SelectItem value="sem_vendedor">Sem Vendedor</SelectItem>
-                {vendedores.map(v => (
-                  <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                {colaboradores.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
