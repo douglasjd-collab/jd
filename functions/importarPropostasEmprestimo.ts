@@ -340,6 +340,8 @@ Deno.serve(async (req) => {
           valor_comissao:              comissao,
           status:                      statusVal || null,
           status_id:                   statusId || null,
+          tabela_comissao_id:          tabelaComissao?.id || null,
+          tabela_comissao_nome:        tabelaComissao ? (tabelaComissao.tabela || tabelaComissao.nome) : null,
         };
 
         // Adicionar IDs somente se existirem (campos string)
