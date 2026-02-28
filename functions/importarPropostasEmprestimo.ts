@@ -362,7 +362,6 @@ Deno.serve(async (req) => {
         propostaBase.administradora_id = banco?.id || null;
         if (conv?.id) propostaBase.emprestimo_convenio_id = conv.id;
         if (vend?.id) propostaBase.vendedor_id = vend.id;
-        else if (colaboradorId) propostaBase.vendedor_id = colaboradorId;
 
         // Remover campos null para evitar erro de validação
         const proposta = Object.fromEntries(
