@@ -140,6 +140,16 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
 
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores-vendedores', currentUser?.empresa_id],
+    enabled: !!currentUser && podeVerTodos,
+    queryFn: () => {
+      const filter = { status: 'ativo' };
+      if (currentUser?.empresa_id) filter.empresa_id = currentUser.empresa_id;
+      return base44.entities.Colaborador.filter(filter);
+    },
+  });
+
   const getCliente = (clienteId) => clientes.find(c => c.id === clienteId);
   const getClienteCpf = (clienteId) => {
     const c = getCliente(clienteId);
@@ -180,13 +190,13 @@ export default function VendasEmprestimos() {
     const matchCpf = !searchCpf || cpf.includes(searchCpf);
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
-    const matchVendedor = !searchVendedor || p.vendedor_nome?.toLowerCase().includes(searchVendedor.toLowerCase());
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
+    const matchVendedor = filterVendedor === 'todos' || p.vendedor_id === filterVendedor;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
       p.status_id === filterStatus || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
-    return matchNome && matchCpf && matchBancoText && matchBanco && matchVendedor && matchTipo && matchStatus;
+    return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus && matchVendedor;
   }).sort((a, b) => {
     if (isPagoFilter) {
       const dateA = a.emprestimo_data_liberacao || a.data_venda || '';
@@ -439,6 +449,19 @@ export default function VendasEmprestimos() {
               <SelectItem value="REFIN_PORTABILIDADE">Refin + Port</SelectItem>
             </SelectContent>
           </Select>
+          {podeVerTodos && (
+            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+              <SelectTrigger className="w-full sm:w-52 border-0 bg-slate-50">
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Vendedores</SelectItem>
+                {colaboradores.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
