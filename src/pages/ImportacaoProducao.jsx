@@ -237,7 +237,8 @@ export default function ImportacaoProducao() {
                   <div>
                     <p className="font-semibold text-green-800">Importação concluída!</p>
                     <p className="text-sm text-green-700">
-                      <strong>{resultado.criadas}</strong> proposta(s) importada(s)
+                      <strong>{resultado.criadas || 0}</strong> nova(s) criada(s)
+                      {resultado.atualizadas > 0 && <>, <strong>{resultado.atualizadas}</strong> atualizada(s)</>}
                       {resultado.ignoradas > 0 && `, ${resultado.ignoradas} ignorada(s)`}
                     </p>
                     {resultado.erros?.length > 0 && (
