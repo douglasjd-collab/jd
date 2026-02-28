@@ -125,14 +125,9 @@ export default function PropostaEmprestimoDetalhes() {
           </div>
           <div>
             <h1 className="text-xl font-bold">{proposta.cliente_nome || '-'}</h1>
-            {(proposta.cliente_cpf || cliente?.cpf) && (
-              <p className="text-white/80 text-sm mt-0.5 font-medium">
-                CPF: {proposta.cliente_cpf || cliente?.cpf}
-              </p>
-            )}
-            <p className="text-white/70 text-sm mt-0.5">
-              {proposta.contrato ? `Contrato: ${proposta.contrato}` : 'Sem contrato'}
-              {proposta.emprestimo_numero_ade ? ` | ADE: ${proposta.emprestimo_numero_ade}` : ''}
+            <p className="text-white/80 text-sm mt-0.5 font-medium">
+              {(proposta.cliente_cpf || cliente?.cpf) ? `CPF: ${proposta.cliente_cpf || cliente?.cpf}` : ''}
+              {proposta.contrato ? `${(proposta.cliente_cpf || cliente?.cpf) ? ' | ' : ''}Contrato: ${proposta.contrato}` : ''}
             </p>
           </div>
         </div>
