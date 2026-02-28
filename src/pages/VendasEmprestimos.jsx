@@ -76,6 +76,7 @@ export default function VendasEmprestimos() {
   const [searchNome, setSearchNome] = useState('');
   const [searchCpf, setSearchCpf] = useState('');
   const [searchBancoText, setSearchBancoText] = useState('');
+  const [searchVendedor, setSearchVendedor] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
@@ -140,8 +141,6 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
 
-
-
   const getCliente = (clienteId) => clientes.find(c => c.id === clienteId);
   const getClienteCpf = (clienteId) => {
     const c = getCliente(clienteId);
@@ -167,16 +166,6 @@ export default function VendasEmprestimos() {
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
   const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
 
-  const { data: colaboradores = [] } = useQuery({
-    queryKey: ['colaboradores-vendedores', currentUser?.empresa_id],
-    enabled: !!currentUser,
-    queryFn: () => {
-      const filter = { status: 'ativo' };
-      if (currentUser?.empresa_id) filter.empresa_id = currentUser.empresa_id;
-      return base44.entities.Colaborador.filter(filter);
-    },
-  });
-
   const filteredByRole = propostas.filter(p => {
     if (podeVerTodos) return true;
     return p.vendedor_id === currentUser?.colaborador_id;
@@ -191,9 +180,9 @@ export default function VendasEmprestimos() {
     const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
     const matchCpf = !searchCpf || cpf.includes(searchCpf);
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
+    const matchVendedor = !searchVendedor || (p.vendedor_nome || '').toLowerCase().includes(searchVendedor.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
-    const matchVendedor = filterVendedor === 'todos' || p.vendedor_id === filterVendedor;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
       p.status_id === filterStatus || 
@@ -439,6 +428,12 @@ export default function VendasEmprestimos() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input placeholder="Buscar por banco..." value={searchBancoText} onChange={(e) => setSearchBancoText(e.target.value)} className="pl-9 border-0 bg-slate-50" />
           </div>
+          {podeVerTodos && (
+            <div className="relative flex-1">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input placeholder="Buscar por vendedor..." value={searchVendedor} onChange={(e) => setSearchVendedor(e.target.value)} className="pl-9 border-0 bg-slate-50" />
+            </div>
+          )}
           <Select value={filterTipo} onValueChange={setFilterTipo}>
             <SelectTrigger className="w-full sm:w-44 border-0 bg-slate-50">
               <SelectValue placeholder="Tipo" />
@@ -451,19 +446,6 @@ export default function VendasEmprestimos() {
               <SelectItem value="REFIN_PORTABILIDADE">Refin + Port</SelectItem>
             </SelectContent>
           </Select>
-          {podeVerTodos && (
-            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
-              <SelectTrigger className="w-full sm:w-52 border-0 bg-slate-50">
-                <SelectValue placeholder="Vendedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os Vendedores</SelectItem>
-                {colaboradores.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </div>
 
