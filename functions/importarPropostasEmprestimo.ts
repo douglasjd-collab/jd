@@ -363,30 +363,10 @@ Deno.serve(async (req) => {
         if (conv?.id) propostaBase.emprestimo_convenio_id = conv.id;
         if (vend?.id) propostaBase.vendedor_id = vend.id;
 
-        // Adicionar vendedor (pode ser null para limpar)
-        if (vend?.id) {
-          propostaBase.vendedor_id = vend.id;
-          propostaBase.vendedor_nome = vend.nome;
-        } else if (vendedorVal) {
-          // Digitador informado no arquivo mas não encontrou vínculo -> sem vendedor
-          propostaBase.vendedor_id = null;
-          propostaBase.vendedor_nome = vendedorVal;
-        }
-
-        // Remover campos null para criação (mas mantemos para update separado)
+        // Remover campos null para evitar erro de validação
         const proposta = Object.fromEntries(
           Object.entries(propostaBase).filter(([, v]) => v !== null && v !== undefined)
         );
-
-        // Objeto de update inclui explicitamente o vendedor (mesmo null para limpar)
-        const updatePayload = { ...proposta };
-        if (vend?.id) {
-          updatePayload.vendedor_id = vend.id;
-          updatePayload.vendedor_nome = vend.nome;
-        } else if (vendedorVal) {
-          updatePayload.vendedor_id = null;
-          updatePayload.vendedor_nome = vendedorVal;
-        }
 
         // Verificar duplicidade por contrato + banco
         const contratoFinal = proposta.contrato || null;
@@ -403,8 +383,8 @@ Deno.serve(async (req) => {
           : null;
 
         if (propostaExistente) {
-          // Atualizar proposta existente
-          await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, proposta);
+          // Atualizar proposta existente (usa updatePayload que inclui vendedor_id mesmo null)
+          await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updatePayload);
           atualizadas++;
           // Atualizar cache local
           const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
