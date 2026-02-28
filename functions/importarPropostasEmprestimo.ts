@@ -133,18 +133,18 @@ Deno.serve(async (req) => {
 
       colNome      = findCol('nome', 'cliente');
       colCpf       = findCol('cpf', 'cnpj');
-      colBanco     = findCol('financeira', 'banco', 'administradora');
-      colConvenio  = findCol('convenio', 'orgao');
-      colTipo      = findCol('tipo de opera', 'tipo de oper', 'tipo oper', 'modalidade');
-      colValor     = findCol('valor da opera', 'valor liqu', 'valor bru', 'valor cred', 'vlr sal');
+      colBanco     = findCol('banco', 'financeira', 'administradora');
+      colConvenio  = findCol('convenio', 'convnio', 'orgao');
+      colTipo      = findCol('tipo', 'modalidade');
+      colValor     = findCol('valor', 'vlr');
       colPrazo     = findCol('prazo');
-      colAde       = findCol('proposta');
-      colBeneficio = findCol('beneficio', 'benefic', 'matricula');
-      colData      = findCol('data da proposta', 'data proposta', 'data venda', 'data status');
-      colVendedor  = findCol('usuario digitador', 'assessor', 'vendedor', 'corretor');
+      colAde       = findCol('ade', 'proposta', 'contrato');
+      colBeneficio = findCol('beneficio', 'benefic', 'matricula', 'benef');
+      colData      = findCol('data', 'emisso', 'proposta', 'venda', 'liberacao');
+      colVendedor  = findCol('digitador', 'assessor', 'vendedor', 'corretor');
       colStatus    = findCol('status');
-      colComissao  = findCol('comissao');
-      colContrato  = -1;
+      colComissao  = findCol('comissao', 'comisso');
+      colContrato  = findCol('contrato', 'ade');
     }
 
     console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
