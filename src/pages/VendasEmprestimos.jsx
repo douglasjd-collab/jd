@@ -76,6 +76,7 @@ export default function VendasEmprestimos() {
   const [searchNome, setSearchNome] = useState('');
   const [searchCpf, setSearchCpf] = useState('');
   const [searchBancoText, setSearchBancoText] = useState('');
+  const [searchVendedor, setSearchVendedor] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
