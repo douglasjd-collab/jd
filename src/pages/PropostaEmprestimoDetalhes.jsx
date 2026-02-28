@@ -125,6 +125,11 @@ export default function PropostaEmprestimoDetalhes() {
           </div>
           <div>
             <h1 className="text-xl font-bold">{proposta.cliente_nome || '-'}</h1>
+            {(proposta.cliente_cpf || cliente?.cpf) && (
+              <p className="text-white/80 text-sm mt-0.5 font-medium">
+                CPF: {proposta.cliente_cpf || cliente?.cpf}
+              </p>
+            )}
             <p className="text-white/70 text-sm mt-0.5">
               {proposta.contrato ? `Contrato: ${proposta.contrato}` : 'Sem contrato'}
               {proposta.emprestimo_numero_ade ? ` | ADE: ${proposta.emprestimo_numero_ade}` : ''}
@@ -157,7 +162,7 @@ export default function PropostaEmprestimoDetalhes() {
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <InfoItem label="Nome" value={proposta.cliente_nome} />
-            {cliente?.cpf && <InfoItem label="CPF" value={cliente.cpf} />}
+            {(proposta.cliente_cpf || cliente?.cpf) && <InfoItem label="CPF" value={proposta.cliente_cpf || cliente?.cpf} />}
             {cliente?.pj_cnpj && <InfoItem label="CNPJ" value={cliente.pj_cnpj} />}
             {cliente?.celular && <InfoItem label="Celular" value={cliente.celular} />}
             {cliente?.telefone_fixo && <InfoItem label="Telefone" value={cliente.telefone_fixo} />}
