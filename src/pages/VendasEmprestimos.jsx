@@ -175,7 +175,7 @@ export default function VendasEmprestimos() {
   const isPagoFilter = filterStatus !== 'todos' && statusList.find(s => s.id === filterStatus && (s.nome?.toLowerCase().includes('pago') || s.funcao_fluxo === 'finalizado'));
 
   const filteredPropostas = filteredByRole.filter(p => {
-    const cpf = getClienteCpf(p.cliente_id);
+    const cpf = getClienteCpf(p.cliente_id) || p.cliente_cpf || '';
     const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
     const matchCpf = !searchCpf || cpf.includes(searchCpf);
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
@@ -511,7 +511,7 @@ export default function VendasEmprestimos() {
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredPropostas.map(p => {
-            const cpf = getClienteCpf(p.cliente_id);
+            const cpf = getClienteCpf(p.cliente_id) || p.cliente_cpf || '';
             const statusConfig = getStatusConfig(p);
             const statusColorClass = statusConfig ? (STATUS_COLOR_MAP[statusConfig.cor] || STATUS_COLOR_MAP.slate) : 'bg-slate-100 text-slate-600';
             const tipoColor = TIPO_COLORS[p.emprestimo_tipo] || 'bg-slate-100 text-slate-600';
