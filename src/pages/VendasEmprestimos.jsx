@@ -584,6 +584,12 @@ export default function VendasEmprestimos() {
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${tipoColor}`}>
                         {tipoLabel}
                       </span>
+                      {/* Empresa Parceira */}
+                      {p.administradora_nome && (
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200">
+                          {p.administradora_nome}
+                        </span>
+                      )}
                     </div>
                     <p className="font-bold text-slate-900 text-base">{formatCurrency(p.valor_credito)}</p>
                   </div>
