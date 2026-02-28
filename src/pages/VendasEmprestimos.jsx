@@ -73,7 +73,6 @@ export default function VendasEmprestimos() {
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterBanco, setFilterBanco] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
-  const [filterVendedor, setFilterVendedor] = useState('todos');
   const [searchNome, setSearchNome] = useState('');
   const [searchCpf, setSearchCpf] = useState('');
   const [searchBancoText, setSearchBancoText] = useState('');
@@ -181,6 +180,7 @@ export default function VendasEmprestimos() {
     const matchCpf = !searchCpf || cpf.includes(searchCpf);
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
+    const matchVendedor = !searchVendedor || p.vendedor_nome?.toLowerCase().includes(searchVendedor.toLowerCase());
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
