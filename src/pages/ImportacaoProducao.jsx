@@ -91,7 +91,8 @@ export default function ImportacaoProducao() {
       toast.error(data.error);
       setResultado({ erro: data.error });
     } else {
-      toast.success(`${data.criadas} proposta(s) importada(s)!`);
+      const total = (data.criadas || 0) + (data.atualizadas || 0);
+      toast.success(`${total} proposta(s) processada(s) com sucesso!`);
       setResultado(data);
     }
     setIsProcessing(false);
