@@ -254,7 +254,8 @@ Deno.serve(async (req) => {
         const vendedorVal  = colVendedor  >= 0 ? String(row[colVendedor]  ?? '').trim() : '';
         const statusVal    = colStatus    >= 0 ? String(row[colStatus]    ?? '').trim() : '';
         const comissaoVal  = colComissao  >= 0 ? row[colComissao]                        : null;
-        const tabelaVal    = colTabela    >= 0 ? String(row[colTabela]    ?? '').trim() : '';
+        const tabelaVal             = colTabela             >= 0 ? String(row[colTabela]             ?? '').trim() : '';
+        const comissaoPercentualVal = colComissaoPercentual >= 0 ? row[colComissaoPercentual]                      : null;
 
         if (!nomeVal && !cpfVal) {
           ignoradas++;
