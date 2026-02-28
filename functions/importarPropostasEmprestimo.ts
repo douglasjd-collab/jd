@@ -91,26 +91,27 @@ Deno.serve(async (req) => {
 
     let headerRowIndex = 0;
     let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo;
-    let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colContrato, colTabela;
+    let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colComissaoPercentual, colContrato, colTabela;
 
     if (layout && Object.keys(layout).length > 0) {
       // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
       console.log('Usando layout configurado:', JSON.stringify(layout));
-      colNome      = colLetterToIndex(layout.nome_completo);
-      colCpf       = colLetterToIndex(layout.cpf);
-      colBanco     = colLetterToIndex(layout.banco);
-      colConvenio  = colLetterToIndex(layout.convenio);
-      colTipo      = colLetterToIndex(layout.tipo_consignado || layout.tipo_operacao);
-      colValor     = colLetterToIndex(layout.valor_liberado || layout.valor_bruto || layout.valor_operacao);
-      colPrazo     = colLetterToIndex(layout.prazo_meses);
-      colAde       = colLetterToIndex(layout.numero_proposta || layout.numero_contrato);
-      colBeneficio = colLetterToIndex(layout.numero_beneficio);
-      colData      = colLetterToIndex(layout.data_proposta || layout.data_liberacao || layout.data_digitacao);
-      colVendedor  = colLetterToIndex(layout.usuario_digitador || layout.assessor);
-      colStatus    = colLetterToIndex(layout.status_contrato || layout.status);
-      colComissao  = colLetterToIndex(layout.comissao_empresa);
-      colContrato  = colLetterToIndex(layout.numero_contrato);
-      colTabela    = colLetterToIndex(layout.tabela || layout.tabela_comissao);
+      colNome              = colLetterToIndex(layout.nome_completo);
+      colCpf               = colLetterToIndex(layout.cpf);
+      colBanco             = colLetterToIndex(layout.banco);
+      colConvenio          = colLetterToIndex(layout.convenio);
+      colTipo              = colLetterToIndex(layout.tipo_consignado || layout.tipo_operacao);
+      colValor             = colLetterToIndex(layout.valor_liberado || layout.valor_bruto || layout.valor_operacao);
+      colPrazo             = colLetterToIndex(layout.prazo_meses);
+      colAde               = colLetterToIndex(layout.numero_proposta || layout.numero_contrato);
+      colBeneficio         = colLetterToIndex(layout.numero_beneficio);
+      colData              = colLetterToIndex(layout.data_proposta || layout.data_liberacao || layout.data_digitacao);
+      colVendedor          = colLetterToIndex(layout.usuario_digitador || layout.assessor);
+      colStatus            = colLetterToIndex(layout.status_contrato || layout.status);
+      colComissao          = colLetterToIndex(layout.comissao_empresa);
+      colComissaoPercentual = colLetterToIndex(layout.comissao_empresa_percentual);
+      colContrato          = colLetterToIndex(layout.numero_contrato);
+      colTabela            = colLetterToIndex(layout.tabela || layout.tabela_comissao);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
