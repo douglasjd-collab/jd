@@ -198,6 +198,7 @@ export default function PropostaEmprestimoDetalhes() {
             <InfoItem label="Data da Venda" value={fmtDate(proposta.data_venda)} />
             <InfoItem label="Data de Liberação" value={fmtDate(proposta.emprestimo_data_liberacao)} />
             <InfoItem label="Vendedor" value={proposta.vendedor_nome} />
+            {proposta.tabela_comissao_nome && <InfoItem label="Tabela de Comissão" value={proposta.tabela_comissao_nome} />}
           </div>
         </CardContent>
       </Card>
