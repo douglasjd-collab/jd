@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     let headerRowIndex = 0;
     let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo;
-    let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colContrato;
+    let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colContrato, colTabela;
 
     if (layout && Object.keys(layout).length > 0) {
       // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
       colStatus    = colLetterToIndex(layout.status_contrato || layout.status);
       colComissao  = colLetterToIndex(layout.comissao_empresa);
       colContrato  = colLetterToIndex(layout.numero_contrato);
+      colTabela    = colLetterToIndex(layout.tabela || layout.tabela_comissao);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
@@ -145,6 +146,7 @@ Deno.serve(async (req) => {
       colStatus    = findCol('status');
       colComissao  = findCol('comissao', 'comisso');
       colContrato  = findCol('contrato', 'ade');
+      colTabela    = findCol('tabela', 'produto');
     }
 
     console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
