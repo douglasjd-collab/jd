@@ -76,7 +76,6 @@ export default function VendasEmprestimos() {
   const [searchNome, setSearchNome] = useState('');
   const [searchCpf, setSearchCpf] = useState('');
   const [searchBancoText, setSearchBancoText] = useState('');
-  const [searchVendedor, setSearchVendedor] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
@@ -180,14 +179,14 @@ export default function VendasEmprestimos() {
     const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
     const matchCpf = !searchCpf || cpf.includes(searchCpf);
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
-    const matchVendedor = !searchVendedor || (p.vendedor_nome || '').toLowerCase().includes(searchVendedor.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
+    const matchVendedor = !searchVendedor || p.vendedor_nome?.toLowerCase().includes(searchVendedor.toLowerCase());
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
       p.status_id === filterStatus || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
-    return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus;
+    return matchNome && matchCpf && matchBancoText && matchBanco && matchVendedor && matchTipo && matchStatus;
   }).sort((a, b) => {
     if (isPagoFilter) {
       const dateA = a.emprestimo_data_liberacao || a.data_venda || '';
