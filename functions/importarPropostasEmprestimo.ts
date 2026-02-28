@@ -297,6 +297,7 @@ Deno.serve(async (req) => {
           empresa_id:                  empresaId,
           produto:                     'emprestimo',
           cliente_nome:                nomeVal || cliente?.nome_completo || '',
+          cliente_cpf:                 cpfVal || cliente?.cpf || null,
           administradora_nome:         banco?.nome || bancoVal || null,
           emprestimo_convenio_nome:    conv?.nome || convenioVal || null,
           emprestimo_tipo:             tipo,
