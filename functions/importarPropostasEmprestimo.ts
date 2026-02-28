@@ -265,6 +265,31 @@ Deno.serve(async (req) => {
         const cliente = findCliente(cpfVal, nomeVal);
         const vend    = findVendedor(vendedorVal);
 
+        // Encontrar tabela de comissão pelo nome
+        let tabelaComissao = null;
+        if (tabelaVal) {
+          tabelaComissao = tabelasComissao.find(t =>
+            normStr(t.tabela || t.nome || '').includes(normStr(tabelaVal)) ||
+            normStr(tabelaVal).includes(normStr(t.tabela || t.nome || '')) ||
+            normStr(t.codigo_tabela || '') === normStr(tabelaVal)
+          );
+          // Se não encontrou, criar nova tabela de comissão
+          if (!tabelaComissao) {
+            const comissao = comissaoVal ? parseValor(comissaoVal) : 0;
+            tabelaComissao = await base44.asServiceRole.entities.TabelaEmprestimo.create({
+              empresa_id: empresaId,
+              tabela: tabelaVal,
+              convenio_id: conv?.id || null,
+              convenio_nome: conv?.nome || convenioVal || null,
+              banco: banco?.nome || bancoVal || null,
+              produto: tipoVal || null,
+              comissao_empresa: comissao,
+              ativo: true,
+            });
+            tabelasComissao.push(tabelaComissao);
+          }
+        }
+
         const valor    = parseValor(valorVal);
         const prazo    = prazoVal ? (parseInt(String(prazoVal).replace(/\D/g, '')) || null) : null;
         const dataVend = parseData(dataVal) || new Date().toISOString().slice(0, 10);
