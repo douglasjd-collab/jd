@@ -49,7 +49,8 @@ const CAMPOS_PRODUCAO = [
   { key: 'data_digitacao', label: 'Data de Digitação', obrigatorio: false },
   { key: 'numero_contrato', label: 'Nº Contrato', obrigatorio: true },
   { key: 'status_contrato', label: 'Status', obrigatorio: true },
-  { key: 'comissao_empresa', label: 'Comissão Empresa', obrigatorio: false },
+  { key: 'comissao_empresa', label: 'Comissão Empresa (Lançamento)', obrigatorio: false },
+  { key: 'comissao_empresa_percentual', label: 'Comissão Empresa %', obrigatorio: false },
   { key: 'comissao_vendedor', label: 'Comissão Vendedor', obrigatorio: false },
 ];
 
