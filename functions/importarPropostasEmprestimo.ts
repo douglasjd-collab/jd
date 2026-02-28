@@ -277,7 +277,8 @@ Deno.serve(async (req) => {
           );
           // Se não encontrou, criar nova tabela de comissão
           if (!tabelaComissao) {
-            const comissao = comissaoVal ? parseValor(comissaoVal) : 0;
+            // Usar comissao_empresa_percentual (%) como comissão da tabela
+            const comissaoPerc = comissaoPercentualVal ? parseValor(comissaoPercentualVal) : 0;
             tabelaComissao = await base44.asServiceRole.entities.TabelaEmprestimo.create({
               empresa_id: empresaId,
               tabela: tabelaVal,
@@ -285,10 +286,19 @@ Deno.serve(async (req) => {
               convenio_nome: conv?.nome || convenioVal || null,
               banco: banco?.nome || bancoVal || null,
               produto: tipoVal || null,
-              comissao_empresa: comissao,
+              comissao_empresa: comissaoPerc,
               ativo: true,
             });
             tabelasComissao.push(tabelaComissao);
+          } else {
+            // Se a tabela já existe mas comissão % veio no arquivo, atualizar se diferente
+            if (comissaoPercentualVal !== null) {
+              const novaPerc = parseValor(comissaoPercentualVal);
+              if (novaPerc > 0 && tabelaComissao.comissao_empresa !== novaPerc) {
+                await base44.asServiceRole.entities.TabelaEmprestimo.update(tabelaComissao.id, { comissao_empresa: novaPerc });
+                tabelaComissao.comissao_empresa = novaPerc;
+              }
+            }
           }
         }
 
