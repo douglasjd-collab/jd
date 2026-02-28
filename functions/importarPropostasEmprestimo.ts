@@ -361,9 +361,8 @@ Deno.serve(async (req) => {
         propostaBase.cliente_id = cliente?.id || 'importado';
         propostaBase.administradora_id = banco?.id || null;
         if (conv?.id) propostaBase.emprestimo_convenio_id = conv.id;
-        if (vend?.id) propostaBase.vendedor_id = vend.id;
 
-        // Adicionar vendedor (pode ser null para limpar)
+        // Vincular vendedor
         if (vend?.id) {
           propostaBase.vendedor_id = vend.id;
           propostaBase.vendedor_nome = vend.nome;
