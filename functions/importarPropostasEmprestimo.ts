@@ -190,12 +190,13 @@ Deno.serve(async (req) => {
     };
 
     const findVendedor = (nomeOuCod) => {
-      if (!nomeOuCod) return colaboradorId ? vendedores.find(v => v.id === colaboradorId) : null;
+      if (!nomeOuCod) return null;
       return vendedores.find(v =>
         normStr(v.nome).includes(normStr(nomeOuCod)) ||
         normStr(nomeOuCod).includes(normStr(v.nome)) ||
-        v.codigo_vendedor === String(nomeOuCod).trim()
-      );
+        v.codigo_vendedor === String(nomeOuCod).trim() ||
+        (v.usuarios_banco || []).some(ub => normStr(ub.usuario) === normStr(nomeOuCod))
+      ) || null;
     };
 
     const parseValor = (val) => {
