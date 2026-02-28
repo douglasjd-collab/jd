@@ -73,6 +73,7 @@ export default function VendasEmprestimos() {
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterBanco, setFilterBanco] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterVendedor, setFilterVendedor] = useState('todos');
   const [searchNome, setSearchNome] = useState('');
   const [searchCpf, setSearchCpf] = useState('');
   const [searchBancoText, setSearchBancoText] = useState('');
@@ -181,11 +182,11 @@ export default function VendasEmprestimos() {
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
-    const matchVendedor = filterVendedor === 'todos' || p.vendedor_id === filterVendedor;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
       p.status_id === filterStatus || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
+    const matchVendedor = filterVendedor === 'todos' || p.vendedor_id === filterVendedor || (filterVendedor === 'sem_vendedor' && !p.vendedor_id);
     return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus && matchVendedor;
   }).sort((a, b) => {
     if (isPagoFilter) {
