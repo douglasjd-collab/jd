@@ -76,6 +76,7 @@ export default function VendasEmprestimos() {
   const [searchNome, setSearchNome] = useState('');
   const [searchCpf, setSearchCpf] = useState('');
   const [searchBancoText, setSearchBancoText] = useState('');
+  const [searchVendedor, setSearchVendedor] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
@@ -179,14 +180,14 @@ export default function VendasEmprestimos() {
     const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
     const matchCpf = !searchCpf || cpf.includes(searchCpf);
     const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
+    const matchVendedor = !searchVendedor || (p.vendedor_nome || '').toLowerCase().includes(searchVendedor.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
-    const matchVendedor = !searchVendedor || p.vendedor_nome?.toLowerCase().includes(searchVendedor.toLowerCase());
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
     const matchStatus = filterStatus === 'todos' || 
       p.status_id === filterStatus || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
-    return matchNome && matchCpf && matchBancoText && matchBanco && matchVendedor && matchTipo && matchStatus;
+    return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus && matchVendedor;
   }).sort((a, b) => {
     if (isPagoFilter) {
       const dateA = a.emprestimo_data_liberacao || a.data_venda || '';
@@ -426,10 +427,6 @@ export default function VendasEmprestimos() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input placeholder="Buscar por banco..." value={searchBancoText} onChange={(e) => setSearchBancoText(e.target.value)} className="pl-9 border-0 bg-slate-50" />
-          </div>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Buscar por vendedor..." value={searchVendedor} onChange={(e) => setSearchVendedor(e.target.value)} className="pl-9 border-0 bg-slate-50" />
           </div>
           <Select value={filterTipo} onValueChange={setFilterTipo}>
             <SelectTrigger className="w-full sm:w-44 border-0 bg-slate-50">
