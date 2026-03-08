@@ -77,25 +77,36 @@ export default function ImportacaoProducao() {
     if (!file) { toast.error('Selecione o arquivo'); return; }
 
     setIsProcessing(true);
-    const layoutSel = layouts.find(l => l.id === layoutId);
+    try {
+      const layoutSel = layouts.find(l => l.id === layoutId);
 
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const resp = await base44.functions.invoke('importarPropostasEmprestimo', {
-      file_url,
-      empresa_parceira_id: empresaParceiraId,
-      layout: layoutSel?.mapeamento || null,
-    });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const resp = await base44.functions.invoke('importarPropostasEmprestimo', {
+        file_url,
+        empresa_parceira_id: empresaParceiraId,
+        layout: layoutSel?.mapeamento || null,
+      });
 
-    const data = resp.data;
-    if (data.error) {
-      toast.error(data.error);
-      setResultado({ erro: data.error });
-    } else {
-      const total = (data.criadas || 0) + (data.atualizadas || 0);
-      toast.success(`${total} proposta(s) processada(s) com sucesso!`);
-      setResultado(data);
+      const data = resp.data;
+      if (data.error) {
+        toast.error(data.error);
+        setResultado({ erro: data.error });
+      } else if (data.success === false) {
+        toast.error(data.error || 'Erro desconhecido na importação');
+        setResultado({ erro: data.error || 'Erro desconhecido' });
+      } else {
+        const total = (data.criadas || 0) + (data.atualizadas || 0);
+        toast.success(`${total} proposta(s) processada(s) com sucesso!`);
+        setResultado(data);
+      }
+    } catch (err) {
+      console.error('Erro ao importar:', err);
+      const mensagem = err.response?.data?.error || err.message || 'Erro desconhecido na importação';
+      toast.error(mensagem);
+      setResultado({ erro: mensagem });
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
 
   if (loading) return (
