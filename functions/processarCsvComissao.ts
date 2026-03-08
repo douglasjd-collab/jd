@@ -44,11 +44,11 @@ async function buscarVendaFlex(base44, args) {
   // 0) Tenta por contrato primeiro (com e sem empresa_id)
   if (contrato) {
     const mainTable = tables[args.produto] ?? tables.consorcio;
-    let vendaContrato = await mainTable.findFirst({ filter: { ...filterBase, contrato } });
-    if (vendaContrato) return { venda: vendaContrato, motivo: null, produtoEncontrado: args.produto };
+    let res = await mainTable.filter({ ...filterBase, contrato });
+    if (res.length > 0) return { venda: res[0], motivo: null, produtoEncontrado: args.produto };
 
-    vendaContrato = await mainTable.findFirst({ filter: { contrato } });
-    if (vendaContrato) return { venda: vendaContrato, motivo: null, produtoEncontrado: args.produto };
+    res = await mainTable.filter({ contrato });
+    if (res.length > 0) return { venda: res[0], motivo: null, produtoEncontrado: args.produto };
   }
 
   if (!grupo || !cota) {
