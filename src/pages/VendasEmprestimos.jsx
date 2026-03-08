@@ -453,10 +453,17 @@ export default function VendasEmprestimos() {
             </SelectContent>
           </Select>
           {podeVerTodos && (
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input placeholder="Vendedor..." value={searchVendedor} onChange={(e) => setSearchVendedor(e.target.value)} className="pl-9 border-0 bg-slate-50 w-full sm:w-44" />
-            </div>
+            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+              <SelectTrigger className="w-full sm:w-48 border-0 bg-slate-50">
+                <SelectValue placeholder="Todos os Vendedores" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Vendedores</SelectItem>
+                {vendedoresUnicos.map(nome => (
+                  <SelectItem key={nome} value={nome}>{nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           <Select value={filterTipo} onValueChange={setFilterTipo}>
             <SelectTrigger className="w-full sm:w-44 border-0 bg-slate-50">
