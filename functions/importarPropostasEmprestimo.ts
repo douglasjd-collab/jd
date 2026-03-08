@@ -473,6 +473,8 @@ Deno.serve(async (req) => {
       criadas,
       atualizadas,
       ignoradas,
+      pendentes_tipo,
+      tipos_nao_mapeados: Object.keys(tiposNaoMapeados),
       erros: erros.slice(0, 20),
       previews: previews.slice(0, 5),
     });
