@@ -44,13 +44,9 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
   });
 
   const { data: vendedores = [] } = useQuery({
-    queryKey: ['vendedores'],
+    queryKey: ['vendedores-edit'],
     queryFn: async () => {
-      const colabs = await base44.entities.Colaborador.filter({
-        perfil: 'vendedor',
-        status: 'ativo'
-      });
-      return colabs;
+      return base44.entities.Colaborador.filter({ status: 'ativo' }, 'nome', 200);
     },
   });
 
