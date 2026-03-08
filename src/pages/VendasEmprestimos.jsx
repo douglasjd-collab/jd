@@ -253,6 +253,12 @@ export default function VendasEmprestimos() {
     !isPaga(p) && !isCancelada(p) && normStr(p.status) !== 'saldo_retornado'
   );
 
+  // Vendedores únicos para o filtro
+  const vendedoresUnicos = React.useMemo(() => {
+    const nomes = [...new Set(filteredByRole.map(p => p.vendedor_nome).filter(Boolean))].sort();
+    return nomes;
+  }, [filteredByRole]);
+
   // Counts per tipo for filter pills
   const countByTipo = (tipo) => tipo === 'todos'
     ? filteredByRole.length
