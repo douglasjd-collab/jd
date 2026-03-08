@@ -10,18 +10,14 @@ function normDigits(v) {
 
 // Tenta encontrar a venda com flexibilidade de tipos
 async function findFirstFlexible(entity, filterBase, grupo, cota) {
-  let venda = await entity.findFirst({ 
-    filter: { ...filterBase, grupo: String(grupo), cota: String(cota) } 
-  });
-  if (venda) return venda;
+  let results = await entity.filter({ ...filterBase, grupo: String(grupo), cota: String(cota) });
+  if (results.length > 0) return results[0];
 
   const gNum = Number(grupo);
   const cNum = Number(cota);
   if (!Number.isNaN(gNum) && !Number.isNaN(cNum)) {
-    venda = await entity.findFirst({ 
-      filter: { ...filterBase, grupo: gNum, cota: cNum } 
-    });
-    if (venda) return venda;
+    results = await entity.filter({ ...filterBase, grupo: gNum, cota: cNum });
+    if (results.length > 0) return results[0];
   }
 
   return null;
