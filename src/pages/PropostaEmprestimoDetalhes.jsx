@@ -154,7 +154,7 @@ export default function PropostaEmprestimoDetalhes() {
             <User className="w-4 h-4 text-purple-600" /> Dados do Cliente
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <InfoItem label="Nome" value={proposta.cliente_nome} />
             {(proposta.cliente_cpf || cliente?.cpf) && <InfoItem label="CPF" value={proposta.cliente_cpf || cliente?.cpf} />}
@@ -175,6 +175,38 @@ export default function PropostaEmprestimoDetalhes() {
               </div>
             )}
           </div>
+
+          {/* Endereço Residencial */}
+          {(cliente?.res_endereco || cliente?.res_cidade) && (
+            <div className="pt-4 border-t">
+              <h4 className="font-bold text-sm text-slate-700 mb-3">📍 Endereço Residencial</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {cliente?.res_endereco && <InfoItem label="Logradouro" value={cliente.res_endereco} />}
+                {cliente?.res_numero && <InfoItem label="Nº" value={cliente.res_numero} />}
+                {cliente?.res_complemento && <InfoItem label="Complemento" value={cliente.res_complemento} />}
+                {cliente?.res_bairro && <InfoItem label="Bairro" value={cliente.res_bairro} />}
+                {cliente?.res_cidade && <InfoItem label="Cidade" value={cliente.res_cidade} />}
+                {cliente?.res_uf && <InfoItem label="UF" value={cliente.res_uf} />}
+                {cliente?.res_cep && <InfoItem label="CEP" value={cliente.res_cep} />}
+              </div>
+            </div>
+          )}
+
+          {/* Endereço Comercial */}
+          {(cliente?.com_endereco || cliente?.com_cidade) && (
+            <div className="pt-4 border-t">
+              <h4 className="font-bold text-sm text-slate-700 mb-3">🏢 Endereço Comercial</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {cliente?.com_endereco && <InfoItem label="Logradouro" value={cliente.com_endereco} />}
+                {cliente?.com_numero && <InfoItem label="Nº" value={cliente.com_numero} />}
+                {cliente?.com_complemento && <InfoItem label="Complemento" value={cliente.com_complemento} />}
+                {cliente?.com_bairro && <InfoItem label="Bairro" value={cliente.com_bairro} />}
+                {cliente?.com_cidade && <InfoItem label="Cidade" value={cliente.com_cidade} />}
+                {cliente?.com_uf && <InfoItem label="UF" value={cliente.com_uf} />}
+                {cliente?.com_cep && <InfoItem label="CEP" value={cliente.com_cep} />}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
