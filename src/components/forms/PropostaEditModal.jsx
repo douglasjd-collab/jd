@@ -60,6 +60,11 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
     queryFn: () => base44.entities.Convenio.filter({ ativo: true }),
   });
 
+  const { data: tiposEmprestimo = [] } = useQuery({
+    queryKey: ['tipos-emprestimo-edit'],
+    queryFn: () => base44.entities.TipoEmprestimo.filter({ ativo: true }, 'nome'),
+  });
+
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Proposta.update(proposta.id, data),
     onSuccess: () => {
