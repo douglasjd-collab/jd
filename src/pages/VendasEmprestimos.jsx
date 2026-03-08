@@ -184,8 +184,10 @@ export default function VendasEmprestimos() {
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
+    const filterFilhosIds = filterStatus !== 'todos' ? statusList.filter(x => x.status_pai_id === filterStatus).map(x => x.id) : [];
+    const filterTodosIds = filterStatus !== 'todos' ? [filterStatus, ...filterFilhosIds] : [];
     const matchStatus = filterStatus === 'todos' || 
-      p.status_id === filterStatus || 
+      filterTodosIds.includes(p.status_id) || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
     return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus && matchVendedor;
   }).sort((a, b) => {
