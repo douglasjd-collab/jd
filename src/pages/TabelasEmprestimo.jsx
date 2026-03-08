@@ -190,6 +190,8 @@ export default function TabelasEmprestimo() {
       const novaComissaoFloat = parseFloat(dados.comissao_empresa);
       const hoje = new Date().toISOString().split('T')[0];
 
+      const empresaParceiraSelecionada = empresasParceiras.find(ep => ep.id === dados.empresa_parceira_id);
+
       await base44.entities.TabelaEmprestimo.update(id, {
         codigo_tabela: dados.codigo || null,
         tabela: dados.nome,
@@ -197,6 +199,8 @@ export default function TabelasEmprestimo() {
         convenio_nome: convenioSelecionado?.nome || '',
         banco: dados.banco || null,
         comissao_empresa: novaComissaoFloat,
+        empresa_parceira_id: dados.empresa_parceira_id || null,
+        empresa_parceira_nome: empresaParceiraSelecionada?.nome || null,
         data: hoje
       });
 
