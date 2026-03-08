@@ -362,6 +362,7 @@ export default function TabelasEmprestimo() {
       nome: '',
       convenio_id: '',
       banco: '',
+      produto: '',
       comissao_empresa: '',
       empresa_parceira_id: ''
     });
