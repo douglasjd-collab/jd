@@ -138,7 +138,7 @@ export default function ImportacaoProducao() {
                   variant="outline"
                   size="sm"
                   className="gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
-                  onClick={() => window.open(createPageUrl(`LayoutImportacaoConfig?empresa_parceira_id=${empresaParceiraId}&tipo=producao`), '_blank')}
+                  onClick={() => window.location.href = createPageUrl(`LayoutImportacaoConfig?empresa_parceira_id=${empresaParceiraId}&tipo=producao`)}
                 >
                   <Settings className="w-4 h-4" />
                   Configurar Layout
