@@ -73,9 +73,7 @@ export default function VendasEmprestimos() {
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterBanco, setFilterBanco] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
-  const [searchNome, setSearchNome] = useState('');
-  const [searchCpf, setSearchCpf] = useState('');
-  const [searchBancoText, setSearchBancoText] = useState('');
+  const [searchGeral, setSearchGeral] = useState('');
   const [searchVendedor, setSearchVendedor] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
