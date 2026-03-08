@@ -240,8 +240,8 @@ export default function Layout({ children, currentPageName }) {
       roles: ['master', 'super_admin', 'admin', 'gerente'],
       submenu: [
         { name: 'IMP. Comissão Consórcio', page: 'ImportacaoComissao' },
+        { name: 'IMP. Comissão Empréstimo', page: 'ImportacaoComissaoEmprestimo' },
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
-
         { name: 'Importar Resultado Assembleia', page: 'ImportarResultadoAssembleia' },
         { name: 'Histórico Geral', page: 'Importacao' },
       ]
