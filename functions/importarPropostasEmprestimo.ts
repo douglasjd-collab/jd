@@ -338,6 +338,12 @@ Deno.serve(async (req) => {
         const tipo     = normTipo(tipoVal);
         const comissao = comissaoVal ? parseValor(comissaoVal) : null;
 
+        // Se o tipo não foi mapeado E existem tipos cadastrados, pendenciar
+        const tipoPendente = tipoVal && tipo === null && tiposEmprestimo.length > 0;
+        if (tipoPendente) {
+          pendentes_tipo++;
+        }
+
         // Mapear status do arquivo para ID interno
         let statusId = null;
         if (statusVal) {
