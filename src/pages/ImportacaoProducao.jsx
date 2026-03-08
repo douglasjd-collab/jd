@@ -232,23 +232,54 @@ export default function ImportacaoProducao() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-green-800">Importação concluída!</p>
-                    <p className="text-sm text-green-700">
-                      <strong>{resultado.criadas || 0}</strong> nova(s) criada(s)
-                      {resultado.atualizadas > 0 && <>, <strong>{resultado.atualizadas}</strong> atualizada(s)</>}
-                      {resultado.ignoradas > 0 && `, ${resultado.ignoradas} ignorada(s)`}
-                    </p>
-                    {resultado.erros?.length > 0 && (
-                      <div className="mt-2">
-                        {resultado.erros.map((e, i) => (
-                          <p key={i} className="text-xs text-yellow-700">{e}</p>
-                        ))}
-                      </div>
-                    )}
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-green-800">Importação concluída!</p>
+                      <p className="text-sm text-green-700">
+                        <strong>{resultado.criadas || 0}</strong> nova(s) criada(s)
+                        {resultado.atualizadas > 0 && <>, <strong>{resultado.atualizadas}</strong> atualizada(s)</>}
+                        {resultado.ignoradas > 0 && `, ${resultado.ignoradas} ignorada(s)`}
+                        {resultado.pendentes_tipo > 0 && <>, <strong className="text-orange-700">{resultado.pendentes_tipo} com tipo pendente</strong></>}
+                      </p>
+                      {resultado.erros?.length > 0 && (
+                        <div className="mt-2">
+                          {resultado.erros.map((e, i) => (
+                            <p key={i} className="text-xs text-yellow-700">{e}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {resultado.pendentes_tipo > 0 && resultado.tipos_nao_mapeados?.length > 0 && (
+                    <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-300 rounded-xl">
+                      <Tag className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-orange-800">⚠️ Tipos de empréstimo não reconhecidos</p>
+                        <p className="text-sm text-orange-700 mt-1">
+                          {resultado.pendentes_tipo} proposta(s) foram importadas com tipo pendente de vinculação. Os seguintes tipos vieram no arquivo mas não estão cadastrados:
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {resultado.tipos_nao_mapeados.map((t, i) => (
+                            <span key={i} className="bg-orange-100 border border-orange-300 text-orange-800 text-xs font-mono px-2 py-1 rounded">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-orange-600 mt-2">
+                          Acesse <strong>Cadastros → Tipos de Empréstimo</strong> e adicione esses tipos com os aliases de importação correspondentes. Em seguida, reimporte o arquivo para que as propostas sejam vinculadas corretamente.
+                        </p>
+                        <button
+                          onClick={() => window.location.href = createPageUrl('TiposEmprestimo')}
+                          className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-orange-700 underline hover:text-orange-900"
+                        >
+                          <Tag className="w-3.5 h-3.5" /> Ir para Tipos de Empréstimo
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
