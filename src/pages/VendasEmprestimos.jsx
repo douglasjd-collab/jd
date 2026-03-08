@@ -254,7 +254,7 @@ export default function VendasEmprestimos() {
   );
 
   // Vendedores únicos para o filtro
-  const vendedoresUnicos = React.useMemo(() => {
+  const vendedoresUnicos = useMemo(() => {
     const nomes = [...new Set(filteredByRole.map(p => p.vendedor_nome).filter(Boolean))].sort();
     return nomes;
   }, [filteredByRole]);
