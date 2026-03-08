@@ -455,7 +455,8 @@ Deno.serve(async (req) => {
         previews.push({
           nome: proposta.cliente_nome,
           banco: proposta.administradora_nome,
-          tipo,
+          tipo: tipo || tipoVal,
+          tipoPendente,
           valor,
           data: dataVend,
           status: statusVal,
