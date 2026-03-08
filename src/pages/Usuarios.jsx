@@ -679,11 +679,11 @@ export default function Usuarios() {
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Nome</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">CPF/CNPJ</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Código</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700 pl-10">Nome / CPF</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Telefone</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Perfil</th>
-                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Gerente</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">PIX</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Banco</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Status</th>
                 <th className="w-12"></th>
               </tr>
