@@ -829,24 +829,23 @@ export default function TabelasEmprestimo() {
                   <option value="SAQUE_COMPLEMENTAR">Saque Complementar</option>
                 </select>
               </div>
-
               <div>
                 <Label>Empresa Parceira</Label>
                 <select
                   value={formData.empresa_parceira_id}
-                onChange={(e) => setFormData({ ...formData, empresa_parceira_id: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-              >
-                <option value="">Selecione...</option>
-                {empresasParceiras.map(ep => (
-                  <option key={ep.id} value={ep.id}>{ep.nome}</option>
-                ))}
+                  onChange={(e) => setFormData({ ...formData, empresa_parceira_id: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {empresasParceiras.map(ep => (
+                    <option key={ep.id} value={ep.id}>{ep.nome}</option>
+                  ))}
                 </select>
-                </div>
-                </div>
+              </div>
+            </div>
 
-                <div>
-                <Label>% Comissão Empresa *</Label>
+            <div>
+              <Label>% Comissão Empresa *</Label>
               <Input
                 type="number"
                 step="0.01"
