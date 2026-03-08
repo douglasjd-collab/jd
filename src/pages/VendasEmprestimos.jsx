@@ -182,7 +182,7 @@ export default function VendasEmprestimos() {
       (p.contrato || '').toLowerCase().includes(q) ||
       (p.emprestimo_numero_ade || '').toLowerCase().includes(q) ||
       (p.administradora_nome || '').toLowerCase().includes(q);
-    const matchVendedor = !searchVendedor || (p.vendedor_nome || '').toLowerCase().includes(searchVendedor.toLowerCase());
+    const matchVendedor = filterVendedor === 'todos' || p.vendedor_nome === filterVendedor;
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
     const filterStatusObj = statusList.find(s => s.id === filterStatus);
