@@ -140,8 +140,12 @@ export default function VendasEmprestimos() {
   });
 
   const { data: tabelasEmprestimo = [] } = useQuery({
-    queryKey: ['tabelas-emprestimo-parceira'],
-    queryFn: () => base44.entities.TabelaEmprestimo.list(),
+    queryKey: ['tabelas-emprestimo-parceira', currentUser?.empresa_id],
+    queryFn: () => base44.entities.TabelaEmprestimo.filter(
+      currentUser?.empresa_id ? { empresa_id: currentUser.empresa_id } : {},
+      undefined,
+      500
+    ),
     enabled: !!currentUser,
   });
 
