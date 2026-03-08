@@ -387,14 +387,17 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                 <div>
                   <Label>Status</Label>
                   <Select
-                    value={formData.status || ''}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
+                    value={formData.status_id || formData.status || ''}
+                    onValueChange={(value) => {
+                      const s = statusList.find(s => s.id === value);
+                      setFormData({ ...formData, status_id: value, status: s?.nome || value });
+                    }}
                   >
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       {statusList.length > 0
                         ? statusList.sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => (
-                            <SelectItem key={s.id} value={s.codigo}>{s.nome}</SelectItem>
+                            <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
                           ))
                         : <>
                             <SelectItem value="ativa">Ativa</SelectItem>
