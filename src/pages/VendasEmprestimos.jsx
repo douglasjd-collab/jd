@@ -587,9 +587,9 @@ export default function VendasEmprestimos() {
                         {cpf && <span className="font-medium text-slate-500">CPF: {cpf}</span>}
                         {p.contrato && <span>{cpf ? ' | ' : ''}Contrato: {p.contrato}</span>}
                       </p>
-                      {p.empresa_id && getEmpresaNome(p.empresa_id) && (
+                      {getEmpresaParceiraNome(p.tabela_comissao_id) && (
                         <p className="text-xs text-indigo-600 font-medium mt-0.5 flex items-center gap-1">
-                          <Building2 className="w-3 h-3" />{getEmpresaNome(p.empresa_id)}
+                          <Building2 className="w-3 h-3" />{getEmpresaParceiraNome(p.tabela_comissao_id)}
                         </p>
                       )}
                       </div>
