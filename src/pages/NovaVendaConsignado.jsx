@@ -105,6 +105,12 @@ export default function NovaVendaConsignado() {
     queryFn: () => base44.entities.TabelaEmprestimo.filter({ empresa_id: empresaId, ativo: true }, 'nome')
   });
 
+  const { data: tiposEmprestimo = [] } = useQuery({
+    queryKey: ['tipos-emprestimo', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.TipoEmprestimo.filter({ empresa_id: empresaId, ativo: true }, 'nome')
+  });
+
   const { data: empresasParceiras = [] } = useQuery({
     queryKey: ['empresas-parceiras', empresaId],
     enabled: !!empresaId,
