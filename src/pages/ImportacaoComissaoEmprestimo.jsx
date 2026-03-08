@@ -72,11 +72,12 @@ export default function ImportacaoComissaoEmprestimo() {
     queryFn: () => base44.entities.Empresa.filter({ status: 'ativa' }),
   });
 
+  const empresaIdParam = isSuperAdmin ? empresaSelecionada : (currentUser?.empresa_id || currentEmpresa?.id);
+
   const { data: empresasParceiras = [] } = useQuery({
-    queryKey: ['empresas-parceiras'],
+    queryKey: ['empresas-parceiras', empresaIdParam],
+    enabled: !!empresaIdParam,
     queryFn: async () => {
-      const empresaIdParam = isSuperAdmin ? (empresaSelecionada || null) : (currentUser?.empresa_id || currentEmpresa?.id);
-      if (!empresaIdParam) return [];
       return base44.entities.EmpresaParceira.filter({ empresa_id: empresaIdParam });
     },
   });
