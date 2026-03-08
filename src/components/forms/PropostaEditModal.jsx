@@ -368,7 +368,11 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                       setFormData({ ...formData, vendedor_id: value, vendedor_nome: vend?.nome || '' });
                     }}
                   >
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione">
+                        {formData.vendedor_nome || 'Selecione'}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent>
                       {vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
                     </SelectContent>
