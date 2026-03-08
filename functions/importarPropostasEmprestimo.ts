@@ -260,6 +260,7 @@ Deno.serve(async (req) => {
     let criadas = 0;
     let atualizadas = 0;
     let ignoradas = 0;
+    let pendentes_tipo = 0;
     const erros = [];
     const previews = [];
 
