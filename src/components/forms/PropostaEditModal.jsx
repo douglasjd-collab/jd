@@ -207,17 +207,25 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                   <div>
                     <Label>Tipo de Empréstimo</Label>
                     <Select
-                      value={formData.emprestimo_tipo || 'NOVO'}
+                      value={formData.emprestimo_tipo || ''}
                       onValueChange={(value) => setFormData({ ...formData, emprestimo_tipo: value })}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="NOVO">Novo</SelectItem>
-                        <SelectItem value="REFINANCIAMENTO">Refinanciamento</SelectItem>
-                        <SelectItem value="PORTABILIDADE_PURA">Portabilidade Pura</SelectItem>
-                        <SelectItem value="REFIN_PORTABILIDADE">Refin + Portabilidade</SelectItem>
-                        <SelectItem value="CARTAO_CONSIGNADO">Cartão Consignado</SelectItem>
-                        <SelectItem value="CARTAO_CONSIGNADO_SAQUE">Cartão com Saque</SelectItem>
+                        {tiposEmprestimo.length > 0 ? (
+                          tiposEmprestimo.map(tipo => (
+                            <SelectItem key={tipo.id} value={tipo.slug}>{tipo.nome}</SelectItem>
+                          ))
+                        ) : (
+                          <>
+                            <SelectItem value="NOVO">Novo</SelectItem>
+                            <SelectItem value="REFINANCIAMENTO">Refinanciamento</SelectItem>
+                            <SelectItem value="PORTABILIDADE_PURA">Portabilidade Pura</SelectItem>
+                            <SelectItem value="REFIN_PORTABILIDADE">Refin + Portabilidade</SelectItem>
+                            <SelectItem value="CARTAO_CONSIGNADO">Cartão Consignado</SelectItem>
+                            <SelectItem value="CARTAO_CONSIGNADO_SAQUE">Cartão com Saque</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
