@@ -58,7 +58,8 @@ export default function TabelasEmprestimo() {
     nome: '',
     convenio_id: '',
     banco: '',
-    comissao_empresa: ''
+    comissao_empresa: '',
+    empresa_parceira_id: ''
   });
 
   useEffect(() => {
