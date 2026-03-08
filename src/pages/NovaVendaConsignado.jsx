@@ -812,8 +812,8 @@ export default function NovaVendaConsignado() {
                       step="0.01"
                       value={formData.percentual_comissao_vendedor} 
                       onChange={(e) => setFormData({ ...formData, percentual_comissao_vendedor: e.target.value })}
-                      readOnly
-                      className="bg-slate-50"
+                      placeholder="0.00"
+                      className={formData.percentual_comissao_vendedor ? 'bg-green-50 border-green-300' : ''}
                     />
                   </div>
                   <div>
