@@ -387,12 +387,20 @@ export default function VendasEmprestimos() {
           Todos <span className="bg-white/20 text-inherit px-1.5 py-0.5 rounded-full text-xs">{filteredByRole.length}</span>
         </button>
         {[...statusList]
+          .filter(s => s.tipo === 'principal' || !s.tipo)
           .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
           .filter((s, idx, arr) => arr.findIndex(x => normStr(x.nome) === normStr(s.nome)) === idx)
           .map(s => {
           const colorClass = STATUS_COLOR_MAP[s.cor] || STATUS_COLOR_MAP.slate;
           const isActive = filterStatus === s.id;
-          const count = filteredByRole.filter(p => p.status_id === s.id || normStr(p.status) === normStr(s.nome) || normStr(p.status) === normStr(s.codigo)).length;
+          // Incluir substatuses filhos na contagem
+          const filhosIds = statusList.filter(x => x.status_pai_id === s.id).map(x => x.id);
+          const todosIds = [s.id, ...filhosIds];
+          const count = filteredByRole.filter(p => 
+            todosIds.includes(p.status_id) || 
+            normStr(p.status) === normStr(s.nome) || 
+            normStr(p.status) === normStr(s.codigo)
+          ).length;
           return (
             <button
               key={s.id}
