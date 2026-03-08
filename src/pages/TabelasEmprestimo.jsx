@@ -100,7 +100,7 @@ export default function TabelasEmprestimo() {
   const { data: empresasParceiras = [] } = useQuery({
     queryKey: ['empresas-parceiras', empresaId],
     enabled: !!empresaId,
-    queryFn: () => base44.entities.EmpresaParceira.filter({ empresa_id: empresaId })
+    queryFn: () => base44.entities.EmpresaParceira.filter({ empresa_id: empresaId, ativo: true })
   });
 
   const { data: historicos = [] } = useQuery({
