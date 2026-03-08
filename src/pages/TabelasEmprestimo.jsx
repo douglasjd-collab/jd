@@ -351,8 +351,8 @@ export default function TabelasEmprestimo() {
   const handleEditar = (tabela) => {
     setEditando(tabela);
     setFormData({
-      codigo: tabela.codigo || '',
-      nome: tabela.nome,
+      codigo: tabela.codigo_tabela || tabela.codigo || '',
+      nome: tabela.tabela || tabela.nome || '',
       convenio_id: tabela.convenio_id || '',
       banco: tabela.banco || '',
       comissao_empresa: tabela.comissao_empresa
