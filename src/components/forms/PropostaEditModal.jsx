@@ -81,6 +81,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
         valor_comissao: parseFloat(formData.valor_comissao) || 0,
         comissao_recebida: parseFloat(formData.comissao_recebida) || 0,
         status: formData.status,
+        status_id: formData.status_id || '',
         observacoes: formData.observacoes || '',
         grupo: formData.grupo || '',
         cota: formData.cota || '',
