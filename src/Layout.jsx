@@ -181,6 +181,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'Propostas', page: 'VendasEmprestimos' },
         { name: 'Propostas sem Vendedor', page: 'PropostasSemVendedor' },
+        { name: 'Importar Propostas', page: 'ImportacaoProducao' },
       ]
     },
     { 
