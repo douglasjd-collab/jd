@@ -433,20 +433,23 @@ export default function VendasEmprestimos() {
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Buscar por nome..." value={searchNome} onChange={(e) => setSearchNome(e.target.value)} className="pl-9 border-0 bg-slate-50" />
+            <Input placeholder="Buscar por nome, CPF, Contrato, ADE..." value={searchGeral} onChange={(e) => setSearchGeral(e.target.value)} className="pl-9 border-0 bg-slate-50" />
           </div>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Buscar por CPF..." value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} className="pl-9 border-0 bg-slate-50" />
-          </div>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Buscar por banco..." value={searchBancoText} onChange={(e) => setSearchBancoText(e.target.value)} className="pl-9 border-0 bg-slate-50" />
-          </div>
+          <Select value={filterBanco} onValueChange={setFilterBanco}>
+            <SelectTrigger className="w-full sm:w-52 border-0 bg-slate-50">
+              <SelectValue placeholder="Selecionar banco" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Bancos</SelectItem>
+              {bancos.map(b => (
+                <SelectItem key={b.id} value={b.nome}>{b.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {podeVerTodos && (
-            <div className="relative flex-1">
+            <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input placeholder="Buscar por vendedor..." value={searchVendedor} onChange={(e) => setSearchVendedor(e.target.value)} className="pl-9 border-0 bg-slate-50" />
+              <Input placeholder="Vendedor..." value={searchVendedor} onChange={(e) => setSearchVendedor(e.target.value)} className="pl-9 border-0 bg-slate-50 w-full sm:w-44" />
             </div>
           )}
           <Select value={filterTipo} onValueChange={setFilterTipo}>
