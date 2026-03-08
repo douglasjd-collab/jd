@@ -97,6 +97,12 @@ export default function TabelasEmprestimo() {
     queryFn: () => base44.entities.Banco.filter({ empresa_id: empresaId, ativo: true })
   });
 
+  const { data: empresasParceiras = [] } = useQuery({
+    queryKey: ['empresas-parceiras', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.EmpresaParceira.filter({ empresa_id: empresaId })
+  });
+
   const { data: historicos = [] } = useQuery({
     queryKey: ['historico-comissao', tabelaSelecionada?.id],
     enabled: !!tabelaSelecionada?.id,
