@@ -437,33 +437,9 @@ Deno.serve(async (req) => {
           : null;
 
         if (propostaExistente) {
-          // Atualizar apenas campos que estão vazios na proposta existente
-          const updateData = {};
-          
-          // Atualizar campos da proposta se vazios
-          for (const [key, value] of Object.entries(proposta)) {
-            if (value !== null && value !== undefined && value !== '') {
-              // Se campo está vazio na existente, atualizar
-              if (!propostaExistente[key] || propostaExistente[key] === '' || propostaExistente[key] === null) {
-                updateData[key] = value;
-              }
-            }
-          }
-          
-          // Vendedor: só atualizar se encontrou vinculação
-          if (vend?.id) {
-            updateData.vendedor_id = vend.id;
-            updateData.vendedor_nome = vend.nome;
-          }
-          // Se vendedor NÃO está vinculado, não atualizar o campo
-          
-          if (Object.keys(updateData).length > 0) {
-            await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
-          }
-          atualizadas++;
-          // Atualizar cache local
-          const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
-          if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...updateData };
+          // Proposta duplicada encontrada (mesmo banco + contrato) — ignorar
+          ignoradas++;
+          console.log(`Duplicata ignorada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
         } else {
           await base44.asServiceRole.entities.Proposta.create(proposta);
           criadas++;
