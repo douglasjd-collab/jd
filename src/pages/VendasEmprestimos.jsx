@@ -175,9 +175,13 @@ export default function VendasEmprestimos() {
 
   const filteredPropostas = filteredByRole.filter(p => {
     const cpf = getClienteCpf(p.cliente_id) || p.cliente_cpf || '';
-    const matchNome = !searchNome || p.cliente_nome?.toLowerCase().includes(searchNome.toLowerCase());
-    const matchCpf = !searchCpf || cpf.includes(searchCpf);
-    const matchBancoText = !searchBancoText || p.administradora_nome?.toLowerCase().includes(searchBancoText.toLowerCase());
+    const q = searchGeral.toLowerCase();
+    const matchGeral = !searchGeral || 
+      p.cliente_nome?.toLowerCase().includes(q) ||
+      cpf.includes(q) ||
+      (p.contrato || '').toLowerCase().includes(q) ||
+      (p.emprestimo_numero_ade || '').toLowerCase().includes(q) ||
+      (p.administradora_nome || '').toLowerCase().includes(q);
     const matchVendedor = !searchVendedor || (p.vendedor_nome || '').toLowerCase().includes(searchVendedor.toLowerCase());
     const matchBanco = filterBanco === 'todos' || p.administradora_nome === filterBanco;
     const matchTipo = filterTipo === 'todos' || p.emprestimo_tipo === filterTipo;
