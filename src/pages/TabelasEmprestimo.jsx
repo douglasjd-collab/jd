@@ -841,11 +841,12 @@ export default function TabelasEmprestimo() {
                 {empresasParceiras.map(ep => (
                   <option key={ep.id} value={ep.id}>{ep.nome}</option>
                 ))}
-              </select>
-            </div>
+                </select>
+                </div>
+                </div>
 
-            <div>
-              <Label>% Comissão Empresa *</Label>
+                <div>
+                <Label>% Comissão Empresa *</Label>
               <Input
                 type="number"
                 step="0.01"
