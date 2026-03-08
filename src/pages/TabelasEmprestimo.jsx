@@ -127,9 +127,12 @@ export default function TabelasEmprestimo() {
       });
 
       if (jaExiste) {
+        const epSelecionada = empresasParceiras.find(ep => ep.id === dados.empresa_parceira_id);
         // Atualizar comissão e registrar histórico
         await base44.entities.TabelaEmprestimo.update(jaExiste.id, {
           comissao_empresa: novaComissaoFloat,
+          empresa_parceira_id: dados.empresa_parceira_id || null,
+          empresa_parceira_nome: epSelecionada?.nome || null,
           data: hoje
         });
         await base44.entities.HistoricoComissaoTabela.create({
