@@ -362,7 +362,8 @@ export default function TabelasEmprestimo() {
       nome: tabela.tabela || tabela.nome || '',
       convenio_id: tabela.convenio_id || '',
       banco: tabela.banco || '',
-      comissao_empresa: tabela.comissao_empresa
+      comissao_empresa: tabela.comissao_empresa,
+      empresa_parceira_id: tabela.empresa_parceira_id || ''
     });
     setShowModal(true);
   };
