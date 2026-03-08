@@ -696,6 +696,9 @@ export default function TabelasEmprestimo() {
                         {tabela.banco && (
                           <span className="text-slate-600">🏦 {tabela.banco}</span>
                         )}
+                        {tabela.empresa_parceira_nome && (
+                          <span className="text-slate-600">🏢 {tabela.empresa_parceira_nome}</span>
+                        )}
                         {(tabela.prazo_inicial || tabela.prazo_final) && (
                           <span className="text-slate-600">
                             ⏱️ {tabela.prazo_inicial || 0}-{tabela.prazo_final || 0} meses
