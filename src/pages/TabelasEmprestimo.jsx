@@ -203,6 +203,7 @@ export default function TabelasEmprestimo() {
         convenio_id: dados.convenio_id || null,
         convenio_nome: convenioSelecionado?.nome || '',
         banco: dados.banco || null,
+        produto: dados.produto || null,
         comissao_empresa: novaComissaoFloat,
         empresa_parceira_id: dados.empresa_parceira_id || null,
         empresa_parceira_nome: empresaParceiraSelecionada?.nome || null,
