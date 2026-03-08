@@ -139,15 +139,16 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
 
-  const { data: empresas = [] } = useQuery({
-    queryKey: ['empresas-emprestimos'],
-    queryFn: () => base44.entities.Empresa.list(),
+  const { data: tabelasEmprestimo = [] } = useQuery({
+    queryKey: ['tabelas-emprestimo-parceira'],
+    queryFn: () => base44.entities.TabelaEmprestimo.list(),
     enabled: !!currentUser,
   });
 
-  const getEmpresaNome = (empresaId) => {
-    const emp = empresas.find(e => e.id === empresaId);
-    return emp?.nome || null;
+  const getEmpresaParceiraNome = (tabelaComissaoId) => {
+    if (!tabelaComissaoId) return null;
+    const tabela = tabelasEmprestimo.find(t => t.id === tabelaComissaoId);
+    return tabela?.empresa_parceira_nome || null;
   };
 
   const getCliente = (clienteId) => clientes.find(c => c.id === clienteId);
