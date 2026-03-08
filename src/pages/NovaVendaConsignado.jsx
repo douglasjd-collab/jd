@@ -627,17 +627,30 @@ export default function NovaVendaConsignado() {
                 </div>
               </div>
               <div>
-                <Label>Tipo de Consignado *</Label>
+                <Label>Tipo de Empréstimo *</Label>
                 <select
                   value={formData.tipo_consignado}
                   onChange={(e) => setFormData({ ...formData, tipo_consignado: e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                   required
                 >
-                  <option value="NOVO">Novo</option>
-                  <option value="REFINANCIAMENTO">Refinanciamento</option>
-                  <option value="PORTABILIDADE_PURA">Portabilidade Pura</option>
-                  <option value="REFIN_PORTABILIDADE">Refin + Portabilidade</option>
+                  <option value="">Selecione...</option>
+                  {tiposEmprestimo.length > 0 ? (
+                    tiposEmprestimo.map(t => (
+                      <option key={t.id} value={t.slug}>{t.nome}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="NOVO">Novo</option>
+                      <option value="REFINANCIAMENTO">Refinanciamento</option>
+                      <option value="PORTABILIDADE_PURA">Portabilidade Pura</option>
+                      <option value="REFIN_PORTABILIDADE">Refin + Portabilidade</option>
+                      <option value="CARTAO_CONSIGNADO">Cartão Consignado</option>
+                      <option value="CARTAO_BENEFICIO">Cartão Benefício</option>
+                      <option value="SAQUE">Saque</option>
+                      <option value="CARTAO">Cartão</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>
