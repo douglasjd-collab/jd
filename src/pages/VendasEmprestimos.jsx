@@ -139,6 +139,17 @@ export default function VendasEmprestimos() {
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
 
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['empresas-emprestimos'],
+    queryFn: () => base44.entities.Empresa.list(),
+    enabled: !!currentUser,
+  });
+
+  const getEmpresaNome = (empresaId) => {
+    const emp = empresas.find(e => e.id === empresaId);
+    return emp?.nome || null;
+  };
+
   const getCliente = (clienteId) => clientes.find(c => c.id === clienteId);
   const getClienteCpf = (clienteId) => {
     const c = getCliente(clienteId);
