@@ -176,13 +176,26 @@ export default function TabelasEmprestimo() {
   const editarMutation = useMutation({
     mutationFn: async ({ id, dados }) => {
       const convenioSelecionado = convenios.find(c => c.id === dados.convenio_id);
-      return await base44.entities.TabelaEmprestimo.update(id, {
-        codigo: dados.codigo,
-        nome: dados.nome,
+      const novaComissaoFloat = parseFloat(dados.comissao_empresa);
+      const hoje = new Date().toISOString().split('T')[0];
+
+      await base44.entities.TabelaEmprestimo.update(id, {
+        codigo_tabela: dados.codigo || null,
+        tabela: dados.nome,
         convenio_id: dados.convenio_id || null,
         convenio_nome: convenioSelecionado?.nome || '',
-        banco: dados.banco,
-        comissao_empresa: parseFloat(dados.comissao_empresa)
+        banco: dados.banco || null,
+        comissao_empresa: novaComissaoFloat,
+        data: hoje
+      });
+
+      // Registrar histórico ao editar
+      await base44.entities.HistoricoComissaoTabela.create({
+        empresa_id: empresaId,
+        tabela_id: id,
+        comissao_empresa: novaComissaoFloat,
+        data_vigencia: hoje,
+        ativo: true
       });
     },
     onSuccess: () => {
