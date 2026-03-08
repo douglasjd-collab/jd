@@ -142,6 +142,8 @@ export default function TabelasEmprestimo() {
         return { atualizada: true, tabela: jaExiste };
       }
 
+      const empresaParceiraSelecionada = empresasParceiras.find(ep => ep.id === dados.empresa_parceira_id);
+
       // Criar nova tabela
       const tabela = await base44.entities.TabelaEmprestimo.create({
         empresa_id: empresaId,
@@ -151,6 +153,8 @@ export default function TabelasEmprestimo() {
         convenio_nome: convenioSelecionado?.nome || '',
         banco: dados.banco || null,
         comissao_empresa: novaComissaoFloat,
+        empresa_parceira_id: dados.empresa_parceira_id || null,
+        empresa_parceira_nome: empresaParceiraSelecionada?.nome || null,
         ativo: true
       });
 
