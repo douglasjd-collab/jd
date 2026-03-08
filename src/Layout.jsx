@@ -239,7 +239,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'IMP. Comissão Consórcio', page: 'ImportacaoComissao' },
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
-        { name: 'Importar Propostas de Empréstimos', page: 'ImportacaoProducao' },
+
         { name: 'Importar Resultado Assembleia', page: 'ImportarResultadoAssembleia' },
         { name: 'Histórico Geral', page: 'Importacao' },
       ]
