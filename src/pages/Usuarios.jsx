@@ -731,33 +731,53 @@ export default function Usuarios() {
                         key={usuario.id} 
                         className="border-b border-slate-100 hover:bg-slate-50"
                       >
-                        <td className="px-4 py-3 pl-16">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3 pl-10">
+                          <div className="flex items-center gap-3">
+                            {usuario.foto_perfil ? (
+                              <img src={usuario.foto_perfil} alt="" className="w-9 h-9 rounded-full object-cover border border-slate-200 flex-shrink-0" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#10353C] to-[#23BE84] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                                {usuario.nome?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                            )}
                             <div>
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-slate-900">{usuario.nome}</p>
                                 {usuario.evolution_instance_name && (
                                   <span title={`WhatsApp: ${usuario.evolution_instance_name}`}>
-                                    <Smartphone className="w-4 h-4 text-green-500" />
+                                    <Smartphone className="w-3.5 h-3.5 text-green-500" />
                                   </span>
                                 )}
+                                {usuario.aguardando_configuracao && (
+                                  <Badge className="bg-amber-100 text-amber-700 text-xs">Pendente</Badge>
+                                )}
                               </div>
-                              <p className="text-sm text-slate-500">{usuario.email}</p>
+                              <p className="text-xs text-slate-500">{usuario.email}</p>
+                              {usuario.cpf_cnpj && <p className="text-xs text-slate-400">{usuario.cpf_cnpj}</p>}
                             </div>
-                            {usuario.aguardando_configuracao && (
-                              <Badge className="bg-amber-100 text-amber-700 text-xs">Pendente</Badge>
-                            )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-700">{usuario.cpf_cnpj || '-'}</td>
-                        <td className="px-4 py-3 text-slate-700">{usuario.codigo_vendedor || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">{usuario.telefone || '-'}</td>
                         <td className="px-4 py-3">
                           <Badge className={perfilColors[usuario.perfil] || perfilColors.vendedor}>
                             {perfilLabels[usuario.perfil] || 'Vendedor'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-slate-700">
-                          {usuario.perfil === 'vendedor' ? getGerenteNome(usuario.gerente_id) : '-'}
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {usuario.pix_chave || usuario.chave_pix ? (
+                            <div>
+                              <p className="text-xs text-slate-400 capitalize">{usuario.pix_tipo || usuario.tipo_chave_pix || 'pix'}</p>
+                              <p className="font-medium text-slate-700 text-xs truncate max-w-[120px]">{usuario.pix_chave || usuario.chave_pix}</p>
+                            </div>
+                          ) : <span className="text-slate-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-600">
+                          {usuario.banco ? (
+                            <div>
+                              <p className="font-medium">{usuario.banco}</p>
+                              {usuario.agencia && <p className="text-slate-400">Ag {usuario.agencia} / Cc {usuario.conta}</p>}
+                            </div>
+                          ) : <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-4 py-3">
                           <StatusBadge status={usuario.status || 'ativo'} />
