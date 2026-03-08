@@ -211,6 +211,8 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                         <SelectItem value="REFINANCIAMENTO">Refinanciamento</SelectItem>
                         <SelectItem value="PORTABILIDADE_PURA">Portabilidade Pura</SelectItem>
                         <SelectItem value="REFIN_PORTABILIDADE">Refin + Portabilidade</SelectItem>
+                        <SelectItem value="CARTAO_CONSIGNADO">Cartão Consignado</SelectItem>
+                        <SelectItem value="CARTAO_CONSIGNADO_SAQUE">Cartão com Saque</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
