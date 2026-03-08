@@ -651,14 +651,6 @@ export default function VendasEmprestimos() {
 
                 {/* Card Footer / Actions */}
                 <div className="px-4 py-3 border-t border-slate-100 space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs gap-1 border-[#10353C] text-[#10353C] hover:bg-[#10353C] hover:text-white font-semibold"
-                    onClick={() => navigate(createPageUrl(`PropostaEmprestimoDetalhes?id=${p.id}`))}
-                  >
-                    <FileText className="w-3.5 h-3.5" /> Ver Detalhes
-                  </Button>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
