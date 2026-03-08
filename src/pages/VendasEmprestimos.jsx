@@ -191,7 +191,7 @@ export default function VendasEmprestimos() {
     const matchStatus = filterStatus === 'todos' || 
       filterTodosIds.includes(p.status_id) || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
-    return matchNome && matchCpf && matchBancoText && matchBanco && matchTipo && matchStatus && matchVendedor;
+    return matchGeral && matchBanco && matchTipo && matchStatus && matchVendedor;
   }).sort((a, b) => {
     if (isPagoFilter) {
       const dateA = a.emprestimo_data_liberacao || a.data_venda || '';
