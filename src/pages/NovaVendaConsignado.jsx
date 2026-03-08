@@ -283,9 +283,21 @@ export default function NovaVendaConsignado() {
   // Recalcular comissões quando valor mudar e tabela estiver selecionada
   useEffect(() => {
     if (formData.tabela_emprestimo_id && formData.valor_liberado) {
-      handleTabelaChange(formData.tabela_emprestimo_id);
+      const tabela = tabelasEmprestimo.find(t => t.id === formData.tabela_emprestimo_id);
+      if (tabela) {
+        const valorLiberado = parseFloat(formData.valor_liberado) || 0;
+        const comissaoEmpresa = valorLiberado > 0 ? (valorLiberado * tabela.comissao_empresa) / 100 : 0;
+        const comissaoVendedor = valorLiberado > 0 ? (valorLiberado * (tabela.comissao_corretor || 0)) / 100 : 0;
+        setFormData(prev => ({
+          ...prev,
+          percentual_comissao_empresa: tabela.comissao_empresa,
+          comissao_empresa_prevista: comissaoEmpresa.toFixed(2),
+          percentual_comissao_vendedor: tabela.comissao_corretor || 0,
+          comissao_vendedor_prevista: comissaoVendedor.toFixed(2)
+        }));
+      }
     }
-  }, [formData.valor_liberado]);
+  }, [formData.valor_liberado, formData.tabela_emprestimo_id]);
 
   const renderCamposPorTipo = () => {
     if (formData.tipo_consignado === 'NOVO' || formData.tipo_consignado === 'REFINANCIAMENTO') {
