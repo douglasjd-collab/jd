@@ -189,12 +189,17 @@ export default function VendasEmprestimos() {
 
   const isPagoFilter = filterStatus !== 'todos' && statusList.find(s => s.id === filterStatus && (s.nome?.toLowerCase().includes('pago') || s.funcao_fluxo === 'finalizado'));
 
+  const stripCpf = (s) => String(s || '').replace(/[.\-\/\s]/g, '');
+
   const filteredPropostas = filteredByRole.filter(p => {
     const cpf = getClienteCpf(p.cliente_id) || p.cliente_cpf || '';
     const q = searchGeral.toLowerCase();
+    const qStripped = stripCpf(q);
+    const cpfStripped = stripCpf(cpf);
     const matchGeral = !searchGeral || 
       p.cliente_nome?.toLowerCase().includes(q) ||
       cpf.includes(q) ||
+      (qStripped.length >= 3 && cpfStripped.includes(qStripped)) ||
       (p.contrato || '').toLowerCase().includes(q) ||
       (p.emprestimo_numero_ade || '').toLowerCase().includes(q) ||
       (p.administradora_nome || '').toLowerCase().includes(q);
