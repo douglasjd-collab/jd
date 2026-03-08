@@ -108,14 +108,42 @@ export default function TabelasEmprestimo() {
   const criarMutation = useMutation({
     mutationFn: async (dados) => {
       const convenioSelecionado = convenios.find(c => c.id === dados.convenio_id);
+      const novaComissaoFloat = parseFloat(dados.comissao_empresa);
+      const hoje = new Date().toISOString().split('T')[0];
+
+      // Verificar se já existe tabela com mesmo nome/código + banco
+      const existentes = await base44.entities.TabelaEmprestimo.filter({ empresa_id: empresaId, ativo: true });
+      const jaExiste = existentes.find(t => {
+        const mesmoNome = (t.tabela || '').toLowerCase().trim() === dados.nome.toLowerCase().trim();
+        const mesmoCodigo = dados.codigo && t.codigo_tabela && t.codigo_tabela === dados.codigo;
+        return mesmoNome || mesmoCodigo;
+      });
+
+      if (jaExiste) {
+        // Atualizar comissão e registrar histórico
+        await base44.entities.TabelaEmprestimo.update(jaExiste.id, {
+          comissao_empresa: novaComissaoFloat,
+          data: hoje
+        });
+        await base44.entities.HistoricoComissaoTabela.create({
+          empresa_id: empresaId,
+          tabela_id: jaExiste.id,
+          comissao_empresa: novaComissaoFloat,
+          data_vigencia: hoje,
+          ativo: true
+        });
+        return { atualizada: true, tabela: jaExiste };
+      }
+
+      // Criar nova tabela
       const tabela = await base44.entities.TabelaEmprestimo.create({
         empresa_id: empresaId,
-        codigo: dados.codigo,
-        nome: dados.nome,
+        codigo_tabela: dados.codigo || null,
+        tabela: dados.nome,
         convenio_id: dados.convenio_id || null,
         convenio_nome: convenioSelecionado?.nome || '',
-        banco: dados.banco,
-        comissao_empresa: parseFloat(dados.comissao_empresa),
+        banco: dados.banco || null,
+        comissao_empresa: novaComissaoFloat,
         ativo: true
       });
 
@@ -123,16 +151,20 @@ export default function TabelasEmprestimo() {
       await base44.entities.HistoricoComissaoTabela.create({
         empresa_id: empresaId,
         tabela_id: tabela.id,
-        comissao_empresa: parseFloat(dados.comissao_empresa),
-        data_vigencia: new Date().toISOString().split('T')[0],
+        comissao_empresa: novaComissaoFloat,
+        data_vigencia: hoje,
         ativo: true
       });
 
-      return tabela;
+      return { atualizada: false, tabela };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['tabelas-emprestimo', empresaId] });
-      toast.success('Tabela cadastrada com sucesso!');
+      if (result.atualizada) {
+        toast.success('Tabela já existia — comissão atualizada e histórico registrado!');
+      } else {
+        toast.success('Tabela cadastrada com sucesso!');
+      }
       setShowModal(false);
       resetForm();
     },
