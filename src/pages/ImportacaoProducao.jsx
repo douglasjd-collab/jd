@@ -161,7 +161,7 @@ export default function ImportacaoProducao() {
                   <Button
                     size="sm"
                     className="ml-auto gap-2 bg-yellow-600 hover:bg-yellow-700"
-                    onClick={() => window.open(createPageUrl(`LayoutImportacaoConfig?empresa_parceira_id=${empresaParceiraId}&tipo=producao`), '_blank')}
+                    onClick={() => window.location.href = createPageUrl(`LayoutImportacaoConfig?empresa_parceira_id=${empresaParceiraId}&tipo=producao`)}
                   >
                     <Settings className="w-4 h-4" /> Configurar Agora
                   </Button>
