@@ -220,12 +220,39 @@ Deno.serve(async (req) => {
       return null;
     };
 
-    const normTipo = (tipo) => {
-      if (!tipo) return 'NOVO';
-      const t = normStr(tipo);
+    // Resolver tipo com base nos TipoEmprestimo cadastrados (aliases_importacao)
+    const tiposNaoMapeados = {}; // { nomeOriginal: true } — para rastrear tipos desconhecidos desta importação
+
+    const normTipo = (tipoRaw) => {
+      if (!tipoRaw) return null; // null = sem tipo definido no arquivo
+      const raw = String(tipoRaw).trim();
+
+      // 1. Verificar aliases cadastrados em TipoEmprestimo
+      if (tiposEmprestimo.length > 0) {
+        for (const te of tiposEmprestimo) {
+          const aliases = te.aliases_importacao || [];
+          for (const alias of aliases) {
+            if (normStr(alias) === normStr(raw)) return te.slug;
+          }
+          // Verificar também por nome direto
+          if (normStr(te.nome) === normStr(raw) || normStr(te.slug) === normStr(raw)) return te.slug;
+        }
+        // Tipo não encontrado — marcar como não mapeado
+        tiposNaoMapeados[raw] = true;
+        return null; // pendente de vinculação
+      }
+
+      // 2. Fallback: mapeamento padrão (quando não há tipos cadastrados)
+      const t = normStr(raw);
       if (t.includes('refin') && t.includes('port')) return 'REFIN_PORTABILIDADE';
       if (t.includes('port')) return 'PORTABILIDADE_PURA';
       if (t.includes('refin')) return 'REFINANCIAMENTO';
+      if (t.includes('cartao') || t.includes('cartão')) {
+        if (t.includes('benef')) return 'CARTAO_BENEFICIO';
+        if (t.includes('consig')) return 'CARTAO_CONSIGNADO';
+        return 'CARTAO';
+      }
+      if (t.includes('saque')) return 'SAQUE';
       return 'NOVO';
     };
 
