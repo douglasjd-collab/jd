@@ -437,9 +437,29 @@ Deno.serve(async (req) => {
           : null;
 
         if (propostaExistente) {
-          // Proposta duplicada encontrada (mesmo banco + contrato) — ignorar
-          ignoradas++;
-          console.log(`Duplicata ignorada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
+          // Proposta duplicada encontrada (banco + contrato) — atualizar apenas status e data de pagamento
+          const updateData = {};
+          
+          // Atualizar status se veio no arquivo
+          if (statusVal) {
+            updateData.status = statusVal;
+            updateData.status_id = statusId || null;
+          }
+          
+          // Atualizar data de venda se veio no arquivo (pode ser data de pagamento)
+          if (dataVend) {
+            updateData.data_venda = dataVend;
+          }
+          
+          if (Object.keys(updateData).length > 0) {
+            await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
+            atualizadas++;
+            const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
+            if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...updateData };
+          } else {
+            ignoradas++;
+          }
+          console.log(`Duplicata atualizada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
         } else {
           await base44.asServiceRole.entities.Proposta.create(proposta);
           criadas++;
