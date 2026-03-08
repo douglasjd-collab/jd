@@ -237,7 +237,7 @@ export default function Layout({ children, currentPageName }) {
       icon: Upload, 
       roles: ['master', 'super_admin', 'admin', 'gerente'],
       submenu: [
-        { name: 'IMPC Consórcio', page: 'ImportacaoComissao' },
+        { name: 'Imp. Comissão Consórcio', page: 'ImportacaoComissao' },
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
         { name: 'Importar Propostas de Empréstimos', page: 'ImportacaoProducao' },
         { name: 'Importar Resultado Assembleia', page: 'ImportarResultadoAssembleia' },
