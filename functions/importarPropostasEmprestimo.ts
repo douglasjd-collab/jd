@@ -297,17 +297,22 @@ Deno.serve(async (req) => {
         const cliente = findCliente(cpfVal, nomeVal);
         const vend    = findVendedor(vendedorVal);
 
-        // Encontrar tabela de comissão pelo nome
+        // Encontrar tabela de comissão por Banco + Tabela (combinação única)
         let tabelaComissao = null;
         if (tabelaVal) {
-          tabelaComissao = tabelasComissao.find(t =>
-            normStr(t.tabela || t.nome || '').includes(normStr(tabelaVal)) ||
-            normStr(tabelaVal).includes(normStr(t.tabela || t.nome || '')) ||
-            normStr(t.codigo_tabela || '') === normStr(tabelaVal)
-          );
-          // Se não encontrou, criar nova tabela de comissão
+          const bancoNorm = normStr(banco?.nome || bancoVal || '');
+          tabelaComissao = tabelasComissao.find(t => {
+            const tabelaMatch =
+              normStr(t.tabela || '') === normStr(tabelaVal) ||
+              normStr(t.codigo_tabela || '') === normStr(tabelaVal);
+            const bancoMatch = !bancoNorm || !normStr(t.banco || '') ||
+              normStr(t.banco || '').includes(bancoNorm) ||
+              bancoNorm.includes(normStr(t.banco || ''));
+            return tabelaMatch && bancoMatch;
+          });
+
+          // Se não encontrou, criar nova tabela — se já existe, NÃO substituir
           if (!tabelaComissao) {
-            // Usar comissao_empresa_percentual (%) como comissão da tabela
             const comissaoPerc = comissaoPercentualVal ? parseValor(comissaoPercentualVal) : 0;
             tabelaComissao = await base44.asServiceRole.entities.TabelaEmprestimo.create({
               empresa_id: empresaId,
@@ -320,16 +325,9 @@ Deno.serve(async (req) => {
               ativo: true,
             });
             tabelasComissao.push(tabelaComissao);
-          } else {
-            // Se a tabela já existe mas comissão % veio no arquivo, atualizar se diferente
-            if (comissaoPercentualVal !== null) {
-              const novaPerc = parseValor(comissaoPercentualVal);
-              if (novaPerc > 0 && tabelaComissao.comissao_empresa !== novaPerc) {
-                await base44.asServiceRole.entities.TabelaEmprestimo.update(tabelaComissao.id, { comissao_empresa: novaPerc });
-                tabelaComissao.comissao_empresa = novaPerc;
-              }
-            }
+            console.log(`Nova tabela criada: ${tabelaVal} / ${banco?.nome || bancoVal}`);
           }
+          // Se já existe → não alterar nada (manter dados originais cadastrados)
         }
 
         const valor    = parseValor(valorVal);
