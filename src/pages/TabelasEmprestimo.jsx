@@ -812,10 +812,28 @@ export default function TabelasEmprestimo() {
               </div>
             </div>
 
-            <div>
-              <Label>Empresa Parceira</Label>
-              <select
-                value={formData.empresa_parceira_id}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Tipo de Operação (Produto)</Label>
+                <select
+                  value={formData.produto}
+                  onChange={(e) => setFormData({ ...formData, produto: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="NOVO">Novo</option>
+                  <option value="PORTABILIDADE">Portabilidade</option>
+                  <option value="REFIN">Refinanciamento</option>
+                  <option value="REFIN/PORTABILIDADE">Refin/Portabilidade</option>
+                  <option value="CARTAO">Cartão Consignado</option>
+                  <option value="SAQUE_COMPLEMENTAR">Saque Complementar</option>
+                </select>
+              </div>
+
+              <div>
+                <Label>Empresa Parceira</Label>
+                <select
+                  value={formData.empresa_parceira_id}
                 onChange={(e) => setFormData({ ...formData, empresa_parceira_id: e.target.value })}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
               >
