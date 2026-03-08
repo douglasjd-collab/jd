@@ -229,6 +229,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Tabela de Comissão', page: 'TabelasEmprestimo' },
         { name: 'Tabelas de Consórcio', page: 'TabelasConsorcio' },
         { name: 'Planos de Consórcio', page: 'PlanosConsorcio' },
+        { name: 'Tipos de Empréstimo', page: 'TiposEmprestimo' },
         { name: 'Comissões Empréstimos', page: 'TabelasComissaoEmprestimo' },
         { name: 'Importar Planos (Print)', page: 'ImportarPlanosPrint' },
       ]
