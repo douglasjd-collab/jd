@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { file_url, produto, empresa_id } = await req.json();
+    const { file_url, produto, empresa_id, layout_id } = await req.json();
 
     if (!file_url) {
       return Response.json({ error: 'file_url é obrigatório' }, { status: 400 });
@@ -108,6 +108,17 @@ Deno.serve(async (req) => {
 
     if (!produto || !['consorcio', 'financiamento', 'emprestimos'].includes(produto)) {
       return Response.json({ error: 'Produto inválido. Use: consorcio, financiamento ou emprestimos' }, { status: 400 });
+    }
+
+    // Buscar layout customizado se fornecido
+    let layoutMapeamento = null;
+    let layoutLinhaInicio = 2;
+    if (layout_id) {
+      const layout = await base44.entities.LayoutImportacao.get(layout_id);
+      if (layout && layout.mapeamento) {
+        layoutMapeamento = layout.mapeamento;
+        layoutLinhaInicio = layout.linha_inicio_dados || 2;
+      }
     }
 
     // Baixar o arquivo
