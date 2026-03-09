@@ -429,7 +429,7 @@ export default function ImportacaoComissaoEmprestimo() {
               vendedor_id: propostaEncontrada.vendedor_id,
               vendedor_nome: propostaEncontrada.vendedor_nome,
               administradora_id: propostaEncontrada.administradora_id,
-              administradora_nome: propostaEncontrada.administradora_nome,
+              administradora_nome: item.banco || propostaEncontrada.administradora_nome,
               contrato: propostaEncontrada.contrato || propostaEncontrada.emprestimo_numero_ade,
               data_recebimento: dataRecebimento,
               valor_recebido: valorRecebido,
@@ -439,7 +439,8 @@ export default function ImportacaoComissaoEmprestimo() {
               percentual_comissao: pctComissao,
               valor_a_pagar: valorRecebido,
               status_recebimento: 'recebida',
-              status_pagamento: 'a_pagar'
+              status_pagamento: 'a_pagar',
+              observacoes: [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ') || undefined,
             });
             processados++;
             valorTotal += valorRecebido;
