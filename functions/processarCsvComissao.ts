@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 import * as XLSX from 'npm:xlsx@0.18.5';
 
 // Helper: normaliza grupo/cota (remove não-numéricos)
@@ -114,11 +115,11 @@ Deno.serve(async (req) => {
     let layoutMapeamento = null;
     let layoutLinhaInicio = 2;
     if (layout_id) {
-      const layoutList = await base44.entities.LayoutImportacao.filter({ id: layout_id });
-      const layout = layoutList[0] || null;
+      const layout = await base44.entities.LayoutImportacao.get(layout_id);
       if (layout && layout.mapeamento) {
         layoutMapeamento = layout.mapeamento;
         layoutLinhaInicio = layout.linha_inicio_dados || 2;
+        console.log('Layout carregado:', layout.nome, '| mapeamento:', JSON.stringify(layout.mapeamento));
       }
     }
 

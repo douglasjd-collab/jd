@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Pencil, Trash2, Mail, Phone, Settings } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Mail, Phone, FileText, FileSpreadsheet } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import {
@@ -183,14 +183,22 @@ export default function EmpresasParceiras() {
                       <p className="text-sm text-slate-500">CNPJ: {empresa.cnpj}</p>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 flex-wrap">
                     <Button
                       variant="outline"
                       size="icon"
                       title="Layout de Produção"
                       onClick={() => window.location.href = createPageUrl(`LayoutImportacaoConfig?empresa_parceira_id=${empresa.id}&tipo=producao`)}
                     >
-                      <Settings className="w-4 h-4 text-blue-600" />
+                      <FileText className="w-4 h-4 text-blue-600" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      title="Layout de Comissão"
+                      onClick={() => window.location.href = createPageUrl(`LayoutImportacaoConfig?empresa_parceira_id=${empresa.id}&tipo=comissao`)}
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                     </Button>
                     <Button
                       variant="outline"
