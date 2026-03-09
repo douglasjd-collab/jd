@@ -218,8 +218,13 @@ Deno.serve(async (req) => {
           const vendedor = String(row[colLetraParaIdx(m.vendedor)] ?? '').trim();
 
           const pct = parseFloat(String(percentualComissaoRaw).replace(',', '.')) || null;
+          const contratoFinal = contratoRaw === '-' ? '' : contratoRaw;
+
+          // Pular linhas vazias (totalizadores, rodapés, etc.)
+          if (!nomeCompleto && !cpfRaw && !contratoFinal && !numeroAde) continue;
+
           // adiciona campos extras ao item
-          items.push({ data_recebimento, contrato: (contratoRaw === '-' ? '' : contratoRaw), grupo: grupoRaw, cota: cotaRaw, valor: parseValor(valorRaw), parcela: parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1, cpf: cpfRaw, nome_completo: nomeCompleto, percentual_comissao: pct, numero_ade: numeroAde, banco, convenio, tipo_consignado: tipoConsignado, vendedor });
+          items.push({ data_recebimento, contrato: contratoFinal, grupo: grupoRaw, cota: cotaRaw, valor: parseValor(valorRaw), parcela: parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1, cpf: cpfRaw, nome_completo: nomeCompleto, percentual_comissao: pct, numero_ade: numeroAde, banco, convenio, tipo_consignado: tipoConsignado, vendedor });
           continue;
         } else {
           // Layout padrão: A=Data, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela
