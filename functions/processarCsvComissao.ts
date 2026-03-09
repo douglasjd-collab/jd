@@ -169,35 +169,58 @@ Deno.serve(async (req) => {
       return s;
     };
 
-    // ── Função auxiliar: processar array de linhas [col0..col5] ──────────────
+    // Converte letra de coluna (A, B, AA...) para índice 0-based
+    const colLetraParaIdx = (letra) => {
+      if (!letra) return -1;
+      const s = String(letra).trim().toUpperCase();
+      // Suporte a índice numérico direto (ex: "0", "1")
+      if (/^\d+$/.test(s)) return parseInt(s);
+      let n = 0;
+      for (const ch of s) n = n * 26 + (ch.charCodeAt(0) - 64);
+      return n - 1;
+    };
+
+    // ── Função auxiliar: processar array de linhas ──────────────────────────
     const processarLinhas = (rows, startRow = 1) => {
       for (let i = startRow; i < rows.length; i++) {
         const row = rows[i];
         if (!row || row.length === 0) continue;
 
-        // Pular linhas completamente vazias ou que parecem ser cabeçalho extra
         const rowStr = row.join('').trim();
         if (!rowStr) continue;
 
-        const data_recebimento = parseData(row[0] ?? '');
-        const contratoRaw      = String(row[1] ?? '').trim();
-        const grupoRaw         = String(row[2] ?? '').trim();
-        const cotaRaw          = String(row[3] ?? '').trim();
-        const valorRaw         = row[4] ?? '';
-        const parcelaRaw       = row[5] ?? '';
+        let data_recebimento, contratoRaw, grupoRaw, cotaRaw, valorRaw, parcelaRaw, cpfRaw;
+
+        if (layoutMapeamento) {
+          // Usar mapeamento do layout (campo -> coluna)
+          const m = layoutMapeamento;
+          data_recebimento  = parseData(row[colLetraParaIdx(m.data_recebimento)] ?? '');
+          contratoRaw       = String(row[colLetraParaIdx(m.contrato)] ?? '').trim();
+          cpfRaw            = String(row[colLetraParaIdx(m.cpf)] ?? '').trim();
+          grupoRaw          = String(row[colLetraParaIdx(m.grupo)] ?? '').trim();
+          cotaRaw           = String(row[colLetraParaIdx(m.cota)] ?? '').trim();
+          valorRaw          = row[colLetraParaIdx(m.valor)] ?? '';
+          parcelaRaw        = row[colLetraParaIdx(m.parcela)] ?? '';
+        } else {
+          // Layout padrão: A=Data, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela
+          data_recebimento = parseData(row[0] ?? '');
+          contratoRaw      = String(row[1] ?? '').trim();
+          grupoRaw         = String(row[2] ?? '').trim();
+          cotaRaw          = String(row[3] ?? '').trim();
+          valorRaw         = row[4] ?? '';
+          parcelaRaw       = row[5] ?? '';
+          cpfRaw           = '';
+        }
 
         const contrato = contratoRaw === '-' ? '' : contratoRaw;
 
-        // Linha completamente vazia?
-        if (!data_recebimento && !contrato && !grupoRaw && !cotaRaw) continue;
-        
-        // Pular linhas de cabeçalho repetido
+        if (!data_recebimento && !contrato && !grupoRaw && !cotaRaw && !cpfRaw) continue;
         if (contratoRaw?.toLowerCase() === 'contrato' || grupoRaw?.toLowerCase() === 'grupo') continue;
 
         const valor   = parseValor(valorRaw);
         const parcela = parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1;
 
-        items.push({ data_recebimento, contrato, grupo: grupoRaw, cota: cotaRaw, valor, parcela });
+        items.push({ data_recebimento, contrato, grupo: grupoRaw, cota: cotaRaw, valor, parcela, cpf: cpfRaw });
       }
     };
 
