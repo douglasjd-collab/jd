@@ -114,7 +114,8 @@ Deno.serve(async (req) => {
     let layoutMapeamento = null;
     let layoutLinhaInicio = 2;
     if (layout_id) {
-      const layout = await base44.entities.LayoutImportacao.get(layout_id);
+      const layoutList = await base44.entities.LayoutImportacao.filter({ id: layout_id });
+      const layout = layoutList[0] || null;
       if (layout && layout.mapeamento) {
         layoutMapeamento = layout.mapeamento;
         layoutLinhaInicio = layout.linha_inicio_dados || 2;
