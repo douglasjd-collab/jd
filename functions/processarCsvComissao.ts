@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
           const m = layoutMapeamento;
           const dataCol     = m.data_recebimento || m.data_pagamento || m.data_liberacao;
           const valorCol    = m.valor || m.valor_comissao || m.comissao_empresa;
-          const contratoCol = m.contrato || m.numero_contrato;
+          const contratoCol = m.contrato || m.numero_contrato || m.numero_ade;
           data_recebimento  = parseData(row[colLetraParaIdx(dataCol)] ?? '');
           contratoRaw       = String(row[colLetraParaIdx(contratoCol)] ?? '').trim();
           cpfRaw            = String(row[colLetraParaIdx(m.cpf)] ?? '').trim();
@@ -218,7 +218,8 @@ Deno.serve(async (req) => {
           const tipoConsignado = String(row[colLetraParaIdx(m.tipo_consignado)] ?? '').trim();
           const vendedor = String(row[colLetraParaIdx(m.vendedor)] ?? '').trim();
 
-          const pct = parseFloat(String(percentualComissaoRaw).replace(',', '.')) || null;
+          const pctStr = String(percentualComissaoRaw).replace('%', '').replace(',', '.').trim();
+          const pct = pctStr !== '' && !isNaN(parseFloat(pctStr)) ? parseFloat(pctStr) : null;
           const contratoFinal = contratoRaw === '-' ? '' : contratoRaw;
 
           // Pular linhas vazias (totalizadores, rodapés, etc.)
