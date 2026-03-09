@@ -216,58 +216,52 @@ export default function ImportacaoComissaoEmprestimo() {
     const recebimentosParaCriar = [];
 
     for (const item of items) {
-      const contratoRaw = String(item.contrato || '').trim();
+      const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
       const cpfRaw = String(item.cpf || '').trim();
-      const valorRecebido = parseFloat(item.valor) || 0;
       const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
       let propostaEncontrada = null;
       let motivoDivergencia = '';
 
-      // Buscar proposta por contrato ou CPF
+      // Buscar proposta por contrato, ADE ou CPF
       if (contratoRaw) {
-        const propostasMatch = await base44.entities.Proposta.filter({
-          contrato: contratoRaw,
-          produto: 'emprestimo',
-          ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {})
-        });
-        if (propostasMatch.length === 1) {
-          propostaEncontrada = propostasMatch[0];
-        } else if (propostasMatch.length > 1) {
-          motivoDivergencia = 'Múltiplas propostas encontradas';
-        } else {
-          motivoDivergencia = 'Proposta não encontrada pelo contrato';
-        }
+        const filtroBase = { produto: 'emprestimo', ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {}) };
+        // Tenta por contrato
+        let match = await base44.entities.Proposta.filter({ ...filtroBase, contrato: contratoRaw });
+        // Fallback: tenta por emprestimo_numero_ade
+        if (match.length === 0) match = await base44.entities.Proposta.filter({ ...filtroBase, emprestimo_numero_ade: contratoRaw });
+        // Fallback sem filtro empresa
+        if (match.length === 0) match = await base44.entities.Proposta.filter({ contrato: contratoRaw, produto: 'emprestimo' });
+        if (match.length === 0) match = await base44.entities.Proposta.filter({ emprestimo_numero_ade: contratoRaw, produto: 'emprestimo' });
+
+        if (match.length === 1) propostaEncontrada = match[0];
+        else if (match.length > 1) motivoDivergencia = 'Múltiplas propostas encontradas';
+        else motivoDivergencia = 'Proposta não encontrada (contrato/ADE: ' + contratoRaw + ')';
       } else if (cpfRaw) {
-        const propostasMatch = await base44.entities.Proposta.filter({
-          cliente_cpf: cpfRaw,
-          produto: 'emprestimo',
-          ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {})
-        });
-        if (propostasMatch.length === 1) {
-          propostaEncontrada = propostasMatch[0];
-        } else if (propostasMatch.length > 1) {
-          motivoDivergencia = 'Múltiplas propostas encontradas para este CPF';
-        } else {
-          motivoDivergencia = 'Proposta não encontrada pelo CPF';
-        }
+        const match = await base44.entities.Proposta.filter({ cliente_cpf: cpfRaw, produto: 'emprestimo', ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {}) });
+        if (match.length === 1) propostaEncontrada = match[0];
+        else if (match.length > 1) motivoDivergencia = 'Múltiplas propostas encontradas para este CPF';
+        else motivoDivergencia = 'Proposta não encontrada pelo CPF';
       } else {
         motivoDivergencia = 'Dados insuficientes (sem contrato nem CPF)';
       }
 
       if (propostaEncontrada && !motivoDivergencia) {
-        const hashDuplicidade = `${propostaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
+        // Calcular valor monetário da comissão
+        const pctComissao = parseFloat(item.percentual_comissao) || 0;
+        let valorRecebido = parseFloat(item.valor) || 0;
+        // Se o valor parece ser percentual (< 100) e temos valor_credito, calcula o valor monetário
+        if (valorRecebido === 0 && pctComissao > 0 && propostaEncontrada.valor_credito) {
+          valorRecebido = parseFloat(((propostaEncontrada.valor_credito * pctComissao) / 100).toFixed(2));
+        }
 
-        // Verificar duplicidade
-        const recExistentes = await base44.entities.RecebimentoComissao.filter({
-          hash_duplicidade: hashDuplicidade
-        });
+        const hashDuplicidade = `${propostaEncontrada.id}_${dataRecebimento}_${pctComissao || valorRecebido}`;
+        const recExistentes = await base44.entities.RecebimentoComissao.filter({ hash_duplicidade: hashDuplicidade });
 
         if (recExistentes.length > 0) {
           motivoDivergencia = 'Recebimento duplicado';
           propostaEncontrada = null;
         } else {
-          const pctComissao = item.percentual_comissao || 100;
-          const valorAPagar = (valorRecebido * pctComissao) / 100;
+          const valorAPagar = valorRecebido; // vendedor recebe o mesmo valor (ajustável depois)
           recebimentosParaCriar.push({
             empresa_id: propostaEncontrada.empresa_id,
             venda_id: propostaEncontrada.id,
@@ -277,7 +271,7 @@ export default function ImportacaoComissaoEmprestimo() {
             vendedor_nome: propostaEncontrada.vendedor_nome,
             administradora_id: propostaEncontrada.administradora_id,
             administradora_nome: propostaEncontrada.administradora_nome,
-            contrato: propostaEncontrada.contrato,
+            contrato: propostaEncontrada.contrato || propostaEncontrada.emprestimo_numero_ade,
             data_recebimento: dataRecebimento,
             valor_recebido: valorRecebido,
             origem_importacao_id: importacao.id,
