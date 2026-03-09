@@ -395,6 +395,8 @@ export default function ImportacaoComissaoEmprestimo() {
             motivoDivergencia = 'Recebimento duplicado';
             propostaEncontrada = null;
           } else {
+            const pctComissao = item.percentual_comissao || 100;
+            const valorAPagar = (valorRecebido * pctComissao) / 100;
             recebimentosParaCriar.push({
               empresa_id: propostaEncontrada.empresa_id,
               venda_id: propostaEncontrada.id,
@@ -410,8 +412,8 @@ export default function ImportacaoComissaoEmprestimo() {
               origem_importacao_id: importacao.id,
               linha_importacao: previewData.items.indexOf(item) + 1,
               hash_duplicidade: hashDuplicidade,
-              percentual_comissao: 100,
-              valor_a_pagar: valorRecebido,
+              percentual_comissao: pctComissao,
+              valor_a_pagar: valorAPagar,
               status_recebimento: 'recebida',
               status_pagamento: 'a_pagar'
             });
