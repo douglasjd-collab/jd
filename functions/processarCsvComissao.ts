@@ -193,13 +193,18 @@ Deno.serve(async (req) => {
 
         if (layoutMapeamento) {
           // Usar mapeamento do layout (campo -> coluna)
+          // Suporta chaves de layout de comissão (data_pagamento, valor_comissao, contrato)
+          // e também layout genérico (data_recebimento, valor, grupo, cota)
           const m = layoutMapeamento;
-          data_recebimento  = parseData(row[colLetraParaIdx(m.data_recebimento)] ?? '');
-          contratoRaw       = String(row[colLetraParaIdx(m.contrato)] ?? '').trim();
+          const dataCol   = m.data_recebimento || m.data_pagamento || m.data_liberacao;
+          const valorCol  = m.valor || m.valor_comissao || m.comissao_empresa;
+          const contratoCol = m.contrato || m.numero_contrato;
+          data_recebimento  = parseData(row[colLetraParaIdx(dataCol)] ?? '');
+          contratoRaw       = String(row[colLetraParaIdx(contratoCol)] ?? '').trim();
           cpfRaw            = String(row[colLetraParaIdx(m.cpf)] ?? '').trim();
           grupoRaw          = String(row[colLetraParaIdx(m.grupo)] ?? '').trim();
           cotaRaw           = String(row[colLetraParaIdx(m.cota)] ?? '').trim();
-          valorRaw          = row[colLetraParaIdx(m.valor)] ?? '';
+          valorRaw          = row[colLetraParaIdx(valorCol)] ?? '';
           parcelaRaw        = row[colLetraParaIdx(m.parcela)] ?? '';
         } else {
           // Layout padrão: A=Data, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela
