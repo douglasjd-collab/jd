@@ -208,6 +208,19 @@ Deno.serve(async (req) => {
           valorRaw          = row[colLetraParaIdx(valorCol)] ?? '';
           parcelaRaw        = row[colLetraParaIdx(m.parcela)] ?? '';
           nomeCompleto      = String(row[colLetraParaIdx(m.nome_completo)] ?? '').trim();
+
+          // Campos extras disponíveis no layout de comissão
+          const percentualComissaoRaw = String(row[colLetraParaIdx(m.percentual_comissao)] ?? '').trim();
+          const numeroAde = String(row[colLetraParaIdx(m.numero_ade)] ?? '').trim();
+          const banco = String(row[colLetraParaIdx(m.banco)] ?? '').trim();
+          const convenio = String(row[colLetraParaIdx(m.convenio)] ?? '').trim();
+          const tipoConsignado = String(row[colLetraParaIdx(m.tipo_consignado)] ?? '').trim();
+          const vendedor = String(row[colLetraParaIdx(m.vendedor)] ?? '').trim();
+
+          const pct = parseFloat(String(percentualComissaoRaw).replace(',', '.')) || null;
+          // adiciona campos extras ao item
+          items.push({ data_recebimento, contrato: (contratoRaw === '-' ? '' : contratoRaw), grupo: grupoRaw, cota: cotaRaw, valor: parseValor(valorRaw), parcela: parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1, cpf: cpfRaw, nome_completo: nomeCompleto, percentual_comissao: pct, numero_ade: numeroAde, banco, convenio, tipo_consignado: tipoConsignado, vendedor });
+          continue;
         } else {
           // Layout padrão: A=Data, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela
           data_recebimento = parseData(row[0] ?? '');
