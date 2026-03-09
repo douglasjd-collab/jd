@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
       };
 
       const rows = lines.map(l => parseLine(l));
-      processarLinhas(rows, 1); // linha 0 = cabeçalho
+      processarLinhas(rows, layoutMapeamento ? layoutLinhaInicio - 1 : 1);
     }
 
     return Response.json({
