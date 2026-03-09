@@ -308,9 +308,8 @@ export default function ImportacaoComissaoEmprestimo() {
         atualizacoesPorVenda[rec.venda_id] += rec.valor_recebido;
       }
       for (const [vendaId, valorAcumulado] of Object.entries(atualizacoesPorVenda)) {
-        const propostasMatch = await base44.entities.Proposta.filter({ id: vendaId });
-        if (propostasMatch.length > 0) {
-          const p = propostasMatch[0];
+        const p = await base44.entities.Proposta.get(vendaId);
+        if (p) {
           await base44.entities.Proposta.update(vendaId, {
             comissao_banco_recebida: true,
             valor_comissao: valorAcumulado,
@@ -453,9 +452,8 @@ export default function ImportacaoComissaoEmprestimo() {
           atualizacoesPorVenda[rec.venda_id] += rec.valor_recebido;
         }
         for (const [vendaId, valorAcumulado] of Object.entries(atualizacoesPorVenda)) {
-          const propostasMatch = await base44.entities.Proposta.filter({ id: vendaId });
-          if (propostasMatch.length > 0) {
-            const p = propostasMatch[0];
+          const p = await base44.entities.Proposta.get(vendaId);
+          if (p) {
             await base44.entities.Proposta.update(vendaId, {
               comissao_banco_recebida: true,
               valor_comissao: valorAcumulado,
