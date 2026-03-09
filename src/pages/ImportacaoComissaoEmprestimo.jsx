@@ -532,10 +532,14 @@ export default function ImportacaoComissaoEmprestimo() {
       }
 
       for (const [vendaId, valorDesconto] of Object.entries(descontoPorVenda)) {
-        const propostas = await base44.entities.Proposta.filter({ id: vendaId });
-        if (propostas.length > 0) {
-          const novoTotal = Math.max(0, (propostas[0].comissao_recebida || 0) - valorDesconto);
-          await base44.entities.Proposta.update(vendaId, { comissao_recebida: novoTotal });
+        const p = await base44.entities.Proposta.get(vendaId);
+        if (p) {
+          const novoTotal = Math.max(0, (p.comissao_recebida || 0) - valorDesconto);
+          const recRestantes = await base44.entities.RecebimentoComissao.filter({ venda_id: vendaId });
+          await base44.entities.Proposta.update(vendaId, {
+            comissao_recebida: novoTotal,
+            comissao_banco_recebida: recRestantes.length > 0,
+          });
         }
       }
 
