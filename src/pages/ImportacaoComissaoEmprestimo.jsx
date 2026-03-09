@@ -300,6 +300,24 @@ export default function ImportacaoComissaoEmprestimo() {
 
     if (recebimentosParaCriar.length > 0) {
       await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
+
+      // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida
+      const atualizacoesPorVenda = {};
+      for (const rec of recebimentosParaCriar) {
+        if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = 0;
+        atualizacoesPorVenda[rec.venda_id] += rec.valor_recebido;
+      }
+      for (const [vendaId, valorAcumulado] of Object.entries(atualizacoesPorVenda)) {
+        const propostasMatch = await base44.entities.Proposta.filter({ id: vendaId });
+        if (propostasMatch.length > 0) {
+          const p = propostasMatch[0];
+          await base44.entities.Proposta.update(vendaId, {
+            comissao_banco_recebida: true,
+            valor_comissao: valorAcumulado,
+            comissao_recebida: (p.comissao_recebida || 0) + valorAcumulado,
+          });
+        }
+      }
     }
 
     await base44.entities.Importacao.update(importacao.id, {
@@ -427,6 +445,24 @@ export default function ImportacaoComissaoEmprestimo() {
 
       if (recebimentosParaCriar.length > 0) {
         await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
+
+        // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida
+        const atualizacoesPorVenda = {};
+        for (const rec of recebimentosParaCriar) {
+          if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = 0;
+          atualizacoesPorVenda[rec.venda_id] += rec.valor_recebido;
+        }
+        for (const [vendaId, valorAcumulado] of Object.entries(atualizacoesPorVenda)) {
+          const propostasMatch = await base44.entities.Proposta.filter({ id: vendaId });
+          if (propostasMatch.length > 0) {
+            const p = propostasMatch[0];
+            await base44.entities.Proposta.update(vendaId, {
+              comissao_banco_recebida: true,
+              valor_comissao: valorAcumulado,
+              comissao_recebida: (p.comissao_recebida || 0) + valorAcumulado,
+            });
+          }
+        }
       }
 
       await base44.entities.Importacao.update(importacao.id, {
