@@ -613,6 +613,7 @@ export default function ImportacaoComissaoEmprestimo() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
+                      <TableHead>Nome</TableHead>
                       <TableHead>Contrato</TableHead>
                       <TableHead>CPF</TableHead>
                       <TableHead>Valor</TableHead>
@@ -622,6 +623,7 @@ export default function ImportacaoComissaoEmprestimo() {
                     {previewData.items.slice(0, 10).map((item, i) => (
                       <TableRow key={i}>
                         <TableCell>{item.data_recebimento || '-'}</TableCell>
+                        <TableCell className="max-w-[160px] truncate">{item.nome_completo || '-'}</TableCell>
                         <TableCell>{item.contrato || '-'}</TableCell>
                         <TableCell>{item.cpf || '-'}</TableCell>
                         <TableCell>{formatCurrency(item.valor)}</TableCell>

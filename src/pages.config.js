@@ -74,6 +74,7 @@ import HistoricoImportacao from './pages/HistoricoImportacao';
 import HistoricoResultadoAssembleia from './pages/HistoricoResultadoAssembleia';
 import Importacao from './pages/Importacao';
 import ImportacaoComissao from './pages/ImportacaoComissao';
+import ImportacaoComissaoEmprestimo from './pages/ImportacaoComissaoEmprestimo';
 import ImportacaoDetalhes from './pages/ImportacaoDetalhes';
 import ImportacaoPlanos from './pages/ImportacaoPlanos';
 import ImportacaoProducao from './pages/ImportacaoProducao';
@@ -121,7 +122,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import ImportacaoComissaoEmprestimo from './pages/ImportacaoComissaoEmprestimo';
 import __Layout from './Layout.jsx';
 
 
@@ -153,6 +153,7 @@ export const PAGES = {
     "HistoricoResultadoAssembleia": HistoricoResultadoAssembleia,
     "Importacao": Importacao,
     "ImportacaoComissao": ImportacaoComissao,
+    "ImportacaoComissaoEmprestimo": ImportacaoComissaoEmprestimo,
     "ImportacaoDetalhes": ImportacaoDetalhes,
     "ImportacaoPlanos": ImportacaoPlanos,
     "ImportacaoProducao": ImportacaoProducao,
@@ -200,7 +201,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "ImportacaoComissaoEmprestimo": ImportacaoComissaoEmprestimo,
 }
 
 export const pagesConfig = {
