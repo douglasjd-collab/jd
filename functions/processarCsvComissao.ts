@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
         const valor   = parseValor(valorRaw);
         const parcela = parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1;
 
-        items.push({ data_recebimento, contrato, grupo: grupoRaw, cota: cotaRaw, valor, parcela, cpf: cpfRaw });
+        items.push({ data_recebimento, contrato, grupo: grupoRaw, cota: cotaRaw, valor, parcela, cpf: cpfRaw, nome_completo: nomeCompleto });
       }
     };
 
