@@ -210,7 +210,8 @@ Deno.serve(async (req) => {
           nomeCompleto      = String(row[colLetraParaIdx(m.nome_completo)] ?? '').trim();
 
           // Campos extras disponíveis no layout de comissão
-          const percentualComissaoRaw = String(row[colLetraParaIdx(m.percentual_comissao)] ?? '').trim();
+          const pctCol = m.percentual_comissao || m.comissao_empresa;
+          const percentualComissaoRaw = String(row[colLetraParaIdx(pctCol)] ?? '').trim();
           const numeroAde = String(row[colLetraParaIdx(m.numero_ade)] ?? '').trim();
           const banco = String(row[colLetraParaIdx(m.banco)] ?? '').trim();
           const convenio = String(row[colLetraParaIdx(m.convenio)] ?? '').trim();
