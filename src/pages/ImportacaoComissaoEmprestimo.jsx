@@ -85,10 +85,10 @@ export default function ImportacaoComissaoEmprestimo() {
   const { data: layouts = [] } = useQuery({
     queryKey: ['layouts-emprestimo', selectedEmpresaParceira],
     enabled: !!selectedEmpresaParceira,
-    queryFn: async () => {
-      const allLayouts = await base44.entities.LayoutImportacao.filter({ tipo: 'comissao' });
-      return allLayouts.filter(l => l.empresa_parceira_id === selectedEmpresaParceira);
-    },
+    queryFn: () => base44.entities.LayoutImportacao.filter({
+      empresa_parceira_id: selectedEmpresaParceira,
+      tipo: 'comissao'
+    }),
   });
 
   const { data: importacoes = [] } = useQuery({
