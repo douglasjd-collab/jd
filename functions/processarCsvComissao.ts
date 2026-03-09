@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       // sheet_to_json com header: 1 retorna array de arrays — nunca perde linhas
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
       console.log(`Excel: ${rows.length} linhas brutas na aba "${sheetName}"`);
-      processarLinhas(rows, 1); // linha 0 = cabeçalho
+      processarLinhas(rows, layoutMapeamento ? layoutLinhaInicio - 1 : 1);
 
     } else {
       // ── Ler CSV — tenta UTF-8 primeiro, fallback ISO-8859-1 ──────────────
