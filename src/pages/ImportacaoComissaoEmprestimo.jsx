@@ -256,16 +256,18 @@ export default function ImportacaoComissaoEmprestimo() {
 
       if (propostaEncontrada && !motivoDivergencia) {
         const hashDuplicidade = `${propostaEncontrada.id}_${dataRecebimento}_${valorRecebido}`;
-        
+
         // Verificar duplicidade
         const recExistentes = await base44.entities.RecebimentoComissao.filter({
           hash_duplicidade: hashDuplicidade
         });
-        
+
         if (recExistentes.length > 0) {
           motivoDivergencia = 'Recebimento duplicado';
           propostaEncontrada = null;
         } else {
+          const pctComissao = item.percentual_comissao || 100;
+          const valorAPagar = (valorRecebido * pctComissao) / 100;
           recebimentosParaCriar.push({
             empresa_id: propostaEncontrada.empresa_id,
             venda_id: propostaEncontrada.id,
@@ -281,8 +283,8 @@ export default function ImportacaoComissaoEmprestimo() {
             origem_importacao_id: importacao.id,
             linha_importacao: items.indexOf(item) + 1,
             hash_duplicidade: hashDuplicidade,
-            percentual_comissao: 100,
-            valor_a_pagar: valorRecebido,
+            percentual_comissao: pctComissao,
+            valor_a_pagar: valorAPagar,
             status_recebimento: 'recebida',
             status_pagamento: 'a_pagar'
           });
