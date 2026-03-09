@@ -525,7 +525,7 @@ export default function ImportacaoComissaoEmprestimo() {
 
           <div>
             <Label>Empresa Parceira *</Label>
-            <Select value={selectedEmpresaParceira} onValueChange={setSelectedEmpresaParceira}>
+            <Select value={selectedEmpresaParceira} onValueChange={(v) => { setSelectedEmpresaParceira(v); setSelectedLayout(''); }}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a empresa parceira" />
               </SelectTrigger>
