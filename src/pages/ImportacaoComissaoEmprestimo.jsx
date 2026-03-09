@@ -299,21 +299,41 @@ export default function ImportacaoComissaoEmprestimo() {
     }
 
     if (recebimentosParaCriar.length > 0) {
-      await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
+      const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
+
+      // Criar ComissaoAPagar para cada recebimento
+      const comissoesAPagar = recebimentosCriados.map(rec => ({
+        empresa_id: rec.empresa_id,
+        recebimento_id: rec.id,
+        venda_id: rec.venda_id,
+        cliente_id: rec.cliente_id,
+        cliente_nome: rec.cliente_nome,
+        vendedor_id: rec.vendedor_id,
+        vendedor_nome: rec.vendedor_nome,
+        administradora_id: rec.administradora_id,
+        administradora_nome: rec.administradora_nome,
+        contrato: rec.contrato,
+        data_recebimento: rec.data_recebimento,
+        valor_recebido: rec.valor_recebido,
+        percentual_comissao: rec.percentual_comissao,
+        valor_a_pagar: rec.valor_a_pagar,
+        status_pagamento: 'a_pagar',
+      }));
+      await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
       // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida
       const atualizacoesPorVenda = {};
-      for (const rec of recebimentosParaCriar) {
-        if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = 0;
-        atualizacoesPorVenda[rec.venda_id] += rec.valor_recebido;
+      for (const rec of recebimentosCriados) {
+        if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+        atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
       }
-      for (const [vendaId, valorAcumulado] of Object.entries(atualizacoesPorVenda)) {
+      for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
         const p = await base44.entities.Proposta.get(vendaId);
         if (p) {
           await base44.entities.Proposta.update(vendaId, {
             comissao_banco_recebida: true,
-            valor_comissao: valorAcumulado,
-            comissao_recebida: (p.comissao_recebida || 0) + valorAcumulado,
+            valor_comissao: info.valor,
+            comissao_recebida: (p.comissao_recebida || 0) + info.valor,
           });
         }
       }
@@ -443,21 +463,41 @@ export default function ImportacaoComissaoEmprestimo() {
       }
 
       if (recebimentosParaCriar.length > 0) {
-        await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
+        const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
+
+        // Criar ComissaoAPagar para cada recebimento
+        const comissoesAPagar = recebimentosCriados.map(rec => ({
+          empresa_id: rec.empresa_id,
+          recebimento_id: rec.id,
+          venda_id: rec.venda_id,
+          cliente_id: rec.cliente_id,
+          cliente_nome: rec.cliente_nome,
+          vendedor_id: rec.vendedor_id,
+          vendedor_nome: rec.vendedor_nome,
+          administradora_id: rec.administradora_id,
+          administradora_nome: rec.administradora_nome,
+          contrato: rec.contrato,
+          data_recebimento: rec.data_recebimento,
+          valor_recebido: rec.valor_recebido,
+          percentual_comissao: rec.percentual_comissao,
+          valor_a_pagar: rec.valor_a_pagar,
+          status_pagamento: 'a_pagar',
+        }));
+        await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
         // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida
         const atualizacoesPorVenda = {};
-        for (const rec of recebimentosParaCriar) {
-          if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = 0;
-          atualizacoesPorVenda[rec.venda_id] += rec.valor_recebido;
+        for (const rec of recebimentosCriados) {
+          if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+          atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
         }
-        for (const [vendaId, valorAcumulado] of Object.entries(atualizacoesPorVenda)) {
+        for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
           const p = await base44.entities.Proposta.get(vendaId);
           if (p) {
             await base44.entities.Proposta.update(vendaId, {
               comissao_banco_recebida: true,
-              valor_comissao: valorAcumulado,
-              comissao_recebida: (p.comissao_recebida || 0) + valorAcumulado,
+              valor_comissao: info.valor,
+              comissao_recebida: (p.comissao_recebida || 0) + info.valor,
             });
           }
         }
