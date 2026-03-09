@@ -192,13 +192,13 @@ Deno.serve(async (req) => {
 
         let data_recebimento, contratoRaw, grupoRaw, cotaRaw, valorRaw, parcelaRaw, cpfRaw;
 
+        let nomeCompleto = '';
         if (layoutMapeamento) {
           // Usar mapeamento do layout (campo -> coluna)
           // Suporta chaves de layout de comissão (data_pagamento, valor_comissao, contrato)
-          // e também layout genérico (data_recebimento, valor, grupo, cota)
           const m = layoutMapeamento;
-          const dataCol   = m.data_recebimento || m.data_pagamento || m.data_liberacao;
-          const valorCol  = m.valor || m.valor_comissao || m.comissao_empresa;
+          const dataCol     = m.data_recebimento || m.data_pagamento || m.data_liberacao;
+          const valorCol    = m.valor || m.valor_comissao || m.comissao_empresa;
           const contratoCol = m.contrato || m.numero_contrato;
           data_recebimento  = parseData(row[colLetraParaIdx(dataCol)] ?? '');
           contratoRaw       = String(row[colLetraParaIdx(contratoCol)] ?? '').trim();
@@ -207,6 +207,7 @@ Deno.serve(async (req) => {
           cotaRaw           = String(row[colLetraParaIdx(m.cota)] ?? '').trim();
           valorRaw          = row[colLetraParaIdx(valorCol)] ?? '';
           parcelaRaw        = row[colLetraParaIdx(m.parcela)] ?? '';
+          nomeCompleto      = String(row[colLetraParaIdx(m.nome_completo)] ?? '').trim();
         } else {
           // Layout padrão: A=Data, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela
           data_recebimento = parseData(row[0] ?? '');
