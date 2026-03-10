@@ -609,6 +609,16 @@ export default function VendasEmprestimos() {
                       )}
                       </div>
                     </div>
+                    <div className="flex items-center gap-1">
+                      {p.comissao_vendedor_paga && (
+                        <button
+                          title="Comissão paga ao vendedor — Ver relatório"
+                          onClick={() => navigate(createPageUrl('ComissoesEmprestimos'))}
+                          className="h-8 w-8 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                        >
+                          <DollarSign className="w-4 h-4" />
+                        </button>
+                      )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
