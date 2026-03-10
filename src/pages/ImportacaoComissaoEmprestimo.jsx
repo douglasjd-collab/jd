@@ -450,6 +450,29 @@ export default function ImportacaoComissaoEmprestimo() {
         }
       }
 
+      // Criar ImportacaoItem para todos os registros (processados + divergências)
+      const itensParaCriar = previewData.items.map((item, idx) => {
+        const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
+        const rec = recebimentosParaCriar[idx];
+        return {
+          importacao_id: importacao.id,
+          linha: idx + 1,
+          cpf: item.cpf || '',
+          contrato: contratoRaw,
+          grupo: '',
+          cota: '',
+          parcela: 0,
+          valor_recebido: parseFloat(item.valor) || 0,
+          venda_id: rec?.venda_id || undefined,
+          status: rec ? 'processado' : 'divergencia',
+          motivo_divergencia: rec ? null : (item._motivoDivergencia || 'Não processado'),
+        };
+      });
+
+      if (itensParaCriar.length > 0) {
+        await base44.entities.ImportacaoItem.bulkCreate(itensParaCriar);
+      }
+
       if (recebimentosParaCriar.length > 0) {
         const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
 
