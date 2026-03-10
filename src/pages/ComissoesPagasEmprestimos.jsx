@@ -96,10 +96,7 @@ export default function ComissoesPagasEmprestimos() {
     .map(p => moment(p.comissao_vendedor_data_pagamento).format('YYYY-MM'))
   )].sort().reverse();
 
-  const totalGeral = filtradas.reduce((acc, p) => {
-    const perc = p.percentual_comissao_vendedor || 0;
-    return acc + (p.valor_comissao_vendedor_pago || (p.valor_credito || 0) * (perc / 100));
-  }, 0);
+  const totalGeral = filtradas.reduce((acc, p) => acc + getValPago(p), 0);
 
   const toggleGrupo = (key) => setExpandedGrupos(prev => ({ ...prev, [key]: !prev[key] }));
 
