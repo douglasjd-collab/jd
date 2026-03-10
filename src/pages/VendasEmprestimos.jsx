@@ -190,6 +190,13 @@ export default function VendasEmprestimos() {
     const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
     // Buscar todas as propostas do mesmo vendedor pagas na mesma data
+    const getPercVendedor = (x) => {
+      if (x.percentual_comissao_vendedor) return x.percentual_comissao_vendedor;
+      if (x.valor_comissao && x.valor_credito) return (x.valor_comissao / x.valor_credito) * 100;
+      return 0;
+    };
+    const getValPago = (x) => x.valor_comissao_vendedor_pago || (x.valor_credito || 0) * (getPercVendedor(x) / 100);
+
     let todasPropostas = propostas.filter(x =>
       x.comissao_vendedor_paga &&
       x.vendedor_id === p.vendedor_id &&
@@ -197,10 +204,7 @@ export default function VendasEmprestimos() {
     );
     if (todasPropostas.length === 0) todasPropostas = [p];
 
-    const totalPago = todasPropostas.reduce((acc, x) => {
-      const val = x.valor_comissao_vendedor_pago || (x.valor_credito || 0) * ((x.percentual_comissao_vendedor || 0) / 100);
-      return acc + val;
-    }, 0);
+    const totalPago = todasPropostas.reduce((acc, x) => acc + getValPago(x), 0);
 
     const doc = new jsPDF({ orientation: 'landscape' });
 
