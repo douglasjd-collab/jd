@@ -162,8 +162,14 @@ export default function VendasEmprestimos() {
   };
 
   const getStatusConfig = (proposta) => {
-    if (proposta.status_id) return statusList.find(s => s.id === proposta.status_id);
-    return statusList.find(s => s.codigo === proposta.status || normStr(s.nome) === normStr(proposta.status));
+    let status = proposta.status_id
+      ? statusList.find(s => s.id === proposta.status_id)
+      : statusList.find(s => s.codigo === proposta.status || normStr(s.nome) === normStr(proposta.status));
+    // Se for substatus, retorna o status pai
+    if (status?.status_pai_id) {
+      return statusList.find(s => s.id === status.status_pai_id) || status;
+    }
+    return status;
   };
 
   const deleteMutation = useMutation({
