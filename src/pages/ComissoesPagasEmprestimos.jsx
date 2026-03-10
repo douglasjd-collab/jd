@@ -128,8 +128,8 @@ export default function ComissoesPagasEmprestimos() {
       startY: 54,
       head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. Pago']],
       body: grupo.propostas.map(p => {
-        const perc = p.percentual_comissao_vendedor || 0;
-        const valPago = p.valor_comissao_vendedor_pago || (p.valor_credito || 0) * (perc / 100);
+        const perc = getPercVendedor(p);
+        const valPago = getValPago(p);
         return [
           p.cliente_nome || '-',
           p.contrato || '-',
