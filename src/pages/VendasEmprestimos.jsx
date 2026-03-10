@@ -190,12 +190,14 @@ export default function VendasEmprestimos() {
     const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
     // Buscar todas as propostas do mesmo vendedor pagas na mesma data
+    const getValPago = (x) => x.valor_comissao_vendedor_pago || 0;
     const getPercVendedor = (x) => {
       if (x.percentual_comissao_vendedor) return x.percentual_comissao_vendedor;
+      // Derivar % do valor efetivamente pago
+      if (x.valor_comissao_vendedor_pago && x.valor_credito) return (x.valor_comissao_vendedor_pago / x.valor_credito) * 100;
       if (x.valor_comissao && x.valor_credito) return (x.valor_comissao / x.valor_credito) * 100;
       return 0;
     };
-    const getValPago = (x) => x.valor_comissao_vendedor_pago || (x.valor_credito || 0) * (getPercVendedor(x) / 100);
 
     let todasPropostas = propostas.filter(x =>
       x.comissao_vendedor_paga &&
