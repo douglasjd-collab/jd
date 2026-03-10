@@ -209,10 +209,7 @@ export default function ComissoesPagasEmprestimos() {
       ) : (
         <div className="space-y-4">
           {gruposList.map(grupo => {
-            const totalGrupo = grupo.propostas.reduce((acc, p) => {
-              const perc = p.percentual_comissao_vendedor || 0;
-              return acc + (p.valor_comissao_vendedor_pago || (p.valor_credito || 0) * (perc / 100));
-            }, 0);
+            const totalGrupo = grupo.propostas.reduce((acc, p) => acc + getValPago(p), 0);
             const isExp = expandedGrupos[grupo.key];
 
             return (
