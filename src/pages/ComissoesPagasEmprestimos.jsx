@@ -16,6 +16,14 @@ moment.locale('pt-br');
 
 const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const getValPago = (p) => p.valor_comissao_vendedor_pago || 0;
+const getPercVendedor = (p) => {
+  if (p.percentual_comissao_vendedor) return p.percentual_comissao_vendedor;
+  if (p.valor_comissao_vendedor_pago && p.valor_credito) return (p.valor_comissao_vendedor_pago / p.valor_credito) * 100;
+  if (p.valor_comissao && p.valor_credito) return (p.valor_comissao / p.valor_credito) * 100;
+  return 0;
+};
+
 export default function ComissoesPagasEmprestimos() {
   const [user, setUser] = useState(null);
   const [filtroVendedor, setFiltroVendedor] = useState('');
