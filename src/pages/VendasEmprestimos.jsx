@@ -666,8 +666,8 @@ export default function VendasEmprestimos() {
                     <div className="flex items-center gap-1">
                       {p.comissao_vendedor_paga && (
                         <button
-                          title="Comissão paga ao vendedor — Ver relatório"
-                          onClick={() => navigate(createPageUrl('ComissoesEmprestimos'))}
+                          title="Comissão paga — Gerar 2ª via do comprovante"
+                          onClick={(e) => { e.stopPropagation(); gerarSegundaViaComissao(p); }}
                           className="h-8 w-8 flex items-center justify-center rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
                         >
                           <DollarSign className="w-4 h-4" />
