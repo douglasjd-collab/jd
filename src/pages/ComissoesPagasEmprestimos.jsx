@@ -261,8 +261,8 @@ export default function ComissoesPagasEmprestimos() {
                       </thead>
                       <tbody>
                         {grupo.propostas.map(p => {
-                          const perc = p.percentual_comissao_vendedor || 0;
-                          const valPago = p.valor_comissao_vendedor_pago || (p.valor_credito || 0) * (perc / 100);
+                          const perc = getPercVendedor(p);
+                          const valPago = getValPago(p);
                           return (
                             <tr key={p.id} className="border-b hover:bg-slate-50">
                               <td className="p-3 font-medium text-slate-900">{p.cliente_nome || '-'}</td>
