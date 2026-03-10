@@ -256,7 +256,7 @@ export default function ComissoesEmprestimos() {
     });
 
     const ph = doc.internal.pageSize.height;
-    doc.setFontSize(7); doc.setTextColor(150);
+    doc.setFontSize(7); doc.setTextColor(0, 0, 255);
     doc.text(`Gerado por ${user?.full_name || 'Sistema'} em ${moment().format('DD/MM/YYYY HH:mm')}`, 148, ph - 5, { align: 'center' });
     doc.save(`comissao_emp_${vendedorInfo?.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${moment(dataPagamento).format('YYYYMMDD')}.pdf`);
   };
