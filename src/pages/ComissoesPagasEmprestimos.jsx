@@ -102,10 +102,7 @@ export default function ComissoesPagasEmprestimos() {
 
   const gerarPDF = (grupo) => {
     const doc = new jsPDF({ orientation: 'landscape' });
-    const totalPago = grupo.propostas.reduce((acc, p) => {
-      const perc = p.percentual_comissao_vendedor || 0;
-      return acc + (p.valor_comissao_vendedor_pago || (p.valor_credito || 0) * (perc / 100));
-    }, 0);
+    const totalPago = grupo.propostas.reduce((acc, p) => acc + getValPago(p), 0);
 
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, 297, 22, 'F');
