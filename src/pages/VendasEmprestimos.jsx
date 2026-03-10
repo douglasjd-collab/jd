@@ -186,11 +186,23 @@ export default function VendasEmprestimos() {
     onError: () => toast.error('Erro ao excluir proposta'),
   });
 
-  const gerarSegundaViaComissao = (p) => {
-    const doc = new jsPDF({ orientation: 'landscape' });
+  const gerarSegundaViaComissao = async (p) => {
     const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-    const perc = p.percentual_comissao_vendedor || 0;
-    const valPago = p.valor_comissao_vendedor_pago || (p.valor_credito || 0) * (perc / 100);
+
+    // Buscar todas as propostas do mesmo vendedor pagas na mesma data
+    let todasPropostas = propostas.filter(x =>
+      x.comissao_vendedor_paga &&
+      x.vendedor_id === p.vendedor_id &&
+      x.comissao_vendedor_data_pagamento === p.comissao_vendedor_data_pagamento
+    );
+    if (todasPropostas.length === 0) todasPropostas = [p];
+
+    const totalPago = todasPropostas.reduce((acc, x) => {
+      const val = x.valor_comissao_vendedor_pago || (x.valor_credito || 0) * ((x.percentual_comissao_vendedor || 0) / 100);
+      return acc + val;
+    }, 0);
+
+    const doc = new jsPDF({ orientation: 'landscape' });
 
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, 297, 22, 'F');
@@ -205,25 +217,30 @@ export default function VendasEmprestimos() {
     doc.roundedRect(10, 26, 277, 22, 2, 2, 'F');
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
     doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
-    doc.text('Forma Pagamento:', 160, 33);
+    doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
     doc.setFont('helvetica', 'normal');
     doc.text(p.vendedor_nome || '-', 14, 39);
     doc.text(p.comissao_vendedor_data_pagamento ? moment(p.comissao_vendedor_data_pagamento).format('DD/MM/YYYY') : '-', 90, 39);
     doc.text(p.comissao_vendedor_forma_pagamento || '-', 160, 39);
+    doc.text(String(todasPropostas.length), 230, 39);
 
     doc.autoTable({
       startY: 54,
       head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. Pago']],
-      body: [[
-        p.cliente_nome || '-',
-        p.contrato || '-',
-        p.administradora_nome || '-',
-        p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
-        fmt(p.valor_credito),
-        `${perc.toFixed(2)}%`,
-        fmt(valPago),
-      ]],
-      foot: [['', '', '', '', '', 'Total:', fmt(valPago)]],
+      body: todasPropostas.map(x => {
+        const perc = x.percentual_comissao_vendedor || 0;
+        const valPago = x.valor_comissao_vendedor_pago || (x.valor_credito || 0) * (perc / 100);
+        return [
+          x.cliente_nome || '-',
+          x.contrato || '-',
+          x.administradora_nome || '-',
+          x.emprestimo_data_liberacao ? moment(x.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
+          fmt(x.valor_credito),
+          `${perc.toFixed(2)}%`,
+          fmt(valPago),
+        ];
+      }),
+      foot: [['', '', '', '', '', 'Total:', fmt(totalPago)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
@@ -234,7 +251,7 @@ export default function VendasEmprestimos() {
     const ph = doc.internal.pageSize.height;
     doc.setFontSize(7); doc.setTextColor(0, 0, 255);
     doc.text(`2ª Via gerada em ${moment().format('DD/MM/YYYY HH:mm')}`, 148, ph - 5, { align: 'center' });
-    doc.save(`2via_comissao_${(p.cliente_nome || 'cliente').replace(/\s+/g, '_')}_${moment(p.comissao_vendedor_data_pagamento || undefined).format('YYYYMMDD')}.pdf`);
+    doc.save(`2via_comissao_${(p.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${moment(p.comissao_vendedor_data_pagamento || undefined).format('YYYYMMDD')}.pdf`);
   };
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
