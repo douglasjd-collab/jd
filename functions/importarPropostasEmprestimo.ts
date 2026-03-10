@@ -190,14 +190,29 @@ Deno.serve(async (req) => {
       return null;
     };
 
+    // Busca o digitador pelo nome/código e retorna o VENDEDOR vinculado a ele.
+    // Se o digitador não tiver vendedor_vinculado_id → retorna null (proposta fica sem vendedor).
+    // Não atribui colaboradores com perfil "vendedor" diretamente via coluna digitador.
     const findVendedor = (nomeOuCod) => {
       if (!nomeOuCod) return null;
-      return vendedores.find(v =>
+
+      // 1. Localiza o colaborador (digitador) pelo nome, código ou usuário_banco
+      const digitador = vendedores.find(v =>
         normStr(v.nome).includes(normStr(nomeOuCod)) ||
         normStr(nomeOuCod).includes(normStr(v.nome)) ||
         v.codigo_vendedor === String(nomeOuCod).trim() ||
         (v.usuarios_banco || []).some(ub => normStr(ub.usuario) === normStr(nomeOuCod))
-      ) || null;
+      );
+
+      if (!digitador) return null;
+
+      // 2. Se o digitador tem vendedor vinculado → retorna esse vendedor
+      if (digitador.vendedor_vinculado_id) {
+        return vendedores.find(v => v.id === digitador.vendedor_vinculado_id) || null;
+      }
+
+      // 3. Sem vínculo com vendedor → proposta fica sem vendedor
+      return null;
     };
 
     const parseValor = (val) => {
