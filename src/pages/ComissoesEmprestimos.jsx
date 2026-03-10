@@ -250,7 +250,7 @@ export default function ComissoesEmprestimos() {
       foot: [['', '', '', '', '', 'Total:', fmt(totalPago)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
-      footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold' },
+      footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
     });
