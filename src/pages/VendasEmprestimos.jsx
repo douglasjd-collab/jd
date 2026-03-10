@@ -232,8 +232,8 @@ export default function VendasEmprestimos() {
       startY: 54,
       head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. Pago']],
       body: todasPropostas.map(x => {
-        const perc = x.percentual_comissao_vendedor || 0;
-        const valPago = x.valor_comissao_vendedor_pago || (x.valor_credito || 0) * (perc / 100);
+        const perc = getPercVendedor(x);
+        const valPago = getValPago(x);
         return [
           x.cliente_nome || '-',
           x.contrato || '-',
