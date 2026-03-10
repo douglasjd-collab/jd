@@ -636,7 +636,7 @@ export default function VendasEmprestimos() {
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
+                    </div>
 
                   {/* Tags row: Banco > Convênio > Tipo */}
                   <div className="flex items-center justify-between mt-3">
