@@ -381,7 +381,9 @@ export default function ImportacaoComissaoEmprestimo() {
       let valorTotal = 0;
       const recebimentosParaCriar = [];
 
-      for (const item of previewData.items) {
+      const itemMotivos = {}; // guarda motivo por index do item
+      for (let idx = 0; idx < previewData.items.length; idx++) {
+        const item = previewData.items[idx];
         const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
         const cpfRaw = String(item.cpf || '').trim();
         const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
@@ -420,8 +422,11 @@ export default function ImportacaoComissaoEmprestimo() {
           if (recExistentes.length > 0) {
             motivoDivergencia = 'Recebimento duplicado';
             propostaEncontrada = null;
+            itemMotivos[idx] = motivoDivergencia;
+            divergencias++;
           } else {
             recebimentosParaCriar.push({
+              _itemIdx: idx,
               empresa_id: propostaEncontrada.empresa_id,
               venda_id: propostaEncontrada.id,
               cliente_id: propostaEncontrada.cliente_id,
@@ -434,7 +439,7 @@ export default function ImportacaoComissaoEmprestimo() {
               data_recebimento: dataRecebimento,
               valor_recebido: valorRecebido,
               origem_importacao_id: importacao.id,
-              linha_importacao: previewData.items.indexOf(item) + 1,
+              linha_importacao: idx + 1,
               hash_duplicidade: hashDuplicidade,
               percentual_comissao: pctComissao,
               valor_a_pagar: valorRecebido,
@@ -446,6 +451,7 @@ export default function ImportacaoComissaoEmprestimo() {
             valorTotal += valorRecebido;
           }
         } else {
+          itemMotivos[idx] = motivoDivergencia;
           divergencias++;
         }
       }
