@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       didDrawPage: (data) => {
         // Rodapé em cada página
         doc.setFontSize(8);
-        doc.setTextColor(128);
+        doc.setTextColor(0, 0, 255);
         doc.text(
           'Pagina ' + data.pageNumber,
           data.settings.margin.left,

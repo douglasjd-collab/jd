@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     // Rodapé
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
+    doc.setTextColor(0, 0, 255);
     doc.text('Gerado em: ' + new Date().toLocaleString('pt-BR'), 14, finalY + 20);
 
     // Retornar PDF
