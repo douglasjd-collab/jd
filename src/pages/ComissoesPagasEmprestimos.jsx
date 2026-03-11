@@ -16,7 +16,13 @@ moment.locale('pt-br');
 
 const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const getValPago = (p) => p.valor_comissao_vendedor_pago || 0;
+// Fallback: valor_comissao_vendedor_pago -> valor_comissao (metade da empresa) -> 0
+const getValPago = (p) => {
+  if (p.valor_comissao_vendedor_pago) return p.valor_comissao_vendedor_pago;
+  if (p.percentual_comissao_vendedor && p.valor_credito) return (p.valor_credito * p.percentual_comissao_vendedor) / 100;
+  if (p.valor_comissao) return p.valor_comissao;
+  return 0;
+};
 const getPercVendedor = (p) => {
   if (p.percentual_comissao_vendedor) return p.percentual_comissao_vendedor;
   if (p.valor_comissao_vendedor_pago && p.valor_credito) return (p.valor_comissao_vendedor_pago / p.valor_credito) * 100;

@@ -59,6 +59,7 @@ import Comissoes from './pages/Comissoes';
 import ComissoesEmprestimos from './pages/ComissoesEmprestimos';
 import ComissoesPagar from './pages/ComissoesPagar';
 import ComissoesPagas from './pages/ComissoesPagas';
+import ComissoesPagasEmprestimos from './pages/ComissoesPagasEmprestimos';
 import ComissoesRecebidas from './pages/ComissoesRecebidas';
 import ConfiguracaoFunil from './pages/ConfiguracaoFunil';
 import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
@@ -123,7 +124,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import ComissoesPagasEmprestimos from './pages/ComissoesPagasEmprestimos';
 import __Layout from './Layout.jsx';
 
 
@@ -140,6 +140,7 @@ export const PAGES = {
     "ComissoesEmprestimos": ComissoesEmprestimos,
     "ComissoesPagar": ComissoesPagar,
     "ComissoesPagas": ComissoesPagas,
+    "ComissoesPagasEmprestimos": ComissoesPagasEmprestimos,
     "ComissoesRecebidas": ComissoesRecebidas,
     "ConfiguracaoFunil": ConfiguracaoFunil,
     "ConfiguracaoWhatsApp": ConfiguracaoWhatsApp,
@@ -204,7 +205,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "ComissoesPagasEmprestimos": ComissoesPagasEmprestimos,
 }
 
 export const pagesConfig = {
