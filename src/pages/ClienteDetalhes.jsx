@@ -62,6 +62,12 @@ export default function ClienteDetalhes() {
     }).format(value || 0);
   };
 
+  const produtoBadge = (produto) => {
+    const map = { consorcio: 'Consórcio', emprestimo: 'Empréstimo', financiamento: 'Financiamento' };
+    const colors = { consorcio: 'bg-blue-100 text-blue-800', emprestimo: 'bg-purple-100 text-purple-800', financiamento: 'bg-orange-100 text-orange-800' };
+    return <Badge className={colors[produto] || 'bg-slate-100 text-slate-800'}>{map[produto] || produto}</Badge>;
+  };
+
   if (loadingCliente || !cliente) {
     return (
       <div className="flex items-center justify-center h-64">
