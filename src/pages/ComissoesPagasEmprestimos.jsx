@@ -376,7 +376,7 @@ export default function ComissoesPagasEmprestimos() {
                           </tbody>
                           <tfoot className="bg-slate-50 border-t">
                             <tr>
-                              <td colSpan={8} className="p-3 text-right font-bold text-slate-700">Total:</td>
+                              <td colSpan={9} className="p-3 text-right font-bold text-slate-700">Total:</td>
                               <td className="p-3 text-right font-bold text-blue-700">{fmt(lote.valor_total)}</td>
                             </tr>
                           </tfoot>
