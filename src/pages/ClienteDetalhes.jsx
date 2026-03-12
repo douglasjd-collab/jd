@@ -265,13 +265,13 @@ export default function ClienteDetalhes() {
           {/* Histórico de Vendas */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle>Histórico de Vendas</CardTitle>
+              <CardTitle>Histórico de Vendas ({todasVendas.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <DataTable
-                columns={columns}
-                data={vendas}
-                isLoading={loadingVendas}
+                columns={vendasColumns}
+                data={todasVendas}
+                isLoading={loadingVendas || loadingPropostas}
                 emptyMessage="Nenhuma venda encontrada"
               />
             </CardContent>
