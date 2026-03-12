@@ -62,6 +62,7 @@ import ComissoesPagas from './pages/ComissoesPagas';
 import ComissoesPagasEmprestimos from './pages/ComissoesPagasEmprestimos';
 import ComissoesRecebidas from './pages/ComissoesRecebidas';
 import ConfiguracaoFunil from './pages/ConfiguracaoFunil';
+import ConfiguracaoTarefas from './pages/ConfiguracaoTarefas';
 import ConfiguracaoWhatsApp from './pages/ConfiguracaoWhatsApp';
 import Configuracoes from './pages/Configuracoes';
 import Convenios from './pages/Convenios';
@@ -115,6 +116,7 @@ import TabelasComissaoEmprestimo from './pages/TabelasComissaoEmprestimo';
 import TabelasComissaoVendedor from './pages/TabelasComissaoVendedor';
 import TabelasConsorcio from './pages/TabelasConsorcio';
 import TabelasEmprestimo from './pages/TabelasEmprestimo';
+import Tarefas from './pages/Tarefas';
 import TesteWhatsApp from './pages/TesteWhatsApp';
 import TiposEmprestimo from './pages/TiposEmprestimo';
 import Transacoes from './pages/Transacoes';
@@ -124,8 +126,6 @@ import VendaEmprestimoDetalhes from './pages/VendaEmprestimoDetalhes';
 import Vendas from './pages/Vendas';
 import VendasEmprestimos from './pages/VendasEmprestimos';
 import VendasFinanciamento from './pages/VendasFinanciamento';
-import Tarefas from './pages/Tarefas';
-import ConfiguracaoTarefas from './pages/ConfiguracaoTarefas';
 import __Layout from './Layout.jsx';
 
 
@@ -145,6 +145,7 @@ export const PAGES = {
     "ComissoesPagasEmprestimos": ComissoesPagasEmprestimos,
     "ComissoesRecebidas": ComissoesRecebidas,
     "ConfiguracaoFunil": ConfiguracaoFunil,
+    "ConfiguracaoTarefas": ConfiguracaoTarefas,
     "ConfiguracaoWhatsApp": ConfiguracaoWhatsApp,
     "Configuracoes": Configuracoes,
     "Convenios": Convenios,
@@ -198,6 +199,7 @@ export const PAGES = {
     "TabelasComissaoVendedor": TabelasComissaoVendedor,
     "TabelasConsorcio": TabelasConsorcio,
     "TabelasEmprestimo": TabelasEmprestimo,
+    "Tarefas": Tarefas,
     "TesteWhatsApp": TesteWhatsApp,
     "TiposEmprestimo": TiposEmprestimo,
     "Transacoes": Transacoes,
@@ -207,8 +209,6 @@ export const PAGES = {
     "Vendas": Vendas,
     "VendasEmprestimos": VendasEmprestimos,
     "VendasFinanciamento": VendasFinanciamento,
-    "Tarefas": Tarefas,
-    "ConfiguracaoTarefas": ConfiguracaoTarefas,
 }
 
 export const pagesConfig = {

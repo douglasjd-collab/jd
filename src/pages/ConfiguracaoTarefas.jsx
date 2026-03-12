@@ -90,7 +90,9 @@ export default function ConfiguracaoTarefas() {
 
   if (!currentUser) return <div className="flex items-center justify-center min-h-[200px]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]"></div></div>;
 
-  const statusExibidos = statusList.length > 0 ? [...statusList].sort((a, b) => (a.ordem || 0) - (b.ordem || 0)) : STATUS_PADRAO;
+  const statusExibidos = statusList.length > 0
+    ? [...statusList].filter(s => s && s.nome).sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+    : STATUS_PADRAO;
 
   return (
     <div className="space-y-6 max-w-4xl">
