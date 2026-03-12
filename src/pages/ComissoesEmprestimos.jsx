@@ -35,6 +35,18 @@ const normStr = s => String(s || '').toLowerCase().trim();
 
 const STATUS_A_PAGAR = ['a_pagar', 'pendente'];
 
+const TIPO_EMPRESTIMO_LABEL = {
+  'NOVO': 'Novo',
+  'novo': 'Novo',
+  'REFINANCIAMENTO': 'Refin',
+  'refinanciamento': 'Refin',
+  'PORTABILIDADE': 'Portabilidade',
+  'portabilidade': 'Portabilidade',
+  'CARTAO_CONSIGNADO': 'Cartão',
+  'cartao_consignado': 'Cartão',
+};
+const getTipoLabel = (tipo) => TIPO_EMPRESTIMO_LABEL[tipo] || tipo || '-';
+
 export default function ComissoesEmprestimos() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
