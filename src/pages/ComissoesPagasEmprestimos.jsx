@@ -142,7 +142,21 @@ export default function ComissoesPagasEmprestimos() {
   const toggleLote = (id) => setExpandedLotes(prev => ({ ...prev, [id]: !prev[id] }));
 
   const gerarPDF = (lote) => {
-    const loteItens = itensPorLote[lote.id] || [];
+    // Lotes legado usam as propostas diretamente; lotes novos usam snapshots
+    const loteItens = lote.isLegado
+      ? (lote.propostas || []).map(p => ({
+          cliente_nome: p.cliente_nome,
+          contrato: p.contrato,
+          banco: p.administradora_nome,
+          data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
+          valor_credito: p.valor_credito || 0,
+          percentual_empresa_original: p.valor_comissao && p.valor_credito ? (p.valor_comissao / p.valor_credito) * 100 : 0,
+          valor_comissao_empresa_original: p.valor_comissao || 0,
+          percentual_vendedor_pago: p.percentual_comissao_vendedor || (p.valor_comissao && p.valor_credito ? (p.valor_comissao / p.valor_credito) * 100 : 0),
+          valor_vendedor_pago: p.valor_comissao_vendedor_pago || p.valor_comissao || 0,
+          percentual_vendedor_editado_manual: false,
+        }))
+      : (itensPorLote[lote.id] || []);
     const doc = new jsPDF({ orientation: 'landscape' });
 
     doc.setFillColor(16, 53, 60);
