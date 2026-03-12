@@ -41,7 +41,7 @@ export default function ComissoesPagasEmprestimos() {
     }
   };
 
-  // Buscar lotes de pagamento
+  // Buscar lotes de pagamento (novo sistema)
   const { data: lotes = [], isLoading: loadingLotes } = useQuery({
     queryKey: ['lotes-pagamento-emp', user?.empresa_id],
     queryFn: () => {
@@ -52,7 +52,7 @@ export default function ComissoesPagasEmprestimos() {
     enabled: !!user,
   });
 
-  // Buscar todos os itens de comissão paga
+  // Buscar todos os itens de comissão paga (novo sistema)
   const { data: itens = [], isLoading: loadingItens } = useQuery({
     queryKey: ['comissoes-emp-pagas-itens', user?.empresa_id],
     queryFn: () => {
@@ -63,7 +63,18 @@ export default function ComissoesPagasEmprestimos() {
     enabled: !!user,
   });
 
-  const isLoading = loadingLotes || loadingItens;
+  // Buscar propostas legado (comissao_vendedor_paga = true, sem lote novo)
+  const { data: propostasLegado = [], isLoading: loadingLegado } = useQuery({
+    queryKey: ['propostas-emp-pagas-legado', user?.empresa_id],
+    queryFn: () => {
+      const filter = { produto: 'emprestimo', comissao_vendedor_paga: true };
+      if (user?.empresa_id) filter.empresa_id = user.empresa_id;
+      return base44.entities.Proposta.filter(filter, '-comissao_vendedor_data_pagamento', 1000);
+    },
+    enabled: !!user,
+  });
+
+  const isLoading = loadingLotes || loadingItens || loadingLegado;
 
   // Filtrar lotes
   const lotesFiltrados = lotes.filter(l => {
