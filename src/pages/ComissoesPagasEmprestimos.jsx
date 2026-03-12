@@ -155,6 +155,7 @@ export default function ComissoesPagasEmprestimos() {
       ? (lote.propostas || []).map(p => ({
           cliente_nome: p.cliente_nome,
           contrato: p.contrato,
+          emprestimo_tipo: p.emprestimo_tipo,
           banco: p.administradora_nome,
           data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
           valor_credito: p.valor_credito || 0,
