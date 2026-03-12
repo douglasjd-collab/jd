@@ -57,6 +57,7 @@ export default function FunilVendas() {
   const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
   const [criarFunilOpen, setCriarFunilOpen] = useState(false);
   const [novoFunil, setNovoFunil] = useState({ nome: '', cor: '#3b82f6' });
+  const [searchCard, setSearchCard] = useState('');
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
