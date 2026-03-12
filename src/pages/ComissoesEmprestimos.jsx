@@ -245,13 +245,14 @@ export default function ComissoesEmprestimos() {
 
     doc.autoTable({
       startY: 54,
-      head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. a Pagar']],
+      head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. a Pagar']],
       body: propostasLista.map(p => {
         const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
         const valPagar = (p.valor_credito || 0) * (perc / 100);
         return [
           p.cliente_nome || '-',
           p.contrato || '-',
+          getTipoLabel(p.emprestimo_tipo),
           p.administradora_nome || '-',
           p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
           fmt(p.valor_credito),
@@ -259,12 +260,12 @@ export default function ComissoesEmprestimos() {
           fmt(valPagar),
         ];
       }),
-      foot: [['', '', '', '', '', 'Total:', fmt(totalPago)]],
+      foot: [['', '', '', '', '', '', 'Total:', fmt(totalPago)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
     const ph = doc.internal.pageSize.height;
