@@ -270,20 +270,72 @@ export default function ComissoesEmprestimos() {
       if (paraPagar.length === 0) { toast.error('Nenhum contrato válido para pagar'); return; }
 
       const dataPagamento = moment().format('YYYY-MM-DD');
-      for (const p of paraPagar) {
-        const percPagar = percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualProposta(p);
-        const valPagar = (p.valor_credito || 0) * (percPagar / 100);
+      const loteCode = `EMPC${String(Date.now()).slice(-6)}`;
+
+      // Calcular totais com percentuais congelados agora
+      const itensComValores = paraPagar.map(p => {
+        const percVendedor = percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualEmpresa(p);
+        const percEmpresa = getPercentualEmpresa(p);
+        const valVendedor = (p.valor_credito || 0) * (percVendedor / 100);
+        const editadoManual = percentuaisCustom[p.id] !== undefined;
+        return { p, percVendedor, percEmpresa, valVendedor, editadoManual };
+      });
+
+      const valorTotal = itensComValores.reduce((acc, i) => acc + i.valVendedor, 0);
+
+      // 1. Criar lote
+      const lote = await base44.entities.LotePagamentoComissaoEmprestimo.create({
+        empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
+        vendedor_id: vendedorModal.vendedor_id,
+        vendedor_nome: vendedorModal.vendedor_nome,
+        data_pagamento: dataPagamento,
+        valor_total: valorTotal,
+        quantidade_propostas: itensComValores.length,
+        forma_pagamento: formaPagamento,
+        observacao: observacao || '',
+        lote_codigo: loteCode,
+      });
+
+      // 2. Criar snapshot dos itens e atualizar propostas
+      for (const { p, percVendedor, percEmpresa, valVendedor, editadoManual } of itensComValores) {
+        // Snapshot imutável
+        await base44.entities.ComissaoEmprestimoPaga.create({
+          empresa_id: p.empresa_id,
+          lote_pagamento_id: lote.id,
+          lote_codigo: loteCode,
+          proposta_id: p.id,
+          vendedor_id: p.vendedor_id,
+          vendedor_nome: p.vendedor_nome,
+          cliente_nome: p.cliente_nome,
+          contrato: p.contrato,
+          banco: p.administradora_nome,
+          data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
+          valor_credito: p.valor_credito || 0,
+          percentual_empresa_original: percEmpresa,
+          valor_comissao_empresa_original: p.valor_comissao || 0,
+          percentual_vendedor_pago: percVendedor,
+          valor_vendedor_pago: valVendedor,
+          percentual_vendedor_editado_manual: editadoManual,
+          data_pagamento: dataPagamento,
+          forma_pagamento: formaPagamento,
+          observacao: observacao || '',
+        });
+
+        // Atualizar proposta com referência do lote + valores congelados
         await base44.entities.Proposta.update(p.id, {
           comissao_vendedor_paga: true,
           comissao_vendedor_data_pagamento: dataPagamento,
           comissao_vendedor_forma_pagamento: formaPagamento,
-          percentual_comissao_vendedor: percPagar,
-          valor_comissao_vendedor_pago: valPagar,
+          percentual_comissao_vendedor: percVendedor,
+          valor_comissao_vendedor_pago: valVendedor,
         });
       }
 
-      const loteCode = `EMPC${String(Date.now()).slice(-6)}`;
-      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percentuaisCustom);
+      // PDF usa os valores já calculados (congelados)
+      const percMapFinal = {};
+      itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
+      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal);
+
       queryClient.invalidateQueries(['propostas-emp-comissoes']);
       toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.`);
       setPagarModal(false);
