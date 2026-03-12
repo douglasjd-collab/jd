@@ -809,6 +809,25 @@ export default function FunilVendas() {
         )}
       </PageHeader>
 
+      {/* Busca de cards */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Input
+          placeholder="Buscar card pelo nome..."
+          value={searchCard}
+          onChange={(e) => setSearchCard(e.target.value)}
+          className="pl-10"
+        />
+        {searchCard && (
+          <button
+            onClick={() => setSearchCard('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Seletor de Funis em Botões */}
       <div className="flex gap-2 mb-4 items-center">
         <Button
