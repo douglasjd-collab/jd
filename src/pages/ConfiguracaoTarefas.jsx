@@ -157,21 +157,21 @@ export default function ConfiguracaoTarefas() {
             try { itens = t.itens ? JSON.parse(t.itens) : []; } catch { itens = []; }
             return (
               <div key={t.id} className="p-3 bg-slate-50 rounded-lg border">
-                {editTemplate?.id === t.id ? (
+                {editTemplate != null && editTemplate.id === t.id ? (
                   <div className="space-y-2">
-                    <Input value={editTemplate.nome} onChange={e => setEditTemplate({ ...editTemplate, nome: e.target.value })} placeholder="Nome do template" />
+                    <Input value={editTemplate.nome ?? ''} onChange={e => setEditTemplate({ ...editTemplate, nome: e.target.value })} placeholder="Nome do template" />
                     <div className="text-xs text-slate-500 mb-1">Itens (um por linha):</div>
                     <textarea
                       className="w-full border rounded p-2 text-sm h-24 resize-none"
-                      value={editTemplate.itensTexto}
+                      value={editTemplate.itensTexto ?? ''}
                       onChange={e => setEditTemplate({ ...editTemplate, itensTexto: e.target.value })}
                     />
                     <div className="flex items-center gap-2">
-                      <Checkbox id={`fav-${t.id}`} checked={editTemplate.favorito} onCheckedChange={v => setEditTemplate({ ...editTemplate, favorito: !!v })} />
+                      <Checkbox id={`fav-${t.id}`} checked={!!editTemplate.favorito} onCheckedChange={v => setEditTemplate({ ...editTemplate, favorito: !!v })} />
                       <Label htmlFor={`fav-${t.id}`} className="text-sm cursor-pointer flex items-center gap-1"><Star className="w-3 h-3" /> Favorito (acesso rápido)</Label>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => atualizarTemplate.mutate({ id: t.id, data: { nome: editTemplate.nome, favorito: editTemplate.favorito, itens: JSON.stringify(editTemplate.itensTexto.split('\n').filter(x => x.trim())) } })} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">Salvar</Button>
+                      <Button size="sm" onClick={() => atualizarTemplate.mutate({ id: t.id, data: { nome: editTemplate.nome, favorito: editTemplate.favorito, itens: JSON.stringify((editTemplate.itensTexto ?? '').split('\n').filter(x => x.trim())) } })} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">Salvar</Button>
                       <Button size="sm" variant="ghost" onClick={() => setEditTemplate(null)}>Cancelar</Button>
                     </div>
                   </div>
