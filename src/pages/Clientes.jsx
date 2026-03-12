@@ -112,7 +112,7 @@ export default function Clientes() {
         return base44.entities.Cliente.list('-created_date', 5000);
       }
       
-      // Admin, gerente, colaborador e funcionario veem todos os clientes da empresa
+      // Todos os outros perfis com empresa_id veem clientes da empresa
       if (currentUser?.empresa_id) {
         return base44.entities.Cliente.filter(
           { empresa_id: currentUser.empresa_id },
@@ -120,6 +120,18 @@ export default function Clientes() {
           5000
         );
       }
+
+      // Fallback: vendedor sem empresa_id no Colaborador — tenta buscar pelo auth user
+      try {
+        const me = await base44.auth.me();
+        if (me?.empresa_id) {
+          return base44.entities.Cliente.filter(
+            { empresa_id: me.empresa_id },
+            '-created_date',
+            5000
+          );
+        }
+      } catch {}
       
       return [];
     },
