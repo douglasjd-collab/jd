@@ -153,8 +153,8 @@ export default function ConfiguracaoTarefas() {
       <Card className="p-6">
         <h2 className="text-lg font-semibold mb-4">Templates de Checklist</h2>
         <div className="space-y-3 mb-4">
-          {templates.length === 0 && <p className="text-sm text-slate-400">Nenhum template criado ainda.</p>}
-          {templates.filter(t => t != null && t.nome != null).map(t => {
+          {templatesValidos.length === 0 && <p className="text-sm text-slate-400">Nenhum template criado ainda.</p>}
+          {templatesValidos.map(t => {
             let itens = [];
             try { itens = t.itens ? JSON.parse(t.itens) : []; } catch { itens = []; }
             return (
