@@ -76,25 +76,35 @@ export default function ClienteDetalhes() {
     );
   }
 
-  const totalVendas = vendas.length;
-  const valorTotal = vendas.reduce((acc, v) => acc + (v.valor_carta || 0), 0);
+  const totalVendas = vendas.length + propostas.length;
+  const valorTotal = vendas.reduce((acc, v) => acc + (v.valorCredito || v.valor_carta || 0), 0)
+    + propostas.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
 
-  const columns = [
+  const vendasColumns = [
     {
-      header: 'Grupo/Cota',
+      header: 'Tipo',
+      cell: (row) => produtoBadge(row._tipo)
+    },
+    {
+      header: 'Produto / Contrato',
       cell: (row) => (
-        <Link to={createPageUrl(`VendaDetalhes?id=${row.id}`)} className="font-medium text-blue-600 hover:underline">
-          {row.grupo} / {row.cota}
-        </Link>
+        <div>
+          <p className="font-medium">{row._descricao}</p>
+          <p className="text-xs text-slate-500">{row._contrato}</p>
+        </div>
       )
     },
     {
-      header: 'Administradora',
-      cell: (row) => row.administradora_nome
+      header: 'Banco/Adm',
+      cell: (row) => row.administradora_nome || row._banco || '-'
+    },
+    {
+      header: 'Vendedor',
+      cell: (row) => <span className="text-xs">{row.vendedor_nome || '-'}</span>
     },
     {
       header: 'Valor',
-      cell: (row) => formatCurrency(row.valor_carta)
+      cell: (row) => formatCurrency(row._valor)
     },
     {
       header: 'Data',
@@ -105,6 +115,26 @@ export default function ClienteDetalhes() {
       cell: (row) => <StatusBadge status={row.status} />
     }
   ];
+
+  // Unificar vendas e propostas em uma lista normalizada
+  const todasVendas = [
+    ...vendas.map(v => ({
+      ...v,
+      _tipo: v.tipo ? 'consorcio' : 'consorcio',
+      _descricao: `${v.grupo || ''}/${v.cota || ''}`,
+      _contrato: v.contrato || '',
+      _valor: v.valorCredito || v.valor_carta || 0,
+      _banco: v.administradora_nome,
+    })),
+    ...propostas.map(p => ({
+      ...p,
+      _tipo: p.produto || 'emprestimo',
+      _descricao: p.emprestimo_tipo || p.produto || 'Empréstimo',
+      _contrato: p.contrato || p.emprestimo_numero_ade || '',
+      _valor: p.valor_credito || 0,
+      _banco: p.administradora_nome,
+    }))
+  ].sort((a, b) => new Date(b.data_venda || 0) - new Date(a.data_venda || 0));
 
   // Determinar nome e identificação baseado no tipo de pessoa
   const nomeExibicao = cliente.tipo_pessoa === 'Jurídica' 
