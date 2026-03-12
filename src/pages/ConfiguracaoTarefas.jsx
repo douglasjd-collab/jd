@@ -154,7 +154,7 @@ export default function ConfiguracaoTarefas() {
           {templates.length === 0 && <p className="text-sm text-slate-400">Nenhum template criado ainda.</p>}
           {templates.filter(t => t != null && t.nome != null).map(t => {
             let itens = [];
-            try { itens = JSON.parse(t.itens); } catch {}
+            try { itens = t.itens ? JSON.parse(t.itens) : []; } catch { itens = []; }
             return (
               <div key={t.id} className="p-3 bg-slate-50 rounded-lg border">
                 {editTemplate?.id === t.id ? (
