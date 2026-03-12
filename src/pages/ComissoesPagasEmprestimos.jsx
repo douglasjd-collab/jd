@@ -16,6 +16,14 @@ moment.locale('pt-br');
 
 const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const TIPO_EMPRESTIMO_LABEL = {
+  'NOVO': 'Novo', 'novo': 'Novo',
+  'REFINANCIAMENTO': 'Refin', 'refinanciamento': 'Refin',
+  'PORTABILIDADE': 'Portabilidade', 'portabilidade': 'Portabilidade',
+  'CARTAO_CONSIGNADO': 'Cartão', 'cartao_consignado': 'Cartão',
+};
+const getTipoLabel = (tipo) => TIPO_EMPRESTIMO_LABEL[tipo] || tipo || '-';
+
 export default function ComissoesPagasEmprestimos() {
   const [user, setUser] = useState(null);
   const [filtroVendedor, setFiltroVendedor] = useState('');
