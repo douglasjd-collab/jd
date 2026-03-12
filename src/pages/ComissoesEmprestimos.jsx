@@ -593,7 +593,7 @@ export default function ComissoesEmprestimos() {
                                 min="0"
                                 max="100"
                                 step="0.01"
-                                value={percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualEmpresa(p).toFixed(2)}
+                                value={percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualVendedorDefault(p).toFixed(2)}
                                 onChange={e => setPercentuaisCustom(prev => ({ ...prev, [p.id]: parseFloat(e.target.value) || 0 }))}
                                 className="w-20 h-7 text-xs text-right p-1"
                               />
