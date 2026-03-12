@@ -563,6 +563,11 @@ export default function ComissoesEmprestimos() {
                           <tr key={p.id} className="border-b hover:bg-slate-50 transition-colors">
                             <td className="p-3 font-medium text-slate-900">{p.cliente_nome || '-'}</td>
                             <td className="p-3 text-slate-600">{p.contrato || '-'}</td>
+                            <td className="p-3 text-slate-600">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700">
+                                {getTipoLabel(p.emprestimo_tipo)}
+                              </span>
+                            </td>
                             <td className="p-3 text-slate-600">{p.administradora_nome || '-'}</td>
                             <td className="p-3 text-slate-500 text-xs">
                               {p.emprestimo_data_liberacao
