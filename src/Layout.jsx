@@ -25,7 +25,8 @@ import {
         MessageSquare,
         Moon,
         Sun,
-        Loader2
+        Loader2,
+        CheckSquare
       } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
