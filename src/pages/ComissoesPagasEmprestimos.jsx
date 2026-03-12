@@ -16,25 +16,11 @@ moment.locale('pt-br');
 
 const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// Fallback: valor_comissao_vendedor_pago -> valor_comissao (metade da empresa) -> 0
-const getValPago = (p) => {
-  if (p.valor_comissao_vendedor_pago) return p.valor_comissao_vendedor_pago;
-  if (p.percentual_comissao_vendedor && p.valor_credito) return (p.valor_credito * p.percentual_comissao_vendedor) / 100;
-  if (p.valor_comissao) return p.valor_comissao;
-  return 0;
-};
-const getPercVendedor = (p) => {
-  if (p.percentual_comissao_vendedor) return p.percentual_comissao_vendedor;
-  if (p.valor_comissao_vendedor_pago && p.valor_credito) return (p.valor_comissao_vendedor_pago / p.valor_credito) * 100;
-  if (p.valor_comissao && p.valor_credito) return (p.valor_comissao / p.valor_credito) * 100;
-  return 0;
-};
-
 export default function ComissoesPagasEmprestimos() {
   const [user, setUser] = useState(null);
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroMes, setFiltroMes] = useState('todos');
-  const [expandedGrupos, setExpandedGrupos] = useState({});
+  const [expandedLotes, setExpandedLotes] = useState({});
 
   useEffect(() => { loadUser(); }, []);
 
@@ -55,60 +41,58 @@ export default function ComissoesPagasEmprestimos() {
     }
   };
 
-  const { data: propostas = [], isLoading } = useQuery({
-    queryKey: ['propostas-emp-pagas-comissao', user?.empresa_id],
+  // Buscar lotes de pagamento
+  const { data: lotes = [], isLoading: loadingLotes } = useQuery({
+    queryKey: ['lotes-pagamento-emp', user?.empresa_id],
     queryFn: () => {
-      const filter = { produto: 'emprestimo', comissao_vendedor_paga: true };
+      const filter = {};
       if (user?.empresa_id) filter.empresa_id = user.empresa_id;
-      return base44.entities.Proposta.filter(filter, '-comissao_vendedor_data_pagamento', 1000);
+      return base44.entities.LotePagamentoComissaoEmprestimo.filter(filter, '-data_pagamento', 500);
     },
     enabled: !!user,
   });
 
-  // Filtrar
-  const filtradas = propostas.filter(p => {
-    if (filtroVendedor && !p.vendedor_nome?.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
-    if (filtroMes !== 'todos' && p.comissao_vendedor_data_pagamento) {
-      if (moment(p.comissao_vendedor_data_pagamento).format('YYYY-MM') !== filtroMes) return false;
+  // Buscar todos os itens de comissão paga
+  const { data: itens = [], isLoading: loadingItens } = useQuery({
+    queryKey: ['comissoes-emp-pagas-itens', user?.empresa_id],
+    queryFn: () => {
+      const filter = {};
+      if (user?.empresa_id) filter.empresa_id = user.empresa_id;
+      return base44.entities.ComissaoEmprestimoPaga.filter(filter, '-data_pagamento', 2000);
+    },
+    enabled: !!user,
+  });
+
+  const isLoading = loadingLotes || loadingItens;
+
+  // Filtrar lotes
+  const lotesFiltrados = lotes.filter(l => {
+    if (filtroVendedor && !l.vendedor_nome?.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
+    if (filtroMes !== 'todos' && l.data_pagamento) {
+      if (moment(l.data_pagamento).format('YYYY-MM') !== filtroMes) return false;
     }
     return true;
   });
 
-  // Agrupar por vendedor + data pagamento
-  const grupos = {};
-  filtradas.forEach(p => {
-    const key = `${p.vendedor_id || 'sv'}_${p.comissao_vendedor_data_pagamento || 'sem-data'}`;
-    if (!grupos[key]) {
-      grupos[key] = {
-        key,
-        vendedor_id: p.vendedor_id,
-        vendedor_nome: p.vendedor_nome || 'Sem Vendedor',
-        data_pagamento: p.comissao_vendedor_data_pagamento,
-        forma_pagamento: p.comissao_vendedor_forma_pagamento,
-        propostas: [],
-      };
-    }
-    grupos[key].propostas.push(p);
-  });
+  // Agrupar itens por lote
+  const itensPorLote = itens.reduce((acc, item) => {
+    if (!acc[item.lote_pagamento_id]) acc[item.lote_pagamento_id] = [];
+    acc[item.lote_pagamento_id].push(item);
+    return acc;
+  }, {});
 
-  const gruposList = Object.values(grupos).sort((a, b) => {
-    if (!a.data_pagamento) return 1;
-    if (!b.data_pagamento) return -1;
-    return b.data_pagamento.localeCompare(a.data_pagamento);
-  });
-
-  const mesesDisponiveis = [...new Set(propostas
-    .filter(p => p.comissao_vendedor_data_pagamento)
-    .map(p => moment(p.comissao_vendedor_data_pagamento).format('YYYY-MM'))
+  const mesesDisponiveis = [...new Set(lotes
+    .filter(l => l.data_pagamento)
+    .map(l => moment(l.data_pagamento).format('YYYY-MM'))
   )].sort().reverse();
 
-  const totalGeral = filtradas.reduce((acc, p) => acc + getValPago(p), 0);
+  const totalGeral = lotesFiltrados.reduce((acc, l) => acc + (l.valor_total || 0), 0);
 
-  const toggleGrupo = (key) => setExpandedGrupos(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleLote = (id) => setExpandedLotes(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const gerarPDF = (grupo) => {
+  const gerarPDF = (lote) => {
+    const loteItens = itensPorLote[lote.id] || [];
     const doc = new jsPDF({ orientation: 'landscape' });
-    const totalPago = grupo.propostas.reduce((acc, p) => acc + getValPago(p), 0);
 
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, 297, 22, 'F');
@@ -116,7 +100,7 @@ export default function ComissoesPagasEmprestimos() {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 148, 10, { align: 'center' });
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.text(`Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 17, { align: 'center' });
+    doc.text(`Lote: ${lote.lote_codigo || lote.id}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 17, { align: 'center' });
 
     doc.setTextColor(0, 0, 0);
     doc.setFillColor(245, 247, 250);
@@ -125,28 +109,25 @@ export default function ComissoesPagasEmprestimos() {
     doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
     doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
     doc.setFont('helvetica', 'normal');
-    doc.text(grupo.vendedor_nome, 14, 39);
-    doc.text(grupo.data_pagamento ? moment(grupo.data_pagamento).format('DD/MM/YYYY') : '-', 90, 39);
-    doc.text(grupo.forma_pagamento || '-', 160, 39);
-    doc.text(String(grupo.propostas.length), 230, 39);
+    doc.text(lote.vendedor_nome || '-', 14, 39);
+    doc.text(lote.data_pagamento ? moment(lote.data_pagamento).format('DD/MM/YYYY') : '-', 90, 39);
+    doc.text(lote.forma_pagamento || '-', 160, 39);
+    doc.text(String(loteItens.length || lote.quantidade_propostas || 0), 230, 39);
 
     doc.autoTable({
       startY: 54,
       head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. Pago']],
-      body: grupo.propostas.map(p => {
-        const perc = getPercVendedor(p);
-        const valPago = getValPago(p);
-        return [
-          p.cliente_nome || '-',
-          p.contrato || '-',
-          p.administradora_nome || '-',
-          p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
-          fmt(p.valor_credito),
-          `${perc.toFixed(2)}%`,
-          fmt(valPago),
-        ];
-      }),
-      foot: [['', '', '', '', '', 'Total:', fmt(totalPago)]],
+      // Usa APENAS os campos congelados do snapshot
+      body: loteItens.map(item => [
+        item.cliente_nome || '-',
+        item.contrato || '-',
+        item.banco || '-',
+        item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-',
+        fmt(item.valor_credito),
+        `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
+        fmt(item.valor_vendedor_pago),
+      ]),
+      foot: [['', '', '', '', '', 'Total:', fmt(lote.valor_total)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
@@ -157,7 +138,7 @@ export default function ComissoesPagasEmprestimos() {
     const ph = doc.internal.pageSize.height;
     doc.setFontSize(7); doc.setTextColor(0, 0, 255);
     doc.text(`Gerado em ${moment().format('DD/MM/YYYY HH:mm')}`, 148, ph - 5, { align: 'center' });
-    doc.save(`comissao_emp_${(grupo.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${moment(grupo.data_pagamento || undefined).format('YYYYMMDD')}.pdf`);
+    doc.save(`comissao_emp_${(lote.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${moment(lote.data_pagamento || undefined).format('YYYYMMDD')}.pdf`);
   };
 
   if (!user) return (
@@ -179,7 +160,7 @@ export default function ComissoesPagasEmprestimos() {
           <div>
             <p className="text-sm text-slate-600 mb-1">Total Pago</p>
             <p className="text-3xl font-bold text-green-600">{fmt(totalGeral)}</p>
-            <p className="text-xs text-slate-500 mt-1">{gruposList.length} pagamento(s) • {filtradas.length} proposta(s)</p>
+            <p className="text-xs text-slate-500 mt-1">{lotesFiltrados.length} lote(s) de pagamento</p>
           </div>
           <FileText className="w-12 h-12 text-green-600 opacity-20" />
         </div>
@@ -207,42 +188,43 @@ export default function ComissoesPagasEmprestimos() {
         </div>
       </Card>
 
-      {/* Lista agrupada */}
+      {/* Lista de lotes */}
       {isLoading ? (
         <Card className="p-8 text-center text-slate-400">
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /> Carregando...
         </Card>
-      ) : gruposList.length === 0 ? (
+      ) : lotesFiltrados.length === 0 ? (
         <Card className="p-8 text-center text-slate-400">Nenhuma comissão paga encontrada</Card>
       ) : (
         <div className="space-y-4">
-          {gruposList.map(grupo => {
-            const totalGrupo = grupo.propostas.reduce((acc, p) => acc + getValPago(p), 0);
-            const isExp = expandedGrupos[grupo.key];
+          {lotesFiltrados.map(lote => {
+            const loteItens = itensPorLote[lote.id] || [];
+            const isExp = expandedLotes[lote.id];
 
             return (
-              <Card key={grupo.key} className="overflow-hidden shadow-sm">
+              <Card key={lote.id} className="overflow-hidden shadow-sm">
                 <div
                   className="bg-gradient-to-r from-[#10353C] to-[#1a5060] text-white p-4 flex items-center gap-4 cursor-pointer select-none"
-                  onClick={() => toggleGrupo(grupo.key)}
+                  onClick={() => toggleLote(lote.id)}
                 >
                   <div className="w-11 h-11 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {grupo.vendedor_nome?.charAt(0).toUpperCase()}
+                    {lote.vendedor_nome?.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-base uppercase tracking-wide truncate">{grupo.vendedor_nome}</h3>
+                    <h3 className="font-bold text-base uppercase tracking-wide truncate">{lote.vendedor_nome}</h3>
                     <div className="flex items-center gap-3 text-xs text-white/70 mt-0.5 flex-wrap">
-                      <span>Pago em: {grupo.data_pagamento ? moment(grupo.data_pagamento).format('DD/MM/YYYY') : '-'}</span>
+                      <span>Pago em: {lote.data_pagamento ? moment(lote.data_pagamento).format('DD/MM/YYYY') : '-'}</span>
                       <span>•</span>
-                      <span>{grupo.propostas.length} proposta(s)</span>
+                      <span>{lote.quantidade_propostas} proposta(s)</span>
                       <span>•</span>
-                      <span className="font-semibold text-white">{fmt(totalGrupo)}</span>
-                      {grupo.forma_pagamento && <><span>•</span><span>{grupo.forma_pagamento}</span></>}
+                      <span className="font-semibold text-white">{fmt(lote.valor_total)}</span>
+                      {lote.forma_pagamento && <><span>•</span><span>{lote.forma_pagamento}</span></>}
+                      {lote.lote_codigo && <><span>•</span><span className="font-mono text-white/50">{lote.lote_codigo}</span></>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                     <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white border-0"
-                      onClick={() => gerarPDF(grupo)}>
+                      onClick={() => gerarPDF(lote)}>
                       <Download className="w-4 h-4 mr-1" />PDF
                     </Button>
                   </div>
@@ -253,44 +235,55 @@ export default function ComissoesPagasEmprestimos() {
 
                 {isExp && (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 border-b">
-                        <tr className="text-slate-600">
-                          <th className="p-3 text-left font-semibold">Cliente</th>
-                          <th className="p-3 text-left font-semibold">Contrato</th>
-                          <th className="p-3 text-left font-semibold">Banco</th>
-                          <th className="p-3 text-left font-semibold">Data Lib.</th>
-                          <th className="p-3 text-right font-semibold">Vl. Crédito</th>
-                          <th className="p-3 text-right font-semibold">% Vendedor</th>
-                          <th className="p-3 text-right font-semibold">Vl. Pago</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {grupo.propostas.map(p => {
-                          const perc = getPercVendedor(p);
-                          const valPago = getValPago(p);
-                          return (
-                            <tr key={p.id} className="border-b hover:bg-slate-50">
-                              <td className="p-3 font-medium text-slate-900">{p.cliente_nome || '-'}</td>
-                              <td className="p-3 text-slate-600">{p.contrato || '-'}</td>
-                              <td className="p-3 text-slate-600">{p.administradora_nome || '-'}</td>
+                    {loteItens.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-sm">Itens não encontrados para este lote</div>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 border-b">
+                          <tr className="text-slate-600">
+                            <th className="p-3 text-left font-semibold">Cliente</th>
+                            <th className="p-3 text-left font-semibold">Contrato</th>
+                            <th className="p-3 text-left font-semibold">Banco</th>
+                            <th className="p-3 text-left font-semibold">Data Lib.</th>
+                            <th className="p-3 text-right font-semibold">Vl. Crédito</th>
+                            <th className="p-3 text-right font-semibold">% Empresa</th>
+                            <th className="p-3 text-right font-semibold">Vl. Empresa</th>
+                            <th className="p-3 text-right font-semibold">% Vendedor</th>
+                            <th className="p-3 text-right font-semibold">Vl. Pago</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {loteItens.map(item => (
+                            <tr key={item.id} className="border-b hover:bg-slate-50">
+                              <td className="p-3 font-medium text-slate-900">{item.cliente_nome || '-'}</td>
+                              <td className="p-3 text-slate-600">{item.contrato || '-'}</td>
+                              <td className="p-3 text-slate-600">{item.banco || '-'}</td>
                               <td className="p-3 text-slate-500 text-xs">
-                                {p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-'}
+                                {item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-'}
                               </td>
-                              <td className="p-3 text-right font-medium">{fmt(p.valor_credito)}</td>
-                              <td className="p-3 text-right text-slate-600">{perc.toFixed(2)}%</td>
-                              <td className="p-3 text-right font-bold text-blue-700">{fmt(valPago)}</td>
+                              <td className="p-3 text-right font-medium">{fmt(item.valor_credito)}</td>
+                              <td className="p-3 text-right text-slate-500 text-xs">
+                                {Number(item.percentual_empresa_original || 0).toFixed(2)}%
+                              </td>
+                              <td className="p-3 text-right text-slate-600">{fmt(item.valor_comissao_empresa_original)}</td>
+                              <td className="p-3 text-right text-slate-700">
+                                {Number(item.percentual_vendedor_pago || 0).toFixed(2)}%
+                                {item.percentual_vendedor_editado_manual && (
+                                  <span className="ml-1 text-xs text-orange-500" title="Editado manualmente">✎</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-right font-bold text-blue-700">{fmt(item.valor_vendedor_pago)}</td>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot className="bg-slate-50 border-t">
-                        <tr>
-                          <td colSpan={6} className="p-3 text-right font-bold text-slate-700">Total:</td>
-                          <td className="p-3 text-right font-bold text-blue-700">{fmt(totalGrupo)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-50 border-t">
+                          <tr>
+                            <td colSpan={8} className="p-3 text-right font-bold text-slate-700">Total:</td>
+                            <td className="p-3 text-right font-bold text-blue-700">{fmt(lote.valor_total)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    )}
                   </div>
                 )}
               </Card>
