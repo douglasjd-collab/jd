@@ -298,59 +298,77 @@ export default function ComissoesPagasEmprestimos() {
                   </div>
                 </div>
 
-                {isExp && (
-                  <div className="overflow-x-auto">
-                    {loteItens.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-sm">Itens não encontrados para este lote</div>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 border-b">
-                          <tr className="text-slate-600">
-                            <th className="p-3 text-left font-semibold">Cliente</th>
-                            <th className="p-3 text-left font-semibold">Contrato</th>
-                            <th className="p-3 text-left font-semibold">Banco</th>
-                            <th className="p-3 text-left font-semibold">Data Lib.</th>
-                            <th className="p-3 text-right font-semibold">Vl. Crédito</th>
-                            <th className="p-3 text-right font-semibold">% Empresa</th>
-                            <th className="p-3 text-right font-semibold">Vl. Empresa</th>
-                            <th className="p-3 text-right font-semibold">% Vendedor</th>
-                            <th className="p-3 text-right font-semibold">Vl. Pago</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {loteItens.map(item => (
-                            <tr key={item.id} className="border-b hover:bg-slate-50">
-                              <td className="p-3 font-medium text-slate-900">{item.cliente_nome || '-'}</td>
-                              <td className="p-3 text-slate-600">{item.contrato || '-'}</td>
-                              <td className="p-3 text-slate-600">{item.banco || '-'}</td>
-                              <td className="p-3 text-slate-500 text-xs">
-                                {item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-'}
-                              </td>
-                              <td className="p-3 text-right font-medium">{fmt(item.valor_credito)}</td>
-                              <td className="p-3 text-right text-slate-500 text-xs">
-                                {Number(item.percentual_empresa_original || 0).toFixed(2)}%
-                              </td>
-                              <td className="p-3 text-right text-slate-600">{fmt(item.valor_comissao_empresa_original)}</td>
-                              <td className="p-3 text-right text-slate-700">
-                                {Number(item.percentual_vendedor_pago || 0).toFixed(2)}%
-                                {item.percentual_vendedor_editado_manual && (
-                                  <span className="ml-1 text-xs text-orange-500" title="Editado manualmente">✎</span>
-                                )}
-                              </td>
-                              <td className="p-3 text-right font-bold text-blue-700">{fmt(item.valor_vendedor_pago)}</td>
+                {isExp && (() => {
+                  const rowItens = lote.isLegado
+                    ? (lote.propostas || []).map(p => ({
+                        id: p.id,
+                        cliente_nome: p.cliente_nome,
+                        contrato: p.contrato,
+                        banco: p.administradora_nome,
+                        data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
+                        valor_credito: p.valor_credito || 0,
+                        percentual_empresa_original: p.valor_comissao && p.valor_credito ? (p.valor_comissao / p.valor_credito) * 100 : 0,
+                        valor_comissao_empresa_original: p.valor_comissao || 0,
+                        percentual_vendedor_pago: p.percentual_comissao_vendedor || (p.valor_comissao && p.valor_credito ? (p.valor_comissao / p.valor_credito) * 100 : 0),
+                        valor_vendedor_pago: p.valor_comissao_vendedor_pago || p.valor_comissao || 0,
+                        percentual_vendedor_editado_manual: false,
+                      }))
+                    : (itensPorLote[lote.id] || []);
+
+                  return (
+                    <div className="overflow-x-auto">
+                      {rowItens.length === 0 ? (
+                        <div className="p-6 text-center text-slate-400 text-sm">Itens não encontrados para este lote</div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-50 border-b">
+                            <tr className="text-slate-600">
+                              <th className="p-3 text-left font-semibold">Cliente</th>
+                              <th className="p-3 text-left font-semibold">Contrato</th>
+                              <th className="p-3 text-left font-semibold">Banco</th>
+                              <th className="p-3 text-left font-semibold">Data Lib.</th>
+                              <th className="p-3 text-right font-semibold">Vl. Crédito</th>
+                              <th className="p-3 text-right font-semibold">% Empresa</th>
+                              <th className="p-3 text-right font-semibold">Vl. Empresa</th>
+                              <th className="p-3 text-right font-semibold">% Vendedor</th>
+                              <th className="p-3 text-right font-semibold">Vl. Pago</th>
                             </tr>
-                          ))}
-                        </tbody>
-                        <tfoot className="bg-slate-50 border-t">
-                          <tr>
-                            <td colSpan={8} className="p-3 text-right font-bold text-slate-700">Total:</td>
-                            <td className="p-3 text-right font-bold text-blue-700">{fmt(lote.valor_total)}</td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    )}
-                  </div>
-                )}
+                          </thead>
+                          <tbody>
+                            {rowItens.map(item => (
+                              <tr key={item.id} className="border-b hover:bg-slate-50">
+                                <td className="p-3 font-medium text-slate-900">{item.cliente_nome || '-'}</td>
+                                <td className="p-3 text-slate-600">{item.contrato || '-'}</td>
+                                <td className="p-3 text-slate-600">{item.banco || '-'}</td>
+                                <td className="p-3 text-slate-500 text-xs">
+                                  {item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-'}
+                                </td>
+                                <td className="p-3 text-right font-medium">{fmt(item.valor_credito)}</td>
+                                <td className="p-3 text-right text-slate-500 text-xs">
+                                  {Number(item.percentual_empresa_original || 0).toFixed(2)}%
+                                </td>
+                                <td className="p-3 text-right text-slate-600">{fmt(item.valor_comissao_empresa_original)}</td>
+                                <td className="p-3 text-right text-slate-700">
+                                  {Number(item.percentual_vendedor_pago || 0).toFixed(2)}%
+                                  {item.percentual_vendedor_editado_manual && (
+                                    <span className="ml-1 text-xs text-orange-500" title="Editado manualmente">✎</span>
+                                  )}
+                                </td>
+                                <td className="p-3 text-right font-bold text-blue-700">{fmt(item.valor_vendedor_pago)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-slate-50 border-t">
+                            <tr>
+                              <td colSpan={8} className="p-3 text-right font-bold text-slate-700">Total:</td>
+                              <td className="p-3 text-right font-bold text-blue-700">{fmt(lote.valor_total)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      )}
+                    </div>
+                  );
+                })()}
               </Card>
             );
           })}
