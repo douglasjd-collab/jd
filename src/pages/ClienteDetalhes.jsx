@@ -37,20 +37,27 @@ export default function ClienteDetalhes() {
     enabled: !!clienteId
   });
 
+  const cpfCliente = cliente?.cpf || cliente?.pj_cnpj || null;
+
   const { data: propostas = [], isLoading: loadingPropostas } = useQuery({
-    queryKey: ['propostas-cliente', clienteId, cliente?.cpf, cliente?.pj_cnpj],
+    queryKey: ['propostas-cliente', clienteId, cpfCliente],
     queryFn: async () => {
-      const cpf = cliente?.cpf || cliente?.pj_cnpj;
-      if (!cpf) return [];
-      // Buscar por cliente_id vinculado OU por CPF (propostas importadas)
-      const [porId, porCpf] = await Promise.all([
-        base44.entities.Proposta.filter({ cliente_id: clienteId }),
-        base44.entities.Proposta.filter({ cliente_cpf: cpf })
-      ]);
-      // Unir e deduplicar por id
-      const todos = [...porId, ...porCpf];
+      const promises = [];
+      // Sempre buscar por cliente_id
+      promises.push(base44.entities.Proposta.filter({ cliente_id: clienteId }));
+      // Se tiver CPF, buscar também por CPF (para propostas importadas)
+      if (cpfCliente) {
+        promises.push(base44.entities.Proposta.filter({ cliente_cpf: cpfCliente }));
+      }
+      const results = await Promise.all(promises);
+      const todos = results.flat();
+      // Deduplicar por id
       const vistos = new Set();
-      return todos.filter(p => { if (vistos.has(p.id)) return false; vistos.add(p.id); return true; });
+      return todos.filter(p => {
+        if (vistos.has(p.id)) return false;
+        vistos.add(p.id);
+        return true;
+      });
     },
     enabled: !!clienteId && !!cliente
   });
