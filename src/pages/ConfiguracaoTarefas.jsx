@@ -191,7 +191,7 @@ export default function ConfiguracaoTarefas() {
                     </div>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleFavorito(t)} title={t.favorito ? 'Remover favorito' : 'Marcar favorito'}><Star className={`w-3 h-3 ${t.favorito ? 'fill-yellow-400 text-yellow-400' : ''}`} /></Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTemplate({ ...t, itensTexto: itens.join('\n') })}><Pencil className="w-3 h-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTemplate({ ...t, itensTexto: (Array.isArray(itens) ? itens : []).join('\n') })}><Pencil className="w-3 h-3" /></Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => { if (confirm('Excluir template?')) excluirTemplate.mutate(t.id); }}><Trash2 className="w-3 h-3" /></Button>
                     </div>
                   </div>
