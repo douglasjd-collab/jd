@@ -118,7 +118,7 @@ export default function ConfiguracaoTarefas() {
                 </>
               ) : (
                 <>
-                  <span className="flex-1 text-sm font-medium">{s.nome}</span>
+                  <span className="flex-1 text-sm font-medium">{s.nome ?? ''}</span>
                   {s.e_padrao && <Badge variant="outline" className="text-xs">Padrão</Badge>}
                   {s.id && (
                     <>
