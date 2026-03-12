@@ -190,23 +190,23 @@ export default function ComissoesPagasEmprestimos() {
 
     doc.autoTable({
       startY: 54,
-      head: [['Cliente', 'Contrato', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. Pago']],
-      // Usa APENAS os campos congelados do snapshot
+      head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. Pago']],
       body: loteItens.map(item => [
         item.cliente_nome || '-',
         item.contrato || '-',
+        getTipoLabel(item.emprestimo_tipo),
         item.banco || '-',
         item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-',
         fmt(item.valor_credito),
         `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
         fmt(item.valor_vendedor_pago),
       ]),
-      foot: [['', '', '', '', '', 'Total:', fmt(lote.valor_total)]],
+      foot: [['', '', '', '', '', '', 'Total:', fmt(lote.valor_total)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
     const ph = doc.internal.pageSize.height;
