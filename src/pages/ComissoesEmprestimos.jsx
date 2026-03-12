@@ -176,9 +176,17 @@ export default function ComissoesEmprestimos() {
     return 0;
   };
 
-  // Percentual do vendedor (editável, padrão = percentual empresa)
+  // Percentual do vendedor (editável)
+  // Prioridade: 1. editado pelo usuário nesta tela, 2. percentual_comissao_vendedor da proposta/tabela, 3. percentual da empresa como fallback
+  const getPercentualVendedorDefault = (p) => {
+    if (p.percentual_comissao_vendedor != null && p.percentual_comissao_vendedor > 0) {
+      return parseFloat(p.percentual_comissao_vendedor);
+    }
+    return getPercentualEmpresa(p);
+  };
+
   const getPercentualVendedor = (p) => {
-    return percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualEmpresa(p);
+    return percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualVendedorDefault(p);
   };
 
   // Valor a pagar ao vendedor
