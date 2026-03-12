@@ -703,6 +703,15 @@ export default function FunilVendas() {
       if (!podeVerTodos) return true;
       if (filterVendedor === 'todos') return true;
       return o.vendedor_id === filterVendedor;
+    })
+    .filter((o) => {
+      if (!searchCard.trim()) return true;
+      const t = searchCard.toLowerCase();
+      return (
+        o.titulo?.toLowerCase().includes(t) ||
+        o.cliente_nome?.toLowerCase().includes(t) ||
+        o.telefone_lead?.toLowerCase().includes(t)
+      );
     });
 
   const calcularIndicadores = (etapaId) => {
