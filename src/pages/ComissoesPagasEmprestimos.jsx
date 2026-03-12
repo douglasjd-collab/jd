@@ -350,6 +350,11 @@ export default function ComissoesPagasEmprestimos() {
                               <tr key={item.id} className="border-b hover:bg-slate-50">
                                 <td className="p-3 font-medium text-slate-900">{item.cliente_nome || '-'}</td>
                                 <td className="p-3 text-slate-600">{item.contrato || '-'}</td>
+                                <td className="p-3">
+                                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700">
+                                    {getTipoLabel(item.emprestimo_tipo)}
+                                  </span>
+                                </td>
                                 <td className="p-3 text-slate-600">{item.banco || '-'}</td>
                                 <td className="p-3 text-slate-500 text-xs">
                                   {item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-'}
