@@ -38,16 +38,28 @@ export default function ClienteDetalhes() {
   });
 
   const cpfCliente = cliente?.cpf || cliente?.pj_cnpj || null;
+  // CPF sem formatação para busca alternativa
+  const cpfLimpo = cpfCliente ? cpfCliente.replace(/\D/g, '') : null;
 
   const { data: propostas = [], isLoading: loadingPropostas } = useQuery({
     queryKey: ['propostas-cliente', clienteId, cpfCliente],
     queryFn: async () => {
-      const promises = [];
-      // Sempre buscar por cliente_id
-      promises.push(base44.entities.Proposta.filter({ cliente_id: clienteId }));
-      // Se tiver CPF, buscar também por CPF (para propostas importadas)
+      const promises = [
+        // Buscar por cliente_id (vinculado corretamente)
+        base44.entities.Proposta.filter({ cliente_id: clienteId }),
+      ];
+      // Buscar por CPF com formatação original
       if (cpfCliente) {
         promises.push(base44.entities.Proposta.filter({ cliente_cpf: cpfCliente }));
+      }
+      // Buscar por CPF sem formatação (caso importado sem pontuação)
+      if (cpfLimpo && cpfLimpo !== cpfCliente) {
+        promises.push(base44.entities.Proposta.filter({ cliente_cpf: cpfLimpo }));
+      }
+      // Buscar por nome do cliente (fallback)
+      const nomeCliente = cliente?.nome_completo || cliente?.pj_razao_social;
+      if (nomeCliente) {
+        promises.push(base44.entities.Proposta.filter({ cliente_nome: nomeCliente }));
       }
       const results = await Promise.all(promises);
       const todos = results.flat();
