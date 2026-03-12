@@ -76,8 +76,48 @@ export default function ComissoesPagasEmprestimos() {
 
   const isLoading = loadingLotes || loadingItens || loadingLegado;
 
-  // Filtrar lotes
-  const lotesFiltrados = lotes.filter(l => {
+  // IDs de propostas já com lote novo
+  const propostasComLote = new Set(itens.map(i => i.proposta_id).filter(Boolean));
+
+  // Propostas legado = pagas mas sem lote novo
+  const propostasOrfas = propostasLegado.filter(p => !propostasComLote.has(p.id));
+
+  // Montar lotes sintéticos do legado agrupados por vendedor + data pagamento
+  const legadoGrupos = {};
+  propostasOrfas.forEach(p => {
+    const key = `legado_${p.vendedor_id || 'sv'}_${p.comissao_vendedor_data_pagamento || 'sem-data'}`;
+    if (!legadoGrupos[key]) {
+      legadoGrupos[key] = {
+        id: key,
+        lote_codigo: null,
+        vendedor_id: p.vendedor_id,
+        vendedor_nome: p.vendedor_nome || 'Sem Vendedor',
+        data_pagamento: p.comissao_vendedor_data_pagamento,
+        forma_pagamento: p.comissao_vendedor_forma_pagamento,
+        quantidade_propostas: 0,
+        valor_total: 0,
+        isLegado: true,
+        propostas: [],
+      };
+    }
+    const valPago = p.valor_comissao_vendedor_pago || p.valor_comissao || 0;
+    legadoGrupos[key].valor_total += valPago;
+    legadoGrupos[key].quantidade_propostas += 1;
+    legadoGrupos[key].propostas.push(p);
+  });
+
+  // Unificar lotes novos + lotes legado
+  const todosLotes = [
+    ...lotes.map(l => ({ ...l, isLegado: false })),
+    ...Object.values(legadoGrupos),
+  ].sort((a, b) => {
+    if (!a.data_pagamento) return 1;
+    if (!b.data_pagamento) return -1;
+    return b.data_pagamento.localeCompare(a.data_pagamento);
+  });
+
+  // Filtrar
+  const lotesFiltrados = todosLotes.filter(l => {
     if (filtroVendedor && !l.vendedor_nome?.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
     if (filtroMes !== 'todos' && l.data_pagamento) {
       if (moment(l.data_pagamento).format('YYYY-MM') !== filtroMes) return false;
@@ -85,14 +125,14 @@ export default function ComissoesPagasEmprestimos() {
     return true;
   });
 
-  // Agrupar itens por lote
+  // Agrupar itens por lote (novo sistema)
   const itensPorLote = itens.reduce((acc, item) => {
     if (!acc[item.lote_pagamento_id]) acc[item.lote_pagamento_id] = [];
     acc[item.lote_pagamento_id].push(item);
     return acc;
   }, {});
 
-  const mesesDisponiveis = [...new Set(lotes
+  const mesesDisponiveis = [...new Set(todosLotes
     .filter(l => l.data_pagamento)
     .map(l => moment(l.data_pagamento).format('YYYY-MM'))
   )].sort().reverse();
