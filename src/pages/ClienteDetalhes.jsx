@@ -37,6 +37,24 @@ export default function ClienteDetalhes() {
     enabled: !!clienteId
   });
 
+  const { data: propostas = [], isLoading: loadingPropostas } = useQuery({
+    queryKey: ['propostas-cliente', clienteId, cliente?.cpf, cliente?.pj_cnpj],
+    queryFn: async () => {
+      const cpf = cliente?.cpf || cliente?.pj_cnpj;
+      if (!cpf) return [];
+      // Buscar por cliente_id vinculado OU por CPF (propostas importadas)
+      const [porId, porCpf] = await Promise.all([
+        base44.entities.Proposta.filter({ cliente_id: clienteId }),
+        base44.entities.Proposta.filter({ cliente_cpf: cpf })
+      ]);
+      // Unir e deduplicar por id
+      const todos = [...porId, ...porCpf];
+      const vistos = new Set();
+      return todos.filter(p => { if (vistos.has(p.id)) return false; vistos.add(p.id); return true; });
+    },
+    enabled: !!clienteId && !!cliente
+  });
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
