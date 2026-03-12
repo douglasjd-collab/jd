@@ -335,6 +335,7 @@ export default function ComissoesPagasEmprestimos() {
                             <tr className="text-slate-600">
                               <th className="p-3 text-left font-semibold">Cliente</th>
                               <th className="p-3 text-left font-semibold">Contrato</th>
+                              <th className="p-3 text-left font-semibold">Tipo</th>
                               <th className="p-3 text-left font-semibold">Banco</th>
                               <th className="p-3 text-left font-semibold">Data Lib.</th>
                               <th className="p-3 text-right font-semibold">Vl. Crédito</th>
