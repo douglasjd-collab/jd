@@ -5,28 +5,16 @@ function agruparPorGrupoEModalidade(registros) {
   
   for (const reg of registros) {
     const key = `${reg.grupo}_${reg.modalidade}`;
-    
     if (!grupos.has(key)) {
-      grupos.set(key, {
-        grupo: reg.grupo,
-        modalidade: reg.modalidade,
-        percentuais: []
-      });
+      grupos.set(key, { grupo: reg.grupo, modalidade: reg.modalidade, percentuais: [] });
     }
     
     if (reg.lance_percent !== null && reg.lance_percent !== undefined) {
       let valor = reg.lance_percent;
-
-      // Se vier como string tipo "61.6789%" ou "61,6789%"
       if (typeof valor === "string") {
-        valor = valor
-          .replace('%', '')
-          .replace(',', '.')
-          .trim();
+        valor = valor.replace('%', '').replace(',', '.').trim();
       }
-
       const numero = parseFloat(valor);
-
       if (!isNaN(numero)) {
         grupos.get(key).percentuais.push(numero);
       }
@@ -34,15 +22,12 @@ function agruparPorGrupoEModalidade(registros) {
   }
   
   const resumos = [];
-  for (const [key, data] of grupos) {
+  for (const [, data] of grupos) {
     const percentuais = data.percentuais;
     const menor = percentuais.length > 0 ? Math.min(...percentuais) : null;
     const maior = percentuais.length > 0 ? Math.max(...percentuais) : null;
-    
-    // Calcular média
     const soma = percentuais.reduce((acc, val) => acc + val, 0);
     const media = percentuais.length > 0 ? soma / percentuais.length : null;
-    
     resumos.push({
       grupo: data.grupo,
       modalidade: data.modalidade,
@@ -69,7 +54,8 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { importacao_id, offset = 0, limit = 10 } = body;
+    // Aumentado limit padrão de 10 para 50 para processar mais rápido
+    const { importacao_id, offset = 0, limit = 50 } = body;
 
     if (!importacao_id) {
       return Response.json({ error: "importacao_id é obrigatório" }, { status: 400 });
@@ -84,38 +70,36 @@ Deno.serve(async (req) => {
     const imp = importacao[0];
     const registros = JSON.parse(imp.payload_json || '[]');
     
-    // Usar o historico_id que já foi criado na etapa 1 (importarResultadoAssembleia)
     let historico_id = imp.historico_id;
-    
     if (!historico_id) {
       return Response.json({ error: "historico_id não encontrado na importação" }, { status: 400 });
     }
     
-    // Se é a primeira chamada (offset = 0), atualizar os totais do histórico
+    const isSegundaChamada = ['Segunda', 'Terceira', 'Quarta', 'Quinta', 'Sexta', 'Sétima'].includes(imp.chamada);
+
+    // Se é a primeira chamada (offset = 0), inicializar dados em paralelo
     if (offset === 0) {
       const totalGrupos = new Set(registros.map(r => r.grupo)).size;
       
-      await base44.asServiceRole.entities.HistoricoLanceGrupo.update(historico_id, {
-        total_grupos: totalGrupos,
-        total_registros: registros.length
-      });
-      
-      // Atualizar status da importação
-      await base44.asServiceRole.entities.ImportacaoAssembleia.update(imp.id, {
-        status: 'PROCESSANDO'
-      });
+      await Promise.all([
+        base44.asServiceRole.entities.HistoricoLanceGrupo.update(historico_id, {
+          total_grupos: totalGrupos,
+          total_registros: registros.length
+        }),
+        base44.asServiceRole.entities.ImportacaoAssembleia.update(imp.id, {
+          status: 'PROCESSANDO'
+        })
+      ]);
     }
 
-    // 🟢 ETAPA 2: Processar SLICE de registros
+    // Processar SLICE de registros
     const slice = registros.slice(offset, offset + limit);
     
     if (slice.length === 0) {
-      // Concluído
       await base44.asServiceRole.entities.ImportacaoAssembleia.update(imp.id, {
         status: 'CONCLUIDO',
         registros_processados: registros.length
       });
-      
       return Response.json({
         sucesso: true,
         concluido: true,
@@ -124,21 +108,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Salvar detalhes - normalizando lance_percent e grupo
+    // Normalizar e preparar detalhes
     const detalhesParaCriar = slice.map(r => {
       let lancePercent = r.lance_percent;
-      
-      // Normalizar se for string
       if (typeof lancePercent === 'string') {
         lancePercent = parseFloat(lancePercent.replace('%', '').replace(',', '.').trim());
       }
-      
-      // Validar número
-      if (isNaN(lancePercent) || lancePercent == null) {
-        lancePercent = null;
-      }
-      
-      // Normalizar grupo removendo zeros à esquerda
+      if (isNaN(lancePercent) || lancePercent == null) lancePercent = null;
       const grupoNormalizado = r.grupo ? String(r.grupo).replace(/^0+/, '') || '0' : null;
       
       return {
@@ -153,53 +129,46 @@ Deno.serve(async (req) => {
       };
     });
     
-    await base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(detalhesParaCriar);
+    // Buscar dados de suporte em paralelo enquanto cria detalhes
+    const [, mapaPrimeiraChamada, resumosAtuais] = await Promise.all([
+      base44.asServiceRole.entities.HistoricoLanceDetalhe.bulkCreate(detalhesParaCriar),
+      
+      // Buscar resumos da primeira chamada apenas uma vez (só se segunda+ chamada)
+      isSegundaChamada ? (async () => {
+        const [ano, mes] = imp.assembleia_data.split('-');
+        const mesAno = `${ano}-${mes}`;
+        const todosHistoricos = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({
+          empresa_id: imp.empresa_id,
+          chamada: 'Primeira'
+        });
+        const mapa = {};
+        await Promise.all(
+          todosHistoricos
+            .filter(hist => {
+              const [anoHist, mesHist] = hist.assembleia_data.split('-');
+              return `${anoHist}-${mesHist}` === mesAno;
+            })
+            .map(async hist => {
+              const resumosHist = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({ historico_id: hist.id });
+              for (const r of resumosHist) {
+                mapa[`${r.grupo}_${r.modalidade}`] = r;
+              }
+            })
+        );
+        return mapa;
+      })() : Promise.resolve({}),
+      
+      // Buscar resumos atuais deste histórico
+      base44.asServiceRole.entities.HistoricoLanceResumo.filter({ historico_id })
+    ]);
 
-    // Atualizar resumos (apenas do slice atual)
-    const resumos = agruparPorGrupoEModalidade(slice);
-    
-    const isSegundaChamada = ['Segunda', 'Terceira', 'Quarta', 'Quinta', 'Sexta', 'Sétima'].includes(imp.chamada);
-    
-    // Buscar resumos existentes da primeira chamada (se segunda chamada)
-    let resumosPrimeiraChamada = [];
-    if (isSegundaChamada) {
-      const [ano, mes] = imp.assembleia_data.split('-');
-      const mesAno = `${ano}-${mes}`;
-      
-      const todosHistoricos = await base44.asServiceRole.entities.HistoricoLanceGrupo.filter({
-        empresa_id: imp.empresa_id,
-        chamada: 'Primeira'
-      });
-      
-      for (const hist of todosHistoricos) {
-        const [anoHist, mesHist] = hist.assembleia_data.split('-');
-        const mesAnoHist = `${anoHist}-${mesHist}`;
-        
-        if (mesAnoHist === mesAno) {
-          const resumosHist = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
-            historico_id: hist.id
-          });
-          resumosPrimeiraChamada.push(...resumosHist);
-        }
-      }
-    }
-    
-    const mapaPrimeiraChamada = {};
-    for (const r of resumosPrimeiraChamada) {
-      const chave = `${r.grupo}_${r.modalidade}`;
-      mapaPrimeiraChamada[chave] = r;
-    }
-    
-    // Buscar resumos já criados para este historico_id
-    const resumosAtuais = await base44.asServiceRole.entities.HistoricoLanceResumo.filter({
-      historico_id
-    });
-    
     const mapaAtuais = {};
     for (const r of resumosAtuais) {
-      const chave = `${r.grupo}_${r.modalidade}`;
-      mapaAtuais[chave] = r;
+      mapaAtuais[`${r.grupo}_${r.modalidade}`] = r;
     }
+
+    // Calcular resumos do slice atual
+    const resumos = agruparPorGrupoEModalidade(slice);
     
     const payloadCreate = [];
     const payloadUpdate = [];
@@ -208,14 +177,10 @@ Deno.serve(async (req) => {
       const chave = `${r.grupo}_${r.modalidade}`;
       
       if (mapaAtuais[chave]) {
-        // Já existe resumo para este historico_id, atualizar
         const existente = mapaAtuais[chave];
-        // Recalcular média combinando os dados
         const qtdExistente = existente.qtd_ocorrencias ?? 0;
         const qtdNova = r.qtd_ocorrencias ?? 1;
-        const somaExistente = (existente.media_lance_percent ?? 0) * qtdExistente;
-        const somaNova = (r.media_lance_percent ?? 0) * qtdNova;
-        const novaMedia = (somaExistente + somaNova) / (qtdExistente + qtdNova);
+        const novaMedia = ((existente.media_lance_percent ?? 0) * qtdExistente + (r.media_lance_percent ?? 0) * qtdNova) / (qtdExistente + qtdNova);
         
         payloadUpdate.push({
           id: existente.id,
@@ -225,22 +190,13 @@ Deno.serve(async (req) => {
           qtd_ocorrencias: qtdExistente + qtdNova
         });
       } else {
-        // Criar novo resumo para este historico_id
         let menor_final = r.menor_lance_percent;
         let maior_final = r.maior_lance_percent;
         
-        // Se segunda chamada, comparar com valores da primeira e usar o melhor (menor lance, maior lance)
         if (isSegundaChamada && mapaPrimeiraChamada[chave]) {
           const primeiraChamada = mapaPrimeiraChamada[chave];
-          menor_final = Math.min(
-            primeiraChamada.menor_lance_percent ?? 999,
-            r.menor_lance_percent ?? 999
-          );
-          maior_final = Math.max(
-            primeiraChamada.maior_lance_percent ?? 0,
-            r.maior_lance_percent ?? 0
-          );
-          // Limpar valores inválidos
+          menor_final = Math.min(primeiraChamada.menor_lance_percent ?? 999, r.menor_lance_percent ?? 999);
+          maior_final = Math.max(primeiraChamada.maior_lance_percent ?? 0, r.maior_lance_percent ?? 0);
           if (menor_final >= 999) menor_final = null;
           if (maior_final <= 0) maior_final = null;
         }
@@ -258,26 +214,23 @@ Deno.serve(async (req) => {
       }
     }
     
-    if (payloadCreate.length > 0) {
-      await base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(payloadCreate);
-    }
+    // Executar criações e atualizações em paralelo com update de progresso
+    const novoProcessados = offset + slice.length;
     
-    if (payloadUpdate.length > 0) {
-      await Promise.all(payloadUpdate.map(item => 
+    await Promise.all([
+      payloadCreate.length > 0 ? base44.asServiceRole.entities.HistoricoLanceResumo.bulkCreate(payloadCreate) : Promise.resolve(),
+      ...payloadUpdate.map(item => 
         base44.asServiceRole.entities.HistoricoLanceResumo.update(item.id, {
           menor_lance_percent: item.menor_lance_percent,
           maior_lance_percent: item.maior_lance_percent,
           media_lance_percent: item.media_lance_percent,
           qtd_ocorrencias: item.qtd_ocorrencias
         })
-      ));
-    }
-
-    // Atualizar progresso
-    const novoProcessados = offset + slice.length;
-    await base44.asServiceRole.entities.ImportacaoAssembleia.update(imp.id, {
-      registros_processados: novoProcessados
-    });
+      ),
+      base44.asServiceRole.entities.ImportacaoAssembleia.update(imp.id, {
+        registros_processados: novoProcessados
+      })
+    ]);
 
     return Response.json({
       sucesso: true,
