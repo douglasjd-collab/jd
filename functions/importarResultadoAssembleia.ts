@@ -122,9 +122,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Falha ao baixar arquivo" }, { status: 400 });
     }
 
-    const buf = new Uint8Array(await fileRes.arrayBuffer());
-    const parsed = await withTimeout(pdfParse(buf), 25000);
-    const text = parsed.text || "";
+    const buf = await fileRes.arrayBuffer();
+
+    // Extrair texto com pdfjs-dist
+    const loadingTask = getDocument({ data: buf });
+    const pdfDoc = await withTimeout(loadingTask.promise, 25000);
+    
+    let text = "";
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(item => item.str).join(" ");
+      text += pageText + "\n";
+    }
 
     console.log('=== TEXTO PDF (primeiros 2000 chars) ===');
     console.log(text.substring(0, 2000));
