@@ -37,7 +37,10 @@ Deno.serve(async (req) => {
     }
 
     const data = await res.json();
-    const mensagens = Array.isArray(data) ? data : (data.messages || []);
+    // Evolution retorna { messages: { total, records: [...] } }
+    const mensagens = Array.isArray(data) 
+      ? data 
+      : (data.messages?.records || data.messages || []);
 
     console.log(`📦 ${mensagens.length} mensagens encontradas na Evolution`);
 
