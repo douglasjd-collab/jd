@@ -255,6 +255,13 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
     }
 
+    // BLOQUEAR números duplicados/falsos conhecidos
+    const numerosBlockeados = ['123248767422595', '12324876742259', '123248767422'];
+    if (numerosBlockeados.includes(telefoneLimpo)) {
+      console.error(`❌ REJEIÇÃO ATIVA: Número bloqueado (duplicado/falso): "${telefoneLimpo}"`);
+      return Response.json({ success: false, error: 'Phone number is blocked (duplicate/fake)' }, { status: 400 });
+    }
+
     // Rejeitar números suspeitos que parecem IDs de banco de dados
     if (/^\d{15}$/.test(telefoneLimpo) && !telefoneLimpo.startsWith('55')) {
       console.error(`❌ REJEIÇÃO: Número suspeito (parece ID): "${telefoneLimpo}"`);
