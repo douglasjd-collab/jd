@@ -668,7 +668,7 @@ export default function Dashboard() {
             <div>
               <p className="text-sm text-slate-500">Empréstimos em Andamento</p>
               <p className="text-2xl font-bold text-orange-700">{formatCurrency(valorLiquidoAndamentoMes)}</p>
-              <p className="text-xs text-slate-400 mt-0.5">Valor Líquido</p>
+              <p className="text-xs text-slate-400 mt-0.5">Valor Liberado</p>
             </div>
           </div>
           <div className="flex items-center justify-between">
