@@ -586,9 +586,31 @@ export default function Layout({ children, currentPageName }) {
         open={novaVendaConsorcioOpen}
         onOpenChange={setNovaVendaConsorcioOpen}
         venda={null}
-        onSubmit={async () => {
-          setNovaVendaConsorcioOpen(false);
-          window.location.href = createPageUrl('Vendas');
+        onSubmit={async (formData) => {
+          const empresaId = formData.empresa_id || user?.empresa_id;
+          if (!empresaId) {
+            const { toast } = await import('sonner');
+            toast.error('Empresa não encontrada. Verifique seu cadastro.');
+            return;
+          }
+          const { toast } = await import('sonner');
+          try {
+            const vendaData = {
+              ...formData,
+              empresa_id: empresaId,
+              prazo: Number(formData.prazo || 0),
+              valorCredito: parseFloat(formData.valorCredito) || 0,
+              taxaAdministracao: parseFloat(formData.taxaAdministracao) || 0,
+              status: !formData.cota || formData.cota.trim() === '' ? 'pendente' : (formData.status || 'ativa'),
+            };
+            await base44.entities.Venda.create(vendaData);
+            toast.success('Venda cadastrada com sucesso!');
+            setNovaVendaConsorcioOpen(false);
+            window.location.href = createPageUrl('Vendas');
+          } catch (err) {
+            console.error('Erro ao salvar venda:', err);
+            toast.error('Erro ao salvar venda: ' + (err.message || 'Erro desconhecido'));
+          }
         }}
         isLoading={false}
         currentUser={user}
