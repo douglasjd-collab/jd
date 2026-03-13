@@ -164,15 +164,20 @@ Deno.serve(async (req) => {
       if (line) text += line + "\n";
     }
 
-    console.log('=== TEXTO PDF (primeiros 2000 chars) ===');
-    console.log(text.substring(0, 2000));
+    console.log('=== TEXTO PDF (primeiros 3000 chars) ===');
+    console.log(text.substring(0, 3000));
 
     // Parse
     const linhas = limparLinhasPDF(text);
     console.log('[DEBUG] Total linhas limpas:', linhas.length);
+    if (linhas.length > 0) console.log('[DEBUG] Primeiras 3 linhas:', JSON.stringify(linhas.slice(0, 3)));
 
     const registros = linhas.map(parseLinhaAssembleia).filter(Boolean);
     console.log('[DEBUG] Total registros parseados:', registros.length);
+
+    if (_debug_texto) {
+      return Response.json({ texto_raw: text.substring(0, 5000), linhas_limpas: linhas.slice(0, 5), registros: registros.slice(0, 3) });
+    }
 
     const arquivo_nome = file_url.split('/').pop() || 'arquivo.pdf';
 
