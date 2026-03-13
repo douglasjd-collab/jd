@@ -64,24 +64,9 @@ Deno.serve(async (req) => {
         instanceName = empresa.evolution_instance_name;
         
         // Se a instância é TESTE, redirecionar para JD Promotora
-        if (instanceName === 'TESTE') {
-          console.log('🔄 Instância TESTE detectada, redirecionando para JD PROMOTORA');
-          const jd = await base44.asServiceRole.entities.Empresa.filter(
-            { nome: { $regex: 'JD.*Promotora' } }
-          );
-          
-          if (jd && jd.length > 0) {
-            empresaId = jd[0].id;
-            evolutionApiKey = jd[0].evolution_api_key;
-            evolutionApiUrl = jd[0].evolution_url;
-            instanceName = jd[0].evolution_instance_name;
-            console.log('✅ JD PROMOTORA carregada:', { instanceName });
-          }
-        } else {
-          evolutionApiKey = empresa[0].evolution_api_key;
-          evolutionApiUrl = empresa[0].evolution_url;
-          console.log('📦 Credenciais da empresa carregadas:', { instanceName });
-        }
+        evolutionApiKey = empresa.evolution_api_key;
+        evolutionApiUrl = empresa.evolution_url;
+        console.log('📦 Credenciais da empresa carregadas:', { instanceName });
       }
     }
     
