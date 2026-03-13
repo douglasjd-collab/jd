@@ -381,10 +381,10 @@ export default function Usuarios() {
       } catch (error) {
         // Capturar detalhes completos do erro
         const status = error?.response?.status;
-        const data = error?.response?.data;
+        const errResponseData = error?.response?.data;
         const msg =
-          data?.error ||
-          data?.message ||
+          errResponseData?.error ||
+          errResponseData?.message ||
           error?.message ||
           'Erro ao enviar convite';
 
