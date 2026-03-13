@@ -65,9 +65,35 @@ export default function BatePapo() {
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
 
-  const selecionarConversa = (conversa) => {
+  const selecionarConversa = async (conversa) => {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
+    
+    // Carregar foto do contato imediatamente
+    if (!conversa?.cliente_telefone || !empresaId) return;
+    try {
+      const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
+      const variacoes = [telefoneLimpo];
+      if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
+        variacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
+      } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+        variacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
+      }
+      
+      for (const tel of variacoes) {
+        const contatos = await base44.entities.ContatoWhatsapp.filter({
+          empresa_id: empresaId,
+          telefone: tel
+        }, '-created_date', 1);
+        
+        if (contatos?.length > 0) {
+          setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatos[0] }));
+          break;
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao carregar foto do contato:', e);
+    }
   };
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
