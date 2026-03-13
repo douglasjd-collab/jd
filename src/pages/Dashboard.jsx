@@ -482,10 +482,12 @@ export default function Dashboard() {
   }, [propostasMes, isVendedor, user]);
 
   const propostasPagasMes = propostasMesFiltradas.filter(isPagaProposta);
-  const valorPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+  const valorBrutoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+  const valorLiquidoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
 
   const propostasEmAndamentoMes = propostasMesFiltradas.filter(p => !isPagaProposta(p));
-  const valorEmAndamentoMes = propostasEmAndamentoMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+  const valorBrutoAndamentoMes = propostasEmAndamentoMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+  const valorLiquidoAndamentoMes = propostasEmAndamentoMes.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
 
   // Gerar lista dos últimos 12 meses para o select
   const mesesDisponiveis = React.useMemo(() => {
