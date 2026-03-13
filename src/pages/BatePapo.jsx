@@ -179,15 +179,22 @@ export default function BatePapo() {
   useEffect(() => {
     if (!empresaId) return;
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      if (event.type === 'create') {
-        const msgData = event.data;
-        if (!msgData || msgData.remetente !== 'cliente') return;
+      if (event.type !== 'create') return;
 
-        // Atualizar a conversa correspondente
+      const msgData = event.data; // pode ser null se payload_too_large
+
+      // Sempre refetch conversas para atualizar última mensagem
+      refetchConversas();
+
+      // Se temos dados da mensagem, verificar se é do cliente
+      if (msgData) {
+        // Só notificar/refetch mensagens para mensagens de clientes
+        if (msgData.remetente !== 'cliente') return;
+
+        // Se a conversa está aberta, refetch as mensagens
         if (msgData.conversa_id === conversaSelecionadaId) {
           refetchMensagens();
         }
-        refetchConversas();
 
         // Encontrar nome do contato/conversa
         const conversa = conversas.find(c => c.id === msgData.conversa_id);
@@ -210,13 +217,18 @@ export default function BatePapo() {
           const notif = new Notification(`💬 ${nomeRemetente}`, {
             body: textoMsg,
             icon: '/favicon.ico',
-            tag: msgData.conversa_id, // agrupa notificações da mesma conversa
+            tag: msgData.conversa_id,
           });
           notif.onclick = () => {
             window.focus();
             if (conversa) selecionarConversa(conversa);
             notif.close();
           };
+        }
+      } else {
+        // payload_too_large — refetch mensagens abertas por precaução
+        if (conversaSelecionadaId) {
+          refetchMensagens();
         }
       }
     });
