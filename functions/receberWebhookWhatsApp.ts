@@ -149,7 +149,8 @@ Deno.serve(async (req) => {
     }
 
     // ─── Somente messages.upsert ─────────────────────────────────────────────
-    const isUpsert = ['messages.upsert', 'messages_upsert', 'messages'].includes(event);
+    // Aceitar tanto com ponto, underline e maiúsculas (Evolution API v1/v2)
+    const isUpsert = ['messages.upsert', 'messages_upsert', 'messages', 'messages_upsert'].includes(event);
     if (!isUpsert) {
       console.log(`⏭️ Evento ignorado: "${event}"`);
       return Response.json({ success: true, skipped: event });
