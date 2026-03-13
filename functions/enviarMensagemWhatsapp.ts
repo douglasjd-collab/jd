@@ -120,12 +120,14 @@ Deno.serve(async (req) => {
       console.error('❌ Evolution API retornou erro:');
       console.error('Status:', response.status);
       console.error('Body:', responseText);
-      
+
+      // Retornar erro mas indicar que foi tentado
       return Response.json({ 
-        error: 'Erro ao enviar via WhatsApp',
+        error: `Erro ao enviar via WhatsApp (${response.status})`,
         details: responseText,
-        status: response.status
-      }, { status: 500 });
+        status: response.status,
+        success: false
+      }, { status: 400 }); // Status 400 em vez de 500 para indicar erro da API externa
     }
 
     let result;
