@@ -19,9 +19,14 @@ async function registrarLog(base44, empresaId, tipoEvento, dados) {
   }
 }
 
-function tentarDecodificarBase64(str) {
+// Tenta decodificar base64 → JSON
+function decodeBase64JSON(str) {
   try {
-    const decoded = atob(str.trim());
+    if (!str || typeof str !== 'string') return null;
+    const clean = str.trim();
+    // Verificar se parece base64 (apenas chars válidos)
+    if (!/^[A-Za-z0-9+/=]+$/.test(clean)) return null;
+    const decoded = atob(clean);
     const bytes = new Uint8Array(decoded.split('').map(c => c.charCodeAt(0)));
     return JSON.parse(new TextDecoder('utf-8').decode(bytes));
   } catch (_) {
@@ -29,24 +34,69 @@ function tentarDecodificarBase64(str) {
   }
 }
 
+// Normaliza o payload para o formato padrão { event, instance, data }
+function normalizarPayload(rawBody) {
+  let parsed = null;
+
+  // 1) Tentar JSON direto
+  try {
+    parsed = JSON.parse(rawBody);
+    console.log('✅ Parseado como JSON direto. Keys:', Object.keys(parsed).join(', '));
+  } catch (_) {}
+
+  // 2) Se não é JSON, tentar base64 do body inteiro
+  if (!parsed) {
+    parsed = decodeBase64JSON(rawBody);
+    if (parsed) console.log('✅ Body decodificado como base64. Keys:', Object.keys(parsed).join(', '));
+  }
+
+  if (!parsed) return null;
+
+  // ── Formato Evolution com webhookBase64=true ──
+  // O body JSON tem { event, instance, data: "base64string" }
+  // Onde "data" é o payload real em base64
+  if (parsed.event && typeof parsed.data === 'string' && parsed.data.length > 0) {
+    const decodedData = decodeBase64JSON(parsed.data);
+    if (decodedData) {
+      console.log('✅ payload.data decodificado de base64. Keys:', Object.keys(decodedData).join(', '));
+      parsed.data = decodedData;
+    } else {
+      // Tentar parse JSON direto da string
+      try {
+        parsed.data = JSON.parse(parsed.data);
+        console.log('✅ payload.data parseado como JSON string');
+      } catch (_) {}
+    }
+  }
+
+  // ── Unwrap wrapper externo: { data: { event, instance, data } } ──
+  if (!parsed.event && parsed.data && parsed.data.event) {
+    console.log('🔄 Unwrapped wrapper externo');
+    parsed = parsed.data;
+    // Verificar novamente se data interna é base64
+    if (parsed.event && typeof parsed.data === 'string' && parsed.data.length > 0) {
+      const decodedData = decodeBase64JSON(parsed.data);
+      if (decodedData) {
+        parsed.data = decodedData;
+        console.log('✅ payload.data decodificado após unwrap');
+      }
+    }
+  }
+
+  return parsed;
+}
+
 Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
-  console.log('='.repeat(80));
-  console.log(`📥 WEBHOOK RECEBIDO - ${timestamp}`);
-  console.log('Método:', req.method, '| URL:', req.url);
+  console.log('='.repeat(60));
+  console.log(`📥 WEBHOOK - ${timestamp} | ${req.method}`);
 
-  // Aceitar qualquer método de verificação
+  // Verificação GET
   if (req.method === 'GET') {
     const url = new URL(req.url);
     const challenge = url.searchParams.get('challenge') || url.searchParams.get('hub.challenge') || 'OK';
-    console.log('✅ GET de verificação. Challenge:', challenge);
     return new Response(challenge, { status: 200 });
   }
-
-  // Log de todos os headers para diagnóstico
-  const headersLog = {};
-  req.headers.forEach((v, k) => { headersLog[k] = v; });
-  console.log('📋 Headers recebidos:', JSON.stringify(headersLog));
 
   if (req.method !== 'POST') {
     return Response.json({ error: 'Método não suportado' }, { status: 405 });
@@ -57,76 +107,31 @@ Deno.serve(async (req) => {
     const instanceFromQuery = url.searchParams.get('instance') || '';
 
     const rawBody = await req.text();
-    console.log('📦 Body tamanho:', rawBody.length, 'bytes');
-    console.log('📦 Body (primeiros 300 chars):', rawBody.substring(0, 300));
+    console.log(`📦 Body: ${rawBody.length} bytes | Preview: ${rawBody.substring(0, 200)}`);
 
-    // ─── Parsear o payload ───────────────────────────────────────────────────
-    let payload = null;
-
-    // 1) Tentar JSON direto
-    try {
-      payload = JSON.parse(rawBody);
-      console.log('✅ Parseado como JSON direto');
-    } catch (_) {}
-
-    // 2) Tentar body inteiro como base64
-    if (!payload) {
-      const decoded = tentarDecodificarBase64(rawBody);
-      if (decoded) {
-        payload = decoded;
-        console.log('✅ Body inteiro decodificado como base64');
-      }
-    }
+    const payload = normalizarPayload(rawBody);
 
     if (!payload) {
       console.error('❌ Não foi possível parsear o body');
       return Response.json({ error: 'Body inválido' }, { status: 400 });
     }
 
-    // ─── Unwrap de wrappers comuns ───────────────────────────────────────────
-    // Formato 1: { data: { event, instance, data: ... } }
-    if (!payload.event && payload.data?.event) {
-      payload = payload.data;
-      console.log('🔄 Unwrapped wrapper externo');
-    }
-
-    // ─── Se payload.data for string base64, decodificar ─────────────────────
-    if (payload && typeof payload.data === 'string' && payload.data.length > 0) {
-      const decoded = tentarDecodificarBase64(payload.data);
-      if (decoded) {
-        payload.data = decoded;
-        console.log('✅ payload.data decodificado de base64');
-      }
-    }
-
-    // ─── Evolution v2: { event, instance, data: base64string } ───────────────
-    // Quando webhookBase64=true, cada campo pode vir como base64
-    // Tentar decodificar campos individuais se necessário
-    if (payload && payload.event && typeof payload.data === 'string') {
-      try {
-        // Tentar parse direto como JSON (pode estar no formato string JSON)
-        payload.data = JSON.parse(payload.data);
-        console.log('✅ payload.data parseado como JSON string');
-      } catch (_) {
-        const decoded = tentarDecodificarBase64(payload.data);
-        if (decoded) {
-          payload.data = decoded;
-          console.log('✅ payload.data decodificado como base64 v2');
-        }
-      }
-    }
-
-    const event = (payload.event || '').toLowerCase();
+    // Normalizar event: aceitar maiúsculas, pontos e underscores
+    const event = (payload.event || '').toLowerCase().replace(/\./g, '_');
     const instancePayload = payload.instance || '';
     const instanceFinal = instanceFromQuery || instancePayload || '';
 
     console.log(`📋 Event: "${event}" | Instance: "${instanceFinal}"`);
-    console.log(`📋 Data keys: ${Object.keys(payload.data || {}).join(', ')}`);
 
-    // ─── ACK / status update ─────────────────────────────────────────────────
-    if (['messages.update', 'messages_update', 'message.ack', 'messages.ack', 'messages_update'].includes(event)) {
+    const data = payload.data || {};
+    if (typeof data === 'object') {
+      console.log(`📋 Data keys: ${Object.keys(data).join(', ')}`);
+    }
+
+    // ─── ACK / status update ──────────────────────────────────────────────────
+    if (['messages_update', 'message_ack', 'messages_ack'].includes(event)) {
       const base44 = createClientFromRequest(req);
-      const updates = Array.isArray(payload.data) ? payload.data : [payload.data || {}];
+      const updates = Array.isArray(data) ? data : [data];
       for (const upd of updates) {
         const remoteId = upd.key?.id || upd.id || upd.messageId;
         const rawStatus = (upd.status || upd.ack || '').toString().toUpperCase();
@@ -148,29 +153,34 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, handled: 'ack' });
     }
 
-    // ─── Somente messages.upsert ─────────────────────────────────────────────
-    // Aceitar tanto com ponto, underline e maiúsculas (Evolution API v1/v2)
-    const isUpsert = ['messages.upsert', 'messages_upsert', 'messages', 'messages_upsert'].includes(event);
+    // ─── Somente messages_upsert ──────────────────────────────────────────────
+    const isUpsert = ['messages_upsert', 'messages'].includes(event);
     if (!isUpsert) {
       console.log(`⏭️ Evento ignorado: "${event}"`);
       return Response.json({ success: true, skipped: event });
     }
 
     // ─── Extrair dados da mensagem ────────────────────────────────────────────
-    const data = payload.data || {};
-    const key = data.key || {};
-    const message = data.message || {};
-    const pushName = data.pushName || data.senderName || 'Cliente';
+    // Evolution pode mandar como array ou objeto único
+    const msgData = Array.isArray(data) ? data[0] : data;
+
+    const key = msgData.key || {};
+    const message = msgData.message || {};
+    const pushName = msgData.pushName || msgData.senderName || 'Cliente';
     const fromMe = key.fromMe === true;
     const remoteJidRaw = key.remoteJid || '';
-    const remoteJidAlt = data.remoteJidAlt || '';
-    const telefone = (remoteJidRaw.includes('@lid') && remoteJidAlt) ? remoteJidAlt : remoteJidRaw;
     const messageId = key.id || `gen_${Date.now()}`;
+
+    // Resolver telefone (ignorar @lid, usar @s.whatsapp.net)
+    let telefone = remoteJidRaw;
+    if (remoteJidRaw.includes('@lid') && msgData.remoteJidAlt) {
+      telefone = msgData.remoteJidAlt;
+    }
 
     console.log(`📞 JID: ${remoteJidRaw} | fromMe: ${fromMe} | msgId: ${messageId}`);
 
     if (!telefone || !messageId) {
-      console.error('❌ Dados insuficientes');
+      console.error('❌ Dados insuficientes - sem telefone ou messageId');
       return Response.json({ success: false, error: 'Missing key data' }, { status: 400 });
     }
 
@@ -183,44 +193,46 @@ Deno.serve(async (req) => {
     // ─── Extrair conteúdo ─────────────────────────────────────────────────────
     let tipo = 'texto';
     let conteudo = '';
-    if (message.conversation) conteudo = message.conversation;
-    else if (message.extendedTextMessage?.text) conteudo = message.extendedTextMessage.text;
-    else if (message.imageMessage) { tipo = 'imagem'; conteudo = message.imageMessage.caption || 'Imagem'; }
-    else if (message.audioMessage || message.pttMessage) { tipo = 'audio'; conteudo = 'Áudio'; }
-    else if (message.videoMessage) { tipo = 'video'; conteudo = message.videoMessage.caption || 'Vídeo'; }
-    else if (message.documentMessage) { tipo = 'pdf'; conteudo = message.documentMessage.title || 'Documento'; }
-    else if (message.stickerMessage) { tipo = 'imagem'; conteudo = 'Sticker'; }
-    else conteudo = JSON.stringify(message).substring(0, 200);
+    if (message.conversation) {
+      conteudo = message.conversation;
+    } else if (message.extendedTextMessage?.text) {
+      conteudo = message.extendedTextMessage.text;
+    } else if (message.imageMessage) {
+      tipo = 'imagem'; conteudo = message.imageMessage.caption || 'Imagem';
+    } else if (message.audioMessage || message.pttMessage) {
+      tipo = 'audio'; conteudo = 'Áudio';
+    } else if (message.videoMessage) {
+      tipo = 'video'; conteudo = message.videoMessage.caption || 'Vídeo';
+    } else if (message.documentMessage) {
+      tipo = 'pdf'; conteudo = message.documentMessage.title || 'Documento';
+    } else if (message.stickerMessage) {
+      tipo = 'imagem'; conteudo = 'Sticker';
+    } else {
+      conteudo = JSON.stringify(message).substring(0, 200);
+    }
 
-    console.log(`📝 Tipo: ${tipo} | Conteúdo: ${conteudo.substring(0, 100)}`);
+    console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}"`);
 
     const telefoneLimpo = telefone.replace('@s.whatsapp.net', '').replace('@c.us', '').replace(/\D/g, '');
 
-    // Gerar variações do telefone para busca (com e sem o 9º dígito BR)
+    // Variações do telefone (com/sem 9º dígito BR)
     const telefonesVariacoes = [telefoneLimpo];
-    // Brasil: 55 + DDD(2) + número(8 ou 9 dígitos)
     if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
-      // Tem 12 dígitos (sem o 9) → adicionar variação com o 9
-      const comNove = telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4);
-      telefonesVariacoes.push(comNove);
+      telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
     } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
-      // Tem 13 dígitos (com o 9) → adicionar variação sem o 9
-      const semNove = telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5);
-      telefonesVariacoes.push(semNove);
+      telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
     }
-    console.log(`📞 Telefone limpo: ${telefoneLimpo} | Variações: ${telefonesVariacoes.join(', ')}`);
+    console.log(`📞 Tel limpo: ${telefoneLimpo} | Variações: ${telefonesVariacoes.join(', ')}`);
 
-    // ─── Identificar empresa ──────────────────────────────────────────────────
+    // ─── Inicializar base44 ───────────────────────────────────────────────────
     const base44 = createClientFromRequest(req);
     const JD_ID = '699696c2c9f5bffc2e67402b';
     let empresaId = JD_ID;
     let colaboradorId = null;
     let tipoConexao = 'empresa';
 
+    // ─── Identificar empresa pela instância ──────────────────────────────────
     if (instanceFinal) {
-      console.log(`🔎 Buscando instância "${instanceFinal}"...`);
-      
-      // Buscar colaborador
       try {
         const colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
           { evolution_instance_name: instanceFinal }
@@ -230,17 +242,16 @@ Deno.serve(async (req) => {
           tipoConexao = 'usuario';
           colaboradorId = colab.id;
           empresaId = colab.empresa_id || JD_ID;
-          console.log(`✅ Instância de colaborador: ${colab.nome} (empresa: ${empresaId})`);
+          console.log(`✅ Instância colaborador: ${colab.nome} (empresa: ${empresaId})`);
         } else {
-          // Buscar empresa
           const empresas = await base44.asServiceRole.entities.Empresa.filter(
             { evolution_instance_name: instanceFinal }
           );
           if (empresas?.length > 0) {
             empresaId = empresas[0].id;
-            console.log(`✅ Instância de empresa: ${empresas[0].nome} (${empresaId})`);
+            console.log(`✅ Instância empresa: ${empresas[0].nome}`);
           } else {
-            console.warn(`⚠️ Instância "${instanceFinal}" não encontrada no banco, usando JD padrão`);
+            console.warn(`⚠️ Instância "${instanceFinal}" não encontrada, usando JD padrão`);
           }
         }
       } catch (err) {
@@ -265,10 +276,7 @@ Deno.serve(async (req) => {
         const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
           { empresa_id: empresaId, telefone: tel }
         );
-        if (contatos?.length > 0) {
-          contatoEncontrado = contatos[0];
-          break;
-        }
+        if (contatos?.length > 0) { contatoEncontrado = contatos[0]; break; }
       }
       if (contatoEncontrado) {
         contato = contatoEncontrado;
@@ -289,30 +297,25 @@ Deno.serve(async (req) => {
     // ─── Buscar cliente pelo telefone ─────────────────────────────────────────
     let clienteId = '';
     try {
-      const clientes = await base44.asServiceRole.entities.Cliente.filter(
-        { empresa_id: empresaId, celular: telefoneLimpo }
-      );
-      if (clientes?.length > 0) {
-        clienteId = clientes[0].id;
-        console.log(`✅ Cliente encontrado: ${clienteId}`);
+      for (const tel of telefonesVariacoes) {
+        const clientes = await base44.asServiceRole.entities.Cliente.filter(
+          { empresa_id: empresaId, celular: tel }
+        );
+        if (clientes?.length > 0) { clienteId = clientes[0].id; break; }
       }
+      if (clienteId) console.log(`✅ Cliente encontrado: ${clienteId}`);
     } catch (e) {
       console.warn(`⚠️ Erro ao buscar cliente: ${e.message}`);
     }
 
     // ─── Buscar/criar conversa ────────────────────────────────────────────────
     let conversa = null;
-
-    // Buscar conversa por qualquer variação do telefone
     let conversas = [];
     for (const tel of telefonesVariacoes) {
       const resultado = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
         { empresa_id: empresaId, cliente_telefone: tel }
       );
-      if (resultado?.length > 0) {
-        conversas = resultado;
-        break;
-      }
+      if (resultado?.length > 0) { conversas = resultado; break; }
     }
 
     if (conversas?.length > 0) {
@@ -358,7 +361,7 @@ Deno.serve(async (req) => {
       status: remetente === 'vendedor' ? 'enviada' : 'entregue'
     });
 
-    console.log(`✅ Mensagem salva: ${novaMensagem.id} | empresa: ${empresaId} | de: ${remetente}`);
+    console.log(`✅ Mensagem salva: ${novaMensagem.id} | empresa: ${empresaId} | remetente: ${remetente}`);
 
     await registrarLog(base44, empresaId, 'mensagem_recebida', {
       telefone: telefoneLimpo,
