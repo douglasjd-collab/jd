@@ -121,11 +121,12 @@ Deno.serve(async (req) => {
       const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
       if (colabs?.[0]?.empresa_id) empresa_id = colabs[0].empresa_id;
     }
-    if (!empresa_id) {
+    const body = await req.json();
+    const { _debug_texto: isDebug } = body;
+
+    if (!empresa_id && !isDebug) {
       return Response.json({ error: "Empresa não encontrada para o usuário" }, { status: 400 });
     }
-
-    const body = await req.json();
     const { file_url, assembleia_data, chamada, _debug_texto } = body;
 
     if (!file_url || !assembleia_data || !chamada) {
