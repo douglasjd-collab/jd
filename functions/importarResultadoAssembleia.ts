@@ -1,5 +1,5 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
-import pdfParse from "npm:pdf-parse@1.1.1";
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.20";
+import { getDocument } from "npm:pdfjs-dist@4.9.155/legacy/build/pdf.mjs";
 
 function limparLinhasPDF(texto) {
   return texto
