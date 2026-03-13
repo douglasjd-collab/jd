@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { file_url, assembleia_data, chamada } = body;
+    const { file_url, assembleia_data, chamada, _debug_texto } = body;
 
     if (!file_url || !assembleia_data || !chamada) {
       return Response.json({ error: "file_url, assembleia_data e chamada são obrigatórios" }, { status: 400 });
