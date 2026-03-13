@@ -122,12 +122,11 @@ Deno.serve(async (req) => {
       if (colabs?.[0]?.empresa_id) empresa_id = colabs[0].empresa_id;
     }
     const body = await req.json();
-    const { _debug_texto: isDebug } = body;
+    const { file_url, assembleia_data, chamada, _debug_texto } = body;
 
-    if (!empresa_id && !isDebug) {
+    if (!empresa_id && !_debug_texto) {
       return Response.json({ error: "Empresa não encontrada para o usuário" }, { status: 400 });
     }
-    const { file_url, assembleia_data, chamada, _debug_texto } = body;
 
     if (!file_url || !assembleia_data || !chamada) {
       return Response.json({ error: "file_url, assembleia_data e chamada são obrigatórios" }, { status: 400 });
