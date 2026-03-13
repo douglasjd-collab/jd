@@ -198,7 +198,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                     <Input {...register('rg')} placeholder="0000000" />
                   </FormField>
 
-                  <FormField label="Data de Nascimento">
+                  <FormField label="Data de Nascimento/Fundação">
                     <Input type="date" {...register('data_nascimento')} />
                   </FormField>
 
