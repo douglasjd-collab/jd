@@ -20,10 +20,13 @@ Deno.serve(async (req) => {
     const novaUrl = acao === 'restaurar' ? ORIGINAL_URL : CAPTURA_URL;
 
     const body = {
-      url: novaUrl,
-      webhook_by_events: false,
-      webhook_base64: true,
-      events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE"]
+      webhook: {
+        url: novaUrl,
+        webhook_by_events: false,
+        webhook_base64: true,
+        events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE"],
+        enabled: true
+      }
     };
 
     const res = await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
