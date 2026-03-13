@@ -95,7 +95,7 @@ export default function ImportarResultadoAssembleia() {
 
       // 3. ETAPA 2 e 3: Processar em lotes com pausa
       let offset = 0;
-      const limit = 10;
+      const limit = 50;
       let concluido = false;
 
       while (!concluido) {
@@ -117,9 +117,9 @@ export default function ImportarResultadoAssembleia() {
         const progresso = Math.round((processResponse.data.registros_processados / total_registros) * 100);
         toast.loading(`Processando: ${progresso}%`, { id: 'importacao-progresso' });
 
-        // ⏸️ Pausa obrigatória entre lotes
+        // ⏸️ Pausa reduzida entre lotes
         if (!concluido) {
-          await new Promise(r => setTimeout(r, 1500));
+          await new Promise(r => setTimeout(r, 500));
         }
 
         if (concluido) {
