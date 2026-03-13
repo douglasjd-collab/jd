@@ -249,30 +249,17 @@ Deno.serve(async (req) => {
       .replace(/@c\.us/g, '')
       .replace(/\D/g, '');
 
+    // 🚨 BLOQUEIO ABSOLUTO: Números duplicados/falsos - rejeitar imediatamente
+    const NUMEROS_BLOQUEADOS = ['123248767422595', '12324876742259', '123248767422', '55123248767422595', '55123248767422'];
+    if (NUMEROS_BLOQUEADOS.includes(telefoneLimpo) || NUMEROS_BLOQUEADOS.some(num => telefoneLimpo.includes(num))) {
+      console.error(`🚫 BLOQUEIO TOTAL: "${telefoneLimpo}" está na lista de números duplicados`);
+      return Response.json({ success: false, error: 'Blocked phone number' }, { status: 403 });
+    }
+
     // Validar telefone (deve ter entre 10 e 15 dígitos)
     if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) {
       console.error(`❌ Telefone inválido após limpeza: "${telefoneLimpo}" (original: "${telefone}")`);
       return Response.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
-    }
-
-    // BLOQUEAR números duplicados/falsos conhecidos - MÚLTIPLAS VARIAÇÕES
-    const numerosBlockeados = [
-      '123248767422595',  // Original duplicado
-      '12324876742259',   // Variação
-      '123248767422',     // Variação curta
-      '55123248767422595', // Com código país
-      '55123248767422',   // Com código país curto
-    ];
-    
-    // Verificar bloqueio
-    if (numerosBlockeados.includes(telefoneLimpo) || numerosBlockeados.some(num => telefoneLimpo.includes(num))) {
-      console.error(`❌ REJEIÇÃO TOTAL: Número bloqueado (duplicado/falso): "${telefoneLimpo}"`);
-      await registrarLog(base44, JD_ID, 'erro_webhook', {
-        status: 'erro',
-        erro: `Número bloqueado (duplicado detectado): ${telefoneLimpo}`,
-        instancia: instanceFinal || 'desconhecida'
-      });
-      return Response.json({ success: false, error: 'Phone number is blocked (duplicate/fake ID)' }, { status: 400 });
     }
 
     // Rejeitar números suspeitos que parecem IDs de banco de dados (15 dígitos sem 55 no início)
