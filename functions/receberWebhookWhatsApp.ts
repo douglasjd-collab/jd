@@ -243,17 +243,22 @@ Deno.serve(async (req) => {
 
     console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}"`);
 
-    // Limpar telefone: remover suffixes @s.whatsapp.net, @c.us, @lid e manter apenas números
+    // Limpar telefone: remover suffixes @s.whatsapp.net, @c.us e manter apenas números
     let telefoneLimpo = telefone
       .replace(/@s\.whatsapp\.net/g, '')
       .replace(/@c\.us/g, '')
-      .replace(/@lid/g, '')
       .replace(/\D/g, '');
 
     // Validar telefone (deve ter entre 10 e 15 dígitos)
     if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) {
       console.error(`❌ Telefone inválido após limpeza: "${telefoneLimpo}" (original: "${telefone}")`);
       return Response.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
+    }
+
+    // Rejeitar números suspeitos que parecem IDs de banco de dados
+    if (/^\d{15}$/.test(telefoneLimpo) && !telefoneLimpo.startsWith('55')) {
+      console.error(`❌ REJEIÇÃO: Número suspeito (parece ID): "${telefoneLimpo}"`);
+      return Response.json({ success: false, error: 'Suspicious phone number (looks like database ID)' }, { status: 400 });
     }
 
     // Variações do telefone (com/sem 9º dígito BR)
