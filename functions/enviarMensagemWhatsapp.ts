@@ -91,15 +91,25 @@ Deno.serve(async (req) => {
     const numeroFormatado = numero_cliente.replace(/\D/g, '');
     console.log('📱 Número formatado:', numeroFormatado);
 
+    // Validar número (deve ter pelo menos 10 dígitos para Brasil)
+    if (numeroFormatado.length < 10) {
+      console.error('❌ Número inválido - menos de 10 dígitos');
+      return Response.json({ 
+        error: 'Número de telefone inválido. Deve ter pelo menos 10 dígitos',
+        success: false
+      }, { status: 400 });
+    }
+
     // Preparar requisição para Evolution
     const endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
     const requestPayload = {
       number: numeroFormatado,
-      text: mensagem_texto
+      text: mensagem_texto.trim()
     };
 
     console.log('🎯 Endpoint:', endpoint);
     console.log('📦 Payload Evolution:', JSON.stringify(requestPayload));
+    console.log('📱 Número: ' + numeroFormatado + ' | Texto: ' + mensagem_texto.substring(0, 50));
 
     // Enviar para Evolution API
     console.log('📤 Enviando para Evolution API...');
