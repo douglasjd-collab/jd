@@ -625,6 +625,20 @@ export default function BatePapo() {
                             <Pin className="mr-2 h-3.5 w-3.5" />
                             Fixar conversa
                           </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={async () => {
+                              if (confirm('Tem certeza que deseja excluir esta conversa e todas as mensagens?')) {
+                                await base44.entities.ConversaWhatsapp.delete(conversaSelecionada.id);
+                                queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                setConversaSelecionada(null);
+                                toast.success('Conversa excluída');
+                              }
+                            }}
+                            className="text-red-600 hover:bg-red-50"
+                          >
+                            <X className="mr-2 h-3.5 w-3.5" />
+                            Excluir conversa
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
