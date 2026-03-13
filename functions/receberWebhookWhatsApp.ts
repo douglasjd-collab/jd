@@ -255,13 +255,21 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
     }
 
-    // BLOQUEAR números duplicados/falsos conhecidos
-    const numerosBlockeados = ['123248767422595', '12324876742259', '123248767422'];
-    if (numerosBlockeados.includes(telefoneLimpo)) {
+    // BLOQUEAR números duplicados/falsos conhecidos - MÚLTIPLAS VARIAÇÕES
+    const numerosBlockeados = [
+      '123248767422595',  // Original duplicado
+      '12324876742259',   // Variação
+      '123248767422',     // Variação curta
+      '55123248767422595', // Com código país
+      '55123248767422',   // Com código país curto
+    ];
+    
+    // Verificar bloqueio
+    if (numerosBlockeados.includes(telefoneLimpo) || numerosBlockeados.some(num => telefoneLimpo.includes(num))) {
       console.error(`❌ REJEIÇÃO TOTAL: Número bloqueado (duplicado/falso): "${telefoneLimpo}"`);
       await registrarLog(base44, JD_ID, 'erro_webhook', {
         status: 'erro',
-        erro: `Número bloqueado (duplicado): ${telefoneLimpo}`,
+        erro: `Número bloqueado (duplicado detectado): ${telefoneLimpo}`,
         instancia: instanceFinal || 'desconhecida'
       });
       return Response.json({ success: false, error: 'Phone number is blocked (duplicate/fake ID)' }, { status: 400 });
