@@ -376,6 +376,22 @@ Deno.serve(async (req) => {
     // ─── Buscar/criar conversa ────────────────────────────────────────────────
     let conversa = null;
     let conversas = [];
+    
+    // PROTEGER: rejeitar se encontrar conversa com número bloqueado
+    for (const numBloqueado of numerosBlockeados) {
+      const convsBlockeadas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+        { empresa_id: empresaId, cliente_telefone: numBloqueado }
+      );
+      if (convsBlockeadas?.length > 0) {
+        console.error(`❌ BLOQUEIO: Conversa com número duplicado detectada e será ignorada`);
+        // Deletar conversa com número bloqueado
+        for (const conv of convsBlockeadas) {
+          await base44.asServiceRole.entities.ConversaWhatsapp.delete(conv.id);
+        }
+      }
+    }
+    
+    // Buscar conversa com número correto
     for (const tel of telefonesVariacoes) {
       const resultado = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
         { empresa_id: empresaId, cliente_telefone: tel }
