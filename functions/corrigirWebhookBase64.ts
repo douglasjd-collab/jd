@@ -26,14 +26,16 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        url: webhookUrl,
-        enabled: true,
-        webhookBase64: false,  // DESATIVAR base64 — enviar JSON puro
-        webhookByEvents: false,
-        events: [
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE'
-        ]
+        webhook: {
+          url: webhookUrl,
+          enabled: true,
+          webhookBase64: false,  // DESATIVAR base64 — enviar JSON puro
+          webhookByEvents: false,
+          events: [
+            'MESSAGES_UPSERT',
+            'MESSAGES_UPDATE'
+          ]
+        }
       })
     });
     
