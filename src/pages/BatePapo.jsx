@@ -168,20 +168,60 @@ export default function BatePapo() {
       refetchInterval: 10000, // Fallback polling a cada 10s
   });
 
+  // Solicitar permissão para notificações do browser na primeira vez
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // Real-time: atualizar mensagens quando chegar nova mensagem no banco
   useEffect(() => {
-    if (!conversaSelecionadaId) return;
+    if (!empresaId) return;
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
-      if (['create', 'update'].includes(event.type)) {
+      if (event.type === 'create') {
         const msgData = event.data;
-        if (msgData?.conversa_id === conversaSelecionadaId) {
+        if (!msgData || msgData.remetente !== 'cliente') return;
+
+        // Atualizar a conversa correspondente
+        if (msgData.conversa_id === conversaSelecionadaId) {
           refetchMensagens();
-          refetchConversas();
+        }
+        refetchConversas();
+
+        // Encontrar nome do contato/conversa
+        const conversa = conversas.find(c => c.id === msgData.conversa_id);
+        const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
+        const textoMsg = msgData.texto || '📎 Arquivo recebido';
+
+        // Toast de notificação in-app
+        toast(nomeRemetente, {
+          description: textoMsg,
+          icon: '💬',
+          duration: 5000,
+          action: conversa ? {
+            label: 'Abrir',
+            onClick: () => selecionarConversa(conversa),
+          } : undefined,
+        });
+
+        // Notificação nativa do browser (quando aba não está em foco)
+        if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+          const notif = new Notification(`💬 ${nomeRemetente}`, {
+            body: textoMsg,
+            icon: '/favicon.ico',
+            tag: msgData.conversa_id, // agrupa notificações da mesma conversa
+          });
+          notif.onclick = () => {
+            window.focus();
+            if (conversa) selecionarConversa(conversa);
+            notif.close();
+          };
         }
       }
     });
     return unsub;
-  }, [conversaSelecionadaId]);
+  }, [empresaId, conversaSelecionadaId, conversas]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
