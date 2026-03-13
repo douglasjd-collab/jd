@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     // ─── Unwrap de wrappers comuns ───────────────────────────────────────────
-    // Formato: { data: { event, instance, data: ... } }
+    // Formato 1: { data: { event, instance, data: ... } }
     if (!payload.event && payload.data?.event) {
       payload = payload.data;
       console.log('🔄 Unwrapped wrapper externo');
@@ -96,6 +96,23 @@ Deno.serve(async (req) => {
       if (decoded) {
         payload.data = decoded;
         console.log('✅ payload.data decodificado de base64');
+      }
+    }
+
+    // ─── Evolution v2: { event, instance, data: base64string } ───────────────
+    // Quando webhookBase64=true, cada campo pode vir como base64
+    // Tentar decodificar campos individuais se necessário
+    if (payload && payload.event && typeof payload.data === 'string') {
+      try {
+        // Tentar parse direto como JSON (pode estar no formato string JSON)
+        payload.data = JSON.parse(payload.data);
+        console.log('✅ payload.data parseado como JSON string');
+      } catch (_) {
+        const decoded = tentarDecodificarBase64(payload.data);
+        if (decoded) {
+          payload.data = decoded;
+          console.log('✅ payload.data decodificado como base64 v2');
+        }
       }
     }
 
