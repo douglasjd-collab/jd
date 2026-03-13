@@ -189,13 +189,13 @@ export default function BatePapo() {
 
       // Se temos dados da mensagem, verificar se é do cliente
       if (msgData) {
-        // Só notificar/refetch mensagens para mensagens de clientes
-        if (msgData.remetente !== 'cliente') return;
-
-        // Se a conversa está aberta, refetch as mensagens
+        // Refetch QUALQUER mensagem da conversa aberta para tempo real
         if (msgData.conversa_id === conversaSelecionadaId) {
           refetchMensagens();
         }
+        
+        // Só notificar para mensagens de clientes
+        if (msgData.remetente !== 'cliente') return;
 
         // Encontrar nome do contato/conversa
         const conversa = conversas.find(c => c.id === msgData.conversa_id);
