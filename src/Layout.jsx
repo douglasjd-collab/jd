@@ -280,17 +280,43 @@ export default function Layout({ children, currentPageName }) {
   const menus_permitidos = user?.menus_permitidos || [];
   const temPermissoesCustomizadas = menus_permitidos.length > 0;
 
+  // Verifica se uma chave de submenu está liberada (formato 'menuKey:page')
+  const isSubmenuPermitido = (menuKey, subPage) => {
+    if (!temPermissoesCustomizadas) return true;
+    const subKey = `${menuKey}:${subPage}`;
+    return menus_permitidos.includes(subKey);
+  };
+
   const filteredMenuItems = menuItems.filter(item => {
     // Filtrar por role primeiro
     if (!item.roles.includes(user?.perfil || 'vendedor')) return false;
-    // Admin/master/super_admin/gerente nunca são bloqueados por permissões customizadas
+    // Admin/master/super_admin/gerente/vendedor nunca são bloqueados por permissões customizadas
     if (['master', 'super_admin', 'admin', 'gerente', 'vendedor'].includes(user?.perfil)) return true;
     // Se não há permissões customizadas, libera tudo
     if (!temPermissoesCustomizadas) return true;
-    // Menus sem chave de permissão (ex: Gestão de Subcontas, Meus Dados) sempre aparecem
     const key = menuPermissaoKey[item.name];
     if (!key) return true;
+    // Para menus com submenu: liberar se ao menos 1 submenu estiver permitido
+    if (item.submenu) {
+      return item.submenu.some(sub => isSubmenuPermitido(key, sub.page));
+    }
     return menus_permitidos.includes(key);
+  }).map(item => {
+    // Filtrar submenus individualmente
+    if (
+      item.submenu &&
+      !['master', 'super_admin', 'admin', 'gerente', 'vendedor'].includes(user?.perfil) &&
+      temPermissoesCustomizadas
+    ) {
+      const key = menuPermissaoKey[item.name];
+      if (key) {
+        return {
+          ...item,
+          submenu: item.submenu.filter(sub => isSubmenuPermitido(key, sub.page)),
+        };
+      }
+    }
+    return item;
   });
 
   const toggleSubmenu = (name) => {
