@@ -165,7 +165,8 @@ export default function BatePapo() {
         const cached = localStorage.getItem(`msgs_cache_${conversaSelecionadaId}`);
         return cached ? JSON.parse(cached) : undefined;
       },
-      refetchInterval: 10000, // Fallback polling a cada 10s
+      staleTime: 0, // Sempre considerar dados obsoletos para refetch imediato
+      refetchInterval: 3000, // Polling agressivo a cada 3s como fallback
   });
 
   // Solicitar permissão para notificações do browser na primeira vez
