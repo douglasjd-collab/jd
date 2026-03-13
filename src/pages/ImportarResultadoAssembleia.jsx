@@ -168,8 +168,8 @@ export default function ImportarResultadoAssembleia() {
           toast.loading(`Excluindo: ${status}`, { id: 'exclusao-progresso' });
         }
 
-        // ⏸️ Pausa obrigatória (Base44 rate limit)
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // ⏸️ Pausa reduzida
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       toast.success('Histórico excluído com sucesso', { id: 'exclusao-progresso' });
