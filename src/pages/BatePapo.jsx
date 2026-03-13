@@ -312,11 +312,13 @@ export default function BatePapo() {
           data_ultima_mensagem: new Date().toISOString()
         });
       }
+      // Invalidar IMEDIATAMENTE para refetch em tempo real
+      await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
+      await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       toast.success('Mensagem enviada');
     },
     onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp'] });
-      await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      // Duplicado removido — já feito no onSuccess
     }
   });
 
