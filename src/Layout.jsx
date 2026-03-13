@@ -40,7 +40,7 @@ import LogoUploader from '@/components/ui/LogoUploader';
 import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import AntiTranslateGuard from '@/components/AntiTranslateGuard';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import VendaForm from '@/components/forms/VendaForm';
 
 export default function Layout({ children, currentPageName }) {
