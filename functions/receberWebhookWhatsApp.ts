@@ -35,13 +35,18 @@ Deno.serve(async (req) => {
   console.log(`📥 WEBHOOK RECEBIDO - ${timestamp}`);
   console.log('Método:', req.method, '| URL:', req.url);
 
-  // GET de verificação/teste
+  // Aceitar qualquer método de verificação
   if (req.method === 'GET') {
     const url = new URL(req.url);
     const challenge = url.searchParams.get('challenge') || url.searchParams.get('hub.challenge') || 'OK';
     console.log('✅ GET de verificação. Challenge:', challenge);
     return new Response(challenge, { status: 200 });
   }
+
+  // Log de todos os headers para diagnóstico
+  const headersLog = {};
+  req.headers.forEach((v, k) => { headersLog[k] = v; });
+  console.log('📋 Headers recebidos:', JSON.stringify(headersLog));
 
   if (req.method !== 'POST') {
     return Response.json({ error: 'Método não suportado' }, { status: 405 });
