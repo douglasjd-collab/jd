@@ -6,14 +6,17 @@ function limparLinhasPDF(texto) {
     .split('\n')
     .map(l => l.trim())
     .filter(l => {
-      if (!l || l.length < 10) return false;
+      if (!l || l.length < 5) return false;
       
       // Ignorar headers conhecidos
-      if (l.match(/^QT\s+GRUPO/i)) return false;
-      if (l.match(/Legendas:/i)) return false;
+      if (l.match(/^QT[\s.]+GRUPO/i)) return false;
+      if (l.match(/Legendas/i)) return false;
       if (l.match(/Prováveis Contemplados/i)) return false;
+      if (l.match(/Pedra Chave/i)) return false;
+      if (l.match(/Qtd\.\s*Participantes/i)) return false;
       if (l.match(/^\s*Página/i)) return false;
       if (l.match(/^\s*Data:/i)) return false;
+      if (l.match(/^S\s*[-|]/i)) return false; // linha de legendas
       
       // Aceitar linhas que contenham grupo de 6 dígitos
       if (/\d{6}/.test(l)) return true;
@@ -25,20 +28,35 @@ function limparLinhasPDF(texto) {
 function parseLinhaAssembleia(linha) {
   if (!linha) return null;
   
-  // Formato: "1003102SERVIÇOS FAIXA IR$ 22.964,10Lance Livre20,0000%"
+  // Suporta dois formatos:
+  // Formato A (sem espaço): "1003102SERVIÇOS FAIXA IR$ 22.964,10Lance Livre20,0000%"
+  // Formato B (com espaço): "1 003103 SERVIÇOS FAIXA I R$ 10.531,96 Lance Livre 50,0000%"
   
-  // 1. QT (1-3 dígitos no início)
-  const qtMatch = linha.match(/^(\d{1,3})/);
-  const qt = qtMatch ? parseInt(qtMatch[1]) : null;
-  
-  // 2. GRUPO (6 dígitos após QT)
-  const grupoMatch = linha.match(/^\d{1,3}(\d{6})/);
-  const grupo = grupoMatch ? grupoMatch[1] : null;
+  // 1. Extrair QT e GRUPO
+  let qt = null;
+  let grupo = null;
+  let resto = linha;
+
+  // Formato B: número, espaço, 6 dígitos
+  const formatoBMatch = linha.match(/^(\d{1,3})\s+(\d{6})\s+(.*)/);
+  if (formatoBMatch) {
+    qt = parseInt(formatoBMatch[1]);
+    grupo = formatoBMatch[2];
+    resto = formatoBMatch[3];
+  } else {
+    // Formato A: QT colado ao GRUPO
+    const formatoAMatch = linha.match(/^(\d{1,3})(\d{6})(.*)/);
+    if (formatoAMatch) {
+      qt = parseInt(formatoAMatch[1]);
+      grupo = formatoAMatch[2];
+      resto = formatoAMatch[3];
+    }
+  }
   
   if (!grupo) return null;
   
   // 3. PERCENTUAL (número com vírgula seguido de %)
-  const percentMatch = linha.match(/(\d{1,3},\d{2,4})%/);
+  const percentMatch = linha.match(/(\d{1,3}[,.]\d{2,4})%/);
   const percentual = percentMatch ? parseFloat(percentMatch[1].replace(',', '.')) : null;
   
   // 4. CRÉDITO (último R$ encontrado)
@@ -49,7 +67,6 @@ function parseLinhaAssembleia(linha) {
   
   // 5. MODALIDADE
   let modalidade = "sorteio";
-  
   if (linha.includes("Lance Livre")) {
     modalidade = "lance_livre";
   } else if (linha.includes("Lance Limitado")) {
@@ -63,10 +80,9 @@ function parseLinhaAssembleia(linha) {
     }
   }
   
-  // 6. DESCRIÇÃO
-  let descricao = linha
-    .replace(/^\d{1,3}\d{6}/, '') // Remove QT + grupo
-    .split(/R\$/)[0] // Antes do R$
+  // 6. DESCRIÇÃO: tudo entre o grupo e o primeiro R$
+  let descricao = resto
+    .split(/R\$/)[0]
     .replace(/(Lance Livre|Lance Limitado|Sorteio|Lance Fixo)/g, '')
     .trim();
   
