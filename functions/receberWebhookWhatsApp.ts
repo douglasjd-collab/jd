@@ -178,13 +178,32 @@ Deno.serve(async (req) => {
     const remoteJidRaw = key.remoteJid || '';
     const messageId = key.id || `gen_${Date.now()}`;
 
-    // Resolver telefone (ignorar @lid, usar @s.whatsapp.net)
+    // Resolver telefone (ignorar @lid, tentar remoteJidAlt, se não usar números do JID)
     let telefone = remoteJidRaw;
-    if (remoteJidRaw.includes('@lid') && msgData.remoteJidAlt) {
+    console.log(`📞 remoteJidRaw: ${remoteJidRaw}`);
+    console.log(`📞 remoteJidAlt: ${msgData.remoteJidAlt || 'não informado'}`);
+    console.log(`📞 participant: ${msgData.participant || 'não informado'}`);
+    
+    // Prioridade: remoteJidAlt > participant > remoteJidRaw
+    if (msgData.remoteJidAlt && !msgData.remoteJidAlt.includes('@lid')) {
       telefone = msgData.remoteJidAlt;
+      console.log(`✅ Usando remoteJidAlt: ${telefone}`);
+    } else if (msgData.participant && !msgData.participant.includes('@lid')) {
+      telefone = msgData.participant;
+      console.log(`✅ Usando participant: ${telefone}`);
+    } else if (remoteJidRaw.includes('@lid')) {
+      // Se remoteJidRaw é @lid, tentar extrair do participant ou falhar
+      if (msgData.participant) {
+        telefone = msgData.participant;
+        console.log(`✅ remoteJidRaw é @lid, usando participant: ${telefone}`);
+      } else {
+        console.warn(`⚠️ remoteJidRaw é @lid e não temos participant, tentando extrair números`);
+        // Extrair números do @lid: 123248767422595@lid → 123248767422595
+        telefone = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '') ? remoteJidRaw.replace(/@lid/g, '') : remoteJidRaw;
+      }
     }
 
-    console.log(`📞 JID: ${remoteJidRaw} | fromMe: ${fromMe} | msgId: ${messageId}`);
+    console.log(`📞 Telefone final: ${telefone} | fromMe: ${fromMe} | msgId: ${messageId}`);
 
     if (!telefone || !messageId) {
       console.error('❌ Dados insuficientes - sem telefone ou messageId');
