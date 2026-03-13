@@ -258,14 +258,24 @@ Deno.serve(async (req) => {
     // BLOQUEAR números duplicados/falsos conhecidos
     const numerosBlockeados = ['123248767422595', '12324876742259', '123248767422'];
     if (numerosBlockeados.includes(telefoneLimpo)) {
-      console.error(`❌ REJEIÇÃO ATIVA: Número bloqueado (duplicado/falso): "${telefoneLimpo}"`);
-      return Response.json({ success: false, error: 'Phone number is blocked (duplicate/fake)' }, { status: 400 });
+      console.error(`❌ REJEIÇÃO TOTAL: Número bloqueado (duplicado/falso): "${telefoneLimpo}"`);
+      await registrarLog(base44, JD_ID, 'erro_webhook', {
+        status: 'erro',
+        erro: `Número bloqueado (duplicado): ${telefoneLimpo}`,
+        instancia: instanceFinal || 'desconhecida'
+      });
+      return Response.json({ success: false, error: 'Phone number is blocked (duplicate/fake ID)' }, { status: 400 });
     }
 
-    // Rejeitar números suspeitos que parecem IDs de banco de dados
+    // Rejeitar números suspeitos que parecem IDs de banco de dados (15 dígitos sem 55 no início)
     if (/^\d{15}$/.test(telefoneLimpo) && !telefoneLimpo.startsWith('55')) {
-      console.error(`❌ REJEIÇÃO: Número suspeito (parece ID): "${telefoneLimpo}"`);
-      return Response.json({ success: false, error: 'Suspicious phone number (looks like database ID)' }, { status: 400 });
+      console.error(`❌ REJEIÇÃO TOTAL: Número suspeito (parece ID): "${telefoneLimpo}"`);
+      await registrarLog(base44, JD_ID, 'erro_webhook', {
+        status: 'erro',
+        erro: `Número suspeito (banco de dados ID): ${telefoneLimpo}`,
+        instancia: instanceFinal || 'desconhecida'
+      });
+      return Response.json({ success: false, error: 'Suspicious phone number (database ID)' }, { status: 400 });
     }
 
     // Variações do telefone (com/sem 9º dígito BR)
