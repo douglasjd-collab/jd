@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
       let line = "";
       for (const item of content.items) {
         const y = item.transform ? item.transform[5] : null;
-        if (lastY !== null && Math.abs(y - lastY) > 2) {
+        if (lastY !== null && Math.abs(y - lastY) > 3) {
           text += line + "\n";
           line = item.str;
         } else {
