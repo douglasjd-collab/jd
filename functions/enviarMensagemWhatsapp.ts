@@ -59,9 +59,9 @@ Deno.serve(async (req) => {
     
     // SE USAR INSTÂNCIA TESTE, DEVE SER JD PROMOTORA
     if (empresaId) {
-      const empresa = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
-      if (empresa && empresa.length > 0) {
-        instanceName = empresa[0].evolution_instance_name;
+      const empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
+      if (empresa) {
+        instanceName = empresa.evolution_instance_name;
         
         // Se a instância é TESTE, redirecionar para JD Promotora
         if (instanceName === 'TESTE') {
