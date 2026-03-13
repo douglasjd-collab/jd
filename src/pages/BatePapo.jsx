@@ -185,9 +185,33 @@ export default function BatePapo() {
 
       const msgData = event.data; // pode ser null se payload_too_large
 
-      // Refetch INSTANTÂNEO para qualquer mensagem criada
+      // Adicionar mensagem OTIMISTICAMENTE se for da conversa aberta
+      if (msgData?.conversa_id === conversaSelecionadaId && msgData?.id) {
+        const queryKey = ['mensagens-whatsapp', conversaSelecionadaId];
+        queryClient.setQueryData(queryKey, (old = []) => [
+          ...old,
+          {
+            id: msgData.id,
+            conversa_id: msgData.conversa_id,
+            remetente: msgData.remetente || 'cliente',
+            tipo_conteudo: msgData.tipo_conteudo || 'texto',
+            texto: msgData.texto || '',
+            data_envio: msgData.data_envio || new Date().toISOString(),
+            status: msgData.status || 'entregue'
+          }
+        ]);
+        // Scroll para a nova mensagem
+        setTimeout(() => {
+          if (scrollAreaRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) viewport.scrollTop = viewport.scrollHeight;
+          }
+        }, 100);
+      }
+      
+      // Refetch para garantir sincronização completa
       if (msgData?.conversa_id === conversaSelecionadaId) {
-        refetchMensagens(); // Refetch imediato
+        refetchMensagens();
       }
       
       // Sempre refetch conversas para atualizar última mensagem
