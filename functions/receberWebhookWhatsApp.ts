@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     console.log(`📋 Data keys: ${Object.keys(payload.data || {}).join(', ')}`);
 
     // ─── ACK / status update ─────────────────────────────────────────────────
-    if (['messages.update', 'messages_update', 'message.ack', 'messages.ack'].includes(event)) {
+    if (['messages.update', 'messages_update', 'message.ack', 'messages.ack', 'messages_update'].includes(event)) {
       const base44 = createClientFromRequest(req);
       const updates = Array.isArray(payload.data) ? payload.data : [payload.data || {}];
       for (const upd of updates) {
