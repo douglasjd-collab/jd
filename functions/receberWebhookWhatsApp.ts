@@ -237,11 +237,18 @@ Deno.serve(async (req) => {
     // ─── Buscar/criar contato ─────────────────────────────────────────────────
     let contato = null;
     try {
-      const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
-        { empresa_id: empresaId, telefone: telefoneLimpo }
-      );
-      if (contatos?.length > 0) {
-        contato = contatos[0];
+      let contatoEncontrado = null;
+      for (const tel of telefonesVariacoes) {
+        const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
+          { empresa_id: empresaId, telefone: tel }
+        );
+        if (contatos?.length > 0) {
+          contatoEncontrado = contatos[0];
+          break;
+        }
+      }
+      if (contatoEncontrado) {
+        contato = contatoEncontrado;
       } else {
         contato = await base44.asServiceRole.entities.ContatoWhatsapp.create({
           empresa_id: empresaId,
