@@ -131,13 +131,24 @@ Deno.serve(async (req) => {
       console.error('Status:', response.status);
       console.error('Body:', responseText);
 
-      // Retornar erro mas indicar que foi tentado
+      // Analisar erro específico
+      let mensagemErro = 'Erro ao enviar via WhatsApp';
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.response?.message) {
+          const msg = errorData.response.message[0];
+          if (msg && msg.exists === false) {
+            mensagemErro = `Número ${msg.number} não possui WhatsApp ativo`;
+          }
+        }
+      } catch (_) {}
+
       return Response.json({ 
-        error: `Erro ao enviar via WhatsApp (${response.status})`,
+        error: mensagemErro,
         details: responseText,
         status: response.status,
         success: false
-      }, { status: 400 }); // Status 400 em vez de 500 para indicar erro da API externa
+      }, { status: 400 });
     }
 
     let result;
