@@ -272,9 +272,18 @@ Deno.serve(async (req) => {
 
     // ─── Buscar/criar conversa ────────────────────────────────────────────────
     let conversa = null;
-    const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-      { empresa_id: empresaId, cliente_telefone: telefoneLimpo }
-    );
+
+    // Buscar conversa por qualquer variação do telefone
+    let conversas = [];
+    for (const tel of telefonesVariacoes) {
+      const resultado = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+        { empresa_id: empresaId, cliente_telefone: tel }
+      );
+      if (resultado?.length > 0) {
+        conversas = resultado;
+        break;
+      }
+    }
 
     if (conversas?.length > 0) {
       conversa = conversas[0];
