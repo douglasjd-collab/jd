@@ -239,13 +239,26 @@ Deno.serve(async (req) => {
 
     console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}"`);
 
-    const telefoneLimpo = telefone.replace('@s.whatsapp.net', '').replace('@c.us', '').replace(/\D/g, '');
+    // Limpar telefone: remover suffixes @s.whatsapp.net, @c.us, @lid e manter apenas números
+    let telefoneLimpo = telefone
+      .replace(/@s\.whatsapp\.net/g, '')
+      .replace(/@c\.us/g, '')
+      .replace(/@lid/g, '')
+      .replace(/\D/g, '');
+
+    // Validar telefone (deve ter entre 10 e 15 dígitos)
+    if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) {
+      console.error(`❌ Telefone inválido após limpeza: "${telefoneLimpo}" (original: "${telefone}")`);
+      return Response.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
+    }
 
     // Variações do telefone (com/sem 9º dígito BR)
     const telefonesVariacoes = [telefoneLimpo];
     if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
+      // Número sem 9º dígito: 5587991426333 → 558799914226333 (com 9)
       telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
     } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+      // Número com 9º dígito: 558799914226333 → 5587991426333 (sem 9)
       telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
     }
     console.log(`📞 Tel limpo: ${telefoneLimpo} | Variações: ${telefonesVariacoes.join(', ')}`);
