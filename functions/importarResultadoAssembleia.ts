@@ -122,9 +122,9 @@ Deno.serve(async (req) => {
       if (colabs?.[0]?.empresa_id) empresa_id = colabs[0].empresa_id;
     }
     const body = await req.json();
-    const { file_url, assembleia_data, chamada, _debug_texto } = body;
+    const { file_url, assembleia_data, chamada } = body;
 
-    if (!empresa_id && !_debug_texto) {
+    if (!empresa_id) {
       return Response.json({ error: "Empresa não encontrada para o usuário" }, { status: 400 });
     }
 
