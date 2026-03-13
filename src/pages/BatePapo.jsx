@@ -143,7 +143,7 @@ export default function BatePapo() {
 
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
-  const { data: mensagens = [], isLoading: loadingMensagens } = useQuery({
+  const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
@@ -165,8 +165,23 @@ export default function BatePapo() {
         const cached = localStorage.getItem(`msgs_cache_${conversaSelecionadaId}`);
         return cached ? JSON.parse(cached) : undefined;
       },
-      refetchInterval: 3000,
+      refetchInterval: 10000, // Fallback polling a cada 10s
   });
+
+  // Real-time: atualizar mensagens quando chegar nova mensagem no banco
+  useEffect(() => {
+    if (!conversaSelecionadaId) return;
+    const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
+      if (['create', 'update'].includes(event.type)) {
+        const msgData = event.data;
+        if (msgData?.conversa_id === conversaSelecionadaId) {
+          refetchMensagens();
+          refetchConversas();
+        }
+      }
+    });
+    return unsub;
+  }, [conversaSelecionadaId]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
