@@ -350,7 +350,7 @@ export default function Usuarios() {
 
         const res = await base44.functions.invoke('inviteUser', normalizedData);
         
-        const data = res?.data ?? null;
+        const resData = res?.data ?? null;
         const err = res?.error ?? null;
 
         console.log('[INVITE] response:', res);
@@ -359,8 +359,8 @@ export default function Usuarios() {
           throw new Error(err.message || 'Erro ao enviar convite (invoke error)');
         }
 
-        if (data?.error) {
-          throw new Error(data.error);
+        if (resData?.error) {
+          throw new Error(resData.error);
         }
 
         // Atualizar lista
