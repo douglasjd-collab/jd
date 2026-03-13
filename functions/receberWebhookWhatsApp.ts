@@ -173,6 +173,20 @@ Deno.serve(async (req) => {
 
     const telefoneLimpo = telefone.replace('@s.whatsapp.net', '').replace('@c.us', '').replace(/\D/g, '');
 
+    // Gerar variações do telefone para busca (com e sem o 9º dígito BR)
+    const telefonesVariacoes = [telefoneLimpo];
+    // Brasil: 55 + DDD(2) + número(8 ou 9 dígitos)
+    if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
+      // Tem 12 dígitos (sem o 9) → adicionar variação com o 9
+      const comNove = telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4);
+      telefonesVariacoes.push(comNove);
+    } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+      // Tem 13 dígitos (com o 9) → adicionar variação sem o 9
+      const semNove = telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5);
+      telefonesVariacoes.push(semNove);
+    }
+    console.log(`📞 Telefone limpo: ${telefoneLimpo} | Variações: ${telefonesVariacoes.join(', ')}`);
+
     // ─── Identificar empresa ──────────────────────────────────────────────────
     const base44 = createClientFromRequest(req);
     const JD_ID = '699696c2c9f5bffc2e67402b';
