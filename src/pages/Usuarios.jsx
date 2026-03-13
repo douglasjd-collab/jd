@@ -305,7 +305,10 @@ export default function Usuarios() {
       cpf_cnpj: data.cpf_cnpj || null,
       telefone: data.telefone || null,
       codigo_vendedor: data.codigo_vendedor || null,
-      nome_perfil: data.nome_perfil || null
+      nome_perfil: data.nome_perfil || null,
+      percentual_comissao_agente: data.percentual_comissao_agente !== '' && data.percentual_comissao_agente != null
+        ? parseFloat(data.percentual_comissao_agente)
+        : null,
     };
 
     if (selectedUsuario) {
