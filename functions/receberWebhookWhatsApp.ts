@@ -19,16 +19,23 @@ async function registrarLog(base44, empresaId, tipoEvento, dados) {
   }
 }
 
-// Tenta decodificar base64 → JSON
+// Tenta decodificar base64 → JSON (suporta UTF-8)
 function decodeBase64JSON(str) {
   try {
     if (!str || typeof str !== 'string') return null;
     const clean = str.trim();
-    // Verificar se parece base64 (apenas chars válidos)
-    if (!/^[A-Za-z0-9+/=]+$/.test(clean)) return null;
-    const decoded = atob(clean);
-    const bytes = new Uint8Array(decoded.split('').map(c => c.charCodeAt(0)));
-    return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+    // Verificar se parece base64
+    if (clean.length < 4) return null;
+    if (!/^[A-Za-z0-9+/=\r\n]+$/.test(clean)) return null;
+    
+    // Método 1: atob + TextDecoder (correto para UTF-8)
+    const binaryStr = atob(clean.replace(/\s/g, ''));
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const jsonStr = new TextDecoder('utf-8').decode(bytes);
+    return JSON.parse(jsonStr);
   } catch (_) {
     return null;
   }
