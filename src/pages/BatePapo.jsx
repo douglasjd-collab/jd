@@ -102,7 +102,7 @@ export default function BatePapo() {
     }
   };
 
-  const { data: conversas = [] } = useQuery({
+  const { data: conversas = [], refetch: refetchConversas } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
@@ -120,7 +120,7 @@ export default function BatePapo() {
       
       return data.filter(c => c.id && c.cliente_telefone);
     },
-    refetchInterval: 3000,
+    refetchInterval: 15000, // Reduzido para 15s para evitar rate limit
     onSuccess: (data) => {
       if (data.length > 0 && !conversaSelecionada) {
         const ultimaId = localStorage.getItem('ultimaConversaId');
@@ -129,6 +129,17 @@ export default function BatePapo() {
       }
     }
   });
+
+  // Real-time: atualizar lista de conversas quando chegar nova mensagem
+  useEffect(() => {
+    if (!empresaId) return;
+    const unsub = base44.entities.ConversaWhatsapp.subscribe((event) => {
+      if (['create', 'update'].includes(event.type)) {
+        refetchConversas();
+      }
+    });
+    return unsub;
+  }, [empresaId]);
 
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
