@@ -183,24 +183,26 @@ Deno.serve(async (req) => {
     console.log(`📞 remoteJidRaw: ${remoteJidRaw}`);
     console.log(`📞 remoteJidAlt: ${msgData.remoteJidAlt || 'não informado'}`);
     console.log(`📞 participant: ${msgData.participant || 'não informado'}`);
+    console.log(`📞 verifiedName: ${msgData.verifiedName || 'não informado'}`);
     
-    // Prioridade: remoteJidAlt > participant > remoteJidRaw
-    if (msgData.remoteJidAlt && !msgData.remoteJidAlt.includes('@lid')) {
-      telefone = msgData.remoteJidAlt;
-      console.log(`✅ Usando remoteJidAlt: ${telefone}`);
-    } else if (msgData.participant && !msgData.participant.includes('@lid')) {
+    // Prioridade: participant > remoteJidAlt > remoteJidRaw (participant é mais confiável)
+    if (msgData.participant && !msgData.participant.includes('@lid')) {
       telefone = msgData.participant;
-      console.log(`✅ Usando participant: ${telefone}`);
-    } else if (remoteJidRaw.includes('@lid')) {
-      // Se remoteJidRaw é @lid, tentar extrair do participant ou falhar
-      if (msgData.participant) {
-        telefone = msgData.participant;
-        console.log(`✅ remoteJidRaw é @lid, usando participant: ${telefone}`);
-      } else {
-        console.warn(`⚠️ remoteJidRaw é @lid e não temos participant, tentando extrair números`);
-        // Extrair números do @lid: 123248767422595@lid → 123248767422595
-        telefone = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '') ? remoteJidRaw.replace(/@lid/g, '') : remoteJidRaw;
-      }
+      console.log(`✅ Usando participant (1ª prioridade): ${telefone}`);
+    } else if (msgData.remoteJidAlt && !msgData.remoteJidAlt.includes('@lid')) {
+      telefone = msgData.remoteJidAlt;
+      console.log(`✅ Usando remoteJidAlt (2ª prioridade): ${telefone}`);
+    } else if (!remoteJidRaw.includes('@lid')) {
+      // remoteJidRaw já é válido, manter
+      console.log(`✅ remoteJidRaw é válido: ${telefone}`);
+    } else {
+      // Fallback: se tudo falhar, rejeitar mensagem com @lid puro
+      console.error(`❌ Não conseguiu resolver telefone: remoteJid=${remoteJidRaw}, participant=${msgData.participant}, remoteJidAlt=${msgData.remoteJidAlt}`);
+      return Response.json({ 
+        success: false, 
+        error: 'Cannot resolve phone number from @lid without participant/remoteJidAlt',
+        debug: { remoteJidRaw, participant: msgData.participant, remoteJidAlt: msgData.remoteJidAlt }
+      }, { status: 400 });
     }
 
     console.log(`📞 Telefone final: ${telefone} | fromMe: ${fromMe} | msgId: ${messageId}`);
