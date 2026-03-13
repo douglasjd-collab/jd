@@ -369,21 +369,40 @@ export default function BatePapo() {
     
     (async () => {
       try {
-        const contatos = await base44.entities.ContatoWhatsapp.filter({
-          empresa_id: empresaId,
-          telefone: conversaSelecionada.cliente_telefone.replace(/\D/g, '')
-        }, '-created_date', 1);
+        const telefoneLimpo = conversaSelecionada.cliente_telefone.replace(/\D/g, '');
         
-        if (contatos && contatos.length > 0) {
-          const contato = contatos[0];
-          console.log('Contato carregado:', { nome: contato.nome, foto_url: contato.foto_url });
+        // Tentar variações do telefone (com/sem 9º dígito)
+        const variacoes = [telefoneLimpo];
+        if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
+          variacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
+        } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+          variacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
+        }
+        
+        let contatoEncontrado = null;
+        for (const tel of variacoes) {
+          const contatos = await base44.entities.ContatoWhatsapp.filter({
+            empresa_id: empresaId,
+            telefone: tel
+          }, '-created_date', 1);
+          
+          if (contatos && contatos.length > 0) {
+            contatoEncontrado = contatos[0];
+            break;
+          }
+        }
+        
+        if (contatoEncontrado) {
+          console.log('✅ Contato carregado:', { nome: contatoEncontrado.nome, foto_url: contatoEncontrado.foto_url });
           setContatosWhatsapp(prev => ({
             ...prev,
-            [conversaSelecionada.id]: contato
+            [conversaSelecionada.id]: contatoEncontrado
           }));
+        } else {
+          console.log('⚠️ Contato não encontrado, usando dados da conversa');
         }
       } catch (e) {
-        console.error('Erro ao carregar contato:', e);
+        console.error('❌ Erro ao carregar contato:', e);
       }
     })();
   }, [conversaSelecionada?.id, conversaSelecionada?.cliente_telefone, empresaId]);
