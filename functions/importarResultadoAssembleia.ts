@@ -132,8 +132,20 @@ Deno.serve(async (req) => {
     for (let i = 1; i <= pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i);
       const content = await page.getTextContent();
-      const pageText = content.items.map(item => item.str).join(" ");
-      text += pageText + "\n";
+      // Agrupar itens por linha usando transform[5] (y-coordinate)
+      let lastY = null;
+      let line = "";
+      for (const item of content.items) {
+        const y = item.transform ? item.transform[5] : null;
+        if (lastY !== null && Math.abs(y - lastY) > 2) {
+          text += line + "\n";
+          line = item.str;
+        } else {
+          line += item.str;
+        }
+        lastY = y;
+      }
+      if (line) text += line + "\n";
     }
 
     console.log('=== TEXTO PDF (primeiros 2000 chars) ===');
