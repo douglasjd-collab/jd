@@ -324,9 +324,11 @@ export default function BatePapo() {
       if (context?.previous) {
         queryClient.setQueryData(context.queryKey, context.previous);
       }
-      const errorMsg = error?.message?.includes('Connect') 
-        ? 'API WhatsApp indisponível. Tente novamente em alguns minutos.'
-        : error.message || 'Erro ao enviar mensagem';
+      // Tentar extrair erro melhor da resposta
+      let errorMsg = error.message || 'Erro ao enviar mensagem';
+      if (error?.response?.data?.error) {
+        errorMsg = error.response.data.error;
+      }
       toast.error(errorMsg);
     },
     onSuccess: async (data, variables) => {
