@@ -184,17 +184,17 @@ export default function BatePapo() {
 
       const msgData = event.data; // pode ser null se payload_too_large
 
+      // Refetch INSTANTÂNEO para qualquer mensagem criada
+      if (msgData?.conversa_id === conversaSelecionadaId) {
+        refetchMensagens(); // Refetch imediato
+      }
+      
       // Sempre refetch conversas para atualizar última mensagem
       refetchConversas();
 
       // Se temos dados da mensagem, verificar se é do cliente
       if (msgData) {
-        // Refetch QUALQUER mensagem da conversa aberta para tempo real
-        if (msgData.conversa_id === conversaSelecionadaId) {
-          refetchMensagens();
-        }
-        
-        // Só notificar para mensagens de clientes
+        // Só mostrar notificação para mensagens de CLIENTE
         if (msgData.remetente !== 'cliente') return;
 
         // Encontrar nome do contato/conversa
