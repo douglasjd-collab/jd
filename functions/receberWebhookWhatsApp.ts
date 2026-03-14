@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, skipped: 'group' });
     }
 
-    // 2. Extrair telefone SOMENTE de JIDs válidos (@s.whatsapp.net ou @c.us)
+    // 2. Extrair telefone SOMENTE de JIDs válidos (@s.whatsapp.net, @c.us ou @lid resolvido)
     let telefoneLimpo = extrairTelefoneValido(remoteJidRaw);
 
     if (!telefoneLimpo) {
