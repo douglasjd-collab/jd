@@ -203,6 +203,13 @@ Deno.serve(async (req) => {
 
     console.log(`📞 remoteJid: ${remoteJidRaw} | fromMe: ${fromMe} | participant: ${key.participant || 'N/A'}`);
 
+    // ── Inicializar SDK aqui para poder usar na resolução de @lid ────────────
+    const base44 = createClientFromRequest(req);
+    const JD_ID = '699696c2c9f5bffc2e67402b';
+    let empresaId = JD_ID;
+    let colaboradorId = null;
+    let tipoConexao = 'empresa';
+
     // ── Resolver telefone com lógica estrita ──────────────────────────────────
     // Para mensagens normais (não grupos): remoteJid deve ser @s.whatsapp.net ou @c.us
     // Para grupos: participant contém o remetente real (mas ignoramos grupos)
