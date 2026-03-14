@@ -218,23 +218,35 @@ Deno.serve(async (req) => {
     let telefoneLimpo = extrairTelefoneValido(remoteJidRaw);
 
     if (!telefoneLimpo) {
-      console.error(`❌ REJEIÇÃO: remoteJid inválido ou @lid: "${remoteJidRaw}"`);
-      // Logar no banco para diagnóstico
-      try {
-        const b = createClientFromRequest(req);
-        await registrarLog(b, '699696c2c9f5bffc2e67402b', 'erro', {
-          status: 'erro',
-          erro: `JID inválido rejeitado: ${remoteJidRaw}`,
-          telefone: remoteJidRaw.substring(0, 50),
-          conteudo: `pushName: ${pushName} | fromMe: ${fromMe} | msgId: ${messageId}`,
-          instancia: instanceFinal
-        });
-      } catch (_) {}
-      return Response.json({
-        success: false,
-        error: 'Invalid remoteJid — only @s.whatsapp.net or @c.us accepted',
-        debug: { remoteJid: remoteJidRaw }
-      }, { status: 400 });
+      // Se for @lid, tentar resolver para número real via Evolution API
+      if (remoteJidRaw.includes('@lid')) {
+        console.log(`🔍 @lid detectado: "${remoteJidRaw}" — tentando resolver número real...`);
+        try {
+          const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
+          const empresa = empresas?.[0];
+          if (empresa?.evolution_url && empresa?.evolution_api_key) {
+            const evolutionUrl = empresa.evolution_url.replace(/\/$/, '');
+            const resolvedTel = await resolverLidParaTelefone(
+              remoteJidRaw, evolutionUrl, empresa.evolution_api_key, empresa.evolution_instance_name
+            );
+            if (resolvedTel) {
+              console.log(`✅ @lid resolvido: ${remoteJidRaw} → ${resolvedTel}`);
+              telefoneLimpo = resolvedTel;
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Erro ao tentar resolver @lid:', e.message);
+        }
+      }
+
+      if (!telefoneLimpo) {
+        console.error(`❌ REJEIÇÃO: remoteJid inválido ou @lid não resolvido: "${remoteJidRaw}"`);
+        return Response.json({
+          success: false,
+          error: 'Invalid remoteJid — cannot resolve to phone number',
+          debug: { remoteJid: remoteJidRaw }
+        }, { status: 400 });
+      }
     }
 
     // 3. Validar que o número parece um telefone real
