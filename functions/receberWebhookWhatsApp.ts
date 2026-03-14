@@ -227,8 +227,15 @@ Deno.serve(async (req) => {
     const message = msgData.message || {};
     const pushName = msgData.pushName || msgData.senderName || 'Cliente';
     const fromMe = key.fromMe === true;
-    const remoteJidRaw = key.remoteJid || '';
+    // Usar remoteJidAlt se o remoteJid for @lid (Evolution já fornece o número real)
+    const remoteJidRaw = (key.remoteJid || '').includes('@lid') && key.remoteJidAlt
+      ? key.remoteJidAlt
+      : (key.remoteJid || '');
+    const remoteJidOriginal = key.remoteJid || '';
     const messageId = key.id || `gen_${Date.now()}`;
+    if (remoteJidOriginal.includes('@lid') && key.remoteJidAlt) {
+      console.log(`🔄 @lid resolvido via remoteJidAlt: ${remoteJidOriginal} → ${key.remoteJidAlt}`);
+    }
 
     console.log(`📞 remoteJid: ${remoteJidRaw} | fromMe: ${fromMe} | participant: ${key.participant || 'N/A'}`);
 
