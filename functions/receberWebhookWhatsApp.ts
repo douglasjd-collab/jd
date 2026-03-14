@@ -293,8 +293,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Validar que o número parece um telefone real
-    if (!validarTelefone(telefoneLimpo)) {
+    // 3. Validar que o número parece um telefone real (exceto fallbacks lid_)
+    const isLidFallback = telefoneLimpo.startsWith('lid_');
+    if (!isLidFallback && !validarTelefone(telefoneLimpo)) {
       console.error(`❌ REJEIÇÃO: Número não parece telefone válido: "${telefoneLimpo}"`);
       return Response.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
     }
