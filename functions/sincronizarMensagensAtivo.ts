@@ -86,12 +86,17 @@ Deno.serve(async (req) => {
         else if (message.documentMessage) { tipo = 'pdf'; conteudo = message.documentMessage.title || 'Documento'; }
         else conteudo = JSON.stringify(message).substring(0, 100);
 
-        // Variações do telefone
-        const telefonesVariacoes = [telefoneLimpo];
+        // Normalizar sempre para o número COM o 9º dígito (padrão BR)
+        let telefoneNormalizado = telefoneLimpo;
         if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
-          telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
-        } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
-          telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
+          // Sem 9 → adicionar 9 após o DDD (posição 4)
+          telefoneNormalizado = telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4);
+        }
+
+        // Variações do telefone para busca (com e sem 9)
+        const telefonesVariacoes = [telefoneNormalizado];
+        if (telefoneNormalizado.startsWith('55') && telefoneNormalizado.length === 13) {
+          telefonesVariacoes.push(telefoneNormalizado.slice(0, 4) + telefoneNormalizado.slice(5));
         }
 
         // Buscar/criar conversa
@@ -107,7 +112,7 @@ Deno.serve(async (req) => {
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,
             cliente_nome: pushName,
-            cliente_telefone: telefoneLimpo,
+            cliente_telefone: telefoneNormalizado, // sempre com 9
             whatsapp_id: messageId,
             status: 'ativa',
             ultima_mensagem: conteudo.substring(0, 200),
