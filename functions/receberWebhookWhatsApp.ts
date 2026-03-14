@@ -19,16 +19,12 @@ async function registrarLog(base44, empresaId, tipoEvento, dados) {
   }
 }
 
-// Tenta decodificar base64 → JSON (suporta UTF-8)
 function decodeBase64JSON(str) {
   try {
     if (!str || typeof str !== 'string') return null;
     const clean = str.trim();
-    // Verificar se parece base64
     if (clean.length < 4) return null;
     if (!/^[A-Za-z0-9+/=\r\n]+$/.test(clean)) return null;
-    
-    // Método 1: atob + TextDecoder (correto para UTF-8)
     const binaryStr = atob(clean.replace(/\s/g, ''));
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
@@ -41,56 +37,61 @@ function decodeBase64JSON(str) {
   }
 }
 
-// Normaliza o payload para o formato padrão { event, instance, data }
 function normalizarPayload(rawBody) {
   let parsed = null;
-
-  // 1) Tentar JSON direto
   try {
     parsed = JSON.parse(rawBody);
-    console.log('✅ Parseado como JSON direto. Keys:', Object.keys(parsed).join(', '));
   } catch (_) {}
 
-  // 2) Se não é JSON, tentar base64 do body inteiro
   if (!parsed) {
     parsed = decodeBase64JSON(rawBody);
-    if (parsed) console.log('✅ Body decodificado como base64. Keys:', Object.keys(parsed).join(', '));
   }
 
   if (!parsed) return null;
 
-  // ── Formato Evolution com webhookBase64=true ──
-  // O body JSON tem { event, instance, data: "base64string" }
-  // Onde "data" é o payload real em base64
   if (parsed.event && typeof parsed.data === 'string' && parsed.data.length > 0) {
     const decodedData = decodeBase64JSON(parsed.data);
     if (decodedData) {
-      console.log('✅ payload.data decodificado de base64. Keys:', Object.keys(decodedData).join(', '));
       parsed.data = decodedData;
     } else {
-      // Tentar parse JSON direto da string
-      try {
-        parsed.data = JSON.parse(parsed.data);
-        console.log('✅ payload.data parseado como JSON string');
-      } catch (_) {}
+      try { parsed.data = JSON.parse(parsed.data); } catch (_) {}
     }
   }
 
-  // ── Unwrap wrapper externo: { data: { event, instance, data } } ──
   if (!parsed.event && parsed.data && parsed.data.event) {
-    console.log('🔄 Unwrapped wrapper externo');
     parsed = parsed.data;
-    // Verificar novamente se data interna é base64
     if (parsed.event && typeof parsed.data === 'string' && parsed.data.length > 0) {
       const decodedData = decodeBase64JSON(parsed.data);
-      if (decodedData) {
-        parsed.data = decodedData;
-        console.log('✅ payload.data decodificado após unwrap');
-      }
+      if (decodedData) parsed.data = decodedData;
     }
   }
 
   return parsed;
+}
+
+// ── Extrair telefone APENAS de fontes confiáveis ──────────────────────────
+// Regra: só aceitar JIDs com @s.whatsapp.net ou @c.us (nunca @lid, nunca @g.us)
+function extrairTelefoneValido(jid) {
+  if (!jid || typeof jid !== 'string') return null;
+  // Rejeitar grupos e @lid
+  if (jid.includes('@g.us') || jid.includes('@lid') || jid.includes('@broadcast')) return null;
+  // Aceitar apenas @s.whatsapp.net e @c.us
+  if (!jid.includes('@s.whatsapp.net') && !jid.includes('@c.us')) return null;
+  // Extrair apenas os dígitos
+  const numeros = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+  return numeros || null;
+}
+
+// Validar se um número de telefone parece legítimo
+function validarTelefone(num) {
+  if (!num) return false;
+  // Deve ter entre 10 e 15 dígitos
+  if (num.length < 10 || num.length > 15) return false;
+  // Número brasileiro deve começar com 55
+  if (num.length >= 12 && num.length <= 13 && !num.startsWith('55')) return false;
+  // Rejeitar números com padrões suspeitos (repetições, sequências)
+  if (/^(\d)\1{9,}$/.test(num)) return false;
+  return true;
 }
 
 Deno.serve(async (req) => {
@@ -98,7 +99,6 @@ Deno.serve(async (req) => {
   console.log('='.repeat(60));
   console.log(`📥 WEBHOOK - ${timestamp} | ${req.method}`);
 
-  // Verificação GET
   if (req.method === 'GET') {
     const url = new URL(req.url);
     const challenge = url.searchParams.get('challenge') || url.searchParams.get('hub.challenge') || 'OK';
@@ -117,13 +117,11 @@ Deno.serve(async (req) => {
     console.log(`📦 Body: ${rawBody.length} bytes | Preview: ${rawBody.substring(0, 200)}`);
 
     const payload = normalizarPayload(rawBody);
-
     if (!payload) {
       console.error('❌ Não foi possível parsear o body');
       return Response.json({ error: 'Body inválido' }, { status: 400 });
     }
 
-    // Normalizar event: aceitar maiúsculas, pontos e underscores
     const event = (payload.event || '').toLowerCase().replace(/\./g, '_');
     const instancePayload = payload.instance || '';
     const instanceFinal = instanceFromQuery || instancePayload || '';
@@ -168,9 +166,7 @@ Deno.serve(async (req) => {
     }
 
     // ─── Extrair dados da mensagem ────────────────────────────────────────────
-    // Evolution pode mandar como array ou objeto único
     const msgData = Array.isArray(data) ? data[0] : data;
-
     const key = msgData.key || {};
     const message = msgData.message || {};
     const pushName = msgData.pushName || msgData.senderName || 'Cliente';
@@ -178,47 +174,51 @@ Deno.serve(async (req) => {
     const remoteJidRaw = key.remoteJid || '';
     const messageId = key.id || `gen_${Date.now()}`;
 
-    // Resolver telefone (IGNORAR @lid completamente)
-    let telefone = null;
-    console.log(`📞 remoteJidRaw: ${remoteJidRaw}`);
-    console.log(`📞 remoteJidAlt: ${msgData.remoteJidAlt || 'não informado'}`);
-    console.log(`📞 participant: ${msgData.participant || 'não informado'}`);
-    
-    // Prioridade: participant > remoteJidAlt > remoteJidRaw
-    // NUNCA aceitar @lid como telefone válido
-    if (msgData.participant && !msgData.participant.includes('@lid')) {
-      telefone = msgData.participant;
-      console.log(`✅ Usando participant: ${telefone}`);
-    } else if (msgData.remoteJidAlt && !msgData.remoteJidAlt.includes('@lid')) {
-      telefone = msgData.remoteJidAlt;
-      console.log(`✅ Usando remoteJidAlt: ${telefone}`);
-    } else if (remoteJidRaw && !remoteJidRaw.includes('@lid')) {
-      telefone = remoteJidRaw;
-      console.log(`✅ Usando remoteJidRaw: ${telefone}`);
-    }
-    
-    // REJEITAR se não conseguiu resolver um número válido
-    if (!telefone) {
-      console.error(`❌ REJEIÇÃO: Não conseguiu resolver telefone válido (sem @lid). Dados: remoteJid=${remoteJidRaw}, participant=${msgData.participant}, remoteJidAlt=${msgData.remoteJidAlt}`);
-      return Response.json({ 
-        success: false, 
-        error: 'Cannot resolve valid phone number (no @lid allowed)',
-        debug: { remoteJidRaw, participant: msgData.participant, remoteJidAlt: msgData.remoteJidAlt }
-      }, { status: 400 });
-    }
+    console.log(`📞 remoteJid: ${remoteJidRaw} | fromMe: ${fromMe} | participant: ${key.participant || 'N/A'}`);
 
-    console.log(`📞 Telefone final: ${telefone} | fromMe: ${fromMe} | msgId: ${messageId}`);
+    // ── Resolver telefone com lógica estrita ──────────────────────────────────
+    // Para mensagens normais (não grupos): remoteJid deve ser @s.whatsapp.net ou @c.us
+    // Para grupos: participant contém o remetente real (mas ignoramos grupos)
+    // NUNCA usar @lid como fonte de telefone
 
-    if (!telefone || !messageId) {
-      console.error('❌ Dados insuficientes - sem telefone ou messageId');
-      return Response.json({ success: false, error: 'Missing key data' }, { status: 400 });
-    }
-
-    // Ignorar grupos
-    if (telefone.includes('@g.us')) {
+    // 1. Rejeitar grupos imediatamente
+    if (remoteJidRaw.includes('@g.us')) {
       console.log('⏭️ Grupo ignorado');
       return Response.json({ success: true, skipped: 'group' });
     }
+
+    // 2. Extrair telefone SOMENTE de JIDs válidos (@s.whatsapp.net ou @c.us)
+    let telefoneLimpo = extrairTelefoneValido(remoteJidRaw);
+
+    if (!telefoneLimpo) {
+      console.error(`❌ REJEIÇÃO: remoteJid inválido ou @lid: "${remoteJidRaw}"`);
+      return Response.json({
+        success: false,
+        error: 'Invalid remoteJid — only @s.whatsapp.net or @c.us accepted',
+        debug: { remoteJid: remoteJidRaw }
+      }, { status: 400 });
+    }
+
+    // 3. Validar que o número parece um telefone real
+    if (!validarTelefone(telefoneLimpo)) {
+      console.error(`❌ REJEIÇÃO: Número não parece telefone válido: "${telefoneLimpo}"`);
+      return Response.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
+    }
+
+    console.log(`📞 Tel limpo: ${telefoneLimpo} | msgId: ${messageId}`);
+
+    if (!messageId) {
+      return Response.json({ success: false, error: 'Missing messageId' }, { status: 400 });
+    }
+
+    // Variações do telefone (com/sem 9º dígito BR)
+    const telefonesVariacoes = [telefoneLimpo];
+    if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
+      telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
+    } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+      telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
+    }
+    console.log(`📞 Variações: ${telefonesVariacoes.join(', ')}`);
 
     // ─── Extrair conteúdo ─────────────────────────────────────────────────────
     let tipo = 'texto';
@@ -243,48 +243,7 @@ Deno.serve(async (req) => {
 
     console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}"`);
 
-    // Limpar telefone: remover suffixes @s.whatsapp.net, @c.us e manter apenas números
-    let telefoneLimpo = telefone
-      .replace(/@s\.whatsapp\.net/g, '')
-      .replace(/@c\.us/g, '')
-      .replace(/\D/g, '');
-
-    // 🚨 BLOQUEIO ABSOLUTO: Números duplicados/falsos - rejeitar imediatamente
-    const NUMEROS_BLOQUEADOS = ['123248767422595', '12324876742259', '123248767422', '55123248767422595', '55123248767422'];
-    if (NUMEROS_BLOQUEADOS.includes(telefoneLimpo) || NUMEROS_BLOQUEADOS.some(num => telefoneLimpo.includes(num))) {
-      console.error(`🚫 BLOQUEIO TOTAL: "${telefoneLimpo}" está na lista de números duplicados`);
-      return Response.json({ success: false, error: 'Blocked phone number' }, { status: 403 });
-    }
-
-    // Validar telefone (deve ter entre 10 e 15 dígitos)
-    if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) {
-      console.error(`❌ Telefone inválido após limpeza: "${telefoneLimpo}" (original: "${telefone}")`);
-      return Response.json({ success: false, error: 'Invalid phone number' }, { status: 400 });
-    }
-
-    // Rejeitar números suspeitos que parecem IDs de banco de dados (15 dígitos sem 55 no início)
-    if (/^\d{15}$/.test(telefoneLimpo) && !telefoneLimpo.startsWith('55')) {
-      console.error(`❌ REJEIÇÃO TOTAL: Número suspeito (parece ID): "${telefoneLimpo}"`);
-      await registrarLog(base44, JD_ID, 'erro_webhook', {
-        status: 'erro',
-        erro: `Número suspeito (banco de dados ID): ${telefoneLimpo}`,
-        instancia: instanceFinal || 'desconhecida'
-      });
-      return Response.json({ success: false, error: 'Suspicious phone number (database ID)' }, { status: 400 });
-    }
-
-    // Variações do telefone (com/sem 9º dígito BR)
-    const telefonesVariacoes = [telefoneLimpo];
-    if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
-      // Número sem 9º dígito: 5587991426333 → 558799914226333 (com 9)
-      telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
-    } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
-      // Número com 9º dígito: 558799914226333 → 5587991426333 (sem 9)
-      telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
-    }
-    console.log(`📞 Tel limpo: ${telefoneLimpo} | Variações: ${telefonesVariacoes.join(', ')}`);
-
-    // ─── Inicializar base44 ───────────────────────────────────────────────────
+    // ─── Inicializar SDK ──────────────────────────────────────────────────────
     const base44 = createClientFromRequest(req);
     const JD_ID = '699696c2c9f5bffc2e67402b';
     let empresaId = JD_ID;
@@ -319,17 +278,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ─── Verificar duplicata ──────────────────────────────────────────────────
+    // ─── Verificar duplicata de mensagem ─────────────────────────────────────
     const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
       { whatsapp_message_id: messageId }
     );
     if (existentes.length > 0) {
-      console.log('⏭️ Duplicata ignorada:', messageId);
+      console.log('⏭️ Duplicata de mensagem ignorada:', messageId);
       return Response.json({ success: true, skipped: 'duplicate' });
     }
 
     // ─── Buscar/criar contato ─────────────────────────────────────────────────
-    let contato = null;
     try {
       let contatoEncontrado = null;
       for (const tel of telefonesVariacoes) {
@@ -338,17 +296,15 @@ Deno.serve(async (req) => {
         );
         if (contatos?.length > 0) { contatoEncontrado = contatos[0]; break; }
       }
-      if (contatoEncontrado) {
-        contato = contatoEncontrado;
-      } else {
-        contato = await base44.asServiceRole.entities.ContatoWhatsapp.create({
+      if (!contatoEncontrado) {
+        await base44.asServiceRole.entities.ContatoWhatsapp.create({
           empresa_id: empresaId,
           cliente_id: '',
           telefone: telefoneLimpo,
           nome: pushName || 'Cliente WhatsApp',
           ultima_atualizacao: new Date().toISOString()
         });
-        console.log(`✅ Contato criado: ${contato.id}`);
+        console.log(`✅ Contato criado: ${telefoneLimpo}`);
       }
     } catch (e) {
       console.warn(`⚠️ Erro ao buscar/criar contato: ${e.message}`);
@@ -369,33 +325,32 @@ Deno.serve(async (req) => {
     }
 
     // ─── Buscar/criar conversa ────────────────────────────────────────────────
+    // Buscar conversa existente para qualquer variação do telefone
     let conversa = null;
     let conversas = [];
-    
-    // PROTEGER: rejeitar se encontrar conversa com número bloqueado
-    for (const numBloqueado of numerosBlockeados) {
-      const convsBlockeadas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-        { empresa_id: empresaId, cliente_telefone: numBloqueado }
-      );
-      if (convsBlockeadas?.length > 0) {
-        console.error(`❌ BLOQUEIO: Conversa com número duplicado detectada e será ignorada`);
-        // Deletar conversa com número bloqueado
-        for (const conv of convsBlockeadas) {
-          await base44.asServiceRole.entities.ConversaWhatsapp.delete(conv.id);
-        }
-      }
-    }
-    
-    // Buscar conversa com número correto
+
     for (const tel of telefonesVariacoes) {
       const resultado = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
         { empresa_id: empresaId, cliente_telefone: tel }
       );
-      if (resultado?.length > 0) { conversas = resultado; break; }
+      if (resultado?.length > 0) {
+        // Se encontrou múltiplas, usar a mais recente e deletar duplicatas
+        if (resultado.length > 1) {
+          console.warn(`⚠️ ${resultado.length} conversas duplicadas para ${tel}. Limpando...`);
+          resultado.sort((a, b) => new Date(b.data_ultima_mensagem || b.created_date) - new Date(a.data_ultima_mensagem || a.created_date));
+          for (let i = 1; i < resultado.length; i++) {
+            await base44.asServiceRole.entities.ConversaWhatsapp.delete(resultado[i].id);
+            console.log(`🗑️ Conversa duplicada removida: ${resultado[i].id}`);
+          }
+        }
+        conversas = [resultado[0]];
+        break;
+      }
     }
 
-    if (conversas?.length > 0) {
+    if (conversas.length > 0) {
       conversa = conversas[0];
+      // Normalizar telefone para o canônico (com 9º dígito se BR 13 dígitos)
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
         ultima_mensagem: conteudo.substring(0, 200),
         data_ultima_mensagem: new Date().toISOString(),
@@ -421,7 +376,7 @@ Deno.serve(async (req) => {
         colaborador_id: colaboradorId || '',
         instancia: instanceFinal
       });
-      console.log(`✅ Conversa criada: ${conversa.id}`);
+      console.log(`✅ Conversa criada: ${conversa.id} | tel: ${telefoneLimpo}`);
     }
 
     // ─── Salvar mensagem ──────────────────────────────────────────────────────
@@ -453,7 +408,6 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('❌ ERRO CRÍTICO:', error.message);
     console.error('❌ STACK:', error.stack);
-
     try {
       const b = createClientFromRequest(req);
       const instancia = new URL(req.url).searchParams.get('instance') || 'desconhecida';
@@ -463,7 +417,6 @@ Deno.serve(async (req) => {
         instancia
       });
     } catch (_) {}
-
     return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 });
