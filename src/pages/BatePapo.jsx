@@ -255,14 +255,15 @@ export default function BatePapo() {
         const textoMsg = msgData.texto || '📎 Arquivo recebido';
 
         // Toast de notificação in-app
-        toast(nomeRemetente, {
-          description: textoMsg,
-          icon: '💬',
-          duration: 5000,
+        toast.message(`💬 ${nomeRemetente}`, {
+          description: textoMsg.length > 120 ? textoMsg.substring(0, 120) + '...' : textoMsg,
+          duration: 6000,
           action: conversa ? {
-            label: 'Abrir',
+            label: 'Abrir conversa',
             onClick: () => selecionarConversa(conversa),
           } : undefined,
+          style: { cursor: 'pointer' },
+          onClick: conversa ? () => selecionarConversa(conversa) : undefined,
         });
 
         // Notificação nativa do browser (quando aba não está em foco)
