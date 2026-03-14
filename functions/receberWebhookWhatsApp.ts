@@ -192,6 +192,17 @@ Deno.serve(async (req) => {
 
     if (!telefoneLimpo) {
       console.error(`❌ REJEIÇÃO: remoteJid inválido ou @lid: "${remoteJidRaw}"`);
+      // Logar no banco para diagnóstico
+      try {
+        const b = createClientFromRequest(req);
+        await registrarLog(b, '699696c2c9f5bffc2e67402b', 'erro', {
+          status: 'erro',
+          erro: `JID inválido rejeitado: ${remoteJidRaw}`,
+          telefone: remoteJidRaw.substring(0, 50),
+          conteudo: `pushName: ${pushName} | fromMe: ${fromMe} | msgId: ${messageId}`,
+          instancia: instanceFinal
+        });
+      } catch (_) {}
       return Response.json({
         success: false,
         error: 'Invalid remoteJid — only @s.whatsapp.net or @c.us accepted',
