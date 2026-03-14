@@ -69,17 +69,44 @@ function normalizarPayload(rawBody) {
   return parsed;
 }
 
-// ── Extrair telefone APENAS de fontes confiáveis ──────────────────────────
-// Regra: só aceitar JIDs com @s.whatsapp.net ou @c.us (nunca @lid, nunca @g.us)
+// ── Extrair telefone de JIDs válidos ──────────────────────────────────────
 function extrairTelefoneValido(jid) {
   if (!jid || typeof jid !== 'string') return null;
-  // Rejeitar grupos e @lid
-  if (jid.includes('@g.us') || jid.includes('@lid') || jid.includes('@broadcast')) return null;
-  // Aceitar apenas @s.whatsapp.net e @c.us
+  if (jid.includes('@g.us') || jid.includes('@broadcast')) return null;
+  // @lid precisa de resolução — retornar null para tratar separadamente
+  if (jid.includes('@lid')) return null;
   if (!jid.includes('@s.whatsapp.net') && !jid.includes('@c.us')) return null;
-  // Extrair apenas os dígitos
   const numeros = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
   return numeros || null;
+}
+
+// ── Resolver @lid para número real via Evolution API ──────────────────────
+async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instanceName) {
+  try {
+    // Tentar buscar contato pelo lid
+    const res = await fetch(`${evolutionUrl}/chat/findContacts/${instanceName}`, {
+      method: 'POST',
+      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ where: { id: lid } })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const contatos = Array.isArray(data) ? data : (data.contacts || data.records || []);
+    for (const c of contatos) {
+      const jidReal = c.remoteJid || c.jid || c.id || '';
+      if (jidReal.includes('@s.whatsapp.net') || jidReal.includes('@c.us')) {
+        const tel = jidReal.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+        if (tel && tel.length >= 10) return tel;
+      }
+      // Às vezes o número vem direto
+      const telDireto = (c.number || c.phone || '').replace(/\D/g, '');
+      if (telDireto && telDireto.length >= 10) return telDireto;
+    }
+    return null;
+  } catch (e) {
+    console.warn('⚠️ Erro ao resolver @lid:', e.message);
+    return null;
+  }
 }
 
 // Validar se um número de telefone parece legítimo
