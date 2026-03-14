@@ -988,7 +988,7 @@ export default function SimuladorConsorcio() {
 
                   <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
                     <p className="text-xs text-emerald-700 font-semibold mb-1">🎯 Lance Embutido</p>
-                    <p className="text-lg font-bold text-emerald-900">{formatCurrency(resultado.lanceEmbutidoValor)}</p>
+                    <p className="text-lg font-bold text-emerald-900">{formatCurrency(lanceEmbutidoValor)}</p>
                     <p className="text-xs text-emerald-800 mt-1">
                       {resultado.lanceEmbutidoPercentual}% • {resultado.administradora}
                     </p>
