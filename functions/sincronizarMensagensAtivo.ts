@@ -57,7 +57,10 @@ Deno.serve(async (req) => {
         const fromMe = key.fromMe === true;
 
         if (!messageId || !remoteJid || fromMe) { ignoradas++; continue; }
-        if (remoteJid.includes('@g.us')) { ignoradas++; continue; } // grupo
+        // Rejeitar grupos, @lid e broadcasts
+        if (remoteJid.includes('@g.us') || remoteJid.includes('@lid') || remoteJid.includes('@broadcast')) { ignoradas++; continue; }
+        // Só aceitar JIDs com sufixo válido
+        if (!remoteJid.includes('@s.whatsapp.net') && !remoteJid.includes('@c.us')) { ignoradas++; continue; }
 
         // Verificar se já existe no banco
         const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
@@ -65,8 +68,12 @@ Deno.serve(async (req) => {
         );
         if (existentes.length > 0) { ignoradas++; continue; }
 
-        // Extrair telefone
-        const telefoneLimpo = remoteJid.replace('@s.whatsapp.net', '').replace('@c.us', '').replace(/\D/g, '');
+        // Extrair telefone — somente dígitos do JID após remover sufixo
+        const telefoneLimpo = remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+
+        // Validar telefone: 10-15 dígitos, brasileiro começa com 55
+        if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) { ignoradas++; continue; }
+        if (telefoneLimpo.length >= 12 && telefoneLimpo.length <= 13 && !telefoneLimpo.startsWith('55')) { ignoradas++; continue; }
 
         // Extrair conteúdo
         let tipo = 'texto';
