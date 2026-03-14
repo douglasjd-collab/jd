@@ -276,12 +276,20 @@ Deno.serve(async (req) => {
       }
 
       if (!telefoneLimpo) {
-        console.error(`❌ REJEIÇÃO: remoteJid inválido ou @lid não resolvido: "${remoteJidRaw}"`);
-        return Response.json({
-          success: false,
-          error: 'Invalid remoteJid — cannot resolve to phone number',
-          debug: { remoteJid: remoteJidRaw }
-        }, { status: 400 });
+        // Última alternativa: usar o ID numérico do lid como identificador da conversa
+        // Isso garante que a mensagem seja salva mesmo sem o número real
+        const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
+        if (lidNumerico && lidNumerico.length >= 8) {
+          console.log(`⚠️ Usando lid numérico como fallback: ${lidNumerico} (pushName: ${pushName})`);
+          telefoneLimpo = `lid_${lidNumerico}`;
+        } else {
+          console.error(`❌ REJEIÇÃO: remoteJid inválido e não resolvível: "${remoteJidRaw}"`);
+          return Response.json({
+            success: false,
+            error: 'Invalid remoteJid — cannot resolve to phone number',
+            debug: { remoteJid: remoteJidRaw }
+          }, { status: 400 });
+        }
       }
     }
 
