@@ -300,12 +300,7 @@ Deno.serve(async (req) => {
 
     console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}"`);
 
-    // ─── Inicializar SDK ──────────────────────────────────────────────────────
-    const base44 = createClientFromRequest(req);
-    const JD_ID = '699696c2c9f5bffc2e67402b';
-    let empresaId = JD_ID;
-    let colaboradorId = null;
-    let tipoConexao = 'empresa';
+    // ─── Inicializar SDK (já feito acima) ─────────────────────────────────────
 
     // ─── Identificar empresa pela instância ──────────────────────────────────
     if (instanceFinal) {
