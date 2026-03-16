@@ -18,6 +18,16 @@ Deno.serve(async (req) => {
     const evolutionKey = empresa.evolution_api_key;
     const instanceName = empresa.evolution_instance_name;
 
+    // Auto-heal: a cada execução, reconfirmar que o webhook está ativo (evita que pare de disparar)
+    try {
+      const webhookUrl = `https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp?instance=${empresa.evolution_instance_name}`;
+      await fetch(`${evolutionUrl}/webhook/set/${empresa.evolution_instance_name}`, {
+        method: 'POST',
+        headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ webhook: { url: webhookUrl, enabled: true, webhookByEvents: false, webhookBase64: true, events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE"] } })
+      });
+    } catch (_) { /* silencioso */ }
+
     // Calcular janela de busca — últimas 6 horas em segundos (Evolution usa Unix timestamp)
     const agoSeconds = Math.floor((Date.now() - (6 * 60 * 60 * 1000)) / 1000);
 
