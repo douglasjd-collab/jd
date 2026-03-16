@@ -18,16 +18,21 @@ Deno.serve(async (req) => {
     const evolutionKey = empresa.evolution_api_key;
     const instanceName = empresa.evolution_instance_name;
 
-    // Calcular janela de busca — últimas 2 horas
-    const agoMs = Date.now() - (2 * 60 * 60 * 1000);
+    // Calcular janela de busca — últimas 2 horas em segundos (Evolution usa Unix timestamp)
+    const agoSeconds = Math.floor((Date.now() - (2 * 60 * 60 * 1000)) / 1000);
+
+    console.log(`🕐 Buscando mensagens desde: ${new Date(agoSeconds * 1000).toISOString()}`);
 
     // Buscar mensagens recentes da Evolution (recebidas, não enviadas por nós)
     const res = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
       method: 'POST',
       headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        where: { key: { fromMe: false } },
-        limit: 50
+        where: {
+          key: { fromMe: false },
+          messageTimestamp: { $gte: agoSeconds }
+        },
+        limit: 100
       })
     });
 
