@@ -35,6 +35,11 @@ export default function OfertaLance() {
   const [tipoLance, setTipoLance] = useState('livre');
   const [observacao, setObservacao] = useState('');
   const [search, setSearch] = useState('');
+  const [editOpen, setEditOpen] = useState(false);
+  const [editOferta, setEditOferta] = useState(null);
+  const [editPercentual, setEditPercentual] = useState('');
+  const [editTipoLance, setEditTipoLance] = useState('livre');
+  const [editObservacao, setEditObservacao] = useState('');
   const queryClient = useQueryClient();
 
   // Competência atual (YYYY-MM) - fevereiro 2026
