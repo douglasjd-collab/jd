@@ -98,14 +98,33 @@ Deno.serve(async (req) => {
         let remoteJid = remoteJidRaw;
         if (remoteJidRaw.includes('@lid')) {
           if (lidToPhone[remoteJidRaw]) {
-            // Temos o mapeamento: usar o telefone real
+            // Temos o mapeamento via contacts: usar o telefone real
             const tel = lidToPhone[remoteJidRaw];
             remoteJid = `${tel}@s.whatsapp.net`;
             console.log(`🔄 @lid resolvido via mapa: ${remoteJidRaw} → ${remoteJid}`);
           } else {
-            // Sem mapeamento: usar o ID numérico do lid como identificador
+            // Sem mapeamento via contacts: tentar resolver via ContatoWhatsapp (pushName)
             const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
-            if (lidNumerico && lidNumerico.length >= 8) {
+            let resolvedPhone = null;
+
+            // Buscar ConversaWhatsapp existente com lid_XXXX para ver se já foi vinculada
+            try {
+              const conversasLid = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+                empresa_id: JD_ID, cliente_telefone: `lid_${lidNumerico}`
+              });
+              if (conversasLid.length > 0 && conversasLid[0].cliente_id) {
+                // Se a conversa lid já tem cliente vinculado, tenta achar o telefone
+                const clientes = await base44.asServiceRole.entities.Cliente.filter({ id: conversasLid[0].cliente_id });
+                if (clientes.length > 0 && clientes[0].celular) {
+                  resolvedPhone = clientes[0].celular.replace(/\D/g, '');
+                  console.log(`🔄 @lid resolvido via cliente vinculado: ${resolvedPhone}`);
+                }
+              }
+            } catch (_) {}
+
+            if (resolvedPhone) {
+              remoteJid = `${resolvedPhone}@s.whatsapp.net`;
+            } else if (lidNumerico && lidNumerico.length >= 8) {
               remoteJid = `lid_${lidNumerico}`;
               console.log(`⚠️ @lid sem mapeamento, usando fallback: ${remoteJid} (pushName: ${pushName})`);
             } else {
