@@ -49,6 +49,35 @@ Deno.serve(async (req) => {
 
     console.log(`📦 ${mensagens.length} mensagens encontradas na Evolution`);
 
+    // ── Construir mapa de @lid → telefone usando contatos da Evolution ──
+    const lidToPhone = {};
+    try {
+      const resContatos = await fetch(`${evolutionUrl}/chat/findContacts/${instanceName}`, {
+        method: 'POST',
+        headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ where: {} })
+      });
+      if (resContatos.ok) {
+        const dataContatos = await resContatos.json();
+        const contatos = Array.isArray(dataContatos) ? dataContatos : (dataContatos.contacts || dataContatos.records || []);
+        for (const c of contatos) {
+          const lidId = c.id || c.remoteJid || '';
+          if (lidId.includes('@lid')) {
+            // Tentar pegar o número real de campos alternativos
+            const jidReal = c.remoteJid || c.jid || '';
+            if (jidReal.includes('@s.whatsapp.net')) {
+              lidToPhone[lidId] = jidReal.replace(/@s\.whatsapp\.net/g, '').replace(/\D/g, '');
+            } else if (c.number) {
+              lidToPhone[lidId] = String(c.number).replace(/\D/g, '');
+            }
+          }
+        }
+        console.log(`📒 Mapa @lid construído: ${Object.keys(lidToPhone).length} entradas`);
+      }
+    } catch (e) {
+      console.warn('⚠️ Erro ao construir mapa @lid:', e.message);
+    }
+
     let processadas = 0;
     let ignoradas = 0;
 
@@ -57,15 +86,37 @@ Deno.serve(async (req) => {
         const key = msg.key || {};
         const message = msg.message || {};
         const pushName = msg.pushName || msg.senderName || 'Cliente';
-        const remoteJid = key.remoteJid || '';
+        const remoteJidRaw = key.remoteJid || '';
         const messageId = key.id;
         const fromMe = key.fromMe === true;
 
-        if (!messageId || !remoteJid || fromMe) { ignoradas++; continue; }
-        // Rejeitar grupos, @lid e broadcasts
-        if (remoteJid.includes('@g.us') || remoteJid.includes('@lid') || remoteJid.includes('@broadcast')) { ignoradas++; continue; }
-        // Só aceitar JIDs com sufixo válido
-        if (!remoteJid.includes('@s.whatsapp.net') && !remoteJid.includes('@c.us')) { ignoradas++; continue; }
+        if (!messageId || !remoteJidRaw || fromMe) { ignoradas++; continue; }
+        // Rejeitar grupos e broadcasts
+        if (remoteJidRaw.includes('@g.us') || remoteJidRaw.includes('@broadcast')) { ignoradas++; continue; }
+
+        // Resolver @lid para telefone real
+        let remoteJid = remoteJidRaw;
+        if (remoteJidRaw.includes('@lid')) {
+          if (lidToPhone[remoteJidRaw]) {
+            // Temos o mapeamento: usar o telefone real
+            const tel = lidToPhone[remoteJidRaw];
+            remoteJid = `${tel}@s.whatsapp.net`;
+            console.log(`🔄 @lid resolvido via mapa: ${remoteJidRaw} → ${remoteJid}`);
+          } else {
+            // Sem mapeamento: usar o ID numérico do lid como identificador
+            const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
+            if (lidNumerico && lidNumerico.length >= 8) {
+              remoteJid = `lid_${lidNumerico}`;
+              console.log(`⚠️ @lid sem mapeamento, usando fallback: ${remoteJid} (pushName: ${pushName})`);
+            } else {
+              ignoradas++; continue;
+            }
+          }
+        }
+
+        // Só aceitar JIDs com sufixo válido ou lids resolvidos
+        const isLidFallback = remoteJid.startsWith('lid_');
+        if (!isLidFallback && !remoteJid.includes('@s.whatsapp.net') && !remoteJid.includes('@c.us')) { ignoradas++; continue; }
 
         // Verificar se já existe no banco
         const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
