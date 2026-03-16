@@ -76,6 +76,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
 
   const handleSave = () => {
     if (!form.titulo?.trim()) { toast.error('Informe o título da tarefa'); return; }
+    if (!form.cliente_id) { toast.error('Selecione um cliente para a tarefa'); return; }
     if (!form.data_conclusao_prevista) { toast.error('Informe a data de conclusão'); return; }
     if (responsaveisSel.length === 0) { toast.error('Selecione ao menos um responsável'); return; }
 
