@@ -275,6 +275,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
                 </div>
               ))}
             </div>
+            </div>
           </div>
 
           {/* Checklist */}
