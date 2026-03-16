@@ -124,12 +124,14 @@ Deno.serve(async (req) => {
         );
         if (existentes.length > 0) { ignoradas++; continue; }
 
-        // Extrair telefone — somente dígitos do JID após remover sufixo
-        const telefoneLimpo = remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+        // Extrair telefone
+        const telefoneLimpo = isLidFallback ? remoteJid : remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
 
-        // Validar telefone: 10-15 dígitos, brasileiro começa com 55
-        if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) { ignoradas++; continue; }
-        if (telefoneLimpo.length >= 12 && telefoneLimpo.length <= 13 && !telefoneLimpo.startsWith('55')) { ignoradas++; continue; }
+        // Validar telefone: 10-15 dígitos, brasileiro começa com 55 (exceto lids fallback)
+        if (!isLidFallback) {
+          if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) { ignoradas++; continue; }
+          if (telefoneLimpo.length >= 12 && telefoneLimpo.length <= 13 && !telefoneLimpo.startsWith('55')) { ignoradas++; continue; }
+        }
 
         // Extrair conteúdo
         let tipo = 'texto';
