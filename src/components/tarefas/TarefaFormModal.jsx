@@ -185,8 +185,10 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
                         </div>
                       ))}
                     {clientes.filter(c => {
-                      const nome = (c.nome_completo || c.pj_razao_social || '').toLowerCase();
-                      return !clienteSearch || nome.includes(clienteSearch.toLowerCase());
+                      if (!clienteSearch) return true;
+                      const normalize = str => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                      const nome = normalize(c.nome_completo || c.pj_razao_social || '');
+                      return nome.includes(normalize(clienteSearch));
                     }).length === 0 && (
                       <div className="px-3 py-4 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>
                     )}
