@@ -139,16 +139,58 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="relative">
               <Label>Cliente *</Label>
-              <Select value={form.cliente_id || ''} onValueChange={v => setForm({ ...form, cliente_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Selecionar cliente" /></SelectTrigger>
-                <SelectContent>
-                  {clientes.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.nome_completo || c.pj_razao_social}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div
+                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm cursor-pointer"
+                onClick={() => setClienteDropdownOpen(o => !o)}
+              >
+                <span className={form.cliente_id ? 'text-foreground' : 'text-muted-foreground'}>
+                  {form.cliente_id
+                    ? (clientes.find(c => c.id === form.cliente_id)?.nome_completo || clientes.find(c => c.id === form.cliente_id)?.pj_razao_social || 'Cliente')
+                    : 'Selecionar cliente'}
+                </span>
+                <span className="text-slate-400 text-xs">▼</span>
+              </div>
+              {clienteDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg">
+                  <div className="p-2 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+                      <input
+                        autoFocus
+                        className="w-full pl-7 pr-2 py-1 text-sm border rounded outline-none"
+                        placeholder="Buscar cliente..."
+                        value={clienteSearch}
+                        onChange={e => setClienteSearch(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {clientes
+                      .filter(c => {
+                        const nome = (c.nome_completo || c.pj_razao_social || '').toLowerCase();
+                        return !clienteSearch || nome.includes(clienteSearch.toLowerCase());
+                      })
+                      .map(c => (
+                        <div
+                          key={c.id}
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100"
+                          onClick={() => { setForm({ ...form, cliente_id: c.id }); setClienteDropdownOpen(false); setClienteSearch(''); }}
+                        >
+                          {c.nome_completo || c.pj_razao_social}
+                        </div>
+                      ))}
+                    {clientes.filter(c => {
+                      const nome = (c.nome_completo || c.pj_razao_social || '').toLowerCase();
+                      return !clienteSearch || nome.includes(clienteSearch.toLowerCase());
+                    }).length === 0 && (
+                      <div className="px-3 py-4 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <Label>Prioridade</Label>
