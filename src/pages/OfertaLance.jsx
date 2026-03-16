@@ -351,6 +351,21 @@ export default function OfertaLance() {
     {
       header: 'Usuário',
       cell: (row) => row.usuario_nome
+    },
+    {
+      header: '',
+      className: 'w-24',
+      cell: (row) => (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleEditarOferta(row)}
+          className="gap-1"
+        >
+          <Pencil className="w-3 h-3" />
+          Alterar
+        </Button>
+      )
     }
   ];
 
