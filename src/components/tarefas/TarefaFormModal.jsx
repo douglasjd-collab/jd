@@ -27,6 +27,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   const [templateFavorito, setTemplateFavorito] = useState(false);
   const [clienteSearch, setClienteSearch] = useState('');
   const [clienteDropdownOpen, setClienteDropdownOpen] = useState(false);
+  const [responsavelSearch, setResponsavelSearch] = useState('');
 
   useEffect(() => {
     if (open) {
