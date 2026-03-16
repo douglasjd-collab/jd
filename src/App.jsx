@@ -60,6 +60,8 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+      <Route path="/Tarefas" element={<LayoutWrapper currentPageName="Tarefas"><Tarefas /></LayoutWrapper>} />
+      <Route path="/ConfiguracaoTarefas" element={<LayoutWrapper currentPageName="ConfiguracaoTarefas"><ConfiguracaoTarefas /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
