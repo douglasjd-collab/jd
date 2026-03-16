@@ -433,6 +433,104 @@ export default function OfertaLance() {
         </TabsContent>
       </Tabs>
 
+      {/* Modal de Edição de Lance */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Lance</DialogTitle>
+          </DialogHeader>
+          {editOferta && (
+            <form onSubmit={handleSubmitEdicao} className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-lg space-y-1 text-sm">
+                <p className="font-medium">{editOferta.cliente_nome}</p>
+                <p className="text-slate-500">Grupo/Cota: {editOferta.grupo}/{editOferta.cota}</p>
+                <p className="text-slate-500">Lance atual: <span className="font-semibold text-slate-800">{editOferta.percentual_lance}% — {formatCurrency(editOferta.valor_lance)}</span></p>
+              </div>
+
+              {/* Histórico */}
+              {(() => {
+                let hist = [];
+                try { hist = editOferta.historico_alteracoes ? JSON.parse(editOferta.historico_alteracoes) : []; } catch {}
+                return hist.length > 0 ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1">
+                      <History className="w-3 h-3" /> Histórico de alterações
+                    </div>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {hist.map((h, i) => (
+                        <div key={i} className="text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-center justify-between gap-2">
+                          <span className="text-slate-600">
+                            <span className="line-through text-red-500">{h.percentual_anterior}%</span>
+                            {' → '}
+                            <span className="text-green-600 font-medium">{h.percentual_novo}%</span>
+                          </span>
+                          <span className="text-slate-400 whitespace-nowrap">
+                            {format(new Date(h.data_alteracao), 'dd/MM HH:mm')} · {h.usuario_nome}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              <div>
+                <Label htmlFor="edit-percentual">Novo Percentual *</Label>
+                <div className="relative">
+                  <Input
+                    id="edit-percentual"
+                    type="text"
+                    value={editPercentual}
+                    onChange={(e) => {
+                      let value = e.target.value.replace(/[^\d,.]/g, '').replace(',', '.');
+                      const parts = value.split('.');
+                      if (parts.length > 2) value = parts[0] + '.' + parts.slice(1).join('');
+                      if (parts.length === 2 && parts[1].length > 4) value = parts[0] + '.' + parts[1].substring(0, 4);
+                      if (value === '' || value === '.') { setEditPercentual(''); }
+                      else { const num = parseFloat(value); if (!isNaN(num) && num >= 0 && num <= 100) setEditPercentual(value); }
+                    }}
+                    placeholder="Ex: 30.5"
+                    className="pr-8"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">%</span>
+                </div>
+                {editPercentual && editOferta.valor_carta && (
+                  <p className="text-xs text-green-700 mt-1 font-medium">
+                    Novo valor: {formatCurrency(editOferta.valor_carta * (parseFloat(editPercentual) / 100))}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Tipo de Lance</Label>
+                <Select value={editTipoLance} onValueChange={setEditTipoLance}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="livre">Livre</SelectItem>
+                    <SelectItem value="limitado">Limitado</SelectItem>
+                    <SelectItem value="fixo_30">Fixo 30%</SelectItem>
+                    <SelectItem value="fixo_50">Fixo 50%</SelectItem>
+                    <SelectItem value="embutido">Embutido</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-obs">Observação</Label>
+                <Textarea id="edit-obs" value={editObservacao} onChange={(e) => setEditObservacao(e.target.value)} rows={2} />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+                <Button type="submit" className="bg-[#23BE84] hover:bg-[#1da570]">Salvar Alteração</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Oferta */}
       <Dialog open={formOpen} onOpenChange={closeForm}>
         <DialogContent className="max-w-md">
