@@ -138,11 +138,10 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Cliente</Label>
+              <Label>Cliente *</Label>
               <Select value={form.cliente_id || ''} onValueChange={v => setForm({ ...form, cliente_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecionar cliente" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>Nenhum</SelectItem>
                   {clientes.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.nome_completo || c.pj_razao_social}</SelectItem>
                   ))}
