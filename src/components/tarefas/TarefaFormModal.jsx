@@ -241,8 +241,24 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           {/* Responsáveis */}
           <div>
             <Label className="mb-2 block">Responsáveis * <span className="text-xs text-slate-400">(apenas mencionados têm acesso)</span></Label>
-            <div className="border rounded-lg p-2 max-h-48 overflow-y-auto space-y-1">
-              {colaboradores.map(c => (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="p-2 border-b bg-slate-50">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
+                  <input
+                    className="w-full pl-7 pr-2 py-1 text-sm border rounded outline-none bg-white"
+                    placeholder="Buscar responsável..."
+                    value={responsavelSearch}
+                    onChange={e => setResponsavelSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+            <div className="p-2 max-h-48 overflow-y-auto space-y-1">
+              {colaboradores.filter(c => {
+                if (!responsavelSearch) return true;
+                const normalize = str => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return normalize(c.nome || c.full_name || '').includes(normalize(responsavelSearch));
+              }).map(c => (
                 <div key={c.id}
                   onClick={() => toggleResponsavel(c.id)}
                   className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${responsaveisSel.includes(c.id) ? 'bg-blue-50 border border-blue-300' : 'hover:bg-slate-50'}`}
