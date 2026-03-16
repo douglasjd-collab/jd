@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
     const evolutionKey = empresa.evolution_api_key;
     const instanceName = empresa.evolution_instance_name;
 
-    // Calcular janela de busca — últimas 2 horas em segundos (Evolution usa Unix timestamp)
-    const agoSeconds = Math.floor((Date.now() - (2 * 60 * 60 * 1000)) / 1000);
+    // Calcular janela de busca — últimas 6 horas em segundos (Evolution usa Unix timestamp)
+    const agoSeconds = Math.floor((Date.now() - (6 * 60 * 60 * 1000)) / 1000);
 
     console.log(`🕐 Buscando mensagens desde: ${new Date(agoSeconds * 1000).toISOString()}`);
 
