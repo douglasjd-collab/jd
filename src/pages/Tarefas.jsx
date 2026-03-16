@@ -83,7 +83,7 @@ export default function Tarefas() {
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-tarefa', empresaId],
     enabled: !!empresaId,
-    queryFn: () => base44.entities.Cliente.filter({ empresa_id: empresaId, status: 'ativo' }),
+    queryFn: () => base44.entities.Cliente.filter({ empresa_id: empresaId }, 'nome_completo', 200),
   });
 
   const { data: templates = [] } = useQuery({
