@@ -204,89 +204,75 @@ export default function BatePapo() {
   }, []);
 
   // Real-time: atualizar mensagens quando chegar nova mensagem no banco
+  // Usar ref para ter acesso ao valor atual sem re-criar a subscription
+  const conversaSelecionadaIdRef = React.useRef(conversaSelecionadaId);
+  const conversasRef = React.useRef(conversas);
+  React.useEffect(() => { conversaSelecionadaIdRef.current = conversaSelecionadaId; }, [conversaSelecionadaId]);
+  React.useEffect(() => { conversasRef.current = conversas; }, [conversas]);
+
   useEffect(() => {
     if (!empresaId) return;
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
       if (event.type !== 'create') return;
 
-      const msgData = event.data; // pode ser null se payload_too_large
+      const msgData = event.data;
+      const conversaAtualId = conversaSelecionadaIdRef.current;
 
-      // Adicionar mensagem OTIMISTICAMENTE se for da conversa aberta
-      if (msgData?.conversa_id === conversaSelecionadaId && msgData?.id) {
-        const queryKey = ['mensagens-whatsapp', conversaSelecionadaId];
-        queryClient.setQueryData(queryKey, (old = []) => [
-          ...old,
-          {
-            id: msgData.id,
-            conversa_id: msgData.conversa_id,
-            remetente: msgData.remetente || 'cliente',
-            tipo_conteudo: msgData.tipo_conteudo || 'texto',
-            texto: msgData.texto || '',
-            data_envio: msgData.data_envio || new Date().toISOString(),
-            status: msgData.status || 'entregue'
-          }
-        ]);
-        // Scroll para a nova mensagem
-        setTimeout(() => {
-          if (scrollAreaRef.current) {
-            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTop = viewport.scrollHeight;
-          }
-        }, 100);
-      }
-      
-      // Refetch para garantir sincronização completa
-      if (msgData?.conversa_id === conversaSelecionadaId) {
-        refetchMensagens();
-      }
-      
       // Sempre refetch conversas para atualizar última mensagem
       refetchConversas();
 
-      // Se temos dados da mensagem, verificar se é do cliente
-      if (msgData) {
-        // Só mostrar notificação para mensagens de CLIENTE
-        if (msgData.remetente !== 'cliente') return;
+      // Adicionar mensagem imediatamente se for da conversa aberta
+      if (msgData?.conversa_id && msgData.conversa_id === conversaAtualId) {
+        if (msgData?.id) {
+          const queryKey = ['mensagens-whatsapp', conversaAtualId];
+          queryClient.setQueryData(queryKey, (old = []) => {
+            // Evitar duplicatas
+            const jaExiste = old.some(m => m.id === msgData.id);
+            if (jaExiste) return old;
+            return [...old, {
+              id: msgData.id,
+              conversa_id: msgData.conversa_id,
+              remetente: msgData.remetente || 'cliente',
+              tipo_conteudo: msgData.tipo_conteudo || 'texto',
+              texto: msgData.texto || '',
+              data_envio: msgData.data_envio || new Date().toISOString(),
+              status: msgData.status || 'entregue'
+            }];
+          });
+          setTimeout(() => {
+            if (scrollAreaRef.current) {
+              const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+              if (viewport) viewport.scrollTop = viewport.scrollHeight;
+            }
+          }, 100);
+        } else {
+          // payload_too_large — forçar refetch
+          refetchMensagens();
+        }
+      }
 
-        // Encontrar nome do contato/conversa
-        const conversa = conversas.find(c => c.id === msgData.conversa_id);
+      // Notificação apenas para mensagens de cliente
+      if (msgData?.remetente === 'cliente') {
+        const conversa = conversasRef.current.find(c => c.id === msgData.conversa_id);
         const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
         const textoMsg = msgData.texto || '📎 Arquivo recebido';
 
-        // Toast de notificação in-app
         toast.message(`💬 ${nomeRemetente}`, {
           description: textoMsg.length > 120 ? textoMsg.substring(0, 120) + '...' : textoMsg,
           duration: 6000,
-          action: conversa ? {
-            label: 'Abrir conversa',
-            onClick: () => selecionarConversa(conversa),
-          } : undefined,
-          style: { cursor: 'pointer' },
-          onClick: conversa ? () => selecionarConversa(conversa) : undefined,
+          action: conversa ? { label: 'Abrir conversa', onClick: () => selecionarConversa(conversa) } : undefined,
         });
 
-        // Notificação nativa do browser (quando aba não está em foco)
         if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
           const notif = new Notification(`💬 ${nomeRemetente}`, {
-            body: textoMsg,
-            icon: '/favicon.ico',
-            tag: msgData.conversa_id,
+            body: textoMsg, icon: '/favicon.ico', tag: msgData.conversa_id,
           });
-          notif.onclick = () => {
-            window.focus();
-            if (conversa) selecionarConversa(conversa);
-            notif.close();
-          };
-        }
-      } else {
-        // payload_too_large — refetch mensagens abertas por precaução
-        if (conversaSelecionadaId) {
-          refetchMensagens();
+          notif.onclick = () => { window.focus(); if (conversa) selecionarConversa(conversa); notif.close(); };
         }
       }
     });
     return unsub;
-  }, [empresaId, conversaSelecionadaId, conversas]);
+  }, [empresaId]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
