@@ -17,6 +17,28 @@ function getInitials(name = '') {
   return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
 }
 
+function normalize(str) {
+  return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+const SETORES = [
+  { value: 'consorcio', label: 'Consórcio' },
+  { value: 'emprestimo', label: 'Empréstimo' },
+  { value: 'financiamento', label: 'Financiamento' },
+  { value: 'administrativo', label: 'Administrativo' },
+  { value: 'cobranca', label: 'Cobrança' },
+];
+
+const TIPOS = [
+  { value: 'documento', label: 'Documento' },
+  { value: 'ligacao', label: 'Ligação' },
+  { value: 'cobranca', label: 'Cobrança' },
+  { value: 'visita', label: 'Visita' },
+  { value: 'analise', label: 'Análise' },
+  { value: 'pendencia', label: 'Pendência' },
+  { value: 'outros', label: 'Outros' },
+];
+
 export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate }) {
   const [form, setForm] = useState({});
   const [checklist, setChecklist] = useState([]);
@@ -37,18 +59,26 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           descricao: tarefa.descricao || '',
           cliente_id: tarefa.cliente_id || '',
           cliente_nome: tarefa.cliente_nome || '',
+          setor: tarefa.setor || '',
+          tipo: tarefa.tipo || '',
+          origem: tarefa.origem || 'manual',
           data_cadastro: tarefa.data_cadastro || format(new Date(), 'yyyy-MM-dd'),
           data_conclusao_prevista: tarefa.data_conclusao_prevista || '',
           status: tarefa.status || 'a_fazer',
           prioridade: tarefa.prioridade || 'media',
+          responsavel_principal_id: tarefa.responsavel_principal_id || '',
         });
         try { setChecklist(tarefa.checklist ? JSON.parse(tarefa.checklist) : []); } catch { setChecklist([]); }
         try { setResponsaveisSel(tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []); } catch { setResponsaveisSel([]); }
       } else {
         setForm({
           titulo: '', descricao: '', cliente_id: '', cliente_nome: '',
+          setor: '', tipo: '', origem: 'manual',
           data_cadastro: format(new Date(), 'yyyy-MM-dd'),
-          data_conclusao_prevista: '', status: statusList?.[0]?.slug || 'a_fazer', prioridade: 'media',
+          data_conclusao_prevista: '',
+          status: statusList?.[0]?.slug || 'a_fazer',
+          prioridade: 'media',
+          responsavel_principal_id: currentUser?.id || '',
         });
         setChecklist([]);
         setResponsaveisSel(currentUser ? [currentUser.id] : []);
@@ -56,6 +86,9 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
       setSalvarTemplate(false);
       setNomeTemplate('');
       setTemplateFavorito(false);
+      setClienteSearch('');
+      setClienteDropdownOpen(false);
+      setResponsavelSearch('');
     }
   }, [open, tarefa]);
 
@@ -89,10 +122,13 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
     });
 
     const cliente = clientes.find(c => c.id === form.cliente_id);
+    const principalColab = colaboradores.find(c => c.id === (form.responsavel_principal_id || responsaveisSel[0]));
 
     const data = {
       ...form,
       cliente_nome: cliente?.nome_completo || cliente?.pj_razao_social || form.cliente_nome || '',
+      responsavel_principal_id: form.responsavel_principal_id || responsaveisSel[0] || '',
+      responsavel_principal_nome: principalColab?.nome || '',
       checklist: JSON.stringify(checklist),
       responsaveis_ids: JSON.stringify(responsaveisSel),
       responsaveis_nomes: JSON.stringify(responsaveisData.map(r => r.nome)),
@@ -100,29 +136,36 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
     };
 
     if (salvarTemplate && nomeTemplate.trim() && checklist.length > 0) {
-      onSaveTemplate?.({
-        nome: nomeTemplate.trim(),
-        itens: JSON.stringify(checklist.map(i => i.texto)),
-        favorito: templateFavorito,
-      });
+      onSaveTemplate?.({ nome: nomeTemplate.trim(), itens: JSON.stringify(checklist.map(i => i.texto)), favorito: templateFavorito });
     }
 
     onSave(data, tarefa?.id);
   };
 
   const favoriteTemplates = templates?.filter(t => t.favorito) || [];
+  const clientesFiltrados = clientes.filter(c => {
+    if (!clienteSearch) return true;
+    return normalize(c.nome_completo || c.pj_razao_social || '').includes(normalize(clienteSearch));
+  });
+  const colaboradoresFiltrados = colaboradores.filter(c => {
+    if (!responsavelSearch) return true;
+    return normalize(c.nome || c.full_name || '').includes(normalize(responsavelSearch));
+  });
+
+  const responsaveisSelecionadosDados = responsaveisSel.map(id => colaboradores.find(c => c.id === id)).filter(Boolean);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{tarefa ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
+          <DialogTitle className="text-lg">{tarefa ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
         </DialogHeader>
+
         <div className="space-y-4">
           {/* Templates favoritos */}
           {!tarefa && favoriteTemplates.length > 0 && (
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">Checklist rápido (favoritos)</Label>
+              <Label className="text-xs text-slate-500 mb-1 block">Checklist rápido</Label>
               <div className="flex flex-wrap gap-2">
                 {favoriteTemplates.map(t => (
                   <button key={t.id} onClick={() => aplicarTemplate(t)}
@@ -134,11 +177,13 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             </div>
           )}
 
+          {/* Título */}
           <div>
             <Label>Título *</Label>
             <Input value={form.titulo || ''} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Título da tarefa" />
           </div>
 
+          {/* Cliente + Prioridade */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative">
               <Label>Cliente *</Label>
@@ -146,62 +191,43 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
                 className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm cursor-pointer"
                 onClick={() => setClienteDropdownOpen(o => !o)}
               >
-                <span className={form.cliente_id ? 'text-foreground' : 'text-muted-foreground'}>
+                <span className={form.cliente_id ? 'text-foreground truncate pr-2' : 'text-muted-foreground'}>
                   {form.cliente_id
                     ? (clientes.find(c => c.id === form.cliente_id)?.nome_completo || clientes.find(c => c.id === form.cliente_id)?.pj_razao_social || 'Cliente')
                     : 'Selecionar cliente'}
                 </span>
-                <span className="text-slate-400 text-xs">▼</span>
+                <span className="text-slate-400 text-xs flex-shrink-0">▼</span>
               </div>
               {clienteDropdownOpen && (
                 <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg">
                   <div className="p-2 border-b">
                     <div className="relative">
                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                      <input
-                        autoFocus
-                        className="w-full pl-7 pr-2 py-1 text-sm border rounded outline-none"
-                        placeholder="Buscar cliente..."
-                        value={clienteSearch}
-                        onChange={e => setClienteSearch(e.target.value)}
-                        onClick={e => e.stopPropagation()}
-                      />
+                      <input autoFocus className="w-full pl-7 pr-2 py-1 text-sm border rounded outline-none"
+                        placeholder="Buscar cliente..." value={clienteSearch}
+                        onChange={e => setClienteSearch(e.target.value)} onClick={e => e.stopPropagation()} />
                     </div>
                   </div>
                   <div className="max-h-48 overflow-y-auto">
-                    {clientes
-                      .filter(c => {
-                        if (!clienteSearch) return true;
-                        const normalize = str => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                        const nome = normalize(c.nome_completo || c.pj_razao_social || '');
-                        return nome.includes(normalize(clienteSearch));
-                      })
-                      .map(c => (
-                        <div
-                          key={c.id}
-                          className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100"
-                          onClick={() => { setForm({ ...form, cliente_id: c.id }); setClienteDropdownOpen(false); setClienteSearch(''); }}
-                        >
+                    {clientesFiltrados.length === 0
+                      ? <div className="px-3 py-4 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>
+                      : clientesFiltrados.map(c => (
+                        <div key={c.id} className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100"
+                          onClick={() => { setForm({ ...form, cliente_id: c.id }); setClienteDropdownOpen(false); setClienteSearch(''); }}>
                           {c.nome_completo || c.pj_razao_social}
                         </div>
                       ))}
-                    {clientes.filter(c => {
-                      if (!clienteSearch) return true;
-                      const normalize = str => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                      const nome = normalize(c.nome_completo || c.pj_razao_social || '');
-                      return nome.includes(normalize(clienteSearch));
-                    }).length === 0 && (
-                      <div className="px-3 py-4 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>
-                    )}
                   </div>
                 </div>
               )}
             </div>
+
             <div>
               <Label>Prioridade</Label>
               <Select value={form.prioridade || 'media'} onValueChange={v => setForm({ ...form, prioridade: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="urgente">🔴 Urgente</SelectItem>
                   <SelectItem value="alta">🔴 Alta</SelectItem>
                   <SelectItem value="media">🟡 Média</SelectItem>
                   <SelectItem value="baixa">🟢 Baixa</SelectItem>
@@ -210,6 +236,29 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             </div>
           </div>
 
+          {/* Setor + Tipo */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Setor</Label>
+              <Select value={form.setor || ''} onValueChange={v => setForm({ ...form, setor: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
+                <SelectContent>
+                  {SETORES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Tipo da Tarefa</Label>
+              <Select value={form.tipo || ''} onValueChange={v => setForm({ ...form, tipo: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecionar tipo" /></SelectTrigger>
+                <SelectContent>
+                  {TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Datas */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Data de Cadastro</Label>
@@ -221,63 +270,102 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             </div>
           </div>
 
+          {/* Status */}
           <div>
             <Label>Status</Label>
             <Select value={form.status || ''} onValueChange={v => setForm({ ...form, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {statusList.map(s => (
-                  <SelectItem key={s.slug} value={s.slug}>{s.nome}</SelectItem>
-                ))}
+                {statusList.map(s => <SelectItem key={s.slug} value={s.slug}>{s.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
+          {/* Descrição */}
           <div>
             <Label>Descrição</Label>
-            <Textarea value={form.descricao || ''} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} placeholder="Descrição adicional..." />
+            <Textarea value={form.descricao || ''} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} placeholder="Descreva detalhes da tarefa..." />
           </div>
 
           {/* Responsáveis */}
           <div>
-            <Label className="mb-2 block">Responsáveis * <span className="text-xs text-slate-400">(apenas mencionados têm acesso)</span></Label>
+            <Label className="mb-2 block">
+              Responsáveis * <span className="text-xs text-slate-400">(selecione um ou mais)</span>
+            </Label>
+
+            {/* Tags dos selecionados */}
+            {responsaveisSelecionadosDados.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {responsaveisSelecionadosDados.map(c => (
+                  <div key={c.id} className="flex items-center gap-1 bg-blue-50 border border-blue-200 px-2 py-1 rounded-full text-xs text-blue-800">
+                    <Avatar className="h-4 w-4">
+                      <AvatarImage src={c.foto_perfil} />
+                      <AvatarFallback className="text-xs bg-blue-200 text-blue-800">{getInitials(c.nome || c.full_name || '')}</AvatarFallback>
+                    </Avatar>
+                    <span>{c.nome || c.full_name}</span>
+                    {c.id === (form.responsavel_principal_id || responsaveisSel[0]) && (
+                      <span className="text-blue-500 font-medium ml-0.5">★</span>
+                    )}
+                    <button onClick={() => toggleResponsavel(c.id)} className="ml-0.5 text-blue-400 hover:text-red-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="border rounded-lg overflow-hidden">
               <div className="p-2 border-b bg-slate-50">
                 <div className="relative">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                  <input
-                    className="w-full pl-7 pr-2 py-1 text-sm border rounded outline-none bg-white"
-                    placeholder="Buscar responsável..."
-                    value={responsavelSearch}
-                    onChange={e => setResponsavelSearch(e.target.value)}
-                  />
+                  <input className="w-full pl-7 pr-2 py-1 text-sm border rounded outline-none bg-white"
+                    placeholder="Buscar responsável..." value={responsavelSearch}
+                    onChange={e => setResponsavelSearch(e.target.value)} />
                 </div>
               </div>
-            <div className="p-2 max-h-48 overflow-y-auto space-y-1">
-              {colaboradores.filter(c => {
-                if (!responsavelSearch) return true;
-                const normalize = str => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                return normalize(c.nome || c.full_name || '').includes(normalize(responsavelSearch));
-              }).map(c => (
-                <div key={c.id}
-                  onClick={() => toggleResponsavel(c.id)}
-                  className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${responsaveisSel.includes(c.id) ? 'bg-blue-50 border border-blue-300' : 'hover:bg-slate-50'}`}
-                >
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src={c.foto_perfil} />
-                    <AvatarFallback className="text-xs">{getInitials(c.nome || c.full_name || '')}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{c.nome || c.full_name}</p>
-                    <p className="text-xs text-slate-400 capitalize">{c.perfil}</p>
+              <div className="p-2 max-h-40 overflow-y-auto space-y-1">
+                {colaboradoresFiltrados.map(c => (
+                  <div key={c.id}
+                    onClick={() => toggleResponsavel(c.id)}
+                    className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${responsaveisSel.includes(c.id) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-50'}`}
+                  >
+                    <Avatar className="h-7 w-7">
+                      <AvatarImage src={c.foto_perfil} />
+                      <AvatarFallback className="text-xs">{getInitials(c.nome || c.full_name || '')}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{c.nome || c.full_name}</p>
+                      <p className="text-xs text-slate-400 capitalize">{c.perfil}</p>
+                    </div>
+                    {responsaveisSel.includes(c.id) && (
+                      <div className="h-5 w-5 bg-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    )}
                   </div>
-                  {responsaveisSel.includes(c.id) && <div className="h-4 w-4 bg-blue-600 rounded-full flex items-center justify-center"><span className="text-white text-xs">✓</span></div>}
-                </div>
-              ))}
+                ))}
+                {colaboradoresFiltrados.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-3">Nenhum encontrado</p>
+                )}
+              </div>
             </div>
-            </div>
-          </div>
 
+            {/* Responsável principal */}
+            {responsaveisSel.length > 1 && (
+              <div className="mt-2">
+                <Label className="text-xs mb-1 block">Responsável principal ★</Label>
+                <Select value={form.responsavel_principal_id || responsaveisSel[0]} onValueChange={v => setForm({ ...form, responsavel_principal_id: v })}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {responsaveisSel.map(id => {
+                      const c = colaboradores.find(x => x.id === id);
+                      return c ? <SelectItem key={id} value={id}>{c.nome || c.full_name}</SelectItem> : null;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
           {/* Checklist */}
           <div>
@@ -285,7 +373,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
               <Label>Checklist</Label>
               {templates?.length > 0 && (
                 <Select onValueChange={v => { const t = templates.find(x => x.id === v); if (t) aplicarTemplate(t); }}>
-                  <SelectTrigger className="w-48 h-7 text-xs"><SelectValue placeholder="Usar template..." /></SelectTrigger>
+                  <SelectTrigger className="w-44 h-7 text-xs"><SelectValue placeholder="Usar template..." /></SelectTrigger>
                   <SelectContent>
                     {templates.map(t => (
                       <SelectItem key={t.id} value={t.id}>
@@ -298,24 +386,27 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             </div>
             <div className="space-y-2 mb-2">
               {checklist.map(item => (
-                <div key={item.id} className="flex items-center gap-2">
+                <div key={item.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
                   <Checkbox checked={item.checked} onCheckedChange={v => setChecklist(prev => prev.map(i => i.id === item.id ? { ...i, checked: !!v } : i))} />
                   <span className={`text-sm flex-1 ${item.checked ? 'line-through text-slate-400' : ''}`}>{item.texto}</span>
-                  <button onClick={() => setChecklist(prev => prev.filter(i => i.id !== item.id))} className="text-slate-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                  <button onClick={() => setChecklist(prev => prev.filter(i => i.id !== item.id))} className="text-slate-400 hover:text-red-500">
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <Input value={novoItem} onChange={e => setNovoItem(e.target.value)} onKeyDown={e => e.key === 'Enter' && adicionarItem()} placeholder="Novo item (ex: RG, Comprovante de endereço...)" className="flex-1" />
+              <Input value={novoItem} onChange={e => setNovoItem(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && adicionarItem()}
+                placeholder="Novo item do checklist..." className="flex-1" />
               <Button variant="outline" size="sm" onClick={adicionarItem}><Plus className="w-4 h-4" /></Button>
             </div>
 
-            {/* Salvar como template */}
             {checklist.length > 0 && (
               <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
                 <div className="flex items-center gap-2">
                   <Checkbox id="salvar-tmpl" checked={salvarTemplate} onCheckedChange={setSalvarTemplate} />
-                  <Label htmlFor="salvar-tmpl" className="text-sm cursor-pointer">Salvar este checklist como template</Label>
+                  <Label htmlFor="salvar-tmpl" className="text-sm cursor-pointer">Salvar como template</Label>
                 </div>
                 {salvarTemplate && (
                   <div className="flex items-center gap-2">
@@ -330,10 +421,10 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-2 border-t">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={handleSave} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
-              {tarefa ? 'Salvar' : 'Criar Tarefa'}
+              {tarefa ? 'Salvar alterações' : 'Criar Tarefa'}
             </Button>
           </div>
         </div>
