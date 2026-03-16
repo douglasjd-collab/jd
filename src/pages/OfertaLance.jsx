@@ -152,6 +152,51 @@ export default function OfertaLance() {
     }
   });
 
+  const handleEditarOferta = (oferta) => {
+    setEditOferta(oferta);
+    setEditPercentual(String(oferta.percentual_lance));
+    setEditTipoLance(oferta.tipo_lance || 'livre');
+    setEditObservacao(oferta.observacao || '');
+    setEditOpen(true);
+  };
+
+  const handleSubmitEdicao = async (e) => {
+    e.preventDefault();
+    const percentualNum = parseFloat(editPercentual);
+    if (!percentualNum || percentualNum <= 0 || percentualNum > 100) {
+      toast.error('Percentual deve ser entre 0 e 100');
+      return;
+    }
+    const valorNovo = editOferta.valor_carta ? editOferta.valor_carta * (percentualNum / 100) : 0;
+
+    // Montar histórico
+    let historico = [];
+    try { historico = editOferta.historico_alteracoes ? JSON.parse(editOferta.historico_alteracoes) : []; } catch {}
+    historico.push({
+      percentual_anterior: editOferta.percentual_lance,
+      valor_anterior: editOferta.valor_lance,
+      tipo_anterior: editOferta.tipo_lance,
+      percentual_novo: percentualNum,
+      valor_novo: valorNovo,
+      tipo_novo: editTipoLance,
+      data_alteracao: new Date().toISOString(),
+      usuario_nome: currentUser?.full_name || currentUser?.nome_perfil || '',
+    });
+
+    await base44.entities.OfertaLance.update(editOferta.id, {
+      percentual_lance: percentualNum,
+      valor_lance: valorNovo,
+      tipo_lance: editTipoLance,
+      observacao: editObservacao || null,
+      historico_alteracoes: JSON.stringify(historico),
+    });
+
+    queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
+    toast.success('Lance atualizado com sucesso!');
+    setEditOpen(false);
+    setEditOferta(null);
+  };
+
   const handleOfertar = (venda) => {
     setSelectedVenda(venda);
     setPercentual('');
