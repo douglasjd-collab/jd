@@ -135,17 +135,19 @@ Deno.serve(async (req) => {
             if (resolvedPhone) {
               remoteJid = `${resolvedPhone}@s.whatsapp.net`;
             } else {
-              // Tentar resolver por pushName: buscar conversa existente com esse nome
+              // Tentar resolver por pushName: buscar todas as conversas e filtrar por nome parcial
               try {
-                const conversasPorNome = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-                  empresa_id: JD_ID, cliente_nome: pushName
+                const todasConversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: JD_ID });
+                const pushNameNorm = pushName.toLowerCase().split(' ')[0]; // primeira palavra do nome
+                const conversaReal = todasConversas.find(c => {
+                  if (!c.cliente_telefone || c.cliente_telefone.startsWith('lid_')) return false;
+                  const nomeNorm = (c.cliente_nome || '').toLowerCase();
+                  return nomeNorm.includes(pushNameNorm) || pushNameNorm.includes(nomeNorm.split(' ')[0]);
                 });
-                // Filtrar apenas as que têm telefone real (não lid_)
-                const conversaReal = conversasPorNome.find(c => c.cliente_telefone && !c.cliente_telefone.startsWith('lid_'));
                 if (conversaReal) {
                   resolvedPhone = conversaReal.cliente_telefone.replace(/\D/g, '');
                   remoteJid = `${resolvedPhone}@s.whatsapp.net`;
-                  console.log(`🔄 @lid resolvido por pushName "${pushName}": ${remoteJid}`);
+                  console.log(`🔄 @lid resolvido por pushName "${pushName}" → conversa "${conversaReal.cliente_nome}": ${remoteJid}`);
                 }
               } catch (_) {}
 
