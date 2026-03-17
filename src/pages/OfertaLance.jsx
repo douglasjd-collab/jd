@@ -319,17 +319,19 @@ export default function OfertaLance() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {statusList.length > 0 ? statusList.map(s => (
-              <DropdownMenuItem key={s.id} onClick={() => handleAlterarStatus(row, s.slug || s.nome)}>
-                {s.nome}
+            {[
+              { value: 'ativa', label: 'Ativa' },
+              { value: 'pendente', label: 'Pendente' },
+              { value: 'cancelada', label: 'Cancelada' },
+              { value: 'em_atraso', label: 'Em Atraso' },
+              { value: 'aguardando_aprovacao', label: 'Aguardando Aprovação' },
+              { value: 'doc_pendentes', label: 'Doc. Pendentes' },
+              { value: 'contemplada', label: 'Contemplada' },
+            ].map(s => (
+              <DropdownMenuItem key={s.value} onClick={() => handleAlterarStatus(row, s.value)}>
+                {s.label}
               </DropdownMenuItem>
-            )) : (
-              ['ativa', 'pendente', 'aguardando_aprovacao', 'encerrada'].map(s => (
-                <DropdownMenuItem key={s} onClick={() => handleAlterarStatus(row, s)} className="capitalize">
-                  {s.replace(/_/g, ' ')}
-                </DropdownMenuItem>
-              ))
-            )}
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       )
