@@ -261,21 +261,7 @@ export default function Vendas() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ venda, status }) => {
-      // GARANTE prazo (obrigatório no backend)
-      const prazoSeguro =
-        venda?.prazo ??
-        venda?.prazo_meses ??
-        venda?.tabela_prazo ??
-        0;
-
-      if (!prazoSeguro || Number(prazoSeguro) <= 0) {
-        throw new Error("Esta venda está sem PRAZO. Edite a venda e informe o prazo antes de mudar o status.");
-      }
-
-      return base44.entities.Venda.update(venda.id, {
-        status,
-        prazo: Number(prazoSeguro),
-      });
+      return base44.entities.Venda.update(venda.id, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
