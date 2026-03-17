@@ -168,13 +168,12 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Sync ativo: puxa mensagens da Evolution a cada 5s para garantir tempo real
+  // Sync leve: puxa os últimos 2 min da Evolution a cada 5s → tempo real
   useEffect(() => {
     if (!empresaId) return;
-    // Executa imediatamente ao entrar na página
-    base44.functions.invoke('sincronizarMensagensAtivo', {}).catch(() => {});
+    base44.functions.invoke('sincronizarRecente', {}).catch(() => {});
     const interval = setInterval(() => {
-      base44.functions.invoke('sincronizarMensagensAtivo', {}).catch(() => {});
+      base44.functions.invoke('sincronizarRecente', {}).catch(() => {});
     }, 5000);
     return () => clearInterval(interval);
   }, [empresaId]);
