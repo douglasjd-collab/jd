@@ -152,20 +152,16 @@ Deno.serve(async (req) => {
               } catch (_) {}
 
               if (!resolvedPhone) {
-                if (lidNumerico && lidNumerico.length >= 8) {
-                  remoteJid = `lid_${lidNumerico}`;
-                  console.log(`⚠️ @lid sem mapeamento, usando fallback: ${remoteJid} (pushName: ${pushName})`);
-                } else {
-                  ignoradas++; continue;
-                }
+                // Sem mapeamento — ignorar completamente, NUNCA criar com lid_ falso
+                console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (pushName: ${pushName}) — ignorado`);
+                ignoradas++; continue;
               }
             }
           }
         }
 
-        // Só aceitar JIDs com sufixo válido ou lids resolvidos
-        const isLidFallback = remoteJid.startsWith('lid_');
-        if (!isLidFallback && !remoteJid.includes('@s.whatsapp.net') && !remoteJid.includes('@c.us')) { ignoradas++; continue; }
+        // Só aceitar JIDs válidos
+        if (!remoteJid.includes('@s.whatsapp.net') && !remoteJid.includes('@c.us')) { ignoradas++; continue; }
 
         // Verificar se já existe no banco
         const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
@@ -174,13 +170,11 @@ Deno.serve(async (req) => {
         if (existentes.length > 0) { ignoradas++; continue; }
 
         // Extrair telefone
-        const telefoneLimpo = isLidFallback ? remoteJid : remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+        const telefoneLimpo = remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
 
-        // Validar telefone: 10-15 dígitos, brasileiro começa com 55 (exceto lids fallback)
-        if (!isLidFallback) {
-          if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) { ignoradas++; continue; }
-          if (telefoneLimpo.length >= 12 && telefoneLimpo.length <= 13 && !telefoneLimpo.startsWith('55')) { ignoradas++; continue; }
-        }
+        // Validar telefone: 10-15 dígitos, brasileiro começa com 55
+        if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) { ignoradas++; continue; }
+        if (telefoneLimpo.length >= 12 && telefoneLimpo.length <= 13 && !telefoneLimpo.startsWith('55')) { ignoradas++; continue; }
 
         // Extrair conteúdo
         let tipo = 'texto';
