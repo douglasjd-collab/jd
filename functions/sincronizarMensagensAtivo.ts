@@ -210,6 +210,8 @@ Deno.serve(async (req) => {
         }
 
         if (!conversa) {
+          // Só criar conversa se o telefone for válido (nunca lid_)
+          if (telefoneNormalizado.startsWith('lid_')) { ignoradas++; continue; }
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,
             cliente_nome: pushName,
