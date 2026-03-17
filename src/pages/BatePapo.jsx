@@ -168,12 +168,14 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling ativo: chama o sync a cada 15s para garantir mensagens em tempo real
+  // Sync ativo: puxa mensagens da Evolution a cada 5s para garantir tempo real
   useEffect(() => {
     if (!empresaId) return;
+    // Executa imediatamente ao entrar na página
+    base44.functions.invoke('sincronizarMensagensAtivo', {}).catch(() => {});
     const interval = setInterval(() => {
       base44.functions.invoke('sincronizarMensagensAtivo', {}).catch(() => {});
-    }, 15000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [empresaId]);
 
