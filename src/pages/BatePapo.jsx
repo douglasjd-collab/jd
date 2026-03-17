@@ -148,7 +148,7 @@ export default function BatePapo() {
       
       return data.filter(c => c.id && c.cliente_telefone);
     },
-    refetchInterval: 5000,
+    refetchInterval: false,
     onSuccess: (data) => {
       if (data.length > 0 && !conversaSelecionada) {
         const ultimaId = localStorage.getItem('ultimaConversaId');
