@@ -202,7 +202,7 @@ export default function BatePapo() {
         return cached ? JSON.parse(cached) : undefined;
       },
       staleTime: 0,
-      refetchInterval: 5000, // Polling de fallback a cada 5s
+      refetchInterval: 10000, // Polling de fallback
   });
 
   // Solicitar permissão para notificações do browser na primeira vez
