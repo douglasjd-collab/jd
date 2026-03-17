@@ -283,26 +283,14 @@ Deno.serve(async (req) => {
       }
 
       if (!telefoneLimpo) {
-        // Última alternativa: usar o ID numérico do lid como identificador da conversa
-        // Isso garante que a mensagem seja salva mesmo sem o número real
-        const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
-        if (lidNumerico && lidNumerico.length >= 8) {
-          console.log(`⚠️ Usando lid numérico como fallback: ${lidNumerico} (pushName: ${pushName})`);
-          telefoneLimpo = `lid_${lidNumerico}`;
-        } else {
-          console.error(`❌ REJEIÇÃO: remoteJid inválido e não resolvível: "${remoteJidRaw}"`);
-          return Response.json({
-            success: false,
-            error: 'Invalid remoteJid — cannot resolve to phone number',
-            debug: { remoteJid: remoteJidRaw }
-          }, { status: 400 });
-        }
+        // Não foi possível resolver @lid para número real — ignorar sem criar conversa falsa
+        console.warn(`⚠️ @lid não resolvível: "${remoteJidRaw}" (pushName: ${pushName}) — mensagem ignorada`);
+        return Response.json({ success: true, skipped: 'unresolvable_lid' });
       }
     }
 
-    // 3. Validar que o número parece um telefone real (exceto fallbacks lid_)
-    const isLidFallback = telefoneLimpo.startsWith('lid_');
-    if (!isLidFallback && !validarTelefone(telefoneLimpo)) {
+    // 3. Validar que o número parece um telefone real
+    if (!validarTelefone(telefoneLimpo)) {
       console.error(`❌ REJEIÇÃO: Número não parece telefone válido: "${telefoneLimpo}"`);
       return Response.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
     }
