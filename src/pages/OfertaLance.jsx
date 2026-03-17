@@ -311,9 +311,27 @@ export default function OfertaLance() {
     {
       header: 'Status',
       cell: (row) => (
-        <Badge variant="outline" className="capitalize">
-          {row.status}
-        </Badge>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs font-medium capitalize hover:bg-slate-50 transition-colors">
+              {row.status}
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {statusList.length > 0 ? statusList.map(s => (
+              <DropdownMenuItem key={s.id} onClick={() => handleAlterarStatus(row, s.slug || s.nome)}>
+                {s.nome}
+              </DropdownMenuItem>
+            )) : (
+              ['ativa', 'pendente', 'aguardando_aprovacao', 'encerrada'].map(s => (
+                <DropdownMenuItem key={s} onClick={() => handleAlterarStatus(row, s)} className="capitalize">
+                  {s.replace(/_/g, ' ')}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )
     },
     {
