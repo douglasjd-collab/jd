@@ -147,7 +147,7 @@ export default function BatePapo() {
       
       return data.filter(c => c.id && c.cliente_telefone);
     },
-    refetchInterval: 15000, // Reduzido para 15s para evitar rate limit
+    refetchInterval: 5000,
     onSuccess: (data) => {
       if (data.length > 0 && !conversaSelecionada) {
         const ultimaId = localStorage.getItem('ultimaConversaId');
