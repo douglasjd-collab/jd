@@ -538,11 +538,11 @@ export default function BatePapo() {
                           </p>
                         </div>
 
-                        <div onClick={(e) => e.stopPropagation()}>
+                        <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button 
-                                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex-shrink-0"
+                                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                               >
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </button>
@@ -559,6 +559,20 @@ export default function BatePapo() {
                               <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
                                 <Star className="mr-2 h-3.5 w-3.5" />
                                 Marcar como favorito
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
+                                onClick={async () => {
+                                  if (confirm('Excluir esta conversa?')) {
+                                    await base44.entities.ConversaWhatsapp.delete(c.id);
+                                    queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                    if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
+                                    toast.success('Conversa excluída');
+                                  }
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Excluir conversa
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
