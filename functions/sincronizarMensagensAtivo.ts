@@ -134,11 +134,29 @@ Deno.serve(async (req) => {
 
             if (resolvedPhone) {
               remoteJid = `${resolvedPhone}@s.whatsapp.net`;
-            } else if (lidNumerico && lidNumerico.length >= 8) {
-              remoteJid = `lid_${lidNumerico}`;
-              console.log(`⚠️ @lid sem mapeamento, usando fallback: ${remoteJid} (pushName: ${pushName})`);
             } else {
-              ignoradas++; continue;
+              // Tentar resolver por pushName: buscar conversa existente com esse nome
+              try {
+                const conversasPorNome = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+                  empresa_id: JD_ID, cliente_nome: pushName
+                });
+                // Filtrar apenas as que têm telefone real (não lid_)
+                const conversaReal = conversasPorNome.find(c => c.cliente_telefone && !c.cliente_telefone.startsWith('lid_'));
+                if (conversaReal) {
+                  resolvedPhone = conversaReal.cliente_telefone.replace(/\D/g, '');
+                  remoteJid = `${resolvedPhone}@s.whatsapp.net`;
+                  console.log(`🔄 @lid resolvido por pushName "${pushName}": ${remoteJid}`);
+                }
+              } catch (_) {}
+
+              if (!resolvedPhone) {
+                if (lidNumerico && lidNumerico.length >= 8) {
+                  remoteJid = `lid_${lidNumerico}`;
+                  console.log(`⚠️ @lid sem mapeamento, usando fallback: ${remoteJid} (pushName: ${pushName})`);
+                } else {
+                  ignoradas++; continue;
+                }
+              }
             }
           }
         }
