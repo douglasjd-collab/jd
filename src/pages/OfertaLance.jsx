@@ -104,6 +104,17 @@ export default function OfertaLance() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(currentUser?.perfil);
 
+  const { data: statusList = [] } = useQuery({
+    queryKey: ['status-propostas'],
+    queryFn: () => base44.entities.StatusProposta.filter({ tipo: 'principal', ativo: true }, 'ordem', 50),
+  });
+
+  const handleAlterarStatus = async (venda, novoStatus) => {
+    await base44.entities.VendaConsorcio.update(venda.id, { status: novoStatus });
+    queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
+    toast.success('Status atualizado!');
+  };
+
   // Buscar vendas e ofertas via função backend (contorna problema de empresa_id)
   const { data: dadosLance = { vendas: [], ofertas: [] }, isLoading: loadingVendas } = useQuery({
     queryKey: ['oferta-lance-data', competenciaAtual],
