@@ -46,8 +46,39 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, processadas: 0, total: 0 });
     }
 
-    // Construir mapa @lid apenas se houver mensagens com @lid
-    const temLid = mensagens.some(m => (m.key?.remoteJid || '').includes('@lid'));
+    // Filtrar mensagens válidas (não de grupos, não enviadas por nós)
+    const mensagensValidas = mensagens.filter(m => {
+      const key = m.key || {};
+      const jid = key.remoteJid || '';
+      return key.id && !key.fromMe && !jid.includes('@g.us') && !jid.includes('@broadcast');
+    });
+
+    if (mensagensValidas.length === 0) {
+      return Response.json({ ok: true, processadas: 0, total: mensagens.length });
+    }
+
+    // Buscar IDs já existentes no banco em LOTE (uma única query por conversa)
+    // Usamos o timestamp mínimo das mensagens para filtrar
+    const minTimestamp = Math.min(...mensagensValidas.map(m => m.messageTimestamp || 0));
+    const dataMinima = new Date(minTimestamp * 1000).toISOString();
+    const existentesNoBanco = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+      { empresa_id: JD_ID, remetente: 'cliente' },
+      '-data_envio',
+      100
+    );
+    const idsExistentes = new Set(existentesNoBanco.map(m => m.whatsapp_message_id).filter(Boolean));
+
+    // Filtrar apenas mensagens novas
+    const mensagensNovas = mensagensValidas.filter(m => !idsExistentes.has(m.key?.id));
+    
+    if (mensagensNovas.length === 0) {
+      return Response.json({ ok: true, processadas: 0, total: mensagens.length });
+    }
+
+    console.log(`🆕 ${mensagensNovas.length} mensagens novas para processar`);
+
+    // Construir mapa @lid apenas se necessário
+    const temLid = mensagensNovas.some(m => (m.key?.remoteJid || '').includes('@lid'));
     const lidToPhone = {};
     if (temLid) {
       try {
@@ -76,23 +107,13 @@ Deno.serve(async (req) => {
 
     let processadas = 0;
 
-    for (const msg of mensagens) {
+    for (const msg of mensagensNovas) {
       try {
         const key = msg.key || {};
         const message = msg.message || {};
         const pushName = msg.pushName || msg.senderName || 'Cliente';
         const remoteJidRaw = key.remoteJid || '';
         const messageId = key.id;
-        const fromMe = key.fromMe === true;
-
-        if (!messageId || !remoteJidRaw || fromMe) continue;
-        if (remoteJidRaw.includes('@g.us') || remoteJidRaw.includes('@broadcast')) continue;
-
-        // Verificar se já existe ANTES de qualquer processamento (fast path)
-        const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-          { whatsapp_message_id: messageId }
-        );
-        if (existentes.length > 0) continue;
 
         // Resolver @lid
         let remoteJid = remoteJidRaw;
