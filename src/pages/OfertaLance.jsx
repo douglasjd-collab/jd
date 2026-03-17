@@ -114,7 +114,11 @@ export default function OfertaLance() {
     if (venda.produto === 'consorcio') {
       await base44.entities.Proposta.update(venda.id, { status: novoStatus });
     } else {
-      await base44.entities.Venda.update(venda.id, { status: novoStatus });
+      // Venda legado exige prazo obrigatório — repassar o valor existente
+      await base44.entities.Venda.update(venda.id, {
+        status: novoStatus,
+        prazo: Number(venda.prazo || venda.prazo_meses || 1),
+      });
     }
     queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
     toast.success('Status atualizado!');
