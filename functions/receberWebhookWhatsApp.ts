@@ -239,6 +239,12 @@ Deno.serve(async (req) => {
 
     console.log(`📞 remoteJid: ${remoteJidRaw} | fromMe: ${fromMe} | participant: ${key.participant || 'N/A'}`);
 
+    // ── Ignorar mensagens enviadas pelo próprio sistema (evitar duplicação) ──
+    if (fromMe) {
+      console.log('⏭️ Mensagem própria (fromMe=true) ignorada — já salva pelo enviarMensagemWhatsapp');
+      return Response.json({ success: true, skipped: 'fromMe' });
+    }
+
     // ── Inicializar SDK aqui para poder usar na resolução de @lid ────────────
     const base44 = createClientFromRequest(req);
     const JD_ID = '699696c2c9f5bffc2e67402b';
