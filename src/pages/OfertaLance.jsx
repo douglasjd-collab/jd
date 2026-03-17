@@ -110,7 +110,12 @@ export default function OfertaLance() {
   });
 
   const handleAlterarStatus = async (venda, novoStatus) => {
-    await base44.entities.VendaConsorcio.update(venda.id, { status: novoStatus });
+    // Rows vêm de Proposta (produto='consorcio') ou Venda (legado)
+    if (venda.produto === 'consorcio') {
+      await base44.entities.Proposta.update(venda.id, { status: novoStatus });
+    } else {
+      await base44.entities.Venda.update(venda.id, { status: novoStatus });
+    }
     queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
     toast.success('Status atualizado!');
   };
