@@ -168,15 +168,7 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Sync leve: puxa os últimos 2 min da Evolution a cada 5s → tempo real
-  useEffect(() => {
-    if (!empresaId) return;
-    base44.functions.invoke('sincronizarRecente', {}).catch(() => {});
-    const interval = setInterval(() => {
-      base44.functions.invoke('sincronizarRecente', {}).catch(() => {});
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [empresaId]);
+
 
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
