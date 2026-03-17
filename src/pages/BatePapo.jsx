@@ -661,8 +661,13 @@ export default function BatePapo() {
                           <DropdownMenuItem 
                             onClick={async () => {
                               if (confirm('Tem certeza que deseja excluir esta conversa e todas as mensagens?')) {
+                                const mensagensParaExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: conversaSelecionada.id });
+                                for (const msg of mensagensParaExcluir) {
+                                  await base44.entities.MensagemWhatsapp.delete(msg.id);
+                                }
                                 await base44.entities.ConversaWhatsapp.delete(conversaSelecionada.id);
                                 queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
                                 setConversaSelecionada(null);
                                 toast.success('Conversa excluída');
                               }
