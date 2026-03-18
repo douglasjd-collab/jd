@@ -224,19 +224,47 @@ async function processarWebhook(req, rawBody) {
     telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
   }
 
-  // Extrair conteúdo
+  // Extrair conteúdo e URL de arquivo
   let tipo = 'texto';
   let conteudo = '';
+  let arquivo_url = '';
+  let arquivo_nome = '';
+  let arquivo_tamanho = 0;
+
   if (message.conversation) conteudo = message.conversation;
   else if (message.extendedTextMessage?.text) conteudo = message.extendedTextMessage.text;
-  else if (message.imageMessage) { tipo = 'imagem'; conteudo = message.imageMessage.caption || 'Imagem'; }
-  else if (message.audioMessage || message.pttMessage) { tipo = 'audio'; conteudo = 'Áudio'; }
-  else if (message.videoMessage) { tipo = 'video'; conteudo = message.videoMessage.caption || 'Vídeo'; }
-  else if (message.documentMessage) { tipo = 'pdf'; conteudo = message.documentMessage.title || 'Documento'; }
-  else if (message.stickerMessage) { tipo = 'imagem'; conteudo = 'Sticker'; }
+  else if (message.imageMessage) { 
+    tipo = 'imagem'; 
+    conteudo = message.imageMessage.caption || 'Imagem';
+    arquivo_url = message.imageMessage.url || '';
+  }
+  else if (message.audioMessage || message.pttMessage) { 
+    tipo = 'audio'; 
+    conteudo = 'Áudio';
+    arquivo_url = message.audioMessage?.url || message.pttMessage?.url || '';
+    arquivo_tamanho = message.audioMessage?.fileLength || message.pttMessage?.fileLength || 0;
+  }
+  else if (message.videoMessage) { 
+    tipo = 'video'; 
+    conteudo = message.videoMessage.caption || 'Vídeo';
+    arquivo_url = message.videoMessage.url || '';
+    arquivo_tamanho = message.videoMessage.fileLength || 0;
+  }
+  else if (message.documentMessage) { 
+    tipo = 'pdf'; 
+    conteudo = message.documentMessage.title || 'Documento';
+    arquivo_url = message.documentMessage.url || '';
+    arquivo_nome = message.documentMessage.fileName || 'Documento';
+    arquivo_tamanho = message.documentMessage.fileLength || 0;
+  }
+  else if (message.stickerMessage) { 
+    tipo = 'imagem'; 
+    conteudo = 'Sticker';
+    arquivo_url = message.stickerMessage.url || '';
+  }
   else conteudo = JSON.stringify(message).substring(0, 200);
 
-  console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}"`);
+  console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}" | URL: ${arquivo_url ? '✓' : '✗'}`);
 
   // Queries em paralelo: dedup + instância + contato + cliente
   const [existentes, colaboradoresInst, empresasInst, ...contatosClientes] = await Promise.all([
