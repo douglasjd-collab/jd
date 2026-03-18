@@ -27,11 +27,12 @@ Deno.serve(async (req) => {
     }
 
     const arrayBuffer = await fetchRes.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: fetchRes.headers.get('content-type') || 'application/octet-stream' });
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
-    // Fazer upload para Base44
+    // Fazer upload para Base44 com base64
     const uploadRes = await base44.integrations.Core.UploadFile({
-      file: base64  // Pode ser base64 ou Blob
+      file: base64
     });
 
     if (!uploadRes?.file_url) {
