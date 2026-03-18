@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
           migradas++;
         }
         // Excluir a conversa lid (mensagens já migradas)
-        await base44.asServiceRole.entities.ConversaWhatsapp.delete(conversa.id);
+        try { await base44.asServiceRole.entities.ConversaWhatsapp.delete(conversa.id); } catch (_) {}
         // Atualizar última mensagem na conversa real
         await base44.asServiceRole.entities.ConversaWhatsapp.update(conversaReal.id, {
           ultima_mensagem: conversaReal.ultima_mensagem,
