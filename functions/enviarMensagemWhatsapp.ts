@@ -28,22 +28,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const { conversa_id, mensagem_texto, numero_cliente } = payload;
+    const { conversa_id, mensagem_texto, numero_cliente, arquivo } = payload;
     
     console.log('📋 Parâmetros:');
     console.log('  - conversa_id:', conversa_id);
     console.log('  - mensagem_texto:', mensagem_texto?.substring(0, 50));
     console.log('  - numero_cliente:', numero_cliente);
-    console.log('📋 Payload completo:', JSON.stringify(payload));
+    console.log('  - arquivo:', arquivo ? 'presente' : 'nenhum');
+    console.log('📋 Payload completo:', JSON.stringify(payload).substring(0, 200));
 
     if (!conversa_id) {
       console.error('❌ conversa_id faltando');
       return Response.json({ error: 'conversa_id é obrigatório' }, { status: 400 });
     }
     
-    if (!mensagem_texto || mensagem_texto.trim() === '') {
-      console.error('❌ mensagem_texto vazio ou nulo:', mensagem_texto);
-      return Response.json({ error: 'mensagem_texto não pode estar vazio' }, { status: 400 });
+    if (!mensagem_texto?.trim() && !arquivo) {
+      console.error('❌ mensagem_texto vazio e nenhum arquivo');
+      return Response.json({ error: 'texto ou arquivo é obrigatório' }, { status: 400 });
     }
     
     if (!numero_cliente) {
