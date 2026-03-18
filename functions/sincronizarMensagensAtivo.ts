@@ -222,8 +222,11 @@ Deno.serve(async (req) => {
         }
 
         if (!conversa) {
-          // Bloquear definitivamente qualquer lid_
-          if (telefoneNormalizado.startsWith('lid_') || telefoneNormalizado.includes('lid')) { ignoradas++; continue; }
+          // Bloco final de segurança: nunca criar conversa com número inválido
+          if (!telefoneNormalizado.startsWith('55') || (telefoneNormalizado.length !== 12 && telefoneNormalizado.length !== 13)) {
+            console.warn(`⚠️ Bloqueado criar conversa com número inválido: "${telefoneNormalizado}"`);
+            ignoradas++; continue;
+          }
           if (fromMe) { ignoradas++; continue; } // Só criar conversa quando receber do cliente
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,

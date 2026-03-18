@@ -184,6 +184,11 @@ Deno.serve(async (req) => {
         }
 
         if (!conversa) {
+          // Bloco final de segurança: nunca criar conversa com número inválido
+          if (!telefoneNormalizado.startsWith('55') || (telefoneNormalizado.length !== 12 && telefoneNormalizado.length !== 13)) {
+            console.warn(`⚠️ Bloqueado criar conversa com número inválido: "${telefoneNormalizado}"`);
+            continue;
+          }
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,
             cliente_nome: telefoneNormalizado,
