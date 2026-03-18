@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
         for (const msg of mensagens) {
           await base44.asServiceRole.entities.MensagemWhatsapp.delete(msg.id);
         }
-        await base44.asServiceRole.entities.ConversaWhatsapp.delete(conversa.id);
+        try { await base44.asServiceRole.entities.ConversaWhatsapp.delete(conversa.id); } catch (_) {}
         console.log(`🗑️ Excluída conversa não resolvível: ${lidKey} (${mensagens.length} mensagens)`);
         resultados.push({ lid: lidKey, acao: 'excluida', motivo: 'nao_resolvivel' });
         continue;
