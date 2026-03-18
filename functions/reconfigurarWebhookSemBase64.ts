@@ -8,9 +8,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const evolutionUrl = Deno.env.get('EVOLUTION_API_URL')?.replace(/\/$/, '') || '';
-    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY') || '';
-    const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME') || 'JDPROMOTORA';
+    const JD_ID = '699696c2c9f5bffc2e67402b';
+    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
+    const empresa = empresas?.[0];
+    if (!empresa) return Response.json({ error: 'Empresa não encontrada' }, { status: 404 });
+
+    const evolutionUrl = (empresa.evolution_url || '').replace(/\/$/, '');
+    const evolutionKey = empresa.evolution_api_key || '';
+    const instanceName = empresa.evolution_instance_name || 'JDPROMOTORA';
     const appId = Deno.env.get('BASE44_APP_ID') || '';
 
     const webhookUrl = `https://api.base44.com/apps/${appId}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
