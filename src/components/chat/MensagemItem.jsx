@@ -61,11 +61,20 @@ export default function MensagemItem({ mensagem }) {
       case 'imagem':
         return (
           <div className="max-w-xs">
-            <img 
-              src={mensagem.arquivo_url} 
-              alt="Imagem" 
-              className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90"
-            />
+            {loadingMedia ? (
+              <div className="flex items-center justify-center gap-2 bg-white/10 rounded-lg p-4 w-32 h-32">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm opacity-75">Carregando...</span>
+              </div>
+            ) : mediaUrl ? (
+              <img 
+                src={mediaUrl} 
+                alt="Imagem" 
+                className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+              />
+            ) : (
+              <div className="bg-white/10 rounded-lg p-4 text-sm opacity-75">Imagem indisponível</div>
+            )}
           </div>
         );
       
