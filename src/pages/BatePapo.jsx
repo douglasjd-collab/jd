@@ -798,8 +798,8 @@ export default function BatePapo() {
 
                     {/* Input de mensagem */}
                     <EnviarMensagemForm
-                      onEnviar={async ({ texto }) => {
-                        await enviarMensagemMutation.mutateAsync({ texto });
+                      onEnviar={async ({ texto, arquivo }) => {
+                        await enviarMensagemMutation.mutateAsync({ texto, arquivo });
                       }}
                       isLoading={enviarMensagemMutation.isPending}
                     />
