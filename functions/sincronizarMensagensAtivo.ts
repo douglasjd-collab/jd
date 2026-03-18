@@ -72,12 +72,14 @@ Deno.serve(async (req) => {
         for (const c of contatos) {
           const lidId = c.id || c.remoteJid || '';
           if (lidId.includes('@lid')) {
-            // Tentar pegar o número real de campos alternativos
+            // Só aceitar número real (@s.whatsapp.net), NUNCA usar c.number que pode ser o próprio lid
             const jidReal = c.remoteJid || c.jid || '';
             if (jidReal.includes('@s.whatsapp.net')) {
-              lidToPhone[lidId] = jidReal.replace(/@s\.whatsapp\.net/g, '').replace(/\D/g, '');
-            } else if (c.number) {
-              lidToPhone[lidId] = String(c.number).replace(/\D/g, '');
+              const tel = jidReal.replace(/@s\.whatsapp\.net/g, '').replace(/\D/g, '');
+              // Validar que é um número BR real (começa com 55, 12-13 dígitos)
+              if (tel.startsWith('55') && tel.length >= 12 && tel.length <= 13) {
+                lidToPhone[lidId] = tel;
+              }
             }
           }
         }
