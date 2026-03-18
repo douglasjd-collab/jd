@@ -193,14 +193,35 @@ Deno.serve(async (req) => {
     const empresaIdFinal = empresaId || payload.empresa_id || '699696c2c9f5bffc2e67402b';
     console.log('🏢 Empresa ID final para salvar mensagem:', empresaIdFinal);
 
+    // Determinar tipo de conteúdo
+    let tipoConteudo = 'texto';
+    let textoMensagem = mensagem_texto?.trim() || '';
+    
+    if (arquivo && arquivo.base64) {
+      const tipoMIME = arquivo.tipo || 'application/octet-stream';
+      const tipoArquivo = tipoMIME.split('/')[0];
+      
+      if (tipoArquivo === 'image') tipoConteudo = 'imagem';
+      else if (tipoArquivo === 'audio') tipoConteudo = 'audio';
+      else if (tipoArquivo === 'video') tipoConteudo = 'video';
+      else if (tipoMIME.includes('pdf') || tipoArquivo === 'application') tipoConteudo = 'pdf';
+      
+      if (!textoMensagem) {
+        textoMensagem = arquivo.nome || 'Arquivo';
+      }
+    }
+
     const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
       conversa_id: conversa_id,
       empresa_id: empresaIdFinal,
       remetente: 'vendedor',
       usuario_id: user.id,
       usuario_nome: user.full_name,
-      tipo_conteudo: 'texto',
-      texto: mensagem_texto,
+      tipo_conteudo: tipoConteudo,
+      texto: textoMensagem,
+      arquivo_url: null,
+      arquivo_nome: arquivo?.nome || null,
+      arquivo_tamanho: 0,
       whatsapp_message_id: result.key?.id || result.messageId || result.id || 'pending',
       data_envio: new Date().toISOString(),
       status: 'enviada'
