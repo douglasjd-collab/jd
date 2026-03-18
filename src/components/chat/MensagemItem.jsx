@@ -72,16 +72,27 @@ export default function MensagemItem({ mensagem }) {
       case 'audio':
         return (
           <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
-            <Music className="w-5 h-5 flex-shrink-0" />
-            {mensagem.arquivo_url ? (
-              <audio 
-                controls 
-                className="flex-1 h-8"
-                src={mensagem.arquivo_url}
-                controlsList="nodownload"
-              />
+            {loadingAudio ? (
+              <>
+                <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" />
+                <span className="text-sm opacity-75">Baixando áudio...</span>
+              </>
+            ) : audioUrl ? (
+              <>
+                <Music className="w-5 h-5 flex-shrink-0" />
+                <audio 
+                  controls 
+                  className="flex-1 h-8"
+                  src={audioUrl}
+                  controlsList="nodownload"
+                  crossOrigin="anonymous"
+                />
+              </>
             ) : (
-              <span className="text-sm opacity-75">Áudio (URL indisponível)</span>
+              <>
+                <Music className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm opacity-75">Áudio indisponível</span>
+              </>
             )}
           </div>
         );
