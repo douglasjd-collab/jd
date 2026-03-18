@@ -338,30 +338,19 @@ export default function BatePapo() {
       }
       return resp.data;
     },
-    onMutate: async ({ texto, arquivo }) => {
+    onMutate: async ({ texto }) => {
       // Mensagem otimista — aparece imediatamente
       const queryKey = ['mensagens-whatsapp', conversaSelecionadaId];
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
-      
-      let tipo_conteudo = 'texto';
-      if (arquivo) {
-        if (arquivo.tipo.startsWith('image')) tipo_conteudo = 'imagem';
-        else if (arquivo.tipo.startsWith('audio')) tipo_conteudo = 'audio';
-        else if (arquivo.tipo.startsWith('video')) tipo_conteudo = 'video';
-        else if (arquivo.tipo === 'application/pdf') tipo_conteudo = 'pdf';
-      }
-      
       queryClient.setQueryData(queryKey, (old = []) => [
         ...old,
         {
           id: `temp_${Date.now()}`,
           conversa_id: conversaSelecionadaId,
           remetente: 'vendedor',
-          tipo_conteudo,
-          texto: arquivo ? `📎 ${arquivo.nome}` : texto,
-          arquivo_url: null,
-          arquivo_nome: arquivo?.nome || null,
+          tipo_conteudo: 'texto',
+          texto,
           data_envio: new Date().toISOString(),
           status: 'pendente',
         }
