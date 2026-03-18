@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Music, Check, CheckCheck, Loader2 } from 'lucide-react';
+import { FileText, Music, Check, CheckCheck, Loader2, Play, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
 
 export default function MensagemItem({ mensagem }) {
   const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url);
