@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
           if (fromMe) { ignoradas++; continue; } // Só criar conversa quando receber do cliente
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,
-            cliente_nome: pushName,
+            cliente_nome: telefoneNormalizado,
             cliente_telefone: telefoneNormalizado,
             whatsapp_id: messageId,
             status: 'ativa',
