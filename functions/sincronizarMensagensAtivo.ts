@@ -209,12 +209,14 @@ Deno.serve(async (req) => {
         }
 
         if (!conversa) {
-          // Só criar conversa se o telefone for válido (nunca lid_)
+          // Só criar conversa se o telefone for válido (nunca lid_) e for mensagem de cliente
+          // Mensagens fromMe (enviadas pelo celular) só criam conversa se for de cliente remoto
           if (telefoneNormalizado.startsWith('lid_')) { ignoradas++; continue; }
+          if (fromMe) { ignoradas++; continue; } // Só criar conversa quando receber do cliente
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,
             cliente_nome: pushName,
-            cliente_telefone: telefoneNormalizado, // sempre com 9
+            cliente_telefone: telefoneNormalizado,
             whatsapp_id: messageId,
             status: 'ativa',
             ultima_mensagem: conteudo.substring(0, 200),
@@ -225,8 +227,7 @@ Deno.serve(async (req) => {
         } else {
           await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
             ultima_mensagem: conteudo.substring(0, 200),
-            data_ultima_mensagem: new Date().toISOString(),
-            status: 'ativa'
+            data_ultima_mensagem: new Date().toISOString()
           });
         }
 
