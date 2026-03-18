@@ -43,13 +43,18 @@ export default function MensagemItem({ mensagem }) {
       
       case 'audio':
         return (
-          <div className="flex items-center gap-2">
-            <Music className="w-4 h-4" />
-            <audio 
-              controls 
-              className="max-w-xs h-8"
-              src={mensagem.arquivo_url}
-            />
+          <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
+            <Music className="w-5 h-5 flex-shrink-0" />
+            {mensagem.arquivo_url ? (
+              <audio 
+                controls 
+                className="flex-1 h-8"
+                src={mensagem.arquivo_url}
+                controlsList="nodownload"
+              />
+            ) : (
+              <span className="text-sm opacity-75">Áudio (URL indisponível)</span>
+            )}
           </div>
         );
       
