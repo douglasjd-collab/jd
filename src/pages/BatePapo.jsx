@@ -750,7 +750,7 @@ export default function BatePapo() {
                               className="h-10 w-10"
                             />
                             <div className="flex-1">
-                              <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_nome}</p>
+                              <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_telefone || conversaSelecionada.cliente_nome}</p>
                               <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
                             </div>
                           </div>
