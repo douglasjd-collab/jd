@@ -355,8 +355,8 @@ Deno.serve(async (req) => {
 
     // 4. Validar que o número parece um telefone real
     if (!validarTelefone(telefoneLimpo)) {
-      console.error(`❌ REJEIÇÃO: Número não parece telefone válido: "${telefoneLimpo}"`);
-      return Response.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
+      console.warn(`⚠️ Número inválido ignorado (não BR): "${telefoneLimpo}"`);
+      return Response.json({ success: true, skipped: 'invalid_phone' });
     }
 
     console.log(`📞 Tel limpo: ${telefoneLimpo} | msgId: ${messageId}`);
