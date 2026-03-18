@@ -189,6 +189,17 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
+  // Sincronização automática a cada 30s como fallback ao webhook
+  useEffect(() => {
+    if (!empresaId) return;
+    const interval = setInterval(async () => {
+      try {
+        await base44.functions.invoke('sincronizarRecente', {});
+      } catch (_) {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [empresaId]);
+
 
 
   const conversaSelecionadaId = conversaSelecionada?.id || null;
