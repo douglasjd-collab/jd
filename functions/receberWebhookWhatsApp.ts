@@ -501,7 +501,7 @@ Deno.serve(async (req) => {
         colaborador_id: colaboradorId || conversa.colaborador_id || '',
         cliente_id: clienteId || conversa.cliente_id || '',
         instancia: instanceFinal,
-        cliente_nome: conversa.cliente_nome || pushName
+        cliente_nome: conversa.cliente_nome || telefoneLimpo
       });
       console.log(`✅ Conversa atualizada: ${conversa.id}`);
     } else {
