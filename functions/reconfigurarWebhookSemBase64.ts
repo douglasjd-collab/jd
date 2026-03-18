@@ -21,11 +21,13 @@ Deno.serve(async (req) => {
     const webhookUrl = `https://api.base44.com/apps/${appId}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
 
     const body = {
-      url: webhookUrl,
-      enabled: true,
-      webhookByEvents: false,
-      webhookBase64: false,
-      events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE']
+      webhook: {
+        url: webhookUrl,
+        enabled: true,
+        webhookByEvents: false,
+        webhookBase64: false,
+        events: ['MESSAGES_UPSERT', 'MESSAGES_UPDATE']
+      }
     };
 
     console.log(`🔧 Reconfigurando webhook: ${webhookUrl}`);
