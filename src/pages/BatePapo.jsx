@@ -41,6 +41,7 @@ import {
   AlignJustify,
   X,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import { toast } from 'sonner';
