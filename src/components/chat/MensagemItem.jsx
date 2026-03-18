@@ -81,18 +81,18 @@ export default function MensagemItem({ mensagem }) {
       case 'audio':
         return (
           <div className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
-            {loadingAudio ? (
+            {loadingMedia ? (
               <>
                 <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" />
                 <span className="text-sm opacity-75">Baixando áudio...</span>
               </>
-            ) : audioUrl ? (
+            ) : mediaUrl ? (
               <>
                 <Music className="w-5 h-5 flex-shrink-0" />
                 <audio 
                   controls 
                   className="flex-1 h-8"
-                  src={audioUrl}
+                  src={mediaUrl}
                   controlsList="nodownload"
                   crossOrigin="anonymous"
                 />
