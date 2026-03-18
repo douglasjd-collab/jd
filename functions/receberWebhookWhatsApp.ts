@@ -340,8 +340,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Bloquear definitivamente qualquer lid_ que tenha escapado
-    if (telefoneLimpo.startsWith('lid_') || telefoneLimpo.includes('lid')) {
+    // 3. Bloquear definitivamente qualquer lid_ que tenha escapado (apenas prefixo lid_)
+    if (telefoneLimpo.startsWith('lid_')) {
       console.error(`❌ BLOQUEIO DEFINITIVO: telefone lid_ não permitido: "${telefoneLimpo}"`);
       return Response.json({ success: true, skipped: 'blocked_lid' });
     }
