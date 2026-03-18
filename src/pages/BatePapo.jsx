@@ -605,7 +605,7 @@ export default function BatePapo() {
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_nome}</p>
+                      <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_telefone || conversaSelecionada.cliente_nome}</p>
                       <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
                     </div>
                   </div>
