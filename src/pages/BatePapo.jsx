@@ -468,14 +468,26 @@ export default function BatePapo() {
                   <p className="text-[11px] text-slate-500">Central de conversas</p>
                 </div>
               </div>
-              <Button 
-                size="default"
-                className="gap-1.5 rounded-full px-4"
-                onClick={() => setNovaConversaOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                <span className="text-sm font-semibold">Novo</span>
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 rounded-full border-slate-200"
+                  onClick={sincronizarChats}
+                  disabled={sincronizando}
+                  title="Sincronizar conversas da Evolution"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button 
+                  size="default"
+                  className="gap-1.5 rounded-full px-4"
+                  onClick={() => setNovaConversaOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Novo</span>
+                </Button>
+              </div>
             </CardHeader>
 
             <CardContent className="flex flex-1 flex-col gap-3 pt-0">
