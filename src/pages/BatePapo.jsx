@@ -322,15 +322,16 @@ export default function BatePapo() {
   });
 
   const enviarMensagemMutation = useMutation({
-    mutationFn: async ({ texto }) => {
-      if (!texto?.trim()) {
-        throw new Error('Mensagem vazia');
+    mutationFn: async ({ texto, arquivo }) => {
+      if (!texto?.trim() && !arquivo) {
+        throw new Error('Mensagem ou arquivo obrigatório');
       }
       const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
         conversa_id: conversaSelecionada.id,
         mensagem_texto: texto,
         numero_cliente: conversaSelecionada.cliente_telefone,
-        empresa_id: empresaId
+        empresa_id: empresaId,
+        arquivo: arquivo
       });
       if (!resp?.data?.success) {
         throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');
