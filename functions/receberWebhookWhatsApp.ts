@@ -356,6 +356,9 @@ async function processarWebhook(req, rawBody) {
   const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
     conversa_id: conversa.id, empresa_id: empresaId,
     remetente, tipo_conteudo: tipo, texto: conteudo,
+    arquivo_url: arquivo_url || null,
+    arquivo_nome: arquivo_nome || null,
+    arquivo_tamanho: arquivo_tamanho || 0,
     whatsapp_message_id: messageId,
     data_envio: new Date().toISOString(),
     status: remetente === 'vendedor' ? 'enviada' : 'entregue'
