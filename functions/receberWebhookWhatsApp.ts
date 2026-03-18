@@ -274,10 +274,6 @@ Deno.serve(async (req) => {
     let tipoConexao = 'empresa';
 
     // ── Resolver telefone com lógica estrita ──────────────────────────────────
-    // Para mensagens normais (não grupos): remoteJid deve ser @s.whatsapp.net ou @c.us
-    // Para grupos: participant contém o remetente real (mas ignoramos grupos)
-    // NUNCA usar @lid como fonte de telefone
-
     // 1. Rejeitar grupos imediatamente
     if (remoteJidRaw.includes('@g.us')) {
       console.log('⏭️ Grupo ignorado');
@@ -288,29 +284,57 @@ Deno.serve(async (req) => {
     let telefoneLimpo = extrairTelefoneValido(remoteJidRaw);
 
     if (!telefoneLimpo) {
-      // Se for @lid, tentar resolver para número real via Evolution API
+      // Se for @lid, tentar resolver para número real
       if (remoteJidRaw.includes('@lid')) {
-        console.log(`🔍 @lid detectado: "${remoteJidRaw}" — tentando resolver número real...`);
+        const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
+        console.log(`🔍 @lid detectado: "${remoteJidRaw}" (lidNumerico: ${lidNumerico}) — buscando no banco...`);
+
+        // Estratégia 1: buscar ContatoWhatsapp com lid_jid cadastrado
         try {
-          const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
-          const empresa = empresas?.[0];
-          if (empresa?.evolution_url && empresa?.evolution_api_key) {
-            const evolutionUrl = empresa.evolution_url.replace(/\/$/, '');
-            const resolvedTel = await resolverLidParaTelefone(
-              remoteJidRaw, evolutionUrl, empresa.evolution_api_key, empresa.evolution_instance_name
-            );
-            if (resolvedTel) {
-              console.log(`✅ @lid resolvido: ${remoteJidRaw} → ${resolvedTel}`);
-              telefoneLimpo = resolvedTel;
-            }
+          const contatosLid = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+            empresa_id: empresaId, lid_jid: lidNumerico
+          });
+          if (contatosLid.length > 0) {
+            telefoneLimpo = contatosLid[0].telefone;
+            console.log(`✅ @lid resolvido via ContatoWhatsapp: ${remoteJidRaw} → ${telefoneLimpo}`);
           }
         } catch (e) {
-          console.warn('⚠️ Erro ao tentar resolver @lid:', e.message);
+          console.warn('⚠️ Erro ao buscar contato por lid_jid:', e.message);
+        }
+
+        // Estratégia 2: via Evolution API (fetchProfile, findMessages, findContacts)
+        if (!telefoneLimpo) {
+          try {
+            const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
+            const empresa = empresas?.[0];
+            if (empresa?.evolution_url && empresa?.evolution_api_key) {
+              const evolutionUrl = empresa.evolution_url.replace(/\/$/, '');
+              const resolvedTel = await resolverLidParaTelefone(
+                remoteJidRaw, evolutionUrl, empresa.evolution_api_key, empresa.evolution_instance_name
+              );
+              if (resolvedTel) {
+                console.log(`✅ @lid resolvido via Evolution API: ${remoteJidRaw} → ${resolvedTel}`);
+                telefoneLimpo = resolvedTel;
+                // Salvar mapeamento para uso futuro
+                try {
+                  await base44.asServiceRole.entities.ContatoWhatsapp.create({
+                    empresa_id: empresaId,
+                    telefone: resolvedTel,
+                    nome: pushName || resolvedTel,
+                    lid_jid: lidNumerico,
+                    ultima_atualizacao: new Date().toISOString()
+                  });
+                  console.log(`💾 Mapeamento lid→telefone salvo: ${lidNumerico} → ${resolvedTel}`);
+                } catch (_) {}
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ Erro ao tentar resolver @lid via Evolution:', e.message);
+          }
         }
       }
 
       if (!telefoneLimpo) {
-        // Não foi possível resolver @lid para número real — ignorar sem criar conversa falsa
         console.warn(`⚠️ @lid não resolvível: "${remoteJidRaw}" (pushName: ${pushName}) — mensagem ignorada`);
         return Response.json({ success: true, skipped: 'unresolvable_lid' });
       }
