@@ -239,11 +239,11 @@ Deno.serve(async (req) => {
 
     console.log(`📞 remoteJid: ${remoteJidRaw} | fromMe: ${fromMe} | participant: ${key.participant || 'N/A'}`);
 
-    // ── Ignorar mensagens enviadas pelo próprio sistema (evitar duplicação) ──
-    if (fromMe) {
-      console.log('⏭️ Mensagem própria (fromMe=true) ignorada — já salva pelo enviarMensagemWhatsapp');
-      return Response.json({ success: true, skipped: 'fromMe' });
-    }
+    // fromMe=true: mensagem enviada pelo celular ou pelo CRM
+    // A deduplicação por whatsapp_message_id (linha abaixo) garante que mensagens do CRM não sejam duplicadas
+    // Mensagens enviadas direto pelo app do celular serão salvas aqui normalmente
+    console.log(`📤 fromMe: ${fromMe} — processando normalmente (dedup por messageId garante sem duplicata)`);
+
 
     // ── Inicializar SDK aqui para poder usar na resolução de @lid ────────────
     const base44 = createClientFromRequest(req);
