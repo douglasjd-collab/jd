@@ -504,7 +504,6 @@ Deno.serve(async (req) => {
         cliente_id: clienteId,
         cliente_nome: telefoneLimpo,
         cliente_telefone: telefoneLimpo,
-
         whatsapp_id: messageId,
         status: 'ativa',
         ultima_mensagem: conteudo.substring(0, 200),
