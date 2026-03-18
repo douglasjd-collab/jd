@@ -14,7 +14,7 @@ export default function MensagemItem({ mensagem }) {
 
   // Auto-baixar mídia (áudio/imagem) da Evolution na primeira renderização (cache local)
   useEffect(() => {
-    const isEvolutionUrl = mensagem.arquivo_url?.includes('evolution') || mensagem.arquivo_url?.includes('api.'));
+    const isEvolutionUrl = mensagem.arquivo_url?.includes('evolution') || mensagem.arquivo_url?.includes('api.');
     const isBase44Url = mediaUrl?.includes('base44') || mediaUrl?.includes('media.');
     
     if (
