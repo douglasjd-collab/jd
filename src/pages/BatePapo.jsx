@@ -102,7 +102,26 @@ export default function BatePapo() {
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(true);
+  const [sincronizando, setSincronizando] = useState(false);
   const queryClient = useQueryClient();
+
+  const sincronizarChats = async () => {
+    setSincronizando(true);
+    try {
+      const resp = await base44.functions.invoke('sincronizarTodosChats', {});
+      const data = resp?.data;
+      if (data?.ok) {
+        toast.success(`Sincronizado: ${data.conversas_criadas} novas conversas`);
+        refetchConversas();
+      } else {
+        toast.error('Erro ao sincronizar: ' + (data?.erro || 'Desconhecido'));
+      }
+    } catch (e) {
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setSincronizando(false);
+    }
+  };
   const mensagensEndRef = React.useRef(null);
 
   useEffect(() => {
