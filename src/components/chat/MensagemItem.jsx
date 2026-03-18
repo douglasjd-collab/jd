@@ -133,20 +133,27 @@ export default function MensagemItem({ mensagem }) {
       case 'pdf':
       case 'documento':
         return (
-          <a 
-            href={mensagem.arquivo_url} 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 p-3 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-          >
-            <FileText className="w-4 h-4" />
+          <div className="flex items-center gap-2 p-3 bg-white/20 rounded-lg w-fit">
+            <FileText className="w-5 h-5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="truncate font-medium text-sm">{mensagem.arquivo_nome}</p>
-              <p className="text-xs opacity-75">
-                {(mensagem.arquivo_tamanho / 1024 / 1024).toFixed(2)} MB
-              </p>
+              <p className="truncate font-medium text-sm">{mensagem.arquivo_nome || 'Documento PDF'}</p>
+              {mensagem.arquivo_tamanho > 0 && (
+                <p className="text-xs opacity-75">
+                  {(mensagem.arquivo_tamanho / 1024 / 1024).toFixed(2)} MB
+                </p>
+              )}
             </div>
-          </a>
+            {mensagem.arquivo_url && (
+              <a 
+                href={mensagem.arquivo_url} 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2"
+              >
+                <Download className="w-4 h-4 hover:opacity-70 transition-opacity" />
+              </a>
+            )}
+          </div>
         );
       
       default:
