@@ -112,12 +112,21 @@ export default function MensagemItem({ mensagem }) {
       
       case 'video':
         return (
-          <div className="max-w-xs">
-            <video 
-              controls 
-              className="rounded-lg max-w-full h-auto"
-              src={mensagem.arquivo_url}
-            />
+          <div className="max-w-sm">
+            {loadingMedia ? (
+              <div className="flex items-center justify-center gap-2 bg-white/10 rounded-lg p-4 w-48 h-32">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm opacity-75">Carregando...</span>
+              </div>
+            ) : mediaUrl ? (
+              <video 
+                controls 
+                className="rounded-lg max-w-full h-auto bg-black"
+                src={mediaUrl}
+              />
+            ) : (
+              <div className="bg-white/10 rounded-lg p-4 text-sm opacity-75">Vídeo indisponível</div>
+            )}
           </div>
         );
       
