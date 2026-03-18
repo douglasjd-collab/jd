@@ -39,8 +39,9 @@ Deno.serve(async (req) => {
     // 1. Buscar todos os chats da Evolution
     console.log('📋 Buscando todos os chats da Evolution...');
     const resChats = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
-      method: 'GET',
-      headers: { 'apikey': evolutionKey }
+      method: 'POST',
+      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ where: {} })
     });
 
     if (!resChats.ok) {
