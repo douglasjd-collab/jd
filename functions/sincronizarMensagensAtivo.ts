@@ -182,9 +182,11 @@ Deno.serve(async (req) => {
         // Extrair telefone
         const telefoneLimpo = remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
 
-        // Validar telefone: 10-15 dígitos, brasileiro começa com 55
-        if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) { ignoradas++; continue; }
-        if (telefoneLimpo.length >= 12 && telefoneLimpo.length <= 13 && !telefoneLimpo.startsWith('55')) { ignoradas++; continue; }
+        // Aceitar SOMENTE números BR válidos: começa com 55 + DDD (2) + número (8-9) = 12 ou 13 dígitos
+        if (!telefoneLimpo || !telefoneLimpo.startsWith('55') || (telefoneLimpo.length !== 12 && telefoneLimpo.length !== 13)) {
+          console.warn(`⚠️ Número inválido ignorado: "${telefoneLimpo}"`);
+          ignoradas++; continue;
+        }
 
         // Extrair conteúdo
         let tipo = 'texto';

@@ -146,7 +146,11 @@ Deno.serve(async (req) => {
 
         const telefoneLimpo = remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
 
-        if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) continue;
+        // Aceitar SOMENTE números BR válidos: começa com 55 + DDD (2) + número (8-9) = 12 ou 13 dígitos
+        if (!telefoneLimpo.startsWith('55') || (telefoneLimpo.length !== 12 && telefoneLimpo.length !== 13)) {
+          console.warn(`⚠️ Número inválido ignorado: "${telefoneLimpo}"`);
+          continue;
+        }
 
         // Extrair conteúdo
         let tipo = 'texto';
