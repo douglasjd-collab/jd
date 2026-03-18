@@ -25,7 +25,28 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
     setErro(null);
     
     try {
-      await onEnviar({ texto: textoEnviar, arquivo });
+      let arquivoBase64 = null;
+      let nomeArquivo = null;
+      let tipoArquivo = null;
+
+      if (arquivo) {
+        const reader = new FileReader();
+        arquivoBase64 = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(arquivo);
+        });
+        nomeArquivo = arquivo.name;
+        tipoArquivo = arquivo.type;
+      }
+
+      await onEnviar({ 
+        texto: textoEnviar, 
+        arquivo: arquivoBase64 ? { base64: arquivoBase64, nome: nomeArquivo, tipo: tipoArquivo } : null 
+      });
       setTexto('');
       setArquivo(null);
       setShowQuickReplies(false);
