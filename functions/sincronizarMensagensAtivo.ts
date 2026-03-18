@@ -33,16 +33,15 @@ Deno.serve(async (req) => {
 
     console.log(`🕐 Buscando mensagens desde: ${new Date(agoSeconds * 1000).toISOString()}`);
 
-    // Buscar mensagens recentes da Evolution (recebidas, não enviadas por nós)
+    // Buscar todas mensagens recentes (recebidas E enviadas pelo celular)
     const res = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
       method: 'POST',
       headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         where: {
-          key: { fromMe: false },
           messageTimestamp: { $gte: agoSeconds }
         },
-        limit: 100
+        limit: 200
       })
     });
 
