@@ -121,33 +121,32 @@ Deno.serve(async (req) => {
           if (lidToPhone[remoteJidRaw]) {
             remoteJid = `${lidToPhone[remoteJidRaw]}@s.whatsapp.net`;
           } else {
+            // Buscar no banco ContatoWhatsapp pelo lid_jid
             const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
-            // Tentar por pushName
             try {
-              const todasConversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: JD_ID });
-              const pushNameNorm = pushName.toLowerCase().split(' ')[0];
-              const conversaReal = todasConversas.find(c => {
-                if (!c.cliente_telefone || c.cliente_telefone.startsWith('lid_')) return false;
-                const nomeNorm = (c.cliente_nome || '').toLowerCase();
-                return nomeNorm.includes(pushNameNorm) || pushNameNorm.includes(nomeNorm.split(' ')[0]);
+              const contatosLid = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+                empresa_id: JD_ID, lid_jid: lidNumerico
               });
-              if (conversaReal) {
-                remoteJid = `${conversaReal.cliente_telefone.replace(/\D/g, '')}@s.whatsapp.net`;
+              if (contatosLid.length > 0 && contatosLid[0].telefone) {
+                remoteJid = `${contatosLid[0].telefone}@s.whatsapp.net`;
+                console.log(`✅ @lid resolvido via ContatoWhatsapp: ${remoteJidRaw} → ${contatosLid[0].telefone}`);
               } else {
-                remoteJid = `lid_${lidNumerico}`;
+                // Sem mapeamento — ignorar completamente, nunca criar com lid_
+                console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (${pushName}) — ignorado`);
+                continue;
               }
-            } catch (_) { remoteJid = `lid_${lidNumerico}`; }
+            } catch (_) {
+              console.warn(`⚠️ @lid não resolvível (erro banco): ${remoteJidRaw} — ignorado`);
+              continue;
+            }
           }
         }
 
-        const isLidFallback = remoteJid.startsWith('lid_');
-        if (!isLidFallback && !remoteJid.includes('@s.whatsapp.net') && !remoteJid.includes('@c.us')) continue;
+        if (!remoteJid.includes('@s.whatsapp.net') && !remoteJid.includes('@c.us')) continue;
 
-        const telefoneLimpo = isLidFallback ? remoteJid : remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+        const telefoneLimpo = remoteJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
 
-        if (!isLidFallback) {
-          if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) continue;
-        }
+        if (!telefoneLimpo || telefoneLimpo.length < 10 || telefoneLimpo.length > 15) continue;
 
         // Extrair conteúdo
         let tipo = 'texto';
