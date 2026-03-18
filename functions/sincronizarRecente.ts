@@ -152,15 +152,39 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Extrair conteúdo
+        // Extrair conteúdo e URL de arquivo
         let tipo = 'texto';
         let conteudo = '';
+        let arquivo_url = '';
+        let arquivo_nome = '';
+        let arquivo_tamanho = 0;
+
         if (message.conversation) conteudo = message.conversation;
         else if (message.extendedTextMessage?.text) conteudo = message.extendedTextMessage.text;
-        else if (message.imageMessage) { tipo = 'imagem'; conteudo = message.imageMessage.caption || 'Imagem'; }
-        else if (message.audioMessage || message.pttMessage) { tipo = 'audio'; conteudo = 'Áudio'; }
-        else if (message.videoMessage) { tipo = 'video'; conteudo = message.videoMessage.caption || 'Vídeo'; }
-        else if (message.documentMessage) { tipo = 'pdf'; conteudo = message.documentMessage.title || 'Documento'; }
+        else if (message.imageMessage) { 
+          tipo = 'imagem'; 
+          conteudo = message.imageMessage.caption || 'Imagem';
+          arquivo_url = message.imageMessage.url || '';
+        }
+        else if (message.audioMessage || message.pttMessage) { 
+          tipo = 'audio'; 
+          conteudo = 'Áudio';
+          arquivo_url = message.audioMessage?.url || message.pttMessage?.url || '';
+          arquivo_tamanho = message.audioMessage?.fileLength || message.pttMessage?.fileLength || 0;
+        }
+        else if (message.videoMessage) { 
+          tipo = 'video'; 
+          conteudo = message.videoMessage.caption || 'Vídeo';
+          arquivo_url = message.videoMessage.url || '';
+          arquivo_tamanho = message.videoMessage.fileLength || 0;
+        }
+        else if (message.documentMessage) { 
+          tipo = 'pdf'; 
+          conteudo = message.documentMessage.title || 'Documento';
+          arquivo_url = message.documentMessage.url || '';
+          arquivo_nome = message.documentMessage.fileName || 'Documento';
+          arquivo_tamanho = message.documentMessage.fileLength || 0;
+        }
         else conteudo = JSON.stringify(message).substring(0, 100);
 
         // Normalizar telefone
