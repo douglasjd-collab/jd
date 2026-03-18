@@ -211,7 +211,7 @@ export default function BatePapo() {
         return msgs;
       },
       staleTime: 0,
-      refetchInterval: false, // Subscription em tempo real cobre atualizações instantâneas
+      refetchInterval: 5000, // Fallback de polling a cada 5s caso subscription falhe
   });
 
   // Solicitar permissão para notificações do browser na primeira vez
