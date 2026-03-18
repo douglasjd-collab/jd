@@ -220,9 +220,8 @@ Deno.serve(async (req) => {
         }
 
         if (!conversa) {
-          // Só criar conversa se o telefone for válido (nunca lid_) e for mensagem de cliente
-          // Mensagens fromMe (enviadas pelo celular) só criam conversa se for de cliente remoto
-          if (telefoneNormalizado.startsWith('lid_')) { ignoradas++; continue; }
+          // Bloquear definitivamente qualquer lid_
+          if (telefoneNormalizado.startsWith('lid_') || telefoneNormalizado.includes('lid')) { ignoradas++; continue; }
           if (fromMe) { ignoradas++; continue; } // Só criar conversa quando receber do cliente
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,

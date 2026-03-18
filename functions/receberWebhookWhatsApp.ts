@@ -340,7 +340,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Validar que o número parece um telefone real
+    // 3. Bloquear definitivamente qualquer lid_ que tenha escapado
+    if (telefoneLimpo.startsWith('lid_') || telefoneLimpo.includes('lid')) {
+      console.error(`❌ BLOQUEIO DEFINITIVO: telefone lid_ não permitido: "${telefoneLimpo}"`);
+      return Response.json({ success: true, skipped: 'blocked_lid' });
+    }
+
+    // 4. Validar que o número parece um telefone real
     if (!validarTelefone(telefoneLimpo)) {
       console.error(`❌ REJEIÇÃO: Número não parece telefone válido: "${telefoneLimpo}"`);
       return Response.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
