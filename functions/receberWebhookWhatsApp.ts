@@ -138,14 +138,13 @@ async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instance
   }
 }
 
-// Validar se um número de telefone parece legítimo
+// Validar se um número de telefone parece legítimo (apenas BR: 55 + DDD + numero = 12 ou 13 dígitos)
 function validarTelefone(num) {
   if (!num) return false;
-  // Deve ter entre 10 e 15 dígitos
-  if (num.length < 10 || num.length > 15) return false;
-  // Número brasileiro deve começar com 55
-  if (num.length >= 12 && num.length <= 13 && !num.startsWith('55')) return false;
-  // Rejeitar números com padrões suspeitos (repetições, sequências)
+  // Aceitar apenas números brasileiros: começa com 55, total 12 ou 13 dígitos
+  if (!num.startsWith('55')) return false;
+  if (num.length !== 12 && num.length !== 13) return false;
+  // Rejeitar repetições óbvias
   if (/^(\d)\1{9,}$/.test(num)) return false;
   return true;
 }
