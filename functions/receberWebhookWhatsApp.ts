@@ -160,9 +160,19 @@ async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instance
   return null;
 }
 
+// Blocklist permanente de JIDs/números falsos conhecidos
+const BLOCKLIST = new Set([
+  'lid_15578500694049',
+  'lid_131829726244871',
+  'lid_49328018215052',
+]);
+
 // Validar se um número de telefone parece legítimo (apenas BR: 55 + DDD + numero = 12 ou 13 dígitos)
 function validarTelefone(num) {
   if (!num) return false;
+  if (BLOCKLIST.has(num)) return false;
+  // Bloquear qualquer coisa que começa com lid_
+  if (num.startsWith('lid_')) return false;
   // Aceitar apenas números brasileiros: começa com 55, total 12 ou 13 dígitos
   if (!num.startsWith('55')) return false;
   if (num.length !== 12 && num.length !== 13) return false;

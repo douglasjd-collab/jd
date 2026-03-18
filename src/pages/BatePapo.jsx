@@ -401,7 +401,16 @@ export default function BatePapo() {
     })();
   }, [conversaSelecionada?.id, conversaSelecionada?.cliente_telefone, empresaId]);
 
+  // Validação estrita: só números BR válidos (55 + DDD + número = 12 ou 13 dígitos)
+  const isTelefoneValido = (tel) => {
+    if (!tel) return false;
+    const n = tel.replace(/\D/g, '');
+    return n.startsWith('55') && (n.length === 12 || n.length === 13);
+  };
+
   const conversasFiltradas = conversas.filter(c => {
+    // Bloquear qualquer conversa com número inválido (lid_, etc)
+    if (!isTelefoneValido(c.cliente_telefone)) return false;
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
       (c.cliente_telefone || '').includes(searchConversas);
     const matchStatus = filtroStatus === 'todas' || c.status === filtroStatus;
