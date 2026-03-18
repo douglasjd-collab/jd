@@ -620,7 +620,9 @@ export default function BatePapo() {
                       Criar Tarefa
                     </Button>
                     <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300" onClick={async () => {
-                                      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'arquivada' });
+                                      try {
+                                        await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'arquivada' });
+                                      } catch (_) {}
                                       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
                                       setConversaSelecionada(null);
                                       toast.success('Conversa finalizada');
