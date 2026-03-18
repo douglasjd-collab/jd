@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
@@ -344,16 +344,12 @@ export default function BatePapo() {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
       
-      let tipoConteudo = 'texto';
-      let textoExibicao = texto;
-      
+      let tipo_conteudo = 'texto';
       if (arquivo) {
-        if (arquivo.tipo?.includes('image')) tipoConteudo = 'imagem';
-        else if (arquivo.tipo?.includes('audio')) tipoConteudo = 'audio';
-        else if (arquivo.tipo?.includes('video')) tipoConteudo = 'video';
-        else if (arquivo.tipo?.includes('pdf')) tipoConteudo = 'pdf';
-        
-        textoExibicao = texto || arquivo.nome || 'Arquivo';
+        if (arquivo.tipo.startsWith('image')) tipo_conteudo = 'imagem';
+        else if (arquivo.tipo.startsWith('audio')) tipo_conteudo = 'audio';
+        else if (arquivo.tipo.startsWith('video')) tipo_conteudo = 'video';
+        else if (arquivo.tipo === 'application/pdf') tipo_conteudo = 'pdf';
       }
       
       queryClient.setQueryData(queryKey, (old = []) => [
@@ -362,8 +358,9 @@ export default function BatePapo() {
           id: `temp_${Date.now()}`,
           conversa_id: conversaSelecionadaId,
           remetente: 'vendedor',
-          tipo_conteudo: tipoConteudo,
-          texto: textoExibicao,
+          tipo_conteudo,
+          texto: arquivo ? `📎 ${arquivo.nome}` : texto,
+          arquivo_url: null,
           arquivo_nome: arquivo?.nome || null,
           data_envio: new Date().toISOString(),
           status: 'pendente',
@@ -400,7 +397,7 @@ export default function BatePapo() {
     }
   });
 
-  const scrollAreaRef = React.useRef(null);
+  const scrollAreaRef = useRef(null);
 
   React.useEffect(() => {
     if (!mensagens.length) return;
