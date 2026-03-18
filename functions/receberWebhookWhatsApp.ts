@@ -82,8 +82,32 @@ function extrairTelefoneValido(jid) {
 
 // ── Resolver @lid para número real via Evolution API ──────────────────────
 async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instanceName) {
+  const lidNumerico = lid.replace(/@lid/g, '').replace(/\D/g, '');
+
+  // Estratégia 1: fetchProfile com o número lid
   try {
-    // Estratégia 1: buscar nas mensagens recentes para encontrar o número real desse lid
+    const res = await fetch(`${evolutionUrl}/contact/fetchProfile/${instanceName}`, {
+      method: 'POST',
+      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: lidNumerico })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const jid = data?.jid || data?.wuid || data?.id || '';
+      if (jid.includes('@s.whatsapp.net') || jid.includes('@c.us')) {
+        const tel = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+        if (tel.startsWith('55') && (tel.length === 12 || tel.length === 13)) {
+          console.log(`✅ @lid resolvido via fetchProfile: ${lid} → ${tel}`);
+          return tel;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️ fetchProfile falhou:', e.message);
+  }
+
+  // Estratégia 2: buscar nas mensagens recentes pelo participant
+  try {
     const res = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
       method: 'POST',
       headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
@@ -92,22 +116,23 @@ async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instance
     if (res.ok) {
       const data = await res.json();
       const msgs = Array.isArray(data) ? data : (data.messages?.records || data.messages || []);
-      // Procurar em contextInfo ou messageContextInfo pelo número real
       for (const m of msgs) {
-        const pushName = m.pushName || '';
-        // Tentar encontrar o numero real via participantId se existir
         const participantJid = m.key?.participant || '';
-        if (participantJid && participantJid.includes('@s.whatsapp.net')) {
+        if (participantJid.includes('@s.whatsapp.net')) {
           const tel = participantJid.replace(/@s\.whatsapp\.net/g, '').replace(/\D/g, '');
-          if (tel && tel.length >= 10) {
-            console.log(`✅ Lid resolvido via participant: ${tel} (pushName: ${pushName})`);
+          if (tel.startsWith('55') && (tel.length === 12 || tel.length === 13)) {
+            console.log(`✅ @lid resolvido via participant: ${tel}`);
             return tel;
           }
         }
       }
     }
+  } catch (e) {
+    console.warn('⚠️ findMessages falhou:', e.message);
+  }
 
-    // Estratégia 2: buscar contatos com pushName
+  // Estratégia 3: buscar contatos
+  try {
     const res2 = await fetch(`${evolutionUrl}/chat/findContacts/${instanceName}`, {
       method: 'POST',
       headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
@@ -117,25 +142,22 @@ async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instance
       const data2 = await res2.json();
       const contatos = Array.isArray(data2) ? data2 : (data2.contacts || data2.records || []);
       for (const c of contatos) {
-        // Procurar contato cujo lid bate
         const cId = c.id || c.remoteJid || '';
-        if (cId === lid || cId.startsWith(lid.replace('@lid', ''))) {
-          const jidReal = c.remoteJid || c.jid || c.phoneNumber || '';
-          if (jidReal.includes('@s.whatsapp.net') || jidReal.includes('@c.us')) {
-            const tel = jidReal.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
-            if (tel && tel.length >= 10) return tel;
+        if (cId === lid) {
+          const fontes = [c.phone, c.phoneNumber, c.number];
+          for (const f of fontes) {
+            if (!f) continue;
+            const tel = String(f).replace(/\D/g, '');
+            if (tel.startsWith('55') && (tel.length === 12 || tel.length === 13)) return tel;
           }
-          const telDireto = (c.number || c.phone || '').replace(/\D/g, '');
-          if (telDireto && telDireto.length >= 10) return telDireto;
         }
       }
     }
-
-    return null;
   } catch (e) {
-    console.warn('⚠️ Erro ao resolver @lid:', e.message);
-    return null;
+    console.warn('⚠️ findContacts falhou:', e.message);
   }
+
+  return null;
 }
 
 // Validar se um número de telefone parece legítimo (apenas BR: 55 + DDD + numero = 12 ou 13 dígitos)
