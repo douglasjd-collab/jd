@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
         const messageId = key.id;
         const fromMe = key.fromMe === true;
 
-        if (!messageId || !remoteJidRaw || fromMe) { ignoradas++; continue; }
+        if (!messageId || !remoteJidRaw) { ignoradas++; continue; }
         // Rejeitar grupos e broadcasts
         if (remoteJidRaw.includes('@g.us') || remoteJidRaw.includes('@broadcast')) { ignoradas++; continue; }
 
