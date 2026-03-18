@@ -344,12 +344,16 @@ export default function BatePapo() {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
       
-      let tipo_conteudo = 'texto';
+      let tipoConteudo = 'texto';
+      let textoExibicao = texto;
+      
       if (arquivo) {
-        if (arquivo.tipo.startsWith('image')) tipo_conteudo = 'imagem';
-        else if (arquivo.tipo.startsWith('audio')) tipo_conteudo = 'audio';
-        else if (arquivo.tipo.startsWith('video')) tipo_conteudo = 'video';
-        else if (arquivo.tipo === 'application/pdf') tipo_conteudo = 'pdf';
+        if (arquivo.tipo?.includes('image')) tipoConteudo = 'imagem';
+        else if (arquivo.tipo?.includes('audio')) tipoConteudo = 'audio';
+        else if (arquivo.tipo?.includes('video')) tipoConteudo = 'video';
+        else if (arquivo.tipo?.includes('pdf')) tipoConteudo = 'pdf';
+        
+        textoExibicao = texto || arquivo.nome || 'Arquivo';
       }
       
       queryClient.setQueryData(queryKey, (old = []) => [
@@ -358,9 +362,8 @@ export default function BatePapo() {
           id: `temp_${Date.now()}`,
           conversa_id: conversaSelecionadaId,
           remetente: 'vendedor',
-          tipo_conteudo,
-          texto: arquivo ? `📎 ${arquivo.nome}` : texto,
-          arquivo_url: null,
+          tipo_conteudo: tipoConteudo,
+          texto: textoExibicao,
           arquivo_nome: arquivo?.nome || null,
           data_envio: new Date().toISOString(),
           status: 'pendente',
@@ -397,7 +400,7 @@ export default function BatePapo() {
     }
   });
 
-  const scrollAreaRef = useRef(null);
+  const scrollAreaRef = React.useRef(null);
 
   React.useEffect(() => {
     if (!mensagens.length) return;
