@@ -239,15 +239,25 @@ export default function BatePapo() {
       // Sempre refetch conversas para atualizar última mensagem
       refetchConversas();
 
-      // Se a mensagem é da conversa aberta, refetch imediato
+      // Se a mensagem é da conversa aberta, inserir diretamente no cache (sem refetch de rede)
       if (msgData?.conversa_id && msgData.conversa_id === conversaAtualId) {
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
+        if (msgData?.id) {
+          queryClient.setQueryData(['mensagens-whatsapp', conversaAtualId], (old = []) => {
+            // Evitar duplicata (pode já existir se for envio otimista)
+            const jaExiste = old.some(m => m.id === msgData.id || m.whatsapp_message_id === msgData.whatsapp_message_id);
+            if (jaExiste) return old;
+            return [...old.filter(m => !m.id?.startsWith('temp_')), msgData];
+          });
+        } else {
+          // payload_too_large: fallback para refetch
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
+        }
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
-        }, 200);
+        }, 50);
       } else if (!msgData?.conversa_id) {
         // payload_too_large — refetch da conversa aberta por segurança
         refetchMensagens();
