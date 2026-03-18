@@ -260,9 +260,16 @@ Deno.serve(async (req) => {
 
     console.log(`📞 remoteJid: ${remoteJidRaw} | fromMe: ${fromMe} | participant: ${key.participant || 'N/A'}`);
 
-    // fromMe=true: mensagem enviada pelo celular ou pelo CRM
-    // A deduplicação por whatsapp_message_id (linha abaixo) garante que mensagens do CRM não sejam duplicadas
-    // Mensagens enviadas direto pelo app do celular serão salvas aqui normalmente
+    // ── Bloqueio imediato de qualquer JID lid_ ou @lid sem resolução ──────────
+    const remoteJidOriginalRaw = key.remoteJid || '';
+    if (remoteJidOriginalRaw.includes('@lid') || remoteJidOriginalRaw.startsWith('lid_') || remoteJidRaw.startsWith('lid_')) {
+      // Só prosseguir se remoteJidAlt forneceu um JID válido (@s.whatsapp.net)
+      if (!remoteJidRaw.includes('@s.whatsapp.net') && !remoteJidRaw.includes('@c.us')) {
+        console.warn(`⚠️ JID lid_ sem resolução direta: "${remoteJidOriginalRaw}" — ignorado`);
+        return Response.json({ success: true, skipped: 'lid_no_alt' });
+      }
+    }
+
     console.log(`📤 fromMe: ${fromMe} — processando normalmente (dedup por messageId garante sem duplicata)`);
 
 
