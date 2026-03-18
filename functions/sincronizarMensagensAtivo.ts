@@ -150,44 +150,22 @@ Deno.serve(async (req) => {
             remoteJid = `${tel}@s.whatsapp.net`;
             console.log(`🔄 @lid resolvido via mapa: ${remoteJidRaw} → ${remoteJid}`);
           } else {
-            // Sem mapeamento via contacts: tentar resolver via ContatoWhatsapp (pushName)
+            // Buscar no banco ContatoWhatsapp pelo lid_jid
             const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
-            let resolvedPhone = null;
-
-            // Buscar ConversaWhatsapp existente com lid_XXXX para ver se já foi vinculada
             try {
-              const conversasLid = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-                empresa_id: JD_ID, cliente_telefone: `lid_${lidNumerico}`
+              const contatosLid = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+                empresa_id: JD_ID, lid_jid: lidNumerico
               });
-              if (conversasLid.length > 0 && conversasLid[0].cliente_id) {
-                // Se a conversa lid já tem cliente vinculado, tenta achar o telefone
-                const clientes = await base44.asServiceRole.entities.Cliente.filter({ id: conversasLid[0].cliente_id });
-                if (clientes.length > 0 && clientes[0].celular) {
-                  resolvedPhone = clientes[0].celular.replace(/\D/g, '');
-                  console.log(`🔄 @lid resolvido via cliente vinculado: ${resolvedPhone}`);
-                }
-              }
-            } catch (_) {}
-
-            if (resolvedPhone) {
-              remoteJid = `${resolvedPhone}@s.whatsapp.net`;
-            } else {
-              // Buscar no banco ContatoWhatsapp pelo lid_jid como último recurso
-              try {
-                const contatosLid = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
-                  empresa_id: JD_ID, lid_jid: lidNumerico
-                });
-                if (contatosLid.length > 0 && contatosLid[0].telefone) {
-                  remoteJid = `${contatosLid[0].telefone}@s.whatsapp.net`;
-                  console.log(`✅ @lid resolvido via ContatoWhatsapp (ativo): ${remoteJidRaw} → ${contatosLid[0].telefone}`);
-                } else {
-                  console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (pushName: ${pushName}) — ignorado`);
-                  ignoradas++; continue;
-                }
-              } catch (_) {
-                console.warn(`⚠️ @lid não resolvível (erro banco): ${remoteJidRaw} — ignorado`);
+              if (contatosLid.length > 0 && contatosLid[0].telefone) {
+                remoteJid = `${contatosLid[0].telefone}@s.whatsapp.net`;
+                console.log(`✅ @lid resolvido via ContatoWhatsapp: ${remoteJidRaw} → ${contatosLid[0].telefone}`);
+              } else {
+                console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} — ignorado`);
                 ignoradas++; continue;
               }
+            } catch (_) {
+              console.warn(`⚠️ @lid não resolvível (erro banco): ${remoteJidRaw} — ignorado`);
+              ignoradas++; continue;
             }
           }
         }
