@@ -1,9 +1,13 @@
-import React from 'react';
-import { FileText, Music, Check, CheckCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { FileText, Music, Check, CheckCheck, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { base44 } from '@/api/base44Client';
 
 export default function MensagemItem({ mensagem }) {
+  const [audioUrl, setAudioUrl] = useState(mensagem.arquivo_url);
+  const [loadingAudio, setLoadingAudio] = useState(false);
+
   console.log('[MensagemItem] Renderizando:', { tipo: mensagem.tipo_conteudo, texto: mensagem.texto?.substring(0, 50), remetente: mensagem.remetente });
   
   const isVendedor = mensagem.remetente === 'vendedor';
