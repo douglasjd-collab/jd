@@ -5,34 +5,34 @@ import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
 
 export default function MensagemItem({ mensagem }) {
-  const [audioUrl, setAudioUrl] = useState(mensagem.arquivo_url);
-  const [loadingAudio, setLoadingAudio] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url);
+  const [loadingMedia, setLoadingMedia] = useState(false);
 
   console.log('[MensagemItem] Renderizando:', { tipo: mensagem.tipo_conteudo, texto: mensagem.texto?.substring(0, 50), remetente: mensagem.remetente });
   
   const isVendedor = mensagem.remetente === 'vendedor';
 
-  // Auto-baixar áudio da Evolution na primeira renderização (cache local)
+  // Auto-baixar mídia (áudio/imagem) da Evolution na primeira renderização (cache local)
   useEffect(() => {
     if (
-      mensagem.tipo_conteudo === 'audio' &&
+      ['audio', 'imagem'].includes(mensagem.tipo_conteudo) &&
       mensagem.arquivo_url &&
-      !audioUrl?.startsWith('blob:') &&
-      !loadingAudio &&
+      !mediaUrl?.startsWith('blob:') &&
+      !loadingMedia &&
       mensagem.arquivo_url.includes('evolution') // URL temporária da Evolution
     ) {
-      setLoadingAudio(true);
+      setLoadingMedia(true);
       base44.functions.invoke('baixarMidiaWhatsApp', {
         mensagem_id: mensagem.id,
         arquivo_url: mensagem.arquivo_url
       })
         .then(res => {
           if (res.data?.arquivo_url) {
-            setAudioUrl(res.data.arquivo_url);
+            setMediaUrl(res.data.arquivo_url);
           }
         })
-        .catch(err => console.error('Erro ao baixar áudio:', err))
-        .finally(() => setLoadingAudio(false));
+        .catch(err => console.error('Erro ao baixar mídia:', err))
+        .finally(() => setLoadingMedia(false));
     }
   }, [mensagem.id, mensagem.tipo_conteudo, mensagem.arquivo_url]);
   
