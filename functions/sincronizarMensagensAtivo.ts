@@ -58,36 +58,72 @@ Deno.serve(async (req) => {
 
     console.log(`📦 ${mensagens.length} mensagens encontradas na Evolution`);
 
-    // ── Construir mapa de @lid → telefone usando contatos da Evolution ──
+    // ── Construir mapa de @lid → telefone usando chats da Evolution ──
     const lidToPhone = {};
-    try {
-      const resContatos = await fetch(`${evolutionUrl}/chat/findContacts/${instanceName}`, {
-        method: 'POST',
-        headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ where: {} })
-      });
-      if (resContatos.ok) {
-        const dataContatos = await resContatos.json();
-        const contatos = Array.isArray(dataContatos) ? dataContatos : (dataContatos.contacts || dataContatos.records || []);
-        for (const c of contatos) {
-          const lidId = c.id || c.remoteJid || '';
-          if (lidId.includes('@lid')) {
-            // Só aceitar número real (@s.whatsapp.net), NUNCA usar c.number que pode ser o próprio lid
-            const jidReal = c.remoteJid || c.jid || '';
-            if (jidReal.includes('@s.whatsapp.net')) {
-              const tel = jidReal.replace(/@s\.whatsapp\.net/g, '').replace(/\D/g, '');
-              // Validar que é um número BR real (começa com 55, 12-13 dígitos)
-              if (tel.startsWith('55') && tel.length >= 12 && tel.length <= 13) {
-                lidToPhone[lidId] = tel;
-              }
+
+    const addToMap = (items) => {
+      for (const c of items) {
+        const lidId = c.id || c.remoteJid || c.jid || '';
+        if (!lidId.includes('@lid')) continue;
+        // Tentar várias fontes para o número real
+        const fontes = [c.phone, c.phoneNumber, c.number];
+        for (const fonte of fontes) {
+          if (!fonte) continue;
+          const tel = String(fonte).replace(/\D/g, '');
+          if (tel.startsWith('55') && (tel.length === 12 || tel.length === 13)) {
+            lidToPhone[lidId] = tel;
+            break;
+          }
+        }
+        // Se não achou via phone, tentar via remoteJid alternativo
+        if (!lidToPhone[lidId]) {
+          const jidAlt = c.remoteJidAlt || c.jidAlt || '';
+          if (jidAlt.includes('@s.whatsapp.net') || jidAlt.includes('@c.us')) {
+            const tel = jidAlt.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+            if (tel.startsWith('55') && (tel.length === 12 || tel.length === 13)) {
+              lidToPhone[lidId] = tel;
             }
           }
         }
-        console.log(`📒 Mapa @lid construído: ${Object.keys(lidToPhone).length} entradas`);
+      }
+    };
+
+    // Estratégia 1: findChats (mais confiável para @lid)
+    try {
+      const resChats = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
+        method: 'GET',
+        headers: { 'apikey': evolutionKey }
+      });
+      if (resChats.ok) {
+        const dataChats = await resChats.json();
+        const chats = Array.isArray(dataChats) ? dataChats : (dataChats.chats || dataChats.records || []);
+        addToMap(chats);
+        console.log(`📒 Mapa @lid via findChats: ${Object.keys(lidToPhone).length} entradas (de ${chats.length} chats)`);
       }
     } catch (e) {
-      console.warn('⚠️ Erro ao construir mapa @lid:', e.message);
+      console.warn('⚠️ findChats falhou:', e.message);
     }
+
+    // Estratégia 2: findContacts como fallback
+    if (Object.keys(lidToPhone).length === 0) {
+      try {
+        const resContatos = await fetch(`${evolutionUrl}/chat/findContacts/${instanceName}`, {
+          method: 'POST',
+          headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ where: {} })
+        });
+        if (resContatos.ok) {
+          const dataContatos = await resContatos.json();
+          const contatos = Array.isArray(dataContatos) ? dataContatos : (dataContatos.contacts || dataContatos.records || []);
+          addToMap(contatos);
+          console.log(`📒 Mapa @lid via findContacts: ${Object.keys(lidToPhone).length} entradas`);
+        }
+      } catch (e) {
+        console.warn('⚠️ findContacts falhou:', e.message);
+      }
+    }
+
+    console.log(`📒 Mapa @lid final: ${JSON.stringify(lidToPhone)}`);
 
     let processadas = 0;
     let ignoradas = 0;
