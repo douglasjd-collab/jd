@@ -134,27 +134,9 @@ Deno.serve(async (req) => {
             if (resolvedPhone) {
               remoteJid = `${resolvedPhone}@s.whatsapp.net`;
             } else {
-              // Tentar resolver por pushName: buscar todas as conversas e filtrar por nome parcial
-              try {
-                const todasConversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: JD_ID });
-                const pushNameNorm = pushName.toLowerCase().split(' ')[0]; // primeira palavra do nome
-                const conversaReal = todasConversas.find(c => {
-                  if (!c.cliente_telefone || c.cliente_telefone.startsWith('lid_')) return false;
-                  const nomeNorm = (c.cliente_nome || '').toLowerCase();
-                  return nomeNorm.includes(pushNameNorm) || pushNameNorm.includes(nomeNorm.split(' ')[0]);
-                });
-                if (conversaReal) {
-                  resolvedPhone = conversaReal.cliente_telefone.replace(/\D/g, '');
-                  remoteJid = `${resolvedPhone}@s.whatsapp.net`;
-                  console.log(`🔄 @lid resolvido por pushName "${pushName}" → conversa "${conversaReal.cliente_nome}": ${remoteJid}`);
-                }
-              } catch (_) {}
-
-              if (!resolvedPhone) {
-                // Sem mapeamento — ignorar completamente, NUNCA criar com lid_ falso
-                console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (pushName: ${pushName}) — ignorado`);
-                ignoradas++; continue;
-              }
+              // Sem mapeamento — ignorar completamente, NUNCA criar com lid_ falso
+              console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (pushName: ${pushName}) — ignorado`);
+              ignoradas++; continue;
             }
           }
         }
