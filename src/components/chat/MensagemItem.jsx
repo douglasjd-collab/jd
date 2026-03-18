@@ -14,12 +14,15 @@ export default function MensagemItem({ mensagem }) {
 
   // Auto-baixar mídia (áudio/imagem) da Evolution na primeira renderização (cache local)
   useEffect(() => {
+    const isEvolutionUrl = mensagem.arquivo_url?.includes('evolution') || mensagem.arquivo_url?.includes('api.'));
+    const isBase44Url = mediaUrl?.includes('base44') || mediaUrl?.includes('media.');
+    
     if (
       ['audio', 'imagem'].includes(mensagem.tipo_conteudo) &&
       mensagem.arquivo_url &&
-      !mediaUrl?.startsWith('blob:') &&
-      !loadingMedia &&
-      mensagem.arquivo_url.includes('evolution') // URL temporária da Evolution
+      isEvolutionUrl &&
+      !isBase44Url &&
+      !loadingMedia
     ) {
       setLoadingMedia(true);
       base44.functions.invoke('baixarMidiaWhatsApp', {
