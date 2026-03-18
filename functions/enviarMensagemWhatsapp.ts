@@ -101,41 +101,16 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Determinar tipo de mensagem
-    let endpoint, requestPayload;
-    
-    if (arquivo && arquivo.base64) {
-      // Mensagem com arquivo
-      const tipoMIME = arquivo.tipo || 'application/octet-stream';
-      const tipoArquivo = tipoMIME.split('/')[0]; // 'image', 'audio', 'video' ou 'application'
-      
-      let tipoMensagem = 'document';
-      if (tipoArquivo === 'image') tipoMensagem = 'image';
-      else if (tipoArquivo === 'audio') tipoMensagem = 'audio';
-      else if (tipoArquivo === 'video') tipoMensagem = 'video';
-      
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendMedia/${instanceName}`;
-      requestPayload = {
-        number: numeroFormatado,
-        mediaType: tipoMensagem,
-        media: arquivo.base64,
-        fileName: arquivo.nome,
-        caption: mensagem_texto.trim()
-      };
-      console.log('📤 Enviando arquivo:', { tipo: tipoMensagem, nome: arquivo.nome });
-    } else {
-      // Mensagem de texto
-      endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
-      requestPayload = {
-        number: numeroFormatado,
-        text: mensagem_texto.trim()
-      };
-      console.log('📤 Enviando texto');
-    }
+    // Preparar requisição para Evolution
+    const endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
+    const requestPayload = {
+      number: numeroFormatado,
+      text: mensagem_texto.trim()
+    };
 
     console.log('🎯 Endpoint:', endpoint);
-    console.log('📦 Payload Evolution (truncado):', JSON.stringify(requestPayload).substring(0, 200));
-    console.log('📱 Número: ' + numeroFormatado + ' | Texto: ' + (mensagem_texto?.substring(0, 50) || 'nenhum'));
+    console.log('📦 Payload Evolution:', JSON.stringify(requestPayload));
+    console.log('📱 Número: ' + numeroFormatado + ' | Texto: ' + mensagem_texto.substring(0, 50));
 
     // Enviar para Evolution API
     console.log('📤 Enviando para Evolution API...');
@@ -194,21 +169,12 @@ Deno.serve(async (req) => {
     console.log('🏢 Empresa ID final para salvar mensagem:', empresaIdFinal);
 
     // Determinar tipo de conteúdo
-    let tipoConteudo = 'texto';
-    let textoMensagem = mensagem_texto?.trim() || '';
-    
+    let tipo_conteudo = 'texto';
     if (arquivo && arquivo.base64) {
-      const tipoMIME = arquivo.tipo || 'application/octet-stream';
-      const tipoArquivo = tipoMIME.split('/')[0];
-      
-      if (tipoArquivo === 'image') tipoConteudo = 'imagem';
-      else if (tipoArquivo === 'audio') tipoConteudo = 'audio';
-      else if (tipoArquivo === 'video') tipoConteudo = 'video';
-      else if (tipoMIME.includes('pdf') || tipoArquivo === 'application') tipoConteudo = 'pdf';
-      
-      if (!textoMensagem) {
-        textoMensagem = arquivo.nome || 'Arquivo';
-      }
+      if (arquivo.tipo.startsWith('image')) tipo_conteudo = 'imagem';
+      else if (arquivo.tipo.startsWith('audio')) tipo_conteudo = 'audio';
+      else if (arquivo.tipo.startsWith('video')) tipo_conteudo = 'video';
+      else if (arquivo.tipo === 'application/pdf') tipo_conteudo = 'pdf';
     }
 
     const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
@@ -217,8 +183,8 @@ Deno.serve(async (req) => {
       remetente: 'vendedor',
       usuario_id: user.id,
       usuario_nome: user.full_name,
-      tipo_conteudo: tipoConteudo,
-      texto: textoMensagem,
+      tipo_conteudo: tipo_conteudo,
+      texto: mensagem_texto || (arquivo ? `📎 ${arquivo.nome}` : ''),
       arquivo_url: null,
       arquivo_nome: arquivo?.nome || null,
       arquivo_tamanho: 0,
