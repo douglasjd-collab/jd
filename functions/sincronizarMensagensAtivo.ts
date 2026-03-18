@@ -172,9 +172,22 @@ Deno.serve(async (req) => {
             if (resolvedPhone) {
               remoteJid = `${resolvedPhone}@s.whatsapp.net`;
             } else {
-              // Sem mapeamento — ignorar completamente, NUNCA criar com lid_ falso
-              console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (pushName: ${pushName}) — ignorado`);
-              ignoradas++; continue;
+              // Buscar no banco ContatoWhatsapp pelo lid_jid como último recurso
+              try {
+                const contatosLid = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+                  empresa_id: JD_ID, lid_jid: lidNumerico
+                });
+                if (contatosLid.length > 0 && contatosLid[0].telefone) {
+                  remoteJid = `${contatosLid[0].telefone}@s.whatsapp.net`;
+                  console.log(`✅ @lid resolvido via ContatoWhatsapp (ativo): ${remoteJidRaw} → ${contatosLid[0].telefone}`);
+                } else {
+                  console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (pushName: ${pushName}) — ignorado`);
+                  ignoradas++; continue;
+                }
+              } catch (_) {
+                console.warn(`⚠️ @lid não resolvível (erro banco): ${remoteJidRaw} — ignorado`);
+                ignoradas++; continue;
+              }
             }
           }
         }
