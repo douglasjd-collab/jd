@@ -11,6 +11,30 @@ export default function MensagemItem({ mensagem }) {
   console.log('[MensagemItem] Renderizando:', { tipo: mensagem.tipo_conteudo, texto: mensagem.texto?.substring(0, 50), remetente: mensagem.remetente });
   
   const isVendedor = mensagem.remetente === 'vendedor';
+
+  // Auto-baixar áudio da Evolution na primeira renderização (cache local)
+  useEffect(() => {
+    if (
+      mensagem.tipo_conteudo === 'audio' &&
+      mensagem.arquivo_url &&
+      !audioUrl?.startsWith('blob:') &&
+      !loadingAudio &&
+      mensagem.arquivo_url.includes('evolution') // URL temporária da Evolution
+    ) {
+      setLoadingAudio(true);
+      base44.functions.invoke('baixarMidiaWhatsApp', {
+        mensagem_id: mensagem.id,
+        arquivo_url: mensagem.arquivo_url
+      })
+        .then(res => {
+          if (res.data?.arquivo_url) {
+            setAudioUrl(res.data.arquivo_url);
+          }
+        })
+        .catch(err => console.error('Erro ao baixar áudio:', err))
+        .finally(() => setLoadingAudio(false));
+    }
+  }, [mensagem.id, mensagem.tipo_conteudo, mensagem.arquivo_url]);
   
   const formatarTexto = (texto) => {
     if (!texto) return null;
