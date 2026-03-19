@@ -116,7 +116,9 @@ Deno.serve(async (req) => {
         });
 
         if (fetchRes.ok) {
-          mimeType = fetchRes.headers.get('content-type') || 'audio/ogg';
+          const ct = fetchRes.headers.get('content-type') || '';
+          // Não sobrescrever com octet-stream genérico — manter tipo da mensagem
+          if (ct && ct !== 'application/octet-stream') mimeType = ct;
           const arrayBuffer = await fetchRes.arrayBuffer();
           const uint8Array = new Uint8Array(arrayBuffer);
           let binary = '';
