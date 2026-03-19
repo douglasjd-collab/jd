@@ -117,7 +117,13 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
           reader.readAsDataURL(arquivo);
         });
         nomeArquivo = arquivo.name;
-        tipoArquivo = arquivo.type;
+        // Garantir tipo MIME correto mesmo se o browser não detectar
+        tipoArquivo = arquivo.type || '';
+        if (!tipoArquivo) {
+          const ext = nomeArquivo.split('.').pop()?.toLowerCase();
+          const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg' };
+          tipoArquivo = mimeMap[ext] || 'application/octet-stream';
+        }
       }
 
       await onEnviar({ 
