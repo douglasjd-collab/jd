@@ -45,11 +45,11 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, processadas: 0, total: 0 });
     }
 
-    // Filtrar mensagens válidas (não de grupos, não enviadas por nós)
+    // Filtrar mensagens válidas (não de grupos) — incluir fromMe=true (enviadas pelo celular)
     const mensagensValidas = mensagens.filter(m => {
       const key = m.key || {};
       const jid = key.remoteJid || '';
-      return key.id && !key.fromMe && !jid.includes('@g.us') && !jid.includes('@broadcast');
+      return key.id && !jid.includes('@g.us') && !jid.includes('@broadcast');
     });
 
     if (mensagensValidas.length === 0) {
