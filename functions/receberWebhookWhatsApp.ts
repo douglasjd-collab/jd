@@ -239,20 +239,23 @@ async function processarWebhook(req, rawBody) {
     tipo = 'audio'; 
     conteudo = 'Áudio';
     arquivo_url = message.audioMessage?.url || message.pttMessage?.url || '';
-    arquivo_tamanho = message.audioMessage?.fileLength || message.pttMessage?.fileLength || 0;
+    const fla = message.audioMessage?.fileLength || message.pttMessage?.fileLength || 0;
+    arquivo_tamanho = (typeof fla === 'object' && fla !== null && 'low' in fla) ? (fla.low + fla.high * 4294967296) : Number(fla) || 0;
   }
   else if (message.videoMessage) { 
     tipo = 'video'; 
     conteudo = message.videoMessage.caption || 'Vídeo';
     arquivo_url = message.videoMessage.url || '';
-    arquivo_tamanho = message.videoMessage.fileLength || 0;
+    const flv = message.videoMessage.fileLength || 0;
+    arquivo_tamanho = (typeof flv === 'object' && flv !== null && 'low' in flv) ? (flv.low + flv.high * 4294967296) : Number(flv) || 0;
   }
   else if (message.documentMessage) { 
     tipo = 'pdf'; 
     conteudo = message.documentMessage.title || 'Documento';
     arquivo_url = message.documentMessage.url || '';
     arquivo_nome = message.documentMessage.fileName || 'Documento';
-    arquivo_tamanho = message.documentMessage.fileLength || 0;
+    const fld = message.documentMessage.fileLength || 0;
+    arquivo_tamanho = (typeof fld === 'object' && fld !== null && 'low' in fld) ? (fld.low + fld.high * 4294967296) : Number(fld) || 0;
   }
   else if (message.stickerMessage) { 
     tipo = 'imagem'; 
