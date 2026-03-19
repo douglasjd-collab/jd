@@ -196,7 +196,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
         type="file"
         onChange={handleArquivo}
         className="hidden"
-        accept="image/*,audio/*,video/*,application/pdf"
+        accept="image/*,audio/*,video/*,application/pdf,.pdf"
       />
 
       {/* Quick Replies Popup */}
