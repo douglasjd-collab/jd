@@ -223,7 +223,11 @@ Deno.serve(async (req) => {
 
       // Upload para Base44 para URL permanente
       try {
-        const uploadRes = await base44.integrations.Core.UploadFile({ file: arquivo.base64 });
+        const binaryStr = atob(arquivo.base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: arquivo.tipo || 'application/octet-stream' });
+        const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
         if (uploadRes?.file_url) {
           arquivo_url_permanente = uploadRes.file_url;
           console.log('✅ Arquivo salvo permanentemente:', arquivo_url_permanente);
