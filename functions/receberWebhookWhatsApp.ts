@@ -174,18 +174,15 @@ async function processarWebhook(req, rawBody) {
   let colaboradorId = null;
   let tipoConexao = 'empresa';
 
-  // Bloqueio @lid sem resolução
-  if (remoteJidOriginal.includes('@lid') || remoteJidOriginal.startsWith('lid_')) {
-    if (!remoteJidRaw.includes('@s.whatsapp.net') && !remoteJidRaw.includes('@c.us')) {
-      console.warn(`⚠️ JID lid_ sem resolução: "${remoteJidOriginal}" — ignorado`);
-      return;
-    }
-  }
-
   let telefoneLimpo = extrairTelefoneValido(remoteJidRaw);
 
-  if (!telefoneLimpo && remoteJidRaw.includes('@lid')) {
-    const lidNumerico = remoteJidRaw.replace(/@lid/g, '').replace(/\D/g, '');
+  // Tentar resolver @lid (tanto do remoteJidRaw quanto do remoteJidOriginal)
+  const jidParaResolver = remoteJidRaw.includes('@lid') ? remoteJidRaw
+    : remoteJidOriginal.includes('@lid') ? remoteJidOriginal : null;
+
+  if (!telefoneLimpo && jidParaResolver) {
+    const lidNumerico = jidParaResolver.replace(/@lid/g, '').replace(/\D/g, '');
+    console.log(`🔍 Tentando resolver LID: "${lidNumerico}"`);
     // Tentar resolver via ContatoWhatsapp e Evolution em paralelo
     const [contatosLid, empresaData] = await Promise.all([
       base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, lid_jid: lidNumerico }),
