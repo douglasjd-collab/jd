@@ -283,8 +283,18 @@ export default function BatePapo() {
         refetchMensagens();
       }
 
-      // Notificação apenas para mensagens de cliente
-      if (msgData?.remetente === 'cliente') {
+      // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
+      if (msgData?.remetente === 'cliente' && msgData?.id) {
+        // Checar se já notificou esta mensagem
+        if (notificadasRef.current.has(msgData.id)) return;
+        notificadasRef.current.add(msgData.id);
+
+        // Só notificar mensagens recentes (menos de 30 segundos)
+        const dataEnvio = msgData.data_envio ? new Date(msgData.data_envio) : null;
+        const agora = new Date();
+        const diffSegundos = dataEnvio ? (agora - dataEnvio) / 1000 : 0;
+        if (diffSegundos > 30) return;
+
         const conversa = conversasRef.current.find(c => c.id === msgData.conversa_id);
         const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
         const textoMsg = msgData.texto || '📎 Arquivo recebido';
@@ -297,7 +307,7 @@ export default function BatePapo() {
 
         if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
           const notif = new Notification(`💬 ${nomeRemetente}`, {
-            body: textoMsg, icon: '/favicon.ico', tag: msgData.conversa_id,
+            body: textoMsg, icon: '/favicon.ico', tag: msgData.id,
           });
           notif.onclick = () => { window.focus(); if (conversa) selecionarConversa(conversa); notif.close(); };
         }
