@@ -789,7 +789,7 @@ export default function BatePapo() {
                       ) : (
                         <div className="space-y-3 pb-4">
                           {mensagens.map((msg) => (
-                            <MensagemItem key={msg.id} mensagem={msg} />
+                            <MensagemItem key={msg.id} mensagem={msg} conversaId={conversaSelecionada?.id} />
                           ))}
                           <div ref={mensagensEndRef} />
                         </div>
