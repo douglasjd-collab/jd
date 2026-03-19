@@ -48,8 +48,16 @@ Deno.serve(async (req) => {
 
     console.log(`📥 Baixando mídia | msgId: ${whatsappMessageId} | jid: ${remoteJid}`);
 
+    // Definir mimeType padrão baseado no tipo da mensagem
+    const tipoParaMime = {
+      'audio': 'audio/ogg',
+      'imagem': 'image/jpeg',
+      'video': 'video/mp4',
+      'pdf': 'application/pdf',
+      'documento': 'application/octet-stream'
+    };
     let base64Data = null;
-    let mimeType = 'audio/ogg';
+    let mimeType = tipoParaMime[mensagem.tipo_conteudo] || 'audio/ogg';
 
     // Método 1: Usar Evolution getBase64FromMediaMessage (descriptografa WhatsApp CDN)
     if (whatsappMessageId && remoteJid) {
