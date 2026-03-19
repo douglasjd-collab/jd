@@ -128,8 +128,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Não foi possível baixar a mídia' }, { status: 500 });
     }
 
-    // Upload para Base44 (armazenamento permanente)
-    const uploadRes = await base44.integrations.Core.UploadFile({ file: base64Data });
+    // Converter base64 para Blob e fazer upload para Base44 (armazenamento permanente)
+    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const blob = new Blob([binaryData], { type: mimeType });
+    const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
     if (!uploadRes?.file_url) {
       return Response.json({ error: 'Upload falhou' }, { status: 500 });
     }
