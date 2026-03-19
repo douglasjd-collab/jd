@@ -222,7 +222,7 @@ export default function BatePapo() {
         return msgs;
       },
       staleTime: 0,
-      refetchInterval: 1000, // Fallback de polling a cada 1s caso subscription falhe
+      refetchInterval: 500, // Fallback de polling a cada 500ms caso subscription falhe
   });
 
   // Solicitar permissão para notificações do browser na primeira vez
