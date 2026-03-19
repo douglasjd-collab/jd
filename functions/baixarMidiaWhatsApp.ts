@@ -13,36 +13,55 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing params' }, { status: 400 });
     }
 
-    // Baixar arquivo da Evolution (URL com autenticação via query param ou header)
     console.log(`📥 Baixando mídia: ${arquivo_url.substring(0, 100)}...`);
-    
-    const fetchRes = await fetch(arquivo_url, {
+
+    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY') || '';
+
+    // Tentar baixar com API key (necessário para URLs da Evolution API)
+    let fetchRes = await fetch(arquivo_url, {
       method: 'GET',
-      headers: { 'User-Agent': 'Base44-WhatsApp-CRM' }
+      headers: { 
+        'User-Agent': 'Base44-WhatsApp-CRM',
+        'apikey': evolutionKey
+      }
     });
+
+    // Fallback sem header se falhar
+    if (!fetchRes.ok) {
+      console.warn(`⚠️ Tentativa com apikey falhou (${fetchRes.status}), tentando sem...`);
+      fetchRes = await fetch(arquivo_url, {
+        method: 'GET',
+        headers: { 'User-Agent': 'Base44-WhatsApp-CRM' }
+      });
+    }
 
     if (!fetchRes.ok) {
       console.error(`❌ Erro ao baixar: ${fetchRes.status}`);
       return Response.json({ error: `Download failed: ${fetchRes.status}` }, { status: 500 });
     }
 
+    const contentType = fetchRes.headers.get('content-type') || 'audio/ogg';
     const arrayBuffer = await fetchRes.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: fetchRes.headers.get('content-type') || 'application/octet-stream' });
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // Converter para base64 em chunks para evitar stack overflow
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
+    }
+    const base64 = btoa(binary);
 
-    // Fazer upload para Base44 com base64
-    const uploadRes = await base44.integrations.Core.UploadFile({
-      file: base64
-    });
+    // Upload para Base44 (storage permanente)
+    const uploadRes = await base44.integrations.Core.UploadFile({ file: base64 });
 
     if (!uploadRes?.file_url) {
-      console.error('❌ Upload falhou');
       return Response.json({ error: 'Upload failed' }, { status: 500 });
     }
 
     console.log(`✅ Mídia salva: ${uploadRes.file_url}`);
 
-    // Atualizar a mensagem com a nova URL
+    // Atualizar a mensagem com a URL permanente
     await base44.entities.MensagemWhatsapp.update(mensagem_id, {
       arquivo_url: uploadRes.file_url
     });
