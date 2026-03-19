@@ -13,8 +13,85 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
   const [showScroll, setShowScroll] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [erro, setErro] = useState(null);
+  const [gravando, setGravando] = useState(false);
+  const [tempoGravacao, setTempoGravacao] = useState(0);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  const iniciarGravacao = async () => {
+    setErro(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start(100);
+      setGravando(true);
+      setTempoGravacao(0);
+      timerRef.current = setInterval(() => setTempoGravacao(t => t + 1), 1000);
+    } catch (err) {
+      setErro('Permissão de microfone negada. Verifique as configurações do navegador.');
+    }
+  };
+
+  const cancelarGravacao = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current.stop();
+    }
+    audioChunksRef.current = [];
+    setGravando(false);
+    setTempoGravacao(0);
+  };
+
+  const enviarAudio = async () => {
+    if (!mediaRecorderRef.current) return;
+    clearInterval(timerRef.current);
+
+    await new Promise((resolve) => {
+      mediaRecorderRef.current.onstop = resolve;
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
+    });
+
+    const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      setGravando(false);
+      setTempoGravacao(0);
+      setErro(null);
+      try {
+        await onEnviar({
+          texto: '',
+          arquivo: { base64, nome: 'audio.webm', tipo: 'audio/webm' }
+        });
+      } catch (err) {
+        setErro(err.message || 'Erro ao enviar áudio.');
+      }
+    };
+    reader.readAsDataURL(blob);
+  };
+
+  const formatarTempo = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   const handleEnviar = async (e) => {
     e.preventDefault();
