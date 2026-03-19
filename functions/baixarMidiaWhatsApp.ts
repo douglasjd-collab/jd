@@ -128,11 +128,32 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Não foi possível baixar a mídia' }, { status: 500 });
     }
 
-    // Upload para Base44 usando data URL (formato aceito pelo SDK)
-    const dataUrl = `data:${mimeType};base64,${base64Data}`;
-    const uploadRes = await base44.integrations.Core.UploadFile({ file: dataUrl });
+    // Upload para Base44 usando multipart/form-data com Blob
+    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const ext = mimeType.split('/')[1]?.split(';')[0]?.replace('ogg', 'ogg') || 'bin';
+    const fileName = `audio.${ext}`;
+    const blob = new Blob([binaryData], { type: mimeType });
+
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+
+    const appId = Deno.env.get('BASE44_APP_ID');
+    const authHeader = req.headers.get('Authorization') || '';
+    const uploadFetch = await fetch(`https://api.base44.com/api/apps/${appId}/integrations/Core/UploadFile`, {
+      method: 'POST',
+      headers: { 'Authorization': authHeader },
+      body: formData
+    });
+
+    if (!uploadFetch.ok) {
+      const errText = await uploadFetch.text();
+      console.error('Upload falhou:', uploadFetch.status, errText.substring(0, 200));
+      return Response.json({ error: 'Upload falhou: ' + errText.substring(0, 200) }, { status: 500 });
+    }
+
+    const uploadRes = await uploadFetch.json();
     if (!uploadRes?.file_url) {
-      return Response.json({ error: 'Upload falhou' }, { status: 500 });
+      return Response.json({ error: 'Upload falhou - sem file_url' }, { status: 500 });
     }
 
     console.log(`✅ Mídia salva permanentemente: ${uploadRes.file_url}`);
