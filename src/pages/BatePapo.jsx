@@ -239,6 +239,7 @@ export default function BatePapo() {
   // Usar ref para ter acesso ao valor atual sem re-criar a subscription
   const conversaSelecionadaIdRef = React.useRef(conversaSelecionadaId);
   const conversasRef = React.useRef(conversas);
+  const notificadasRef = React.useRef(new Set()); // IDs já notificados — evita duplicatas
   React.useEffect(() => { conversaSelecionadaIdRef.current = conversaSelecionadaId; }, [conversaSelecionadaId]);
   React.useEffect(() => { conversasRef.current = conversas; }, [conversas]);
 
