@@ -6,8 +6,15 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 
 export default function MensagemItem({ mensagem }) {
-  const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url);
+  const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url || null);
   const [loadingMedia, setLoadingMedia] = useState(false);
+
+  // Atualizar mediaUrl se a mensagem for atualizada externamente
+  React.useEffect(() => {
+    if (mensagem.arquivo_url && mensagem.arquivo_url !== mediaUrl) {
+      setMediaUrl(mensagem.arquivo_url);
+    }
+  }, [mensagem.arquivo_url]);
 
   console.log('[MensagemItem] Renderizando:', { tipo: mensagem.tipo_conteudo, texto: mensagem.texto?.substring(0, 50), remetente: mensagem.remetente });
   
