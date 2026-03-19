@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Music, Check, CheckCheck, Loader2, Download, FileAudio, Mic } from 'lucide-react';
+import { FileText, Music, Check, CheckCheck, Loader2, Download, FileAudio, Mic, X, Maximize2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export default function MensagemItem({ mensagem, conversaId }) {
   const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url || null);
