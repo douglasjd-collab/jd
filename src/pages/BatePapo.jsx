@@ -169,14 +169,16 @@ export default function BatePapo() {
       return data.filter(c => c.id && c.cliente_telefone);
     },
     refetchInterval: false,
-    onSuccess: (data) => {
-      if (data.length > 0 && !conversaSelecionada) {
-        const ultimaId = localStorage.getItem('ultimaConversaId');
-        const ultimaConversa = ultimaId ? data.find(c => c.id === ultimaId) : null;
-        setConversaSelecionada(ultimaConversa || data[0]);
-      }
-    }
   });
+
+  // Selecionar conversa inicial quando a lista carrega
+  useEffect(() => {
+    if (conversas.length > 0 && !conversaSelecionada) {
+      const ultimaId = localStorage.getItem('ultimaConversaId');
+      const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
+      selecionarConversa(ultimaConversa || conversas[0]);
+    }
+  }, [conversas]);
 
   // Real-time: atualizar lista de conversas quando chegar nova mensagem
   useEffect(() => {
