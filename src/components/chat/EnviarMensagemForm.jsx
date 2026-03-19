@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, MicOff, X } from 'lucide-react';
 
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
