@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 
-export default function MensagemItem({ mensagem }) {
+export default function MensagemItem({ mensagem, conversaId }) {
   const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url || null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio' ? mensagem.texto : null);
