@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
           arquivo_tamanho: arquivo_tamanho || 0,
           whatsapp_message_id: messageId,
           data_envio: timestamp,
-          status: 'entregue'
+          status: fromMe ? 'enviada' : 'entregue'
         });
 
         processadas++;
