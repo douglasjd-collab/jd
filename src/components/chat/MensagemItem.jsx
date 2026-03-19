@@ -13,17 +13,18 @@ export default function MensagemItem({ mensagem }) {
   
   const isVendedor = mensagem.remetente === 'vendedor';
 
-  // Auto-baixar mídia (áudio/imagem) da Evolution na primeira renderização (cache local)
+  // Auto-baixar mídia da Evolution/WhatsApp CDN e salvar permanentemente
   useEffect(() => {
-    const isEvolutionUrl = mensagem.arquivo_url?.includes('evolution') || mensagem.arquivo_url?.includes('api.');
-    const isBase44Url = mediaUrl?.includes('base44') || mediaUrl?.includes('media.');
+    // URLs do base44 são permanentes, não precisam baixar novamente
+    const isPermanente = mediaUrl?.includes('base44') || mediaUrl?.includes('supabase') || mediaUrl?.includes('amazonaws');
+    const tiposMidia = ['audio', 'imagem', 'video', 'pdf', 'documento'];
     
     if (
-      ['audio', 'imagem'].includes(mensagem.tipo_conteudo) &&
+      tiposMidia.includes(mensagem.tipo_conteudo) &&
       mensagem.arquivo_url &&
-      isEvolutionUrl &&
-      !isBase44Url &&
-      !loadingMedia
+      !isPermanente &&
+      !loadingMedia &&
+      !mensagem.id?.startsWith('temp_')
     ) {
       setLoadingMedia(true);
       base44.functions.invoke('baixarMidiaWhatsApp', {
