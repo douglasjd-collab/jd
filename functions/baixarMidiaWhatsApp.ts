@@ -128,23 +128,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Não foi possível baixar a mídia' }, { status: 500 });
     }
 
-    // Upload para Base44 passando Blob diretamente ao SDK
-    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    const blob = new Blob([binaryData], { type: mimeType });
+    console.log(`✅ base64 pronto, retornando para upload no frontend | tipo: ${mimeType} | tamanho: ${base64Data.length}`);
 
-    const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
-    if (!uploadRes?.file_url) {
-      return Response.json({ error: 'Upload falhou - sem file_url' }, { status: 500 });
-    }
-
-    console.log(`✅ Mídia salva permanentemente: ${uploadRes.file_url}`);
-
-    // Atualizar mensagem com URL permanente
-    await base44.entities.MensagemWhatsapp.update(mensagem_id, {
-      arquivo_url: uploadRes.file_url
-    });
-
-    return Response.json({ ok: true, arquivo_url: uploadRes.file_url });
+    // Retornar base64 para o frontend fazer o upload permanente via SDK browser
+    return Response.json({ ok: true, base64: base64Data, mimeType, mensagem_id });
 
   } catch (error) {
     console.error('❌ Erro:', error.message);
