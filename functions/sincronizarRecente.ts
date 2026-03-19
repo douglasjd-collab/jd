@@ -56,14 +56,11 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, processadas: 0, total: mensagens.length });
     }
 
-    // Buscar IDs já existentes no banco em LOTE (uma única query por conversa)
-    // Usamos o timestamp mínimo das mensagens para filtrar
-    const minTimestamp = Math.min(...mensagensValidas.map(m => m.messageTimestamp || 0));
-    const dataMinima = new Date(minTimestamp * 1000).toISOString();
+    // Buscar IDs já existentes no banco em LOTE
     const existentesNoBanco = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-      { empresa_id: JD_ID, remetente: 'cliente' },
+      { empresa_id: JD_ID },
       '-data_envio',
-      50
+      100
     );
     const idsExistentes = new Set(existentesNoBanco.map(m => m.whatsapp_message_id).filter(Boolean));
 
