@@ -12,6 +12,7 @@ export default function MensagemItem({ mensagem, conversaId }) {
   const [transcricao, setTranscricao] = useState(mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio' ? mensagem.texto : null);
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [pdfAberto, setPdfAberto] = useState(false);
+  const [pdfCarregado, setPdfCarregado] = useState(false);
 
   // Atualizar mediaUrl se a mensagem for atualizada externamente
   useEffect(() => {
