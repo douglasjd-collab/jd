@@ -164,11 +164,11 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
   const handleArquivo = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const tipos = ['image/jpeg', 'image/png', 'image/gif', 'audio/mpeg', 'video/mp4', 'application/pdf'];
-      if (tipos.includes(file.type)) {
+      const aceito = file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/') || file.type === 'application/pdf';
+      if (aceito) {
         setArquivo(file);
       } else {
-        alert('Tipo de arquivo não suportado');
+        alert('Tipo de arquivo não suportado. Use imagem, áudio, vídeo ou PDF.');
       }
     }
   };
