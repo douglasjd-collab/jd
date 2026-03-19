@@ -199,23 +199,95 @@ export default function MensagemItem({ mensagem, conversaId }) {
         );
 
       case 'pdf':
-      case 'documento':
+      case 'documento': {
+        const urlDoc = mediaUrl || mensagem.arquivo_url;
+        const nomeDoc = mensagem.arquivo_nome || 'Documento PDF';
+        const isPdf = nomeDoc.toLowerCase().endsWith('.pdf') || mensagem.tipo_conteudo === 'pdf';
         return (
-          <div className="flex items-center gap-2 p-3 bg-white/20 rounded-lg w-fit">
-            <FileText className="w-5 h-5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="truncate font-medium text-sm">{mensagem.arquivo_nome || 'Documento PDF'}</p>
-              {mensagem.arquivo_tamanho > 0 && (
-                <p className="text-xs opacity-75">{(mensagem.arquivo_tamanho / 1024 / 1024).toFixed(2)} MB</p>
+          <>
+            <div
+              className={`flex flex-col rounded-xl overflow-hidden w-56 cursor-pointer border ${isVendedor ? 'border-white/20 bg-white/10' : 'border-slate-200 bg-slate-50'}`}
+              onClick={() => urlDoc && setPdfAberto(true)}
+            >
+              {/* Preview da capa do PDF */}
+              {urlDoc && isPdf ? (
+                <div className="relative w-full h-36 bg-slate-100 flex items-center justify-center overflow-hidden">
+                  <iframe
+                    src={`${urlDoc}#page=1&view=FitH&toolbar=0&scrollbar=0&navpanes=0`}
+                    className="w-full h-full border-0 pointer-events-none"
+                    title="preview-pdf"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 hover:opacity-100 transition-opacity">
+                    <Maximize2 className="w-8 h-8 text-white drop-shadow" />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-28 bg-red-50 flex items-center justify-center">
+                  <FileText className="w-12 h-12 text-red-400" />
+                </div>
               )}
+              {/* Rodapé */}
+              <div className={`flex items-center gap-2 px-3 py-2 ${isVendedor ? 'bg-white/10' : 'bg-white border-t border-slate-100'}`}>
+                <FileText className="w-4 h-4 flex-shrink-0 text-red-500" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-xs font-medium">{nomeDoc}</p>
+                  {mensagem.arquivo_tamanho > 0 && (
+                    <p className="text-[10px] opacity-60">{(mensagem.arquivo_tamanho / 1024 / 1024).toFixed(2)} MB</p>
+                  )}
+                </div>
+                {urlDoc && (
+                  <a
+                    href={urlDoc}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="flex-shrink-0"
+                  >
+                    <Download className="w-4 h-4 hover:opacity-70 transition-opacity" />
+                  </a>
+                )}
+              </div>
             </div>
-            {mensagem.arquivo_url && (
-              <a href={mensagem.arquivo_url} target="_blank" rel="noopener noreferrer" className="ml-2">
-                <Download className="w-4 h-4 hover:opacity-70 transition-opacity" />
-              </a>
-            )}
-          </div>
+
+            {/* Modal PDF completo */}
+            <Dialog open={pdfAberto} onOpenChange={setPdfAberto}>
+              <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-white shrink-0">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-red-500" />
+                    <span className="font-medium text-sm truncate max-w-xs">{nomeDoc}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {urlDoc && (
+                      <a href={urlDoc} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+                          <Download className="w-3.5 h-3.5" /> Baixar
+                        </Button>
+                      </a>
+                    )}
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPdfAberto(false)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {urlDoc ? (
+                    <iframe
+                      src={urlDoc}
+                      className="w-full h-full border-0"
+                      title={nomeDoc}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-slate-400">
+                      <p>Documento não disponível</p>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
         );
+      }
 
       default:
         return <p className="text-slate-500 italic text-sm">Tipo não suportado</p>;
