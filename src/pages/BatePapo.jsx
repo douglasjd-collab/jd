@@ -210,18 +210,19 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
-        // Query direta no banco — muito mais rápida que invocar função backend
+        // Buscar as 300 MAIS RECENTES (desc) e inverter para exibir em ordem cronológica
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionadaId },
-          'data_envio',
+          '-data_envio',
           300
         );
+        const ordenadas = [...msgs].reverse();
         // Marcar mensagens do cliente como lidas
-        const naoLidas = msgs.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
+        const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
         for (const msg of naoLidas) {
           base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {});
         }
-        return msgs;
+        return ordenadas;
       },
       staleTime: 0,
       refetchInterval: false, // Real-time via subscription — sem polling
