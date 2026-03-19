@@ -131,9 +131,42 @@ Deno.serve(async (req) => {
                 remoteJid = `${contatosLid[0].telefone}@s.whatsapp.net`;
                 console.log(`✅ @lid resolvido via ContatoWhatsapp: ${remoteJidRaw} → ${contatosLid[0].telefone}`);
               } else {
-                // Sem mapeamento — ignorar completamente, nunca criar com lid_
-                console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (${pushName}) — ignorado`);
-                continue;
+                // Tentar fetchProfile como último recurso
+                try {
+                  const profileRes = await fetch(`${evolutionUrl}/contact/fetchProfile/${instanceName}`, {
+                    method: 'POST',
+                    headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ number: lidNumerico })
+                  });
+                  if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    const jidReal = profileData?.jid || profileData?.wuid || profileData?.id || '';
+                    if (jidReal.includes('@s.whatsapp.net') || jidReal.includes('@c.us')) {
+                      const tel = jidReal.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+                      if (tel.startsWith('55') && (tel.length === 12 || tel.length === 13)) {
+                        remoteJid = `${tel}@s.whatsapp.net`;
+                        // Salvar mapeamento para próximas vezes
+                        base44.asServiceRole.entities.ContatoWhatsapp.create({
+                          empresa_id: JD_ID, telefone: tel, nome: pushName || tel,
+                          lid_jid: lidNumerico, ultima_atualizacao: new Date().toISOString()
+                        }).catch(() => {});
+                        console.log(`✅ @lid resolvido via fetchProfile: ${remoteJidRaw} → ${tel}`);
+                      } else {
+                        console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (${pushName}) — ignorado`);
+                        continue;
+                      }
+                    } else {
+                      console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (${pushName}) — ignorado`);
+                      continue;
+                    }
+                  } else {
+                    console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (${pushName}) — ignorado`);
+                    continue;
+                  }
+                } catch (_) {
+                  console.warn(`⚠️ @lid não resolvível: ${remoteJidRaw} (${pushName}) — ignorado`);
+                  continue;
+                }
               }
             } catch (_) {
               console.warn(`⚠️ @lid não resolvível (erro banco): ${remoteJidRaw} — ignorado`);
