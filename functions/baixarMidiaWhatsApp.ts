@@ -13,12 +13,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'mensagem_id obrigatório' }, { status: 400 });
     }
 
-    // Buscar mensagem do banco para pegar whatsapp_message_id
-    const mensagens = await base44.entities.MensagemWhatsapp.filter({ id: mensagem_id });
+    // Buscar mensagem via service role para garantir acesso
+    const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ id: mensagem_id });
     const mensagem = mensagens?.[0];
     if (!mensagem) return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
 
-    // Verificar se já foi baixada (URL permanente)
+    // Se já tem URL permanente, retornar ela
     const urlAtual = mensagem.arquivo_url;
     if (urlAtual && (urlAtual.includes('base44') || urlAtual.includes('supabase') || urlAtual.includes('amazonaws'))) {
       return Response.json({ ok: true, arquivo_url: urlAtual });
@@ -40,15 +40,13 @@ Deno.serve(async (req) => {
     const conversaId = conversa_id || mensagem.conversa_id;
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ id: conversaId });
     const conversa = conversas?.[0];
-    const remoteJid = conversa?.cliente_telefone 
+    const remoteJid = conversa?.cliente_telefone
       ? `${conversa.cliente_telefone.replace(/\D/g, '')}@s.whatsapp.net`
       : '';
 
     const whatsappMessageId = mensagem.whatsapp_message_id;
 
-    console.log(`📥 Baixando mídia | msgId: ${whatsappMessageId} | jid: ${remoteJid}`);
-
-    // Definir mimeType padrão baseado no tipo da mensagem
+    // Mime type padrão pelo tipo da mensagem
     const tipoParaMime = {
       'audio': 'audio/ogg',
       'imagem': 'image/jpeg',
@@ -57,68 +55,51 @@ Deno.serve(async (req) => {
       'documento': 'application/octet-stream'
     };
     let base64Data = null;
-    let mimeType = tipoParaMime[mensagem.tipo_conteudo] || 'audio/ogg';
+    let mimeType = tipoParaMime[mensagem.tipo_conteudo] || 'application/octet-stream';
 
-    // Método 1: Usar Evolution getBase64FromMediaMessage (descriptografa WhatsApp CDN)
+    // Método 1: getBase64FromMediaMessage (descriptografa CDN do WhatsApp)
     if (whatsappMessageId && remoteJid) {
       try {
-        // Primeiro buscar o objeto completo da mensagem via findMessages
         const findRes = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
           method: 'POST',
           headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            where: { key: { id: whatsappMessageId } },
-            limit: 1
-          })
+          body: JSON.stringify({ where: { key: { id: whatsappMessageId } }, limit: 1 })
         });
-
         if (findRes.ok) {
           const findData = await findRes.json();
-          const records = Array.isArray(findData) ? findData : (findData.messages?.records || findData.messages || findData.records || []);
+          const records = Array.isArray(findData) ? findData
+            : (findData.messages?.records || findData.messages || findData.records || []);
           const msgObject = records[0];
-
           if (msgObject?.message) {
-            // Chamar getBase64FromMediaMessage com o objeto completo
             const b64Res = await fetch(`${evolutionUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
               method: 'POST',
               headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                message: {
-                  key: msgObject.key,
-                  message: msgObject.message
-                },
-                convertToMp4: false
-              })
+              body: JSON.stringify({ message: { key: msgObject.key, message: msgObject.message }, convertToMp4: false })
             });
-
             if (b64Res.ok) {
               const b64Data = await b64Res.json();
               if (b64Data?.base64) {
                 base64Data = b64Data.base64;
-                mimeType = b64Data.mimetype || 'audio/ogg';
-                console.log(`✅ base64 obtido via getBase64FromMediaMessage | tipo: ${mimeType}`);
+                mimeType = b64Data.mimetype || mimeType;
+                console.log(`✅ base64 via getBase64FromMediaMessage | tipo: ${mimeType}`);
               }
-            } else {
-              console.warn(`⚠️ getBase64FromMediaMessage falhou: ${b64Res.status}`);
             }
           }
         }
       } catch (e) {
-        console.warn('⚠️ Erro ao usar getBase64FromMediaMessage:', e.message);
+        console.warn('⚠️ getBase64FromMediaMessage falhou:', e.message);
       }
     }
 
-    // Método 2: Tentar baixar URL diretamente com apikey (para URLs do próprio Evolution)
+    // Método 2: Download direto da URL com apikey
     if (!base64Data && urlAtual) {
       try {
         const fetchRes = await fetch(urlAtual, {
           headers: { 'apikey': evolutionKey, 'User-Agent': 'Base44-WhatsApp-CRM' }
         });
-
         if (fetchRes.ok) {
           const ct = fetchRes.headers.get('content-type') || '';
-          // Não sobrescrever com octet-stream genérico — manter tipo da mensagem
-          if (ct && ct !== 'application/octet-stream') mimeType = ct;
+          if (ct && ct !== 'application/octet-stream') mimeType = ct.split(';')[0].trim();
           const arrayBuffer = await fetchRes.arrayBuffer();
           const uint8Array = new Uint8Array(arrayBuffer);
           let binary = '';
@@ -127,7 +108,7 @@ Deno.serve(async (req) => {
             binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
           }
           base64Data = btoa(binary);
-          console.log(`✅ Mídia baixada diretamente | tipo: ${mimeType}`);
+          console.log(`✅ Download direto | tipo: ${mimeType}`);
         }
       } catch (e) {
         console.warn('⚠️ Download direto falhou:', e.message);
@@ -138,10 +119,26 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Não foi possível baixar a mídia' }, { status: 500 });
     }
 
-    console.log(`✅ base64 pronto, retornando para upload no frontend | tipo: ${mimeType} | tamanho: ${base64Data.length}`);
+    // Converter base64 → Blob → File e fazer upload no backend (via service role)
+    const binaryStr = atob(base64Data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mimeType });
+    const ext = mimeType.split('/')[1]?.split(';')[0] || 'bin';
+    const file = new File([blob], `media_${mensagem_id}.${ext}`, { type: mimeType });
 
-    // Retornar base64 para o frontend fazer o upload permanente via SDK browser
-    return Response.json({ ok: true, base64: base64Data, mimeType, mensagem_id });
+    const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+    if (!uploadRes?.file_url) {
+      return Response.json({ error: 'Upload para storage falhou' }, { status: 500 });
+    }
+
+    // Salvar URL permanente na mensagem
+    await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, {
+      arquivo_url: uploadRes.file_url
+    });
+
+    console.log(`✅ Mídia salva permanentemente: ${uploadRes.file_url}`);
+    return Response.json({ ok: true, arquivo_url: uploadRes.file_url });
 
   } catch (error) {
     console.error('❌ Erro:', error.message);
