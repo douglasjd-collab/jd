@@ -215,62 +215,106 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
         </div>
       )}
 
-      <div className="flex items-end gap-2">
-        {/* Botões esquerda: Anexo + Figurinha */}
-        <div className="flex items-center gap-1 pb-1">
+      {/* UI de gravação ativa */}
+      {gravando ? (
+        <div className="flex items-center gap-3 px-2 py-1">
+          <div className="flex items-center gap-2 flex-1 bg-red-50 border border-red-200 rounded-2xl px-4 py-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+            <span className="text-sm font-medium text-red-600">Gravando...</span>
+            <span className="text-sm text-red-500 font-mono ml-auto">{formatarTempo(tempoGravacao)}</span>
+          </div>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-full hover:bg-slate-100 w-9 h-9"
+            onClick={cancelarGravacao}
+            className="rounded-full w-10 h-10 text-slate-500 hover:bg-slate-100 flex-shrink-0"
+            title="Cancelar"
           >
-            <Paperclip className="w-5 h-5 text-slate-500" />
+            <X className="w-5 h-5" />
           </Button>
           <Button
             type="button"
-            variant="ghost"
+            onClick={enviarAudio}
+            disabled={isLoading}
+            className="rounded-full w-10 h-10 bg-green-500 hover:bg-green-600 shadow-md flex-shrink-0"
             size="icon"
-            className="rounded-full hover:bg-slate-100 w-9 h-9"
+            title="Enviar áudio"
           >
-            <Smile className="w-5 h-5 text-slate-500" />
+            <Send className="w-4 h-4" />
           </Button>
         </div>
+      ) : (
+        <div className="flex items-end gap-2">
+          {/* Botões esquerda: Anexo + Figurinha */}
+          <div className="flex items-center gap-1 pb-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-full hover:bg-slate-100 w-9 h-9"
+            >
+              <Paperclip className="w-5 h-5 text-slate-500" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full hover:bg-slate-100 w-9 h-9"
+            >
+              <Smile className="w-5 h-5 text-slate-500" />
+            </Button>
+          </div>
 
-        {/* Textarea */}
-        <div className="flex-1">
-          <textarea
-            ref={textareaRef}
-            value={texto}
-            onChange={handleChange}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleEnviar(e);
-              }
-            }}
-            placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
-            rows={1}
-            className="msg-textarea w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm"
-            style={{
-              minHeight: '40px',
-              maxHeight: MAX_HEIGHT + 'px',
-              overflowY: 'hidden',
-              lineHeight: LINE_HEIGHT + 'px',
-            }}
-          />
+          {/* Textarea */}
+          <div className="flex-1">
+            <textarea
+              ref={textareaRef}
+              value={texto}
+              onChange={handleChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleEnviar(e);
+                }
+              }}
+              placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
+              rows={1}
+              className="msg-textarea w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm"
+              style={{
+                minHeight: '40px',
+                maxHeight: MAX_HEIGHT + 'px',
+                overflowY: 'hidden',
+                lineHeight: LINE_HEIGHT + 'px',
+              }}
+            />
+          </div>
+
+          {/* Botão gravar áudio */}
+          <Button
+            type="button"
+            onClick={iniciarGravacao}
+            disabled={isLoading}
+            className="rounded-full w-10 h-10 bg-slate-100 hover:bg-slate-200 flex-shrink-0 mb-0.5"
+            size="icon"
+            title="Gravar áudio"
+            variant="ghost"
+          >
+            <Mic className="w-5 h-5 text-slate-600" />
+          </Button>
+
+          {/* Botão enviar */}
+          <Button
+            type="submit"
+            disabled={(!texto.trim() && !arquivo) || isLoading}
+            className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
+            size="icon"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
         </div>
-
-        {/* Botão enviar */}
-        <Button
-          type="submit"
-          disabled={(!texto.trim() && !arquivo) || isLoading}
-          className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
-          size="icon"
-        >
-          <Send className="w-4 h-4" />
-        </Button>
-      </div>
+      )}
     </form>
   );
 }
