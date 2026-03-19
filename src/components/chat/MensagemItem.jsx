@@ -35,7 +35,8 @@ export default function MensagemItem({ mensagem, conversaId }) {
       setLoadingMedia(true);
       base44.functions.invoke('baixarMidiaWhatsApp', {
         mensagem_id: mensagem.id,
-        arquivo_url: mensagem.arquivo_url
+        arquivo_url: mensagem.arquivo_url,
+        conversa_id: conversaId || mensagem.conversa_id
       })
         .then(res => {
           if (res.data?.arquivo_url) {
