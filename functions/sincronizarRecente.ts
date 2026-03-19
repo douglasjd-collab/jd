@@ -26,10 +26,9 @@ Deno.serve(async (req) => {
       headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         where: {
-          key: { fromMe: false },
           messageTimestamp: { $gte: agoSeconds }
         },
-        limit: 30
+        limit: 50
       })
     });
 
