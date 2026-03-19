@@ -273,7 +273,7 @@ export default function MensagemItem({ mensagem, conversaId }) {
                 <div className="flex-1 overflow-hidden">
                   {urlDoc ? (
                     <iframe
-                      src={urlDoc}
+                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(urlDoc)}&embedded=true`}
                       className="w-full h-full border-0"
                       title={nomeDoc}
                     />
