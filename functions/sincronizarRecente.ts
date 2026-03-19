@@ -107,7 +107,8 @@ Deno.serve(async (req) => {
       try {
         const key = msg.key || {};
         const message = msg.message || {};
-        const pushName = msg.pushName || msg.senderName || 'Cliente';
+        const fromMe = key.fromMe === true;
+        const pushName = msg.pushName || msg.senderName || (fromMe ? 'Vendedor' : 'Cliente');
         const remoteJidRaw = key.remoteJid || '';
         const messageId = key.id;
 
