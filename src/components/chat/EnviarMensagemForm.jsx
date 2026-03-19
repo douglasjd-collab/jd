@@ -163,13 +163,18 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
 
   const handleArquivo = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const aceito = file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/') || file.type === 'application/pdf';
-      if (aceito) {
-        setArquivo(file);
-      } else {
-        alert('Tipo de arquivo não suportado. Use imagem, áudio, vídeo ou PDF.');
-      }
+    if (!file) return;
+    const nome = file.name?.toLowerCase() || '';
+    const tipo = file.type || '';
+    const aceito = tipo.startsWith('image/') || tipo.startsWith('audio/') || tipo.startsWith('video/') ||
+      tipo === 'application/pdf' || tipo.includes('pdf') ||
+      nome.endsWith('.pdf') || nome.endsWith('.jpg') || nome.endsWith('.jpeg') ||
+      nome.endsWith('.png') || nome.endsWith('.gif') || nome.endsWith('.mp3') ||
+      nome.endsWith('.mp4') || nome.endsWith('.webm') || nome.endsWith('.ogg');
+    if (aceito) {
+      setArquivo(file);
+    } else {
+      alert('Tipo de arquivo não suportado. Use imagem, áudio, vídeo ou PDF.');
     }
   };
 
