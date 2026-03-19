@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     const existentesNoBanco = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
       { empresa_id: JD_ID, remetente: 'cliente' },
       '-data_envio',
-      100
+      50
     );
     const idsExistentes = new Set(existentesNoBanco.map(m => m.whatsapp_message_id).filter(Boolean));
 
