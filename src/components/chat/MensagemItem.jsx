@@ -251,7 +251,7 @@ export default function MensagemItem({ mensagem, conversaId }) {
             </div>
 
             {/* Modal PDF completo */}
-            <Dialog open={pdfAberto} onOpenChange={setPdfAberto}>
+            <Dialog open={pdfAberto} onOpenChange={(v) => { setPdfAberto(v); if (!v) setPdfCarregado(false); }}>
               <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between px-4 py-3 border-b bg-white shrink-0">
                   <div className="flex items-center gap-2">
