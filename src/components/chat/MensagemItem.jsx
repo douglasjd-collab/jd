@@ -38,9 +38,35 @@ export default function MensagemItem({ mensagem, conversaId }) {
         arquivo_url: mensagem.arquivo_url,
         conversa_id: conversaId || mensagem.conversa_id
       })
-        .then(res => {
-          if (res.data?.arquivo_url) {
-            setMediaUrl(res.data.arquivo_url);
+        .then(async res => {
+          const data = res.data;
+          if (data?.arquivo_url) {
+            // Backend já retornou URL permanente (legado)
+            setMediaUrl(data.arquivo_url);
+          } else if (data?.base64 && data?.mimeType) {
+            // Novo fluxo: converter base64 → Blob → upload via SDK browser → URL permanente
+            try {
+              const binaryStr = atob(data.base64);
+              const bytes = new Uint8Array(binaryStr.length);
+              for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+              const blob = new Blob([bytes], { type: data.mimeType });
+
+              // Criar object URL local para reprodução imediata
+              const localUrl = URL.createObjectURL(blob);
+              setMediaUrl(localUrl);
+
+              // Upload permanente em background
+              const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
+              if (uploadRes?.file_url) {
+                setMediaUrl(uploadRes.file_url);
+                // Salvar URL permanente na mensagem
+                await base44.entities.MensagemWhatsapp.update(data.mensagem_id, {
+                  arquivo_url: uploadRes.file_url
+                });
+              }
+            } catch (uploadErr) {
+              console.error('Erro ao processar mídia:', uploadErr);
+            }
           }
         })
         .catch(err => console.error('Erro ao baixar mídia:', err))
