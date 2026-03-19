@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.MensagemWhatsapp.create({
           conversa_id: conversa.id,
           empresa_id: JD_ID,
-          remetente: 'cliente',
+          remetente: fromMe ? 'vendedor' : 'cliente',
           tipo_conteudo: tipo,
           texto: conteudo,
           arquivo_url: arquivo_url || null,
