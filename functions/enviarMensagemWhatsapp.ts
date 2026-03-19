@@ -101,16 +101,60 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Preparar requisição para Evolution
-    const endpoint = `${evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${instanceName}`;
-    const requestPayload = {
-      number: numeroFormatado,
-      text: mensagem_texto.trim()
-    };
+    // Preparar requisição para Evolution — texto ou mídia
+    const baseUrl = evolutionApiUrl.replace(/\/$/, '');
+    let endpoint, requestPayload;
+
+    if (arquivo && arquivo.base64) {
+      // Detectar tipo e endpoint correto
+      const tipo = arquivo.tipo || '';
+      if (tipo.startsWith('image')) {
+        endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
+        requestPayload = {
+          number: numeroFormatado,
+          mediatype: 'image',
+          media: arquivo.base64,
+          fileName: arquivo.nome,
+          caption: mensagem_texto || ''
+        };
+      } else if (tipo.startsWith('audio')) {
+        endpoint = `${baseUrl}/message/sendWhatsAppAudio/${instanceName}`;
+        requestPayload = {
+          number: numeroFormatado,
+          audio: arquivo.base64,
+          encoding: true
+        };
+      } else if (tipo.startsWith('video')) {
+        endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
+        requestPayload = {
+          number: numeroFormatado,
+          mediatype: 'video',
+          media: arquivo.base64,
+          fileName: arquivo.nome,
+          caption: mensagem_texto || ''
+        };
+      } else {
+        // PDF ou documento
+        endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
+        requestPayload = {
+          number: numeroFormatado,
+          mediatype: 'document',
+          media: arquivo.base64,
+          fileName: arquivo.nome,
+          caption: mensagem_texto || ''
+        };
+      }
+    } else {
+      endpoint = `${baseUrl}/message/sendText/${instanceName}`;
+      requestPayload = {
+        number: numeroFormatado,
+        text: mensagem_texto.trim()
+      };
+    }
 
     console.log('🎯 Endpoint:', endpoint);
-    console.log('📦 Payload Evolution:', JSON.stringify(requestPayload));
-    console.log('📱 Número: ' + numeroFormatado + ' | Texto: ' + mensagem_texto.substring(0, 50));
+    console.log('📦 Payload tipo:', arquivo ? arquivo.tipo : 'texto');
+    console.log('📱 Número:', numeroFormatado);
 
     // Enviar para Evolution API
     console.log('📤 Enviando para Evolution API...');
