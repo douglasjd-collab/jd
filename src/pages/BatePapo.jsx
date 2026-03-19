@@ -256,10 +256,15 @@ export default function BatePapo() {
       if (msgData?.conversa_id && msgData.conversa_id === conversaAtualId) {
         if (msgData?.id) {
           queryClient.setQueryData(['mensagens-whatsapp', conversaAtualId], (old = []) => {
-            // Evitar duplicata (pode já existir se for envio otimista)
-            const jaExiste = old.some(m => m.id === msgData.id || m.whatsapp_message_id === msgData.whatsapp_message_id);
-            if (jaExiste) return old;
-            return [...old.filter(m => !m.id?.startsWith('temp_')), msgData];
+            // Evitar duplicata
+            if (old.some(m => m.id === msgData.id || m.whatsapp_message_id === msgData.whatsapp_message_id)) {
+              return old;
+            }
+            // Só remove temp_ ao confirmar mensagem do próprio vendedor (não ao receber msg do cliente)
+            const base = msgData.remetente === 'vendedor'
+              ? old.filter(m => !m.id?.startsWith('temp_'))
+              : old;
+            return [...base, msgData];
           });
         } else {
           // payload_too_large: fallback para refetch
