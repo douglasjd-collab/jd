@@ -290,6 +290,23 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
                   handleEnviar(e);
                 }
               }}
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of items) {
+                  if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                      // Dar nome ao arquivo colado
+                      const ext = item.type.split('/')[1] || 'png';
+                      const nomeFile = new File([file], `imagem_colada.${ext}`, { type: item.type });
+                      setArquivo(nomeFile);
+                    }
+                    break;
+                  }
+                }
+              }}
               placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
               rows={1}
               className="msg-textarea w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm"
