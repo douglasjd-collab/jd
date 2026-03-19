@@ -271,13 +271,28 @@ export default function MensagemItem({ mensagem, conversaId }) {
                     </Button>
                   </div>
                 </div>
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden relative">
                   {urlDoc ? (
-                    <iframe
-                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(urlDoc)}&embedded=true`}
-                      className="w-full h-full border-0"
-                      title={nomeDoc}
-                    />
+                    <>
+                      {!pdfCarregado && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10 gap-3">
+                          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                          <p className="text-sm text-slate-500">Carregando documento...</p>
+                          <a href={urlDoc} target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="outline" className="gap-1.5 text-xs mt-2">
+                              <Download className="w-3.5 h-3.5" /> Abrir em nova aba
+                            </Button>
+                          </a>
+                        </div>
+                      )}
+                      <iframe
+                        key={urlDoc}
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(urlDoc)}&embedded=true`}
+                        className="w-full h-full border-0"
+                        title={nomeDoc}
+                        onLoad={() => setPdfCarregado(true)}
+                      />
+                    </>
                   ) : (
                     <div className="flex items-center justify-center h-full text-slate-400">
                       <p>Documento não disponível</p>
