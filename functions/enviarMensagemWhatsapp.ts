@@ -208,17 +208,29 @@ Deno.serve(async (req) => {
     // Criar registro de mensagem no banco
     console.log('💾 Salvando mensagem no banco...');
     
-    // Garantir empresa_id correto - nunca usar 'default' ou vazio
     const empresaIdFinal = empresaId || payload.empresa_id || '699696c2c9f5bffc2e67402b';
-    console.log('🏢 Empresa ID final para salvar mensagem:', empresaIdFinal);
 
     // Determinar tipo de conteúdo
     let tipo_conteudo = 'texto';
+    let arquivo_url_permanente = null;
+
     if (arquivo && arquivo.base64) {
-      if (arquivo.tipo.startsWith('image')) tipo_conteudo = 'imagem';
-      else if (arquivo.tipo.startsWith('audio')) tipo_conteudo = 'audio';
-      else if (arquivo.tipo.startsWith('video')) tipo_conteudo = 'video';
-      else if (arquivo.tipo === 'application/pdf') tipo_conteudo = 'pdf';
+      const tipo = arquivo.tipo || '';
+      if (tipo.startsWith('image')) tipo_conteudo = 'imagem';
+      else if (tipo.startsWith('audio')) tipo_conteudo = 'audio';
+      else if (tipo.startsWith('video')) tipo_conteudo = 'video';
+      else tipo_conteudo = 'pdf';
+
+      // Upload para Base44 para URL permanente
+      try {
+        const uploadRes = await base44.integrations.Core.UploadFile({ file: arquivo.base64 });
+        if (uploadRes?.file_url) {
+          arquivo_url_permanente = uploadRes.file_url;
+          console.log('✅ Arquivo salvo permanentemente:', arquivo_url_permanente);
+        }
+      } catch (uploadErr) {
+        console.error('⚠️ Erro ao fazer upload do arquivo:', uploadErr.message);
+      }
     }
 
     const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
@@ -229,7 +241,7 @@ Deno.serve(async (req) => {
       usuario_nome: user.full_name,
       tipo_conteudo: tipo_conteudo,
       texto: mensagem_texto || (arquivo ? `📎 ${arquivo.nome}` : ''),
-      arquivo_url: null,
+      arquivo_url: arquivo_url_permanente,
       arquivo_nome: arquivo?.nome || null,
       arquivo_tamanho: 0,
       whatsapp_message_id: result.key?.id || result.messageId || result.id || 'pending',
