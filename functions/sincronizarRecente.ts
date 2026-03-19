@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
     const evolutionKey = empresa.evolution_api_key;
     const instanceName = empresa.evolution_instance_name;
 
-    // Apenas últimos 2 minutos
-    const agoSeconds = Math.floor((Date.now() - (2 * 60 * 1000)) / 1000);
+    // Apenas últimos 30 segundos (chamado a cada 5s)
+    const agoSeconds = Math.floor((Date.now() - (30 * 1000)) / 1000);
 
     const res = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
       method: 'POST',
