@@ -24,11 +24,12 @@ export default function MensagemItem({ mensagem, conversaId }) {
   useEffect(() => {
     const isPermanente = mediaUrl?.includes('base44') || mediaUrl?.includes('supabase') || mediaUrl?.includes('amazonaws');
     const tiposMidia = ['audio', 'imagem', 'video', 'pdf', 'documento'];
+    // Tentar baixar se: tem URL não-permanente OU tem whatsapp_message_id (para mensagens enviadas sem URL)
+    const podetentar = (mensagem.arquivo_url && !isPermanente) || (!mediaUrl && mensagem.whatsapp_message_id);
 
     if (
       tiposMidia.includes(mensagem.tipo_conteudo) &&
-      mensagem.arquivo_url &&
-      !isPermanente &&
+      podetentar &&
       !loadingMedia &&
       !mensagem.id?.startsWith('temp_')
     ) {
