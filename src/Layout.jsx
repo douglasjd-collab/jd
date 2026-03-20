@@ -544,16 +544,16 @@ export default function Layout({ children, currentPageName }) {
                   to={createPageUrl(item.page)}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
                     currentPageName === item.page
                       ? "bg-white/20 text-white"
                       : "text-white/70 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   <item.icon className="w-5 h-5" />
-                  <span>{item.name}</span>
+                  <span className="flex-1">{item.name}</span>
                   {item.name === 'Tarefas' && tarefasVencidas > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight">
                       {tarefasVencidas}
                     </span>
                   )}
