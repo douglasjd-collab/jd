@@ -248,20 +248,56 @@ export default function Tarefas() {
         </Link>
       </PageHeader>
 
-      {/* Abas Em andamento / Finalizados */}
-      <div className="flex items-center gap-1 bg-white border rounded-xl p-1 w-fit shadow-sm">
-        <button
-          onClick={() => setAbaAtiva('andamento')}
-          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+      {/* Abas + Filtros na mesma linha */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 bg-white border rounded-xl p-1 shadow-sm flex-shrink-0">
+          <button
+            onClick={() => setAbaAtiva('andamento')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Em andamento
+          </button>
+          <button
+            onClick={() => setAbaAtiva('finalizados')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Finalizados
+          </button>
+        </div>
+
+        <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
+
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-xs w-36" />
+        </div>
+        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+          <option value="todos">Status</option>
+          {statusList.map(s => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
+        </select>
+        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}>
+          <option value="todas">Prioridade</option>
+          <option value="baixa">Baixa</option>
+          <option value="media">Média</option>
+          <option value="alta">Alta</option>
+          <option value="urgente">Urgente</option>
+        </select>
+        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)}>
+          <option value="todos">Setor</option>
+          {SETORES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
+          <option value="todos">Responsável</option>
+          {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+        <Button
+          variant={mostrarSoMinhas ? 'default' : 'outline'}
+          size="sm"
+          className={mostrarSoMinhas ? 'bg-[#1e3a5f] text-white h-8 px-3 text-xs' : 'h-8 px-3 text-xs'}
+          onClick={() => setMostrarSoMinhas(p => !p)}
         >
-          Em andamento
-        </button>
-        <button
-          onClick={() => setAbaAtiva('finalizados')}
-          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          Finalizados
-        </button>
+          Minhas
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
