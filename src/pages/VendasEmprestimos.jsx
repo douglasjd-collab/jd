@@ -744,6 +744,13 @@ export default function VendasEmprestimos() {
                       <span className={`px-2 py-0.5 rounded text-xs font-semibold ${tipoColor}`}>
                         {tipoLabel}
                       </span>
+                      {/* Empresa Parceira — visível apenas para admin/gerente/colaborador */}
+                      {podeVerEmpresaParceira && p.empresa_parceira_nome && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                          <Building2 className="w-3 h-3" />
+                          {p.empresa_parceira_nome}
+                        </span>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-slate-900 text-base">{formatCurrency(p.valor_credito)}</p>
