@@ -761,20 +761,20 @@ export default function VendasEmprestimos() {
                   </div>
 
                   {/* Info row */}
-                  <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
+                  <div className="flex items-center justify-between mt-2 text-sm text-slate-500">
                     <div className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5" />
+                      <User className="w-4 h-4" />
                       <span>{p.vendedor_nome || '-'}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       {p.data_venda && (
                         <div className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
+                          <Calendar className="w-4 h-4" />
                           <span>{format(new Date(p.data_venda + 'T12:00:00'), 'dd/MM/yyyy')}</span>
                         </div>
                       )}
                       {statusConfig && (
-                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${statusColorClass}`}>
+                        <span className={`px-2.5 py-1 rounded text-sm font-semibold ${statusColorClass}`}>
                           {statusConfig.nome}
                         </span>
                       )}
