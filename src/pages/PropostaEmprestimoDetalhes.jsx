@@ -128,6 +128,7 @@ export default function PropostaEmprestimoDetalhes() {
             <p className="text-white/80 text-sm mt-0.5 font-medium">
               {(proposta.cliente_cpf || cliente?.cpf) ? `CPF: ${proposta.cliente_cpf || cliente?.cpf}` : ''}
               {proposta.contrato ? `${(proposta.cliente_cpf || cliente?.cpf) ? ' | ' : ''}Contrato: ${proposta.contrato}` : ''}
+              {proposta.emprestimo_valor_parcela ? ` /Parcela ${fmt(proposta.emprestimo_valor_parcela)}` : ''}
             </p>
           </div>
         </div>
