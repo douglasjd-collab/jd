@@ -15,12 +15,41 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+
+const SectionTitle = ({ children }) => (
+  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 border-b pb-2 mb-4">{children}</h3>
+);
+
+const FieldGroup = ({ children, cols = 2 }) => (
+  <div className={`grid grid-cols-${cols} gap-3 mb-4`}>{children}</div>
+);
+
+const Field = ({ label, children, span = 1 }) => (
+  <div className={span === 2 ? 'col-span-2' : ''}>
+    <Label className="text-xs mb-1 block text-slate-600">{label}</Label>
+    {children}
+  </div>
+);
+
+const MoneyInput = ({ value, onChange }) => (
+  <div className="relative">
+    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">R$</span>
+    <Input
+      type="number"
+      step="0.01"
+      min="0"
+      className="pl-9"
+      value={value || ''}
+      onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+    />
+  </div>
+);
 
 export default function PropostaEditModal({ proposta, open, onOpenChange }) {
   const [formData, setFormData] = useState(proposta || {});
@@ -28,41 +57,39 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (proposta) {
-      setFormData(proposta);
-    }
+    if (proposta) setFormData(proposta);
   }, [proposta]);
+
+  const set = (field) => (val) => setFormData(prev => ({ ...prev, [field]: val }));
+  const setE = (field) => (e) => setFormData(prev => ({ ...prev, [field]: e.target.value }));
 
   const { data: administradoras = [] } = useQuery({
     queryKey: ['administradoras'],
     queryFn: () => base44.entities.Administradora.filter({ status: 'ativa' }),
   });
-
   const { data: bancos = [] } = useQuery({
     queryKey: ['bancos-edit'],
     queryFn: () => base44.entities.Banco.filter({ ativo: true }),
   });
-
   const { data: vendedores = [] } = useQuery({
     queryKey: ['vendedores-edit'],
-    queryFn: async () => {
-      return base44.entities.Colaborador.filter({ status: 'ativo' }, 'nome', 200);
-    },
+    queryFn: () => base44.entities.Colaborador.filter({ status: 'ativo' }, 'nome', 200),
   });
-
   const { data: statusList = [] } = useQuery({
     queryKey: ['status-propostas-edit'],
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
-
   const { data: convenios = [] } = useQuery({
     queryKey: ['convenios-edit'],
     queryFn: () => base44.entities.Convenio.filter({ ativo: true }),
   });
-
   const { data: tiposEmprestimo = [] } = useQuery({
     queryKey: ['tipos-emprestimo-edit'],
     queryFn: () => base44.entities.TipoEmprestimo.filter({ ativo: true }, 'nome'),
+  });
+  const { data: empresasParceiras = [] } = useQuery({
+    queryKey: ['empresas-parceiras-edit'],
+    queryFn: () => base44.entities.EmpresaParceira.list('nome', 200),
   });
 
   const updateMutation = useMutation({
@@ -96,6 +123,8 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
         vendedor_nome: formData.vendedor_nome || '',
         administradora_id: formData.administradora_id || '',
         administradora_nome: formData.administradora_nome || '',
+        empresa_parceira_id: formData.empresa_parceira_id || '',
+        empresa_parceira_nome: formData.empresa_parceira_nome || '',
       };
 
       if (formData.produto === 'emprestimo') {
@@ -117,106 +146,72 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
     }
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value || 0);
-  };
-
-  const parseCurrency = (str) => {
-    if (!str) return 0;
-    return parseFloat(str.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-  };
-
-  const formatInputCurrency = (value) => {
-    if (value === '' || value === null || value === undefined) return '';
-    const num = typeof value === 'string' ? parseCurrency(value) : value;
-    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
-  };
-
-  const produtoLabels = {
-    consorcio: 'Consórcio',
-    emprestimo: 'Empréstimo',
-    financiamento: 'Financiamento'
-  };
+  const produtoLabels = { consorcio: 'Consórcio', emprestimo: 'Empréstimo', financiamento: 'Financiamento' };
+  const isPortabilidade = formData.emprestimo_tipo === 'PORTABILIDADE_PURA' || formData.emprestimo_tipo === 'REFIN_PORTABILIDADE';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Proposta</DialogTitle>
-          <DialogDescription>
-            {formData.cliente_nome} - {produtoLabels[formData.produto] || formData.produto}
-          </DialogDescription>
+          <DialogDescription>{formData.cliente_nome} — {produtoLabels[formData.produto] || formData.produto}</DialogDescription>
         </DialogHeader>
 
         {proposta && (
-          <div className="space-y-6">
+          <div className="space-y-6 pt-2">
+
             {/* Informações Básicas */}
             <div>
-              <h3 className="text-sm font-semibold mb-4 text-slate-700">Informações Básicas</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">Cliente</Label>
+              <SectionTitle>Informações Básicas</SectionTitle>
+              <FieldGroup>
+                <Field label="Cliente">
                   <Input disabled value={formData.cliente_nome || ''} />
-                </div>
-                <div>
-                  <Label className="text-xs">Produto</Label>
+                </Field>
+                <Field label="Produto">
                   <Input disabled value={produtoLabels[formData.produto] || formData.produto} />
-                </div>
-              </div>
+                </Field>
+                <Field label="Vendedor">
+                  <Select value={formData.vendedor_id || ''} onValueChange={(v) => {
+                    const vend = vendedores.find(x => x.id === v);
+                    setFormData(prev => ({ ...prev, vendedor_id: v, vendedor_nome: vend?.nome || '' }));
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Selecione">{formData.vendedor_nome || 'Selecione'}</SelectValue></SelectTrigger>
+                    <SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Data da Venda">
+                  <Input type="date" value={formData.data_venda || ''} onChange={setE('data_venda')} />
+                </Field>
+                <Field label="Empresa Parceira" span={2}>
+                  <Select value={formData.empresa_parceira_id || 'nenhuma'} onValueChange={(v) => {
+                    if (v === 'nenhuma') {
+                      setFormData(prev => ({ ...prev, empresa_parceira_id: '', empresa_parceira_nome: '' }));
+                    } else {
+                      const ep = empresasParceiras.find(x => x.id === v);
+                      setFormData(prev => ({ ...prev, empresa_parceira_id: v, empresa_parceira_nome: ep?.nome || '' }));
+                    }
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Selecione (opcional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhuma">Nenhuma</SelectItem>
+                      {empresasParceiras.map(ep => <SelectItem key={ep.id} value={ep.id}>{ep.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGroup>
             </div>
 
-            {/* Dados Específicos por Produto */}
-            {formData.produto === 'consorcio' && (
-              <div>
-                <h3 className="text-sm font-semibold mb-4 text-slate-700">Dados do Consórcio</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="grupo">Grupo</Label>
-                    <Input
-                      id="grupo"
-                      value={formData.grupo || ''}
-                      onChange={(e) => setFormData({ ...formData, grupo: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="cota">Cota</Label>
-                    <Input
-                      id="cota"
-                      value={formData.cota || ''}
-                      onChange={(e) => setFormData({ ...formData, cota: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="contrato">Contrato</Label>
-                    <Input
-                      id="contrato"
-                      value={formData.contrato || ''}
-                      onChange={(e) => setFormData({ ...formData, contrato: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
+            {/* Dados do Empréstimo */}
             {formData.produto === 'emprestimo' && (
               <div>
-                <h3 className="text-sm font-semibold mb-4 text-slate-700">Dados do Empréstimo</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Tipo de Empréstimo</Label>
-                    <Select
-                      value={formData.emprestimo_tipo || ''}
-                      onValueChange={(value) => setFormData({ ...formData, emprestimo_tipo: value })}
-                    >
+                <SectionTitle>Dados do Empréstimo</SectionTitle>
+                <FieldGroup>
+                  <Field label="Tipo de Empréstimo">
+                    <Select value={formData.emprestimo_tipo || ''} onValueChange={set('emprestimo_tipo')}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
                         {tiposEmprestimo.length > 0 ? (
-                          tiposEmprestimo.map(tipo => (
-                            <SelectItem key={tipo.id} value={tipo.slug}>{tipo.nome}</SelectItem>
-                          ))
+                          tiposEmprestimo.map(t => <SelectItem key={t.id} value={t.slug}>{t.nome}</SelectItem>)
                         ) : (
                           <>
                             <SelectItem value="NOVO">Novo</SelectItem>
@@ -229,251 +224,129 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                         )}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div>
-                    <Label>Convênio</Label>
-                    <Select
-                      value={formData.emprestimo_convenio_id || ''}
-                      onValueChange={(value) => {
-                        const conv = convenios.find(c => c.id === value);
-                        setFormData({ ...formData, emprestimo_convenio_id: value, emprestimo_convenio_nome: conv?.nome || '' });
-                      }}
-                    >
+                  </Field>
+                  <Field label="Convênio">
+                    <Select value={formData.emprestimo_convenio_id || ''} onValueChange={(v) => {
+                      const conv = convenios.find(c => c.id === v);
+                      setFormData(prev => ({ ...prev, emprestimo_convenio_id: v, emprestimo_convenio_nome: conv?.nome || '' }));
+                    }}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        {convenios.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                      </SelectContent>
+                      <SelectContent>{convenios.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
                     </Select>
-                  </div>
-                  <div>
-                    <Label>Número do Benefício</Label>
-                    <Input value={formData.emprestimo_numero_beneficio || ''} onChange={(e) => setFormData({ ...formData, emprestimo_numero_beneficio: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Número ADE</Label>
-                    <Input value={formData.emprestimo_numero_ade || ''} onChange={(e) => setFormData({ ...formData, emprestimo_numero_ade: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Número do Contrato</Label>
-                    <Input value={formData.contrato || ''} onChange={(e) => setFormData({ ...formData, contrato: e.target.value })} />
-                  </div>
-                   <div>
-                    <Label>Prazo (meses)</Label>
-                   <Input type="number" value={formData.emprestimo_prazo || ''} onChange={(e) => setFormData({ ...formData, emprestimo_prazo: parseInt(e.target.value) || 0 })} />
-                  </div>
-                  <div>
-                   <Label>Valor da Parcela</Label>
-                   <div className="relative">
-                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
-                     <Input
-                       type="number"
-                       step="0.01"
-                       min="0"
-                       className="pl-9"
-                       value={formData.emprestimo_valor_parcela || ''}
-                       onChange={(e) => setFormData({ ...formData, emprestimo_valor_parcela: parseFloat(e.target.value) || 0 })}
-                       placeholder="0,00"
-                     />
-                   </div>
-                  </div>
-                  {(formData.emprestimo_tipo === 'PORTABILIDADE_PURA' || formData.emprestimo_tipo === 'REFIN_PORTABILIDADE') && (
+                  </Field>
+                  <Field label="Número do Benefício">
+                    <Input value={formData.emprestimo_numero_beneficio || ''} onChange={setE('emprestimo_numero_beneficio')} />
+                  </Field>
+                  <Field label="Número ADE">
+                    <Input value={formData.emprestimo_numero_ade || ''} onChange={setE('emprestimo_numero_ade')} />
+                  </Field>
+                  <Field label="Número do Contrato">
+                    <Input value={formData.contrato || ''} onChange={setE('contrato')} />
+                  </Field>
+                  <Field label="Prazo (meses)">
+                    <Input type="number" value={formData.emprestimo_prazo || ''} onChange={(e) => setFormData(prev => ({ ...prev, emprestimo_prazo: parseInt(e.target.value) || 0 }))} />
+                  </Field>
+                  <Field label="Valor da Parcela">
+                    <MoneyInput value={formData.emprestimo_valor_parcela} onChange={set('emprestimo_valor_parcela')} />
+                  </Field>
+                  <Field label="Data de Liberação">
+                    <Input type="date" value={formData.emprestimo_data_liberacao || ''} onChange={setE('emprestimo_data_liberacao')} />
+                  </Field>
+                  {isPortabilidade && (
                     <>
-                      <div>
-                        <Label>Banco Anterior</Label>
-                        <Input value={formData.emprestimo_banco_anterior || ''} onChange={(e) => setFormData({ ...formData, emprestimo_banco_anterior: e.target.value })} />
-                      </div>
-                      <div>
-                        <Label>Saldo Devedor</Label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="pl-9"
-                            value={formData.emprestimo_saldo_devedor || ''}
-                            onChange={(e) => setFormData({ ...formData, emprestimo_saldo_devedor: parseFloat(e.target.value) || 0 })}
-                          />
-                        </div>
-                      </div>
+                      <Field label="Banco Anterior">
+                        <Input value={formData.emprestimo_banco_anterior || ''} onChange={setE('emprestimo_banco_anterior')} />
+                      </Field>
+                      <Field label="Saldo Devedor">
+                        <MoneyInput value={formData.emprestimo_saldo_devedor} onChange={set('emprestimo_saldo_devedor')} />
+                      </Field>
                     </>
                   )}
-                  <div>
-                    <Label>Data de Liberação</Label>
-                    <Input type="date" value={formData.emprestimo_data_liberacao || ''} onChange={(e) => setFormData({ ...formData, emprestimo_data_liberacao: e.target.value })} />
-                  </div>
-                </div>
+                </FieldGroup>
+              </div>
+            )}
+
+            {/* Dados do Consórcio */}
+            {formData.produto === 'consorcio' && (
+              <div>
+                <SectionTitle>Dados do Consórcio</SectionTitle>
+                <FieldGroup>
+                  <Field label="Grupo">
+                    <Input value={formData.grupo || ''} onChange={setE('grupo')} />
+                  </Field>
+                  <Field label="Cota">
+                    <Input value={formData.cota || ''} onChange={setE('cota')} />
+                  </Field>
+                  <Field label="Contrato" span={2}>
+                    <Input value={formData.contrato || ''} onChange={setE('contrato')} />
+                  </Field>
+                </FieldGroup>
               </div>
             )}
 
             {/* Valores */}
             <div>
-              <h3 className="text-sm font-semibold mb-4 text-slate-700">Valores</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="valor_credito">Valor do Crédito</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
-                    <Input
-                      id="valor_credito"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="pl-9"
-                      value={formData.valor_credito || ''}
-                      onChange={(e) => setFormData({ ...formData, valor_credito: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="valor_comissao">Valor Comissão (estimado)</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
-                    <Input
-                      id="valor_comissao"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="pl-9"
-                      value={formData.valor_comissao || ''}
-                      onChange={(e) => setFormData({ ...formData, valor_comissao: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="comissao_recebida">Comissão Recebida</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
-                    <Input
-                      id="comissao_recebida"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="pl-9"
-                      value={formData.comissao_recebida || ''}
-                      onChange={(e) => setFormData({ ...formData, comissao_recebida: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>{formData.produto === 'emprestimo' ? 'Banco' : 'Administradora'}</Label>
+              <SectionTitle>Valores Financeiros</SectionTitle>
+              <FieldGroup>
+                <Field label="Banco / Administradora" span={2}>
                   {formData.produto === 'emprestimo' ? (
-                    <Select
-                      value={formData.administradora_id || ''}
-                      onValueChange={(value) => {
-                        const banco = bancos.find(b => b.id === value);
-                        setFormData({ ...formData, administradora_id: value, administradora_nome: banco?.nome || '' });
-                      }}
-                    >
+                    <Select value={formData.administradora_id || ''} onValueChange={(v) => {
+                      const banco = bancos.find(b => b.id === v);
+                      setFormData(prev => ({ ...prev, administradora_id: v, administradora_nome: banco?.nome || '' }));
+                    }}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        {bancos.map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                      </SelectContent>
+                      <SelectContent>{bancos.map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}</SelectContent>
                     </Select>
                   ) : (
-                    <Select
-                      value={formData.administradora_id || ''}
-                      onValueChange={(value) => {
-                        const admin = administradoras.find(a => a.id === value);
-                        setFormData({ ...formData, administradora_id: value, administradora_nome: admin?.nome_fantasia || admin?.razao_social || '' });
-                      }}
-                    >
+                    <Select value={formData.administradora_id || ''} onValueChange={(v) => {
+                      const adm = administradoras.find(a => a.id === v);
+                      setFormData(prev => ({ ...prev, administradora_id: v, administradora_nome: adm?.nome_fantasia || adm?.razao_social || '' }));
+                    }}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        {administradoras.map(adm => (
-                          <SelectItem key={adm.id} value={adm.id}>{adm.nome_fantasia || adm.razao_social}</SelectItem>
-                        ))}
-                      </SelectContent>
+                      <SelectContent>{administradoras.map(a => <SelectItem key={a.id} value={a.id}>{a.nome_fantasia || a.razao_social}</SelectItem>)}</SelectContent>
                     </Select>
                   )}
-                </div>
-              </div>
+                </Field>
+                <Field label="Valor do Crédito">
+                  <MoneyInput value={formData.valor_credito} onChange={set('valor_credito')} />
+                </Field>
+                <Field label="Valor da Comissão (estimado)">
+                  <MoneyInput value={formData.valor_comissao} onChange={set('valor_comissao')} />
+                </Field>
+                <Field label="Comissão Recebida">
+                  <MoneyInput value={formData.comissao_recebida} onChange={set('comissao_recebida')} />
+                </Field>
+              </FieldGroup>
             </div>
 
-            {/* Vendedor e Data */}
+            {/* Status */}
             <div>
-              <h3 className="text-sm font-semibold mb-4 text-slate-700">Vendedor e Data</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Vendedor</Label>
-                  <Select
-                    value={formData.vendedor_id || ''}
-                    onValueChange={(value) => {
-                      const vend = vendedores.find(v => v.id === value);
-                      setFormData({ ...formData, vendedor_id: value, vendedor_nome: vend?.nome || '' });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione">
-                        {formData.vendedor_nome || 'Selecione'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Data da Venda</Label>
-                  <Input type="date" value={formData.data_venda || ''} onChange={(e) => setFormData({ ...formData, data_venda: e.target.value })} />
-                </div>
-              </div>
-            </div>
-
-            {/* Status e Observações */}
-            <div>
-              <h3 className="text-sm font-semibold mb-4 text-slate-700">Status e Observações</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.status_id || formData.status || ''}
-                    onValueChange={(value) => {
-                      const s = statusList.find(s => s.id === value);
-                      setFormData({ ...formData, status_id: value, status: s?.nome || value });
-                    }}
-                  >
+              <SectionTitle>Status e Observações</SectionTitle>
+              <div className="space-y-3">
+                <Field label="Status">
+                  <Select value={formData.status_id || formData.status || ''} onValueChange={(v) => {
+                    const s = statusList.find(x => x.id === v);
+                    setFormData(prev => ({ ...prev, status_id: v, status: s?.nome || v }));
+                  }}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       {statusList.length > 0
-                        ? statusList.sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => (
-                            <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                          ))
-                        : <>
-                            <SelectItem value="ativa">Ativa</SelectItem>
-                            <SelectItem value="pendente">Pendente</SelectItem>
-                            <SelectItem value="cancelada">Cancelada</SelectItem>
-                          </>
+                        ? statusList.sort((a, b) => (a.ordem || 0) - (b.ordem || 0)).map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)
+                        : <><SelectItem value="ativa">Ativa</SelectItem><SelectItem value="pendente">Pendente</SelectItem><SelectItem value="cancelada">Cancelada</SelectItem></>
                       }
                     </SelectContent>
                   </Select>
-                </div>
-                <div>
-                  <Label htmlFor="observacoes">Observações</Label>
-                  <Textarea
-                    id="observacoes"
-                    value={formData.observacoes || ''}
-                    onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                    rows={4}
-                  />
-                </div>
+                </Field>
+                <Field label="Observações">
+                  <Textarea value={formData.observacoes || ''} onChange={setE('observacoes')} rows={3} />
+                </Field>
               </div>
             </div>
 
             {/* Ações */}
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isLoading}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isLoading}
-                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
-              >
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancelar</Button>
+              <Button onClick={handleSave} disabled={isLoading} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
                 {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Salvar Alterações
               </Button>
