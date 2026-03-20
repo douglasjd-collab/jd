@@ -51,7 +51,7 @@ const MoneyInput = ({ value, onChange }) => (
   </div>
 );
 
-export default function PropostaEditModal({ proposta, open, onOpenChange }) {
+export default function PropostaEditModal({ proposta, open, onOpenChange, currentUser }) {
   const [formData, setFormData] = useState(proposta || {});
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
