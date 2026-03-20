@@ -78,13 +78,18 @@ export default function Layout({ children, currentPageName }) {
     if (!user) return;
     const hoje = new Date().toLocaleDateString('fr-CA'); // YYYY-MM-DD local
     const filtro = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+    const isAdminPerfil = ['master', 'super_admin', 'admin'].includes(user.perfil);
     base44.entities.Tarefa.filter(filtro, '-created_date', 500).then(tarefas => {
-      const vencidas = tarefas.filter(t =>
-        t.data_conclusao_prevista &&
-        t.data_conclusao_prevista < hoje &&
-        t.status !== 'concluido' &&
-        t.status !== 'arquivado'
-      ).length;
+      const vencidas = tarefas.filter(t => {
+        if (!t.data_conclusao_prevista || t.data_conclusao_prevista >= hoje) return false;
+        if (t.status === 'concluido' || t.status === 'arquivado') return false;
+        if (isAdminPerfil) return true;
+        // Para não-admin: só conta se for responsável
+        let responsaveisIds = [];
+        try { responsaveisIds = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
+        return t.responsavel_principal_id === user.colaborador_id ||
+               responsaveisIds.includes(user.colaborador_id);
+      }).length;
       setTarefasVencidas(vencidas);
     }).catch(console.error);
   }, [user]);
