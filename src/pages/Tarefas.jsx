@@ -321,7 +321,8 @@ export default function Tarefas() {
         />
       ) : null}
 
-      {modoVisualizacao === 'kanban' && <div className="flex gap-4 overflow-x-auto pb-4">
+      {modoVisualizacao === 'kanban' && (
+      <div className="flex gap-4 overflow-x-auto pb-4">
         {statusList.map(status => {
           const colTarefas = tarefasFiltradas.filter(t => t.status === status.slug);
           return (
