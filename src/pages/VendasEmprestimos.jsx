@@ -441,53 +441,53 @@ export default function VendasEmprestimos() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-blue-600" />
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Clock className="w-8 h-8 text-blue-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Hoje</p>
-              <p className="font-bold text-slate-900 text-lg">{formatCurrency(valorHoje)}</p>
+              <p className="font-bold text-slate-900 text-2xl">{formatCurrency(valorHoje)}</p>
+              <p className="text-xs text-slate-400 mt-1">{todayPropostas.length} propostas</p>
             </div>
           </div>
-          <p className="text-sm text-slate-400 mt-2">{todayPropostas.length} propostas</p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-orange-600" />
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-8 h-8 text-orange-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Em andamento</p>
-              <p className="font-bold text-slate-900 text-lg">{formatCurrency(valor_em_andamento)}</p>
+              <p className="font-bold text-slate-900 text-2xl">{formatCurrency(valor_em_andamento)}</p>
+              <p className="text-xs text-slate-400 mt-1">{emAndamento.length} propostas</p>
             </div>
           </div>
-          <p className="text-sm text-slate-400 mt-2">{emAndamento.length} propostas</p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Pagas</p>
-              <p className="font-bold text-slate-900 text-lg">{formatCurrency(valor_pagas_mes)}</p>
+              <p className="font-bold text-slate-900 text-2xl">{formatCurrency(valor_pagas_mes)}</p>
+              <p className="text-xs text-slate-400 mt-1">{propostas_pagas_mes.length} propostas</p>
             </div>
           </div>
-          <p className="text-sm text-slate-400 mt-2">{propostas_pagas_mes.length} propostas</p>
         </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-emerald-600" />
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <DollarSign className="w-8 h-8 text-emerald-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Valor total do dia</p>
-              <p className="font-bold text-slate-900 text-lg">{formatCurrency(valorHoje)}</p>
+              <p className="font-bold text-slate-900 text-2xl">{formatCurrency(valorHoje)}</p>
             </div>
           </div>
         </div>
