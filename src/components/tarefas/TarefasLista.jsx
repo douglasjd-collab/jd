@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Pencil, Trash2, Clock, AlignLeft, History, ChevronRight } from 'lucide-react';
+import { X, Pencil, Trash2, AlignLeft, Check } from 'lucide-react';
 
 const PRIORIDADE_CORES = {
   baixa: 'bg-slate-100 text-slate-600',
@@ -12,10 +12,7 @@ const PRIORIDADE_CORES = {
 };
 
 const PRIORIDADE_LABEL = {
-  baixa: 'Baixa',
-  media: 'Média',
-  alta: 'Alta',
-  urgente: 'Urgente',
+  baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente',
 };
 
 function Iniciais({ nome, size = 'sm' }) {
@@ -30,19 +27,145 @@ function Iniciais({ nome, size = 'sm' }) {
   );
 }
 
-function StatusBadge({ status }) {
-  if (!status) return null;
+// Dropdown de status inline
+function StatusDropdown({ tarefa, statusList, onUpdate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const status = statusList.find(s => s.slug === tarefa.status);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleSelect = (e, slug) => {
+    e.stopPropagation();
+    onUpdate(tarefa.id, { status: slug });
+    setOpen(false);
+  };
+
   return (
-    <span
-      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap"
-      style={{ backgroundColor: status.cor }}
-    >
-      {status.nome}
-    </span>
+    <div className="relative" ref={ref} onClick={e => e.stopPropagation()}>
+      <button
+        className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity"
+        style={{ backgroundColor: status?.cor || '#94a3b8' }}
+        onClick={() => setOpen(v => !v)}
+      >
+        {status?.nome || tarefa.status}
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 bg-white border shadow-lg rounded-xl py-1 min-w-[160px]">
+          {statusList.map(s => (
+            <button
+              key={s.slug}
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-sm text-left"
+              onClick={(e) => handleSelect(e, s.slug)}
+            >
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor }} />
+              <span className="flex-1">{s.nome}</span>
+              {tarefa.status === s.slug && <Check className="w-3.5 h-3.5 text-blue-500" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, onVerDetalhes }) {
+// Popover de responsáveis inline
+function ResponsaveisPopover({ tarefa, colaboradores, onUpdate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  let responsaveisIds = [];
+  let responsaveisNomes = [];
+  try { responsaveisIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}
+  try { responsaveisNomes = tarefa.responsaveis_nomes ? JSON.parse(tarefa.responsaveis_nomes) : []; } catch {}
+  if (responsaveisIds.length === 0 && tarefa.responsavel_principal_id) {
+    responsaveisIds = [tarefa.responsavel_principal_id];
+    responsaveisNomes = [tarefa.responsavel_principal_nome || ''];
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const toggle = (e, colab) => {
+    e.stopPropagation();
+    const isSelected = responsaveisIds.includes(colab.id);
+    let newIds, newNomes;
+    if (isSelected) {
+      newIds = responsaveisIds.filter(id => id !== colab.id);
+      newNomes = responsaveisNomes.filter((_, i) => responsaveisIds[i] !== colab.id);
+    } else {
+      newIds = [...responsaveisIds, colab.id];
+      newNomes = [...responsaveisNomes, colab.nome];
+    }
+    const principalId = newIds[0] || null;
+    const principalNome = newNomes[0] || null;
+    onUpdate(tarefa.id, {
+      responsaveis_ids: JSON.stringify(newIds),
+      responsaveis_nomes: JSON.stringify(newNomes),
+      responsavel_principal_id: principalId,
+      responsavel_principal_nome: principalNome,
+    });
+  };
+
+  return (
+    <div className="relative" ref={ref} onClick={e => e.stopPropagation()}>
+      <button
+        className="flex items-center -space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={() => setOpen(v => !v)}
+      >
+        {responsaveisIds.length === 0 && (
+          <span className="text-slate-300 text-xs">-</span>
+        )}
+        {responsaveisIds.slice(0, 3).map((id, i) => {
+          const nome = responsaveisNomes[i] || '?';
+          return (
+            <div key={id} className="ring-2 ring-white rounded-full" title={nome}>
+              <Iniciais nome={nome} size="sm" />
+            </div>
+          );
+        })}
+        {responsaveisIds.length > 3 && (
+          <div className="w-7 h-7 rounded-full bg-slate-200 ring-2 ring-white flex items-center justify-center text-xs text-slate-600 font-semibold">
+            +{responsaveisIds.length - 3}
+          </div>
+        )}
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 bg-white border shadow-lg rounded-xl py-1 min-w-[200px] max-h-64 overflow-y-auto">
+          <p className="text-xs text-slate-400 font-semibold px-3 pt-2 pb-1 uppercase tracking-wide">Responsáveis</p>
+          {colaboradores.map(colab => {
+            const selected = responsaveisIds.includes(colab.id);
+            return (
+              <button
+                key={colab.id}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-sm text-left"
+                onClick={(e) => toggle(e, colab)}
+              >
+                <Iniciais nome={colab.nome} size="sm" />
+                <span className="flex-1 truncate">{colab.nome}</span>
+                {selected && <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
+              </button>
+            );
+          })}
+          {colaboradores.length === 0 && (
+            <p className="text-xs text-slate-400 px-3 py-2">Nenhum colaborador</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate }) {
   const [selecionada, setSelecionada] = useState(null);
   const hoje = format(new Date(), 'yyyy-MM-dd');
 
@@ -73,7 +196,7 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
   return (
     <div className="flex gap-0 bg-white rounded-2xl border shadow-sm overflow-hidden">
       {/* Tabela */}
-      <div className={`flex-1 overflow-x-auto transition-all ${tarefaSel ? 'min-w-0' : ''}`}>
+      <div className="flex-1 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-slate-50">
@@ -89,20 +212,13 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
           </thead>
           <tbody>
             {tarefas.map((tarefa) => {
-              const status = getStatus(tarefa.status);
               const atrasada = isAtrasada(tarefa);
               const isSel = selecionada === tarefa.id;
-
-              let responsaveisNomes = [];
-              try { responsaveisNomes = tarefa.responsaveis_nomes ? JSON.parse(tarefa.responsaveis_nomes) : []; } catch {}
-              if (responsaveisNomes.length === 0 && tarefa.responsavel_principal_nome) {
-                responsaveisNomes = [tarefa.responsavel_principal_nome];
-              }
 
               return (
                 <tr
                   key={tarefa.id}
-                  className={`border-b last:border-0 transition-colors cursor-pointer group ${isSel ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 border-l-4 border-l-transparent'}`}
+                  className={`border-b last:border-0 transition-colors group ${isSel ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 border-l-4 border-l-transparent'}`}
                   onDoubleClick={() => setSelecionada(isSel ? null : tarefa.id)}
                 >
                   <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
@@ -119,22 +235,10 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
                     ) : <span className="text-slate-300">-</span>}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {status ? <StatusBadge status={status} /> : <span className="text-slate-400 text-xs">{tarefa.status}</span>}
+                    <StatusDropdown tarefa={tarefa} statusList={statusList} onUpdate={onUpdate} />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center -space-x-2">
-                      {responsaveisNomes.slice(0, 3).map((nome, i) => (
-                        <div key={i} className="ring-2 ring-white rounded-full" title={nome}>
-                          <Iniciais nome={nome} size="sm" />
-                        </div>
-                      ))}
-                      {responsaveisNomes.length > 3 && (
-                        <div className="w-7 h-7 rounded-full bg-slate-200 ring-2 ring-white flex items-center justify-center text-xs text-slate-600 font-semibold">
-                          +{responsaveisNomes.length - 3}
-                        </div>
-                      )}
-                      {responsaveisNomes.length === 0 && <span className="text-slate-300 text-xs">-</span>}
-                    </div>
+                    <ResponsaveisPopover tarefa={tarefa} colaboradores={colaboradores} onUpdate={onUpdate} />
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-500 text-xs">
                     {formatarData(tarefa.data_cadastro || tarefa.created_date)}
@@ -164,7 +268,6 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
       {/* Painel de Detalhes Lateral */}
       {tarefaSel && (
         <div className="w-80 flex-shrink-0 border-l bg-white flex flex-col overflow-y-auto">
-          {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">
             <h3 className="font-bold text-slate-800 text-sm">Detalhes da Tarefa</h3>
             <button onClick={() => setSelecionada(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -173,7 +276,6 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
           </div>
 
           <div className="flex-1 p-5 space-y-5">
-            {/* Título + responsável */}
             <div>
               <h2 className="font-bold text-slate-900 text-base leading-tight mb-3">{tarefaSel.titulo}</h2>
               {tarefaSel.responsavel_principal_nome && (
@@ -181,19 +283,18 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
                   <Iniciais nome={tarefaSel.responsavel_principal_nome} size="sm" />
                   <div>
                     <p className="text-sm font-medium text-slate-800">{tarefaSel.responsavel_principal_nome}</p>
-                    {statusSel && (
-                      <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
-                        <span>{statusSel.nome}</span>
-                      </div>
-                    )}
+                    {statusSel && <p className="text-xs text-slate-500 mt-0.5">{statusSel.nome}</p>}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Badges status + prioridade */}
             <div className="flex items-center gap-2 flex-wrap">
-              {statusSel && <StatusBadge status={statusSel} />}
+              {statusSel && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: statusSel.cor }}>
+                  {statusSel.nome}
+                </span>
+              )}
               {tarefaSel.prioridade && (
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${PRIORIDADE_CORES[tarefaSel.prioridade] || 'bg-slate-100 text-slate-600'}`}>
                   {PRIORIDADE_LABEL[tarefaSel.prioridade] || tarefaSel.prioridade}
@@ -201,7 +302,6 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
               )}
             </div>
 
-            {/* Datas */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-xs text-slate-400 mb-1">Início</p>
@@ -215,7 +315,6 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
               </div>
             </div>
 
-            {/* Descrição */}
             {tarefaSel.descricao && (
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
@@ -226,7 +325,6 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
               </div>
             )}
 
-            {/* Cliente */}
             {tarefaSel.cliente_nome && (
               <div className="bg-slate-50 rounded-lg p-3">
                 <p className="text-xs text-slate-400 mb-1">Cliente</p>
@@ -234,20 +332,11 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
               </div>
             )}
 
-            {/* Ações */}
             <div className="flex gap-2 pt-2">
-              <Button
-                size="sm"
-                className="flex-1 bg-[#1e3a5f] hover:bg-[#162d4a] text-white"
-                onClick={() => { onVerDetalhes(tarefaSel); }}
-              >
+              <Button size="sm" className="flex-1 bg-[#1e3a5f] hover:bg-[#162d4a] text-white" onClick={() => onVerDetalhes(tarefaSel)}>
                 Ver completo
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onEdit(tarefaSel)}
-              >
+              <Button size="sm" variant="outline" onClick={() => onEdit(tarefaSel)}>
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
             </div>
