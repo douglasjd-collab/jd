@@ -85,13 +85,27 @@ export default function Layout({ children, currentPageName }) {
         if (!t.data_conclusao_prevista || t.data_conclusao_prevista >= hoje) return false;
         if (t.status === 'concluido' || t.status === 'arquivado') return false;
         if (isAdminPerfil) return true;
-        // Para não-admin: só conta se for responsável
         let responsaveisIds = [];
         try { responsaveisIds = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
         return t.responsavel_principal_id === user.colaborador_id ||
                responsaveisIds.includes(user.colaborador_id);
       }).length;
       setTarefasVencidas(vencidas);
+
+      // Tarefas novas: criadas após a última vez que o colaborador acessou a página de Tarefas
+      const chave = `tarefas_ultima_visita_${user.colaborador_id || user.id}`;
+      const ultimaVisita = localStorage.getItem(chave);
+      if (ultimaVisita && user.colaborador_id) {
+        const novas = tarefas.filter(t => {
+          if (t.status === 'concluido' || t.status === 'arquivado') return false;
+          if (!t.created_date || t.created_date <= ultimaVisita) return false;
+          let responsaveisIds = [];
+          try { responsaveisIds = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
+          return t.responsavel_principal_id === user.colaborador_id ||
+                 responsaveisIds.includes(user.colaborador_id);
+        }).length;
+        setTarefasNovas(novas);
+      }
     }).catch(console.error);
   }, [user]);
 
