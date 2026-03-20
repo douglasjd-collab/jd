@@ -331,44 +331,6 @@ export default function Tarefas() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border shadow-sm p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
-          <div className="relative xl:col-span-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Buscar tarefa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-          </div>
-          <select className="h-9 rounded-lg border px-3 text-sm bg-white" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
-            <option value="todos">Todos status</option>
-            {statusList.map(s => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
-          </select>
-          <select className="h-9 rounded-lg border px-3 text-sm bg-white" value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}>
-            <option value="todas">Todas prioridades</option>
-            <option value="baixa">Baixa</option>
-            <option value="media">Média</option>
-            <option value="alta">Alta</option>
-            <option value="urgente">Urgente</option>
-          </select>
-          <select className="h-9 rounded-lg border px-3 text-sm bg-white" value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)}>
-            <option value="todos">Todos setores</option>
-            {SETORES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-          <div className="flex gap-2">
-            <select className="h-9 rounded-lg border px-3 text-sm bg-white flex-1" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
-              <option value="todos">Todos responsáveis</option>
-              {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-            </select>
-            <Button
-              variant={mostrarSoMinhas ? 'default' : 'outline'}
-              size="sm"
-              className={mostrarSoMinhas ? 'bg-[#1e3a5f] text-white h-9 px-3' : 'h-9 px-3'}
-              onClick={() => setMostrarSoMinhas(p => !p)}
-            >
-              Minhas
-            </Button>
-          </div>
-        </div>
-      </div>
-
       {modoVisualizacao === 'lista' ? (
         <TarefasLista
           tarefas={tarefasFiltradas}
