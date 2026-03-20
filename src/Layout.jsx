@@ -572,6 +572,11 @@ export default function Layout({ children, currentPageName }) {
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="flex-1">{item.name}</span>
+                  {item.name === 'Tarefas' && tarefasNovas > 0 && (
+                    <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight mr-1" title="Novas tarefas atribuídas a você">
+                      {tarefasNovas} nova{tarefasNovas > 1 ? 's' : ''}
+                    </span>
+                  )}
                   {item.name === 'Tarefas' && tarefasVencidas > 0 && (
                     <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight">
                       {tarefasVencidas}
