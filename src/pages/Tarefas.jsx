@@ -311,7 +311,17 @@ export default function Tarefas() {
         </div>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      {modoVisualizacao === 'lista' ? (
+        <TarefasLista
+          tarefas={tarefasFiltradas}
+          statusList={statusList}
+          onEdit={(t) => { setTarefaSelecionada(t); setFormOpen(true); }}
+          onDelete={(t) => { if (confirm(`Excluir tarefa "${t.titulo}"?`)) excluirTarefa.mutate(t); }}
+          onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
+        />
+      ) : null}
+
+      {modoVisualizacao === 'kanban' && <div className="flex gap-4 overflow-x-auto pb-4">
         {statusList.map(status => {
           const colTarefas = tarefasFiltradas.filter(t => t.status === status.slug);
           return (
