@@ -48,6 +48,13 @@ export default function Tarefas() {
 
   useEffect(() => { loadUser(); }, []);
 
+  // Registrar visita para zerar badge de "novas tarefas" no menu
+  useEffect(() => {
+    if (!currentUser?.colaborador_id) return;
+    const chave = `tarefas_ultima_visita_${currentUser.colaborador_id}`;
+    localStorage.setItem(chave, new Date().toISOString());
+  }, [currentUser?.colaborador_id]);
+
   const loadUser = async () => {
     try {
       const me = await base44.auth.me();
