@@ -248,6 +248,22 @@ export default function Tarefas() {
         </Link>
       </PageHeader>
 
+      {/* Abas Em andamento / Finalizados */}
+      <div className="flex items-center gap-1 bg-white border rounded-xl p-1 w-fit shadow-sm">
+        <button
+          onClick={() => setAbaAtiva('andamento')}
+          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Em andamento
+        </button>
+        <button
+          onClick={() => setAbaAtiva('finalizados')}
+          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Finalizados
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between">
           <div>
