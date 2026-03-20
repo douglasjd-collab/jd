@@ -123,6 +123,7 @@ export default function PropostaEditModal({ open, onOpenChange, propostaId, onSu
         emprestimo_numero_beneficio: data.emprestimo_numero_beneficio || null,
         emprestimo_numero_ade: data.emprestimo_numero_ade || null,
         emprestimo_prazo: data.emprestimo_prazo ? parseInt(data.emprestimo_prazo) : null,
+        emprestimo_valor_parcela: data.emprestimo_valor_parcela ? parseFloat(data.emprestimo_valor_parcela) : null,
         data_venda: data.data_venda || null,
         emprestimo_data_liberacao: data.emprestimo_data_liberacao || null,
         valor_credito: parseValor(data.valor_credito),
@@ -263,6 +264,10 @@ export default function PropostaEditModal({ open, onOpenChange, propostaId, onSu
                 <div>
                   <Label className="text-xs">Prazo (meses)</Label>
                   <Input type="number" {...fieldProps('emprestimo_prazo')} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Valor da Parcela (R$)</Label>
+                  <Input type="number" step="0.01" {...fieldProps('emprestimo_valor_parcela')} placeholder="0,00" className="mt-1" />
                 </div>
                 <div>
                   <Label className="text-xs">Nº Contrato</Label>
