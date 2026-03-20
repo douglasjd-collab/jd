@@ -825,6 +825,7 @@ export default function VendasEmprestimos() {
         proposta={propostaToEdit}
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
+        currentUser={currentUser}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
