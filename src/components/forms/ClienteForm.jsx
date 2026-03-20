@@ -23,8 +23,9 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, User, Building2, Upload, X, FileText } from 'lucide-react';
+import { Loader2, User, Building2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import DocUploadItem from './DocUploadItem';
 
 export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isLoading }) {
   const [uploadingDoc, setUploadingDoc] = useState(null);
