@@ -337,9 +337,11 @@ export default function Tarefas() {
         <TarefasLista
           tarefas={tarefasFiltradas}
           statusList={statusList}
+          colaboradores={colaboradores}
           onEdit={(t) => { setTarefaSelecionada(t); setFormOpen(true); }}
           onDelete={(t) => { if (confirm(`Excluir tarefa "${t.titulo}"?`)) excluirTarefa.mutate(t); }}
           onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
+          onUpdate={handleUpdate}
         />
       ) : null}
 
