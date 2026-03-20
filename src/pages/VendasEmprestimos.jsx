@@ -678,6 +678,7 @@ export default function VendasEmprestimos() {
                       <p className="text-xs text-slate-400 mt-0.5">
                         {cpf && <span className="font-medium text-slate-500">CPF: {cpf}</span>}
                         {p.contrato && <span>{cpf ? ' | ' : ''}Contrato: {p.contrato}</span>}
+                        {p.emprestimo_valor_parcela ? <span className="font-semibold text-slate-600"> /Parcela {p.emprestimo_valor_parcela.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span> : null}
                       </p>
                       {getEmpresaParceiraNome(p.tabela_comissao_id) && (
                         <p className="text-xs text-indigo-600 font-medium mt-0.5 flex items-center gap-1">
