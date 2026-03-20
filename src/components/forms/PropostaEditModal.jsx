@@ -146,6 +146,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
     }
   };
 
+  const podeVerEmpresaParceira = ['master', 'super_admin', 'admin', 'gerente', 'colaborador'].includes(currentUser?.perfil);
   const produtoLabels = { consorcio: 'Consórcio', emprestimo: 'Empréstimo', financiamento: 'Financiamento' };
   const isPortabilidade = formData.emprestimo_tipo === 'PORTABILIDADE_PURA' || formData.emprestimo_tipo === 'REFIN_PORTABILIDADE';
 
