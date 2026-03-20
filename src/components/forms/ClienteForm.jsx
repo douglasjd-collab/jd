@@ -664,12 +664,16 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                 <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label>CEP</Label>
-                        <Input
-                          {...register('com_cep')}
-                          placeholder="00000-000"
-                          onChange={(e) => setValue('com_cep', formatCEP(e.target.value))}
-                        />
+                       <Label>CEP</Label>
+                       <Input
+                         {...register('com_cep')}
+                         placeholder="00000-000"
+                         onChange={(e) => {
+                           const v = formatCEP(e.target.value);
+                           setValue('com_cep', v);
+                           buscarCep(v, 'com');
+                         }}
+                       />
                       </div>
 
                       <div>
