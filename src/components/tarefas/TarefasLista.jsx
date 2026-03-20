@@ -225,7 +225,15 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                     {tarefa.cliente_nome || <span className="text-slate-400 italic text-xs">Interna</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-700 max-w-[200px]">
-                    <p className="truncate font-medium">{tarefa.titulo}</p>
+                    <div className="flex items-center gap-2">
+                      {atrasada && (
+                        <span className="flex-shrink-0 w-2 h-2 rounded-full bg-red-500" title="Atrasada" />
+                      )}
+                      {!atrasada && tarefa.data_conclusao_prevista === hoje && (
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-600 text-[10px] font-bold" title="Vence hoje">!</span>
+                      )}
+                      <p className={`truncate font-medium ${atrasada ? 'text-red-500' : ''}`}>{tarefa.titulo}</p>
+                    </div>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {tarefa.tipo ? (
