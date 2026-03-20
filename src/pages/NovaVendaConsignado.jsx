@@ -150,6 +150,7 @@ export default function NovaVendaConsignado() {
         emprestimo_numero_beneficio: dados.numero_beneficio,
         emprestimo_numero_ade: dados.numero_ade,
         emprestimo_prazo: parseInt(dados.prazo) || 0,
+        emprestimo_valor_parcela: parseFloat(dados.parcela) || 0,
         emprestimo_saldo_devedor: parseFloat(dados.saldo_devedor) || 0,
         emprestimo_data_liberacao: dados.data_liberacao || null,
         emprestimo_banco_anterior: dados.banco_anterior,
