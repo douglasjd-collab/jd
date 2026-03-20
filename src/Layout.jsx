@@ -53,6 +53,7 @@ export default function Layout({ children, currentPageName }) {
   const [editarPerfilOpen, setEditarPerfilOpen] = useState(false);
   const [novaVendaConsorcioOpen, setNovaVendaConsorcioOpen] = useState(false);
   const [tarefasVencidas, setTarefasVencidas] = useState(0);
+  const [tarefasNovas, setTarefasNovas] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
