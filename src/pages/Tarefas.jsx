@@ -42,7 +42,7 @@ export default function Tarefas() {
   const [filtroResponsavel, setFiltroResponsavel] = useState('todos');
   const [filtroSetor, setFiltroSetor] = useState('todos');
   const [mostrarSoMinhas, setMostrarSoMinhas] = useState(false);
-  const [modoVisualizacao, setModoVisualizacao] = useState('kanban'); // 'kanban' | 'lista'
+  const [modoVisualizacao, setModoVisualizacao] = useState('lista'); // 'kanban' | 'lista'
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
