@@ -382,8 +382,8 @@ export default function VendasEmprestimos() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900">Empréstimos</h1>
-          <p className="text-slate-500 mt-1">{filteredPropostas.length} propostas encontradas</p>
+          <h1 className="text-3xl lg:text-4xl font-bold text-slate-900">Empréstimos</h1>
+          <p className="text-slate-500 mt-1 text-base">{filteredPropostas.length} propostas encontradas</p>
         </div>
         <div className="flex items-center gap-2">
           {/* View mode toggle */}
