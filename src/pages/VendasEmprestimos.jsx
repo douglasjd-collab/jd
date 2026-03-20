@@ -461,7 +461,7 @@ export default function VendasEmprestimos() {
             </div>
             <div>
               <p className="text-sm text-slate-500">Em andamento</p>
-              <p className="font-bold text-slate-900 text-base">{formatCurrency(valor_em_andamento)}</p>
+              <p className="font-bold text-slate-900 text-lg">{formatCurrency(valor_em_andamento)}</p>
             </div>
           </div>
           <p className="text-sm text-slate-400 mt-2">{emAndamento.length} propostas</p>
