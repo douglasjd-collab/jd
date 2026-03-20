@@ -105,6 +105,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
         dataToUpdate.emprestimo_numero_beneficio = formData.emprestimo_numero_beneficio || '';
         dataToUpdate.emprestimo_numero_ade = formData.emprestimo_numero_ade || '';
         dataToUpdate.emprestimo_prazo = parseInt(formData.emprestimo_prazo) || 0;
+        dataToUpdate.emprestimo_valor_parcela = parseFloat(formData.emprestimo_valor_parcela) || 0;
         dataToUpdate.emprestimo_banco_anterior = formData.emprestimo_banco_anterior || '';
         dataToUpdate.emprestimo_saldo_devedor = parseFloat(formData.emprestimo_saldo_devedor) || 0;
         dataToUpdate.emprestimo_data_liberacao = formData.emprestimo_data_liberacao || '';
@@ -253,8 +254,22 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                     <Input value={formData.emprestimo_numero_ade || ''} onChange={(e) => setFormData({ ...formData, emprestimo_numero_ade: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Prazo (meses)</Label>
-                    <Input type="number" value={formData.emprestimo_prazo || ''} onChange={(e) => setFormData({ ...formData, emprestimo_prazo: parseInt(e.target.value) || 0 })} />
+                   <Label>Prazo (meses)</Label>
+                   <Input type="number" value={formData.emprestimo_prazo || ''} onChange={(e) => setFormData({ ...formData, emprestimo_prazo: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div>
+                   <Label>Valor da Parcela</Label>
+                   <div className="relative">
+                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
+                     <Input
+                       className="pl-9"
+                       value={formatInputCurrency(formData.emprestimo_valor_parcela)}
+                       onChange={(e) => {
+                         const raw = e.target.value.replace(/[^\d,]/g, '');
+                         setFormData({ ...formData, emprestimo_valor_parcela: parseCurrency(raw) });
+                       }}
+                     />
+                   </div>
                   </div>
                   {(formData.emprestimo_tipo === 'PORTABILIDADE_PURA' || formData.emprestimo_tipo === 'REFIN_PORTABILIDADE') && (
                     <>
