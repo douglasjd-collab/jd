@@ -200,14 +200,14 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
         <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="border-b bg-slate-50">
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Cliente</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Título</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Tipo</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Status</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Responsáveis</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Início</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Limite</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Ações</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[18%]">Cliente</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[20%]">Título</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Tipo</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[16%]">Status</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[12%]">Responsáveis</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Início</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Limite</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[8%]">Ações</th>
             </tr>
           </thead>
           <tbody>
