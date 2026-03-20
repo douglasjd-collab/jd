@@ -217,16 +217,6 @@ export default function Tarefas() {
       >
         <div className="flex items-center gap-1 border rounded-lg p-0.5 bg-slate-100">
           <Button
-            variant={modoVisualizacao === 'kanban' ? 'default' : 'ghost'}
-            size="sm"
-            className={`h-7 px-2 gap-1.5 ${modoVisualizacao === 'kanban' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
-            onClick={() => setModoVisualizacao('kanban')}
-            title="Kanban"
-          >
-            <Kanban className="w-4 h-4" />
-            <span className="text-xs">Kanban</span>
-          </Button>
-          <Button
             variant={modoVisualizacao === 'lista' ? 'default' : 'ghost'}
             size="sm"
             className={`h-7 px-2 gap-1.5 ${modoVisualizacao === 'lista' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
@@ -235,6 +225,16 @@ export default function Tarefas() {
           >
             <LayoutList className="w-4 h-4" />
             <span className="text-xs">Lista</span>
+          </Button>
+          <Button
+            variant={modoVisualizacao === 'kanban' ? 'default' : 'ghost'}
+            size="sm"
+            className={`h-7 px-2 gap-1.5 ${modoVisualizacao === 'kanban' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+            onClick={() => setModoVisualizacao('kanban')}
+            title="Kanban"
+          >
+            <Kanban className="w-4 h-4" />
+            <span className="text-xs">Kanban</span>
           </Button>
         </div>
         <Link to={createPageUrl('ConfiguracaoTarefas')}>
