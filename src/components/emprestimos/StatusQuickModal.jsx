@@ -25,13 +25,60 @@ const STATUS_COLOR_MAP = {
   slate: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
-// Calcula N dias úteis a partir de uma data
+// Feriados nacionais brasileiros fixos (MM-DD)
+const FERIADOS_FIXOS = [
+  '01-01', // Confraternização Universal
+  '04-21', // Tiradentes
+  '05-01', // Dia do Trabalho
+  '09-07', // Independência do Brasil
+  '10-12', // Nossa Senhora Aparecida
+  '11-02', // Finados
+  '11-15', // Proclamação da República
+  '12-25', // Natal
+];
+
+// Feriados móveis por ano (Carnaval, Sexta-feira Santa, Corpus Christi)
+function getFeriadosMoveis(ano) {
+  // Algoritmo de Butcher para Páscoa
+  const a = ano % 19;
+  const b = Math.floor(ano / 100);
+  const c = ano % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  const pascoa = new Date(ano, month - 1, day);
+
+  const sexta = addDays(pascoa, -2);
+  const carnaval2 = addDays(pascoa, -47);
+  const carnaval1 = addDays(carnaval2, -1);
+  const corpus = addDays(pascoa, 60);
+
+  const fmt = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return [fmt(carnaval1), fmt(carnaval2), fmt(sexta), fmt(corpus)];
+}
+
+function isFeriado(data) {
+  const mmdd = `${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+  if (FERIADOS_FIXOS.includes(mmdd)) return true;
+  const moveis = getFeriadosMoveis(data.getFullYear());
+  return moveis.includes(mmdd);
+}
+
+// Calcula N dias úteis a partir de uma data (pula fins de semana e feriados nacionais)
 function adicionarDiasUteis(dataInicio, dias) {
   let data = new Date(dataInicio);
   let count = 0;
   while (count < dias) {
     data = addDays(data, 1);
-    if (!isWeekend(data)) count++;
+    if (!isWeekend(data) && !isFeriado(data)) count++;
   }
   return data;
 }
