@@ -262,12 +262,13 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                    <div className="relative">
                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
                      <Input
+                       type="number"
+                       step="0.01"
+                       min="0"
                        className="pl-9"
-                       value={formatInputCurrency(formData.emprestimo_valor_parcela)}
-                       onChange={(e) => {
-                         const raw = e.target.value.replace(/[^\d,]/g, '');
-                         setFormData({ ...formData, emprestimo_valor_parcela: parseCurrency(raw) });
-                       }}
+                       value={formData.emprestimo_valor_parcela || ''}
+                       onChange={(e) => setFormData({ ...formData, emprestimo_valor_parcela: parseFloat(e.target.value) || 0 })}
+                       placeholder="0,00"
                      />
                    </div>
                   </div>
