@@ -744,7 +744,12 @@ export default function VendasEmprestimos() {
                         {tipoLabel}
                       </span>
                     </div>
-                    <p className="font-bold text-slate-900 text-base">{formatCurrency(p.valor_credito)}</p>
+                    <div className="text-right">
+                      <p className="font-bold text-slate-900 text-base">{formatCurrency(p.valor_credito)}</p>
+                      {p.emprestimo_valor_parcela ? (
+                        <p className="text-xs text-slate-500 mt-0.5">Parcela: <span className="font-semibold text-slate-700">{formatCurrency(p.emprestimo_valor_parcela)}</span></p>
+                      ) : null}
+                    </div>
                   </div>
 
                   {/* Info row */}
