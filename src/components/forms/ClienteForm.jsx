@@ -211,6 +211,32 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       .replace(/(-\d{3})\d+?$/, '$1');
   };
 
+  const buscarCep = async (cep, prefix) => {
+    const cepLimpo = cep.replace(/\D/g, '');
+    if (cepLimpo.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await res.json();
+      if (data.erro) return;
+      if (prefix === 'res') {
+        if (data.logradouro) setValue('res_endereco', data.logradouro);
+        if (data.bairro) setValue('res_bairro', data.bairro);
+        setValue('res_cidade', data.localidade);
+        setValue('res_uf', data.uf);
+      } else if (prefix === 'com') {
+        if (data.logradouro) setValue('com_endereco', data.logradouro);
+        if (data.bairro) setValue('com_bairro', data.bairro);
+        setValue('com_cidade', data.localidade);
+        setValue('com_uf', data.uf);
+      } else if (prefix === 'pj') {
+        if (data.logradouro) setValue('pj_endereco', data.logradouro);
+        if (data.bairro) setValue('pj_bairro', data.bairro);
+        setValue('pj_cidade', data.localidade);
+        setValue('pj_uf', data.uf);
+      }
+    } catch {}
+  };
+
   const formatCurrency = (value) => {
     if (!value) return '';
     const numericValue = value.replace(/\D/g, '');
