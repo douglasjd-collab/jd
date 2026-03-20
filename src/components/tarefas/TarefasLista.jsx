@@ -235,7 +235,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                       <p className={`truncate font-medium ${atrasada ? 'text-red-500' : ''}`}>{tarefa.titulo}</p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3">
                     {tarefa.tipo ? (
                       <span className="px-2 py-1 rounded-md text-xs bg-indigo-50 text-indigo-700 font-medium capitalize">
                         {tarefa.tipo}
