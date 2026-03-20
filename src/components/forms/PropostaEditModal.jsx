@@ -183,22 +183,24 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                 <Field label="Data da Venda">
                   <Input type="date" value={formData.data_venda || ''} onChange={setE('data_venda')} />
                 </Field>
-                {podeVerEmpresaParceira && <Field label="Empresa Parceira" span={2}>
-                  <Select value={formData.empresa_parceira_id || 'nenhuma'} onValueChange={(v) => {
-                    if (v === 'nenhuma') {
-                      setFormData(prev => ({ ...prev, empresa_parceira_id: '', empresa_parceira_nome: '' }));
-                    } else {
-                      const ep = empresasParceiras.find(x => x.id === v);
-                      setFormData(prev => ({ ...prev, empresa_parceira_id: v, empresa_parceira_nome: ep?.nome || '' }));
-                    }
-                  }}>
-                    <SelectTrigger><SelectValue placeholder="Selecione (opcional)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nenhuma">Nenhuma</SelectItem>
-                      {empresasParceiras.map(ep => <SelectItem key={ep.id} value={ep.id}>{ep.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </Field>}
+                {podeVerEmpresaParceira && (
+                  <Field label="Empresa Parceira" span={2}>
+                    <Select value={formData.empresa_parceira_id || 'nenhuma'} onValueChange={(v) => {
+                      if (v === 'nenhuma') {
+                        setFormData(prev => ({ ...prev, empresa_parceira_id: '', empresa_parceira_nome: '' }));
+                      } else {
+                        const ep = empresasParceiras.find(x => x.id === v);
+                        setFormData(prev => ({ ...prev, empresa_parceira_id: v, empresa_parceira_nome: ep?.nome || '' }));
+                      }
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="Selecione (opcional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nenhuma">Nenhuma</SelectItem>
+                        {empresasParceiras.map(ep => <SelectItem key={ep.id} value={ep.id}>{ep.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
               </FieldGroup>
             </div>
 
