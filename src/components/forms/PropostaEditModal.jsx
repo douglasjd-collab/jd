@@ -198,7 +198,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                       {empresasParceiras.map(ep => <SelectItem key={ep.id} value={ep.id}>{ep.nome}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                </Field>
+                </Field>}
               </FieldGroup>
             </div>
 
