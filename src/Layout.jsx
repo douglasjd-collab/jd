@@ -74,6 +74,20 @@ export default function Layout({ children, currentPageName }) {
     loadLogo();
   }, []);
 
+  useEffect(() => {
+    if (!user?.empresa_id) return;
+    const hoje = new Date().toISOString().split('T')[0];
+    base44.entities.Tarefa.filter({ empresa_id: user.empresa_id }).then(tarefas => {
+      const vencidas = tarefas.filter(t =>
+        t.data_conclusao_prevista &&
+        t.data_conclusao_prevista < hoje &&
+        t.status !== 'concluido' &&
+        t.status !== 'arquivado'
+      ).length;
+      setTarefasVencidas(vencidas);
+    }).catch(() => {});
+  }, [user?.empresa_id]);
+
   // Fecha sidebar e menus ao mudar de página
   useEffect(() => {
     setSidebarOpen(false);
