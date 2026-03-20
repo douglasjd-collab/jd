@@ -551,6 +551,11 @@ export default function Layout({ children, currentPageName }) {
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.name}</span>
+                  {item.name === 'Tarefas' && tarefasVencidas > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                      {tarefasVencidas}
+                    </span>
+                  )}
                 </Link>
               )}
             </div>
