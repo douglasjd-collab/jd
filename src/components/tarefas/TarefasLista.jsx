@@ -103,7 +103,7 @@ export default function TarefasLista({ tarefas, statusList, onEdit, onDelete, on
                 <tr
                   key={tarefa.id}
                   className={`border-b last:border-0 transition-colors cursor-pointer group ${isSel ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 border-l-4 border-l-transparent'}`}
-                  onClick={() => setSelecionada(isSel ? null : tarefa.id)}
+                  onDoubleClick={() => setSelecionada(isSel ? null : tarefa.id)}
                 >
                   <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
                     {tarefa.cliente_nome || <span className="text-slate-400 italic text-xs">Interna</span>}
