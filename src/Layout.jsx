@@ -75,9 +75,10 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
-    if (!user?.empresa_id) return;
-    const hoje = new Date().toISOString().split('T')[0];
-    base44.entities.Tarefa.filter({ empresa_id: user.empresa_id }).then(tarefas => {
+    if (!user) return;
+    const hoje = new Date().toLocaleDateString('fr-CA'); // YYYY-MM-DD local
+    const filtro = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+    base44.entities.Tarefa.filter(filtro, '-created_date', 500).then(tarefas => {
       const vencidas = tarefas.filter(t =>
         t.data_conclusao_prevista &&
         t.data_conclusao_prevista < hoje &&
@@ -85,8 +86,8 @@ export default function Layout({ children, currentPageName }) {
         t.status !== 'arquivado'
       ).length;
       setTarefasVencidas(vencidas);
-    }).catch(() => {});
-  }, [user?.empresa_id]);
+    }).catch(console.error);
+  }, [user]);
 
   // Fecha sidebar e menus ao mudar de página
   useEffect(() => {
