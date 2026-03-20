@@ -80,10 +80,22 @@ export default function Tarefas() {
     return STATUS_PADRAO;
   }, [statusCustom]);
 
+  const isAdminPerfil = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
+
   const { data: tarefas = [] } = useQuery({
-    queryKey: ['tarefas', empresaId],
-    enabled: !!empresaId,
-    queryFn: () => base44.entities.Tarefa.filter({ empresa_id: empresaId }, '-created_date'),
+    queryKey: ['tarefas', empresaId, currentUser?.colaborador_id, isAdminPerfil],
+    enabled: !!empresaId && !!currentUser,
+    queryFn: async () => {
+      const todas = await base44.entities.Tarefa.filter({ empresa_id: empresaId }, '-created_date');
+      if (isAdminPerfil) return todas;
+      // Não-admin: filtrar apenas onde é responsável
+      return todas.filter(t => {
+        let ids = [];
+        try { ids = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
+        return t.responsavel_principal_id === currentUser.colaborador_id ||
+               ids.includes(currentUser.colaborador_id);
+      });
+    },
   });
 
   const { data: colaboradores = [] } = useQuery({
