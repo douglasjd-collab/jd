@@ -440,54 +440,54 @@ export default function VendasEmprestimos() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-5 h-5 text-blue-600" />
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Hoje</p>
-              <p className="font-bold text-slate-900 text-sm">{formatCurrency(valorHoje)}</p>
+              <p className="text-sm text-slate-500">Hoje</p>
+              <p className="font-bold text-slate-900 text-base">{formatCurrency(valorHoje)}</p>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2">{todayPropostas.length} propostas</p>
+          <p className="text-sm text-slate-400 mt-2">{todayPropostas.length} propostas</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-orange-600" />
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-orange-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Em andamento</p>
-              <p className="font-bold text-slate-900 text-sm">{formatCurrency(valor_em_andamento)}</p>
+              <p className="text-sm text-slate-500">Em andamento</p>
+              <p className="font-bold text-slate-900 text-base">{formatCurrency(valor_em_andamento)}</p>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2">{emAndamento.length} propostas</p>
+          <p className="text-sm text-slate-400 mt-2">{emAndamento.length} propostas</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Pagas</p>
-              <p className="font-bold text-slate-900">{formatCurrency(valor_pagas_mes)}</p>
+              <p className="text-sm text-slate-500">Pagas</p>
+              <p className="font-bold text-slate-900 text-base">{formatCurrency(valor_pagas_mes)}</p>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2">{propostas_pagas_mes.length} propostas</p>
+          <p className="text-sm text-slate-400 mt-2">{propostas_pagas_mes.length} propostas</p>
         </div>
 
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
+            <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-6 h-6 text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Valor total do dia</p>
-              <p className="font-bold text-slate-900 text-sm">{formatCurrency(valorHoje)}</p>
+              <p className="text-sm text-slate-500">Valor total do dia</p>
+              <p className="font-bold text-slate-900 text-base">{formatCurrency(valorHoje)}</p>
             </div>
           </div>
         </div>
