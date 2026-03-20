@@ -671,12 +671,12 @@ export default function VendasEmprestimos() {
                 <div className="p-4 pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                         {p.cliente_nome?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                       <div>
-                      <p className="font-bold text-slate-900 text-sm leading-tight">{p.cliente_nome || '-'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="font-bold text-slate-900 text-base leading-tight">{p.cliente_nome || '-'}</p>
+                      <p className="text-sm text-slate-400 mt-0.5">
                         {cpf && <span className="font-medium text-slate-500">CPF: {cpf}</span>}
                         {p.contrato && <span>{cpf ? ' | ' : ''}Contrato: {p.contrato}</span>}
                       </p>
