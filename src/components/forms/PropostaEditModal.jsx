@@ -183,7 +183,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                 <Field label="Data da Venda">
                   <Input type="date" value={formData.data_venda || ''} onChange={setE('data_venda')} />
                 </Field>
-                <Field label="Empresa Parceira" span={2}>
+                {podeVerEmpresaParceira && <Field label="Empresa Parceira" span={2}>
                   <Select value={formData.empresa_parceira_id || 'nenhuma'} onValueChange={(v) => {
                     if (v === 'nenhuma') {
                       setFormData(prev => ({ ...prev, empresa_parceira_id: '', empresa_parceira_nome: '' }));
