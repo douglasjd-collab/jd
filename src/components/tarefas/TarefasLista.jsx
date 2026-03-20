@@ -248,10 +248,10 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                   <td className="px-4 py-3">
                     <ResponsaveisPopover tarefa={tarefa} colaboradores={colaboradores} onUpdate={onUpdate} />
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-slate-500 text-xs">
+                  <td className="px-4 py-3 text-slate-500 text-xs">
                     {formatarData(tarefa.data_cadastro || tarefa.created_date)}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3">
                     <span className={`text-xs font-semibold ${atrasada ? 'text-red-500' : 'text-slate-500'}`}>
                       {formatarData(tarefa.data_conclusao_prevista)}
                     </span>
