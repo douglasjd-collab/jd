@@ -179,6 +179,8 @@ export default function Tarefas() {
     if (tarefaSelecionada?.id === id) setTarefaSelecionada(prev => ({ ...prev, ...data }));
   };
 
+  const SLUGS_FINALIZADOS = ['concluido', 'arquivado'];
+
   const tarefasFiltradas = tarefas.filter(t => {
     const normalize = str => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const s = normalize(search);
@@ -190,7 +192,10 @@ export default function Tarefas() {
     try { responsaveisIds = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
     const matchResponsavel = filtroResponsavel === 'todos' || t.responsavel_principal_id === filtroResponsavel || responsaveisIds.includes(filtroResponsavel);
     const matchMinhas = !mostrarSoMinhas || t.responsavel_principal_id === currentUser?.id || responsaveisIds.includes(currentUser?.id);
-    return matchBusca && matchStatus && matchPrioridade && matchSetor && matchResponsavel && matchMinhas;
+    const matchAba = abaAtiva === 'finalizados'
+      ? SLUGS_FINALIZADOS.includes(t.status)
+      : !SLUGS_FINALIZADOS.includes(t.status);
+    return matchBusca && matchStatus && matchPrioridade && matchSetor && matchResponsavel && matchMinhas && matchAba;
   });
 
   const atrasadas = tarefas.filter(t => t.data_conclusao_prevista && t.data_conclusao_prevista < hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
