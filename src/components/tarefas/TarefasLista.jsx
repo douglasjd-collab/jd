@@ -219,7 +219,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                 <tr
                   key={tarefa.id}
                   className={`border-b last:border-0 transition-colors group ${isSel ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 border-l-4 border-l-transparent'}`}
-                  onDoubleClick={() => setSelecionada(isSel ? null : tarefa.id)}
+                  onDoubleClick={() => onVerDetalhes(tarefa)}
                 >
                   <td className="px-4 py-3 font-medium text-slate-800 truncate">
                     {tarefa.cliente_nome || <span className="text-slate-400 italic text-xs">Interna</span>}
