@@ -253,12 +253,8 @@ export default function PropostaEditModal({ proposta, open, onOpenChange }) {
                      <Label>Número ADE</Label>
                      <Input value={formData.emprestimo_numero_ade || ''} onChange={(e) => setFormData({ ...formData, emprestimo_numero_ade: e.target.value })} />
                    </div>
-                   <div className="col-span-2">
-                     <Label>Número do Contrato</Label>
-                     <Input value={formData.contrato || ''} onChange={(e) => setFormData({ ...formData, contrato: e.target.value })} />
-                   </div>
-                  <div>
-                   <Label>Prazo (meses)</Label>
+                   <div>
+                    <Label>Prazo (meses)</Label>
                    <Input type="number" value={formData.emprestimo_prazo || ''} onChange={(e) => setFormData({ ...formData, emprestimo_prazo: parseInt(e.target.value) || 0 })} />
                   </div>
                   <div>
