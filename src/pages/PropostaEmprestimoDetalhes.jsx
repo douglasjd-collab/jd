@@ -224,9 +224,9 @@ export default function PropostaEmprestimoDetalhes() {
             <InfoItem label="Tipo" value={proposta.emprestimo_tipo} />
             <InfoItem label="Prazo" value={proposta.emprestimo_prazo ? `${proposta.emprestimo_prazo} meses` : null} />
             <InfoItem label="Nº Contrato" value={proposta.contrato} />
+            <InfoItem label="Valor da Parcela" value={proposta.emprestimo_valor_parcela ? fmt(proposta.emprestimo_valor_parcela) : null} />
             <InfoItem label="Nº ADE" value={proposta.emprestimo_numero_ade} />
             <InfoItem label="Banco Anterior" value={proposta.emprestimo_banco_anterior} />
-            <InfoItem label="Valor da Parcela" value={proposta.emprestimo_valor_parcela ? fmt(proposta.emprestimo_valor_parcela) : null} />
             <InfoItem label="Saldo Devedor" value={proposta.emprestimo_saldo_devedor ? fmt(proposta.emprestimo_saldo_devedor) : null} />
             <InfoItem label="Data da Venda" value={fmtDate(proposta.data_venda)} />
             <InfoItem label="Data de Liberação" value={fmtDate(proposta.emprestimo_data_liberacao)} />
