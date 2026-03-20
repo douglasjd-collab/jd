@@ -196,8 +196,8 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
   return (
     <div className="flex gap-0 bg-white rounded-2xl border shadow-sm overflow-hidden">
       {/* Tabela */}
-      <div className="flex-1 overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="flex-1 min-w-0">
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="border-b bg-slate-50">
               <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide whitespace-nowrap">Cliente</th>
