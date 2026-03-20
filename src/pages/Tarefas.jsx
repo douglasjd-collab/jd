@@ -350,7 +350,7 @@ export default function Tarefas() {
             </div>
           );
         })}
-      </div>
+      </div>}
 
       <TarefaFormModal
         open={formOpen}
