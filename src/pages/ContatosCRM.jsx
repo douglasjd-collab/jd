@@ -282,6 +282,8 @@ export default function ContatosCRM() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contatoDelete, setContatoDelete] = useState(null);
   const [tagsMassaOpen, setTagsMassaOpen] = useState(false);
+  const [chatPopupOpen, setChatPopupOpen] = useState(false);
+  const [contatoChat, setContatoChat] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => { loadUser(); }, []);
