@@ -622,7 +622,13 @@ export default function ComissoesEmprestimos() {
                             <td className="p-3 text-right font-semibold text-blue-700">{fmt(getValorAPagar(p))}</td>
                             <td className="p-3 text-center">
                               <button
-                                onClick={() => { setPropostaMarcar(p); setMarcarBancoModal(true); }}
+                                onClick={() => {
+                                  setPropostaMarcar(p);
+                                  setBancoDtRecebimento(p.comissao_banco_data_recebimento || '');
+                                  setBancoValorRecebido(p.comissao_banco_valor_recebido ? String(p.comissao_banco_valor_recebido) : p.valor_comissao ? String(p.valor_comissao) : '');
+                                  setBancoPercentualRecebido(p.comissao_banco_percentual_recebido ? String(p.comissao_banco_percentual_recebido) : getPercentualEmpresa(p) ? String(getPercentualEmpresa(p).toFixed(4)) : '');
+                                  setMarcarBancoModal(true);
+                                }}
                                 className={`px-2 py-1 rounded-full text-xs font-semibold transition-colors ${
                                   p.comissao_banco_recebida
                                     ? 'bg-green-100 text-green-700 hover:bg-green-200'
