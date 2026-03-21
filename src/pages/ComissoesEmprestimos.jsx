@@ -670,52 +670,76 @@ export default function ComissoesEmprestimos() {
         setMarcarBancoModal(v);
         if (!v) { setBancoDtRecebimento(''); setBancoValorRecebido(''); setBancoPercentualRecebido(''); }
       }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Recebimento do Banco</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-md p-0 overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#10353C] to-[#1a5060] px-6 py-4">
+            <DialogTitle className="text-white text-lg font-bold flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-[#23BE84]" />
+              Recebimento do Banco
+            </DialogTitle>
+            <p className="text-white/60 text-xs mt-0.5">Registre os dados do recebimento da comissão</p>
+          </div>
+
           {propostaMarcar && (
-            <div className="space-y-4 text-sm">
-              <div className="bg-slate-50 rounded-lg p-3 space-y-1">
-                <p className="text-slate-600">Cliente: <strong>{propostaMarcar.cliente_nome}</strong></p>
-                <p className="text-slate-600">Contrato: <strong>{propostaMarcar.contrato || '-'}</strong></p>
-                <p className="text-slate-600">Banco: <strong>{propostaMarcar.administradora_nome || '-'}</strong></p>
-                <p className="text-slate-600">Vl. Crédito: <strong className="text-slate-800">{fmt(propostaMarcar.valor_credito)}</strong></p>
+            <div className="p-5 space-y-4">
+              {/* Info do contrato */}
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Cliente', value: propostaMarcar.cliente_nome, full: true },
+                  { label: 'Contrato', value: propostaMarcar.contrato || '-' },
+                  { label: 'Banco', value: propostaMarcar.administradora_nome || '-' },
+                  { label: 'Vl. Crédito', value: fmt(propostaMarcar.valor_credito), highlight: true },
+                ].map(({ label, value, full, highlight }) => (
+                  <div key={label} className={`bg-slate-50 rounded-xl px-3 py-2.5 ${full ? 'col-span-2' : ''}`}>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">{label}</p>
+                    <p className={`text-sm font-semibold mt-0.5 ${highlight ? 'text-[#10353C]' : 'text-slate-800'}`}>{value}</p>
+                  </div>
+                ))}
               </div>
 
               {propostaMarcar.comissao_banco_recebida ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                  <p className="text-orange-700 font-medium">⚠️ Deseja desmarcar a comissão como recebida do banco?</p>
-                  {propostaMarcar.comissao_banco_data_recebimento && (
-                    <p className="text-orange-600 text-xs mt-1">Recebida em: {moment(propostaMarcar.comissao_banco_data_recebimento).format('DD/MM/YYYY')} — {fmt(propostaMarcar.comissao_banco_valor_recebido)} ({propostaMarcar.comissao_banco_percentual_recebido}%)</p>
-                  )}
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-orange-800 font-semibold text-sm">Deseja desmarcar o recebimento?</p>
+                    {propostaMarcar.comissao_banco_data_recebimento && (
+                      <p className="text-orange-600 text-xs mt-1">
+                        Registrado em {moment(propostaMarcar.comissao_banco_data_recebimento).format('DD/MM/YYYY')} · {fmt(propostaMarcar.comissao_banco_valor_recebido)} · {propostaMarcar.comissao_banco_percentual_recebido}%
+                      </p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-slate-700 font-medium">Informe os dados do recebimento:</p>
+                  <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                    <CheckCircle2 className="w-4 h-4 text-[#23BE84]" />
+                    <p className="text-slate-700 font-semibold text-sm">Dados do recebimento</p>
+                  </div>
+
                   <div>
-                    <Label className="text-xs text-slate-500 mb-1 block">Data de Recebimento *</Label>
+                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Data de Recebimento *</Label>
                     <Input
                       type="date"
                       value={bancoDtRecebimento}
                       onChange={e => setBancoDtRecebimento(e.target.value)}
+                      className="h-10 border-slate-200 focus:border-[#10353C]"
                     />
                   </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs text-slate-500 mb-1 block">Valor Recebido (R$) *</Label>
+                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Valor Recebido *</Label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">R$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">R$</span>
                         <Input
                           type="number"
                           min="0"
                           step="0.01"
                           placeholder="0,00"
-                          className="pl-8"
+                          className="pl-9 h-10 border-slate-200 focus:border-[#10353C]"
                           value={bancoValorRecebido}
                           onChange={e => {
                             setBancoValorRecebido(e.target.value);
-                            // Auto-calcular percentual se tiver valor de crédito
                             const val = parseFloat(e.target.value) || 0;
                             if (val > 0 && propostaMarcar.valor_credito) {
                               setBancoPercentualRecebido(((val / propostaMarcar.valor_credito) * 100).toFixed(4));
@@ -725,47 +749,59 @@ export default function ComissoesEmprestimos() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-slate-500 mb-1 block">Percentual Recebido (%) *</Label>
+                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Percentual *</Label>
                       <div className="relative">
                         <Input
                           type="number"
                           min="0"
                           max="100"
                           step="0.0001"
-                          placeholder="0.00"
+                          placeholder="0,00"
+                          className="pr-8 h-10 border-slate-200 focus:border-[#10353C]"
                           value={bancoPercentualRecebido}
                           onChange={e => {
                             setBancoPercentualRecebido(e.target.value);
-                            // Auto-calcular valor se tiver valor de crédito
                             const perc = parseFloat(e.target.value) || 0;
                             if (perc > 0 && propostaMarcar.valor_credito) {
                               setBancoValorRecebido(((propostaMarcar.valor_credito * perc) / 100).toFixed(2));
                             }
                           }}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">%</span>
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">%</span>
                       </div>
                     </div>
                   </div>
-                  {bancoValorRecebido && bancoPercentualRecebido && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs text-green-700">
-                      ✅ Recebimento: <strong>{fmt(parseFloat(bancoValorRecebido))}</strong> — <strong>{parseFloat(bancoPercentualRecebido).toFixed(4)}%</strong> sobre {fmt(propostaMarcar.valor_credito)}
+
+                  {bancoValorRecebido && bancoPercentualRecebido && parseFloat(bancoValorRecebido) > 0 && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <p className="text-emerald-700 text-xs">
+                        <strong>{fmt(parseFloat(bancoValorRecebido))}</strong> referente a <strong>{parseFloat(bancoPercentualRecebido).toFixed(4)}%</strong> de {fmt(propostaMarcar.valor_credito)}
+                      </p>
                     </div>
                   )}
                 </div>
               )}
             </div>
           )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setMarcarBancoModal(false)} disabled={isMarkingBanco}>Cancelar</Button>
+
+          <div className="px-5 pb-5 flex gap-2 justify-end border-t border-slate-100 pt-4">
+            <Button variant="outline" onClick={() => setMarcarBancoModal(false)} disabled={isMarkingBanco} className="px-5">
+              Cancelar
+            </Button>
             <Button
               onClick={() => propostaMarcar && handleMarcarBancoRecebido(propostaMarcar)}
               disabled={isMarkingBanco}
-              className={propostaMarcar?.comissao_banco_recebida ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#10353C] hover:bg-[#1a5060]'}
+              className={`px-5 ${propostaMarcar?.comissao_banco_recebida ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#10353C] hover:bg-[#1a5060]'}`}
             >
-              {isMarkingBanco ? <Loader2 className="w-4 h-4 animate-spin" /> : (propostaMarcar?.comissao_banco_recebida ? 'Desmarcar' : 'Confirmar Recebimento')}
+              {isMarkingBanco
+                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Processando...</>
+                : propostaMarcar?.comissao_banco_recebida
+                  ? 'Desmarcar Recebimento'
+                  : <><CheckCircle2 className="w-4 h-4 mr-2" />Confirmar Recebimento</>
+              }
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
