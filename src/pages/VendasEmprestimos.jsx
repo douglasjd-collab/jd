@@ -464,10 +464,10 @@ export default function VendasEmprestimos() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Clock className="w-8 h-8 text-blue-600" />
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Clock className="w-6 h-6 text-blue-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Hoje</p>
