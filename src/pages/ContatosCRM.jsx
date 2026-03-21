@@ -614,15 +614,14 @@ export default function ContatosCRM() {
 
                 {/* Ações rápidas */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <a
-                    href={`https://wa.me/${c.telefone?.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center hover:bg-green-200 transition-colors"
-                    title="Abrir no WhatsApp"
+                  <button
+                    onClick={() => { setContatoChat(c); setChatPopupOpen(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white rounded-full text-xs font-medium hover:bg-green-600 transition-colors"
+                    title="Ver conversa"
                   >
-                    <MessageCircle className="w-4 h-4" />
-                  </a>
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    Ver conversa
+                  </button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
