@@ -145,6 +145,15 @@ export default function BatePapo() {
     }
   };
 
+  const { data: tagsDB = [] } = useQuery({
+    queryKey: ['tags-crm', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      try { return await base44.entities.ContatoTag.filter({ empresa_id: empresaId }); }
+      catch { return []; }
+    },
+  });
+
   const { data: conversas = [], refetch: refetchConversas } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
