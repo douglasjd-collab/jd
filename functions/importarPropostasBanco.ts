@@ -183,22 +183,20 @@ Deno.serve(async (req) => {
   let ultimoResponseData = null;
   let endpointUsado = null;
 
-  // Tenta endpoints comuns da Finanto/JoinBank
-  const endpoints = [
-    '/propostas',
-    '/proposals',
-    '/contratos',
-    '/contracts',
-    '/operacoes',
-    '/operations',
-    '/emprestimos',
-    '/loans',
-  ];
+  // Se tem URL de propostas explícita, usa ela. Senão tenta endpoints comuns.
+  const propostasUrls = config.propostas_url
+    ? [config.propostas_url]
+    : [
+        `${baseUrl}/propostas`, `${baseUrl}/proposals`,
+        `${baseUrl}/contratos`, `${baseUrl}/contracts`,
+        `${baseUrl}/operacoes`, `${baseUrl}/operations`,
+        `${baseUrl}/emprestimos`, `${baseUrl}/loans`,
+      ];
 
   try {
-    for (const endpoint of endpoints) {
+    for (const url of propostasUrls) {
       try {
-        const url = `${baseUrl}${endpoint}`;
+        const endpoint = url;
         console.log(`[Finanto] Tentando endpoint: ${url}`);
         const res = await fetch(url, { method: 'GET', headers: authHeaders });
         ultimoStatusHttp = res.status;
