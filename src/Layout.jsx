@@ -240,6 +240,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
     { name: 'Bate-papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
+    { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
     { 
       name: 'Financeiro', 
       icon: Wallet, 
