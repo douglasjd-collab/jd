@@ -14,16 +14,57 @@ function extrairBaseUrl(url) {
 async function autenticarFinanto(baseUrl, username, password, apiKey) {
   // Se tiver username/password, faz login para obter token
   if (username && password) {
-    const res = await fetch(`${baseUrl}/sign-in`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const token = data.token || data.access_token || data.accessToken || data.jwt || data.data?.token;
-      if (token) return { Authorization: `Bearer ${token}` };
+    // Tenta vários formatos de body que APIs brasileiras costumam usar
+    const bodyFormats = [
+      { username, password },
+      { login: username, senha: password },
+      { login: username, password },
+      { user: username, password },
+      { cpf: username, senha: password },
+      { email: username, password },
+      { usuario: username, senha: password },
+    ];
+
+    const loginEndpoints = ['/sign-in', '/login', '/auth', '/auth/login', '/api/login', '/api/auth', '/authenticate'];
+
+    for (const endpoint of loginEndpoints) {
+      for (const body of bodyFormats) {
+        try {
+          const res = await fetch(`${baseUrl}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          const contentType = res.headers.get('content-type') || '';
+          console.log(`[Finanto] Login ${endpoint} com campos ${JSON.stringify(Object.keys(body))}: HTTP ${res.status}, ContentType: ${contentType}`);
+
+          if (res.ok && contentType.includes('application/json')) {
+            const data = await res.json();
+            console.log(`[Finanto] Login response keys: ${JSON.stringify(Object.keys(data))}`);
+            const token =
+              data.token ||
+              data.access_token ||
+              data.accessToken ||
+              data.jwt ||
+              data.id_token ||
+              data.data?.token ||
+              data.data?.access_token ||
+              data.data?.accessToken ||
+              data.result?.token ||
+              data.auth?.token ||
+              data.user?.token;
+            if (token) {
+              console.log(`[Finanto] ✅ Token obtido via ${endpoint} com campos ${JSON.stringify(Object.keys(body))}`);
+              return { Authorization: `Bearer ${token}` };
+            }
+          }
+        } catch (e) {
+          console.log(`[Finanto] Erro em ${endpoint}: ${e.message}`);
+        }
+      }
     }
+    console.log(`[Finanto] ⚠️ Não foi possível obter token com as credenciais fornecidas`);
   }
 
   // Se tiver apiKey real (não é uma URL), usa diretamente
