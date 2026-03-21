@@ -649,6 +649,13 @@ export default function ContatosCRM() {
       )}
 
       {/* Modals */}
+      <ChatPopupModal
+        open={chatPopupOpen}
+        onOpenChange={setChatPopupOpen}
+        contato={contatoChat}
+        empresaId={empresaId}
+        user={user}
+      />
       <GerenciarTagsModal open={gerenciarTagsOpen} onOpenChange={setGerenciarTagsOpen} empresaId={empresaId} />
       <AniversariantesModal open={aniversariantesOpen} onOpenChange={setAniversariantesOpen} contatos={contatos} />
       <EditarContatoModal
