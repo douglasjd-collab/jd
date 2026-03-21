@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -281,7 +281,7 @@ export default function ContatosCRM() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contatoDelete, setContatoDelete] = useState(null);
   const [tagsMassaOpen, setTagsMassaOpen] = useState(false);
-  const fileInputRef = React.useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => { loadUser(); }, []);
 
