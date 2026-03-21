@@ -134,8 +134,9 @@ export default function PropostaEmprestimoDetalhes() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5 pt-5 border-t border-white/20">
           <div>
-            <p className="text-white/60 text-xs font-medium uppercase">Valor do Crédito</p>
-            <p className="text-white font-bold text-lg mt-0.5">{fmt(proposta.valor_credito)}</p>
+            <p className="text-white/60 text-xs font-medium uppercase">Valor Liberado</p>
+            <p className="text-white font-bold text-lg mt-0.5">{fmt(proposta.valor_liquido || proposta.valor_credito)}</p>
+            {proposta.valor_liquido && <p className="text-white/60 text-xs mt-0.5">Bruto: {fmt(proposta.valor_credito)}</p>}
           </div>
           <div>
             <p className="text-white/60 text-xs font-medium uppercase">Banco</p>
