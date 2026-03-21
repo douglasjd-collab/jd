@@ -222,8 +222,8 @@ Deno.serve(async (req) => {
             propostasApi = data.content;
           }
 
-          endpointUsado = endpoint;
-          console.log(`[Finanto] Encontrou ${propostasApi.length} propostas em ${endpoint}`);
+          endpointUsado = url;
+          console.log(`[Finanto] Encontrou ${propostasApi.length} propostas em ${url}`);
 
           if (propostasApi.length > 0) break;
         }
