@@ -169,6 +169,9 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                 <Field label="Cliente">
                   <Input disabled value={formData.cliente_nome || ''} />
                 </Field>
+                <Field label="CPF">
+                  <Input disabled value={formData.cliente_cpf || ''} />
+                </Field>
                 <Field label="Produto">
                   <Input disabled value={produtoLabels[formData.produto] || formData.produto} />
                 </Field>
