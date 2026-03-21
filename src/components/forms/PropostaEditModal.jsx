@@ -310,8 +310,11 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                     </Select>
                   )}
                 </Field>
-                <Field label="Valor do Crédito">
+                <Field label="Valor Bruto (Crédito)">
                   <MoneyInput value={formData.valor_credito} onChange={set('valor_credito')} />
+                </Field>
+                <Field label="Valor Líquido (retirado pelo cliente)">
+                  <MoneyInput value={formData.valor_liquido} onChange={set('valor_liquido')} />
                 </Field>
                 <Field label="Valor da Comissão (estimado)">
                   <MoneyInput value={formData.valor_comissao} onChange={set('valor_comissao')} />
