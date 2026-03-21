@@ -197,10 +197,10 @@ Deno.serve(async (req) => {
     for (const url of propostasUrls) {
       try {
         const endpoint = url;
-        console.log(`[Finanto] Tentando endpoint: ${url}`);
-        const res = await fetch(url, { method: 'GET', headers: authHeaders });
+        console.log(`[Finanto] Tentando endpoint: ${endpoint}`);
+        const res = await fetch(endpoint, { method: 'GET', headers: authHeaders });
         ultimoStatusHttp = res.status;
-        console.log(`[Finanto] Status ${res.status} para ${url}`);
+        console.log(`[Finanto] Status ${res.status} para ${endpoint}`);
 
         if (res.ok) {
           const data = await res.json();
