@@ -290,6 +290,7 @@ Deno.serve(async (req) => {
     // Processa cada proposta
     for (const item of propostasApi) {
       try {
+        // Mapeamento de campos — suporta Ajin.io e formato genérico
         const codigoBanco = String(
           item.id || item.codigo || item.numero || item.contrato ||
           item.id_proposta || item.codigo_proposta || item.numero_contrato ||
@@ -301,28 +302,38 @@ Deno.serve(async (req) => {
         const statusExterno = item.status || item.situacao || item.status_proposta || item.situacao_proposta || item.statusCode;
         const statusInterno = mapearStatus(statusExterno);
 
-        const clienteNome = item.cliente_nome || item.nome_cliente || item.devedor || item.beneficiario ||
-          item.nomeCliente || item.nomeBeneficiario || item.customer?.name || item.client?.name || '';
-        const clienteCpf = item.cpf || item.cpf_cliente || item.documento || item.documentoCliente ||
-          item.cpfCliente || item.customer?.cpf || item.client?.cpf || item.customer?.document || '';
-        const clienteCelular = item.celular || item.telefone || item.phone || item.customer?.phone || item.client?.phone || '';
-        const clienteDataNasc = item.data_nascimento || item.dataNascimento || item.customer?.birthDate || '';
+        // Cliente — Ajin.io: item.customer
+        const clienteNome = item.customer?.name || item.cliente_nome || item.nome_cliente || item.devedor ||
+          item.beneficiario || item.nomeCliente || item.nomeBeneficiario || item.client?.name || '';
+        const clienteCpf = item.customer?.document || item.customer?.cpf || item.cpf || item.cpf_cliente ||
+          item.documento || item.documentoCliente || item.cpfCliente || item.client?.cpf || '';
+        const clienteCelular = item.customer?.phone || item.celular || item.telefone || item.phone || item.client?.phone || '';
+        const clienteDataNasc = item.customer?.birthDate || item.data_nascimento || item.dataNascimento || '';
 
-        const valorCredito = parseFloat(item.valor || item.valor_emprestimo || item.valor_credito ||
-          item.valor_contrato || item.valorCredito || item.amount || item.principal || 0);
-        const valorLiquido = parseFloat(item.valor_liquido || item.valor_liberado || item.valorLiquido ||
-          item.netAmount || valorCredito || 0);
-        const dataVenda = item.data_criacao || item.data_proposta || item.data_contrato || item.data ||
-          item.dataCriacao || item.createdAt || new Date().toISOString().slice(0, 10);
-        const dataLib = item.data_liberacao || item.data_pagamento || item.dataLiberacao || item.releaseDate || '';
-        const prazo = parseInt(item.prazo || item.prazo_meses || item.parcelas || item.installments || 0);
-        const valorParcela = parseFloat(item.valor_parcela || item.parcela || item.installmentAmount || 0);
-        const contrato = item.contrato || item.numero_contrato || item.contractNumber || codigoBanco;
-        const convenioNome = item.convenio || item.convenio_nome || item.orgao || item.agreement || '';
-        const vendedorNome = item.vendedor || item.agente || item.corretor || item.agent || item.seller || '';
+        // Valores — Ajin.io: item.amount / item.netAmount
+        const valorCredito = parseFloat(item.amount || item.valor || item.valor_emprestimo || item.valor_credito ||
+          item.valor_contrato || item.valorCredito || item.principal || 0);
+        const valorLiquido = parseFloat(item.netAmount || item.valor_liquido || item.valor_liberado ||
+          item.valorLiquido || valorCredito || 0);
+
+        // Datas — Ajin.io: item.createdAt / item.releaseDate
+        const dataVenda = item.createdAt || item.data_criacao || item.data_proposta || item.data_contrato ||
+          item.data || item.dataCriacao || new Date().toISOString().slice(0, 10);
+        const dataLib = item.releaseDate || item.data_liberacao || item.data_pagamento || item.dataLiberacao || '';
+
+        // Tipo de operação — Ajin.io: item.operation.code (1=Novo,2=Refin,3=Port,4=Port+Refin,5=Refin Port)
+        const TIPO_AJIN = { 1: 'NOVO', 2: 'REFINANCIAMENTO', 3: 'PORTABILIDADE_PURA', 4: 'REFIN_PORTABILIDADE', 5: 'REFINANCIAMENTO' };
+        const operationCode = item.operation?.code;
+        const tipoEmprestimo = (operationCode && TIPO_AJIN[operationCode]) ||
+          item.tipo || item.tipo_operacao || item.operationType || 'NOVO';
+
+        const prazo = parseInt(item.installments || item.prazo || item.prazo_meses || item.parcelas || 0);
+        const valorParcela = parseFloat(item.installmentAmount || item.valor_parcela || item.parcela || 0);
+        const contrato = item.contractNumber || item.contrato || item.numero_contrato || codigoBanco;
+        const convenioNome = item.agreement?.name || item.convenio || item.convenio_nome || item.orgao || '';
+        const vendedorNome = item.agent?.name || item.vendedor || item.agente || item.corretor || item.seller || '';
         const ade = item.ade || item.numero_ade || item.adeNumber || '';
-        const beneficio = item.matricula || item.numero_beneficio || item.beneficio || item.registrationNumber || '';
-        const tipoEmprestimo = item.tipo || item.tipo_operacao || item.operationType || 'NOVO';
+        const beneficio = item.registrationNumber || item.matricula || item.numero_beneficio || item.beneficio || '';
 
         if (codigosExistentes.has(codigoBanco)) {
           const existente = propostasExistentes.find(p => p.codigo_proposta_banco === codigoBanco);
