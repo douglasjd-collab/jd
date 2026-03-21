@@ -688,7 +688,8 @@ export default function ComissoesEmprestimos() {
                   { label: 'Cliente', value: propostaMarcar.cliente_nome, full: true },
                   { label: 'Contrato', value: propostaMarcar.contrato || '-' },
                   { label: 'Banco', value: propostaMarcar.administradora_nome || '-' },
-                  { label: 'Vl. Crédito', value: fmt(propostaMarcar.valor_credito), highlight: true },
+                  { label: 'Tipo', value: getTipoLabel(propostaMarcar.emprestimo_tipo) },
+                  { label: 'Vl. Bruto (Crédito)', value: fmt(propostaMarcar.valor_credito), highlight: true },
                 ].map(({ label, value, full, highlight }) => (
                   <div key={label} className={`bg-slate-50 rounded-xl px-3 py-2.5 ${full ? 'col-span-2' : ''}`}>
                     <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">{label}</p>
