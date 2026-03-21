@@ -542,6 +542,11 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
             </div>
           </div>
 
+          {/* Aviso sobre URL */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+            <strong>⚠️ URL Base:</strong> informe apenas o domínio raiz, ex: <code>https://finanto.joinbank.com.br</code>. Não inclua caminhos como <code>/sign-in</code> ou <code>/propostas</code>.
+          </div>
+
           {/* Campos condicionais por tipo de auth */}
           {(form.auth_type === 'ApiKey') && (
             <div>
@@ -561,15 +566,16 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
               </div>
             </div>
           )}
-          {(form.auth_type === 'Basic' || form.auth_type === 'Bearer') && (
+          {/* Usuário/senha disponível para todos os tipos que usam login */}
+          {(form.auth_type === 'Basic' || form.auth_type === 'Bearer' || form.auth_type === 'ApiKey') && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs mb-1 block">Usuário</Label>
-                <Input value={form.username || ''} onChange={setE('username')} />
+                <Label className="text-xs mb-1 block">Usuário (login)</Label>
+                <Input value={form.username || ''} onChange={setE('username')} placeholder="Usuário da API" />
               </div>
               <div>
-                <Label className="text-xs mb-1 block">Senha</Label>
-                <Input value={form.password || ''} onChange={setE('password')} type="password" />
+                <Label className="text-xs mb-1 block">Senha (login)</Label>
+                <Input value={form.password || ''} onChange={setE('password')} type="password" placeholder="Senha da API" />
               </div>
             </div>
           )}
