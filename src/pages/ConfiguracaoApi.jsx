@@ -553,9 +553,9 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
             </div>
           </div>
 
-          {/* Aviso sobre URL */}
+          {/* Aviso sobre URLs */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-            <strong>⚠️ URL Base:</strong> informe apenas o domínio raiz, ex: <code>https://finanto.joinbank.com.br</code>. Não inclua caminhos como <code>/sign-in</code> ou <code>/propostas</code>.
+            <strong>💡 Dica:</strong> Preencha a <strong>URL de Login</strong> e a <strong>URL de Propostas</strong> com os endereços exatos fornecidos pelo banco. Você pode obtê-los no Postman ou na documentação da API.
           </div>
 
           {/* Campos condicionais por tipo de auth */}
