@@ -55,12 +55,7 @@ function classNames(...classes) {
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-const tags = [
-  { label: "Quente", color: "bg-rose-100 text-rose-700" },
-  { label: "Financiamento", color: "bg-amber-100 text-amber-800" },
-  { label: "Retornar", color: "bg-sky-100 text-sky-800" },
-  { label: "Cota Imóvel", color: "bg-emerald-100 text-emerald-800" },
-];
+
 
 export default function BatePapo() {
   const [user, setUser] = useState(null);
