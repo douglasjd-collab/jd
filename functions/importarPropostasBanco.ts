@@ -25,10 +25,11 @@ async function autenticarFinanto(baseUrl, username, password, apiKey) {
       { usuario: username, senha: password },
     ];
 
-    const loginEndpoints = ['/sign-in', '/login', '/auth', '/auth/login', '/api/login', '/api/auth', '/authenticate'];
+    const loginEndpoints = ['/sign-in', '/login', '/auth', '/auth/login', '/api/login', '/api/auth', '/authenticate', '/api/v1/auth/login', '/api/v1/login'];
 
     for (const endpoint of loginEndpoints) {
       for (const body of bodyFormats) {
+        // Tenta JSON
         try {
           const res = await fetch(`${baseUrl}${endpoint}`, {
             method: 'POST',
@@ -37,25 +38,38 @@ async function autenticarFinanto(baseUrl, username, password, apiKey) {
           });
 
           const contentType = res.headers.get('content-type') || '';
-          console.log(`[Finanto] Login ${endpoint} com campos ${JSON.stringify(Object.keys(body))}: HTTP ${res.status}, ContentType: ${contentType}`);
+          console.log(`[Finanto] Login ${endpoint} JSON ${JSON.stringify(Object.keys(body))}: HTTP ${res.status}, CT: ${contentType}`);
 
-          if (res.ok && contentType.includes('application/json')) {
+          if (res.ok && contentType.includes('json')) {
             const data = await res.json();
-            console.log(`[Finanto] Login response keys: ${JSON.stringify(Object.keys(data))}`);
+            console.log(`[Finanto] Login JSON response keys: ${JSON.stringify(Object.keys(data))}`);
             const token =
-              data.token ||
-              data.access_token ||
-              data.accessToken ||
-              data.jwt ||
-              data.id_token ||
-              data.data?.token ||
-              data.data?.access_token ||
-              data.data?.accessToken ||
-              data.result?.token ||
-              data.auth?.token ||
-              data.user?.token;
+              data.token || data.access_token || data.accessToken || data.jwt ||
+              data.id_token || data.data?.token || data.data?.access_token ||
+              data.data?.accessToken || data.result?.token || data.auth?.token || data.user?.token;
             if (token) {
-              console.log(`[Finanto] ✅ Token obtido via ${endpoint} com campos ${JSON.stringify(Object.keys(body))}`);
+              console.log(`[Finanto] ✅ Token obtido via ${endpoint} JSON`);
+              return { Authorization: `Bearer ${token}` };
+            }
+          }
+
+          // Tenta form-urlencoded no mesmo endpoint se falhou
+          const formBody = new URLSearchParams(body).toString();
+          const resForm = await fetch(`${baseUrl}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+            body: formBody,
+          });
+          const ctForm = resForm.headers.get('content-type') || '';
+          console.log(`[Finanto] Login ${endpoint} FORM ${JSON.stringify(Object.keys(body))}: HTTP ${resForm.status}, CT: ${ctForm}`);
+          if (resForm.ok && ctForm.includes('json')) {
+            const data = await resForm.json();
+            const token =
+              data.token || data.access_token || data.accessToken || data.jwt ||
+              data.id_token || data.data?.token || data.data?.access_token ||
+              data.data?.accessToken || data.result?.token;
+            if (token) {
+              console.log(`[Finanto] ✅ Token obtido via ${endpoint} FORM`);
               return { Authorization: `Bearer ${token}` };
             }
           }
