@@ -286,6 +286,40 @@ export default function VendasEmprestimos() {
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
   const podeExcluir = ['master', 'super_admin', 'admin', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
+
+  const handleSincronizarApi = async () => {
+    if (sincronizandoApi) return;
+    setSincronizandoApi(true);
+    try {
+      // Busca todas as configurações ativas da empresa
+      const configs = await base44.entities.ConfiguracaoApiBanco.filter({
+        empresa_id: currentUser.empresa_id,
+        integracao_ativa: true,
+      });
+      if (!configs || configs.length === 0) {
+        toast.error('Nenhuma integração de API ativa. Configure em Configuração API.');
+        return;
+      }
+      let totalImportadas = 0;
+      let totalAtualizadas = 0;
+      for (const cfg of configs) {
+        const res = await base44.functions.invoke('importarPropostasBanco', {
+          configuracao_id: cfg.id,
+          empresa_id: currentUser.empresa_id,
+        });
+        if (res.data?.success) {
+          totalImportadas += res.data.importadas || 0;
+          totalAtualizadas += res.data.atualizadas || 0;
+        }
+      }
+      toast.success(`Sincronização concluída: ${totalImportadas} novas, ${totalAtualizadas} atualizadas`);
+      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
+    } catch (e) {
+      toast.error('Erro na sincronização: ' + e.message);
+    } finally {
+      setSincronizandoApi(false);
+    }
+  };
   const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
   const podeVerEmpresaParceira = ['master', 'super_admin', 'admin', 'gerente', 'colaborador'].includes(currentUser?.perfil);
 
