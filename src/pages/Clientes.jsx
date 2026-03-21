@@ -112,6 +112,15 @@ export default function Clientes() {
         return base44.entities.Cliente.list('-created_date', 5000);
       }
       
+      // Vendedor só vê seus próprios clientes
+      if (currentUser?.perfil === 'vendedor' && currentUser?.colaborador_id) {
+        return base44.entities.Cliente.filter(
+          { empresa_id: currentUser.empresa_id, vendedor_id: currentUser.colaborador_id },
+          '-created_date',
+          5000
+        );
+      }
+
       // Todos os outros perfis com empresa_id veem clientes da empresa
       if (currentUser?.empresa_id) {
         return base44.entities.Cliente.filter(
