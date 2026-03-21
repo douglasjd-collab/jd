@@ -227,8 +227,8 @@ export default function PropostaEmprestimoDetalhes() {
             <InfoItem label="Prazo" value={proposta.emprestimo_prazo ? `${proposta.emprestimo_prazo} meses` : null} always />
             <InfoItem label="Nº Contrato" value={proposta.contrato} always />
             <InfoItem label="Valor da Parcela" value={proposta.emprestimo_valor_parcela ? fmt(proposta.emprestimo_valor_parcela) : null} always />
-            <InfoItem label="Valor Bruto (Crédito)" value={fmt(proposta.valor_credito)} highlight always />
-            <InfoItem label="Valor Líquido" value={proposta.valor_liquido ? fmt(proposta.valor_liquido) : null} always />
+            <InfoItem label="Valor Liberado (Líquido)" value={proposta.valor_liquido ? fmt(proposta.valor_liquido) : fmt(proposta.valor_credito)} highlight always />
+            <InfoItem label="Valor Bruto (Crédito)" value={fmt(proposta.valor_credito)} always />
             <InfoItem label="Nº ADE" value={proposta.emprestimo_numero_ade} always />
             <InfoItem label="Banco Anterior" value={proposta.emprestimo_banco_anterior} always />
             <InfoItem label="Saldo Devedor" value={proposta.emprestimo_saldo_devedor ? fmt(proposta.emprestimo_saldo_devedor) : null} always />
