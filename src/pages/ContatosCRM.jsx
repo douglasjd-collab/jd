@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AvatarContato from '@/components/chat/AvatarContato';
+import ChatPopupModal from '@/components/chat/ChatPopupModal';
 
 // ─── Tag colors ────────────────────────────────────────────────
 const TAG_COLORS = [
