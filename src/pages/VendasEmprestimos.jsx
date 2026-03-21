@@ -477,10 +477,10 @@ export default function VendasEmprestimos() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-8 h-8 text-orange-600" />
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-6 h-6 text-orange-600" />
             </div>
             <div>
               <p className="text-sm text-slate-500">Em andamento</p>
