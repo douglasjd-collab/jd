@@ -188,8 +188,8 @@ Deno.serve(async (req) => {
   let ultimoResponseData = null;
   let endpointUsado = null;
 
-  // Detecta se é API Ajin.io
-  const isAjin = baseUrl.includes('ajin.io');
+  // Detecta se é API Ajin.io (verifica base_url ou propostas_url)
+  const isAjin = baseUrl.includes('ajin.io') || (config.propostas_url || '').includes('ajin.io');
 
   // Monta headers corretos para cada tipo de API
   if (isAjin) {
