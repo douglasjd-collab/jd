@@ -238,11 +238,11 @@ Deno.serve(async (req) => {
       banco_id: config.banco_id,
       configuracao_api_id: config.id,
       tipo_acao: 'importar_propostas',
-      request_json: JSON.stringify({ baseUrl, endpointUsado, endpoints }),
+      request_json: JSON.stringify({ baseUrl, endpointUsado, propostasUrls }),
       response_json: JSON.stringify(ultimoResponseData).slice(0, 5000),
       status_http: ultimoStatusHttp,
       sucesso: propostasApi.length > 0,
-      mensagem_erro: propostasApi.length === 0 ? `Nenhuma proposta retornada. Base URL: ${baseUrl}. Endpoints tentados: ${endpoints.join(', ')}. Status HTTP: ${ultimoStatusHttp}` : null,
+      mensagem_erro: propostasApi.length === 0 ? `Nenhuma proposta retornada. Base URL: ${baseUrl}. Endpoints tentados: ${propostasUrls.join(', ')}. Status HTTP: ${ultimoStatusHttp}` : null,
       executado_em: new Date().toISOString(),
     });
 
