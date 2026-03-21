@@ -497,7 +497,7 @@ export default function VendasEmprestimos() {
             </div>
             <div>
               <p className="text-sm text-slate-500">Pagas</p>
-              <p className="font-bold text-slate-900 text-2xl">{formatCurrency(valor_pagas_mes)}</p>
+              <p className="font-bold text-slate-900 text-lg">{formatCurrency(valor_pagas_mes)}</p>
               <p className="text-xs text-slate-400 mt-1">{propostas_pagas_mes.length} propostas</p>
             </div>
           </div>
