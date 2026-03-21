@@ -87,6 +87,14 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
     queryKey: ['tipos-emprestimo-edit'],
     queryFn: () => base44.entities.TipoEmprestimo.filter({ ativo: true }, 'nome'),
   });
+  const { data: tabelasEmprestimo = [] } = useQuery({
+    queryKey: ['tabelas-emprestimo-edit', currentUser?.empresa_id],
+    queryFn: () => base44.entities.TabelaEmprestimo.filter(
+      currentUser?.empresa_id ? { empresa_id: currentUser.empresa_id } : {},
+      undefined, 500
+    ),
+    enabled: !!currentUser,
+  });
   const { data: empresasParceiras = [] } = useQuery({
     queryKey: ['empresas-parceiras-edit', currentUser?.empresa_id],
     queryFn: () => currentUser?.empresa_id
