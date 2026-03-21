@@ -727,6 +727,9 @@ export default function VendasEmprestimos() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => copiarInfoContrato(p)}>
+                          <Copy className="w-4 h-4 mr-2" /> Copiar
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setPropostaToEdit(p); setEditModalOpen(true); }}>
                           <Pencil className="w-4 h-4 mr-2" /> Editar
                         </DropdownMenuItem>
