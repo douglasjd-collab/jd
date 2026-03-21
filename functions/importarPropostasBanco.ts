@@ -25,7 +25,17 @@ async function autenticarFinanto(baseUrl, username, password, apiKey) {
       { usuario: username, senha: password },
     ];
 
-    const loginEndpoints = ['/sign-in', '/login', '/auth', '/auth/login', '/api/login', '/api/auth', '/authenticate', '/api/v1/auth/login', '/api/v1/login'];
+    const loginEndpoints = [
+      '/sign-in', '/finanto/sign-in',
+      '/login', '/finanto/login',
+      '/auth', '/finanto/auth',
+      '/auth/login', '/finanto/auth/login',
+      '/api/login', '/finanto/api/login',
+      '/api/auth', '/finanto/api/auth',
+      '/authenticate', '/finanto/authenticate',
+      '/api/v1/auth/login', '/finanto/api/v1/auth/login',
+      '/api/v1/login', '/finanto/api/v1/login',
+    ];
 
     for (const endpoint of loginEndpoints) {
       for (const body of bodyFormats) {
