@@ -68,6 +68,9 @@ export default function ComissoesEmprestimos() {
   const [marcarBancoModal, setMarcarBancoModal] = useState(false);
   const [propostaMarcar, setPropostaMarcar] = useState(null);
   const [isMarkingBanco, setIsMarkingBanco] = useState(false);
+  const [bancoDtRecebimento, setBancoDtRecebimento] = useState('');
+  const [bancoValorRecebido, setBancoValorRecebido] = useState('');
+  const [bancoPercentualRecebido, setBancoPercentualRecebido] = useState('');
 
   // Percentuais personalizados por proposta (sobreescrevem o valor_comissao)
   // key: proposta.id, value: percentual (número)
