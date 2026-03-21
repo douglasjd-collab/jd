@@ -1,5 +1,42 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
+// Extrai a base URL raiz (remove caminhos como /sign-in, /login, etc.)
+function extrairBaseUrl(url) {
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return url;
+  }
+}
+
+// Tenta autenticar na Finanto / JoinBank e retornar o token
+async function autenticarFinanto(baseUrl, username, password, apiKey) {
+  // Se tiver username/password, faz login para obter token
+  if (username && password) {
+    const res = await fetch(`${baseUrl}/sign-in`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const token = data.token || data.access_token || data.accessToken || data.jwt || data.data?.token;
+      if (token) return { Authorization: `Bearer ${token}` };
+    }
+  }
+
+  // Se tiver apiKey real (não é uma URL), usa diretamente
+  if (apiKey && !apiKey.startsWith('http')) {
+    return {
+      Authorization: `Bearer ${apiKey}`,
+      'X-API-Key': apiKey,
+    };
+  }
+
+  return {};
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
@@ -17,15 +54,19 @@ Deno.serve(async (req) => {
 
   if (!config.integracao_ativa) return Response.json({ error: 'Integração inativa' }, { status: 400 });
 
+  // Extrai a base URL correta (sem /sign-in ou outros caminhos)
+  const baseUrl = extrairBaseUrl(config.base_url);
+  console.log(`[Finanto] Base URL extraída: ${baseUrl} (original: ${config.base_url})`);
+
   // Monta headers de autenticação
-  const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-  if (config.auth_type === 'Bearer' && config.token_atual) {
-    headers['Authorization'] = `Bearer ${config.token_atual}`;
-  } else if (config.auth_type === 'ApiKey' && config.api_key) {
-    headers['X-API-Key'] = config.api_key;
-    headers['Authorization'] = `Bearer ${config.api_key}`;
-  } else if (config.auth_type === 'Basic' && config.username) {
-    headers['Authorization'] = `Basic ${btoa(`${config.username}:${config.password}`)}`;
+  let authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+
+  try {
+    const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key);
+    authHeaders = { ...authHeaders, ...extraHeaders };
+    console.log(`[Finanto] Auth headers montados: ${JSON.stringify(Object.keys(authHeaders))}`);
+  } catch (authErr) {
+    console.log(`[Finanto] Erro na autenticação: ${authErr.message}`);
   }
 
   // Busca mapeamentos de status
@@ -36,7 +77,7 @@ Deno.serve(async (req) => {
     return mapa ? mapa.status_interno : statusExterno;
   };
 
-  // Busca propostas e clientes existentes da empresa para evitar duplicatas
+  // Busca propostas e clientes existentes da empresa
   const [propostasExistentes, clientesExistentes] = await Promise.all([
     base44.asServiceRole.entities.Proposta.filter({ empresa_id, produto: 'emprestimo' }),
     base44.asServiceRole.entities.Cliente.filter({ empresa_id }),
@@ -55,13 +96,8 @@ Deno.serve(async (req) => {
   const obterOuCriarCliente = async (clienteNome, clienteCpfRaw, celular, dataNasc) => {
     const cpfLimpo = (clienteCpfRaw || '').replace(/\D/g, '');
     if (!cpfLimpo && !clienteNome) return null;
+    if (cpfLimpo && clientesPorCpf[cpfLimpo]) return { cliente: clientesPorCpf[cpfLimpo], criou: false };
 
-    // Tenta encontrar por CPF
-    if (cpfLimpo && clientesPorCpf[cpfLimpo]) {
-      return clientesPorCpf[cpfLimpo];
-    }
-
-    // Cria novo cliente
     const novoCliente = await base44.asServiceRole.entities.Cliente.create({
       empresa_id,
       tipo_pessoa: 'Física',
@@ -73,30 +109,42 @@ Deno.serve(async (req) => {
     });
 
     if (cpfLimpo) clientesPorCpf[cpfLimpo] = novoCliente;
-    return novoCliente;
+    return { cliente: novoCliente, criou: true };
   };
 
   let importadas = 0;
   let atualizadas = 0;
   let clientesCriados = 0;
   let erros = 0;
-  let responseData = null;
-  let statusHttp = null;
+  let propostasApi = [];
+  let ultimoStatusHttp = null;
+  let ultimoResponseData = null;
+  let endpointUsado = null;
+
+  // Tenta endpoints comuns da Finanto/JoinBank
+  const endpoints = [
+    '/propostas',
+    '/proposals',
+    '/contratos',
+    '/contracts',
+    '/operacoes',
+    '/operations',
+    '/emprestimos',
+    '/loans',
+  ];
 
   try {
-    // Tenta buscar propostas da API do banco
-    const endpoints = ['/propostas', '/contratos', '/operacoes', '/emprestimos'];
-    let propostasApi = [];
-
     for (const endpoint of endpoints) {
       try {
-        const url = `${config.base_url}${endpoint}`;
-        const res = await fetch(url, { method: 'GET', headers });
-        statusHttp = res.status;
+        const url = `${baseUrl}${endpoint}`;
+        console.log(`[Finanto] Tentando endpoint: ${url}`);
+        const res = await fetch(url, { method: 'GET', headers: authHeaders });
+        ultimoStatusHttp = res.status;
+        console.log(`[Finanto] Status ${res.status} para ${url}`);
 
         if (res.ok) {
           const data = await res.json();
-          responseData = data;
+          ultimoResponseData = data;
 
           if (Array.isArray(data)) {
             propostasApi = data;
@@ -106,16 +154,21 @@ Deno.serve(async (req) => {
             propostasApi = data.propostas;
           } else if (data.contratos && Array.isArray(data.contratos)) {
             propostasApi = data.contratos;
-          } else if (data.operacoes && Array.isArray(data.operacoes)) {
-            propostasApi = data.operacoes;
           } else if (data.result && Array.isArray(data.result)) {
             propostasApi = data.result;
+          } else if (data.items && Array.isArray(data.items)) {
+            propostasApi = data.items;
+          } else if (data.content && Array.isArray(data.content)) {
+            propostasApi = data.content;
           }
+
+          endpointUsado = endpoint;
+          console.log(`[Finanto] Encontrou ${propostasApi.length} propostas em ${endpoint}`);
 
           if (propostasApi.length > 0) break;
         }
-      } catch (_) {
-        // tenta próximo endpoint
+      } catch (endpointErr) {
+        console.log(`[Finanto] Erro no endpoint: ${endpointErr.message}`);
       }
     }
 
@@ -125,17 +178,31 @@ Deno.serve(async (req) => {
       banco_id: config.banco_id,
       configuracao_api_id: config.id,
       tipo_acao: 'importar_propostas',
-      response_json: JSON.stringify(responseData).slice(0, 5000),
-      status_http: statusHttp,
+      request_json: JSON.stringify({ baseUrl, endpointUsado, endpoints }),
+      response_json: JSON.stringify(ultimoResponseData).slice(0, 5000),
+      status_http: ultimoStatusHttp,
       sucesso: propostasApi.length > 0,
-      mensagem_erro: propostasApi.length === 0 ? 'Nenhuma proposta retornada pela API' : null,
+      mensagem_erro: propostasApi.length === 0 ? `Nenhuma proposta retornada. Base URL: ${baseUrl}. Endpoints tentados: ${endpoints.join(', ')}. Status HTTP: ${ultimoStatusHttp}` : null,
       executado_em: new Date().toISOString(),
     });
 
-    // Processa cada proposta retornada
+    if (propostasApi.length === 0) {
+      await base44.asServiceRole.entities.ConfiguracaoApiBanco.update(config.id, {
+        ultima_sincronizacao_em: new Date().toISOString(),
+        ultimo_erro: `Nenhuma proposta retornada. Verifique a URL e credenciais. HTTP: ${ultimoStatusHttp}`,
+      });
+      return Response.json({
+        success: false,
+        error: `Nenhuma proposta retornada pela API. Base URL usada: ${baseUrl}. HTTP status: ${ultimoStatusHttp}. Verifique as credenciais na Configuração API.`,
+        importadas: 0,
+        atualizadas: 0,
+        clientes_criados: 0,
+      });
+    }
+
+    // Processa cada proposta
     for (const item of propostasApi) {
       try {
-        // Extrai campos comuns de diferentes formatos de API (incluindo Finanto)
         const codigoBanco = String(
           item.id || item.codigo || item.numero || item.contrato ||
           item.id_proposta || item.codigo_proposta || item.numero_contrato ||
@@ -147,7 +214,6 @@ Deno.serve(async (req) => {
         const statusExterno = item.status || item.situacao || item.status_proposta || item.situacao_proposta || item.statusCode;
         const statusInterno = mapearStatus(statusExterno);
 
-        // Dados do cliente (campos comuns da Finanto e outros bancos)
         const clienteNome = item.cliente_nome || item.nome_cliente || item.devedor || item.beneficiario ||
           item.nomeCliente || item.nomeBeneficiario || item.customer?.name || item.client?.name || '';
         const clienteCpf = item.cpf || item.cpf_cliente || item.documento || item.documentoCliente ||
@@ -155,11 +221,10 @@ Deno.serve(async (req) => {
         const clienteCelular = item.celular || item.telefone || item.phone || item.customer?.phone || item.client?.phone || '';
         const clienteDataNasc = item.data_nascimento || item.dataNascimento || item.customer?.birthDate || '';
 
-        // Dados financeiros
         const valorCredito = parseFloat(item.valor || item.valor_emprestimo || item.valor_credito ||
           item.valor_contrato || item.valorCredito || item.amount || item.principal || 0);
         const valorLiquido = parseFloat(item.valor_liquido || item.valor_liberado || item.valorLiquido ||
-          item.netAmount || item.valorLiquidoLiberado || valorCredito || 0);
+          item.netAmount || valorCredito || 0);
         const dataVenda = item.data_criacao || item.data_proposta || item.data_contrato || item.data ||
           item.dataCriacao || item.createdAt || new Date().toISOString().slice(0, 10);
         const dataLib = item.data_liberacao || item.data_pagamento || item.dataLiberacao || item.releaseDate || '';
@@ -173,7 +238,6 @@ Deno.serve(async (req) => {
         const tipoEmprestimo = item.tipo || item.tipo_operacao || item.operationType || 'NOVO';
 
         if (codigosExistentes.has(codigoBanco)) {
-          // Atualiza status se mudou
           const existente = propostasExistentes.find(p => p.codigo_proposta_banco === codigoBanco);
           if (existente && statusExterno && statusExterno !== existente.status_externo_atual) {
             const updateData = {
@@ -185,19 +249,17 @@ Deno.serve(async (req) => {
               payload_ultima_resposta_json: JSON.stringify(item).slice(0, 3000),
             };
 
-            // Tenta vincular cliente se ainda não vinculado
             if (!existente.cliente_id && clienteCpf) {
-              const cliente = await obterOuCriarCliente(clienteNome, clienteCpf, clienteCelular, clienteDataNasc);
-              if (cliente) {
-                updateData.cliente_id = cliente.id;
-                updateData.cliente_nome = cliente.nome_completo;
+              const result = await obterOuCriarCliente(clienteNome, clienteCpf, clienteCelular, clienteDataNasc);
+              if (result) {
+                updateData.cliente_id = result.cliente.id;
+                updateData.cliente_nome = result.cliente.nome_completo;
                 updateData.cliente_cpf = clienteCpf;
-                if (!clientesPorCpf[(clienteCpf || '').replace(/\D/g, '')]) clientesCriados++;
+                if (result.criou) clientesCriados++;
               }
             }
 
             await base44.asServiceRole.entities.Proposta.update(existente.id, updateData);
-
             await base44.asServiceRole.entities.HistoricoProposta.create({
               empresa_id,
               proposta_id: existente.id,
@@ -210,35 +272,33 @@ Deno.serve(async (req) => {
               origem: 'API_BANCO',
               payload_evento_json: JSON.stringify(item).slice(0, 3000),
             });
-
             atualizadas++;
           }
           continue;
         }
 
-        // Busca ou cria o cliente antes de criar a proposta
+        // Busca ou cria o cliente
         let clienteId = '';
-        let clienteNomeNormalizado = clienteNome;
-        let clienteCpfNormalizado = clienteCpf;
+        let clienteNomeNorm = clienteNome;
+        let clienteCpfNorm = clienteCpf;
 
         if (clienteCpf || clienteNome) {
-          const clienteAntes = clientesPorCpf[(clienteCpf || '').replace(/\D/g, '')];
-          const cliente = await obterOuCriarCliente(clienteNome, clienteCpf, clienteCelular, clienteDataNasc);
-          if (cliente) {
-            clienteId = cliente.id;
-            clienteNomeNormalizado = cliente.nome_completo || clienteNome;
-            clienteCpfNormalizado = cliente.cpf || clienteCpf;
-            if (!clienteAntes) clientesCriados++;
+          const result = await obterOuCriarCliente(clienteNome, clienteCpf, clienteCelular, clienteDataNasc);
+          if (result) {
+            clienteId = result.cliente.id;
+            clienteNomeNorm = result.cliente.nome_completo || clienteNome;
+            clienteCpfNorm = result.cliente.cpf || clienteCpf;
+            if (result.criou) clientesCriados++;
           }
         }
 
-        // Cria nova proposta com cliente vinculado
+        // Cria nova proposta
         const novaProposta = await base44.asServiceRole.entities.Proposta.create({
           empresa_id,
           produto: 'emprestimo',
           cliente_id: clienteId,
-          cliente_nome: clienteNomeNormalizado,
-          cliente_cpf: clienteCpfNormalizado,
+          cliente_nome: clienteNomeNorm,
+          cliente_cpf: clienteCpfNorm,
           administradora_id: config.banco_id,
           administradora_nome: config.banco_nome || '',
           banco_id: config.banco_id,
@@ -267,7 +327,6 @@ Deno.serve(async (req) => {
 
         codigosExistentes.add(codigoBanco);
 
-        // Histórico inicial
         await base44.asServiceRole.entities.HistoricoProposta.create({
           empresa_id,
           proposta_id: novaProposta.id,
@@ -284,11 +343,10 @@ Deno.serve(async (req) => {
         importadas++;
       } catch (e) {
         erros++;
-        console.error('Erro ao processar item:', e.message, JSON.stringify(item).slice(0, 500));
+        console.error(`[Finanto] Erro ao processar item: ${e.message}`);
       }
     }
 
-    // Atualiza data da última sync
     await base44.asServiceRole.entities.ConfiguracaoApiBanco.update(config.id, {
       ultima_sincronizacao_em: new Date().toISOString(),
       ultimo_erro: erros > 0 ? `${erros} erros durante importação` : null,
@@ -301,9 +359,12 @@ Deno.serve(async (req) => {
       atualizadas,
       clientes_criados: clientesCriados,
       erros,
+      endpoint_usado: endpointUsado,
+      base_url_usada: baseUrl,
     });
 
   } catch (e) {
+    console.error(`[Finanto] Erro geral: ${e.message}`);
     await base44.asServiceRole.entities.LogIntegracaoBanco.create({
       empresa_id,
       banco_id: config.banco_id,
