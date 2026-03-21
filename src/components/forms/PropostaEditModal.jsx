@@ -88,8 +88,10 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
     queryFn: () => base44.entities.TipoEmprestimo.filter({ ativo: true }, 'nome'),
   });
   const { data: empresasParceiras = [] } = useQuery({
-    queryKey: ['empresas-parceiras-edit'],
-    queryFn: () => base44.entities.EmpresaParceira.list('nome', 200),
+    queryKey: ['empresas-parceiras-edit', currentUser?.empresa_id],
+    queryFn: () => currentUser?.empresa_id
+      ? base44.entities.EmpresaParceira.filter({ empresa_id: currentUser.empresa_id }, 'nome', 200)
+      : base44.entities.EmpresaParceira.list('nome', 200),
   });
 
   const updateMutation = useMutation({
