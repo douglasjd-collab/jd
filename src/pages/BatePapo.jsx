@@ -876,17 +876,39 @@ export default function BatePapo() {
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-semibold">Tags</span>
-                              <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full px-2 text-[11px]">
-                                <Plus className="h-3 w-3" />
-                                Adicionar
-                              </Button>
+                              <span className="text-[10px] text-slate-400">{tagsDB.length} tag(s)</span>
                             </div>
                             <div className="flex flex-wrap gap-1.5">
-                              {tags.map((t) => (
-                                <Badge key={t.label} className={classNames("rounded-full px-2 py-0.5 text-[10px]", t.color)}>
-                                  {t.label}
-                                </Badge>
-                              ))}
+                              {tagsDB.length === 0 ? (
+                                <p className="text-[11px] text-slate-400">Nenhuma tag criada. Crie em Contatos CRM.</p>
+                              ) : tagsDB.map((t) => {
+                                const contatoAtual = contatosWhatsapp[conversaSelecionada?.id];
+                                const ativa = (contatoAtual?.tags_ids || []).includes(t.id);
+                                return (
+                                  <button
+                                    key={t.id}
+                                    title={ativa ? 'Remover tag' : 'Adicionar tag'}
+                                    onClick={async () => {
+                                      if (!contatoAtual) return toast.error('Contato não encontrado');
+                                      const atuais = contatoAtual.tags_ids || [];
+                                      const novas = ativa ? atuais.filter(x => x !== t.id) : [...atuais, t.id];
+                                      await base44.entities.ContatoWhatsapp.update(contatoAtual.id, { tags_ids: novas });
+                                      setContatosWhatsapp(prev => ({
+                                        ...prev,
+                                        [conversaSelecionada.id]: { ...contatoAtual, tags_ids: novas }
+                                      }));
+                                      toast.success(ativa ? 'Tag removida' : 'Tag adicionada');
+                                    }}
+                                    className={classNames(
+                                      'rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all',
+                                      ativa ? 'border-slate-500 ring-1 ring-slate-400' : 'border-transparent opacity-60 hover:opacity-100'
+                                    )}
+                                    style={{ backgroundColor: t.cor + '33', color: t.cor }}
+                                  >
+                                    {ativa && '✓ '}{t.nome}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
 
