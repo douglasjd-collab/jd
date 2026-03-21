@@ -753,13 +753,13 @@ export default function VendasEmprestimos() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-slate-900 text-base">{formatCurrency(p.valor_liquido || p.valor_credito)}</p>
-                      {p.valor_liquido ? (
-                        <p className="text-xs text-slate-500 mt-0.5">Bruto: <span className="font-semibold text-slate-700">{formatCurrency(p.valor_credito)}</span></p>
-                      ) : null}
-                      {p.emprestimo_valor_parcela ? (
-                        <p className="text-xs text-slate-500 mt-0.5">Parcela: <span className="font-semibold text-slate-700">{formatCurrency(p.emprestimo_valor_parcela)}</span></p>
-                      ) : null}
+                      {p.valor_liquido && (
+                        <p className="text-xs text-slate-400">Bruto: {formatCurrency(p.valor_credito)}</p>
+                      )}
+                      <p className="font-bold text-slate-900 text-lg leading-tight">{formatCurrency(p.valor_liquido || p.valor_credito)}</p>
+                      {p.emprestimo_valor_parcela && (
+                        <p className="text-xs text-slate-500">Parcela: {formatCurrency(p.emprestimo_valor_parcela)}</p>
+                      )}
                     </div>
                   </div>
 
