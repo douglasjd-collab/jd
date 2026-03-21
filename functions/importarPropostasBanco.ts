@@ -188,24 +188,46 @@ Deno.serve(async (req) => {
   let ultimoResponseData = null;
   let endpointUsado = null;
 
-  // Se tem URL de propostas explícita, usa ela. Senão tenta endpoints comuns.
+  // Detecta se é API Ajin.io
+  const isAjin = baseUrl.includes('ajin.io');
+
+  // Monta headers corretos para cada tipo de API
+  if (isAjin) {
+    // Ajin.io usa header "apikey" diretamente
+    const apiKey = config.api_key || config.password || '';
+    authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'apikey': apiKey };
+    console.log(`[API] Modo Ajin.io detectado, usando header apikey`);
+  }
+
+  // Se tem URL de propostas explícita, usa ela. Senão monta conforme o tipo de API.
   const propostasUrls = config.propostas_url
     ? [config.propostas_url]
-    : [
-        `${baseUrl}/propostas`, `${baseUrl}/proposals`,
-        `${baseUrl}/contratos`, `${baseUrl}/contracts`,
-        `${baseUrl}/operacoes`, `${baseUrl}/operations`,
-        `${baseUrl}/emprestimos`, `${baseUrl}/loans`,
-      ];
+    : isAjin
+      ? [`${baseUrl}/v3/loan-products/search/basic`]
+      : [
+          `${baseUrl}/propostas`, `${baseUrl}/proposals`,
+          `${baseUrl}/contratos`, `${baseUrl}/contracts`,
+          `${baseUrl}/operacoes`, `${baseUrl}/operations`,
+          `${baseUrl}/emprestimos`, `${baseUrl}/loans`,
+        ];
 
   try {
     for (const url of propostasUrls) {
       try {
-        const endpoint = url;
-        console.log(`[Finanto] Tentando endpoint: ${endpoint}`);
-        const res = await fetch(endpoint, { method: 'GET', headers: authHeaders });
+        console.log(`[API] Tentando endpoint: ${url}`);
+
+        // Ajin.io usa POST com body de paginação
+        const fetchOptions = isAjin
+          ? {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({ offset: 0, limit: 500 }),
+            }
+          : { method: 'GET', headers: authHeaders };
+
+        const res = await fetch(url, fetchOptions);
         ultimoStatusHttp = res.status;
-        console.log(`[Finanto] Status ${res.status} para ${endpoint}`);
+        console.log(`[API] Status ${res.status} para ${url}`);
 
         if (res.ok) {
           const data = await res.json();
@@ -215,25 +237,25 @@ Deno.serve(async (req) => {
             propostasApi = data;
           } else if (data.data && Array.isArray(data.data)) {
             propostasApi = data.data;
-          } else if (data.propostas && Array.isArray(data.propostas)) {
-            propostasApi = data.propostas;
-          } else if (data.contratos && Array.isArray(data.contratos)) {
-            propostasApi = data.contratos;
-          } else if (data.result && Array.isArray(data.result)) {
-            propostasApi = data.result;
           } else if (data.items && Array.isArray(data.items)) {
             propostasApi = data.items;
           } else if (data.content && Array.isArray(data.content)) {
             propostasApi = data.content;
+          } else if (data.result && Array.isArray(data.result)) {
+            propostasApi = data.result;
+          } else if (data.propostas && Array.isArray(data.propostas)) {
+            propostasApi = data.propostas;
+          } else if (data.contratos && Array.isArray(data.contratos)) {
+            propostasApi = data.contratos;
           }
 
           endpointUsado = url;
-          console.log(`[Finanto] Encontrou ${propostasApi.length} propostas em ${url}`);
+          console.log(`[API] Encontrou ${propostasApi.length} registros em ${url}`);
 
           if (propostasApi.length > 0) break;
         }
       } catch (endpointErr) {
-        console.log(`[Finanto] Erro no endpoint: ${endpointErr.message}`);
+        console.log(`[API] Erro no endpoint: ${endpointErr.message}`);
       }
     }
 
