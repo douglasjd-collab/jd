@@ -11,7 +11,7 @@ function extrairBaseUrl(url) {
 }
 
 // Tenta autenticar na Finanto / JoinBank e retornar o token
-async function autenticarFinanto(baseUrl, username, password, apiKey) {
+async function autenticarFinanto(baseUrl, username, password, apiKey, loginUrl) {
   // Se tiver username/password, faz login para obter token
   if (username && password) {
     // Tenta vários formatos de body que APIs brasileiras costumam usar
