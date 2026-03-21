@@ -250,7 +250,18 @@ export default function ConfiguracaoApi() {
                 </TabsList>
 
                 {/* ABA DADOS */}
-                <TabsContent value="dados" className="mt-4 space-y-3">
+                 <TabsContent value="dados" className="mt-4 space-y-3">
+                  {/* Avisos de configuração incorreta */}
+                  {activeConfig.base_url?.includes('/sign-in') || activeConfig.base_url?.includes('/login') ? (
+                    <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 text-sm text-yellow-800">
+                      ⚠️ <strong>URL incorreta:</strong> A URL Base não deve incluir <code>/sign-in</code> ou <code>/login</code>. Use apenas o domínio raiz, ex: <code>https://finanto.joinbank.com.br</code>. Clique em editar para corrigir.
+                    </div>
+                  ) : null}
+                  {activeConfig.api_key?.startsWith('http') ? (
+                    <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-sm text-red-800">
+                      🔴 <strong>API Key inválida:</strong> O campo "API Key" contém uma URL, não uma chave de autenticação. Para a Finanto, use os campos <strong>Usuário</strong> e <strong>Senha</strong>. Clique em editar para corrigir.
+                    </div>
+                  ) : null}
                   <div className="grid grid-cols-2 gap-4">
                     <InfoField label="Banco" value={bancos.find(b => b.id === activeConfig.banco_id)?.nome || '-'} />
                     <InfoField label="Ambiente" value={activeConfig.ambiente} badge={activeConfig.ambiente === 'producao' ? 'green' : 'yellow'} />
