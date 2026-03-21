@@ -110,6 +110,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
     try {
       const dataToUpdate = {
         valor_credito: parseFloat(formData.valor_credito) || 0,
+        valor_liquido: parseFloat(formData.valor_liquido) || 0,
         valor_comissao: parseFloat(formData.valor_comissao) || 0,
         comissao_recebida: parseFloat(formData.comissao_recebida) || 0,
         status: formData.status,
