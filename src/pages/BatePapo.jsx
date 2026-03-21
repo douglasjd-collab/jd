@@ -821,6 +821,7 @@ export default function BatePapo() {
                         await enviarMensagemMutation.mutateAsync({ texto, arquivo });
                       }}
                       isLoading={enviarMensagemMutation.isPending}
+                      nomeUsuario={user?.full_name || ''}
                     />
                   </div>
 
