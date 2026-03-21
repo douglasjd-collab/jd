@@ -12,12 +12,12 @@ import { format } from 'date-fns';
 const fmt = (v) => v != null ? (v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
 const fmtDate = (d) => d ? format(new Date(d + 'T12:00:00'), 'dd/MM/yyyy') : '-';
 
-function InfoItem({ label, value, highlight }) {
-  if (!value && value !== 0) return null;
+function InfoItem({ label, value, highlight, always }) {
+  if (!always && !value && value !== 0) return null;
   return (
     <div>
       <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">{label}</span>
-      <p className={`font-semibold mt-0.5 ${highlight ? 'text-green-700 text-lg' : 'text-slate-800'}`}>{value}</p>
+      <p className={`font-semibold mt-0.5 ${highlight ? 'text-green-700 text-lg' : 'text-slate-800'}`}>{value || '-'}</p>
     </div>
   );
 }
