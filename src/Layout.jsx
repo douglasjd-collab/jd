@@ -291,6 +291,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Relatórios', icon: FileText, page: 'Relatorios', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Configuração API', icon: Plug, page: 'ConfiguracaoApi', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ['master', 'super_admin', 'admin'] },
   ];
 
