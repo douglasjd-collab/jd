@@ -734,7 +734,7 @@ export default function VendasEmprestimos() {
                         <DropdownMenuItem onClick={() => { setPropostaToEdit(p); setEditModalOpen(true); }}>
                           <Pencil className="w-4 h-4 mr-2" /> Editar
                         </DropdownMenuItem>
-                        {isAdmin && (
+                        {podeExcluir && (
                           <DropdownMenuItem onClick={() => { setPropostaToDelete(p); setDeleteDialogOpen(true); }} className="text-red-600 focus:text-red-600">
                             <Trash2 className="w-4 h-4 mr-2" /> Excluir
                           </DropdownMenuItem>
