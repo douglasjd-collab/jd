@@ -526,8 +526,16 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
               <Input value={form.nome_integracao || ''} onChange={setE('nome_integracao')} placeholder="Ex: API Finanto" />
             </div>
             <div className="col-span-2">
-              <Label className="text-xs mb-1 block">URL Base *</Label>
-              <Input value={form.base_url || ''} onChange={setE('base_url')} placeholder="https://api.banco.com.br/v1" />
+              <Label className="text-xs mb-1 block">URL Base (domínio raiz)</Label>
+              <Input value={form.base_url || ''} onChange={setE('base_url')} placeholder="https://finanto.joinbank.com.br" />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs mb-1 block">URL de Login * <span className="text-slate-400 font-normal">(endpoint exato de autenticação)</span></Label>
+              <Input value={form.login_url || ''} onChange={setE('login_url')} placeholder="https://api.joinbank.com.br/sign-in" />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs mb-1 block">URL de Propostas * <span className="text-slate-400 font-normal">(endpoint exato de listagem)</span></Label>
+              <Input value={form.propostas_url || ''} onChange={setE('propostas_url')} placeholder="https://api.joinbank.com.br/propostas" />
             </div>
             <div>
               <Label className="text-xs mb-1 block">Ambiente</Label>
