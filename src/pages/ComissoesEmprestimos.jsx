@@ -213,17 +213,35 @@ export default function ComissoesEmprestimos() {
   };
 
   const handleMarcarBancoRecebido = async (proposta) => {
+    if (!proposta.comissao_banco_recebida) {
+      // Validar campos obrigatórios ao marcar como recebido
+      if (!bancoDtRecebimento) { toast.error('Informe a data de recebimento'); return; }
+      if (!bancoValorRecebido || parseFloat(bancoValorRecebido) <= 0) { toast.error('Informe o valor recebido'); return; }
+      if (!bancoPercentualRecebido || parseFloat(bancoPercentualRecebido) <= 0) { toast.error('Informe o percentual recebido'); return; }
+    }
     setIsMarkingBanco(true);
     try {
-      await base44.entities.Proposta.update(proposta.id, { comissao_banco_recebida: !proposta.comissao_banco_recebida });
+      const novoStatus = !proposta.comissao_banco_recebida;
+      const updateData = { comissao_banco_recebida: novoStatus };
+      if (novoStatus) {
+        updateData.comissao_banco_data_recebimento = bancoDtRecebimento;
+        updateData.comissao_banco_valor_recebido = parseFloat(bancoValorRecebido) || 0;
+        updateData.comissao_banco_percentual_recebido = parseFloat(bancoPercentualRecebido) || 0;
+        // Atualizar valor_comissao com o valor efetivamente recebido
+        updateData.valor_comissao = parseFloat(bancoValorRecebido) || proposta.valor_comissao;
+      }
+      await base44.entities.Proposta.update(proposta.id, updateData);
       queryClient.invalidateQueries(['propostas-emp-comissoes']);
-      toast.success(proposta.comissao_banco_recebida ? 'Desmarcado' : 'Comissão do banco marcada como recebida!');
+      toast.success(novoStatus ? 'Comissão do banco marcada como recebida!' : 'Desmarcado');
     } catch (err) {
       toast.error('Erro ao atualizar');
     } finally {
       setIsMarkingBanco(false);
       setMarcarBancoModal(false);
       setPropostaMarcar(null);
+      setBancoDtRecebimento('');
+      setBancoValorRecebido('');
+      setBancoPercentualRecebido('');
     }
   };
 
