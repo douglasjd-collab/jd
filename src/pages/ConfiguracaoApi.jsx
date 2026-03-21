@@ -138,16 +138,18 @@ export default function ConfiguracaoApi() {
     if (!activeConfig) return;
     setSincronizando(true);
     try {
-      const res = await base44.functions.invoke('sincronizarPropostasBanco', {
+      const res = await base44.functions.invoke('importarPropostasBanco', {
         configuracao_id: activeConfig.id,
-        empresa_id: currentUser?.empresa_id,
+        empresa_id: currentUser?.empresa_id || activeConfig.empresa_id,
       });
       if (res.data.success) {
-        toast.success(`Sincronização concluída: ${res.data.atualizadas} atualizadas`);
+        const msg = `Sincronização concluída: ${res.data.importadas || 0} novas, ${res.data.atualizadas || 0} atualizadas${res.data.clientes_criados > 0 ? `, ${res.data.clientes_criados} clientes criados` : ''}`;
+        toast.success(msg);
       } else {
         toast.error(res.data.error || 'Erro na sincronização');
       }
       queryClient.invalidateQueries({ queryKey: ['logs-integracao'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracoes-api'] });
     } catch (e) {
       toast.error(e.message);
     } finally {
