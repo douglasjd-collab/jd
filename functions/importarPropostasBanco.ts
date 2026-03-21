@@ -25,23 +25,20 @@ async function autenticarFinanto(baseUrl, username, password, apiKey, loginUrl) 
       { usuario: username, senha: password },
     ];
 
-    const loginEndpoints = [
-      '/sign-in', '/finanto/sign-in',
-      '/login', '/finanto/login',
-      '/auth', '/finanto/auth',
-      '/auth/login', '/finanto/auth/login',
-      '/api/login', '/finanto/api/login',
-      '/api/auth', '/finanto/api/auth',
-      '/authenticate', '/finanto/authenticate',
-      '/api/v1/auth/login', '/finanto/api/v1/auth/login',
-      '/api/v1/login', '/finanto/api/v1/login',
-    ];
+    // Se loginUrl direto foi fornecido, usa ele primeiro (apenas como URL completa)
+    const loginUrlsToTry = loginUrl
+      ? [loginUrl] // URL explícita tem prioridade
+      : [
+          `${baseUrl}/sign-in`, `${baseUrl}/finanto/sign-in`,
+          `${baseUrl}/login`, `${baseUrl}/finanto/login`,
+          `${baseUrl}/auth/login`, `${baseUrl}/api/login`,
+        ];
 
-    for (const endpoint of loginEndpoints) {
+    for (const fullLoginUrl of loginUrlsToTry) {
       for (const body of bodyFormats) {
         // Tenta JSON
         try {
-          const res = await fetch(`${baseUrl}${endpoint}`, {
+          const res = await fetch(fullLoginUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(body),
