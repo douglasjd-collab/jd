@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
       });
       return Response.json({
         success: false,
-        error: `Nenhuma proposta retornada pela API. Base URL usada: ${baseUrl}. HTTP status: ${ultimoStatusHttp}. Verifique as credenciais na Configuração API.`,
+        error: `Nenhuma proposta retornada pela API. Base URL usada: ${baseUrl}. HTTP status: ${ultimoStatusHttp}. Endpoints tentados: ${propostasUrls.join(', ')}. Verifique as credenciais na Configuração API.`,
         importadas: 0,
         atualizadas: 0,
         clientes_criados: 0,
