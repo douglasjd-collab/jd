@@ -269,6 +269,22 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                   <Field label="Data de Liberação">
                     <Input type="date" value={formData.emprestimo_data_liberacao || ''} onChange={setE('emprestimo_data_liberacao')} />
                   </Field>
+                  <Field label="Tabela de Comissão" span={2}>
+                    <Select value={formData.tabela_comissao_id || 'nenhuma'} onValueChange={(v) => {
+                      if (v === 'nenhuma') {
+                        setFormData(prev => ({ ...prev, tabela_comissao_id: '', tabela_comissao_nome: '' }));
+                      } else {
+                        const tab = tabelasEmprestimo.find(t => t.id === v);
+                        setFormData(prev => ({ ...prev, tabela_comissao_id: v, tabela_comissao_nome: tab?.nome || '' }));
+                      }
+                    }}>
+                      <SelectTrigger><SelectValue placeholder="Selecione (opcional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nenhuma">Nenhuma</SelectItem>
+                        {tabelasEmprestimo.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </Field>
                   {isPortabilidade && (
                     <>
                       <Field label="Banco Anterior">
