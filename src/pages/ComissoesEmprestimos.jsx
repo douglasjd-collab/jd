@@ -666,21 +666,94 @@ export default function ComissoesEmprestimos() {
       )}
 
       {/* Modal: Marcar Comissão Banco */}
-      <Dialog open={marcarBancoModal} onOpenChange={setMarcarBancoModal}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={marcarBancoModal} onOpenChange={(v) => {
+        setMarcarBancoModal(v);
+        if (!v) { setBancoDtRecebimento(''); setBancoValorRecebido(''); setBancoPercentualRecebido(''); }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Comissão do Banco</DialogTitle>
+            <DialogTitle>Recebimento do Banco</DialogTitle>
           </DialogHeader>
           {propostaMarcar && (
-            <div className="space-y-3 text-sm">
-              <p className="text-slate-600">Cliente: <strong>{propostaMarcar.cliente_nome}</strong></p>
-              <p className="text-slate-600">Contrato: <strong>{propostaMarcar.contrato || '-'}</strong></p>
-              <p className="text-slate-600">Comissão: <strong className="text-blue-700">{fmt(propostaMarcar.valor_comissao)}</strong></p>
-              <p className="text-slate-700 mt-2">
-                {propostaMarcar.comissao_banco_recebida
-                  ? '⚠️ Deseja desmarcar a comissão como recebida do banco?'
-                  : '✅ Confirmar que a comissão foi recebida do banco?'}
-              </p>
+            <div className="space-y-4 text-sm">
+              <div className="bg-slate-50 rounded-lg p-3 space-y-1">
+                <p className="text-slate-600">Cliente: <strong>{propostaMarcar.cliente_nome}</strong></p>
+                <p className="text-slate-600">Contrato: <strong>{propostaMarcar.contrato || '-'}</strong></p>
+                <p className="text-slate-600">Banco: <strong>{propostaMarcar.administradora_nome || '-'}</strong></p>
+                <p className="text-slate-600">Vl. Crédito: <strong className="text-slate-800">{fmt(propostaMarcar.valor_credito)}</strong></p>
+              </div>
+
+              {propostaMarcar.comissao_banco_recebida ? (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <p className="text-orange-700 font-medium">⚠️ Deseja desmarcar a comissão como recebida do banco?</p>
+                  {propostaMarcar.comissao_banco_data_recebimento && (
+                    <p className="text-orange-600 text-xs mt-1">Recebida em: {moment(propostaMarcar.comissao_banco_data_recebimento).format('DD/MM/YYYY')} — {fmt(propostaMarcar.comissao_banco_valor_recebido)} ({propostaMarcar.comissao_banco_percentual_recebido}%)</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-slate-700 font-medium">Informe os dados do recebimento:</p>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Data de Recebimento *</Label>
+                    <Input
+                      type="date"
+                      value={bancoDtRecebimento}
+                      onChange={e => setBancoDtRecebimento(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-slate-500 mb-1 block">Valor Recebido (R$) *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">R$</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0,00"
+                          className="pl-8"
+                          value={bancoValorRecebido}
+                          onChange={e => {
+                            setBancoValorRecebido(e.target.value);
+                            // Auto-calcular percentual se tiver valor de crédito
+                            const val = parseFloat(e.target.value) || 0;
+                            if (val > 0 && propostaMarcar.valor_credito) {
+                              setBancoPercentualRecebido(((val / propostaMarcar.valor_credito) * 100).toFixed(4));
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500 mb-1 block">Percentual Recebido (%) *</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.0001"
+                          placeholder="0.00"
+                          value={bancoPercentualRecebido}
+                          onChange={e => {
+                            setBancoPercentualRecebido(e.target.value);
+                            // Auto-calcular valor se tiver valor de crédito
+                            const perc = parseFloat(e.target.value) || 0;
+                            if (perc > 0 && propostaMarcar.valor_credito) {
+                              setBancoValorRecebido(((propostaMarcar.valor_credito * perc) / 100).toFixed(2));
+                            }
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">%</span>
+                      </div>
+                    </div>
+                  </div>
+                  {bancoValorRecebido && bancoPercentualRecebido && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-xs text-green-700">
+                      ✅ Recebimento: <strong>{fmt(parseFloat(bancoValorRecebido))}</strong> — <strong>{parseFloat(bancoPercentualRecebido).toFixed(4)}%</strong> sobre {fmt(propostaMarcar.valor_credito)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <DialogFooter className="gap-2">
