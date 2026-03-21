@@ -268,6 +268,8 @@ export default function ConfiguracaoApi() {
                     <InfoField label="Tipo Autenticação" value={activeConfig.auth_type} />
                     <InfoField label="Tipo Integração" value={activeConfig.tipo_integracao} />
                     <InfoField label="URL Base" value={activeConfig.base_url} span={2} />
+                    {activeConfig.login_url && <InfoField label="URL de Login" value={activeConfig.login_url} span={2} />}
+                    {activeConfig.propostas_url && <InfoField label="URL de Propostas" value={activeConfig.propostas_url} span={2} />}
                     {activeConfig.ultima_sincronizacao_em && (
                       <InfoField label="Última Sincronização" value={format(new Date(activeConfig.ultima_sincronizacao_em), 'dd/MM/yyyy HH:mm')} span={2} />
                     )}
