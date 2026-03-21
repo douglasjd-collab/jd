@@ -260,6 +260,29 @@ export default function VendasEmprestimos() {
     doc.save(`2via_comissao_${(p.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${moment(p.comissao_vendedor_data_pagamento || undefined).format('YYYYMMDD')}.pdf`);
   };
 
+  const copiarInfoContrato = (p) => {
+    const cpf = getClienteCpf(p.cliente_id) || p.cliente_cpf || '';
+    const tipoLabel = getTipoLabel(p);
+    const valorLiberado = formatCurrency(p.valor_liquido || p.valor_credito);
+    const dataLib = p.emprestimo_data_liberacao
+      ? format(new Date(p.emprestimo_data_liberacao + 'T12:00:00'), 'dd/MM/yyyy')
+      : '-';
+
+    const texto = [
+      `Nome: ${p.cliente_nome || '-'}`,
+      `CPF: ${cpf || '-'}`,
+      `Contrato: ${p.contrato || '-'}`,
+      `Tipo: ${tipoLabel}`,
+      `Corretor/Vendedor: ${p.vendedor_nome || '-'}`,
+      `Valor Liberado: ${valorLiberado}`,
+      `Data de Liberação: ${dataLib}`,
+    ].join('\n');
+
+    navigator.clipboard.writeText(texto).then(() => {
+      toast.success('Informações copiadas!');
+    });
+  };
+
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
   const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
   const podeVerEmpresaParceira = ['master', 'super_admin', 'admin', 'gerente', 'colaborador'].includes(currentUser?.perfil);
