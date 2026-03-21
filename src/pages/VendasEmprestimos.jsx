@@ -461,6 +461,17 @@ export default function VendasEmprestimos() {
               <Kanban className="w-4 h-4" /> Kanban
             </button>
           </div>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              onClick={handleSincronizarApi}
+              disabled={sincronizandoApi}
+            >
+              {sincronizandoApi ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {sincronizandoApi ? 'Sincronizando...' : 'Sincronizar API'}
+            </Button>
+          )}
           <Button variant="outline" className="gap-2" onClick={() => setImportarLoteOpen(true)}>
             <Upload className="w-4 h-4" />
             Importar em Lote
