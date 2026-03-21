@@ -302,6 +302,7 @@ export default function VendasEmprestimos() {
       }
       let totalImportadas = 0;
       let totalAtualizadas = 0;
+      let totalClientesCriados = 0;
       for (const cfg of configs) {
         const res = await base44.functions.invoke('importarPropostasBanco', {
           configuracao_id: cfg.id,
@@ -310,9 +311,11 @@ export default function VendasEmprestimos() {
         if (res.data?.success) {
           totalImportadas += res.data.importadas || 0;
           totalAtualizadas += res.data.atualizadas || 0;
+          totalClientesCriados += res.data.clientes_criados || 0;
         }
       }
-      toast.success(`Sincronização concluída: ${totalImportadas} novas, ${totalAtualizadas} atualizadas`);
+      const msg = `Sincronização concluída: ${totalImportadas} propostas novas, ${totalAtualizadas} atualizadas${totalClientesCriados > 0 ? `, ${totalClientesCriados} clientes criados` : ''}`;
+      toast.success(msg);
       queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
     } catch (e) {
       toast.error('Erro na sincronização: ' + e.message);
