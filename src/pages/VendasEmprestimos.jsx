@@ -719,7 +719,7 @@ export default function VendasEmprestimos() {
 
                   {/* Tags row: Banco > Convênio > Tipo */}
                   <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {/* Banco com logo */}
                       {p.administradora_nome && (() => {
                         const banco = getBanco(p.administradora_id);
