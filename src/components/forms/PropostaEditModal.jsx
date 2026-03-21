@@ -149,6 +149,8 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
         dataToUpdate.emprestimo_banco_anterior = formData.emprestimo_banco_anterior || '';
         dataToUpdate.emprestimo_saldo_devedor = parseFloat(formData.emprestimo_saldo_devedor) || 0;
         dataToUpdate.emprestimo_data_liberacao = formData.emprestimo_data_liberacao || '';
+        dataToUpdate.tabela_comissao_id = formData.tabela_comissao_id || '';
+        dataToUpdate.tabela_comissao_nome = formData.tabela_comissao_nome || '';
       }
 
       await updateMutation.mutateAsync(dataToUpdate);
