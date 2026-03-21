@@ -284,6 +284,7 @@ export default function VendasEmprestimos() {
   };
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
+  const podeExcluir = ['master', 'super_admin', 'admin', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
   const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
   const podeVerEmpresaParceira = ['master', 'super_admin', 'admin', 'gerente', 'colaborador'].includes(currentUser?.perfil);
 
