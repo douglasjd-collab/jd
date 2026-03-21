@@ -60,7 +60,12 @@ async function autenticarFinanto(baseUrl, username, password, apiKey, loginUrl) 
             }
           }
 
-          // Tenta form-urlencoded no mesmo endpoint se falhou
+        } catch (e) {
+          console.log(`[Finanto] Erro em ${fullLoginUrl} JSON: ${e.message}`);
+        }
+
+        // Tenta form-urlencoded
+        try {
           const formBody = new URLSearchParams(body).toString();
           const resForm = await fetch(fullLoginUrl, {
             method: 'POST',
@@ -70,18 +75,18 @@ async function autenticarFinanto(baseUrl, username, password, apiKey, loginUrl) 
           const ctForm = resForm.headers.get('content-type') || '';
           console.log(`[Finanto] Login ${fullLoginUrl} FORM ${JSON.stringify(Object.keys(body))}: HTTP ${resForm.status}, CT: ${ctForm}`);
           if (resForm.ok && ctForm.includes('json')) {
-            const data = await resForm.json();
-            const token =
-              data.token || data.access_token || data.accessToken || data.jwt ||
-              data.id_token || data.data?.token || data.data?.access_token ||
-              data.data?.accessToken || data.result?.token;
-            if (token) {
+            const dataForm = await resForm.json();
+            const tokenForm =
+              dataForm.token || dataForm.access_token || dataForm.accessToken || dataForm.jwt ||
+              dataForm.id_token || dataForm.data?.token || dataForm.data?.access_token ||
+              dataForm.data?.accessToken || dataForm.result?.token;
+            if (tokenForm) {
               console.log(`[Finanto] ✅ Token obtido via ${fullLoginUrl} FORM`);
-              return { Authorization: `Bearer ${token}` };
+              return { Authorization: `Bearer ${tokenForm}` };
             }
           }
         } catch (e) {
-          console.log(`[Finanto] Erro em ${fullLoginUrl}: ${e.message}`);
+          console.log(`[Finanto] Erro em ${fullLoginUrl} FORM: ${e.message}`);
         }
       }
     }
