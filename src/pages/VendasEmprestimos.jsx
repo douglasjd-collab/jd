@@ -91,6 +91,7 @@ export default function VendasEmprestimos() {
   const [propostaStatus, setPropostaStatus] = useState(null);
   const [portabilidadeHojeOpen, setPortabilidadeHojeOpen] = useState(false);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'kanban'
+  const [sincronizandoApi, setSincronizandoApi] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
