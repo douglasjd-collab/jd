@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
   let authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
   try {
-    const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key);
+    const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key, config.login_url);
     authHeaders = { ...authHeaders, ...extraHeaders };
     console.log(`[Finanto] Auth headers montados: ${JSON.stringify(Object.keys(authHeaders))}`);
   } catch (authErr) {
