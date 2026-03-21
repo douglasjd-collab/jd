@@ -10,6 +10,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Tarefas from './pages/Tarefas';
 import ConfiguracaoTarefas from './pages/ConfiguracaoTarefas';
 import ContatosCRM from './pages/ContatosCRM';
+import ConfiguracaoApi from './pages/ConfiguracaoApi';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
