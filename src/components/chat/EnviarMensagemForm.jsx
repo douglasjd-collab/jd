@@ -1,14 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle, Mic, MicOff, X } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, MicOff, X, PenLine } from 'lucide-react';
 
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
+export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '' }) {
   const [texto, setTexto] = useState('');
+  const [assinaturaAtiva, setAssinaturaAtiva] = useState(() => {
+    return localStorage.getItem('chat_assinatura') === 'true';
+  });
   const [arquivo, setArquivo] = useState(null);
   const [showScroll, setShowScroll] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -98,7 +101,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
     if (!texto.trim() && !arquivo) return;
     if (isLoading) return;
 
-    const textoEnviar = texto.trim();
+    const assinatura = assinaturaAtiva && nomeUsuario ? `*Atendente - ${nomeUsuario}*\n\n` : '';
+    const textoEnviar = assinatura + texto.trim();
     setErro(null);
     
     try {
@@ -257,7 +261,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
         </div>
       ) : (
         <div className="flex items-end gap-2">
-          {/* Botões esquerda: Anexo + Figurinha */}
+          {/* Botões esquerda: Anexo + Figurinha + Assinatura */}
           <div className="flex items-center gap-1 pb-1">
             <Button
               type="button"
@@ -276,6 +280,22 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false }) {
             >
               <Smile className="w-5 h-5 text-slate-500" />
             </Button>
+            {nomeUsuario && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title={assinaturaAtiva ? `Assinatura ativa: Atendente - ${nomeUsuario}` : 'Ativar assinatura na mensagem'}
+                onClick={() => {
+                  const novo = !assinaturaAtiva;
+                  setAssinaturaAtiva(novo);
+                  localStorage.setItem('chat_assinatura', String(novo));
+                }}
+                className={`rounded-full w-9 h-9 ${assinaturaAtiva ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'hover:bg-slate-100 text-slate-500'}`}
+              >
+                <PenLine className="w-4 h-4" />
+              </Button>
+            )}
           </div>
 
           {/* Textarea */}
