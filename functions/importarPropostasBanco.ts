@@ -193,10 +193,10 @@ Deno.serve(async (req) => {
 
   // Monta headers corretos para cada tipo de API
   if (isAjin) {
-    // Ajin.io usa header "apikey" diretamente
-    const apiKey = config.api_key || config.password || '';
+    // Ajin.io usa header "apikey" diretamente (não precisa de login/token)
+    const apiKey = config.api_key || '';
     authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'apikey': apiKey };
-    console.log(`[API] Modo Ajin.io detectado, usando header apikey`);
+    console.log(`[API] Modo Ajin.io detectado, usando header apikey: ${apiKey ? 'OK' : 'VAZIO!'}`);
   }
 
   // Se tem URL de propostas explícita, usa ela. Senão monta conforme o tipo de API.
