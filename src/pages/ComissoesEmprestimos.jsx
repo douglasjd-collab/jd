@@ -393,7 +393,8 @@ export default function ComissoesEmprestimos() {
       const itensComValores = paraPagar.map(p => {
         const percVendedor = percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualEmpresa(p);
         const percEmpresa = getPercentualEmpresa(p);
-        const valVendedor = (p.valor_credito || 0) * (percVendedor / 100);
+        const base = p.valor_liquido || p.valor_credito || 0;
+        const valVendedor = base * (percVendedor / 100);
         const editadoManual = percentuaisCustom[p.id] !== undefined;
         return { p, percVendedor, percEmpresa, valVendedor, editadoManual };
       });
