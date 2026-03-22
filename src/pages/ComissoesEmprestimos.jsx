@@ -402,13 +402,42 @@ export default function ComissoesEmprestimos() {
         });
       }
 
+      // Descontar adiantamentos selecionados
+      const adisDesc = Array.from(adiantamentosSelecionados)
+        .map(id => adiantamentosVendedor.find(a => a.id === id))
+        .filter(Boolean);
+
+      for (const adi of adisDesc) {
+        await base44.entities.Adiantamento.update(adi.id, {
+          status: 'descontado',
+          data_desconto: dataPagamento,
+          lote_pagamento_id: lote.id,
+        });
+        // Lança despesa "Adiantamento de Salário" para o financeiro
+        await base44.entities.Despesa.create({
+          empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
+          descricao: `Adiantamento de Salário — ${adi.colaborador_nome || adi.parceiro_nome}${adi.motivo ? ` (${adi.motivo})` : ''}`,
+          categoria: 'Adiantamento de Salários',
+          valor: adi.valor,
+          data: adi.data,
+          data_pagamento: dataPagamento,
+          status: 'pago',
+          responsavel_id: adi.colaborador_id || user?.colaborador_id || '',
+          responsavel_nome: adi.colaborador_nome || adi.parceiro_nome || '',
+          observacao: `Descontado no lote ${loteCode}`,
+          usuario_id: user?.colaborador_id || '',
+          usuario_nome: user?.full_name || '',
+        });
+      }
+
       // PDF usa os valores já calculados (congelados)
       const percMapFinal = {};
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
       gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal);
 
       queryClient.invalidateQueries(['propostas-emp-comissoes']);
-      toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.`);
+      const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
+      toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.${msgAdis}`);
       setPagarModal(false);
       setModalSelecionados(new Set());
       setVendedorModal(null);
