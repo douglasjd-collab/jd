@@ -261,7 +261,7 @@ export default function ImportacaoComissaoEmprestimo() {
           motivoDivergencia = 'Recebimento duplicado';
           propostaEncontrada = null;
         } else {
-          const valorAPagar = valorRecebido; // vendedor recebe o mesmo valor (ajustável depois)
+          const valorAPagar = valorRecebido;
           recebimentosParaCriar.push({
             empresa_id: propostaEncontrada.empresa_id,
             venda_id: propostaEncontrada.id,
@@ -282,6 +282,9 @@ export default function ImportacaoComissaoEmprestimo() {
             status_recebimento: 'recebida',
             status_pagamento: 'a_pagar',
             observacoes: [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ') || undefined,
+            _valor_bruto: item.valor_bruto || null,
+            _valor_liquido: item.valor_liquido || null,
+            _valor_parcela: item.valor_parcela || null,
           });
           processados++;
           valorTotal += valorRecebido;
@@ -294,7 +297,9 @@ export default function ImportacaoComissaoEmprestimo() {
           }
 
           if (recebimentosParaCriar.length > 0) {
-          const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosParaCriar);
+          const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(
+            recebimentosParaCriar.map(({ _valor_bruto, _valor_liquido, _valor_parcela, ...r }) => r)
+          );
 
       // Criar ComissaoAPagar para cada recebimento
       const comissoesAPagar = recebimentosCriados.map(rec => ({
@@ -316,10 +321,12 @@ export default function ImportacaoComissaoEmprestimo() {
       }));
       await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-      // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida
+      // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida + valores bruto/líquido/parcela
       const atualizacoesPorVenda = {};
-      for (const rec of recebimentosCriados) {
-        if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+      for (let i = 0; i < recebimentosCriados.length; i++) {
+        const rec = recebimentosCriados[i];
+        const orig = recebimentosParaCriar[i];
+        if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_bruto: orig._valor_bruto, valor_liquido: orig._valor_liquido, valor_parcela: orig._valor_parcela };
         atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
       }
       for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
