@@ -306,7 +306,7 @@ export default function ComissoesPagar() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Comissões a Pagar</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Comissões a Pagar (Consórcio)</h1>
         <p className="text-slate-500 text-sm mt-1">Gerencie pagamentos de forma rápida, clara e organizada.</p>
       </div>
 

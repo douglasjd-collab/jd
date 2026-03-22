@@ -164,7 +164,7 @@ export default function ComissoesPagas() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <PageHeader title="Comissões Pagas" subtitle="Histórico de pagamentos por protocolo" />
+      <PageHeader title="Comissões Pagas (Consórcio)" subtitle="Histórico de pagamentos por protocolo" />
 
       {/* Resumo */}
       <Card className="p-6 bg-gradient-to-r from-green-50 to-emerald-50">
