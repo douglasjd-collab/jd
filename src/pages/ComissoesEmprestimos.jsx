@@ -208,15 +208,26 @@ export default function ComissoesEmprestimos() {
   // Alias para compatibilidade
   const getPercentualProposta = getPercentualEmpresa;
 
-  const abrirModalPagamento = (vendedor, e) => {
+  const abrirModalPagamento = async (vendedor, e) => {
     if (e) e.stopPropagation();
     setVendedorModal(vendedor);
-    // Pré-seleciona apenas as que têm comissão do banco recebida e não foram pagas ao vendedor
     const aPagar = vendedor.propostas.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga);
     setModalSelecionados(new Set(aPagar.map(p => p.id)));
     setModalSearch('');
     setFormaPagamento('PIX');
     setObservacao('');
+    setAdiantamentosSelecionados(new Set());
+
+    // Busca adiantamentos pendentes desse vendedor
+    try {
+      const filtro = { status: 'pendente' };
+      if (vendedor.vendedor_id) filtro.colaborador_id = vendedor.vendedor_id;
+      const adis = await base44.entities.Adiantamento.filter(filtro);
+      setAdiantamentosVendedor(adis.filter(a => a.colaborador_id === vendedor.vendedor_id || (!vendedor.vendedor_id && !a.colaborador_id)));
+    } catch {
+      setAdiantamentosVendedor([]);
+    }
+
     setPagarModal(true);
   };
 
