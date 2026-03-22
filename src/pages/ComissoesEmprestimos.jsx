@@ -430,6 +430,8 @@ export default function ComissoesEmprestimos() {
           emprestimo_tipo: p.emprestimo_tipo || null,
           data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
           valor_credito: p.valor_credito || 0,
+          valor_liquido: p.valor_liquido || null,
+          valor_parcela: p.emprestimo_valor_parcela || null,
           percentual_empresa_original: percEmpresa,
           valor_comissao_empresa_original: p.valor_comissao || 0,
           percentual_vendedor_pago: percVendedor,
