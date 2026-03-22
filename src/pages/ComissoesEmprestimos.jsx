@@ -325,6 +325,11 @@ export default function ComissoesEmprestimos() {
     doc.save(`comissao_emp_${vendedorInfo?.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${moment(dataPagamento).format('YYYYMMDD')}.pdf`);
   };
 
+  const totalAdiantamentosDesc = Array.from(adiantamentosSelecionados)
+    .map(id => adiantamentosVendedor.find(a => a.id === id))
+    .filter(Boolean)
+    .reduce((acc, a) => acc + (a.valor || 0), 0);
+
   const handleConfirmarPagamento = async () => {
     if (modalSelecionados.size === 0 || !vendedorModal) return;
     setIsPaying(true);
@@ -345,7 +350,8 @@ export default function ComissoesEmprestimos() {
         return { p, percVendedor, percEmpresa, valVendedor, editadoManual };
       });
 
-      const valorTotal = itensComValores.reduce((acc, i) => acc + i.valVendedor, 0);
+      const valorTotalBruto = itensComValores.reduce((acc, i) => acc + i.valVendedor, 0);
+      const valorTotal = Math.max(0, valorTotalBruto - totalAdiantamentosDesc);
 
       // 1. Criar lote
       const lote = await base44.entities.LotePagamentoComissaoEmprestimo.create({
