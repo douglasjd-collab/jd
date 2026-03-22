@@ -519,20 +519,26 @@ export default function ImportacaoComissaoEmprestimo() {
         }));
         await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-        // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida
+        // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida + bruto/líquido/parcela
         const atualizacoesPorVenda = {};
-        for (const rec of recebimentosCriados) {
-          if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+        for (let i = 0; i < recebimentosCriados.length; i++) {
+          const rec = recebimentosCriados[i];
+          const orig = recebimentosParaCriar[i];
+          if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_bruto: orig._valor_bruto, valor_liquido: orig._valor_liquido, valor_parcela: orig._valor_parcela };
           atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
         }
         for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
           const p = await base44.entities.Proposta.get(vendaId);
           if (p) {
-            await base44.entities.Proposta.update(vendaId, {
+            const updateProposta = {
               comissao_banco_recebida: true,
               valor_comissao: info.valor,
               comissao_recebida: (p.comissao_recebida || 0) + info.valor,
-            });
+            };
+            if (info.valor_bruto) updateProposta.valor_credito = info.valor_bruto;
+            if (info.valor_liquido) updateProposta.valor_liquido = info.valor_liquido;
+            if (info.valor_parcela) updateProposta.emprestimo_valor_parcela = info.valor_parcela;
+            await base44.entities.Proposta.update(vendaId, updateProposta);
           }
         }
       }
