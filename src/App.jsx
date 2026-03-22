@@ -11,6 +11,7 @@ import Tarefas from './pages/Tarefas';
 import ConfiguracaoTarefas from './pages/ConfiguracaoTarefas';
 import ContatosCRM from './pages/ContatosCRM';
 import ConfiguracaoApi from './pages/ConfiguracaoApi';
+import Adiantamentos from './pages/Adiantamentos';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -66,6 +67,7 @@ const AuthenticatedApp = () => {
       <Route path="/ConfiguracaoTarefas" element={<LayoutWrapper currentPageName="ConfiguracaoTarefas"><ConfiguracaoTarefas /></LayoutWrapper>} />
       <Route path="/ContatosCRM" element={<LayoutWrapper currentPageName="ContatosCRM"><ContatosCRM /></LayoutWrapper>} />
       <Route path="/ConfiguracaoApi" element={<LayoutWrapper currentPageName="ConfiguracaoApi"><ConfiguracaoApi /></LayoutWrapper>} />
+      <Route path="/Adiantamentos" element={<LayoutWrapper currentPageName="Adiantamentos"><Adiantamentos /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

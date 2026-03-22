@@ -252,6 +252,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Receber Comissão', page: 'ReceberComissao' },
         { name: 'Comissões a Pagar (Consórcio)', page: 'ComissoesPagar' },
         { name: 'Comissões a Pagar (Empréstimos)', page: 'ComissoesEmprestimos' },
+        { name: 'Adiantamentos', page: 'Adiantamentos' },
         { name: 'Comissões Pagas', page: 'ComissoesPagas' },
         { name: 'Comissões Pagas (Empréstimos)', page: 'ComissoesPagasEmprestimos' },
       ]
