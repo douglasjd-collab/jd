@@ -943,11 +943,58 @@ export default function ComissoesEmprestimos() {
             </table>
           </div>
 
+          {/* Adiantamentos pendentes do vendedor */}
+          {adiantamentosVendedor.length > 0 && (
+            <div className="border border-orange-200 rounded-lg bg-orange-50 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-orange-800 font-semibold text-sm">
+                <AlertCircle className="w-4 h-4" />
+                Adiantamentos Pendentes — selecione para descontar neste pagamento
+              </div>
+              {adiantamentosVendedor.map(a => {
+                const sel = adiantamentosSelecionados.has(a.id);
+                return (
+                  <div
+                    key={a.id}
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-colors ${sel ? 'bg-orange-100 border-orange-400' : 'bg-white border-orange-200 hover:border-orange-300'}`}
+                    onClick={() => {
+                      const s = new Set(adiantamentosSelecionados);
+                      sel ? s.delete(a.id) : s.add(a.id);
+                      setAdiantamentosSelecionados(s);
+                    }}
+                  >
+                    <Checkbox checked={sel} onCheckedChange={() => {
+                      const s = new Set(adiantamentosSelecionados);
+                      sel ? s.delete(a.id) : s.add(a.id);
+                      setAdiantamentosSelecionados(s);
+                    }} />
+                    <div className="flex-1 text-xs">
+                      <span className="font-semibold text-slate-800">{fmt(a.valor)}</span>
+                      <span className="text-slate-500 ml-2">{moment(a.data).format('DD/MM/YYYY')}</span>
+                      {a.motivo && <span className="text-slate-500 ml-2">— {a.motivo}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              {totalAdiantamentosDesc > 0 && (
+                <p className="text-xs text-orange-700 font-semibold pt-1">
+                  Desconto total: {fmt(totalAdiantamentosDesc)} · Valor líquido a pagar: {fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="border-t pt-3 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 text-base">
-                Total: <span className="text-[#10353C]">{fmt(totalModalSelecionado)}</span>
-              </span>
+              <div>
+                <span className="font-bold text-slate-800 text-base">
+                  Total: <span className="text-[#10353C]">{fmt(totalModalSelecionado)}</span>
+                </span>
+                {totalAdiantamentosDesc > 0 && (
+                  <span className="ml-3 text-sm text-orange-600 font-semibold">
+                    − {fmt(totalAdiantamentosDesc)} (adiantamentos) = <span className="text-green-700">{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))}</span>
+                  </span>
+                )}
+              </div>
               <span className="text-sm text-slate-500">{modalSelecionados.size} selecionado(s)</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -976,7 +1023,7 @@ export default function ComissoesEmprestimos() {
               {isPaying ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processando...</>
               ) : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(totalModalSelecionado)})</>
+                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))})</>
               )}
             </Button>
           </DialogFooter>
