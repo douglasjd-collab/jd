@@ -438,6 +438,9 @@ export default function ImportacaoComissaoEmprestimo() {
           } else {
             recebimentosParaCriar.push({
               _itemIdx: idx,
+              _valor_bruto: item.valor_bruto || null,
+              _valor_liquido: item.valor_liquido || null,
+              _valor_parcela: item.valor_parcela || null,
               empresa_id: propostaEncontrada.empresa_id,
               venda_id: propostaEncontrada.id,
               cliente_id: propostaEncontrada.cliente_id,
