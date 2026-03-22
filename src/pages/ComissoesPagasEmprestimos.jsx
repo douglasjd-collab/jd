@@ -201,7 +201,7 @@ export default function ComissoesPagasEmprestimos() {
     }
   };
 
-  const gerarPDF = (lote) => {
+  const gerarPDF = async (lote) => {
     // Lotes legado usam as propostas diretamente; lotes novos usam snapshots
     const loteItens = lote.isLegado
       ? (lote.propostas || []).map(p => ({
@@ -211,6 +211,8 @@ export default function ComissoesPagasEmprestimos() {
           banco: p.administradora_nome,
           data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
           valor_credito: p.valor_credito || 0,
+          valor_liquido: p.valor_liquido || null,
+          valor_parcela: p.emprestimo_valor_parcela || null,
           percentual_empresa_original: p.valor_comissao && p.valor_credito ? (p.valor_comissao / p.valor_credito) * 100 : 0,
           valor_comissao_empresa_original: p.valor_comissao || 0,
           percentual_vendedor_pago: p.percentual_comissao_vendedor || (p.valor_comissao && p.valor_credito ? (p.valor_comissao / p.valor_credito) * 100 : 0),
@@ -218,6 +220,19 @@ export default function ComissoesPagasEmprestimos() {
           percentual_vendedor_editado_manual: false,
         }))
       : (itensPorLote[lote.id] || []);
+
+    // Buscar adiantamentos descontados neste lote
+    let adiantamentosDesc = [];
+    if (!lote.isLegado && lote.id) {
+      try {
+        adiantamentosDesc = await base44.entities.Adiantamento.filter({ lote_pagamento_id: lote.id });
+      } catch {}
+    }
+
+    const subtotal = loteItens.reduce((acc, item) => acc + (item.valor_vendedor_pago || 0), 0);
+    const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
+    const totalLiquido = lote.valor_total ?? Math.max(0, subtotal - totalAdiantamentos);
+
     const doc = new jsPDF({ orientation: 'landscape' });
 
     doc.setFillColor(16, 53, 60);
@@ -227,6 +242,11 @@ export default function ComissoesPagasEmprestimos() {
     doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 148, 10, { align: 'center' });
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
     doc.text(`Lote: ${lote.lote_codigo || lote.id}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 17, { align: 'center' });
+
+    // Marca SEGUNDA VIA
+    doc.setFontSize(8); doc.setTextColor(180, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2ª VIA', 280, 10, { align: 'right' });
 
     doc.setTextColor(0, 0, 0);
     doc.setFillColor(245, 247, 250);
@@ -242,7 +262,7 @@ export default function ComissoesPagasEmprestimos() {
 
     doc.autoTable({
       startY: 54,
-      head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. Pago']],
+      head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
       body: loteItens.map(item => [
         item.cliente_nome || '-',
         item.contrato || '-',
@@ -255,7 +275,7 @@ export default function ComissoesPagasEmprestimos() {
         `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
         fmt(item.valor_vendedor_pago),
       ]),
-      foot: [['', '', '', '', '', '', '', '', 'Total:', fmt(lote.valor_total)]],
+      foot: [['', '', '', '', '', '', '', '', 'Subtotal Comissões:', fmt(subtotal)]],
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
@@ -263,10 +283,53 @@ export default function ComissoesPagasEmprestimos() {
       columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
+    let cursorY = doc.lastAutoTable.finalY + 6;
+
+    // Seção de adiantamentos descontados
+    if (adiantamentosDesc.length > 0) {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(180, 80, 0);
+      doc.text('Adiantamentos Descontados:', 14, cursorY + 5);
+      cursorY += 3;
+
+      doc.autoTable({
+        startY: cursorY + 4,
+        head: [['Descrição / Motivo', 'Data Adiantamento', 'Valor Descontado']],
+        body: adiantamentosDesc.map(a => [
+          a.motivo || 'Adiantamento de Salário',
+          moment(a.data_desconto || a.data).format('DD/MM/YYYY'),
+          fmt(a.valor),
+        ]),
+        foot: [['', 'Total Adiantamentos:', fmt(totalAdiantamentos)]],
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [180, 90, 0], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [255, 240, 220], fontStyle: 'bold', textColor: [150, 60, 0] },
+        columnStyles: { 2: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+      });
+
+      cursorY = doc.lastAutoTable.finalY + 4;
+    }
+
+    // Resumo final (igual ao original)
+    const boxH = adiantamentosDesc.length > 0 ? 22 : 12;
+    doc.setFillColor(16, 53, 60);
+    doc.roundedRect(10, cursorY, 277, boxH, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    if (adiantamentosDesc.length > 0) {
+      doc.text(`Subtotal: ${fmt(subtotal)}`, 16, cursorY + 7);
+      doc.text(`(−) Adiantamentos: ${fmt(totalAdiantamentos)}`, 110, cursorY + 7);
+      doc.setFontSize(11);
+      doc.text(`VALOR LÍQUIDO A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 17);
+    } else {
+      doc.text(`TOTAL A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 8);
+    }
+
     const ph = doc.internal.pageSize.height;
-    doc.setFontSize(7); doc.setTextColor(0, 0, 255);
+    doc.setFontSize(7); doc.setTextColor(100, 100, 100);
     doc.text(`Gerado em ${moment().format('DD/MM/YYYY HH:mm')}`, 148, ph - 5, { align: 'center' });
-    doc.save(`comissao_emp_${(lote.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${moment(lote.data_pagamento || undefined).format('YYYYMMDD')}.pdf`);
+    doc.save(`comissao_emp_${(lote.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${moment(lote.data_pagamento || undefined).format('YYYYMMDD')}_2via.pdf`);
   };
 
   if (!user) return (
