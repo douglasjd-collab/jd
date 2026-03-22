@@ -610,6 +610,8 @@ export default function ComissoesEmprestimos() {
                                 : p.data_venda ? moment(p.data_venda).format('DD/MM/YYYY') : '-'}
                             </td>
                             <td className="p-3 text-right font-medium">{fmt(p.valor_credito)}</td>
+                            <td className="p-3 text-right font-medium text-slate-600">{p.valor_liquido ? fmt(p.valor_liquido) : '-'}</td>
+                            <td className="p-3 text-right text-slate-500 text-xs">{p.emprestimo_valor_parcela ? fmt(p.emprestimo_valor_parcela) : '-'}</td>
                             <td className="p-3 text-right text-slate-500 text-xs font-semibold">
                               {getPercentualEmpresa(p).toFixed(2)}%
                             </td>
