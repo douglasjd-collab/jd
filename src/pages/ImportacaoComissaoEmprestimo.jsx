@@ -325,11 +325,15 @@ export default function ImportacaoComissaoEmprestimo() {
       for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
         const p = await base44.entities.Proposta.get(vendaId);
         if (p) {
-          await base44.entities.Proposta.update(vendaId, {
+          const updateProposta = {
             comissao_banco_recebida: true,
             valor_comissao: info.valor,
             comissao_recebida: (p.comissao_recebida || 0) + info.valor,
-          });
+          };
+          if (info.valor_bruto) updateProposta.valor_credito = info.valor_bruto;
+          if (info.valor_liquido) updateProposta.valor_liquido = info.valor_liquido;
+          if (info.valor_parcela) updateProposta.emprestimo_valor_parcela = info.valor_parcela;
+          await base44.entities.Proposta.update(vendaId, updateProposta);
         }
       }
     }
