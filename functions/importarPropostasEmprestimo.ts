@@ -305,6 +305,9 @@ Deno.serve(async (req) => {
         const comissaoVal  = colComissao  >= 0 ? row[colComissao]                        : null;
         const tabelaVal             = colTabela             >= 0 ? String(row[colTabela]             ?? '').trim() : '';
         const comissaoPercentualVal = colComissaoPercentual >= 0 ? row[colComissaoPercentual]                      : null;
+        const dataRecebComissaoVal  = colDataRecebComissao  >= 0 ? row[colDataRecebComissao]                       : null;
+        const dataPagClienteVal     = colDataPagCliente     >= 0 ? row[colDataPagCliente]                          : null;
+        const dataCadastroPropVal   = colDataCadastroProp   >= 0 ? row[colDataCadastroProp]                        : null;
 
         if (!nomeVal && !cpfVal) {
           ignoradas++;
