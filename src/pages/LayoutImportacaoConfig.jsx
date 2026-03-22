@@ -68,7 +68,6 @@ const CAMPOS_COMISSAO = [
   { key: 'data_cadastro_proposta', label: 'Data de Cadastro da Proposta', obrigatorio: false },
   { key: 'valor_comissao', label: 'Valor da Comissão', obrigatorio: true },
   { key: 'percentual_comissao', label: '% Comissão', obrigatorio: false },
-  { key: 'comissao_empresa', label: 'Comissão Empresa em %', obrigatorio: false },
   { key: 'comissao_vendedor', label: 'Comissão Vendedor', obrigatorio: false },
   { key: 'vendedor', label: 'Vendedor', obrigatorio: false },
   { key: 'observacao', label: 'Observação', obrigatorio: false },
