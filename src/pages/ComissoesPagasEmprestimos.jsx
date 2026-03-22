@@ -256,11 +256,11 @@ export default function ComissoesPagasEmprestimos() {
         fmt(item.valor_vendedor_pago),
       ]),
       foot: [['', '', '', '', '', '', '', '', 'Total:', fmt(lote.valor_total)]],
-      styles: { fontSize: 8, cellPadding: 2 },
+      styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
     const ph = doc.internal.pageSize.height;
