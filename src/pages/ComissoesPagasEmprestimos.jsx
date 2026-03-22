@@ -353,6 +353,13 @@ export default function ComissoesPagasEmprestimos() {
                       onClick={() => gerarPDF(lote)}>
                       <Download className="w-4 h-4 mr-1" />PDF
                     </Button>
+                    {!lote.isLegado && (
+                      <Button size="sm" variant="ghost"
+                        className="text-red-300 hover:text-red-100 hover:bg-red-900/30 border-0"
+                        onClick={() => setLoteExcluir(lote)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                   <div className="text-white/50 ml-1">
                     {isExp ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
