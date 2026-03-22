@@ -242,7 +242,7 @@ export default function ComissoesPagasEmprestimos() {
 
     doc.autoTable({
       startY: 54,
-      head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Crédito', '% Vendedor', 'Vl. Pago']],
+      head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. Pago']],
       body: loteItens.map(item => [
         item.cliente_nome || '-',
         item.contrato || '-',
@@ -250,10 +250,12 @@ export default function ComissoesPagasEmprestimos() {
         item.banco || '-',
         item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-',
         fmt(item.valor_credito),
+        item.valor_liquido ? fmt(item.valor_liquido) : '-',
+        item.valor_parcela ? fmt(item.valor_parcela) : '-',
         `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
         fmt(item.valor_vendedor_pago),
       ]),
-      foot: [['', '', '', '', '', '', 'Total:', fmt(lote.valor_total)]],
+      foot: [['', '', '', '', '', '', '', '', 'Total:', fmt(lote.valor_total)]],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
@@ -439,7 +441,7 @@ export default function ComissoesPagasEmprestimos() {
                           </tbody>
                           <tfoot className="bg-slate-50 border-t">
                             <tr>
-                              <td colSpan={9} className="p-3 text-right font-bold text-slate-700">Total:</td>
+                              <td colSpan={11} className="p-3 text-right font-bold text-slate-700">Total:</td>
                               <td className="p-3 text-right font-bold text-blue-700">{fmt(lote.valor_total)}</td>
                             </tr>
                           </tfoot>
