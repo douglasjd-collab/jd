@@ -496,7 +496,7 @@ export default function ImportacaoComissaoEmprestimo() {
       }
 
       if (recebimentosParaCriar.length > 0) {
-        const recebimentosData = recebimentosParaCriar.map(({ _itemIdx, ...rest }) => rest);
+        const recebimentosData = recebimentosParaCriar.map(({ _itemIdx, _valor_bruto, _valor_liquido, _valor_parcela, ...rest }) => rest);
         const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosData);
 
         // Criar ComissaoAPagar para cada recebimento
