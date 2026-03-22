@@ -155,6 +155,52 @@ export default function ComissoesPagasEmprestimos() {
 
   const toggleLote = (id) => setExpandedLotes(prev => ({ ...prev, [id]: !prev[id] }));
 
+  const handleExcluirLote = async () => {
+    if (!loteExcluir) return;
+    setExcluindo(true);
+    try {
+      const lote = loteExcluir;
+      // Reverter propostas vinculadas ao lote
+      const loteItensRevert = itensPorLote[lote.id] || [];
+      for (const item of loteItensRevert) {
+        if (item.proposta_id) {
+          await base44.entities.Proposta.update(item.proposta_id, {
+            comissao_vendedor_paga: false,
+            comissao_vendedor_data_pagamento: null,
+            comissao_vendedor_forma_pagamento: null,
+            percentual_comissao_vendedor: null,
+            valor_comissao_vendedor_pago: null,
+          });
+        }
+        await base44.entities.ComissaoEmprestimoPaga.delete(item.id);
+      }
+      // Reverter adiantamentos vinculados ao lote
+      try {
+        const adisLote = await base44.entities.Adiantamento.filter({ lote_pagamento_id: lote.id });
+        for (const adi of adisLote) {
+          await base44.entities.Adiantamento.update(adi.id, {
+            status: 'pendente',
+            data_desconto: null,
+            lote_pagamento_id: null,
+          });
+        }
+      } catch {}
+      // Excluir o lote
+      await base44.entities.LotePagamentoComissaoEmprestimo.delete(lote.id);
+      queryClient.invalidateQueries(['lotes-pagamento-emp']);
+      queryClient.invalidateQueries(['comissoes-emp-pagas-itens']);
+      queryClient.invalidateQueries(['propostas-emp-pagas-legado']);
+      queryClient.invalidateQueries(['propostas-emp-comissoes']);
+      toast.success('Lote excluído! Propostas voltaram para "a pagar".');
+      setLoteExcluir(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao excluir lote');
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
   const gerarPDF = (lote) => {
     // Lotes legado usam as propostas diretamente; lotes novos usam snapshots
     const loteItens = lote.isLegado
