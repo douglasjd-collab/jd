@@ -64,6 +64,10 @@ export default function ComissoesEmprestimos() {
   const [observacao, setObservacao] = useState('');
   const [isPaying, setIsPaying] = useState(false);
 
+  // Adiantamentos a descontar no modal de pagamento
+  const [adiantamentosVendedor, setAdiantamentosVendedor] = useState([]);
+  const [adiantamentosSelecionados, setAdiantamentosSelecionados] = useState(new Set());
+
   // Modal marcar comissão do banco
   const [marcarBancoModal, setMarcarBancoModal] = useState(false);
   const [propostaMarcar, setPropostaMarcar] = useState(null);
