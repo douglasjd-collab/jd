@@ -421,6 +421,8 @@ export default function ComissoesPagasEmprestimos() {
                                   {item.data_liberacao ? moment(item.data_liberacao).format('DD/MM/YYYY') : '-'}
                                 </td>
                                 <td className="p-3 text-right font-medium">{fmt(item.valor_credito)}</td>
+                                <td className="p-3 text-right text-slate-600">{item.valor_liquido ? fmt(item.valor_liquido) : '-'}</td>
+                                <td className="p-3 text-right text-slate-500 text-xs">{item.valor_parcela ? fmt(item.valor_parcela) : '-'}</td>
                                 <td className="p-3 text-right text-slate-500 text-xs">
                                   {Number(item.percentual_empresa_original || 0).toFixed(2)}%
                                 </td>
