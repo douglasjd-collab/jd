@@ -171,10 +171,11 @@ export default function ComissoesEmprestimos() {
   const totalRecebidoBanco = propostasPagas.filter(p => p.comissao_banco_recebida).reduce((a, p) => a + (p.valor_comissao || 0), 0);
   const totalPendentePagar = propostasPagas.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga).reduce((a, p) => a + (p.valor_comissao || 0), 0);
 
-  // Percentual da empresa (comissão recebida do banco) = valor_comissao / valor_credito
+  // Percentual da empresa (comissão recebida do banco) = valor_comissao / base de cálculo
   const getPercentualEmpresa = (p) => {
-    if (p.valor_comissao && p.valor_credito) {
-      return parseFloat(((p.valor_comissao / p.valor_credito) * 100).toFixed(4));
+    const base = p.valor_liquido || p.valor_credito;
+    if (p.valor_comissao && base) {
+      return parseFloat(((p.valor_comissao / base) * 100).toFixed(4));
     }
     return 0;
   };
