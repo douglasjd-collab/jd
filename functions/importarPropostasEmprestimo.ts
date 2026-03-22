@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
     let headerRowIndex = 0;
     let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo;
     let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colComissaoPercentual, colContrato, colTabela;
+    let colDataRecebComissao, colDataPagCliente, colDataCadastroProp;
 
     if (layout && Object.keys(layout).length > 0) {
       // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
@@ -112,6 +113,9 @@ Deno.serve(async (req) => {
       colComissaoPercentual = colLetterToIndex(layout.comissao_empresa_percentual);
       colContrato          = colLetterToIndex(layout.numero_contrato);
       colTabela            = colLetterToIndex(layout.tabela || layout.tabela_comissao);
+      colDataRecebComissao = colLetterToIndex(layout.data_recebimento_comissao);
+      colDataPagCliente    = colLetterToIndex(layout.data_pagamento_cliente);
+      colDataCadastroProp  = colLetterToIndex(layout.data_cadastro_proposta);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
