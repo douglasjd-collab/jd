@@ -264,12 +264,17 @@ export default function ComissoesEmprestimos() {
     }
   };
 
-  const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}) => {
+  const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = []) => {
     const doc = new jsPDF({ orientation: 'landscape' });
-    const totalPago = propostasLista.reduce((acc, p) => {
-      const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualProposta(p);
-      return acc + (p.valor_credito || 0) * (perc / 100);
+
+    // Cálculo correto: usa valor_liquido como base se disponível
+    const totalBruto = propostasLista.reduce((acc, p) => {
+      const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
+      const base = p.valor_liquido || p.valor_credito || 0;
+      return acc + base * (perc / 100);
     }, 0);
+    const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
+    const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos);
 
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, 297, 22, 'F');
@@ -311,7 +316,7 @@ export default function ComissoesEmprestimos() {
           fmt(valPagar),
         ];
       }),
-      foot: [['', '', '', '', '', '', '', '', 'Total:', fmt(totalPago)]],
+      foot: [['', '', '', '', '', '', '', '', 'Subtotal Comissões:', fmt(totalBruto)]],
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
@@ -319,8 +324,50 @@ export default function ComissoesEmprestimos() {
       columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
+    let cursorY = doc.lastAutoTable.finalY + 6;
+
+    // Seção de adiantamentos descontados
+    if (adiantamentosDesc.length > 0) {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(180, 80, 0);
+      doc.text('Adiantamentos Descontados:', 14, cursorY + 5);
+      cursorY += 3;
+
+      doc.autoTable({
+        startY: cursorY + 4,
+        head: [['Descrição / Motivo', 'Data Adiantamento', 'Valor Descontado']],
+        body: adiantamentosDesc.map(a => [
+          a.motivo || 'Adiantamento de Salário',
+          moment(a.data).format('DD/MM/YYYY'),
+          fmt(a.valor),
+        ]),
+        foot: [['', 'Total Adiantamentos:', fmt(totalAdiantamentos)]],
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [180, 90, 0], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [255, 240, 220], fontStyle: 'bold', textColor: [150, 60, 0] },
+        columnStyles: { 2: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+      });
+
+      cursorY = doc.lastAutoTable.finalY + 4;
+    }
+
+    // Resumo final
+    doc.setFillColor(16, 53, 60);
+    doc.roundedRect(160, cursorY, 127, adiantamentosDesc.length > 0 ? 18 : 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    if (adiantamentosDesc.length > 0) {
+      doc.text(`Subtotal: ${fmt(totalBruto)}`, 167, cursorY + 6);
+      doc.text(`(−) Adiantamentos: ${fmt(totalAdiantamentos)}`, 167, cursorY + 12);
+      doc.setFontSize(10);
+      doc.text(`VALOR LÍQUIDO A PAGAR: ${fmt(totalLiquido)}`, 167, cursorY + 19);
+    } else {
+      doc.text(`TOTAL A PAGAR: ${fmt(totalLiquido)}`, 167, cursorY + 7);
+    }
+
     const ph = doc.internal.pageSize.height;
-    doc.setFontSize(7); doc.setTextColor(0, 0, 255);
+    doc.setFontSize(7); doc.setTextColor(100, 100, 100);
     doc.text(`Gerado por ${user?.full_name || 'Sistema'} em ${moment().format('DD/MM/YYYY HH:mm')}`, 148, ph - 5, { align: 'center' });
     doc.save(`comissao_emp_${vendedorInfo?.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${moment(dataPagamento).format('YYYYMMDD')}.pdf`);
   };
