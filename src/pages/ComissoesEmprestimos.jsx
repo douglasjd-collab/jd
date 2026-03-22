@@ -192,9 +192,12 @@ export default function ComissoesEmprestimos() {
     return percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualVendedorDefault(p);
   };
 
+  // Base de cálculo da comissão: usa valor_liquido quando disponível, senão valor_credito (bruto)
+  const getBaseComissao = (p) => p.valor_liquido || p.valor_credito || 0;
+
   // Valor a pagar ao vendedor
   const getValorAPagar = (p) => {
-    return (p.valor_credito || 0) * (getPercentualVendedor(p) / 100);
+    return getBaseComissao(p) * (getPercentualVendedor(p) / 100);
   };
   
   // Alias para compatibilidade
