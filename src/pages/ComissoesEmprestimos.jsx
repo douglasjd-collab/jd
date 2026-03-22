@@ -480,7 +480,7 @@ export default function ComissoesEmprestimos() {
       // PDF usa os valores já calculados (congelados)
       const percMapFinal = {};
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
-      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal);
+      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc);
 
       queryClient.invalidateQueries(['propostas-emp-comissoes']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
