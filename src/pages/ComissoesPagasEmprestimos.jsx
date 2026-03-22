@@ -449,6 +449,36 @@ export default function ComissoesPagasEmprestimos() {
           })}
         </div>
       )}
+      {/* Modal confirmação exclusão */}
+      <Dialog open={!!loteExcluir} onOpenChange={(v) => { if (!v) setLoteExcluir(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" /> Excluir Lote de Pagamento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-3 space-y-2">
+            <p className="text-slate-700">Tem certeza que deseja excluir este lote?</p>
+            {loteExcluir && (
+              <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
+                <p><span className="font-semibold">Vendedor:</span> {loteExcluir.vendedor_nome}</p>
+                <p><span className="font-semibold">Lote:</span> {loteExcluir.lote_codigo}</p>
+                <p><span className="font-semibold">Data:</span> {loteExcluir.data_pagamento ? moment(loteExcluir.data_pagamento).format('DD/MM/YYYY') : '-'}</p>
+                <p><span className="font-semibold">Valor:</span> {fmt(loteExcluir.valor_total)}</p>
+              </div>
+            )}
+            <p className="text-orange-600 text-sm font-medium">
+              ⚠️ As propostas voltarão para o status "a pagar" e os adiantamentos descontados serão restaurados como pendentes.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setLoteExcluir(null)} disabled={excluindo}>Cancelar</Button>
+            <Button onClick={handleExcluirLote} disabled={excluindo} className="bg-red-600 hover:bg-red-700 text-white">
+              {excluindo ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Excluindo...</> : <><Trash2 className="w-4 h-4 mr-2" />Confirmar Exclusão</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
