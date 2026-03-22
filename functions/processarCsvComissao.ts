@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
           // Usar mapeamento do layout (campo -> coluna)
           // Suporta chaves de layout de comissão (data_pagamento, valor_comissao, contrato)
           const m = layoutMapeamento;
-          const dataCol     = m.data_recebimento || m.data_pagamento || m.data_liberacao;
+          const dataCol     = m.data_recebimento_comissao || m.data_pagamento_cliente || m.data_cadastro_proposta || m.data_recebimento || m.data_pagamento || m.data_liberacao;
           const valorCol    = m.valor || m.valor_comissao || m.comissao_empresa;
           const contratoCol = m.contrato || m.numero_contrato || m.numero_ade;
           data_recebimento  = parseData(row[colLetraParaIdx(dataCol)] ?? '');
