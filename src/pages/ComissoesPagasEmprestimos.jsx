@@ -32,6 +32,9 @@ export default function ComissoesPagasEmprestimos() {
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroMes, setFiltroMes] = useState('todos');
   const [expandedLotes, setExpandedLotes] = useState({});
+  const [loteExcluir, setLoteExcluir] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
 
