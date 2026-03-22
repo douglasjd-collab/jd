@@ -412,6 +412,9 @@ Deno.serve(async (req) => {
           status_id:                   statusId || null,
           tabela_comissao_id:          tabelaComissao?.id || null,
           tabela_comissao_nome:        tabelaComissao ? (tabelaComissao.tabela || tabelaComissao.nome) : null,
+          emprestimo_data_liberacao:   parseData(dataPagClienteVal) || undefined,
+          comissao_banco_recebida:     dataRecebComissaoVal ? true : undefined,
+          cip_data_entrada:            parseData(dataCadastroPropVal) || undefined,
         };
 
         // Adicionar IDs somente se existirem (campos string)
