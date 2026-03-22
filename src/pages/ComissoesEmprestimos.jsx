@@ -582,7 +582,9 @@ export default function ComissoesEmprestimos() {
                           <th className="p-3 text-left font-semibold">Tipo</th>
                           <th className="p-3 text-left font-semibold">Banco</th>
                           <th className="p-3 text-left font-semibold">Data Lib.</th>
-                          <th className="p-3 text-right font-semibold">Vl. Crédito</th>
+                          <th className="p-3 text-right font-semibold">Vl. Bruto</th>
+                          <th className="p-3 text-right font-semibold">Vl. Líquido</th>
+                          <th className="p-3 text-right font-semibold">Vl. Parcela</th>
                           <th className="p-3 text-right font-semibold">Comissão Empresa %</th>
                           <th className="p-3 text-right font-semibold">Vl. Comissão Empresa</th>
                           <th className="p-3 text-right font-semibold">Comissão Vendedor %</th>
