@@ -421,10 +421,14 @@ export default function BatePapo() {
       if (!texto?.trim() && !arquivo) {
         throw new Error('Mensagem ou arquivo obrigatório');
       }
+      // Para grupos usar o whatsapp_id (JID @g.us), para individuais usar o telefone
+      const destinatario = isGrupo(conversaSelecionada)
+        ? conversaSelecionada.whatsapp_id
+        : conversaSelecionada.cliente_telefone;
       const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
         conversa_id: conversaSelecionada.id,
         mensagem_texto: texto,
-        numero_cliente: conversaSelecionada.cliente_telefone,
+        numero_cliente: destinatario,
         empresa_id: empresaId,
         arquivo: arquivo
       });
