@@ -84,6 +84,8 @@ Deno.serve(async (req) => {
         ultima_mensagem: conversa.ultima_mensagem,
         data_ultima_mensagem: conversa.data_ultima_mensagem,
         status: conversa.status,
+        usuario_responsavel_id: conversa.usuario_responsavel_id || null,
+        usuario_responsavel_nome: conversa.usuario_responsavel_nome || null,
         contato: contato ? {
           id: contato.id,
           nome: contato.nome,
