@@ -42,7 +42,17 @@ import {
   X,
   Trash2,
   RefreshCw,
+  Contact,
+  Pencil,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
