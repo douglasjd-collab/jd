@@ -108,7 +108,49 @@ export default function BatePapo() {
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(true);
   const [sincronizando, setSincronizando] = useState(false);
+  const [salvarCrmModal, setSalvarCrmModal] = useState(null); // { conversa, contato? }
+  const [nomeContatoEdit, setNomeContatoEdit] = useState('');
+  const [salvandoCrm, setSalvandoCrm] = useState(false);
   const queryClient = useQueryClient();
+
+  const abrirSalvarCrm = (conversa) => {
+    const contatoAtual = contatosWhatsapp[conversa.id];
+    setNomeContatoEdit(contatoAtual?.nome || conversa.cliente_nome || '');
+    setSalvarCrmModal({ conversa, contato: contatoAtual || null });
+  };
+
+  const salvarContatoCrm = async () => {
+    if (!salvarCrmModal) return;
+    setSalvandoCrm(true);
+    const { conversa, contato } = salvarCrmModal;
+    const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
+    try {
+      let contatoSalvo;
+      if (contato?.id) {
+        // Atualizar nome do contato existente
+        contatoSalvo = await base44.entities.ContatoWhatsapp.update(contato.id, { nome: nomeContatoEdit });
+        contatoSalvo = { ...contato, nome: nomeContatoEdit };
+      } else {
+        // Criar novo contato no CRM
+        contatoSalvo = await base44.entities.ContatoWhatsapp.create({
+          empresa_id: empresaId,
+          telefone: telefoneLimpo,
+          nome: nomeContatoEdit,
+        });
+      }
+      // Atualizar nome na conversa também
+      await base44.entities.ConversaWhatsapp.update(conversa.id, { cliente_nome: nomeContatoEdit });
+      // Sincronizar estado local
+      setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatoSalvo }));
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      setSalvarCrmModal(null);
+      toast.success(contato?.id ? 'Contato atualizado no CRM!' : 'Contato salvo no CRM!');
+    } catch (e) {
+      toast.error('Erro ao salvar contato: ' + e.message);
+    } finally {
+      setSalvandoCrm(false);
+    }
+  };
 
   const sincronizarChats = async () => {
     setSincronizando(true);
