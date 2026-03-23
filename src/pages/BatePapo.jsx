@@ -694,25 +694,27 @@ export default function BatePapo() {
               </div>
 
               <Tabs value={filtroStatus} onValueChange={setFiltroStatus} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 rounded-full bg-slate-100 p-0.5">
-                  <TabsTrigger
-                    value="todas"
-                    className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                  >
-                    Todos
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="ativa"
-                    className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                  >
-                    Atendimento
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="arquivada"
-                    className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                  >
-                    Finalizados
-                  </TabsTrigger>
+                <TabsList className="flex w-full flex-wrap gap-0.5 rounded-xl bg-slate-100 p-0.5 h-auto">
+                  {[
+                    { value: 'todas', label: 'Todos' },
+                    { value: 'ativa', label: 'Atendimento' },
+                    { value: 'arquivada', label: 'Finalizados' },
+                    { value: 'transferida', label: 'Transferidos' },
+                    { value: 'meu', label: 'Meu Atend.' },
+                  ].map(tab => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="flex-1 min-w-0 rounded-lg text-[10px] px-1.5 py-1 gap-1 data-[state=active]:bg-white data-[state=active]:text-slate-900"
+                    >
+                      {tab.label}
+                      {contadores[tab.value] > 0 && (
+                        <span className="inline-flex items-center justify-center rounded-full bg-sky-500 text-white text-[9px] font-bold leading-none px-1 py-0.5 min-w-[14px]">
+                          {contadores[tab.value]}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </Tabs>
 
