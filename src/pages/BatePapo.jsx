@@ -228,11 +228,25 @@ export default function BatePapo() {
   });
 
   // Selecionar conversa inicial quando a lista carrega
+  // Também re-sincronizar conversa selecionada se o ID mudou (após deduplicação)
   useEffect(() => {
-    if (conversas.length > 0 && !conversaSelecionada) {
+    if (conversas.length === 0) return;
+    if (!conversaSelecionada) {
       const ultimaId = localStorage.getItem('ultimaConversaId');
       const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
       selecionarConversa(ultimaConversa || conversas[0]);
+    } else {
+      // Se a conversa selecionada não está mais na lista, tentar encontrar pelo telefone
+      const aindaExiste = conversas.find(c => c.id === conversaSelecionada.id);
+      if (!aindaExiste) {
+        const mesmTelefone = conversas.find(c =>
+          c.cliente_telefone === conversaSelecionada.cliente_telefone
+        );
+        if (mesmTelefone) {
+          setConversaSelecionada(mesmTelefone);
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', mesmTelefone.id] });
+        }
+      }
     }
   }, [conversas]);
 
