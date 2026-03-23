@@ -163,7 +163,7 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
           {aba === 'status' && (
             <>
               <div className="space-y-2">
-                {statusExibidos.map(s => (
+                {statusExibidos.filter(s => s?.nome).map(s => (
                   <div key={s.slug || s.id} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
                     <div className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor || '#3b82f6' }} />
                     {editStatus?.id === s.id ? (
