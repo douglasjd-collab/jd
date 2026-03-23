@@ -38,8 +38,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Normalizar telefone para deduplicação (sempre usar versão de 12 dígitos como chave canônica)
+    const normalizarTelefone = (tel) => {
+      if (!tel || !tel.startsWith('55')) return tel;
+      // Se 13 dígitos (com 9 extra), remover o 9 para normalizar
+      if (tel.length === 13) return tel.slice(0, 4) + tel.slice(5);
+      return tel;
+    };
+
+    // Deduplicar conversas do mesmo telefone — manter a mais recente
+    const conversasPorTelNorm = {};
+    for (const conversa of conversas) {
+      const tel = conversa.cliente_telefone || '';
+      const chave = normalizarTelefone(tel);
+      if (!chave || !chave.startsWith('55')) continue;
+      const existente = conversasPorTelNorm[chave];
+      if (!existente) {
+        conversasPorTelNorm[chave] = conversa;
+      } else {
+        // Manter a mais recente por data_ultima_mensagem
+        const dataExistente = new Date(existente.data_ultima_mensagem || existente.created_date || 0);
+        const dataAtual = new Date(conversa.data_ultima_mensagem || conversa.created_date || 0);
+        if (dataAtual > dataExistente) {
+          conversasPorTelNorm[chave] = conversa;
+        }
+      }
+    }
+
     // Montar resultado sem queries adicionais
-    const resultado = conversas.map(conversa => {
+    const resultado = Object.values(conversasPorTelNorm).map(conversa => {
       const tel = conversa.cliente_telefone || '';
       // Tentar telefone exato, depois variação com/sem 9 dígito BR
       let contato = contatoMap[tel] || null;
@@ -66,6 +93,11 @@ Deno.serve(async (req) => {
         } : null
       };
     });
+
+    // Ordenar por data_ultima_mensagem desc
+    resultado.sort((a, b) =>
+      new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0)
+    );
 
     return Response.json({ conversas: resultado }, { status: 200 });
   } catch (error) {
