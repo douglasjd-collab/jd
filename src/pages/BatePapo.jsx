@@ -694,7 +694,7 @@ export default function BatePapo() {
               </div>
 
               <Tabs value={filtroStatus} onValueChange={setFiltroStatus} className="w-full">
-                <TabsList className="flex w-full flex-wrap gap-0.5 rounded-xl bg-slate-100 p-0.5 h-auto">
+                <TabsList className="grid grid-cols-3 w-full rounded-xl bg-slate-100 p-0.5 h-auto gap-0.5">
                   {[
                     { value: 'todas', label: 'Todos' },
                     { value: 'ativa', label: 'Atendimento' },
@@ -705,7 +705,7 @@ export default function BatePapo() {
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="flex-1 min-w-0 rounded-lg text-[10px] px-1.5 py-1 gap-1 data-[state=active]:bg-white data-[state=active]:text-slate-900"
+                      className="rounded-lg text-xs px-2 py-1.5 gap-1 data-[state=active]:bg-white data-[state=active]:text-slate-900 whitespace-nowrap"
                     >
                       {tab.label}
                       {contadores[tab.value] > 0 && (
