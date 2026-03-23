@@ -694,6 +694,58 @@ export default function ContatosCRM() {
         tags={tags}
       />
 
+      {/* Modal Novo Contato */}
+      <Dialog open={novoContatoOpen} onOpenChange={setNovoContatoOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCircle className="w-5 h-5 text-blue-600" />
+              Novo Contato
+            </DialogTitle>
+            <DialogDescription>Crie um novo contato/lead no CRM</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Nome <span className="text-slate-400 text-xs">(opcional)</span></Label>
+              <Input
+                placeholder="Ex: João Silva"
+                value={novoContatoForm.nome}
+                onChange={e => setNovoContatoForm(p => ({ ...p, nome: e.target.value }))}
+                className="mt-1"
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Telefone/WhatsApp <span className="text-red-500">*</span></Label>
+              <Input
+                placeholder="Ex: 5511999999999"
+                value={novoContatoForm.telefone}
+                onChange={e => setNovoContatoForm(p => ({ ...p, telefone: e.target.value }))}
+                className="mt-1"
+                onKeyDown={e => e.key === 'Enter' && criarNovoContato()}
+              />
+              <p className="text-xs text-slate-400 mt-1">Inclua o DDI (55) e DDD. Ex: 5511999999999</p>
+            </div>
+            <div>
+              <Label>Observações <span className="text-slate-400 text-xs">(opcional)</span></Label>
+              <Input
+                placeholder="Ex: Cliente interessado em consórcio..."
+                value={novoContatoForm.observacoes}
+                onChange={e => setNovoContatoForm(p => ({ ...p, observacoes: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setNovoContatoOpen(false)}>Cancelar</Button>
+              <Button onClick={criarNovoContato} disabled={salvandoNovo || !novoContatoForm.telefone.trim()} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
+                {salvandoNovo ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                Criar Contato
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
