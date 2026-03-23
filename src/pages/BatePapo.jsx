@@ -553,27 +553,39 @@ export default function BatePapo() {
     return n.startsWith('55') && (n.length === 12 || n.length === 13);
   };
 
-  // Conversas válidas (sem números inválidos)
-  const conversasValidas = conversas.filter(c => isTelefoneValido(c.cliente_telefone));
+  // Helper: detectar se é grupo
+  const isGrupo = (c) => {
+    const tel = (c.cliente_telefone || '').replace(/\D/g, '');
+    const wid = c.whatsapp_id || '';
+    return wid.includes('@g.us') || tel.endsWith('@g.us') || wid.endsWith('-') || tel.length > 13;
+  };
+
+  // Conversas válidas — grupos sempre passam, individuais precisam de número válido
+  const conversasValidas = conversas.filter(c => isGrupo(c) || isTelefoneValido(c.cliente_telefone));
 
   // Contadores por aba
   const contadores = {
-    todas: conversasValidas.length,
-    ativa: conversasValidas.filter(c => c.status === 'ativa').length,
-    arquivada: conversasValidas.filter(c => c.status === 'arquivada').length,
-    transferida: conversasValidas.filter(c => c.status === 'encerrada').length,
-    meu: conversasValidas.filter(c => c.usuario_responsavel_id === user?.colaborador_id).length,
+    todas: conversasValidas.filter(c => !isGrupo(c)).length,
+    ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length,
+    arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
+    transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
+    meu: conversasValidas.filter(c => !isGrupo(c) && c.usuario_responsavel_id === user?.colaborador_id).length,
+    grupos: conversasValidas.filter(c => isGrupo(c)).length,
   };
 
   const conversasFiltradas = conversasValidas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
       (c.cliente_telefone || '').includes(searchConversas);
     let matchStatus = false;
-    if (filtroStatus === 'todas') matchStatus = true;
-    else if (filtroStatus === 'ativa') matchStatus = c.status === 'ativa';
-    else if (filtroStatus === 'arquivada') matchStatus = c.status === 'arquivada';
-    else if (filtroStatus === 'transferida') matchStatus = c.status === 'encerrada';
-    else if (filtroStatus === 'meu') matchStatus = c.usuario_responsavel_id === user?.colaborador_id;
+    if (filtroStatus === 'grupos') matchStatus = isGrupo(c);
+    else {
+      if (isGrupo(c)) return false; // grupos só aparecem na aba grupos
+      if (filtroStatus === 'todas') matchStatus = true;
+      else if (filtroStatus === 'ativa') matchStatus = c.status === 'ativa';
+      else if (filtroStatus === 'arquivada') matchStatus = c.status === 'arquivada';
+      else if (filtroStatus === 'transferida') matchStatus = c.status === 'encerrada';
+      else if (filtroStatus === 'meu') matchStatus = c.usuario_responsavel_id === user?.colaborador_id;
+    }
     return matchSearch && matchStatus;
   });
 
