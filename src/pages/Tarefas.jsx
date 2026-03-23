@@ -11,8 +11,7 @@ import { format } from 'date-fns';
 import TarefaCard from '@/components/tarefas/TarefaCard';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import TarefaDetalhesModal from '@/components/tarefas/TarefaDetalhesModal';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import ConfiguracaoTarefasModal from '@/components/tarefas/ConfiguracaoTarefasModal';
 
 const STATUS_PADRAO = [
   { slug: 'a_fazer', nome: 'A Fazer', cor: '#f59e0b', ordem: 1 },
