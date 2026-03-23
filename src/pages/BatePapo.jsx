@@ -561,6 +561,42 @@ export default function BatePapo() {
           isLoading={criarConversaMutation.isPending}
         />
 
+        {/* Modal Salvar/Editar Contato CRM */}
+        <Dialog open={!!salvarCrmModal} onOpenChange={(v) => !v && setSalvarCrmModal(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Contact className="w-4 h-4" />
+                {salvarCrmModal?.contato?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div>
+                <Label className="text-xs text-slate-600">Telefone</Label>
+                <p className="text-sm font-medium mt-0.5">{salvarCrmModal?.conversa?.cliente_telefone}</p>
+              </div>
+              <div>
+                <Label className="text-xs text-slate-600">Nome do contato</Label>
+                <Input
+                  value={nomeContatoEdit}
+                  onChange={e => setNomeContatoEdit(e.target.value)}
+                  placeholder="Ex: João Silva"
+                  className="mt-1"
+                  onKeyDown={e => e.key === 'Enter' && salvarContatoCrm()}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSalvarCrmModal(null)}>Cancelar</Button>
+              <Button onClick={salvarContatoCrm} disabled={salvandoCrm || !nomeContatoEdit.trim()} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
+                {salvandoCrm ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {salvarCrmModal?.contato?.id ? 'Salvar alterações' : 'Salvar no CRM'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <div className="mx-auto flex h-[calc(100vh-2rem)] max-w-7xl gap-3">
           {/* Coluna esquerda - Conversas */}
           <Card className="flex w-[320px] flex-col overflow-hidden">
