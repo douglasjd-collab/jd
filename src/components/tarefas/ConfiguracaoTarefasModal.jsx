@@ -181,7 +181,7 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
                       </>
                     ) : (
                       <>
-                        <span className="flex-1 text-sm font-medium">{s.nome}</span>
+                        <span className="flex-1 text-sm font-medium">{s?.nome ?? ''}</span>
                         {s.e_padrao && <Badge variant="outline" className="text-xs py-0">Padrão</Badge>}
                         {s.id && (
                           <>
