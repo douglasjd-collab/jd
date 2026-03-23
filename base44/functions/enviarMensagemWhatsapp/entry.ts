@@ -88,12 +88,15 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Formatar número
-    const numeroFormatado = numero_cliente.replace(/\D/g, '');
-    console.log('📱 Número formatado:', numeroFormatado);
+    // Detectar se é grupo (@g.us)
+    const isGrupo = numero_cliente.includes('@g.us');
+    
+    // Formatar número (grupos mantêm o JID, individuais limpam formatação)
+    const numeroFormatado = isGrupo ? numero_cliente : numero_cliente.replace(/\D/g, '');
+    console.log('📱 Número/JID formatado:', numeroFormatado, isGrupo ? '(grupo)' : '(individual)');
 
-    // Validar número (deve ter pelo menos 10 dígitos para Brasil)
-    if (numeroFormatado.length < 10) {
+    // Validar número apenas para conversas individuais
+    if (!isGrupo && numeroFormatado.length < 10) {
       console.error('❌ Número inválido - menos de 10 dígitos');
       return Response.json({ 
         error: 'Número de telefone inválido. Deve ter pelo menos 10 dígitos',
