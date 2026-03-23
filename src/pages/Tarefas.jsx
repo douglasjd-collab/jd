@@ -262,9 +262,9 @@ export default function Tarefas() {
             <span className="text-xs">Kanban</span>
           </Button>
         </div>
-        <Link to={createPageUrl('ConfiguracaoTarefas')}>
-          <Button variant="outline" size="icon" title="Configurar status e templates"><Settings className="w-4 h-4" /></Button>
-        </Link>
+        <Button variant="outline" size="icon" title="Configurar status e tipos" onClick={() => setConfigOpen(true)}>
+          <Settings className="w-4 h-4" />
+        </Button>
       </PageHeader>
 
       {/* Abas + Filtros na mesma linha */}
