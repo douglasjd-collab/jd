@@ -39,6 +39,7 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
     queryKey: ['status-tarefa', empresaId],
     enabled: !!empresaId && open,
     queryFn: () => base44.entities.StatusTarefa.filter({ empresa_id: empresaId }),
+    select: (data) => (data || []).filter(s => s != null && typeof s === 'object' && s.nome),
   });
 
   const { data: tiposList = [] } = useQuery({
