@@ -284,7 +284,32 @@ export default function ContatosCRM() {
   const [tagsMassaOpen, setTagsMassaOpen] = useState(false);
   const [chatPopupOpen, setChatPopupOpen] = useState(false);
   const [contatoChat, setContatoChat] = useState(null);
+  const [novoContatoOpen, setNovoContatoOpen] = useState(false);
+  const [novoContatoForm, setNovoContatoForm] = useState({ nome: '', telefone: '', observacoes: '' });
+  const [salvandoNovo, setSalvandoNovo] = useState(false);
   const fileInputRef = useRef(null);
+
+  const criarNovoContato = async () => {
+    const telefone = novoContatoForm.telefone.replace(/\D/g, '');
+    if (!telefone) return toast.error('Informe o telefone');
+    setSalvandoNovo(true);
+    try {
+      await base44.entities.ContatoWhatsapp.create({
+        empresa_id: empresaId,
+        nome: novoContatoForm.nome.trim(),
+        telefone,
+        observacoes: novoContatoForm.observacoes.trim(),
+      });
+      queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
+      setNovoContatoOpen(false);
+      setNovoContatoForm({ nome: '', telefone: '', observacoes: '' });
+      toast.success('Contato criado com sucesso!');
+    } catch (e) {
+      toast.error('Erro ao criar contato: ' + e.message);
+    } finally {
+      setSalvandoNovo(false);
+    }
+  };
 
   useEffect(() => { loadUser(); }, []);
 
