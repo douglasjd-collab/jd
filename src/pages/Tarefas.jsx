@@ -417,6 +417,13 @@ export default function Tarefas() {
         onUpdate={handleUpdate}
         colaboradores={colaboradores}
       />
+
+      <ConfiguracaoTarefasModal
+        open={configOpen}
+        onOpenChange={setConfigOpen}
+        empresaId={empresaId}
+        onStatusChanged={() => queryClient.invalidateQueries({ queryKey: ['status-tarefa'] })}
+      />
     </div>
   );
 }
