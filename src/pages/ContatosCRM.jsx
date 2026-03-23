@@ -454,6 +454,9 @@ export default function ContatosCRM() {
             <Upload className="w-4 h-4" /> Importar
           </Button>
           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={importarCSV} />
+          <Button size="sm" className="gap-1.5 bg-[#1e3a5f] hover:bg-[#2a4a73]" onClick={() => setNovoContatoOpen(true)}>
+            <Plus className="w-4 h-4" /> Novo Contato
+          </Button>
         </div>
       </div>
 
