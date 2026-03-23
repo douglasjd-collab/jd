@@ -731,6 +731,14 @@ export default function BatePapo() {
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                <Contact className="mr-2 h-3.5 w-3.5" />
+                                {contatosWhatsapp[c.id]?.id ? 'Editar nome no CRM' : 'Salvar no CRM'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                <Pencil className="mr-2 h-3.5 w-3.5" />
+                                Alterar nome do contato
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
                                 <Tag className="mr-2 h-3.5 w-3.5" />
                                 Adicionar tag
