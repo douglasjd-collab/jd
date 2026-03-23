@@ -129,9 +129,10 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
     toast.success('Tipo atualizado!');
   };
 
-  const statusExibidos = statusList.length > 0
-    ? [...statusList].filter(s => s != null && s.nome != null).sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
-    : STATUS_PADRAO;
+  const statusExibidos = React.useMemo(() => {
+    const lista = statusList.length > 0 ? statusList : STATUS_PADRAO;
+    return lista.filter(s => s != null && s.nome != null).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  }, [statusList]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
