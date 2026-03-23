@@ -553,12 +553,27 @@ export default function BatePapo() {
     return n.startsWith('55') && (n.length === 12 || n.length === 13);
   };
 
-  const conversasFiltradas = conversas.filter(c => {
-    // Bloquear qualquer conversa com número inválido (lid_, etc)
-    if (!isTelefoneValido(c.cliente_telefone)) return false;
+  // Conversas válidas (sem números inválidos)
+  const conversasValidas = conversas.filter(c => isTelefoneValido(c.cliente_telefone));
+
+  // Contadores por aba
+  const contadores = {
+    todas: conversasValidas.length,
+    ativa: conversasValidas.filter(c => c.status === 'ativa').length,
+    arquivada: conversasValidas.filter(c => c.status === 'arquivada').length,
+    transferida: conversasValidas.filter(c => c.status === 'encerrada').length,
+    meu: conversasValidas.filter(c => c.usuario_responsavel_id === user?.colaborador_id).length,
+  };
+
+  const conversasFiltradas = conversasValidas.filter(c => {
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
       (c.cliente_telefone || '').includes(searchConversas);
-    const matchStatus = filtroStatus === 'todas' || c.status === filtroStatus;
+    let matchStatus = false;
+    if (filtroStatus === 'todas') matchStatus = true;
+    else if (filtroStatus === 'ativa') matchStatus = c.status === 'ativa';
+    else if (filtroStatus === 'arquivada') matchStatus = c.status === 'arquivada';
+    else if (filtroStatus === 'transferida') matchStatus = c.status === 'encerrada';
+    else if (filtroStatus === 'meu') matchStatus = c.usuario_responsavel_id === user?.colaborador_id;
     return matchSearch && matchStatus;
   });
 
