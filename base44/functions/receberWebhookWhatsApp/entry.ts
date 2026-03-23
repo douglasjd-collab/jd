@@ -309,21 +309,24 @@ async function processarWebhook(req, rawBody) {
     }).catch(() => {});
   }
 
-  // Buscar conversa
+  // Buscar conversa — buscar todas as variações em paralelo e unificar
   let conversa = null;
-  for (const tel of telefonesVariacoes) {
-    const resultado = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-      { empresa_id: empresaId, cliente_telefone: tel }
+  const todasConversas = (await Promise.all(
+    telefonesVariacoes.map(tel =>
+      base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId, cliente_telefone: tel })
+    )
+  )).flat();
+
+  if (todasConversas.length > 0) {
+    // Ordenar pela mais recente
+    todasConversas.sort((a, b) =>
+      new Date(b.data_ultima_mensagem || b.created_date) - new Date(a.data_ultima_mensagem || a.created_date)
     );
-    if (resultado?.length > 0) {
-      if (resultado.length > 1) {
-        resultado.sort((a, b) => new Date(b.data_ultima_mensagem || b.created_date) - new Date(a.data_ultima_mensagem || a.created_date));
-        for (let i = 1; i < resultado.length; i++) {
-          base44.asServiceRole.entities.ConversaWhatsapp.delete(resultado[i].id).catch(() => {});
-        }
-      }
-      conversa = resultado[0];
-      break;
+    conversa = todasConversas[0];
+    // Apagar duplicatas (manter apenas a mais recente)
+    for (let i = 1; i < todasConversas.length; i++) {
+      console.log(`🗑️ Excluindo conversa duplicada: ${todasConversas[i].id}`);
+      base44.asServiceRole.entities.ConversaWhatsapp.delete(todasConversas[i].id).catch(() => {});
     }
   }
 
