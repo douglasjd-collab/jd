@@ -831,6 +831,14 @@ export default function BatePapo() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
+                            <Contact className="mr-2 h-3.5 w-3.5" />
+                            {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
+                            <Pencil className="mr-2 h-3.5 w-3.5" />
+                            Alterar nome do contato
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={async () => {
                             await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'ativa' });
                             queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
