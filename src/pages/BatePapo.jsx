@@ -310,12 +310,14 @@ export default function BatePapo() {
       // Sempre refetch conversas para atualizar última mensagem
       refetchConversas();
 
-      // Se a mensagem é da conversa aberta, inserir diretamente no cache (sem refetch de rede)
-      if (msgData?.conversa_id && msgData.conversa_id === conversaAtualId) {
+      // Verificar se a mensagem pertence à conversa aberta (pelo ID direto OU pelo ID da conversa)
+      const pertenceConversaAberta = msgData?.conversa_id && msgData.conversa_id === conversaAtualId;
+
+      if (pertenceConversaAberta) {
         if (msgData?.id) {
           queryClient.setQueryData(['mensagens-whatsapp', conversaAtualId], (old = []) => {
             // Evitar duplicata
-            if (old.some(m => m.id === msgData.id || m.whatsapp_message_id === msgData.whatsapp_message_id)) {
+            if (old.some(m => m.id === msgData.id || (m.whatsapp_message_id && m.whatsapp_message_id === msgData.whatsapp_message_id))) {
               return old;
             }
             // Só remove temp_ ao confirmar mensagem do próprio vendedor (não ao receber msg do cliente)
@@ -334,9 +336,12 @@ export default function BatePapo() {
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
         }, 50);
-      } else if (!msgData?.conversa_id) {
-        // payload_too_large — refetch da conversa aberta por segurança
-        refetchMensagens();
+      } else if (!msgData?.conversa_id || !pertenceConversaAberta) {
+        // Pode ser mensagem de conversa diferente — fazer refetch das mensagens da conversa aberta
+        // para garantir que não perde nada (caso o webhook tenha usado conversa diferente)
+        if (conversaAtualId) {
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
+        }
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
