@@ -29,7 +29,21 @@ export default function NovaVendaEmprestimoPessoal() {
     data_liberacao: '',
     numero_contrato: '',
     status: 'em_andamento',
-    observacoes: ''
+    observacoes: '',
+    // Campos de Portabilidade
+    origem_banco: '',
+    origem_contrato: '',
+    origem_parcela: '',
+    origem_prazo: '',
+    origem_prazo_restante: '',
+    origem_saldo_devedor: '',
+    origem_tabela: '',
+    // Campos de Refinanciamento (quando Porto + Refin)
+    refin_parcela: '',
+    refin_valor_bruto: '',
+    refin_valor_liberado: '',
+    refin_prazo: '',
+    refin_tabela: ''
   });
 
   useEffect(() => {
