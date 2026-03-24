@@ -894,10 +894,10 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>{/* end Vendas Recentes + Aniversariantes */}
+          </div>{/* end Vendas Recentes + Aniversariantes */}
 
-      {/* Importações Recentes */}
-      {importacoes.length > 0 && (
+          {/* Importações Recentes */}
+          {importacoes.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
