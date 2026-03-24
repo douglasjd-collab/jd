@@ -156,7 +156,7 @@ function ResponsaveisPopover({ tarefa, colaboradores, onUpdate }) {
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-sm text-left"
                 onClick={(e) => toggle(e, colab)}
               >
-                <Iniciais nome={colab.nome} size="sm" />
+                <Iniciais nome={colab.nome} foto={colab.foto_perfil} size="sm" />
                 <span className="flex-1 truncate">{colab.nome}</span>
                 {selected && <Check className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
               </button>
