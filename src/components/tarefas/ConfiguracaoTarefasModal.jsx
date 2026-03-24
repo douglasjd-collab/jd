@@ -132,9 +132,9 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
 
   const statusExibidos = useMemo(() => {
     const raw = Array.isArray(statusList) ? statusList : [];
-    const listaFiltrada = raw.filter(s => s != null && typeof s === 'object' && typeof s.nome === 'string' && s.nome.trim().length > 0);
-    const lista = listaFiltrada.length > 0 ? listaFiltrada : STATUS_PADRAO.filter(s => s != null);
-    return lista.sort((a, b) => (a?.ordem || 0) - (b?.ordem || 0));
+    const validos = raw.filter(s => s != null && typeof s === 'object' && typeof s.nome === 'string' && s.nome.trim().length > 0);
+    const base = validos.length > 0 ? validos : [...STATUS_PADRAO];
+    return [...base].sort((a, b) => (a?.ordem || 0) - (b?.ordem || 0));
   }, [statusList]);
 
   return (
