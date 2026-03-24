@@ -685,7 +685,7 @@ export default function NovaVendaConsignado() {
                     <>
                       <option value="NOVO">Novo</option>
                       <option value="REFINANCIAMENTO">Refinanciamento</option>
-                      <option value="PORTABILIDADE_PURA">Portabilidade Pura</option>
+                      <option value="PORTABILIDADE">Portabilidade</option>
                       <option value="REFIN_PORTABILIDADE">Refin + Portabilidade</option>
                       <option value="CARTAO_CONSIGNADO">Cartão Consignado</option>
                       <option value="CARTAO_BENEFICIO">Cartão Benefício</option>
