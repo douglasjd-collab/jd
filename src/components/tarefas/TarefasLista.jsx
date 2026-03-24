@@ -248,7 +248,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                   </td>
                   <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <button
-                      onClick={() => setComentarioTarefa(tarefa)}
+                      onClick={() => { setTarefaSelecionada(tarefa); setDetalhesOpen(true); setAbaDetalhes('comentarios'); }}
                       title="Comentários"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors text-xs font-medium shadow-sm"
                     >
