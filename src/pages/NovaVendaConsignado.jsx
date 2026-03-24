@@ -307,7 +307,7 @@ export default function NovaVendaConsignado() {
   }, [formData.valor_liberado, formData.tabela_emprestimo_id]);
 
   const renderCamposPorTipo = () => {
-    if (formData.tipo_consignado === 'NOVO' || formData.tipo_consignado === 'REFINANCIAMENTO') {
+    if (['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_BENEFICIO', 'CARTAO_CONSIGNADO', 'SAQUE'].includes(formData.tipo_consignado)) {
       return (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
