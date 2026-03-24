@@ -15,11 +15,16 @@ const PRIORIDADE_LABEL = {
   baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente',
 };
 
-function Iniciais({ nome, size = 'sm' }) {
+function Iniciais({ nome, foto, size = 'sm' }) {
   const initials = (nome || '?').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   const sz = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-9 h-9 text-sm';
   const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500'];
   const color = colors[(initials.charCodeAt(0) || 0) % colors.length];
+  if (foto) {
+    return (
+      <img src={foto} alt={nome} className={`${sz} rounded-full object-cover flex-shrink-0`} />
+    );
+  }
   return (
     <div className={`${sz} ${color} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
       {initials}
