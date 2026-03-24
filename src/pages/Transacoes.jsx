@@ -187,22 +187,6 @@ export default function Transacoes() {
   const pendentes = despesasPendentes.length;
   const totalPendentes = despesasPendentes.reduce((a, d) => a + (d.valor || 0), 0);
 
-  const [novaDespesaOpen, setNovaDespesaOpen] = useState(false);
-  const [novaReceitaOpen, setNovaReceitaOpen] = useState(false);
-  const [mesSelecionado, setMesSelecionado] = useState(() => moment().format('YYYY-MM'));
-
-  const mesesDisponiveis = React.useMemo(() => {
-    const meses = [];
-    for (let i = 0; i < 12; i++) {
-      const d = moment().subtract(i, 'months');
-      meses.push({
-        value: d.format('YYYY-MM'),
-        label: d.format("MMMM 'de' YYYY", { locale: 'pt-br' }),
-      });
-    }
-    return meses;
-  }, []);
-
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
   if (!user || !isAdmin) {
