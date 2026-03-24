@@ -42,6 +42,12 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
 
   const naoAtribuidos = colaboradores.filter(c => !responsaveisIds.includes(c.id));
 
+  const naoAtribuidosFiltrados = useMemo(() => {
+    if (!searchTerm.trim()) return naoAtribuidos;
+    const term = searchTerm.toLowerCase();
+    return naoAtribuidos.filter(c => c.nome?.toLowerCase().includes(term));
+  }, [naoAtribuidos, searchTerm]);
+
   const handleAdicionarResponsavel = async (colaboradorId) => {
     const novaLista = [...responsaveisIds, colaboradorId];
     await onUpdate(tarefa.id, { responsaveis_ids: JSON.stringify(novaLista) });
