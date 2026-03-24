@@ -309,6 +309,13 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
         />
       )}
 
+      <ResponsaveisModal
+        open={responsaveisModalOpen}
+        onOpenChange={setResponsaveisModalOpen}
+        tarefa={tarefaResponsaveisModal}
+        colaboradores={colaboradores}
+      />
+
       {/* Painel de Detalhes Lateral */}
       {tarefaSel && (
         <div className="w-80 flex-shrink-0 border-l bg-white flex flex-col overflow-y-auto">
