@@ -130,6 +130,7 @@ function ComentarioPopup({ tarefa, currentUser, open, onClose }) {
 export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate, currentUser }) {
   const [selecionada, setSelecionada] = useState(null);
   const [comentarioTarefa, setComentarioTarefa] = useState(null);
+  const [tarefaEditando, setTarefaEditando] = useState(null);
   const hoje = format(new Date(), 'yyyy-MM-dd');
 
   const getStatus = (slug) => statusList.find(s => s.slug === slug);
