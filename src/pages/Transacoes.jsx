@@ -152,6 +152,11 @@ export default function Transacoes() {
   const despesasAtrasadas = despesas.filter(d => getStatusDespesa(d) === 'atrasada');
   const atrasadas = despesasAtrasadas.length;
   const totalAtrasadas = despesasAtrasadas.reduce((a, d) => a + (d.valor || 0), 0);
+  
+  // Debug: log total atrasadas
+  React.useEffect(() => {
+    console.log('Despesas atrasadas em Transações:', atrasadas, totalAtrasadas);
+  }, [atrasadas, totalAtrasadas]);
   const despesasPendentes = despesas.filter(d => ['pendente', 'vencendo_hoje'].includes(getStatusDespesa(d)));
   const pendentes = despesasPendentes.length;
   const totalPendentes = despesasPendentes.reduce((a, d) => a + (d.valor || 0), 0);
