@@ -74,6 +74,8 @@ export default function PropostaEditModal({ open, onOpenChange, propostaId, onSu
         emprestimo_numero_ade: proposta.emprestimo_numero_ade || '',
         emprestimo_prazo: proposta.emprestimo_prazo || '',
         emprestimo_valor_parcela: proposta.emprestimo_valor_parcela || '',
+        emprestimo_banco_anterior: proposta.emprestimo_banco_anterior || '',
+        emprestimo_saldo_devedor: proposta.emprestimo_saldo_devedor || '',
         data_venda: proposta.data_venda || '',
         emprestimo_data_liberacao: proposta.emprestimo_data_liberacao || '',
         valor_credito: proposta.valor_credito || '',
