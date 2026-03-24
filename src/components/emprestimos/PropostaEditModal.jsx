@@ -280,11 +280,23 @@ export default function PropostaEditModal({ open, onOpenChange, propostaId, onSu
                   <Input type="date" {...fieldProps('data_venda')} className="mt-1" />
                 </div>
                 <div>
-                  <Label className="text-xs">Data de Liberação</Label>
-                  <Input type="date" {...fieldProps('emprestimo_data_liberacao')} className="mt-1" />
+                   <Label className="text-xs">Data de Liberação</Label>
+                   <Input type="date" {...fieldProps('emprestimo_data_liberacao')} className="mt-1" />
+                 </div>
+                 {isPortabilidade && (
+                   <>
+                     <div>
+                       <Label className="text-xs">Banco Anterior</Label>
+                       <Input {...fieldProps('emprestimo_banco_anterior')} className="mt-1" />
+                     </div>
+                     <div>
+                       <Label className="text-xs">Saldo Devedor (R$)</Label>
+                       <Input type="number" step="0.01" {...fieldProps('emprestimo_saldo_devedor')} className="mt-1" />
+                     </div>
+                   </>
+                 )}
                 </div>
-              </div>
-            </div>
+                </div>
 
             {/* Valores */}
             <div>
