@@ -456,6 +456,22 @@ export default function Dashboard() {
   const valorBrutoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   const valorLiquidoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
 
+  const rankingEmprestimos = React.useMemo(() => {
+    const vendedorStats = {};
+    propostasPagasMes.forEach(p => {
+      const nome = p.vendedor_nome || 'Sem vendedor';
+      if (!vendedorStats[nome]) {
+        vendedorStats[nome] = { propostas: 0, valor: 0 };
+      }
+      vendedorStats[nome].propostas += 1;
+      vendedorStats[nome].valor += (p.valor_credito || 0);
+    });
+    return Object.entries(vendedorStats)
+      .map(([nome, stats]) => ({ nome, propostas: stats.propostas, valor: stats.valor }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 5);
+  }, [propostasPagasMes]);
+
   // Gerar lista dos últimos 12 meses para o select
   const mesesDisponiveis = React.useMemo(() => {
     const meses = [];
