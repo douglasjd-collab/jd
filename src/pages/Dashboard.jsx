@@ -973,8 +973,8 @@ export default function Dashboard() {
 
           <CipRetornoModal open={cipModalOpen} onOpenChange={setCipModalOpen} propostas={propostasCip} />
 
-          {/* Modal de Vendas por Status */}
-      {statusModalOpen && (
+              {/* Modal de Vendas por Status */}
+          {statusModalOpen && (
         <div 
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={() => setStatusModalOpen(false)}
