@@ -82,7 +82,7 @@ export default function NovaVendaEmprestimoPessoal() {
         observacoes: dados.observacoes
       });
 
-      await base44.entities.VendaEmprestimoPessoal.create({
+      const vepData = {
         venda_base_id: vendaBase.id,
         tipo_emprestimo: dados.tipo_emprestimo,
         banco: dados.banco,
@@ -93,7 +93,29 @@ export default function NovaVendaEmprestimoPessoal() {
         data_liberacao: dados.data_liberacao || null,
         numero_contrato: dados.numero_contrato,
         status: dados.status
-      });
+      };
+
+      // Adiciona campos de Portabilidade se aplicável
+      if (dados.tipo_emprestimo === 'PORTABILIDADE_PURA' || dados.tipo_emprestimo === 'REFIN_PORTABILIDADE') {
+        vepData.origem_banco = dados.origem_banco || null;
+        vepData.origem_contrato = dados.origem_contrato || null;
+        vepData.origem_parcela = parseFloat(dados.origem_parcela) || null;
+        vepData.origem_prazo = parseInt(dados.origem_prazo) || null;
+        vepData.origem_prazo_restante = parseInt(dados.origem_prazo_restante) || null;
+        vepData.origem_saldo_devedor = parseFloat(dados.origem_saldo_devedor) || null;
+        vepData.origem_tabela = dados.origem_tabela || null;
+      }
+
+      // Adiciona campos de Refinanciamento se Porto + Refin
+      if (dados.tipo_emprestimo === 'REFIN_PORTABILIDADE') {
+        vepData.refin_parcela = parseFloat(dados.refin_parcela) || null;
+        vepData.refin_valor_bruto = parseFloat(dados.refin_valor_bruto) || null;
+        vepData.refin_valor_liberado = parseFloat(dados.refin_valor_liberado) || null;
+        vepData.refin_prazo = parseInt(dados.refin_prazo) || null;
+        vepData.refin_tabela = dados.refin_tabela || null;
+      }
+
+      await base44.entities.VendaEmprestimoPessoal.create(vepData);
 
       return vendaBase;
     },
