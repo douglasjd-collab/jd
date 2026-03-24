@@ -74,56 +74,73 @@ function ComentarioPopup({ tarefa, currentUser, open, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md flex flex-col" style={{ maxHeight: '80vh' }}>
-        <DialogHeader>
-          <DialogTitle className="text-base flex items-center gap-2">
-            <MessageSquarePlus className="w-4 h-4 text-blue-500" />
-            Comentários — <span className="font-normal text-slate-500 truncate max-w-[200px]">{tarefa.titulo}</span>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-lg flex flex-col" style={{ maxHeight: '85vh' }}>
+        {/* Header */}
+        <div className="border-b pb-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">{tarefa.titulo}</h2>
+            <span className="text-xs font-medium px-2 py-1 rounded-full text-white" style={{ backgroundColor: '#3b82f6' }}>
+              Comentários
+            </span>
+          </div>
+        </div>
 
         {/* Lista de comentários */}
-        <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1" style={{ minHeight: 120, maxHeight: 320 }}>
+        <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-2">
           {isLoading && (
             <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
           )}
           {!isLoading && comentarios.length === 0 && (
-            <p className="text-sm text-slate-400 text-center py-6">Nenhum comentário ainda.</p>
+            <p className="text-sm text-slate-400 text-center py-8">Nenhum comentário ainda.</p>
           )}
           {comentarios.map(c => (
-            <div key={c.id} className="flex gap-2.5">
-              <Iniciais nome={c.usuario_nome} size="sm" />
-              <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-slate-700">{c.usuario_nome || 'Usuário'}</span>
-                  <span className="text-[10px] text-slate-400">
-                    {c.created_date ? format(new Date(c.created_date), 'dd/MM HH:mm') : ''}
-                  </span>
+            <div key={c.id} className="bg-slate-50 rounded-lg p-4 border">
+              <div className="flex items-start gap-3">
+                <Iniciais nome={c.usuario_nome} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-semibold text-slate-800">{c.usuario_nome || 'Usuário'}</span>
+                    <span className="text-xs text-slate-400">
+                      {c.created_date ? format(new Date(c.created_date), 'dd/MM HH:mm') : ''}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap break-words">{c.texto}</p>
                 </div>
-                <p className="text-sm text-slate-600 whitespace-pre-wrap">{c.texto}</p>
               </div>
             </div>
           ))}
         </div>
 
+        {/* Divider */}
+        <div className="border-t my-2" />
+
         {/* Input novo comentário */}
-        <div className="flex gap-2 pt-2 border-t">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700">Comentário</label>
           <textarea
-            className="flex-1 border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
-            rows={2}
-            placeholder="Escreva um comentário..."
+            className="w-full border rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
+            rows={3}
+            placeholder="Digite seu comentário..."
             value={texto}
             onChange={e => setTexto(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); salvar.mutate(); } }}
           />
-          <Button
-            size="icon"
-            className="bg-[#1e3a5f] hover:bg-[#162d4a] h-auto px-3"
-            onClick={() => salvar.mutate()}
-            disabled={!texto.trim() || salvar.isPending}
-          >
-            {salvar.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </Button>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-[#4CAF50] hover:bg-[#45a049] text-white"
+              onClick={() => salvar.mutate()}
+              disabled={!texto.trim() || salvar.isPending}
+            >
+              {salvar.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Enviar
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
