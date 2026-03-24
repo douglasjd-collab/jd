@@ -185,17 +185,6 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
-  const { data: receitas = [] } = useQuery({
-    queryKey: ['receitas-dashboard', user?.empresa_id],
-    enabled: !!user,
-    queryFn: async () => {
-      const filtro = {};
-      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
-      return base44.entities.Receita.filter(filtro, '-created_date', 500);
-    },
-    staleTime: 30000,
-  });
-
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios-dashboard'],
     enabled: !!user && isAdmin,
@@ -313,26 +302,21 @@ export default function Dashboard() {
   const totalVendasMes = vendasMes.length;
   const valorTotalVendas = vendasMes.reduce((acc, v) => acc + (v.valor_carta || 0), 0);
   
-  const comissoesReceber = comissoes
+  const comissoesRecebidas = comissoes
+    .filter(c => c.tipo === 'receber' && c.status === 'recebida')
+    .reduce((acc, c) => acc + c.valor, 0);
+  
+  const comissoesPendentesReceber = comissoes
     .filter(c => c.tipo === 'receber' && c.status === 'prevista')
     .reduce((acc, c) => acc + c.valor, 0);
+  
+  const comissoesReceber = comissoesRecebidas + comissoesPendentesReceber;
   
   const comissoesPagar = comissoes
     .filter(c => c.tipo === 'pagar' && c.status !== 'paga')
     .reduce((acc, c) => acc + c.valor, 0);
 
   const parcelasAtrasadas = parcelas.filter(p => p.status === 'atrasada').length;
-
-  // Cálculo de receitas (recebidas + pendentes)
-  const receitasRecebidas = receitas
-    .filter(r => r.status === 'recebida')
-    .reduce((acc, r) => acc + (r.valor || 0), 0);
-  
-  const receitasPendentes = receitas
-    .filter(r => r.status === 'pendente')
-    .reduce((acc, r) => acc + (r.valor || 0), 0);
-  
-  const totalReceitasComPendentes = receitasRecebidas + receitasPendentes;
 
   const oportunidadesAbertas = filteredOportunidades.filter(o => o.status === 'aberta').length;
   const valorOportunidades = filteredOportunidades
