@@ -528,30 +528,33 @@ export default function NovaVendaEmprestimoPessoal() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Número do Contrato</Label>
-                <Input
-                  value={formData.numero_contrato}
-                  onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })}
-                />
+            {/* Número do Contrato (apenas para NOVO, CARTÃO, etc) */}
+            {formData.tipo_emprestimo !== 'PORTABILIDADE_PURA' && formData.tipo_emprestimo !== 'REFIN_PORTABILIDADE' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Número do Contrato</Label>
+                  <Input
+                    value={formData.numero_contrato}
+                    onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  >
+                    <option value="em_andamento">Em andamento</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="aguardando_formalizacao">Aguardando formalização</option>
+                    <option value="aguardando_pagamento">Aguardando pagamento</option>
+                    <option value="pago">Pago</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <Label>Status</Label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                >
-                  <option value="em_andamento">Em andamento</option>
-                  <option value="pendente">Pendente</option>
-                  <option value="aguardando_formalizacao">Aguardando formalização</option>
-                  <option value="aguardando_pagamento">Aguardando pagamento</option>
-                  <option value="pago">Pago</option>
-                  <option value="cancelado">Cancelado</option>
-                </select>
-              </div>
-            </div>
+            )}
 
             <div>
               <Label>Observações</Label>
