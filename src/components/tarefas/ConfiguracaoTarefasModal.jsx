@@ -38,8 +38,10 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
   const { data: statusList = [] } = useQuery({
     queryKey: ['status-tarefa', empresaId],
     enabled: !!empresaId && open,
-    queryFn: () => base44.entities.StatusTarefa.filter({ empresa_id: empresaId }),
-    select: (data) => (Array.isArray(data) ? data : []).filter(s => s != null && typeof s === 'object' && typeof s.nome === 'string' && s.nome.trim().length > 0),
+    queryFn: async () => {
+      const res = await base44.entities.StatusTarefa.filter({ empresa_id: empresaId });
+      return (Array.isArray(res) ? res : []).filter(s => s != null && typeof s === 'object' && typeof s.nome === 'string' && s.nome.trim().length > 0);
+    },
   });
 
   const { data: tiposList = [] } = useQuery({
