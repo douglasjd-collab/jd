@@ -294,7 +294,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
               <h2 className="font-bold text-slate-900 text-base leading-tight mb-3">{tarefaSel.titulo}</h2>
               {tarefaSel.responsavel_principal_nome && (
                 <div className="flex items-center gap-2">
-                  <Iniciais nome={tarefaSel.responsavel_principal_nome} size="sm" />
+                  <Iniciais nome={tarefaSel.responsavel_principal_nome} foto={colaboradores.find(c => c.id === tarefaSel.responsavel_principal_id)?.foto_perfil} size="sm" />
                   <div>
                     <p className="text-sm font-medium text-slate-800">{tarefaSel.responsavel_principal_nome}</p>
                     {statusSel && <p className="text-xs text-slate-500 mt-0.5">{statusSel.nome}</p>}
