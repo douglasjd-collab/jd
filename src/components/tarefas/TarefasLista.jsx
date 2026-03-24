@@ -208,10 +208,43 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                     ) : <span className="text-slate-300">-</span>}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <StatusDropdown tarefa={tarefa} statusList={statusList} onUpdate={onUpdate} />
+                    <button
+                      onClick={() => setTarefaEditando(tarefa)}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: statusList.find(s => s.slug === tarefa.status)?.cor || '#94a3b8' }}
+                    >
+                      {statusList.find(s => s.slug === tarefa.status)?.nome || tarefa.status}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
-                    <ResponsaveisPopover tarefa={tarefa} colaboradores={colaboradores} onUpdate={onUpdate} />
+                    <button
+                      onClick={() => setTarefaEditando(tarefa)}
+                      className="flex items-center -space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      {(() => {
+                        let ids = [];
+                        try { ids = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}
+                        if (ids.length === 0 && tarefa.responsavel_principal_id) ids = [tarefa.responsavel_principal_id];
+                        return (
+                          <>
+                            {ids.length === 0 && <span className="text-slate-300 text-xs">-</span>}
+                            {ids.slice(0, 3).map((id, i) => {
+                              const colab = colaboradores.find(c => c.id === id);
+                              return (
+                                <div key={id} className="ring-2 ring-white rounded-full">
+                                  <Iniciais nome={colab?.nome || '?'} foto={colab?.foto_perfil} size="sm" />
+                                </div>
+                              );
+                            })}
+                            {ids.length > 3 && (
+                              <div className="w-7 h-7 rounded-full bg-slate-200 ring-2 ring-white flex items-center justify-center text-xs text-slate-600 font-semibold">
+                                +{ids.length - 3}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </button>
                   </td>
                   <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <button
