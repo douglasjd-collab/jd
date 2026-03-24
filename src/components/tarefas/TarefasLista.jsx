@@ -292,12 +292,18 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
         onUpdate={onUpdate}
       />
 
-      <ComentarioPopup
-        tarefa={comentarioTarefa}
-        currentUser={currentUser}
-        open={!!comentarioTarefa}
-        onClose={() => setComentarioTarefa(null)}
-      />
+      {tarefaSelecionada && (
+        <TarefaDetalhesModal
+          open={detalhesOpen}
+          onOpenChange={setDetalhesOpen}
+          tarefa={tarefaSelecionada}
+          statusList={statusList}
+          currentUser={currentUser}
+          onUpdate={onUpdate}
+          colaboradores={colaboradores}
+          abaAtiva={abaDetalhes}
+        />
+      )}
 
       {/* Painel de Detalhes Lateral */}
       {tarefaSel && (
