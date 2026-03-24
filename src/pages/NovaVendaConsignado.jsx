@@ -355,9 +355,15 @@ export default function NovaVendaConsignado() {
               </div>
             </div>
           </div>
-          <div>
-            <Label>Data de Liberação</Label>
-            <Input type="date" value={formData.data_liberacao} onChange={(e) => setFormData({ ...formData, data_liberacao: e.target.value })} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Data de Cadastro</Label>
+              <Input type="date" value={formData.data_cadastro} onChange={(e) => setFormData({ ...formData, data_cadastro: e.target.value })} />
+            </div>
+            <div>
+              <Label>Data de Liberação</Label>
+              <Input type="date" value={formData.data_liberacao} onChange={(e) => setFormData({ ...formData, data_liberacao: e.target.value })} />
+            </div>
           </div>
         </>
       );
