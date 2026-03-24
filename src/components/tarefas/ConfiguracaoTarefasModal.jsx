@@ -316,11 +316,30 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
 
                             <div className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor || '#3b82f6' }} />
 
-                            {editStatus?.id === s.id && s.id ? (
+                            {editStatus && (editStatus.id ? editStatus.id === s.id : editStatus.slug === s.slug) ? (
                               <>
                                 <Input value={editStatus.nome} onChange={e => setEditStatus({ ...editStatus, nome: e.target.value })} className="flex-1 h-7 text-sm" />
                                 <input type="color" value={editStatus.cor || '#3b82f6'} onChange={e => setEditStatus({ ...editStatus, cor: e.target.value })} className="h-7 w-10 rounded border cursor-pointer" />
-                                <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={() => atualizarStatus.mutate({ id: editStatus.id, data: { nome: editStatus.nome, cor: editStatus.cor } })}>
+                                <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={async () => {
+                                  if (editStatus.id) {
+                                    atualizarStatus.mutate({ id: editStatus.id, data: { nome: editStatus.nome, cor: editStatus.cor } });
+                                  } else {
+                                    // Status padrão sem ID: criar no banco
+                                    await base44.entities.StatusTarefa.create({
+                                      empresa_id: empresaId,
+                                      nome: editStatus.nome,
+                                      slug: editStatus.slug,
+                                      cor: editStatus.cor,
+                                      ordem: editStatus.ordem,
+                                      ativo: true,
+                                      e_padrao: true,
+                                    });
+                                    queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
+                                    onStatusChanged?.();
+                                    setEditStatus(null);
+                                    toast.success('Status atualizado!');
+                                  }
+                                }}>
                                   <Check className="w-3 h-3" />
                                 </Button>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(null)}>
