@@ -418,10 +418,6 @@ export default function NovaVendaConsignado() {
                 <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
               </div>
             </div>
-            <div className="md:col-span-2">
-              <Label>Tabela (Origem) *</Label>
-              <Input value={formData.origem_tabela} onChange={(e) => setFormData({ ...formData, origem_tabela: e.target.value })} required />
-            </div>
           </div>
         </div>
       );
