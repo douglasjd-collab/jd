@@ -177,75 +177,79 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
 
   if (tarefas.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border shadow-sm p-12 text-center text-slate-400 text-sm">
+      <div className="bg-white rounded-xl border shadow-sm p-12 text-center text-slate-400 text-sm">
         Nenhuma tarefa encontrada
       </div>
     );
   }
 
   return (
-    <div className="flex gap-0 bg-white rounded-2xl border shadow-sm overflow-hidden">
+    <div className="flex gap-0 bg-white rounded-xl border shadow-sm overflow-hidden">
       {/* Tabela */}
       <div className="flex-1 min-w-0 overflow-x-auto">
         <table className="w-full text-sm" style={{ minWidth: 900 }}>
           <thead>
-            <tr className="border-b bg-slate-50">
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:150}}>Cliente</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:180}}>Título</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:110}}>Tipo</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:160}}>Status</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:110}}>Responsáveis</th>
-              <th className="text-left px-2 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:140}}></th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:100}}>Início</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:100}}>Limite</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:80}}>Ações</th>
+            <tr className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
+              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:140}}>Cliente</th>
+              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:200}}>Título</th>
+              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:140}}>Status</th>
+              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:130}}>Responsáveis</th>
+              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:110}}>Início</th>
+              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:110}}>Limite</th>
+              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:140}}></th>
+              <th className="text-center px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:100}}>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {tarefas.map((tarefa) => {
+            {tarefas.map((tarefa, idx) => {
               const atrasada = isAtrasada(tarefa);
               const isSel = selecionada === tarefa.id;
 
               return (
                 <tr
                   key={tarefa.id}
-                  className={`border-b last:border-0 transition-colors group ${isSel ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-slate-50 border-l-4 border-l-transparent'}`}
+                  className={`border-b last:border-0 transition-all duration-200 ${isSel ? 'bg-blue-50' : 'hover:bg-gradient-to-r hover:from-slate-50 hover:to-transparent'} group cursor-pointer`}
                   onDoubleClick={() => onVerDetalhes(tarefa)}
                 >
-                  <td className="px-4 py-3 font-medium text-slate-800 truncate">
-                    {tarefa.cliente_nome || <span className="text-slate-400 italic text-xs">Interna</span>}
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                        {(tarefa.cliente_nome || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-800 truncate">{tarefa.cliente_nome || <span className="text-slate-400 italic">Interna</span>}</p>
+                        {tarefa.tipo && <p className="text-xs text-slate-500 capitalize">{tarefa.tipo}</p>}
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-700 max-w-[200px]">
+                  <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
                       {atrasada && (
                         <span className="flex-shrink-0 w-2 h-2 rounded-full bg-red-500" title="Atrasada" />
                       )}
                       {!atrasada && tarefa.data_conclusao_prevista === hoje && (
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-600 text-[10px] font-bold" title="Vence hoje">!</span>
+                        <span className="flex-shrink-0 w-4 h-4 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-600 text-[9px] font-bold" title="Vence hoje">!</span>
                       )}
-                      <p className={`truncate font-medium ${atrasada ? 'text-red-500' : ''}`}>{tarefa.titulo}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate font-medium ${atrasada ? 'text-red-600' : 'text-slate-800'}`}>{tarefa.titulo}</p>
+                        {tarefa.descricao && <p className="text-xs text-slate-400 truncate">{tarefa.descricao}</p>}
+                      </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    {tarefa.tipo ? (
-                      <span className="px-2 py-1 rounded-md text-xs bg-indigo-50 text-indigo-700 font-medium capitalize">
-                        {tarefa.tipo}
-                      </span>
-                    ) : <span className="text-slate-300">-</span>}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-4 whitespace-nowrap">
                     <button
-                      onClick={() => { setTarefaStatusModal(tarefa); setStatusModalOpen(true); }}
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setTarefaStatusModal(tarefa); setStatusModalOpen(true); }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:shadow-md transition-all"
                       style={{ backgroundColor: statusList.find(s => s.slug === tarefa.status)?.cor || '#94a3b8' }}
                     >
+                      <span className="w-2 h-2 rounded-full bg-white opacity-70"></span>
                       {statusList.find(s => s.slug === tarefa.status)?.nome || tarefa.status}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <button
-                      onClick={() => { setTarefaResponsaveisModal(tarefa); setResponsaveisModalOpen(true); }}
-                      className="flex items-center -space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setTarefaResponsaveisModal(tarefa); setResponsaveisModalOpen(true); }}
+                      className="flex items-center -space-x-2 cursor-pointer hover:opacity-80 transition-opacity group/avatars"
                     >
                       {(() => {
                         let ids = [];
@@ -253,17 +257,17 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                         if (ids.length === 0 && tarefa.responsavel_principal_id) ids = [tarefa.responsavel_principal_id];
                         return (
                           <>
-                            {ids.length === 0 && <span className="text-slate-300 text-xs">-</span>}
-                            {ids.slice(0, 3).map((id, i) => {
+                            {ids.length === 0 && <span className="text-slate-300 text-xs px-2 py-1">-</span>}
+                            {ids.slice(0, 3).map((id) => {
                               const colab = colaboradores.find(c => c.id === id);
                               return (
-                                <div key={id} className="ring-2 ring-white rounded-full">
+                                <div key={id} className="ring-2 ring-white rounded-full hover:scale-110 transition-transform">
                                   <Iniciais nome={colab?.nome || '?'} foto={colab?.foto_perfil} size="sm" />
                                 </div>
                               );
                             })}
                             {ids.length > 3 && (
-                              <div className="w-7 h-7 rounded-full bg-slate-200 ring-2 ring-white flex items-center justify-center text-xs text-slate-600 font-semibold">
+                              <div className="w-7 h-7 rounded-full bg-slate-200 ring-2 ring-white flex items-center justify-center text-xs text-slate-600 font-semibold hover:scale-110 transition-transform">
                                 +{ids.length - 3}
                               </div>
                             )}
@@ -272,31 +276,31 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                       })()}
                     </button>
                   </td>
-                  <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={() => { setTarefaSelecionada(tarefa); setDetalhesOpen(true); setAbaDetalhes('comentarios'); }}
-                      title="Comentários"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors text-xs font-medium shadow-sm"
-                    >
-                      <MessageSquarePlus className="w-4 h-4 text-slate-500" />
-                      Comentários
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">
+                  <td className="px-4 py-4 text-slate-500 text-xs">
                     {formatarData(tarefa.data_cadastro || tarefa.created_date)}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold ${atrasada ? 'text-red-500' : 'text-slate-500'}`}>
+                  <td className="px-4 py-4">
+                    <span className={`text-xs font-semibold ${atrasada ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
                       {formatarData(tarefa.data_conclusao_prevista)}
                     </span>
                   </td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(tarefa)} title="Editar">
-                        <Pencil className="w-3.5 h-3.5" />
+                  <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => { setTarefaSelecionada(tarefa); setDetalhesOpen(true); setAbaDetalhes('comentarios'); }}
+                      title="Comentários"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-400 transition-colors text-xs font-medium"
+                    >
+                      <MessageSquarePlus className="w-4 h-4" />
+                      Comentários
+                    </button>
+                  </td>
+                  <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-blue-50" onClick={() => onEdit(tarefa)} title="Editar">
+                        <Pencil className="w-4 h-4 text-blue-600" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onDelete(tarefa)} title="Excluir">
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-red-50" onClick={() => onDelete(tarefa)} title="Excluir">
+                        <Trash2 className="w-4 h-4 text-red-500" />
                       </Button>
                     </div>
                   </td>
