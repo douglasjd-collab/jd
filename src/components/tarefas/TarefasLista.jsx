@@ -291,21 +291,21 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
   }
 
   return (
-    <div className="flex gap-0 bg-white rounded-2xl border shadow-sm">
+    <div className="flex gap-0 bg-white rounded-2xl border shadow-sm overflow-hidden">
       {/* Tabela */}
-      <div className="flex-1 min-w-0">
-        <table className="w-full text-sm table-fixed">
+      <div className="flex-1 min-w-0 overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth: 900 }}>
           <thead>
             <tr className="border-b bg-slate-50">
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[18%]">Cliente</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[20%]">Título</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Tipo</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[16%]">Status</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[12%]">Responsáveis</th>
-              <th className="text-center px-2 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[5%]"></th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Início</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Limite</th>
-              <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[8%]">Ações</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:150}}>Cliente</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:180}}>Título</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:110}}>Tipo</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:160}}>Status</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:110}}>Responsáveis</th>
+              <th className="text-left px-2 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:140}}></th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:100}}>Início</th>
+              <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:100}}>Limite</th>
+              <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide" style={{width:80}}>Ações</th>
             </tr>
           </thead>
           <tbody>
