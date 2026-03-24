@@ -323,6 +323,17 @@ export default function Dashboard() {
 
   const parcelasAtrasadas = parcelas.filter(p => p.status === 'atrasada').length;
 
+  // Cálculo de receitas (recebidas + pendentes)
+  const receitasRecebidas = receitas
+    .filter(r => r.status === 'recebida')
+    .reduce((acc, r) => acc + (r.valor || 0), 0);
+  
+  const receitasPendentes = receitas
+    .filter(r => r.status === 'pendente')
+    .reduce((acc, r) => acc + (r.valor || 0), 0);
+  
+  const totalReceitasComPendentes = receitasRecebidas + receitasPendentes;
+
   const oportunidadesAbertas = filteredOportunidades.filter(o => o.status === 'aberta').length;
   const valorOportunidades = filteredOportunidades
     .filter(o => o.status === 'aberta')
