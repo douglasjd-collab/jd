@@ -281,6 +281,15 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
         </table>
       </div>
 
+      <SelecionarStatusResponsaveisModal
+        open={!!tarefaEditando}
+        onOpenChange={(open) => !open && setTarefaEditando(null)}
+        tarefa={tarefaEditando}
+        statusList={statusList}
+        colaboradores={colaboradores}
+        onUpdate={onUpdate}
+      />
+
       <ComentarioPopup
         tarefa={comentarioTarefa}
         currentUser={currentUser}
