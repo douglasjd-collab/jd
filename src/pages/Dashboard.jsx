@@ -59,6 +59,7 @@ export default function Dashboard() {
   });
   const [error, setError] = useState(null);
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'));
+  const [selectedDashboard, setSelectedDashboard] = useState('consorcio'); // padrão: consórcio
 
   useEffect(() => {
     let isMounted = true;
