@@ -1033,11 +1033,11 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Modal de Grupos */}
-      {gruposModalOpen && (
+        {/* Modal de Grupos */}
+        {gruposModalOpen && (
         <div 
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
           onClick={() => setGruposModalOpen(false)}
