@@ -385,216 +385,122 @@ export default function NovaVendaConsignado() {
 
     if (formData.tipo_consignado === 'PORTABILIDADE_PURA') {
       return (
-        <>
-          <CardTitle className="text-lg mt-4">Dados da Portabilidade</CardTitle>
+        <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-4">
+          <h3 className="font-semibold text-purple-900 mb-4">Dados da Portabilidade</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Banco de Origem *</Label>
-              <Input 
-                value={formData.banco_anterior} 
-                onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })} 
-                placeholder="Nome do banco anterior"
-                required
-              />
+              <Input value={formData.origem_banco} onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })} required />
             </div>
             <div>
               <Label>Contrato de Origem *</Label>
-              <Input 
-                value={formData.contrato_anterior} 
-                onChange={(e) => setFormData({ ...formData, contrato_anterior: e.target.value })} 
-                placeholder="Número do contrato anterior"
-                required
-              />
+              <Input value={formData.origem_contrato} onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })} required />
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Parcela (Origem) *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
-                  className="pl-10"
-                  type="number"
-                  step="0.01"
-                  value={formData.parcela} 
-                  onChange={(e) => setFormData({ ...formData, parcela: e.target.value })} 
-                  placeholder="0,00"
-                  required
-                />
+                <Input className="pl-10" value={formatarMoeda(formData.origem_parcela)} onChange={(e) => handleMoedaChange('origem_parcela', e.target.value)} required />
               </div>
             </div>
             <div>
-              <Label>Prazo (Origem) *</Label>
-              <Input 
-                type="number" 
-                value={formData.prazo_original} 
-                onChange={(e) => setFormData({ ...formData, prazo_original: e.target.value.replace(/\D/g, '') })} 
-                placeholder="12"
-                required
-              />
+              <Label>Prazo (Origem - meses) *</Label>
+              <Input type="number" value={formData.origem_prazo} onChange={(e) => setFormData({ ...formData, origem_prazo: e.target.value })} required />
             </div>
             <div>
-              <Label>Prazo Restante *</Label>
-              <Input 
-                type="number" 
-                value={formData.prazo_restante} 
-                onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value.replace(/\D/g, '') })} 
-                placeholder="12"
-                required
-              />
+              <Label>Prazo Restante (meses) *</Label>
+              <Input type="number" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Saldo Devedor *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
-                  className="pl-10"
-                  value={formatarMoeda(formData.saldo_devedor)} 
-                  onChange={(e) => handleMoedaChange('saldo_devedor', e.target.value)} 
-                  placeholder="0,00"
-                  required 
-                />
+                <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
               </div>
             </div>
+            <div className="md:col-span-2">
+              <Label>Tabela (Origem) *</Label>
+              <Input value={formData.origem_tabela} onChange={(e) => setFormData({ ...formData, origem_tabela: e.target.value })} required />
+            </div>
           </div>
-        </>
+        </div>
       );
     }
 
     if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
       return (
-        <>
-          <CardTitle className="text-lg mt-4">Dados da Portabilidade</CardTitle>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Banco de Origem *</Label>
-              <Input 
-                value={formData.banco_anterior} 
-                onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })} 
-                placeholder="Nome do banco anterior"
-                required
-              />
-            </div>
-            <div>
-              <Label>Contrato de Origem *</Label>
-              <Input 
-                value={formData.contrato_anterior} 
-                onChange={(e) => setFormData({ ...formData, contrato_anterior: e.target.value })} 
-                placeholder="Número do contrato anterior"
-                required
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Parcela (Origem) *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
-                  className="pl-10"
-                  type="number"
-                  step="0.01"
-                  value={formData.parcela} 
-                  onChange={(e) => setFormData({ ...formData, parcela: e.target.value })} 
-                  placeholder="0,00"
-                  required
-                />
+        <div className="space-y-6">
+          <div className="border-l-4 border-l-pink-500 pl-4 py-2 bg-pink-50 rounded space-y-4">
+            <h3 className="font-semibold text-pink-900 mb-4">Dados da Portabilidade</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Banco de Origem *</Label>
+                <Input value={formData.origem_banco} onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })} required />
               </div>
-            </div>
-            <div>
-              <Label>Prazo (Origem) *</Label>
-              <Input 
-                type="number" 
-                value={formData.prazo_original} 
-                onChange={(e) => setFormData({ ...formData, prazo_original: e.target.value.replace(/\D/g, '') })} 
-                placeholder="12"
-                required
-              />
-            </div>
-            <div>
-              <Label>Prazo Restante *</Label>
-              <Input 
-                type="number" 
-                value={formData.prazo_restante} 
-                onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value.replace(/\D/g, '') })} 
-                placeholder="12"
-                required
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Saldo Devedor *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
-                  className="pl-10"
-                  value={formatarMoeda(formData.saldo_devedor)} 
-                  onChange={(e) => handleMoedaChange('saldo_devedor', e.target.value)} 
-                  placeholder="0,00"
-                  required 
-                />
+              <div>
+                <Label>Contrato de Origem *</Label>
+                <Input value={formData.origem_contrato} onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Parcela (Origem) *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.origem_parcela)} onChange={(e) => handleMoedaChange('origem_parcela', e.target.value)} required />
+                </div>
+              </div>
+              <div>
+                <Label>Prazo (Origem - meses) *</Label>
+                <Input type="number" value={formData.origem_prazo} onChange={(e) => setFormData({ ...formData, origem_prazo: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Prazo Restante (meses) *</Label>
+                <Input type="number" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Saldo Devedor *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Tabela (Origem) *</Label>
+                <Input value={formData.origem_tabela} onChange={(e) => setFormData({ ...formData, origem_tabela: e.target.value })} required />
               </div>
             </div>
           </div>
 
-          <CardTitle className="text-lg mt-4">Dados do Refinanciamento</CardTitle>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Parcela (Refin) *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
-                  className="pl-10"
-                  value={formatarMoeda(formData.parcela)} 
-                  onChange={(e) => handleMoedaChange('parcela', e.target.value)} 
-                  placeholder="0,00"
-                  required
-                />
+          <div className="border-l-4 border-l-green-500 pl-4 py-2 bg-green-50 rounded space-y-4">
+            <h3 className="font-semibold text-green-900 mb-4">Dados do Refinanciamento</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Parcela (Refin) *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.refin_parcela)} onChange={(e) => handleMoedaChange('refin_parcela', e.target.value)} required />
+                </div>
+              </div>
+              <div>
+                <Label>Valor Bruto (Refin) *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.refin_valor_bruto)} onChange={(e) => handleMoedaChange('refin_valor_bruto', e.target.value)} required />
+                </div>
+              </div>
+              <div>
+                <Label>Valor Liberado (Refin) *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.refin_valor_liberado)} onChange={(e) => handleMoedaChange('refin_valor_liberado', e.target.value)} required />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Prazo (Refin - meses) *</Label>
+                <Input type="number" value={formData.refin_prazo} onChange={(e) => setFormData({ ...formData, refin_prazo: e.target.value })} required />
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Valor Bruto (Refin) *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
-                  className="pl-10"
-                  value={formatarMoeda(formData.valor_bruto)} 
-                  onChange={(e) => handleMoedaChange('valor_bruto', e.target.value)} 
-                  placeholder="0,00"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Valor Liberado (Refin) *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
-                  className="pl-10"
-                  value={formatarMoeda(formData.valor_liberado)} 
-                  onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} 
-                  placeholder="0,00"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Prazo (Refin) *</Label>
-              <Input 
-                type="number" 
-                value={formData.prazo} 
-                onChange={(e) => setFormData({ ...formData, prazo: e.target.value.replace(/\D/g, '') })} 
-                placeholder="12"
-                required
-              />
-            </div>
-          </div>
-        </>
+        </div>
       );
     }
   };
