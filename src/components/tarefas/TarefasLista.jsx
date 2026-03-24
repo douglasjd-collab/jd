@@ -347,9 +347,14 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                     <ResponsaveisPopover tarefa={tarefa} colaboradores={colaboradores} onUpdate={onUpdate} />
                   </td>
                   <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={() => setComentarioTarefa(tarefa)} title="Comentários">
-                      <MessageSquarePlus className="w-3.5 h-3.5" />
-                    </Button>
+                    <button
+                      onClick={() => setComentarioTarefa(tarefa)}
+                      title="Comentários"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors text-xs font-medium shadow-sm"
+                    >
+                      <MessageSquarePlus className="w-4 h-4 text-slate-500" />
+                      Comentários
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
                     {formatarData(tarefa.data_cadastro || tarefa.created_date)}
