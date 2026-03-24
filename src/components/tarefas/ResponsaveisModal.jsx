@@ -20,7 +20,9 @@ function Iniciais({ nome, foto, size = 'md' }) {
   );
 }
 
-export default function ResponsaveisModal({ open, onOpenChange, tarefa, colaboradores = [] }) {
+export default function ResponsaveisModal({ open, onOpenChange, tarefa, colaboradores = [], onUpdate }) {
+  const [showAdicionarMenu, setShowAdicionarMenu] = useState(false);
+
   if (!tarefa) return null;
 
   let responsaveisIds = [];
@@ -36,6 +38,19 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
     .map(id => colaboradores.find(c => c.id === id))
     .filter(Boolean);
 
+  const naoAtribuidos = colaboradores.filter(c => !responsaveisIds.includes(c.id));
+
+  const handleAdicionarResponsavel = async (colaboradorId) => {
+    const novaLista = [...responsaveisIds, colaboradorId];
+    await onUpdate(tarefa.id, { responsaveis_ids: JSON.stringify(novaLista) });
+    setShowAdicionarMenu(false);
+  };
+
+  const handleRemoverResponsavel = async (colaboradorId) => {
+    const novaLista = responsaveisIds.filter(id => id !== colaboradorId);
+    await onUpdate(tarefa.id, { responsaveis_ids: JSON.stringify(novaLista) });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
@@ -43,9 +58,9 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
           <DialogTitle className="text-base">Responsáveis</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {responsaveis.length === 0 && (
-            <p className="text-sm text-slate-400 text-center py-6">Nenhum responsável atribuído.</p>
+            <p className="text-sm text-slate-400 text-center py-4">Nenhum responsável atribuído.</p>
           )}
 
           {responsaveis.map((colab, idx) => (
@@ -56,10 +71,47 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
                 <p className="text-xs text-slate-500 capitalize">{colab.perfil || 'Colaborador'}</p>
               </div>
               {idx === 0 && responsaveisIds.length > 1 && (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold">Principal</span>
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold flex-shrink-0">Principal</span>
               )}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 text-slate-400 hover:text-red-500"
+                onClick={() => handleRemoverResponsavel(colab.id)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
           ))}
+
+          {showAdicionarMenu ? (
+            <div className="border rounded-lg p-2 space-y-1 bg-slate-50">
+              {naoAtribuidos.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-2">Todos os colaboradores já estão atribuídos.</p>
+              ) : (
+                naoAtribuidos.map(colab => (
+                  <button
+                    key={colab.id}
+                    onClick={() => handleAdicionarResponsavel(colab.id)}
+                    className="w-full flex items-center gap-2 p-2 hover:bg-slate-200 rounded transition-colors text-left"
+                  >
+                    <Iniciais nome={colab.nome} foto={colab.foto_perfil} size="sm" />
+                    <span className="text-xs font-medium truncate">{colab.nome}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : (
+            <Button
+              onClick={() => setShowAdicionarMenu(true)}
+              variant="outline"
+              className="w-full gap-2 text-xs"
+              disabled={naoAtribuidos.length === 0}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Adicionar Responsável
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
