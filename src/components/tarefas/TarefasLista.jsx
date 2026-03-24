@@ -373,6 +373,13 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
         </table>
       </div>
 
+      <ComentarioPopup
+        tarefa={comentarioTarefa}
+        currentUser={currentUser}
+        open={!!comentarioTarefa}
+        onClose={() => setComentarioTarefa(null)}
+      />
+
       {/* Painel de Detalhes Lateral */}
       {tarefaSel && (
         <div className="w-80 flex-shrink-0 border-l bg-white flex flex-col overflow-y-auto">
