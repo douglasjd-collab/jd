@@ -224,7 +224,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                   </td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => setTarefaEditando(tarefa)}
+                      onClick={() => { setTarefaResponsaveisModal(tarefa); setResponsaveisModalOpen(true); }}
                       className="flex items-center -space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
                     >
                       {(() => {
