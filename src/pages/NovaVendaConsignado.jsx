@@ -386,6 +386,14 @@ export default function NovaVendaConsignado() {
     if (formData.tipo_consignado === 'PORTABILIDADE') {
       return (
         <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-4">
+          <h3 className="font-semibold text-purple-900 mb-4">Banco de Origem</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Banco de Origem *</Label>
+              <Input value={formData.origem_banco} onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })} required />
+            </div>
+          </div>
+
           <h3 className="font-semibold text-purple-900 mb-4">Dados da Portabilidade</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
