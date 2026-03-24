@@ -150,6 +150,60 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
     },
   });
 
+  // ── Nomes de Status (label do campo status) ─────────────
+  const STATUS_NOMES_PADRAO = ['Pendente', 'Em Análise', 'Aprovado', 'Reprovado', 'Cancelado'];
+
+  const { data: statusNomesList = [] } = useQuery({
+    queryKey: ['status-nomes-tarefa', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      try {
+        const configs = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'status_nomes_tarefa' });
+        if (configs.length > 0 && configs[0].valor) {
+          const parsed = JSON.parse(configs[0].valor);
+          return Array.isArray(parsed) ? parsed.filter(t => t != null && typeof t === 'string') : STATUS_NOMES_PADRAO;
+        }
+      } catch {}
+      return STATUS_NOMES_PADRAO;
+    },
+  });
+
+  const salvarStatusNomes = async (novaLista) => {
+    try {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'status_nomes_tarefa' });
+      if (configs.length > 0) {
+        await base44.entities.ConfiguracaoSistema.update(configs[0].id, { valor: JSON.stringify(novaLista) });
+      } else {
+        await base44.entities.ConfiguracaoSistema.create({ empresa_id: empresaId, chave: 'status_nomes_tarefa', valor: JSON.stringify(novaLista) });
+      }
+      queryClient.invalidateQueries({ queryKey: ['status-nomes-tarefa'] });
+    } catch {
+      toast.error('Erro ao salvar status');
+    }
+  };
+
+  const adicionarStatusNome = async () => {
+    const nome = novoStatusNome.trim();
+    if (!nome) return toast.error('Informe o nome do status');
+    if (statusNomesList.includes(nome)) return toast.error('Status já existe');
+    await salvarStatusNomes([...statusNomesList, nome]);
+    setNovoStatusNome('');
+    toast.success('Status adicionado!');
+  };
+
+  const excluirStatusNome = async (s) => {
+    if (!confirm(`Excluir status "${s}"?`)) return;
+    await salvarStatusNomes(statusNomesList.filter(t => t !== s));
+    toast.success('Status excluído!');
+  };
+
+  const atualizarStatusNome = async () => {
+    if (!editStatusNome?.nome?.trim()) return toast.error('Informe o nome');
+    await salvarStatusNomes(statusNomesList.map(t => t === editStatusNome.original ? editStatusNome.nome : t));
+    setEditStatusNome(null);
+    toast.success('Status atualizado!');
+  };
+
   // ── Setores ─────────────────────────────────────────────
   const { data: setoresList = [] } = useQuery({
     queryKey: ['setores-tarefa', empresaId],
