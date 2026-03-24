@@ -185,17 +185,6 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
-  const { data: receitas = [] } = useQuery({
-    queryKey: ['receitas-dashboard', user?.empresa_id],
-    enabled: !!user,
-    queryFn: async () => {
-      const filtro = {};
-      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
-      return base44.entities.Receita.filter(filtro, '-created_date', 500);
-    },
-    staleTime: 30000,
-  });
-
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios-dashboard'],
     enabled: !!user && isAdmin,
@@ -313,26 +302,21 @@ export default function Dashboard() {
   const totalVendasMes = vendasMes.length;
   const valorTotalVendas = vendasMes.reduce((acc, v) => acc + (v.valor_carta || 0), 0);
   
-  const comissoesReceber = comissoes
+  const comissoesRecebidas = comissoes
+    .filter(c => c.tipo === 'receber' && c.status === 'recebida')
+    .reduce((acc, c) => acc + c.valor, 0);
+  
+  const comissoesPendentesReceber = comissoes
     .filter(c => c.tipo === 'receber' && c.status === 'prevista')
     .reduce((acc, c) => acc + c.valor, 0);
+  
+  const comissoesReceber = comissoesRecebidas + comissoesPendentesReceber;
   
   const comissoesPagar = comissoes
     .filter(c => c.tipo === 'pagar' && c.status !== 'paga')
     .reduce((acc, c) => acc + c.valor, 0);
 
   const parcelasAtrasadas = parcelas.filter(p => p.status === 'atrasada').length;
-
-  // Cálculo de receitas (recebidas + pendentes)
-  const receitasRecebidas = receitas
-    .filter(r => r.status === 'recebida')
-    .reduce((acc, r) => acc + (r.valor || 0), 0);
-  
-  const receitasPendentes = receitas
-    .filter(r => r.status === 'pendente')
-    .reduce((acc, r) => acc + (r.valor || 0), 0);
-  
-  const totalReceitasComPendentes = receitasRecebidas + receitasPendentes;
 
   const oportunidadesAbertas = filteredOportunidades.filter(o => o.status === 'aberta').length;
   const valorOportunidades = filteredOportunidades
@@ -615,13 +599,20 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="Propostas do Mês"
-          value={totalVendasMes}
-          subtitle={formatCurrency(valorTotalVendas)}
-          icon={ShoppingCart}
-          color="blue"
-        />
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-green-100">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-green-100 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Total de Receitas</p>
+              <p className="text-2xl font-bold text-green-700">{formatCurrency(comissoesReceber)}</p>
+              {comissoesPendentesReceber > 0 && (
+                <p className="text-xs text-slate-400 mt-1">Pendente: {formatCurrency(comissoesPendentesReceber)}</p>
+              )}
+            </div>
+          </div>
+        </div>
         <StatsCard
           title="Oportunidades Abertas"
           value={oportunidadesAbertas}
@@ -644,24 +635,6 @@ export default function Dashboard() {
           icon={Cake}
           color={aniversariantesHoje.length > 0 ? 'amber' : 'blue'}
         />
-      </div>
-
-      {/* Card de Total de Receitas */}
-      <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-11 h-11 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Banknote className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-sm text-slate-500">Total de Receitas</p>
-            <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalReceitasComPendentes)}</p>
-            {receitasPendentes > 0 && (
-              <p className="text-xs text-slate-400 mt-0.5">
-                Recebidas: {formatCurrency(receitasRecebidas)} • Pendentes: {formatCurrency(receitasPendentes)}
-              </p>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Cards de Empréstimos do Mês */}
