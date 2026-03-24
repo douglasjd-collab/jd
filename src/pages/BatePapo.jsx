@@ -736,7 +736,6 @@ export default function BatePapo() {
                     { value: 'arquivada', label: 'Finalizados' },
                     { value: 'transferida', label: 'Transferidos' },
                     { value: 'meu', label: 'Meu Atend.' },
-                    { value: 'grupos', label: 'Grupos' },
                   ].map(tab => (
                     <TabsTrigger
                       key={tab.value}
