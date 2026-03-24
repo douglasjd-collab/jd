@@ -23,6 +23,7 @@ function Iniciais({ nome, foto, size = 'md' }) {
 
 export default function ResponsaveisModal({ open, onOpenChange, tarefa, colaboradores = [], onUpdate }) {
   const [showAdicionarMenu, setShowAdicionarMenu] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   if (!tarefa) return null;
 
