@@ -185,6 +185,17 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
+  const { data: receitas = [] } = useQuery({
+    queryKey: ['receitas-dashboard', user?.empresa_id],
+    enabled: !!user,
+    queryFn: async () => {
+      const filtro = {};
+      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
+      return base44.entities.Receita.filter(filtro, '-created_date', 500);
+    },
+    staleTime: 30000,
+  });
+
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios-dashboard'],
     enabled: !!user && isAdmin,
