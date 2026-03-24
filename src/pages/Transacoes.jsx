@@ -147,16 +147,16 @@ export default function Transacoes() {
     return true;
   });
 
-  // Total despesas pagas no mês (status 'pago' ou 'paga')
+  // Total despesas pagas no mês selecionado (status 'pago' ou 'paga')
   const totalDespesas = despesas.filter(d => {
     const dataPagamento = d.data_pagamento || d.data;
-    return ['pago', 'paga'].includes(d.status) && dataPagamento && dataPagamento.startsWith(mesAtual);
+    return ['pago', 'paga'].includes(d.status) && dataPagamento && dataPagamento.startsWith(mesSelecionado);
   }).reduce((a, d) => a + (d.valor || 0), 0);
   
-  // Total receitas recebidas no mês (status 'recebida')
+  // Total receitas recebidas no mês selecionado (status 'recebida')
   const totalReceitas = receitas.filter(r => {
     const dataRecebimento = r.data_recebimento || r.data;
-    return r.status === 'recebida' && dataRecebimento && dataRecebimento.startsWith(mesAtual);
+    return r.status === 'recebida' && dataRecebimento && dataRecebimento.startsWith(mesSelecionado);
   }).reduce((a, r) => a + (r.valor || 0), 0);
   // Filtrar despesas com status !== 'pago' e data_vencimento ou data anterior a hoje
   const despesasAtrasadas = despesas.filter(d => {
