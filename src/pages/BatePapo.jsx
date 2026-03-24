@@ -565,8 +565,8 @@ export default function BatePapo() {
     return wid.includes('@g.us') || tel.endsWith('@g.us') || wid.endsWith('-') || tel.length > 13;
   };
 
-  // Conversas válidas — grupos sempre passam, individuais precisam de número válido
-  const conversasValidas = conversas.filter(c => isGrupo(c) || isTelefoneValido(c.cliente_telefone));
+  // Conversas válidas — mostrar TODAS as conversas (grupos e individuais, independente do formato do telefone)
+  const conversasValidas = conversas;
 
   // Contadores por aba
   const contadores = {
