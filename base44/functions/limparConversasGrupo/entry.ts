@@ -41,19 +41,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Excluir mensagens e conversas de cada grupo
-    let excluidas = 0;
-    for (const grupo of grupos) {
-      // Excluir todas as mensagens do grupo
-      const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-        { conversa_id: grupo.id }
-      );
+    // Excluir mensagens de todos os grupos em uma operação
+    const grupoIds = grupos.map(g => g.id);
+    const todasMensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+      { conversa_id: { $in: grupoIds } },
+      '-created_date',
+      5000
+    );
 
-      for (const msg of mensagens) {
+    // Excluir mensagens em lotes
+    for (let i = 0; i < todasMensagens.length; i += 100) {
+      const lote = todasMensagens.slice(i, i + 100);
+      for (const msg of lote) {
         await base44.asServiceRole.entities.MensagemWhatsapp.delete(msg.id);
       }
+      // Pequeno delay entre lotes para evitar rate limit
+      if (i + 100 < todasMensagens.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
 
-      // Excluir a conversa
+    // Excluir conversas de grupo
+    let excluidas = 0;
+    for (const grupo of grupos) {
       await base44.asServiceRole.entities.ConversaWhatsapp.delete(grupo.id);
       excluidas++;
     }
