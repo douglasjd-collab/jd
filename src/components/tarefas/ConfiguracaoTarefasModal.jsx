@@ -43,8 +43,8 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
     },
   });
 
-  const statusList = (statusRaw.length > 0 ? statusRaw : STATUS_PADRAO)
-    .filter(isStatusValido)
+  const statusList = (Array.isArray(statusRaw) && statusRaw.length > 0 ? statusRaw : STATUS_PADRAO)
+    .filter(s => s != null && typeof s === 'object' && typeof s.nome === 'string' && s.nome.trim().length > 0)
     .slice()
     .sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
 
