@@ -31,18 +31,18 @@ Deno.serve(async (req) => {
       return wid.includes('@lid') || tel.includes('lid') || tel.startsWith('lid');
     });
 
-    if (grupos.length === 0) {
+    if (conversasFalsas.length === 0) {
       return Response.json({ 
-        message: 'Nenhuma conversa de grupo encontrada para limpar',
+        message: 'Nenhuma conversa falsa (@lid) encontrada para limpar',
         total: 0,
         excluidas: 0
       });
     }
 
-    // Excluir mensagens de todos os grupos em uma operação
-    const grupoIds = grupos.map(g => g.id);
+    // Excluir mensagens de todas as conversas falsas
+    const falsasIds = conversasFalsas.map(c => c.id);
     const todasMensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-      { conversa_id: { $in: grupoIds } },
+      { conversa_id: { $in: falsasIds } },
       '-created_date',
       5000
     );
@@ -53,22 +53,21 @@ Deno.serve(async (req) => {
       for (const msg of lote) {
         await base44.asServiceRole.entities.MensagemWhatsapp.delete(msg.id);
       }
-      // Pequeno delay entre lotes para evitar rate limit
       if (i + 100 < todasMensagens.length) {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
-    // Excluir conversas de grupo
+    // Excluir conversas falsas
     let excluidas = 0;
-    for (const grupo of grupos) {
-      await base44.asServiceRole.entities.ConversaWhatsapp.delete(grupo.id);
+    for (const conversa of conversasFalsas) {
+      await base44.asServiceRole.entities.ConversaWhatsapp.delete(conversa.id);
       excluidas++;
     }
 
     return Response.json({
-      message: `${excluidas} conversas de grupo excluídas com sucesso`,
-      total: grupos.length,
+      message: `${excluidas} conversas falsas (@lid) excluídas com sucesso`,
+      total: conversasFalsas.length,
       excluidas: excluidas
     });
   } catch (error) {
