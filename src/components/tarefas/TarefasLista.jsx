@@ -2,7 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Pencil, Trash2, AlignLeft, Check } from 'lucide-react';
+import { X, Pencil, Trash2, AlignLeft, Check, MessageSquarePlus, Send, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const PRIORIDADE_CORES = {
   baixa: 'bg-slate-100 text-slate-600',
