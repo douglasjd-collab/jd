@@ -173,18 +173,7 @@ export default function Transacoes() {
 
   const [novaDespesaOpen, setNovaDespesaOpen] = useState(false);
   const [novaReceitaOpen, setNovaReceitaOpen] = useState(false);
-
-  const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
-
-  if (!user || !isAdmin) {
-    return (
-      <div className="p-6">
-        <Card className="p-8 text-center">
-          <p className="text-slate-600">Acesso restrito a administradores e gerentes</p>
-        </Card>
-      </div>
-    );
-  }
+  const [mesSelecionado, setMesSelecionado] = useState(() => moment().format('YYYY-MM'));
 
   const mesesDisponiveis = React.useMemo(() => {
     const meses = [];
@@ -198,7 +187,17 @@ export default function Transacoes() {
     return meses;
   }, []);
 
-  const [mesSelecionado, setMesSelecionado] = React.useState(() => moment().format('YYYY-MM'));
+  const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
+
+  if (!user || !isAdmin) {
+    return (
+      <div className="p-6">
+        <Card className="p-8 text-center">
+          <p className="text-slate-600">Acesso restrito a administradores e gerentes</p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
