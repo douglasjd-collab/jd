@@ -342,16 +342,14 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
                                 </div>
 
                                 {s.e_padrao && <Badge variant="outline" className="text-xs py-0">Padrão</Badge>}
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => s.id ? setEditStatus(s) : inicializarPadroes()}>
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
                                 {s.id && (
-                                  <>
-                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(s)}>
-                                      <Pencil className="w-3 h-3" />
-                                    </Button>
-                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700"
-                                      onClick={() => { if (confirm('Excluir este status?')) excluirStatus.mutate(s.id); }}>
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                  </>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700"
+                                    onClick={() => { if (confirm('Excluir este status?')) excluirStatus.mutate(s.id); }}>
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
                                 )}
                               </>
                             )}
