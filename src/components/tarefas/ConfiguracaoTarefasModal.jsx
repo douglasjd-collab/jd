@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,48 +18,48 @@ const STATUS_PADRAO = [
   { slug: 'arquivado', nome: 'Arquivado', cor: '#94a3b8', ordem: 6, e_padrao: true },
 ];
 
-const TIPOS_PADRAO = [
-  'Pendencia',
-  'Documentação',
-  'Cobrança',
-  'Acompanhamento',
-  'Reunião',
-  'Outros',
-];
+const TIPOS_PADRAO = ['Pendencia', 'Documentação', 'Cobrança', 'Acompanhamento', 'Reunião', 'Outros'];
 
-export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId, onStatusChanged }) {
-  const [aba, setAba] = useState('status'); // 'status' | 'tipos'
+function isStatusValido(s) {
+  return s !== null && s !== undefined && typeof s === 'object' && typeof s.nome === 'string' && s.nome.trim().length > 0;
+}
+
+// Componente interno que só monta quando open=true
+function ConteudoModal({ empresaId, onStatusChanged }) {
+  const [aba, setAba] = useState('status');
   const [novoStatus, setNovoStatus] = useState({ nome: '', cor: '#3b82f6' });
   const [editStatus, setEditStatus] = useState(null);
   const [novoTipo, setNovoTipo] = useState('');
-  const [editTipo, setEditTipo] = useState(null); // { id, nome }
+  const [editTipo, setEditTipo] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: statusList = [] } = useQuery({
+  const { data: statusRaw = [] } = useQuery({
     queryKey: ['status-tarefa', empresaId],
-    enabled: !!empresaId && open,
+    enabled: !!empresaId,
     queryFn: async () => {
       const res = await base44.entities.StatusTarefa.filter({ empresa_id: empresaId });
-      return (Array.isArray(res) ? res : []).filter(s => s != null && typeof s === 'object' && typeof s.nome === 'string' && s.nome.trim().length > 0);
+      if (!Array.isArray(res)) return [];
+      return res.filter(isStatusValido);
     },
   });
 
+  const statusList = (statusRaw.length > 0 ? statusRaw : STATUS_PADRAO)
+    .filter(isStatusValido)
+    .slice()
+    .sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+
   const { data: tiposList = [] } = useQuery({
     queryKey: ['tipos-tarefa', empresaId],
-    enabled: !!empresaId && open,
+    enabled: !!empresaId,
     queryFn: async () => {
-      // Buscar tipos únicos de tarefas existentes + custom
       try {
         const configs = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'tipos_tarefa' });
-        if (configs.length > 0 && configs[0].valor) {
-          return JSON.parse(configs[0].valor);
-        }
+        if (configs.length > 0 && configs[0].valor) return JSON.parse(configs[0].valor);
       } catch {}
       return TIPOS_PADRAO;
     },
   });
 
-  // Status mutations
   const criarStatus = useMutation({
     mutationFn: (data) => base44.entities.StatusTarefa.create({
       ...data,
@@ -94,7 +94,6 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
     },
   });
 
-  // Tipos mutations
   const salvarTipos = async (novaLista) => {
     try {
       const configs = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'tipos_tarefa' });
@@ -104,7 +103,7 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
         await base44.entities.ConfiguracaoSistema.create({ empresa_id: empresaId, chave: 'tipos_tarefa', valor: JSON.stringify(novaLista) });
       }
       queryClient.invalidateQueries({ queryKey: ['tipos-tarefa'] });
-    } catch (e) {
+    } catch {
       toast.error('Erro ao salvar tipos');
     }
   };
@@ -126,19 +125,150 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
 
   const atualizarTipo = async () => {
     if (!editTipo?.nome?.trim()) return toast.error('Informe o nome');
-    const novaLista = tiposList.map(t => t === editTipo.original ? editTipo.nome : t);
-    await salvarTipos(novaLista);
+    await salvarTipos(tiposList.map(t => t === editTipo.original ? editTipo.nome : t));
     setEditTipo(null);
     toast.success('Tipo atualizado!');
   };
 
-  const statusExibidos = useMemo(() => {
-    const raw = Array.isArray(statusList) ? statusList : [];
-    const validos = raw.filter(s => s !== null && s !== undefined && typeof s === 'object' && s.nome !== null && s.nome !== undefined && String(s.nome).trim().length > 0);
-    const base = validos.length > 0 ? validos : STATUS_PADRAO.map(s => ({ ...s }));
-    return base.slice().sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
-  }, [statusList]);
+  return (
+    <>
+      <div className="flex border-b mb-4">
+        <button
+          onClick={() => setAba('status')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'status' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Status das Tarefas
+        </button>
+        <button
+          onClick={() => setAba('tipos')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'tipos' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Tipos de Tarefa
+        </button>
+      </div>
 
+      <div className="overflow-y-auto flex-1 space-y-3 pr-1">
+        {aba === 'status' && (
+          <>
+            <div className="space-y-2">
+              {statusList.map((s, idx) => (
+                <div key={s.id || s.slug || idx} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
+                  <div className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor || '#3b82f6' }} />
+                  {editStatus?.id === s.id ? (
+                    <>
+                      <Input value={editStatus.nome} onChange={e => setEditStatus({ ...editStatus, nome: e.target.value })} className="flex-1 h-7 text-sm" />
+                      <input type="color" value={editStatus.cor || '#3b82f6'} onChange={e => setEditStatus({ ...editStatus, cor: e.target.value })} className="h-7 w-10 rounded border cursor-pointer" />
+                      <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={() => atualizarStatus.mutate({ id: editStatus.id, data: { nome: editStatus.nome, cor: editStatus.cor } })}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm font-medium">{s.nome}</span>
+                      {s.e_padrao && <Badge variant="outline" className="text-xs py-0">Padrão</Badge>}
+                      {s.id && (
+                        <>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(s)}>
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700"
+                            onClick={() => { if (confirm('Excluir este status?')) excluirStatus.mutate(s.id); }}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="border rounded-lg p-3 bg-slate-50 space-y-2">
+              <Label className="text-xs font-semibold text-slate-600">Novo Status</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  value={novoStatus.nome}
+                  onChange={e => setNovoStatus({ ...novoStatus, nome: e.target.value })}
+                  placeholder="Ex: Em aprovação"
+                  className="flex-1 h-8 text-sm"
+                  onKeyDown={e => e.key === 'Enter' && criarStatus.mutate(novoStatus)}
+                />
+                <input type="color" value={novoStatus.cor} onChange={e => setNovoStatus({ ...novoStatus, cor: e.target.value })} className="h-8 w-12 rounded border cursor-pointer flex-shrink-0" />
+                <Button
+                  size="sm"
+                  onClick={() => { if (!novoStatus.nome.trim()) return toast.error('Informe o nome'); criarStatus.mutate(novoStatus); }}
+                  disabled={criarStatus.isPending}
+                  className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {aba === 'tipos' && (
+          <>
+            <div className="space-y-2">
+              {tiposList.map((tipo, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
+                  {editTipo?.original === tipo ? (
+                    <>
+                      <Input
+                        value={editTipo.nome}
+                        onChange={e => setEditTipo({ ...editTipo, nome: e.target.value })}
+                        className="flex-1 h-7 text-sm"
+                        onKeyDown={e => e.key === 'Enter' && atualizarTipo()}
+                      />
+                      <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={atualizarTipo}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTipo(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm font-medium">{tipo}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTipo({ original: tipo, nome: tipo })}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => excluirTipo(tipo)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {tiposList.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Nenhum tipo cadastrado.</p>}
+            </div>
+
+            <div className="border rounded-lg p-3 bg-slate-50 space-y-2">
+              <Label className="text-xs font-semibold text-slate-600">Novo Tipo</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={novoTipo}
+                  onChange={e => setNovoTipo(e.target.value)}
+                  placeholder="Ex: Vistoria, Contrato..."
+                  className="flex-1 h-8 text-sm"
+                  onKeyDown={e => e.key === 'Enter' && adicionarTipo()}
+                />
+                <Button size="sm" onClick={adicionarTipo} className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId, onStatusChanged }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
@@ -147,142 +277,9 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
             ⚙️ Configurações de Tarefas
           </DialogTitle>
         </DialogHeader>
-
-        {/* Abas */}
-        <div className="flex border-b mb-4">
-          <button
-            onClick={() => setAba('status')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'status' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            Status das Tarefas
-          </button>
-          <button
-            onClick={() => setAba('tipos')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'tipos' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            Tipos de Tarefa
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 space-y-3 pr-1">
-          {/* ABA STATUS */}
-          {aba === 'status' && (
-            <>
-              <div className="space-y-2">
-                {statusExibidos.filter(s => s != null && s.nome != null && s.nome !== undefined).map(s => (
-                  <div key={String(s.slug || s.id || s.nome || Math.random())} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
-                    <div className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor || '#3b82f6' }} />
-                    {editStatus?.id === s.id ? (
-                      <>
-                        <Input value={editStatus.nome} onChange={e => setEditStatus({ ...editStatus, nome: e.target.value })} className="flex-1 h-7 text-sm" />
-                        <input type="color" value={editStatus.cor} onChange={e => setEditStatus({ ...editStatus, cor: e.target.value })} className="h-7 w-10 rounded border cursor-pointer" />
-                        <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={() => atualizarStatus.mutate({ id: editStatus.id, data: { nome: editStatus.nome, cor: editStatus.cor } })}>
-                          <Check className="w-3 h-3" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(null)}>
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm font-medium">{s?.nome ?? ''}</span>
-                        {s.e_padrao && <Badge variant="outline" className="text-xs py-0">Padrão</Badge>}
-                        {s.id && (
-                          <>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(s)}>
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700"
-                              onClick={() => { if (confirm('Excluir este status?')) excluirStatus.mutate(s.id); }}>
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="border rounded-lg p-3 bg-slate-50 space-y-2">
-                <Label className="text-xs font-semibold text-slate-600">Novo Status</Label>
-                <div className="flex gap-2 items-center">
-                  <Input
-                    value={novoStatus.nome}
-                    onChange={e => setNovoStatus({ ...novoStatus, nome: e.target.value })}
-                    placeholder="Ex: Em aprovação"
-                    className="flex-1 h-8 text-sm"
-                    onKeyDown={e => e.key === 'Enter' && criarStatus.mutate(novoStatus)}
-                  />
-                  <input type="color" value={novoStatus.cor} onChange={e => setNovoStatus({ ...novoStatus, cor: e.target.value })} className="h-8 w-12 rounded border cursor-pointer flex-shrink-0" />
-                  <Button
-                    size="sm"
-                    onClick={() => { if (!novoStatus.nome.trim()) return toast.error('Informe o nome'); criarStatus.mutate(novoStatus); }}
-                    disabled={criarStatus.isPending}
-                    className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* ABA TIPOS */}
-          {aba === 'tipos' && (
-            <>
-              <div className="space-y-2">
-                {tiposList.map((tipo, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
-                    {editTipo?.original === tipo ? (
-                      <>
-                        <Input
-                          value={editTipo.nome}
-                          onChange={e => setEditTipo({ ...editTipo, nome: e.target.value })}
-                          className="flex-1 h-7 text-sm"
-                          onKeyDown={e => e.key === 'Enter' && atualizarTipo()}
-                        />
-                        <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={atualizarTipo}>
-                          <Check className="w-3 h-3" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTipo(null)}>
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm font-medium">{tipo}</span>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTipo({ original: tipo, nome: tipo })}>
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => excluirTipo(tipo)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ))}
-                {tiposList.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Nenhum tipo cadastrado.</p>}
-              </div>
-
-              <div className="border rounded-lg p-3 bg-slate-50 space-y-2">
-                <Label className="text-xs font-semibold text-slate-600">Novo Tipo</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={novoTipo}
-                    onChange={e => setNovoTipo(e.target.value)}
-                    placeholder="Ex: Vistoria, Contrato..."
-                    className="flex-1 h-8 text-sm"
-                    onKeyDown={e => e.key === 'Enter' && adicionarTipo()}
-                  />
-                  <Button size="sm" onClick={adicionarTipo} className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        {open && empresaId && (
+          <ConteudoModal empresaId={empresaId} onStatusChanged={onStatusChanged} />
+        )}
       </DialogContent>
     </Dialog>
   );
