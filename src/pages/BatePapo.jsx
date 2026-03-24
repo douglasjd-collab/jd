@@ -288,10 +288,12 @@ export default function BatePapo() {
           300
         );
         const ordenadas = [...msgs].reverse();
-        // Marcar mensagens do cliente como lidas
+        // Marcar mensagens do cliente como lidas INSTANTANEAMENTE
         const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
-        for (const msg of naoLidas) {
-          base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {});
+        if (naoLidas.length > 0) {
+          await Promise.all(naoLidas.map(msg => 
+            base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
+          ));
         }
         return ordenadas;
       },
