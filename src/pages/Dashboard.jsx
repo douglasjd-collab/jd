@@ -580,6 +580,14 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Dashboard Selector */}
+      <DashboardSelector 
+        selectedDashboard={selectedDashboard}
+        onSelect={setSelectedDashboard}
+        user={user}
+        menus_permitidos={user?.menus_permitidos}
+      />
+
 
 
       {/* Alerta Aniversariantes do Dia */}
