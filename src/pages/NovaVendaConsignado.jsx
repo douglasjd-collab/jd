@@ -38,6 +38,7 @@ export default function NovaVendaConsignado() {
     valor_bruto: '',
     prazo: '',
     parcela: '',
+    data_cadastro: new Date().toISOString().split('T')[0],
     data_liberacao: '',
     banco_anterior: '',
     saldo_devedor: '',
