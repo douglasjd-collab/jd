@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     for (const conversa of conversas) {
       const tel = conversa.cliente_telefone || '';
       const chave = normalizarTelefone(tel);
-      if (!chave || !chave.startsWith('55')) continue;
+      if (!chave) continue; // Apenas descartar se vazio
       const existente = conversasPorTelNorm[chave];
       if (!existente) {
         conversasPorTelNorm[chave] = conversa;
