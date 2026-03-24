@@ -270,6 +270,12 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
           Quadros (Status)
         </button>
         <button
+          onClick={() => setAba('status_nomes')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'status_nomes' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Status
+        </button>
+        <button
           onClick={() => setAba('setores')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'setores' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
