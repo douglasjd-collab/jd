@@ -126,6 +126,8 @@ export default function PropostaEditModal({ open, onOpenChange, propostaId, onSu
         emprestimo_numero_ade: data.emprestimo_numero_ade || null,
         emprestimo_prazo: data.emprestimo_prazo ? parseInt(data.emprestimo_prazo) : null,
         emprestimo_valor_parcela: data.emprestimo_valor_parcela ? parseFloat(data.emprestimo_valor_parcela) : null,
+        emprestimo_banco_anterior: data.emprestimo_banco_anterior || null,
+        emprestimo_saldo_devedor: data.emprestimo_saldo_devedor ? parseFloat(data.emprestimo_saldo_devedor) : null,
         data_venda: data.data_venda || null,
         emprestimo_data_liberacao: data.emprestimo_data_liberacao || null,
         valor_credito: parseValor(data.valor_credito),
