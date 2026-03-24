@@ -292,7 +292,7 @@ export default function Tarefas() {
         </div>
         <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
           <option value="todos">Status</option>
-          {statusList.map(s => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
+          {statusList.filter(s => s && s.nome).map(s => <option key={s.slug || s.id || s.nome} value={s.slug || s.nome}>{s.nome}</option>)}
         </select>
         <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}>
           <option value="todas">Prioridade</option>
