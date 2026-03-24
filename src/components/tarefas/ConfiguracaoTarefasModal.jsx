@@ -389,6 +389,60 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
           </>
         )}
 
+        {/* ── ABA STATUS NOMES ── */}
+        {aba === 'status_nomes' && (
+          <>
+            <div className="space-y-2">
+              {statusNomesList.filter(t => t != null && typeof t === 'string').map((s, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
+                  {editStatusNome?.original === s ? (
+                    <>
+                      <Input
+                        value={editStatusNome.nome}
+                        onChange={e => setEditStatusNome({ ...editStatusNome, nome: e.target.value })}
+                        className="flex-1 h-7 text-sm"
+                        onKeyDown={e => e.key === 'Enter' && atualizarStatusNome()}
+                      />
+                      <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={atualizarStatusNome}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatusNome(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm font-medium">{s}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatusNome({ original: s, nome: s })}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => excluirStatusNome(s)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {statusNomesList.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Nenhum status cadastrado.</p>}
+            </div>
+            <div className="border rounded-lg p-3 bg-slate-50 space-y-2">
+              <Label className="text-xs font-semibold text-slate-600">Novo Status</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={novoStatusNome}
+                  onChange={e => setNovoStatusNome(e.target.value)}
+                  placeholder="Ex: Em revisão, Aguardando..."
+                  className="flex-1 h-8 text-sm"
+                  onKeyDown={e => e.key === 'Enter' && adicionarStatusNome()}
+                />
+                <Button size="sm" onClick={adicionarStatusNome} className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* ── ABA SETORES ── */}
         {aba === 'setores' && (
           <>
