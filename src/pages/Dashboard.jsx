@@ -590,26 +590,38 @@ export default function Dashboard() {
 
 
 
-      {/* Alerta Aniversariantes do Dia */}
-      {aniversariantesHoje.length > 0 && (
-        <Card className="border-l-4 border-l-amber-500 bg-amber-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-amber-900">🎉 Aniversariantes de Hoje!</h3>
-                <div className="mt-2 space-y-1">
-                  {aniversariantesHoje.map(c => (
-                    <p key={c.id} className="text-sm text-amber-800">
-                      • {c.nome_completo || c.pj_razao_social} {c.celular && `- ${c.celular}`}
-                    </p>
-                  ))}
+      {/* Renderizar Dashboard apropriado */}
+      {selectedDashboard === 'emprestimo' ? (
+        <DashboardEmprestimos 
+          propostasEmprestimo={propostasEmprestimo}
+          statusPropostaList={statusPropostaList}
+          mesSelecionado={mesSelecionado}
+          isVendedor={isVendedor}
+          user={user}
+          formatCurrency={formatCurrency}
+        />
+      ) : (
+        <>
+          {/* Alerta Aniversariantes do Dia */}
+          {aniversariantesHoje.length > 0 && (
+            <Card className="border-l-4 border-l-amber-500 bg-amber-50/50">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-amber-900">🎉 Aniversariantes de Hoje!</h3>
+                    <div className="mt-2 space-y-1">
+                      {aniversariantesHoje.map(c => (
+                        <p key={c.id} className="text-sm text-amber-800">
+                          • {c.nome_completo || c.pj_razao_social} {c.celular && `- ${c.celular}`}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
