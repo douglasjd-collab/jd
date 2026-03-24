@@ -25,14 +25,12 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
   const [showAdicionarMenu, setShowAdicionarMenu] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  if (!tarefa) return null;
-
   let responsaveisIds = [];
   try {
-    responsaveisIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : [];
+    responsaveisIds = tarefa?.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : [];
   } catch {}
 
-  if (tarefa.responsavel_principal_id && !responsaveisIds.includes(tarefa.responsavel_principal_id)) {
+  if (tarefa?.responsavel_principal_id && !responsaveisIds.includes(tarefa.responsavel_principal_id)) {
     responsaveisIds = [tarefa.responsavel_principal_id, ...responsaveisIds];
   }
 
@@ -47,6 +45,8 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
     const term = searchTerm.toLowerCase();
     return naoAtribuidos.filter(c => c.nome?.toLowerCase().includes(term));
   }, [naoAtribuidos, searchTerm]);
+
+  if (!tarefa) return null;
 
   const handleAdicionarResponsavel = async (colaboradorId) => {
     const novaLista = [...responsaveisIds, colaboradorId];
