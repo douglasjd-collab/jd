@@ -93,32 +93,46 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
           ))}
 
           {showAdicionarMenu ? (
-            <div className="border rounded-lg bg-slate-50 overflow-y-auto max-h-48" style={{ scrollbarWidth: 'auto', scrollbarColor: '#cbd5e1 transparent' }}>
-              <style>{`
-                div::-webkit-scrollbar {
-                  width: 8px;
-                }
-                div::-webkit-scrollbar-track {
-                  background: transparent;
-                }
-                div::-webkit-scrollbar-thumb {
-                  background-color: #cbd5e1;
-                  border-radius: 4px;
-                  border: 2px solid transparent;
-                  background-clip: content-box;
-                }
-                div::-webkit-scrollbar-thumb:hover {
-                  background-color: #94a3b8;
-                }
-              `}</style>
-              <div className="space-y-1 p-2">
+            <div className="border rounded-lg bg-slate-50 space-y-2">
+              <div className="p-2 border-b">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Pesquisar colaborador..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-9 h-8 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="overflow-y-auto max-h-40 space-y-1 px-2 pb-2" style={{ scrollbarWidth: 'auto', scrollbarColor: '#cbd5e1 transparent' }}>
+                <style>{`
+                  div::-webkit-scrollbar {
+                    width: 8px;
+                  }
+                  div::-webkit-scrollbar-track {
+                    background: transparent;
+                  }
+                  div::-webkit-scrollbar-thumb {
+                    background-color: #cbd5e1;
+                    border-radius: 4px;
+                    border: 2px solid transparent;
+                    background-clip: content-box;
+                  }
+                  div::-webkit-scrollbar-thumb:hover {
+                    background-color: #94a3b8;
+                  }
+                `}</style>
                 {naoAtribuidos.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-2">Todos os colaboradores já estão atribuídos.</p>
+                ) : naoAtribuidosFiltrados.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-2">Nenhum colaborador encontrado.</p>
                 ) : (
-                  naoAtribuidos.map(colab => (
+                  naoAtribuidosFiltrados.map(colab => (
                     <button
                       key={colab.id}
-                      onClick={() => handleAdicionarResponsavel(colab.id)}
+                      onClick={() => { handleAdicionarResponsavel(colab.id); setSearchTerm(''); }}
                       className="w-full flex items-center gap-2 p-2 hover:bg-slate-200 rounded transition-colors text-left"
                     >
                       <Iniciais nome={colab.nome} foto={colab.foto_perfil} size="sm" />
