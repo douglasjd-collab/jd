@@ -181,8 +181,13 @@ export default function NovaVendaEmprestimoPessoal() {
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                 required
               >
-                <option value="CREFAZ">Crefaz</option>
-                <option value="DEBITO_EM_CONTA">Débito em Conta</option>
+                <option value="NOVO">Novo</option>
+                <option value="CARTAO_REFINANCIAMENTO">Cartão e Refinanciamento</option>
+                <option value="SAQUE">Saque</option>
+                <option value="CARTAO_CONSIGNADO">Cartão Consignado</option>
+                <option value="CARTAO_BENEFICIO">Cartão Benefício</option>
+                <option value="PORTABILIDADE_PURA">Portabilidade Pura</option>
+                <option value="REFIN_PORTABILIDADE">Refinanciamento + Portabilidade</option>
               </select>
             </div>
 
