@@ -27,6 +27,7 @@ export default function NovaVendaEmprestimoPessoal() {
     prazo: '',
     parcela: '',
     data_liberacao: '',
+    data_cadastro: new Date().toISOString().split('T')[0],
     numero_contrato: '',
     status: 'em_andamento',
     observacoes: '',
