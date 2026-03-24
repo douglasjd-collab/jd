@@ -470,6 +470,59 @@ export default function NovaVendaConsignado() {
             </div>
           </div>
 
+          <div className="border-l-4 border-l-amber-500 pl-4 py-2 bg-amber-50 rounded space-y-4">
+            <h3 className="font-semibold text-amber-900 mb-4">Dados do Refin da Portabilidade</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Valor Liberado *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.valor_liberado)} onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} required />
+                </div>
+              </div>
+              <div>
+                <Label>Valor Bruto *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.valor_bruto)} onChange={(e) => handleMoedaChange('valor_bruto', e.target.value)} required />
+                </div>
+              </div>
+              <div>
+                <Label>Prazo (meses) *</Label>
+                <Input type="number" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Parcela *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.parcela)} onChange={(e) => handleMoedaChange('parcela', e.target.value)} required />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Tabela *</Label>
+                <select
+                  value={formData.tabela_emprestimo_id}
+                  onChange={(e) => handleTabelaChange(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  disabled={!formData.banco || !formData.convenio_id}
+                  required
+                >
+                  <option value="">Selecione...</option>
+                  {tabelasEmprestimo
+                    .filter(t => {
+                      const bancoMatch = !formData.banco || t.banco === formData.banco;
+                      const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
+                      const tipoMatch = t.produto === 'REFIN/PORTABILIDADE';
+                      return bancoMatch && convenioMatch && tipoMatch;
+                    })
+                    .map(t => (
+                      <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
+                    ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div className="border-l-4 border-l-green-500 pl-4 py-2 bg-green-50 rounded space-y-4">
             <h3 className="font-semibold text-green-900 mb-4">Dados do Refinanciamento</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
