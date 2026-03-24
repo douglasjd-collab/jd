@@ -92,6 +92,7 @@ export default function NovaVendaEmprestimoPessoal() {
         prazo: parseInt(dados.prazo) || 0,
         parcela: parseFloat(dados.parcela) || 0,
         data_liberacao: dados.data_liberacao || null,
+        data_cadastro: dados.data_cadastro || null,
         numero_contrato: dados.numero_contrato,
         status: dados.status
       };
