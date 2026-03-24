@@ -671,13 +671,13 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-sm text-slate-500">Empréstimos em Andamento</p>
-              <p className="text-2xl font-bold text-orange-700">{formatCurrency(valorLiquidoAndamentoMes)}</p>
-              <p className="text-xs text-slate-400 mt-0.5">Valor Liberado</p>
+              <p className="text-2xl font-bold text-orange-700">{formatCurrency(valorLiquidoAndamento)}</p>
+              <p className="text-xs text-slate-400 mt-0.5">Valor Liberado (total)</p>
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">{propostasEmAndamentoMes.length} proposta(s) em andamento</p>
-            <p className="text-sm text-slate-500">Bruto: <span className="font-medium text-slate-700">{formatCurrency(valorBrutoAndamentoMes)}</span></p>
+            <p className="text-sm text-slate-500">{propostasEmAndamento.length} proposta(s) em andamento</p>
+            <p className="text-sm text-slate-500">Bruto: <span className="font-medium text-slate-700">{formatCurrency(valorBrutoAndamento)}</span></p>
           </div>
         </div>
       </div>
