@@ -187,14 +187,40 @@ export default function Transacoes() {
     );
   }
 
+  const mesesDisponiveis = React.useMemo(() => {
+    const meses = [];
+    for (let i = 0; i < 12; i++) {
+      const d = moment().subtract(i, 'months');
+      meses.push({
+        value: d.format('YYYY-MM'),
+        label: d.format("MMMM 'de' YYYY", { locale: 'pt-br' }),
+      });
+    }
+    return meses;
+  }, []);
+
+  const [mesSelecionado, setMesSelecionado] = React.useState(() => moment().format('YYYY-MM'));
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Transações</h1>
           <p className="text-slate-500 text-sm">Todas as despesas e receitas lançadas</p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 items-end flex-wrap justify-end">
+          <div>
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Período</label>
+            <select
+              value={mesSelecionado}
+              onChange={(e) => setMesSelecionado(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+              {mesesDisponiveis.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
           <Button onClick={() => setNovaDespesaOpen(true)} className="bg-red-600 hover:bg-red-700 text-white">
             <TrendingDown className="w-4 h-4 mr-1" /> Nova Despesa
           </Button>
