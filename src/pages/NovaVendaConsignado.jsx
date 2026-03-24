@@ -141,7 +141,7 @@ export default function NovaVendaConsignado() {
         administradora_nome: dados.banco || '',
         contrato: dados.numero_contrato,
         status: dados.status,
-        data_venda: new Date().toISOString().split('T')[0],
+        data_venda: dados.data_cadastro || new Date().toISOString().split('T')[0],
         valor_credito: parseFloat(dados.valor_bruto) || parseFloat(dados.valor_liberado) || 0,
         valor_liquido: parseFloat(dados.valor_liberado) || 0,
         valor_comissao: parseFloat(dados.comissao_empresa_prevista) || 0,
