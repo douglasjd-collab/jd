@@ -345,15 +345,15 @@ export default function BatePapo() {
           // payload_too_large: fallback para refetch
           queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         }
+        // Scroll imediato para a última mensagem
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
-        }, 50);
-      } else if (!msgData?.conversa_id || !pertenceConversaAberta) {
-        // Pode ser mensagem de conversa diferente — fazer refetch das mensagens da conversa aberta
-        // para garantir que não perde nada (caso o webhook tenha usado conversa diferente)
+        }, 0);
+      } else {
+        // Refetch imediato da conversa aberta se for de outra conversa
         if (conversaAtualId) {
           queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         }
