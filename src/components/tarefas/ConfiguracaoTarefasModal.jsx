@@ -341,8 +341,8 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
                                   </button>
                                 </div>
 
-                                {s.e_padrao && <Badge variant="outline" className="text-xs py-0">Padrão</Badge>}
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => s.id ? setEditStatus(s) : inicializarPadroes()}>
+                                {s.e_padrao && !s.id && <Badge variant="outline" className="text-xs py-0">Padrão</Badge>}
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(s)}>
                                   <Pencil className="w-3 h-3" />
                                 </Button>
                                 {s.id && (
