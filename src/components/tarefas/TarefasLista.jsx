@@ -218,7 +218,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <button
-                      onClick={() => setTarefaEditando(tarefa)}
+                      onClick={() => { setTarefaStatusModal(tarefa); setStatusModalOpen(true); }}
                       className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: statusList.find(s => s.slug === tarefa.status)?.cor || '#94a3b8' }}
                     >
