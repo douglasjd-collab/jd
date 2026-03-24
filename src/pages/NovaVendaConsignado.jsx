@@ -365,6 +365,64 @@ export default function NovaVendaConsignado() {
     if (formData.tipo_consignado === 'PORTABILIDADE_PURA') {
       return (
         <>
+          <CardTitle className="text-lg mt-4">Dados da Portabilidade</CardTitle>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Banco de Origem *</Label>
+              <Input 
+                value={formData.banco_anterior} 
+                onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })} 
+                placeholder="Nome do banco anterior"
+                required
+              />
+            </div>
+            <div>
+              <Label>Contrato de Origem *</Label>
+              <Input 
+                value={formData.contrato_anterior} 
+                onChange={(e) => setFormData({ ...formData, contrato_anterior: e.target.value })} 
+                placeholder="Número do contrato anterior"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label>Parcela (Origem) *</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10"
+                  type="number"
+                  step="0.01"
+                  value={formData.parcela} 
+                  onChange={(e) => setFormData({ ...formData, parcela: e.target.value })} 
+                  placeholder="0,00"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Prazo (Origem) *</Label>
+              <Input 
+                type="number" 
+                value={formData.prazo_original} 
+                onChange={(e) => setFormData({ ...formData, prazo_original: e.target.value.replace(/\D/g, '') })} 
+                placeholder="12"
+                required
+              />
+            </div>
+            <div>
+              <Label>Prazo Restante *</Label>
+              <Input 
+                type="number" 
+                value={formData.prazo_restante} 
+                onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value.replace(/\D/g, '') })} 
+                placeholder="12"
+                required
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Saldo Devedor *</Label>
@@ -379,24 +437,6 @@ export default function NovaVendaConsignado() {
                 />
               </div>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label>Prazo Restante</Label>
-              <Input type="number" value={formData.prazo_restante} onChange={(e) => setFormData({ ...formData, prazo_restante: e.target.value.replace(/\D/g, '') })} placeholder="12" />
-            </div>
-            <div>
-              <Label>Prazo Original</Label>
-              <Input type="number" value={formData.prazo_original} onChange={(e) => setFormData({ ...formData, prazo_original: e.target.value.replace(/\D/g, '') })} placeholder="12" />
-            </div>
-            <div>
-              <Label>Data de Início</Label>
-              <Input type="date" value={formData.data_inicio} onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })} />
-            </div>
-          </div>
-          <div>
-            <Label>Contrato Anterior</Label>
-            <Input value={formData.contrato_anterior} onChange={(e) => setFormData({ ...formData, contrato_anterior: e.target.value })} />
           </div>
         </>
       );
