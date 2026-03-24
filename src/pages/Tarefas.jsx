@@ -360,6 +360,7 @@ export default function Tarefas() {
           onDelete={(t) => { if (confirm(`Excluir tarefa "${t.titulo}"?`)) excluirTarefa.mutate(t); }}
           onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
           onUpdate={handleUpdate}
+          currentUser={currentUser}
         />
       ) : null}
 
