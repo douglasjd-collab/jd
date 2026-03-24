@@ -209,55 +209,324 @@ export default function NovaVendaEmprestimoPessoal() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Valor Liberado *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_liberado}
-                  onChange={(e) => setFormData({ ...formData, valor_liberado: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label>Valor Bruto</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.valor_bruto}
-                  onChange={(e) => setFormData({ ...formData, valor_bruto: e.target.value })}
-                />
-              </div>
-            </div>
+            {/* Campos para tipos padrão (NOVO, CARTÃO, etc) */}
+            {['NOVO', 'CARTAO_REFINANCIAMENTO', 'SAQUE', 'CARTAO_CONSIGNADO', 'CARTAO_BENEFICIO', 'REFIN_PORTABILIDADE'].includes(formData.tipo_emprestimo) && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Valor Bruto *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.valor_bruto}
+                      onChange={(e) => setFormData({ ...formData, valor_bruto: e.target.value })}
+                      required={formData.tipo_emprestimo !== 'REFIN_PORTABILIDADE' || !formData.tipo_emprestimo.includes('REFIN')}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valor Liberado (Líquido) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.valor_liberado}
+                      onChange={(e) => setFormData({ ...formData, valor_liberado: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Prazo (meses)</Label>
-                <Input
-                  type="number"
-                  value={formData.prazo}
-                  onChange={(e) => setFormData({ ...formData, prazo: e.target.value })}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Parcela *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.parcela}
+                      onChange={(e) => setFormData({ ...formData, parcela: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Prazo (meses) *</Label>
+                    <Input
+                      type="number"
+                      value={formData.prazo}
+                      onChange={(e) => setFormData({ ...formData, prazo: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Tabela *</Label>
+                    <Input
+                      value={formData.empresa_parceira}
+                      onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })}
+                      placeholder="Identifique a tabela"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Data de Liberação</Label>
+                  <Input
+                    type="date"
+                    value={formData.data_liberacao}
+                    onChange={(e) => setFormData({ ...formData, data_liberacao: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Campos específicos de PORTABILIDADE PURA */}
+            {formData.tipo_emprestimo === 'PORTABILIDADE_PURA' && (
+              <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded">
+                <h3 className="font-semibold text-purple-900 mb-4">Dados da Portabilidade</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Banco de Origem *</Label>
+                    <Input
+                      value={formData.origem_banco}
+                      onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Contrato de Origem *</Label>
+                    <Input
+                      value={formData.origem_contrato}
+                      onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Parcela (Origem) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.origem_parcela}
+                      onChange={(e) => setFormData({ ...formData, origem_parcela: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Prazo (Origem - meses) *</Label>
+                    <Input
+                      type="number"
+                      value={formData.origem_prazo}
+                      onChange={(e) => setFormData({ ...formData, origem_prazo: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Prazo Restante (meses) *</Label>
+                    <Input
+                      type="number"
+                      value={formData.origem_prazo_restante}
+                      onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Saldo Devedor *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.origem_saldo_devedor}
+                      onChange={(e) => setFormData({ ...formData, origem_saldo_devedor: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Tabela (Origem) *</Label>
+                    <Input
+                      value={formData.origem_tabela}
+                      onChange={(e) => setFormData({ ...formData, origem_tabela: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Dados do novo empréstimo na portabilidade */}
+                <div className="mt-6 pt-4 border-t">
+                  <h4 className="font-semibold text-purple-900 mb-3">Dados do Novo Empréstimo</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label>Valor Bruto *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.valor_bruto}
+                        onChange={(e) => setFormData({ ...formData, valor_bruto: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Valor Liberado *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.valor_liberado}
+                        onChange={(e) => setFormData({ ...formData, valor_liberado: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Parcela *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.parcela}
+                        onChange={(e) => setFormData({ ...formData, parcela: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Prazo (meses) *</Label>
+                      <Input
+                        type="number"
+                        value={formData.prazo}
+                        onChange={(e) => setFormData({ ...formData, prazo: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Tabela *</Label>
+                      <Input
+                        value={formData.empresa_parceira}
+                        onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })}
+                        placeholder="Identifique a tabela"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label>Parcela</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.parcela}
-                  onChange={(e) => setFormData({ ...formData, parcela: e.target.value })}
-                />
+            )}
+
+            {/* Campos específicos de REFINANCIAMENTO + PORTABILIDADE */}
+            {formData.tipo_emprestimo === 'REFIN_PORTABILIDADE' && (
+              <div className="border-l-4 border-l-pink-500 pl-4 py-2 bg-pink-50 rounded">
+                <h3 className="font-semibold text-pink-900 mb-4">Dados da Portabilidade</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Banco de Origem *</Label>
+                    <Input
+                      value={formData.origem_banco}
+                      onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Contrato de Origem *</Label>
+                    <Input
+                      value={formData.origem_contrato}
+                      onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Parcela (Origem) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.origem_parcela}
+                      onChange={(e) => setFormData({ ...formData, origem_parcela: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Prazo (Origem - meses) *</Label>
+                    <Input
+                      type="number"
+                      value={formData.origem_prazo}
+                      onChange={(e) => setFormData({ ...formData, origem_prazo: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Prazo Restante (meses) *</Label>
+                    <Input
+                      type="number"
+                      value={formData.origem_prazo_restante}
+                      onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Saldo Devedor *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.origem_saldo_devedor}
+                      onChange={(e) => setFormData({ ...formData, origem_saldo_devedor: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Tabela (Origem) *</Label>
+                    <Input
+                      value={formData.origem_tabela}
+                      onChange={(e) => setFormData({ ...formData, origem_tabela: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Dados do Refinanciamento */}
+                <div className="mt-6 pt-4 border-t">
+                  <h4 className="font-semibold text-pink-900 mb-3">Dados do Refinanciamento</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label>Parcela (Refin) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.refin_parcela}
+                        onChange={(e) => setFormData({ ...formData, refin_parcela: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Valor Bruto (Refin) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.refin_valor_bruto}
+                        onChange={(e) => setFormData({ ...formData, refin_valor_bruto: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Valor Liberado (Refin) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.refin_valor_liberado}
+                        onChange={(e) => setFormData({ ...formData, refin_valor_liberado: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Prazo (Refin - meses) *</Label>
+                      <Input
+                        type="number"
+                        value={formData.refin_prazo}
+                        onChange={(e) => setFormData({ ...formData, refin_prazo: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Tabela (Refin) *</Label>
+                      <Input
+                        value={formData.refin_tabela}
+                        onChange={(e) => setFormData({ ...formData, refin_tabela: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label>Data de Liberação</Label>
-                <Input
-                  type="date"
-                  value={formData.data_liberacao}
-                  onChange={(e) => setFormData({ ...formData, data_liberacao: e.target.value })}
-                />
-              </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
