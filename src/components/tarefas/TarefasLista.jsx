@@ -132,9 +132,10 @@ function ResponsaveisPopover({ tarefa, colaboradores, onUpdate }) {
         )}
         {responsaveisIds.slice(0, 3).map((id, i) => {
           const nome = responsaveisNomes[i] || '?';
+          const colab = colaboradores.find(c => c.id === id);
           return (
             <div key={id} className="ring-2 ring-white rounded-full" title={nome}>
-              <Iniciais nome={nome} size="sm" />
+              <Iniciais nome={nome} foto={colab?.foto_perfil} size="sm" />
             </div>
           );
         })}
