@@ -26,7 +26,7 @@ const SETORES = [
   { value: 'consorcio', label: 'Consórcio' },
   { value: 'emprestimo', label: 'Empréstimo' },
   { value: 'financiamento', label: 'Financiamento' },
-  { value: 'sinistro', label: 'Sinistro' },
+  { value: 'protecao_veicular', label: 'Proteção Veicular' },
   { value: 'cobranca', label: 'Cobrança' },
 ];
 
