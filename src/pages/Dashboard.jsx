@@ -368,22 +368,6 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [vendasMes]);
 
-  const rankingEmprestimos = React.useMemo(() => {
-    const vendedorStats = {};
-    propostasPagasMes.forEach(p => {
-      const nome = p.vendedor_nome || 'Sem vendedor';
-      if (!vendedorStats[nome]) {
-        vendedorStats[nome] = { propostas: 0, valor: 0 };
-      }
-      vendedorStats[nome].propostas += 1;
-      vendedorStats[nome].valor += (p.valor_credito || 0);
-    });
-    return Object.entries(vendedorStats)
-      .map(([nome, stats]) => ({ nome, propostas: stats.propostas, valor: stats.valor }))
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, 5);
-  }, [propostasPagasMes]);
-
   const vendasRecentes = filteredVendas.slice(0, 5);
 
   const isVendedor = user?.perfil === 'vendedor' || user?.perfil === 'colaborador' || user?.perfil === 'funcionario';
