@@ -30,13 +30,9 @@ const SETORES = [
 ];
 
 const TIPOS = [
-  { value: 'documento', label: 'Documento' },
-  { value: 'ligacao', label: 'Ligação' },
-  { value: 'cobranca', label: 'Cobrança' },
-  { value: 'visita', label: 'Visita' },
-  { value: 'analise', label: 'Análise' },
-  { value: 'pendencia', label: 'Pendência' },
-  { value: 'outros', label: 'Outros' },
+  { value: 'abertura_evento', label: 'Abertura de Evento' },
+  { value: 'digitar_proposta', label: 'Digitar Proposta' },
+  { value: 'reuniao', label: 'Reunião' },
 ];
 
 export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate }) {
