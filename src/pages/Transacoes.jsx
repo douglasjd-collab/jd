@@ -106,6 +106,7 @@ export default function Transacoes() {
 
   const hoje = moment().format('YYYY-MM-DD');
   const em7dias = moment().add(7, 'days').format('YYYY-MM-DD');
+  const mesAtual = moment().format('YYYY-MM');
 
   const getStatusDespesa = (d) => {
     if (d.status === 'pago' || d.status === 'paga') return 'pago';
@@ -147,8 +148,17 @@ export default function Transacoes() {
     return true;
   });
 
-  const totalDespesas = despesas.reduce((a, d) => a + (d.valor || 0), 0);
-  const totalReceitas = receitas.reduce((a, r) => a + (r.valor || 0), 0);
+  // Total despesas pagas no mês (status 'pago' ou 'paga')
+  const totalDespesas = despesas.filter(d => {
+    const dataPagamento = d.data_pagamento || d.data;
+    return ['pago', 'paga'].includes(d.status) && dataPagamento && dataPagamento.startsWith(mesAtual);
+  }).reduce((a, d) => a + (d.valor || 0), 0);
+  
+  // Total receitas recebidas no mês (status 'recebida')
+  const totalReceitas = receitas.filter(r => {
+    const dataRecebimento = r.data_recebimento || r.data;
+    return r.status === 'recebida' && dataRecebimento && dataRecebimento.startsWith(mesAtual);
+  }).reduce((a, r) => a + (r.valor || 0), 0);
   // Filtrar despesas com status !== 'pago' e data_vencimento ou data anterior a hoje
   const despesasAtrasadas = despesas.filter(d => {
     if (['pago', 'paga'].includes(d.status)) return false;
