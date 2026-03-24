@@ -302,6 +302,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
               <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Tipo</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[16%]">Status</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[12%]">Responsáveis</th>
+              <th className="text-center px-2 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[5%]"></th>
               <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Início</th>
               <th className="text-left px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[10%]">Limite</th>
               <th className="text-center px-4 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wide w-[8%]">Ações</th>
@@ -344,6 +345,11 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                   </td>
                   <td className="px-4 py-3">
                     <ResponsaveisPopover tarefa={tarefa} colaboradores={colaboradores} onUpdate={onUpdate} />
+                  </td>
+                  <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={() => setComentarioTarefa(tarefa)} title="Comentários">
+                      <MessageSquarePlus className="w-3.5 h-3.5" />
+                    </Button>
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
                     {formatarData(tarefa.data_cadastro || tarefa.created_date)}
