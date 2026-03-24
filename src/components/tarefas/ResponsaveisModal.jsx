@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Plus, X } from 'lucide-react';
 
 function Iniciais({ nome, foto, size = 'md' }) {
   const initials = (nome || '?').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
