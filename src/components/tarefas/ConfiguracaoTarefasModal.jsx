@@ -353,7 +353,31 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
                                 </div>
 
                                 {s.e_padrao && !s.id && <Badge variant="outline" className="text-xs py-0">Padrão</Badge>}
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditStatus(s)}>
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={async () => {
+                                  if (!s.id && statusRaw.length === 0) {
+                                    // Inicializa todos os padrões no banco primeiro
+                                    const criados = await Promise.all(
+                                      STATUS_PADRAO.map(p =>
+                                        base44.entities.StatusTarefa.create({
+                                          empresa_id: empresaId,
+                                          nome: p.nome,
+                                          slug: p.slug,
+                                          cor: p.cor,
+                                          ordem: p.ordem,
+                                          ativo: true,
+                                          e_padrao: true,
+                                        })
+                                      )
+                                    );
+                                    queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
+                                    onStatusChanged?.();
+                                    // Abre o editor do item correspondente
+                                    const criado = criados.find(c => c.slug === s.slug);
+                                    if (criado) setEditStatus(criado);
+                                    return;
+                                  }
+                                  setEditStatus(s);
+                                }}>
                                   <Pencil className="w-3 h-3" />
                                 </Button>
                                 {s.id && (
