@@ -583,7 +583,7 @@ export default function BatePapo() {
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.usuario_responsavel_id === user?.colaborador_id).length,
-    grupos: conversasValidas.filter(c => isGrupo(c)).length,
+    grupos: conversasValidas.filter(c => isGrupo(c)).length // APENAS GRUPOS
   };
 
   const conversasFiltradas = conversasValidas.filter(c => {
