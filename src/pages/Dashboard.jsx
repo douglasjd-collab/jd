@@ -8,6 +8,8 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import DashboardSelector from '@/components/dashboard/DashboardSelector';
+import DashboardEmprestimos from '@/components/dashboard/DashboardEmprestimos';
 import { 
   ShoppingCart, 
   Wallet, 
