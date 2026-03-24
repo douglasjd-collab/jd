@@ -89,6 +89,30 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
     salvarOrdem(comOrdem);
   };
 
+  const inicializarPadroes = async () => {
+    if (!confirm('Isso vai criar os status padrão no banco para que você possa editá-los e reordená-los. Continuar?')) return;
+    try {
+      await Promise.all(
+        STATUS_PADRAO.map(s =>
+          base44.entities.StatusTarefa.create({
+            empresa_id: empresaId,
+            nome: s.nome,
+            slug: s.slug,
+            cor: s.cor,
+            ordem: s.ordem,
+            ativo: true,
+            e_padrao: true,
+          })
+        )
+      );
+      queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
+      onStatusChanged?.();
+      toast.success('Status padrão criados! Agora você pode editá-los e reordená-los.');
+    } catch {
+      toast.error('Erro ao inicializar status padrão');
+    }
+  };
+
   const criarStatus = useMutation({
     mutationFn: (data) => base44.entities.StatusTarefa.create({
       ...data,
