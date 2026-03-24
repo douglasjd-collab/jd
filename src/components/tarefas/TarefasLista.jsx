@@ -64,7 +64,7 @@ function StatusDropdown({ tarefa, statusList, onUpdate }) {
         {status?.nome || tarefa.status}
       </button>
       {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 bg-white border shadow-lg rounded-xl py-1 min-w-[160px]">
+        <div className="absolute z-50 bottom-full mb-1 left-0 bg-white border shadow-lg rounded-xl py-1 min-w-[160px]">
           {statusList.map(s => (
             <button
               key={s.slug}
