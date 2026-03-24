@@ -288,14 +288,6 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
         {/* ── ABA STATUS / QUADROS ── */}
         {aba === 'status' && (
           <>
-            {statusRaw.length === 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs text-amber-700">Os status padrão estão apenas no sistema. Inicialize-os para poder editar e reordenar.</p>
-                <Button size="sm" variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-100 flex-shrink-0 text-xs" onClick={inicializarPadroes}>
-                  Inicializar
-                </Button>
-              </div>
-            )}
             <p className="text-xs text-slate-400 mb-1">Arraste ou use as setas para reordenar os quadros.</p>
             <DragDropContext onDragEnd={onDragEnd}>
               <Droppable droppableId="status-list">
