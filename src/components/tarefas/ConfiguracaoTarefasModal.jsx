@@ -31,6 +31,8 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
   const [editStatus, setEditStatus] = useState(null);
   const [novoSetor, setNovoSetor] = useState('');
   const [editSetor, setEditSetor] = useState(null);
+  const [novoStatusNome, setNovoStatusNome] = useState('');
+  const [editStatusNome, setEditStatusNome] = useState(null);
   const [statusOrdenado, setStatusOrdenado] = useState([]);
   const queryClient = useQueryClient();
 
