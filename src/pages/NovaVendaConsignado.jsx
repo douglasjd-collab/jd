@@ -777,42 +777,6 @@ export default function NovaVendaConsignado() {
                 </div>
               </div>
               <div>
-                <Label>Tabela</Label>
-                <select
-                  value={formData.tabela_emprestimo_id}
-                  onChange={(e) => handleTabelaChange(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  disabled={!formData.banco || !formData.convenio_id}
-                >
-                  <option value="">Selecione...</option>
-                  {tabelasEmprestimo
-                    .filter(t => {
-                      const bancoMatch = !formData.banco || t.banco === formData.banco;
-                      const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
-                      
-                      // Filtrar por tipo de consignado
-                      let tipoMatch = true;
-                      if (formData.tipo_consignado === 'NOVO') {
-                        tipoMatch = t.produto === 'NOVO' || t.produto === 'Margem Livre';
-                      } else if (formData.tipo_consignado === 'REFINANCIAMENTO') {
-                        tipoMatch = t.produto === 'REFINANCIAMENTO';
-                      } else if (formData.tipo_consignado === 'PORTABILIDADE') {
-                        tipoMatch = t.produto === 'PORTABILIDADE';
-                      } else if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
-                        tipoMatch = t.produto === 'REFIN/PORTABILIDADE';
-                      }
-                      
-                      return bancoMatch && convenioMatch && tipoMatch;
-                    })
-                    .map(t => (
-                      <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
-                    ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
                 <Label>Número do Benefício</Label>
                 <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
               </div>
