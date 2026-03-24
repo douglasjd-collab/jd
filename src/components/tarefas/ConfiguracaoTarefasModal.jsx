@@ -213,7 +213,7 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
         {aba === 'tipos' && (
           <>
             <div className="space-y-2">
-              {tiposList.map((tipo, idx) => (
+              {tiposList.filter(t => t != null && typeof t === 'string').map((tipo, idx) => (
                 <div key={idx} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
                   {editTipo?.original === tipo ? (
                     <>
