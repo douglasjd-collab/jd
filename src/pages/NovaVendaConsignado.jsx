@@ -383,7 +383,7 @@ export default function NovaVendaConsignado() {
       );
     }
 
-    if (formData.tipo_consignado === 'PORTABILIDADE_PURA') {
+    if (formData.tipo_consignado === 'PORTABILIDADE') {
       return (
         <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-4">
           <h3 className="font-semibold text-purple-900 mb-4">Dados da Portabilidade</h3>
