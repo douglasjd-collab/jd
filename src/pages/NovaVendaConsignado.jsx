@@ -743,7 +743,7 @@ export default function NovaVendaConsignado() {
                         tipoMatch = t.produto === 'NOVO' || t.produto === 'Margem Livre';
                       } else if (formData.tipo_consignado === 'REFINANCIAMENTO') {
                         tipoMatch = t.produto === 'REFINANCIAMENTO';
-                      } else if (formData.tipo_consignado === 'PORTABILIDADE_PURA') {
+                      } else if (formData.tipo_consignado === 'PORTABILIDADE') {
                         tipoMatch = t.produto === 'PORTABILIDADE';
                       } else if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
                         tipoMatch = t.produto === 'REFIN/PORTABILIDADE';
