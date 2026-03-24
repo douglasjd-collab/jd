@@ -317,6 +317,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
         onOpenChange={setResponsaveisModalOpen}
         tarefa={tarefaResponsaveisModal}
         colaboradores={colaboradores}
+        onUpdate={onUpdate}
       />
 
       <SelecionarStatusModal
