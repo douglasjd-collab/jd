@@ -8,6 +8,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SelecionarStatusResponsaveisModal from './SelecionarStatusResponsaveisModal';
 import TarefaDetalhesModal from './TarefaDetalhesModal';
+import ResponsaveisModal from './ResponsaveisModal';
 
 const PRIORIDADE_CORES = {
   baixa: 'bg-slate-100 text-slate-600',
