@@ -663,69 +663,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Cards de Empréstimos do Mês */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-emerald-100">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-11 h-11 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Empréstimos Pagos no Mês</p>
-              <p className="text-2xl font-bold text-emerald-700">{formatCurrency(valorLiquidoPagoMes)}</p>
-              <p className="text-xs text-slate-400 mt-0.5">Valor Liberado</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">{propostasPagasMes.length} proposta(s) paga(s)</p>
-            <p className="text-sm text-slate-500">Bruto: <span className="font-medium text-slate-700">{formatCurrency(valorBrutoPagoMes)}</span></p>
-          </div>
-        </div>
 
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-orange-100">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-11 h-11 bg-orange-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Empréstimos em Andamento</p>
-              <p className="text-2xl font-bold text-orange-700">{formatCurrency(valorLiquidoAndamento)}</p>
-              <p className="text-xs text-slate-400 mt-0.5">Valor Liberado (total)</p>
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">{propostasEmAndamento.length} proposta(s) em andamento</p>
-            <p className="text-sm text-slate-500">Bruto: <span className="font-medium text-slate-700">{formatCurrency(valorBrutoAndamento)}</span></p>
-          </div>
-        </div>
-      </div>
-
-      {/* Gráfico de Empréstimos por Mês */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Propostas de Empréstimos por Mês</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={propostasEmprestimosPorMes}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Qtd', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="right" orientation="right" stroke="#23BE84" fontSize={12} tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                formatter={(value, name) => {
-                  if (name === 'pagas') return [value, 'Quantidade'];
-                  if (name === 'valor') return [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor Total'];
-                  return [value, name];
-                }}
-              />
-              <Bar dataKey="pagas" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
