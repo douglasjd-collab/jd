@@ -188,6 +188,8 @@ export default function PropostaEditModal({ open, onOpenChange, propostaId, onSu
     onChange: (e) => handleChange(field, e.target.value),
   });
 
+  const isPortabilidade = formData.emprestimo_tipo === 'PORTABILIDADE_PURA' || formData.emprestimo_tipo === 'REFIN_PORTABILIDADE';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh]">
