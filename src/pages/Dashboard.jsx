@@ -444,7 +444,7 @@ export default function Dashboard() {
     });
   }, [clientesFiltrados]);
 
-  // Lógica das propostas de empréstimo filtradas por mês
+  // Lógica das propostas de empréstimo
   const normStr = s => String(s || '').toLowerCase().trim();
   const statusPagoIds = statusPropostaList
     .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStr(s.nome)))
@@ -460,34 +460,38 @@ export default function Dashboard() {
     (p.status_id && statusCanceladoIds.includes(p.status_id)) ||
     normStr(p.status) === 'cancelado';
 
-  const propostasMes = React.useMemo(() => {
-    return propostasEmprestimo.filter(p => {
+  // Propostas pagas no mês: usa data de liberação (ou data_venda como fallback)
+  const propostasPagasMes = React.useMemo(() => {
+    const base = propostasEmprestimo.filter(p => {
       if (isCanceladaProposta(p)) return false;
-      if (isPagaProposta(p)) {
-        // Para pagas, usar data de liberação (pagamento)
-        const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
-        return dataPag.startsWith(mesSelecionado);
-      }
-      // Para em andamento, usar data de venda
-      const dataVenda = p.data_venda || '';
-      return dataVenda.startsWith(mesSelecionado);
+      if (!isPagaProposta(p)) return false;
+      const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
+      return dataPag.startsWith(mesSelecionado);
     });
-  }, [propostasEmprestimo, mesSelecionado, statusPagoIds, statusCanceladoIds]);
-
-  const propostasMesFiltradas = React.useMemo(() => {
     if (isVendedor && user?.colaborador_id) {
-      return propostasMes.filter(p => p.vendedor_id === user.colaborador_id);
+      return base.filter(p => p.vendedor_id === user.colaborador_id);
     }
-    return propostasMes;
-  }, [propostasMes, isVendedor, user]);
+    return base;
+  }, [propostasEmprestimo, mesSelecionado, isVendedor, user, statusPagoIds, statusCanceladoIds]);
 
-  const propostasPagasMes = propostasMesFiltradas.filter(isPagaProposta);
+  // Propostas em andamento: todas que não estão pagas nem canceladas (independente do mês)
+  const propostasEmAndamento = React.useMemo(() => {
+    const base = propostasEmprestimo.filter(p => {
+      if (isCanceladaProposta(p)) return false;
+      if (isPagaProposta(p)) return false;
+      return true;
+    });
+    if (isVendedor && user?.colaborador_id) {
+      return base.filter(p => p.vendedor_id === user.colaborador_id);
+    }
+    return base;
+  }, [propostasEmprestimo, isVendedor, user, statusPagoIds, statusCanceladoIds]);
+
   const valorBrutoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   const valorLiquidoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
 
-  const propostasEmAndamentoMes = propostasMesFiltradas.filter(p => !isPagaProposta(p));
-  const valorBrutoAndamentoMes = propostasEmAndamentoMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
-  const valorLiquidoAndamentoMes = propostasEmAndamentoMes.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
+  const valorBrutoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+  const valorLiquidoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
 
   // Gerar lista dos últimos 12 meses para o select
   const mesesDisponiveis = React.useMemo(() => {
