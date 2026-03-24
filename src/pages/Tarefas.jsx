@@ -83,7 +83,8 @@ export default function Tarefas() {
   });
 
   const statusList = useMemo(() => {
-    if (statusCustom.length > 0) return [...statusCustom].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    const validos = statusCustom.filter(s => s != null && s.nome != null);
+    if (validos.length > 0) return [...validos].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     return STATUS_PADRAO;
   }, [statusCustom]);
 
