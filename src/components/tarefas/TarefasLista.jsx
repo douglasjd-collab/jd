@@ -137,6 +137,8 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
   const [abaDetalhes, setAbaDetalhes] = useState('detalhes');
   const [responsaveisModalOpen, setResponsaveisModalOpen] = useState(false);
   const [tarefaResponsaveisModal, setTarefaResponsaveisModal] = useState(null);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [tarefaStatusModal, setTarefaStatusModal] = useState(null);
   const [tarefaEditando, setTarefaEditando] = useState(null);
   const hoje = format(new Date(), 'yyyy-MM-dd');
 
