@@ -551,11 +551,19 @@ export default function BatePapo() {
     })();
   }, [conversaSelecionada?.id, conversaSelecionada?.cliente_telefone, empresaId]);
 
+  // Normalizar telefone para +55 DD NNNNNNNNN
+  const normalizarTelefone = (tel) => {
+    if (!tel) return null;
+    const n = tel.replace(/\D/g, '');
+    if (n.startsWith('55') && (n.length === 12 || n.length === 13)) {
+      return '+' + n;
+    }
+    return null;
+  };
+
   // Validação estrita: só números BR válidos (55 + DDD + número = 12 ou 13 dígitos)
   const isTelefoneValido = (tel) => {
-    if (!tel) return false;
-    const n = tel.replace(/\D/g, '');
-    return n.startsWith('55') && (n.length === 12 || n.length === 13);
+    return normalizarTelefone(tel) !== null;
   };
 
   // Helper: detectar se é grupo
@@ -565,8 +573,8 @@ export default function BatePapo() {
     return wid.includes('@g.us') || tel.endsWith('@g.us') || wid.endsWith('-') || tel.length > 13;
   };
 
-  // Conversas válidas — mostrar TODAS as conversas (grupos e individuais, independente do formato do telefone)
-  const conversasValidas = conversas;
+  // Conversas válidas — apenas grupos + telefones BR válidos (evita duplicação)
+  const conversasValidas = conversas.filter(c => isGrupo(c) || isTelefoneValido(c.cliente_telefone));
 
   // Contadores por aba
   const contadores = {
