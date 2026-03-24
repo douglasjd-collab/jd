@@ -845,8 +845,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Aniversariantes da Semana */}
-        <Card className="border-0 shadow-sm">
+            {/* Aniversariantes da Semana */}
+            <Card className="border-0 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <Cake className="w-5 h-5 text-pink-500" />
