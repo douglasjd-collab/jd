@@ -935,10 +935,10 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      )}
+          )}
 
-      {/* Oportunidades Recentes */}
-      <Card className="border-0 shadow-sm">
+          {/* Oportunidades Recentes */}
+          <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Oportunidades em Aberto</CardTitle>
         </CardHeader>
