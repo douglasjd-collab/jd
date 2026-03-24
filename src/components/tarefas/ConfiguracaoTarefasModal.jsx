@@ -277,8 +277,10 @@ export default function ConfiguracaoTarefasModal({ open, onOpenChange, empresaId
             ⚙️ Configurações de Tarefas
           </DialogTitle>
         </DialogHeader>
-        {open && empresaId && (
-          <ConteudoModal empresaId={empresaId} onStatusChanged={onStatusChanged} />
+        {open && (
+          empresaId
+            ? <ConteudoModal empresaId={empresaId} onStatusChanged={onStatusChanged} />
+            : <p className="text-sm text-slate-500 py-6 text-center">Selecione uma empresa para configurar os status e tipos de tarefa.</p>
         )}
       </DialogContent>
     </Dialog>
