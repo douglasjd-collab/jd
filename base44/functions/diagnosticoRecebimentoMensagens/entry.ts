@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { empresa_id } = await req.json();
+    const body = await req.json();
+    const empresa_id = body.empresa_id;
 
     if (!empresa_id) {
       return Response.json({ error: 'empresa_id is required' }, { status: 400 });
@@ -28,7 +29,9 @@ Deno.serve(async (req) => {
     );
 
     // Analisar cada conversa
-    const diagnostico = conversas.map(conversa => {
+    const diagnostico = [];
+    
+    for (const conversa of conversas) {
       const contatoMatch = contatos.find(c => 
         c.telefone === conversa.cliente_telefone || 
         c.telefone.replace(/\D/g, '') === conversa.cliente_telefone.replace(/\D/g, '')
@@ -55,16 +58,13 @@ Deno.serve(async (req) => {
       }
 
       // Buscar últimas mensagens
-      let ultimasMensagens = [];
-      if (conversa.id) {
-        ultimasMensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-          { conversa_id: conversa.id },
-          '-created_date',
-          5
-        );
-      }
+      const ultimasMensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+        { conversa_id: conversa.id },
+        '-created_date',
+        5
+      );
 
-      return {
+      diagnostico.push({
         conversa_id: conversa.id,
         cliente_nome: conversa.cliente_nome,
         cliente_telefone: conversa.cliente_telefone,
@@ -81,8 +81,8 @@ Deno.serve(async (req) => {
           data_envio: m.data_envio,
           status: m.status
         }))
-      };
-    });
+      });
+    }
 
     // Resumo de problemas
     const comProblemas = diagnostico.filter(d => d.issues[0] !== 'OK');
