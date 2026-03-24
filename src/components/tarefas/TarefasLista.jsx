@@ -149,7 +149,7 @@ function ResponsaveisPopover({ tarefa, colaboradores, onUpdate }) {
         )}
       </button>
       {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 bg-white border shadow-lg rounded-xl py-1 min-w-[200px] max-h-64 overflow-y-auto">
+        <div className="absolute z-50 bottom-full mb-1 left-0 bg-white border shadow-lg rounded-xl py-1 min-w-[200px] max-h-64 overflow-y-auto">
           <p className="text-xs text-slate-400 font-semibold px-3 pt-2 pb-1 uppercase tracking-wide">Responsáveis</p>
           {colaboradores.map(colab => {
             const selected = responsaveisIds.includes(colab.id);
