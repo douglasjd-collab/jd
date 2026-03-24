@@ -529,9 +529,19 @@ export default function NovaVendaEmprestimoPessoal() {
               </div>
             )}
 
-            {/* Número do Contrato (apenas para NOVO, CARTÃO, etc) */}
-            {formData.tipo_emprestimo !== 'PORTABILIDADE_PURA' && formData.tipo_emprestimo !== 'REFIN_PORTABILIDADE' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Data de Cadastro - aparece para todos os tipos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Data de Cadastro *</Label>
+                <Input
+                  type="date"
+                  value={formData.data_cadastro}
+                  onChange={(e) => setFormData({ ...formData, data_cadastro: e.target.value })}
+                  required
+                />
+              </div>
+              {/* Número do Contrato (apenas para NOVO, CARTÃO, etc) */}
+              {formData.tipo_emprestimo !== 'PORTABILIDADE_PURA' && formData.tipo_emprestimo !== 'REFIN_PORTABILIDADE' && (
                 <div>
                   <Label>Número do Contrato</Label>
                   <Input
@@ -539,21 +549,25 @@ export default function NovaVendaEmprestimoPessoal() {
                     onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label>Status</Label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  >
-                    <option value="em_andamento">Em andamento</option>
-                    <option value="pendente">Pendente</option>
-                    <option value="aguardando_formalizacao">Aguardando formalização</option>
-                    <option value="aguardando_pagamento">Aguardando pagamento</option>
-                    <option value="pago">Pago</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
-                </div>
+              )}
+            </div>
+
+            {/* Status (apenas para NOVO, CARTÃO, etc) */}
+            {formData.tipo_emprestimo !== 'PORTABILIDADE_PURA' && formData.tipo_emprestimo !== 'REFIN_PORTABILIDADE' && (
+              <div>
+                <Label>Status</Label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
+                  <option value="em_andamento">Em andamento</option>
+                  <option value="pendente">Pendente</option>
+                  <option value="aguardando_formalizacao">Aguardando formalização</option>
+                  <option value="aguardando_pagamento">Aguardando pagamento</option>
+                  <option value="pago">Pago</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
               </div>
             )}
 
