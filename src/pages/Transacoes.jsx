@@ -106,7 +106,6 @@ export default function Transacoes() {
 
   const hoje = moment().format('YYYY-MM-DD');
   const em7dias = moment().add(7, 'days').format('YYYY-MM-DD');
-  const mesAtual = moment().format('YYYY-MM');
 
   const getStatusDespesa = (d) => {
     if (d.status === 'pago' || d.status === 'paga') return 'pago';
