@@ -6,6 +6,7 @@ import { X, Pencil, Trash2, AlignLeft, Check, MessageSquarePlus, Send, Loader2 }
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import SelecionarStatusResponsaveisModal from './SelecionarStatusResponsaveisModal';
 
 const PRIORIDADE_CORES = {
   baixa: 'bg-slate-100 text-slate-600',
