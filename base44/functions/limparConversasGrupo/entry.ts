@@ -23,15 +23,13 @@ Deno.serve(async (req) => {
       1000
     );
 
-    // Detectar grupos
-    const isGrupo = (c) => {
+    // Filtrar conversas falsas com @lid (números inválidos do WhatsApp)
+    const conversasFalsas = conversas.filter(c => {
       const tel = (c.cliente_telefone || '').replace(/\D/g, '');
       const wid = c.whatsapp_id || '';
-      return wid.includes('@g.us') || tel.endsWith('@g.us') || wid.endsWith('-') || tel.length > 13;
-    };
-
-    // Filtrar apenas grupos
-    const grupos = conversas.filter(c => isGrupo(c));
+      // @lid são contatos com privacidade ativada - não são números válidos
+      return wid.includes('@lid') || tel.includes('lid') || tel.startsWith('lid');
+    });
 
     if (grupos.length === 0) {
       return Response.json({ 
