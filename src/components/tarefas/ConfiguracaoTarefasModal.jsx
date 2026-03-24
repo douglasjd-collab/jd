@@ -54,7 +54,10 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
     queryFn: async () => {
       try {
         const configs = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'tipos_tarefa' });
-        if (configs.length > 0 && configs[0].valor) return JSON.parse(configs[0].valor);
+        if (configs.length > 0 && configs[0].valor) {
+          const parsed = JSON.parse(configs[0].valor);
+          return Array.isArray(parsed) ? parsed.filter(t => t != null && typeof t === 'string') : TIPOS_PADRAO;
+        }
       } catch {}
       return TIPOS_PADRAO;
     },
