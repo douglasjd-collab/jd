@@ -85,21 +85,40 @@ export default function ResponsaveisModal({ open, onOpenChange, tarefa, colabora
           ))}
 
           {showAdicionarMenu ? (
-            <div className="border rounded-lg p-2 space-y-1 bg-slate-50">
-              {naoAtribuidos.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-2">Todos os colaboradores já estão atribuídos.</p>
-              ) : (
-                naoAtribuidos.map(colab => (
-                  <button
-                    key={colab.id}
-                    onClick={() => handleAdicionarResponsavel(colab.id)}
-                    className="w-full flex items-center gap-2 p-2 hover:bg-slate-200 rounded transition-colors text-left"
-                  >
-                    <Iniciais nome={colab.nome} foto={colab.foto_perfil} size="sm" />
-                    <span className="text-xs font-medium truncate">{colab.nome}</span>
-                  </button>
-                ))
-              )}
+            <div className="border rounded-lg bg-slate-50 overflow-y-auto max-h-48" style={{ scrollbarWidth: 'auto', scrollbarColor: '#cbd5e1 transparent' }}>
+              <style>{`
+                div::-webkit-scrollbar {
+                  width: 8px;
+                }
+                div::-webkit-scrollbar-track {
+                  background: transparent;
+                }
+                div::-webkit-scrollbar-thumb {
+                  background-color: #cbd5e1;
+                  border-radius: 4px;
+                  border: 2px solid transparent;
+                  background-clip: content-box;
+                }
+                div::-webkit-scrollbar-thumb:hover {
+                  background-color: #94a3b8;
+                }
+              `}</style>
+              <div className="space-y-1 p-2">
+                {naoAtribuidos.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-2">Todos os colaboradores já estão atribuídos.</p>
+                ) : (
+                  naoAtribuidos.map(colab => (
+                    <button
+                      key={colab.id}
+                      onClick={() => handleAdicionarResponsavel(colab.id)}
+                      className="w-full flex items-center gap-2 p-2 hover:bg-slate-200 rounded transition-colors text-left"
+                    >
+                      <Iniciais nome={colab.nome} foto={colab.foto_perfil} size="sm" />
+                      <span className="text-xs font-medium truncate">{colab.nome}</span>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           ) : (
             <Button
