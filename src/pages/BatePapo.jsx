@@ -303,16 +303,19 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
+        console.log(`📥 Buscando mensagens da conversa: ${conversaSelecionadaId}`);
         // Buscar as 300 MAIS RECENTES (desc) e inverter para exibir em ordem cronológica
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionadaId },
           '-data_envio',
           300
         );
+        console.log(`✅ ${msgs.length} mensagens encontradas`);
         const ordenadas = [...msgs].reverse();
         // Marcar mensagens do cliente como lidas INSTANTANEAMENTE
         const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
         if (naoLidas.length > 0) {
+          console.log(`📌 Marcando ${naoLidas.length} mensagens como lidas`);
           await Promise.all(naoLidas.map(msg => 
             base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
           ));
@@ -320,7 +323,7 @@ export default function BatePapo() {
         return ordenadas;
       },
       staleTime: 0,
-      refetchInterval: false, // Real-time via subscription — sem polling
+      refetchInterval: false,
   });
 
   // Solicitar permissão para notificações do browser na primeira vez
