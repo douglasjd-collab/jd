@@ -220,16 +220,14 @@ Deno.serve(async (req) => {
         }
         else conteudo = JSON.stringify(message).substring(0, 100);
 
-        // Normalizar telefone
-        let telefoneNormalizado = telefoneLimpo;
+        // Variações do telefone (com e sem 9º dígito) — buscar nos dois formatos
+        const telefonesVariacoes = [telefoneLimpo];
         if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
-          telefoneNormalizado = telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4);
+          telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
+        } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+          telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
         }
-
-        const telefonesVariacoes = [telefoneNormalizado];
-        if (telefoneNormalizado.startsWith('55') && telefoneNormalizado.length === 13) {
-          telefonesVariacoes.push(telefoneNormalizado.slice(0, 4) + telefoneNormalizado.slice(5));
-        }
+        const telefoneNormalizado = telefoneLimpo;
 
         // Buscar/criar conversa
         let conversa = null;
