@@ -466,28 +466,28 @@ export default function NovaVendaConsignado() {
         <div className="space-y-3">
           {/* Dados do contrato de origem */}
           <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-2">
-            <h3 className="font-semibold text-purple-900">Informação da Portabilidade</h3>
+            <h3 className="font-semibold text-purple-900">Informações da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <Label>Código do Banco de Origem</Label>
+                <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Código do Banco</Label>
                 <Input
                   value={formData.origem_banco}
                   onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })}
-                  placeholder="Ex: 341, 001, 033..."
-                />
+                  placeholder="Ex: 341, 001, 033..." />
+                
               </div>
               <div>
-                <Label>Banco de Origem *</Label>
+                <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Banco*</Label>
                 <select
                   value={formData.banco_anterior}
                   onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  required
-                >
+                  required>
+                  
                   <option value="">Selecione o banco...</option>
-                  {bancos.map((b) => (
-                    <option key={b.id} value={b.nome}>{b.nome}</option>
-                  ))}
+                  {bancos.map((b) =>
+                  <option key={b.id} value={b.nome}>{b.nome}</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -509,7 +509,7 @@ export default function NovaVendaConsignado() {
                 </div>
               </div>
               <div>
-                <Label>Qt. Parc. a Vencer *</Label>
+                <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Qt. Parcelas a Vencer *</Label>
                 <Input type="number" placeholder="Ex: 48" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
               </div>
               <div>
@@ -531,7 +531,7 @@ export default function NovaVendaConsignado() {
 
           {/* Dados da nova proposta portada */}
           <div className="border-l-4 border-l-blue-500 pl-4 py-2 bg-blue-50 rounded space-y-2">
-            <h3 className="font-semibold text-blue-900">Dados da Portabilidade</h3>
+            <h3 className="font-semibold text-blue-900">Informações do Refin da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Valor Liberado *</Label>
@@ -572,7 +572,7 @@ export default function NovaVendaConsignado() {
                 <Label>Banco de Origem *</Label>
                 <select value={formData.banco_anterior} onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" required>
                   <option value="">Selecione o banco...</option>
-                  {bancos.map((b) => (<option key={b.id} value={b.nome}>{b.nome}</option>))}
+                  {bancos.map((b) => <option key={b.id} value={b.nome}>{b.nome}</option>)}
                 </select>
               </div>
               <div>
