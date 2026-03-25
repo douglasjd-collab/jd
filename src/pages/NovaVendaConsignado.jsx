@@ -231,6 +231,7 @@ export default function NovaVendaConsignado() {
 
   const calcularComissoes = (dadosForm) => {
     const valorLiberado = parseFloat(dadosForm.valor_liberado) || 0;
+    const valorBruto = parseFloat(dadosForm.valor_bruto) || 0;
     const prazo = parseInt(dadosForm.prazo) || 0;
     const tipo = dadosForm.tipo_consignado;
     const convenioId = dadosForm.convenio_id;
@@ -242,16 +243,23 @@ export default function NovaVendaConsignado() {
       const convenioMatch = !t.convenio_id || t.convenio_id === convenioId;
       const bancoMatch = !t.banco || t.banco === banco;
       const prazoMatch = prazo >= t.prazo_min && prazo <= t.prazo_max;
-      
       return tipoMatch && convenioMatch && bancoMatch && prazoMatch;
     });
 
-    if (tabelaAplicavel && valorLiberado > 0) {
-      const comissaoEmpresa = (valorLiberado * tabelaAplicavel.percentual_comissao_empresa) / 100;
-      const comissaoVendedor = (valorLiberado * tabelaAplicavel.percentual_comissao_vendedor) / 100;
+    // Calcular base de comissão automática (se não foi editada manualmente)
+    const tabelaBaseComissao = tabelaAplicavel?.base_comissao || null;
+    const baseAuto = getBaseComissaoAutomatica(tipo, valorLiberado, valorBruto, tabelaBaseComissao);
+
+    // Usar o valor_base_comissao já no form se foi preenchido manualmente, senão auto
+    const base = parseFloat(dadosForm.valor_base_comissao) > 0 ? parseFloat(dadosForm.valor_base_comissao) : baseAuto;
+
+    if (tabelaAplicavel && base > 0) {
+      const comissaoEmpresa = (base * tabelaAplicavel.percentual_comissao_empresa) / 100;
+      const comissaoVendedor = (base * tabelaAplicavel.percentual_comissao_vendedor) / 100;
 
       setFormData({
         ...dadosForm,
+        valor_base_comissao: baseAuto.toFixed(2),
         tabela_comissao_id: tabelaAplicavel.id,
         percentual_comissao_empresa: tabelaAplicavel.percentual_comissao_empresa,
         comissao_empresa_prevista: comissaoEmpresa.toFixed(2),
@@ -261,6 +269,7 @@ export default function NovaVendaConsignado() {
     } else {
       setFormData({
         ...dadosForm,
+        valor_base_comissao: baseAuto > 0 ? baseAuto.toFixed(2) : dadosForm.valor_base_comissao,
         tabela_comissao_id: '',
         percentual_comissao_empresa: '',
         comissao_empresa_prevista: '',
