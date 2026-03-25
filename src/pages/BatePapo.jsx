@@ -490,7 +490,8 @@ export default function BatePapo() {
           data_ultima_mensagem: new Date().toISOString()
         });
       }
-      await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
+      // NÃO invalidar mensagens aqui — a subscription real-time já adiciona a mensagem confirmada
+      // Apenas atualizar a lista de conversas
       await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       toast.success('Mensagem enviada');
     }
