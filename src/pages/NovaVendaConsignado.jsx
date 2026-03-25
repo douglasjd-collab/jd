@@ -339,16 +339,34 @@ export default function NovaVendaConsignado() {
     }
   };
 
+  // Atualiza base automaticamente quando tipo ou valores mudam (sem tabela de comissão manual)
+  useEffect(() => {
+    if (!formData.tabela_emprestimo_id) {
+      const valorLiberado = parseFloat(formData.valor_liberado) || 0;
+      const valorBruto = parseFloat(formData.valor_bruto) || 0;
+      const baseAuto = getBaseComissaoAutomatica(formData.tipo_consignado, valorLiberado, valorBruto, null);
+      if (baseAuto > 0) {
+        setFormData(prev => ({ ...prev, valor_base_comissao: baseAuto.toFixed(2) }));
+      }
+    }
+  }, [formData.tipo_consignado, formData.valor_liberado, formData.valor_bruto]);
+
   // Recalcular comissões quando valor mudar e tabela estiver selecionada
   useEffect(() => {
-    if (formData.tabela_emprestimo_id && formData.valor_liberado) {
+    if (formData.tabela_emprestimo_id && (formData.valor_liberado || formData.valor_bruto)) {
       const tabela = tabelasEmprestimo.find(t => t.id === formData.tabela_emprestimo_id);
       if (tabela) {
         const valorLiberado = parseFloat(formData.valor_liberado) || 0;
-        const comissaoEmpresa = valorLiberado > 0 ? (valorLiberado * tabela.comissao_empresa) / 100 : 0;
-        const comissaoVendedor = valorLiberado > 0 ? (valorLiberado * (tabela.comissao_corretor || 0)) / 100 : 0;
+        const valorBruto = parseFloat(formData.valor_bruto) || 0;
+        // Usa base_comissao manual se existir, senão recalcula automático
+        const baseManual = parseFloat(formData.valor_base_comissao) || 0;
+        const baseAuto = getBaseComissaoAutomatica(formData.tipo_consignado, valorLiberado, valorBruto, tabela.base_comissao || null);
+        const base = baseManual > 0 ? baseManual : baseAuto;
+        const comissaoEmpresa = base > 0 ? (base * tabela.comissao_empresa) / 100 : 0;
+        const comissaoVendedor = base > 0 ? (base * (tabela.comissao_corretor || 0)) / 100 : 0;
         setFormData(prev => ({
           ...prev,
+          valor_base_comissao: baseAuto > 0 ? baseAuto.toFixed(2) : prev.valor_base_comissao,
           percentual_comissao_empresa: tabela.comissao_empresa,
           comissao_empresa_prevista: comissaoEmpresa.toFixed(2),
           percentual_comissao_vendedor: tabela.comissao_corretor || 0,
@@ -356,7 +374,7 @@ export default function NovaVendaConsignado() {
         }));
       }
     }
-  }, [formData.valor_liberado, formData.tabela_emprestimo_id]);
+  }, [formData.valor_liberado, formData.valor_bruto, formData.tabela_emprestimo_id]);
 
   const renderCamposPorTipo = () => {
     if (['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_BENEFICIO', 'CARTAO_CONSIGNADO', 'SAQUE'].includes(formData.tipo_consignado)) {
