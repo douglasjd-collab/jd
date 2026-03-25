@@ -700,7 +700,7 @@ export default function BatePapo() {
 
         <div className="mx-auto flex h-[calc(100vh-2rem)] max-w-7xl gap-3">
           {/* Coluna esquerda - Conversas */}
-          <Card className="flex w-[320px] flex-col overflow-hidden">
+          <Card className="flex w-[320px] flex-col overflow-hidden [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-600 text-xs font-semibold text-white shadow-sm">
