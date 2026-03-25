@@ -631,10 +631,10 @@ export default function Dashboard() {
               <DollarSign className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Total de Receitas</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(comissoesReceber)}</p>
-              {comissoesPendentesReceber > 0 && (
-                <p className="text-xs text-slate-400 mt-1">Pendente: {formatCurrency(comissoesPendentesReceber)}</p>
+              <p className="text-sm text-slate-500">Total de Vendas (Mês)</p>
+              <p className="text-2xl font-bold text-green-700">{formatCurrency(valorTotalVendas)}</p>
+              {totalVendasMes > 0 && (
+                <p className="text-xs text-slate-400 mt-1">{totalVendasMes} vendas</p>
               )}
             </div>
           </div>
