@@ -287,7 +287,7 @@ export default function BatePapo() {
 
   // Polling rápido (a cada 5s) para garantir mensagens em tempo real
   useEffect(() => {
-    if (!empresaId || !conversaSelecionadaId) return;
+    if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(async () => {
       try {
         console.log(`🔄 Polling de mensagens... conversa: ${conversaSelecionadaId}`);
