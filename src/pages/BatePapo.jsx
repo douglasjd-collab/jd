@@ -808,7 +808,7 @@ export default function BatePapo() {
               </div>
             </CardHeader>
 
-            <CardContent className="flex flex-1 flex-col gap-3 pt-0">
+            <CardContent className="flex flex-1 flex-col gap-3 pt-0 overflow-hidden">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
@@ -860,7 +860,7 @@ export default function BatePapo() {
                 </TabsList>
               </Tabs>
 
-              <ScrollArea className="mt-1 flex-1">
+              <ScrollArea className="mt-1 flex-1 w-full">
                 <div className="space-y-1 pb-4 pr-4">
                   {conversasFiltradas.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-slate-400">
