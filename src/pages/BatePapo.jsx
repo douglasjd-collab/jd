@@ -248,6 +248,8 @@ export default function BatePapo() {
     refetchInterval: false,
   });
 
+  const conversaSelecionadaId = conversaSelecionada?.id || null;
+
   // Selecionar conversa inicial quando a lista carrega
   // Também re-sincronizar conversa selecionada se o ID mudou (após deduplicação)
   useEffect(() => {
@@ -292,10 +294,6 @@ export default function BatePapo() {
     }, 5000);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId]);
-
-
-
-  const conversaSelecionadaId = conversaSelecionada?.id || null;
 
   const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
