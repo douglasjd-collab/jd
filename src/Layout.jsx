@@ -27,7 +27,8 @@ import {
         Sun,
         Loader2,
         CheckSquare,
-        Plug
+        Plug,
+        Send
       } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -296,6 +297,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Configuração API', icon: Plug, page: 'ConfiguracaoApi', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
   ];
 
   // Mapa de chave de permissão por nome do menu
