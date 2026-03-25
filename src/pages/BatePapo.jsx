@@ -843,6 +843,7 @@ export default function BatePapo() {
                     { value: 'arquivada', label: 'Finalizados' },
                     { value: 'transferida', label: 'Transferidos' },
                     { value: 'meu', label: 'Meu Atend.' },
+                    { value: 'comHistorico', label: 'Com Msg' },
                   ].map(tab => (
                     <TabsTrigger
                       key={tab.value}
