@@ -314,6 +314,27 @@ export default function ContatosCRM() {
     }
   };
 
+  const colarContatosPasta = async () => {
+    const linhas = contatosPasta.split('\n').filter(l => l.trim());
+    if (linhas.length === 0) return toast.error('Cole algum texto');
+    setSalvandoPasta(true);
+    try {
+      const resp = await base44.functions.invoke('importarContatosCRM', {
+        contatos: linhas,
+        empresa_id: empresaId
+      });
+      const dados = resp.data;
+      toast.success(`✅ ${dados.criados} salvos`);
+      queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
+      setColartextoOpen(false);
+      setContatosPasta('');
+    } catch (e) {
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setSalvandoPasta(false);
+    }
+  };
+
   useEffect(() => { loadUser(); }, []);
 
   const loadUser = async () => {
