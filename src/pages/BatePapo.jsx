@@ -934,7 +934,7 @@ export default function BatePapo() {
                           <div className="flex items-center justify-between gap-1">
                             <p className="truncate text-sm font-semibold text-slate-900 flex items-center gap-1">
                               {isGrupo(c) && <Users className="w-3 h-3 text-sky-500 flex-shrink-0" />}
-                              {contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone}
+                              {c.cliente_telefone}
                             </p>
                             {c.data_ultima_mensagem && (
                               <p className="whitespace-nowrap text-[11px] text-slate-400 flex-shrink-0">
