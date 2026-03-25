@@ -188,13 +188,10 @@ async function processarWebhook(req, rawBody) {
   const message = msgData.message || {};
   const pushName = msgData.pushName || msgData.senderName || 'Cliente';
   const fromMe = key.fromMe === true;
-  const remoteJidRaw = (key.remoteJid || '').includes('@lid') && key.remoteJidAlt
-    ? key.remoteJidAlt
-    : (key.remoteJid || '');
   const remoteJidOriginal = key.remoteJid || '';
   const messageId = key.id || `gen_${Date.now()}`;
 
-  if (remoteJidRaw.includes('@g.us')) {
+  if (remoteJidOriginal.includes('@g.us')) {
     console.log('⏭️ Grupo ignorado');
     return;
   }
@@ -204,41 +201,64 @@ async function processarWebhook(req, rawBody) {
   let colaboradorId = null;
   let tipoConexao = 'empresa';
 
-  let telefoneLimpo = extrairTelefoneValido(remoteJidRaw);
+  // Tentar extrair telefone diretamente (quando não é @lid)
+  let telefoneLimpo = extrairTelefoneValido(remoteJidOriginal);
   if (telefoneLimpo) telefoneLimpo = normalizarParaBR(telefoneLimpo);
 
-  // Tentar resolver @lid (tanto do remoteJidRaw quanto do remoteJidOriginal)
-  const jidParaResolver = remoteJidRaw.includes('@lid') ? remoteJidRaw
-    : remoteJidOriginal.includes('@lid') ? remoteJidOriginal : null;
+  // Se o JID é @lid, tentar resolver SEMPRE (banco → Evolution API → remoteJidAlt)
+  if (remoteJidOriginal.includes('@lid')) {
+    const lidNumerico = remoteJidOriginal.replace(/@lid/g, '').replace(/\D/g, '');
+    console.log(`🔍 @lid detectado: "${lidNumerico}" (${pushName})`);
 
-  if (!telefoneLimpo && jidParaResolver) {
-    const lidNumerico = jidParaResolver.replace(/@lid/g, '').replace(/\D/g, '');
-    console.log(`🔍 Tentando resolver LID: "${lidNumerico}"`);
-    // Tentar resolver via ContatoWhatsapp e Evolution em paralelo
-    const [contatosLid, empresaData] = await Promise.all([
-      base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, lid_jid: lidNumerico }),
-      base44.asServiceRole.entities.Empresa.filter({ id: JD_ID })
-    ]);
+    // 1. Verificar cache no banco (ContatoWhatsapp)
+    const contatosLid = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+      empresa_id: empresaId, lid_jid: lidNumerico
+    });
 
-    if (contatosLid.length > 0) {
+    if (contatosLid.length > 0 && contatosLid[0].telefone && !contatosLid[0].telefone.includes('@')) {
       telefoneLimpo = contatosLid[0].telefone;
-    } else if (empresaData?.[0]?.evolution_url) {
-      const emp = empresaData[0];
-      telefoneLimpo = await resolverLidParaTelefone(
-        remoteJidRaw, emp.evolution_url.replace(/\/$/, ''), emp.evolution_api_key, emp.evolution_instance_name
-      );
+      console.log(`✅ @lid resolvido via cache: ${telefoneLimpo}`);
+    } else {
+      // 2. Tentar via remoteJidAlt (vem no payload em alguns casos)
+      if (key.remoteJidAlt && !key.remoteJidAlt.includes('@lid')) {
+        const altTel = extrairTelefoneValido(key.remoteJidAlt);
+        if (altTel) {
+          telefoneLimpo = normalizarParaBR(altTel);
+          console.log(`✅ @lid resolvido via remoteJidAlt: ${telefoneLimpo}`);
+        }
+      }
+
+      // 3. Tentar via Evolution API (fetchProfile + histórico de mensagens)
+      if (!telefoneLimpo) {
+        const empresaData = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
+        if (empresaData?.[0]?.evolution_url) {
+          const emp = empresaData[0];
+          telefoneLimpo = await resolverLidParaTelefone(
+            remoteJidOriginal,
+            emp.evolution_url.replace(/\/$/, ''),
+            emp.evolution_api_key,
+            emp.evolution_instance_name
+          );
+        }
+      }
+
+      // 4. Salvar no cache para próximas mensagens
       if (telefoneLimpo) {
         base44.asServiceRole.entities.ContatoWhatsapp.create({
           empresa_id: empresaId, telefone: telefoneLimpo,
           nome: pushName || telefoneLimpo, lid_jid: lidNumerico,
           ultima_atualizacao: new Date().toISOString()
         }).catch(() => {});
+        console.log(`✅ @lid resolvido e salvo no cache: ${remoteJidOriginal} → ${telefoneLimpo}`);
+      } else {
+        console.warn(`⚠️ @lid não resolvido: "${remoteJidOriginal}" (${pushName}) — mensagem ignorada`);
+        return;
       }
     }
   }
 
-  if (!telefoneLimpo || telefoneLimpo.startsWith('lid_') || !validarTelefone(telefoneLimpo)) {
-    console.warn(`⚠️ Número inválido/não resolvido: remoteJid="${remoteJidRaw}" | tel="${telefoneLimpo}" | fromMe=${fromMe} | pushName="${pushName}" | msgId="${messageId}" — ignorado`);
+  if (!telefoneLimpo || !validarTelefone(telefoneLimpo)) {
+    console.warn(`⚠️ Número inválido: remoteJid="${remoteJidOriginal}" | tel="${telefoneLimpo}" | pushName="${pushName}" — ignorado`);
     return;
   }
 
