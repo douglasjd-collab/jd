@@ -714,6 +714,21 @@ export default function BatePapo() {
                   </TooltipTrigger>
                   <TooltipContent side="bottom"><p>Corrigir duplicatas e números @lid</p></TooltipContent>
                 </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full border-slate-200"
+                      onClick={sincronizarTodosContatosEvolution}
+                      disabled={sincronizando}
+                      title="Importar todos os contatos com histórico"
+                    >
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5 text-green-600" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Importar TODOS contatos Evolution</p></TooltipContent>
+                </Tooltip>
                 <Button
                   size="icon"
                   variant="outline"
