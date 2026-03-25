@@ -723,7 +723,21 @@ export default function BatePapo() {
                       size="icon"
                       variant="outline"
                       className="h-8 w-8 rounded-full border-slate-200"
-                      onClick={corrigirDuplicatas}
+                      onClick={async () => {
+                        setCorrigindo(true);
+                        try {
+                          const resp = await base44.functions.invoke('corrigirDuplicatasELid', { empresa_id: empresaId });
+                          const data = resp?.data;
+                          if (data?.ok) {
+                            toast.success(`✅ ${data.duplicatasDeletadas} duplicatas consolidadas | ${data.conversasLidDeletadas} @lid removidos`);
+                            refetchConversas();
+                          }
+                        } catch (e) {
+                          toast.error('Erro: ' + e.message);
+                        } finally {
+                          setCorrigindo(false);
+                        }
+                      }}
                       disabled={corrigindo}
                       title="Corrigir duplicatas e @lid"
                     >
