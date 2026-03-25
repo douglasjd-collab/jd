@@ -741,6 +741,37 @@ export default function BatePapo() {
                   </TooltipTrigger>
                   <TooltipContent side="bottom"><p>Importar TODOS contatos Evolution</p></TooltipContent>
                 </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full border-slate-200"
+                      onClick={async () => {
+                        setSincronizando(true);
+                        try {
+                          const resp = await base44.functions.invoke('sincronizarFotosContatos', { empresa_id: empresaId });
+                          const data = resp?.data;
+                          if (data?.ok) {
+                            toast.success(`✅ ${data.fotosAtualizadas}/${data.totalContatos} fotos sincronizadas`);
+                            refetchConversas();
+                          } else {
+                            toast.error('Erro ao sincronizar fotos');
+                          }
+                        } catch (e) {
+                          toast.error('Erro: ' + e.message);
+                        } finally {
+                          setSincronizando(false);
+                        }
+                      }}
+                      disabled={sincronizando}
+                      title="Sincronizar fotos de perfil"
+                    >
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5 text-blue-600" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Sincronizar fotos de perfil</p></TooltipContent>
+                </Tooltip>
                 <Button
                   size="icon"
                   variant="outline"
