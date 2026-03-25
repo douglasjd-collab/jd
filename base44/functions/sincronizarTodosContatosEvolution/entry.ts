@@ -112,11 +112,11 @@ Deno.serve(async (req) => {
 
     console.log(`✅ ${contatosValidos.length} contatos válidos filtrados`);
 
-    // 3. Buscar conversas existentes no banco
+    // 3. Buscar conversas existentes no banco (SEM LIMITE)
     const conversasExistentes = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-created_date',
-      2000
+      5000
     );
 
     const telefonesExistentes = new Set(
