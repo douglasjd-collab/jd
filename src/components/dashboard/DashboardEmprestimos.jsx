@@ -61,9 +61,10 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
   }, [propostasEmprestimo, isVendedor, user, statusPagoIds, statusCanceladoIds]);
 
   const valorBrutoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
-  const valorLiquidoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
+  // valor_liquido com fallback para valor_credito quando não preenchido
+  const valorLiquidoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_liquido || p.valor_credito || 0), 0);
   const valorBrutoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
-  const valorLiquidoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_liquido || 0), 0);
+  const valorLiquidoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_liquido || p.valor_credito || 0), 0);
 
   const rankingEmprestimos = React.useMemo(() => {
     const vendedorStats = {};
