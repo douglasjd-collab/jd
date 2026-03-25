@@ -23,11 +23,11 @@ Deno.serve(async (req) => {
       10000 // Aumentado para 10000 para garantir todas
     );
 
-    // Buscar todos os contatos da empresa de uma vez
+    // Buscar todos os contatos da empresa de uma vez (SEM LIMITE)
     const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
       { empresa_id: empresaId },
       '-created_date',
-      2000
+      10000 // Aumentado para 10000
     );
 
     // Criar mapa de telefone -> contato para lookup O(1)
