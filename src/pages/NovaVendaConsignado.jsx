@@ -522,18 +522,18 @@ export default function NovaVendaConsignado() {
 
     if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
       return (
-        <div className="space-y-6">
-          <div className="border-l-4 border-l-pink-500 pl-4 py-2 bg-pink-50 rounded space-y-4">
-            <h3 className="font-semibold text-pink-900 mb-4">Banco de Origem</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <div className="border-l-4 border-l-pink-500 pl-4 py-2 bg-pink-50 rounded space-y-2">
+            <h3 className="font-semibold text-pink-900">Banco de Origem</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Banco de Origem *</Label>
                 <Input value={formData.origem_banco} onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })} required />
               </div>
             </div>
 
-            <h3 className="font-semibold text-pink-900 mb-4">Dados da Portabilidade</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="font-semibold text-pink-900 pt-1">Dados da Portabilidade</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Contrato de Origem *</Label>
                 <Input value={formData.origem_contrato} onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })} required />
