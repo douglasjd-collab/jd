@@ -701,6 +701,21 @@ export default function BatePapo() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full border-slate-200"
+                      onClick={corrigirDuplicatas}
+                      disabled={corrigindo}
+                      title="Corrigir duplicatas e @lid"
+                    >
+                      {corrigindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-orange-500" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Corrigir duplicatas e números @lid</p></TooltipContent>
+                </Tooltip>
                 <Button
                   size="icon"
                   variant="outline"
