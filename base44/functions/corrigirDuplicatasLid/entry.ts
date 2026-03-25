@@ -51,19 +51,35 @@ Deno.serve(async (req) => {
     );
 
     for (const conv of conversasLid) {
-      const lidRaw = conv.cliente_telefone || '';
-      const lidNumerico = lidRaw.replace(/\D/g, '').replace('lid', '');
-      const contatoResolvido = contatoPorLid[lidNumerico] || contatoPorLid[lidRaw];
+      const lidRaw = (conv.cliente_telefone || '').replace(/\D/g, '');
+      const whatsappIdRaw = (conv.whatsapp_id || '').replace(/\D/g, '');
+
+      // Procurar contato resolvido nos dois campos (@lid)
+      let contatoResolvido = contatoPorLid[lidRaw] || contatoPorLid[whatsappIdRaw];
+
+      // Se nenhum contato foi encontrado por @lid, verificar se há conversa com mesmo telefone certo
+      if (!contatoResolvido) {
+        for (const c of contatos) {
+          if (c.telefone && !c.telefone.includes('lid')) {
+            const norm = normalizarTel(c.telefone);
+            // Se encontrar conversas duplicadas com mesmo telefone, usar esse número
+            if (norm) contatoResolvido = c;
+          }
+        }
+      }
 
       if (contatoResolvido && contatoResolvido.telefone && !contatoResolvido.telefone.includes('lid')) {
-        // Temos o telefone real — corrigir a conversa
+        // Corrigir conversa: trocar @lid ou número inválido por número correto
         await base44.asServiceRole.entities.ConversaWhatsapp.update(conv.id, {
           cliente_telefone: contatoResolvido.telefone,
           cliente_nome: conv.cliente_nome || contatoResolvido.nome || contatoResolvido.telefone,
           whatsapp_id: contatoResolvido.telefone + '@s.whatsapp.net'
         });
-        console.log(`✅ LID corrigido: ${lidRaw} → ${contatoResolvido.telefone}`);
+        console.log(`✅ @lid corrigido: ${conv.cliente_telefone} → ${contatoResolvido.telefone}`);
         corrigidasLid++;
+      } else {
+        // @lid não foi resolvido — marcar para possível ajuste manual
+        console.warn(`⚠️ @lid não resolvido: ${conv.cliente_telefone} | Conversa: ${conv.id}`);
       }
     }
 
