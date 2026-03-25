@@ -89,8 +89,10 @@ Deno.serve(async (req) => {
     return Response.json({
       ok: true,
       criados,
-      erros,
-      total: contatos.length
+      rejeitados,
+      erros: erros.length > 0 ? erros : null,
+      total: contatos.length,
+      mensagem: `✅ ${criados} salvos | ⏭️ ${rejeitados} ignorados`
     });
   } catch (error) {
     console.error('Erro:', error.message);
