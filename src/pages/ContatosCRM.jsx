@@ -721,6 +721,42 @@ export default function ContatosCRM() {
         tags={tags}
       />
 
+      {/* Modal Colar Contatos */}
+      <Dialog open={colartextoOpen} onOpenChange={setColartextoOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-blue-600" />
+              Importar Contatos por Cola
+            </DialogTitle>
+            <DialogDescription>Cole números de telefone ou contatos (um por linha) e salve em massa</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label>Números/Contatos</Label>
+              <textarea
+                placeholder="Cole aqui, um por linha:&#10;555197884921&#10;JD PROMOTORA&#10;558721510008&#10;..."
+                value={contatosPasta}
+                onChange={e => setContatosPasta(e.target.value)}
+                className="w-full h-48 p-3 border border-slate-200 rounded-lg font-mono text-sm mt-1 resize-none"
+              />
+              <p className="text-xs text-slate-400 mt-2">Aceita números, nomes, ou linhas mistas. Números serão normalizados automaticamente.</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setColartextoOpen(false)}>Cancelar</Button>
+              <Button 
+                onClick={colarContatosPasta} 
+                disabled={salvandoPasta || !contatosPasta.trim()} 
+                className="bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2"
+              >
+                {salvandoPasta ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Importar Agora
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal Novo Contato */}
       <Dialog open={novoContatoOpen} onOpenChange={setNovoContatoOpen}>
         <DialogContent className="max-w-md">
