@@ -343,11 +343,15 @@ export default function BatePapo() {
 
   useEffect(() => {
     if (!empresaId) return;
+    console.log(`🔌 Conectando subscription de mensagens...`);
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
+      console.log(`📨 Event recebido:`, { type: event.type, conversa_id: event.data?.conversa_id });
       if (event.type !== 'create') return;
 
       const msgData = event.data;
       const conversaAtualId = conversaSelecionadaIdRef.current;
+
+      console.log(`🔄 Nova mensagem: ${msgData?.id} para conversa ${msgData?.conversa_id}, conversa aberta: ${conversaAtualId}`);
 
       // Sempre refetch conversas para atualizar última mensagem
       refetchConversas();
@@ -356,20 +360,24 @@ export default function BatePapo() {
       const pertenceConversaAberta = msgData?.conversa_id && msgData.conversa_id === conversaAtualId;
 
       if (pertenceConversaAberta) {
+        console.log(`✅ Mensagem pertence à conversa aberta`);
         if (msgData?.id) {
           queryClient.setQueryData(['mensagens-whatsapp', conversaAtualId], (old = []) => {
             // Evitar duplicata
             if (old.some(m => m.id === msgData.id || (m.whatsapp_message_id && m.whatsapp_message_id === msgData.whatsapp_message_id))) {
+              console.log(`⚠️ Mensagem duplicada ignorada: ${msgData.id}`);
               return old;
             }
             // Só remove temp_ ao confirmar mensagem do próprio vendedor (não ao receber msg do cliente)
             const base = msgData.remetente === 'vendedor'
               ? old.filter(m => !m.id?.startsWith('temp_'))
               : old;
+            console.log(`✏️ Adicionando mensagem ao state (total: ${base.length + 1})`);
             return [...base, msgData];
           });
         } else {
           // payload_too_large: fallback para refetch
+          console.log(`⚠️ Payload muito grande, refetch forçado`);
           queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         }
         // Scroll imediato para a última mensagem
@@ -399,6 +407,7 @@ export default function BatePapo() {
         const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
         const textoMsg = msgData.texto || '📎 Arquivo recebido';
 
+        console.log(`🔔 Notificando: ${nomeRemetente}`);
         toast.message(`💬 ${nomeRemetente}`, {
           description: textoMsg.length > 120 ? textoMsg.substring(0, 120) + '...' : textoMsg,
           duration: 6000,
@@ -414,7 +423,7 @@ export default function BatePapo() {
       }
     });
     return unsub;
-  }, [empresaId]);
+  }, [empresaId, refetchConversas]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
