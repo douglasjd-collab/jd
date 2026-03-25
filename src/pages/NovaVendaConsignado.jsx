@@ -65,6 +65,7 @@ export default function NovaVendaConsignado() {
     refin_tabela: '',
     vendedor_parceiro_id: '',
     tabela_comissao_id: '',
+    valor_base_comissao: '',
     percentual_comissao_empresa: '',
     comissao_empresa_prevista: '',
     comissao_empresa_recebida: '',
