@@ -580,10 +580,11 @@ export default function BatePapo() {
     return wid.includes('@lid') || tel.includes('lid') || tel.startsWith('lid');
   };
 
-  // Conversas válidas — apenas grupos + telefones BR válidos (sem contatos falsos)
+  // Conversas válidas — excluir apenas @lid não resolvidos
   const conversasValidas = conversas.filter(c => {
-    if (isContatoFalso(c)) return false; // Remover contatos @lid
-    return isGrupo(c) || isTelefoneValido(c.cliente_telefone);
+    if (isContatoFalso(c)) return false; // Remover contatos @lid não resolvidos
+    if (!c.cliente_telefone) return false;
+    return true; // Aceitar grupos e qualquer telefone com valor
   });
 
   // Contadores por aba
