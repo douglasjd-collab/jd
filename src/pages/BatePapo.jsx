@@ -173,24 +173,6 @@ export default function BatePapo() {
     }
   };
 
-  const corrigirDuplicatas = async () => {
-    setCorrigindo(true);
-    try {
-      const resp = await base44.functions.invoke('corrigirDuplicatasLid', { empresa_id: empresaId });
-      const data = resp?.data;
-      if (data?.ok) {
-        toast.success(`Correção concluída: ${data.corrigidasLid} @lid resolvidos, ${data.excluidasDuplicatas} duplicatas removidas`);
-        refetchConversas();
-      } else {
-        toast.error('Erro na correção: ' + (data?.error || 'Desconhecido'));
-      }
-    } catch (e) {
-      toast.error('Erro: ' + e.message);
-    } finally {
-      setCorrigindo(false);
-    }
-  };
-
   const sincronizarTodosContatosEvolution = async () => {
     setSincronizando(true);
     try {
