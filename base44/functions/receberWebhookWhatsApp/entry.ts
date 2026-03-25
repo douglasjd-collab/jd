@@ -207,7 +207,7 @@ async function processarWebhook(req, rawBody) {
   }
 
   if (!telefoneLimpo || telefoneLimpo.startsWith('lid_') || !validarTelefone(telefoneLimpo)) {
-    console.warn(`⚠️ Número inválido/não resolvido: "${remoteJidRaw}" — ignorado`);
+    console.warn(`⚠️ Número inválido/não resolvido: remoteJid="${remoteJidRaw}" | tel="${telefoneLimpo}" | fromMe=${fromMe} | pushName="${pushName}" | msgId="${messageId}" — ignorado`);
     return;
   }
 
