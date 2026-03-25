@@ -560,30 +560,19 @@ export default function NovaVendaConsignado() {
     if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
       return (
         <div className="space-y-3">
-          {/* Seção Portabilidade - mesma estrutura da PORTABILIDADE */}
+          {/* Seção Portabilidade - idêntica à PORTABILIDADE */}
           <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-2">
             <h3 className="font-semibold text-purple-900">Informação da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Código do Banco de Origem</Label>
-                <Input
-                  value={formData.origem_banco}
-                  onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })}
-                  placeholder="Ex: 341, 001, 033..."
-                />
+                <Input value={formData.origem_banco} onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })} placeholder="Ex: 341, 001, 033..." />
               </div>
               <div>
                 <Label>Banco de Origem *</Label>
-                <select
-                  value={formData.banco_anterior}
-                  onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  required
-                >
+                <select value={formData.banco_anterior} onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" required>
                   <option value="">Selecione o banco...</option>
-                  {bancos.map((b) => (
-                    <option key={b.id} value={b.nome}>{b.nome}</option>
-                  ))}
+                  {bancos.map((b) => (<option key={b.id} value={b.nome}>{b.nome}</option>))}
                 </select>
               </div>
               <div>
@@ -601,17 +590,7 @@ export default function NovaVendaConsignado() {
                 <Label>Saldo Devedor *</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input
-                    className="pl-10"
-                    value={formatarMoeda(formData.origem_saldo_devedor)}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, '');
-                      const saldo = parseFloat(raw) / 100 || 0;
-                      const liberado = parseFloat(formData.valor_liberado) || 0;
-                      setFormData({ ...formData, origem_saldo_devedor: saldo.toFixed(2), valor_bruto: (saldo + liberado).toFixed(2) });
-                    }}
-                    required
-                  />
+                  <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
                 </div>
               </div>
               <div>
@@ -625,62 +604,33 @@ export default function NovaVendaConsignado() {
                 </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input
-                    className="pl-10 bg-amber-50 border-amber-200"
-                    value={formatarMoeda(formData.valor_base_comissao)}
-                    onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
-                    placeholder="0,00"
-                  />
+                  <Input className="pl-10 bg-amber-50 border-amber-200" value={formatarMoeda(formData.valor_base_comissao)} onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)} placeholder="0,00" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Seção Refin */}
-          <div className="border-l-4 border-l-amber-500 pl-4 py-2 bg-amber-50 rounded space-y-2">
-            <h3 className="font-semibold text-amber-900">Informação do Refin da Portabilidade</h3>
+          {/* Dados da Portabilidade - idêntica à seção azul de PORTABILIDADE */}
+          <div className="border-l-4 border-l-blue-500 pl-4 py-2 bg-blue-50 rounded space-y-2">
+            <h3 className="font-semibold text-blue-900">Dados da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Parcela *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input className="pl-10" value={formatarMoeda(formData.parcela)} onChange={(e) => handleMoedaChange('parcela', e.target.value)} required />
-                </div>
-              </div>
               <div>
                 <Label>Valor Liberado *</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input
-                    className="pl-10"
-                    value={formatarMoeda(formData.valor_liberado)}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, '');
-                      const liberado = parseFloat(raw) / 100 || 0;
-                      const saldo = parseFloat(formData.origem_saldo_devedor) || 0;
-                      setFormData({ ...formData, valor_liberado: liberado.toFixed(2), valor_bruto: (saldo + liberado).toFixed(2) });
-                    }}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label className="flex items-center gap-1">
-                  Valor Bruto
-                  <span className="text-xs text-slate-400 font-normal">(Saldo Devedor + Vl. Liberado)</span>
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input
-                    className="pl-10 bg-slate-100 text-slate-600"
-                    value={formatarMoeda(formData.valor_bruto)}
-                    readOnly
-                  />
+                  <Input className="pl-10" value={formatarMoeda(formData.valor_liberado)} onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} placeholder="0,00" required />
                 </div>
               </div>
               <div>
                 <Label>Prazo (meses) *</Label>
                 <Input type="number" placeholder="Ex: 84" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Parcela *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.parcela)} onChange={(e) => handleMoedaChange('parcela', e.target.value)} placeholder="0,00" required />
+                </div>
               </div>
             </div>
           </div>
