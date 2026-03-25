@@ -906,7 +906,15 @@ export default function NovaVendaConsignado() {
                 <Label>Tipo de Empréstimo *</Label>
                 <select
                   value={formData.tipo_consignado}
-                  onChange={(e) => setFormData({ ...formData, tipo_consignado: e.target.value })}
+                  onChange={(e) => {
+                    const novoTipo = e.target.value;
+                    const updates = { tipo_consignado: novoTipo };
+                    // Replicar valor_liberado para valor_bruto se o tipo for do grupo bruto=líquido
+                    if (TIPOS_BRUTO_IGUAL_LIBERADO.includes(novoTipo) && formData.valor_liberado) {
+                      updates.valor_bruto = formData.valor_liberado;
+                    }
+                    setFormData({ ...formData, ...updates });
+                  }}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                   required
                 >
