@@ -394,6 +394,21 @@ export default function NovaVendaConsignado() {
                 />
               </div>
             </div>
+            <div>
+              <Label className="flex items-center gap-1">
+                Valor Base Comissão
+                <span className="text-xs text-slate-400 font-normal">(= Vl. Líquido)</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input 
+                  className="pl-10 bg-amber-50 border-amber-200"
+                  value={formatarMoeda(formData.valor_base_comissao)} 
+                  onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)} 
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
