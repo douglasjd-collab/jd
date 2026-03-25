@@ -40,54 +40,76 @@ Deno.serve(async (req) => {
     let erros = 0;
 
     // 2. Para cada contato, buscar foto no WhatsApp
-    for (const contato of contatosCrm) {
+    for (let i = 0; i < contatosCrm.length; i++) {
+      const contato = contatosCrm[i];
       if (!contato.telefone) continue;
 
       try {
         const telefoneLimpo = contato.telefone.replace(/\D/g, '');
 
-        // Buscar perfil no WhatsApp
-        const resProfile = await fetch(`${evolutionUrl}/contact/fetchProfile/${instanceName}`, {
-          method: 'POST',
-          headers: { 
-            'apikey': evolutionKey, 
-            'Content-Type': 'application/json' 
-          },
-          body: JSON.stringify({ number: telefoneLimpo })
-        });
+        // Buscar perfil no WhatsApp usando dois endpoints
+        let fotoUrl = null;
 
-        if (resProfile.ok) {
-          const profileData = await resProfile.json();
-          
-          // Tentar extrair URL da foto de vários campos possíveis
-          let fotoUrl = profileData?.profilePictureUrl 
-            || profileData?.picture 
-            || profileData?.photo 
-            || profileData?.pictureUrl
-            || '';
+        // Tentar endpoint 1: fetchProfile
+        try {
+          const resProfile = await fetch(`${evolutionUrl}/contact/fetchProfile/${instanceName}`, {
+            method: 'POST',
+            headers: { 
+              'apikey': evolutionKey, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ number: telefoneLimpo })
+          });
 
-          // Se encontrou foto, atualizar contato
-          if (fotoUrl && fotoUrl.trim().length > 0) {
-            await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
-              foto_url: fotoUrl,
-              ultima_atualizacao: new Date().toISOString()
-            });
-            atualizadas++;
-            console.log(`✅ Foto atualizada: ${contato.nome || telefoneLimpo}`);
-          } else {
-            console.log(`⚠️ Sem foto para: ${contato.nome || telefoneLimpo}`);
+          if (resProfile.ok) {
+            const profileData = await resProfile.json();
+            fotoUrl = profileData?.profilePictureUrl 
+              || profileData?.picture 
+              || profileData?.photo 
+              || profileData?.pictureUrl;
           }
+        } catch (e) {
+          console.log(`⚠️ Erro no fetchProfile para ${telefoneLimpo}: ${e.message}`);
+        }
+
+        // Tentar endpoint 2: getProfilePictureUrl como fallback
+        if (!fotoUrl) {
+          try {
+            const resPic = await fetch(`${evolutionUrl}/chat/getProfilePictureUrl?instance=${instanceName}&phone=${telefoneLimpo}`, {
+              headers: { 'apikey': evolutionKey }
+            });
+
+            if (resPic.ok) {
+              const picData = await resPic.json();
+              fotoUrl = picData?.profilePictureUrl || picData?.url;
+            }
+          } catch (e) {
+            console.log(`⚠️ Erro no getProfilePictureUrl para ${telefoneLimpo}: ${e.message}`);
+          }
+        }
+
+        // Se encontrou foto, atualizar contato
+        if (fotoUrl && fotoUrl.trim().length > 0) {
+          await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
+            foto_url: fotoUrl,
+            ultima_atualizacao: new Date().toISOString()
+          });
+          atualizadas++;
+          console.log(`✅ Foto atualizada: ${contato.nome || telefoneLimpo}`);
         } else {
-          console.warn(`⚠️ Erro ao buscar perfil de ${telefoneLimpo}: ${resProfile.status}`);
-          erros++;
+          console.log(`⚠️ Sem foto para: ${contato.nome || telefoneLimpo}`);
         }
       } catch (e) {
         console.error(`❌ Erro ao processar ${contato.telefone}: ${e.message}`);
         erros++;
       }
 
-      // Pequeno delay para não sobrecarregar a API
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Delay progressivo para não sobrecarregar a API
+      if ((i + 1) % 5 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
 
     console.log(`✅ Sincronização concluída: ${atualizadas} fotos atualizadas, ${erros} erros`);
