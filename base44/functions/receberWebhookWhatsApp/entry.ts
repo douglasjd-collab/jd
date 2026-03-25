@@ -395,8 +395,8 @@ async function processarWebhook(req, rawBody) {
   } else {
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId, cliente_id: clienteId,
-      cliente_nome: telefoneLimpo, cliente_telefone: telefoneLimpo,
-      whatsapp_id: messageId, status: 'ativa',
+      cliente_nome: pushName || telefoneLimpo, cliente_telefone: telefoneLimpo,
+      whatsapp_id: remoteJidOriginal, status: 'ativa',
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       tipo_conexao: tipoConexao, colaborador_id: colaboradorId || '',
