@@ -74,6 +74,9 @@ export default function BatePapo() {
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
 
+  // Definir conversaSelecionadaId ANTES de qualquer hook que o use
+  const conversaSelecionadaId = conversaSelecionada?.id || null;
+
   const selecionarConversa = async (conversa) => {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
