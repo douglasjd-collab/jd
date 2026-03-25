@@ -926,9 +926,9 @@ export default function BatePapo() {
                         onClick={() => selecionarConversa(c)}
                       >
                         <AvatarContato 
-                          contato={contatosWhatsapp[c.id] || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
-                          className="h-10 w-10 flex-shrink-0"
-                        />
+                           contato={contatosWhatsapp[c.id] || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.contato?.foto_url }}
+                           className="h-10 w-10 flex-shrink-0"
+                         />
 
                         <div className="flex flex-1 flex-col min-w-0">
                           <div className="flex items-center justify-between gap-1">
@@ -1016,9 +1016,9 @@ export default function BatePapo() {
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <AvatarContato 
-                        contato={contatosWhatsapp[conversaSelecionada?.id] || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone }}
-                        className="h-11 w-11"
-                      />
+                         contato={contatosWhatsapp[conversaSelecionada?.id] || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.contato?.foto_url }}
+                         className="h-11 w-11"
+                       />
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                     </div>
                     <div>
@@ -1172,9 +1172,9 @@ export default function BatePapo() {
                           {/* Perfil */}
                           <div className="flex items-center gap-3">
                             <AvatarContato 
-                              contato={contatosWhatsapp[conversaSelecionada?.id] || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone }}
-                              className="h-10 w-10"
-                            />
+                               contato={contatosWhatsapp[conversaSelecionada?.id] || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.contato?.foto_url }}
+                               className="h-10 w-10"
+                             />
                             <div className="flex-1">
                               <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_telefone || conversaSelecionada.cliente_nome}</p>
                               <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
