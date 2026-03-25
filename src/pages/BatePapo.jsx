@@ -632,9 +632,6 @@ export default function BatePapo() {
   };
 
   const conversasFiltradas = conversasValidas.filter(c => {
-    // Excluir conversas com @lid ou sem histórico de mensagem
-    if (isContatoFalso(c) || !c.ultima_mensagem || !c.ultima_mensagem.trim()) return false;
-    
     const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
       (c.cliente_telefone || '').includes(searchConversas);
     let matchStatus = false;
