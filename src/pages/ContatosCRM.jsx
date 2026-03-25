@@ -287,6 +287,9 @@ export default function ContatosCRM() {
   const [novoContatoOpen, setNovoContatoOpen] = useState(false);
   const [novoContatoForm, setNovoContatoForm] = useState({ nome: '', telefone: '', observacoes: '' });
   const [salvandoNovo, setSalvandoNovo] = useState(false);
+  const [colartextoOpen, setColartextoOpen] = useState(false);
+  const [contatosPasta, setContatosPasta] = useState('');
+  const [salvandoPasta, setSalvandoPasta] = useState(false);
   const fileInputRef = useRef(null);
 
   const criarNovoContato = async () => {
