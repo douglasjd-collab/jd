@@ -64,8 +64,8 @@ function extrairTelefoneValido(jid) {
   if (!jid || typeof jid !== 'string') return null;
   if (jid.includes('@g.us') || jid.includes('@broadcast')) return null;
   if (jid.includes('@lid')) return null;
-  if (!jid.includes('@s.whatsapp.net') && !jid.includes('@c.us')) return null;
-  const numeros = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+  // Aceitar tanto @s.whatsapp.net quanto @c.us
+  const numeros = jid.replace(/@s\.whatsapp\.net|@c\.us|@s\.whatsapp\.net:\d+/g, '').replace(/\D/g, '');
   return numeros || null;
 }
 
