@@ -229,6 +229,20 @@ Deno.serve(async (req) => {
         }
         const telefoneNormalizado = telefoneLimpo;
 
+        // Buscar foto do perfil no WhatsApp
+        let fotoUrl = '';
+        try {
+          const fotoRes = await fetch(`${evolutionUrl}/contact/fetchProfile/${instanceName}`, {
+            method: 'POST',
+            headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ number: telefoneLimpo })
+          });
+          if (fotoRes.ok) {
+            const fotoData = await fotoRes.json();
+            fotoUrl = fotoData?.profilePictureUrl || fotoData?.picture || fotoData?.photo || '';
+          }
+        } catch (_) {}
+
         // Buscar/criar conversa
         let conversa = null;
         for (const tel of telefonesVariacoes) {
