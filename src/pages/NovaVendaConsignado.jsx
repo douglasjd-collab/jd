@@ -216,11 +216,18 @@ export default function NovaVendaConsignado() {
     return valorFormatado.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
 
+  const TIPOS_BRUTO_IGUAL_LIBERADO = ['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_BENEFICIO', 'CARTAO_CONSIGNADO', 'SAQUE'];
+
   const handleMoedaChange = (campo, valor) => {
     const numero = valor.replace(/\D/g, '');
     const novoValor = (parseFloat(numero) / 100).toFixed(2);
-    const novoForm = { ...formData, [campo]: novoValor };
-    
+    let novoForm = { ...formData, [campo]: novoValor };
+
+    // Quando preencher valor_liberado em tipos onde bruto = líquido, replicar para valor_bruto automaticamente
+    if (campo === 'valor_liberado' && TIPOS_BRUTO_IGUAL_LIBERADO.includes(formData.tipo_consignado)) {
+      novoForm.valor_bruto = novoValor;
+    }
+
     // Recalcular comissões se for valor_liberado ou prazo
     if (campo === 'valor_liberado') {
       calcularComissoes(novoForm);
