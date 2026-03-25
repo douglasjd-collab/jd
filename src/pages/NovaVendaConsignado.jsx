@@ -467,31 +467,37 @@ export default function NovaVendaConsignado() {
           <h3 className="font-semibold text-purple-900">Informação da Portabilidade</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label>Banco de Origem *</Label>
-              <Input value={formData.origem_banco} onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })} required />
+              <Label>Código do Banco de Origem</Label>
+              <Input
+                value={formData.origem_banco}
+                onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })}
+                placeholder="Ex: 341, 001, 033..."
+              />
             </div>
-          </div>
-
-          <h3 className="font-semibold text-purple-900 pt-1">Dados da Portabilidade</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label>Contrato de Origem *</Label>
+              <Label>Banco de Origem *</Label>
+              <select
+                value={formData.banco_anterior}
+                onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                required
+              >
+                <option value="">Selecione o banco...</option>
+                {bancos.map((b) => (
+                  <option key={b.id} value={b.nome}>{b.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Contrato Portado *</Label>
               <Input value={formData.origem_contrato} onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })} required />
             </div>
             <div>
-              <Label>Parcela (Origem) *</Label>
+              <Label>Parcela *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
                 <Input className="pl-10" value={formatarMoeda(formData.origem_parcela)} onChange={(e) => handleMoedaChange('origem_parcela', e.target.value)} required />
               </div>
-            </div>
-            <div>
-              <Label>Prazo (Origem - meses) *</Label>
-              <Input type="number" value={formData.origem_prazo} onChange={(e) => setFormData({ ...formData, origem_prazo: e.target.value })} required />
-            </div>
-            <div>
-              <Label>Prazo Restante (meses) *</Label>
-              <Input type="number" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
             </div>
             <div>
               <Label>Saldo Devedor *</Label>
@@ -499,6 +505,10 @@ export default function NovaVendaConsignado() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
                 <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
               </div>
+            </div>
+            <div>
+              <Label>Qt. Parc. a Vencer *</Label>
+              <Input type="number" placeholder="Ex: 48" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
             </div>
             <div>
               <Label className="flex items-center gap-1">
@@ -512,7 +522,6 @@ export default function NovaVendaConsignado() {
                   value={formatarMoeda(formData.valor_base_comissao)}
                   onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
                   placeholder="0,00" />
-                
               </div>
             </div>
           </div>
