@@ -681,6 +681,18 @@ export default function NovaVendaConsignado() {
               )}
             </div>
 
+            {/* Número do Benefício / Matrícula */}
+            {clienteSelecionado && (
+              <div>
+                <Label>Número do Benefício / Matrícula</Label>
+                <Input
+                  value={formData.numero_beneficio}
+                  onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })}
+                  placeholder="Digite o número do benefício ou matrícula"
+                />
+              </div>
+            )}
+
             {/* Grau de Alfabetização — aparece somente após selecionar cliente */}
             {clienteSelecionado && (
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
