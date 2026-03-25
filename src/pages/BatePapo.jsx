@@ -752,6 +752,40 @@ export default function BatePapo() {
                       size="icon"
                       variant="outline"
                       className="h-8 w-8 rounded-full border-slate-200"
+                      onClick={async () => {
+                        setSincronizando(true);
+                        try {
+                          const resp = await base44.functions.invoke('sincronizarRecente', { empresa_id: empresaId });
+                          const data = resp?.data;
+                          if (data?.ok) {
+                            toast.success(`✅ ${data.mensagens_inseridas || 0} mensagens sincronizadas`);
+                            refetchConversas();
+                            if (conversaSelecionadaId) {
+                              queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
+                            }
+                          } else {
+                            toast.error('Erro ao sincronizar: ' + (data?.erro || 'Desconhecido'));
+                          }
+                        } catch (e) {
+                          toast.error('Erro: ' + e.message);
+                        } finally {
+                          setSincronizando(false);
+                        }
+                      }}
+                      disabled={sincronizando}
+                      title="Sincronizar mensagens recebidas"
+                    >
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5 text-purple-600" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Sincronizar mensagens recebidas</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full border-slate-200"
                       onClick={sincronizarTodosContatosEvolution}
                       disabled={sincronizando}
                       title="Importar todos os contatos com histórico"
