@@ -16,18 +16,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
     }
 
-    // Buscar conversas (todas)
+    // Buscar conversas (sem limite — buscar todas de hoje ou ativas)
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-data_ultima_mensagem',
-      500
+      2000
     );
 
-    // Buscar todos os contatos da empresa de uma vez (1 query apenas)
+    // Buscar todos os contatos da empresa de uma vez
     const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
       { empresa_id: empresaId },
       '-created_date',
-      500
+      2000
     );
 
     // Criar mapa de telefone -> contato para lookup O(1)
