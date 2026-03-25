@@ -680,6 +680,73 @@ export default function NovaVendaConsignado() {
                 </div>
               )}
             </div>
+
+            {/* Grau de Alfabetização — aparece somente após selecionar cliente */}
+            {clienteSelecionado && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+                <p className="font-semibold text-slate-800 flex items-center gap-2">🎓 Grau de Alfabetização</p>
+
+                <div>
+                  <Label className="text-sm text-slate-600 mb-2 block">O cliente é alfabetizado?</Label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setAlfabetizado(true); }}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        alfabetizado === true
+                          ? 'bg-green-500 text-white border-green-500'
+                          : 'bg-white text-slate-700 border-slate-300 hover:border-green-400'
+                      }`}
+                    >
+                      ✅ Sim
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAlfabetizado(false); setGrauEscolaridade(''); }}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        alfabetizado === false
+                          ? 'bg-red-500 text-white border-red-500'
+                          : 'bg-white text-slate-700 border-slate-300 hover:border-red-400'
+                      }`}
+                    >
+                      ❌ Não
+                    </button>
+                  </div>
+                </div>
+
+                {alfabetizado === true && (
+                  <div>
+                    <Label className="text-sm text-slate-600 mb-2 block">Grau de escolaridade</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { value: 'analfabeto', label: '📕 Analfabeto', desc: 'Não sabe ler nem escrever.' },
+                        { value: 'fundamental_incompleto', label: '📘 Ensino Fundamental Incompleto', desc: 'Não concluiu o fundamental (até o 9º ano).' },
+                        { value: 'fundamental_completo', label: '📗 Ensino Fundamental Completo', desc: 'Concluiu o 9º ano.' },
+                        { value: 'medio_incompleto', label: '📙 Ensino Médio Incompleto', desc: 'Começou o ensino médio, mas não terminou.' },
+                        { value: 'medio_completo', label: '📓 Ensino Médio Completo', desc: 'Concluiu o ensino médio (antigo 2º grau).' },
+                        { value: 'superior_incompleto', label: '🎓 Ensino Superior Incompleto', desc: 'Está cursando faculdade, mas não terminou.' },
+                        { value: 'superior_completo', label: '🎓 Ensino Superior Completo', desc: 'Concluiu faculdade (graduação).' },
+                        { value: 'pos_graduacao', label: '🎓 Pós-graduação', desc: 'Especialização, MBA, mestrado ou doutorado.' },
+                      ].map(op => (
+                        <button
+                          key={op.value}
+                          type="button"
+                          onClick={() => setGrauEscolaridade(op.value)}
+                          className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-all ${
+                            grauEscolaridade === op.value
+                              ? 'bg-purple-100 border-purple-400 text-purple-900'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-purple-300'
+                          }`}
+                        >
+                          <span className="font-medium">{op.label}</span>
+                          <span className="text-xs text-slate-500 ml-2">{op.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
         )}
