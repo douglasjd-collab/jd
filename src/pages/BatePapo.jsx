@@ -262,14 +262,14 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Sincronização automática a cada 5s como fallback ao webhook
+  // Sincronização automática a cada 60s como fallback ao webhook (reduzido para evitar duplicatas)
   useEffect(() => {
     if (!empresaId) return;
     const interval = setInterval(async () => {
       try {
         await base44.functions.invoke('sincronizarRecente', {});
       } catch (_) {}
-    }, 5000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [empresaId]);
 
