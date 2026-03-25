@@ -601,7 +601,6 @@ export default function BatePapo() {
       } catch (e) {
         console.error('❌ Erro ao carregar contato:', e);
       }
-      } finally {}
     })();
   }, [conversaSelecionada?.id, conversaSelecionada?.cliente_telefone, empresaId]);
 
