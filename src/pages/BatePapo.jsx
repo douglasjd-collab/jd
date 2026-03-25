@@ -256,17 +256,14 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
-        console.log(`📥 Buscando mensagens da conversa: ${conversaSelecionadaId}`);
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionadaId },
           '-data_envio',
-          300
+          500
         );
-        console.log(`✅ ${msgs.length} mensagens encontradas`);
         const ordenadas = [...msgs].reverse();
         const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
         if (naoLidas.length > 0) {
-          console.log(`📌 Marcando ${naoLidas.length} mensagens como lidas`);
           await Promise.all(naoLidas.map(msg => 
             base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
           ));
@@ -275,6 +272,7 @@ export default function BatePapo() {
       },
       staleTime: 0,
       refetchInterval: false,
+      gcTime: 0
   });
 
   // Selecionar conversa inicial quando a lista carrega
@@ -309,17 +307,16 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling rápido (a cada 2s) para garantir mensagens em tempo real
+  // Polling agressivo (a cada 1s) para mensagens em tempo real
   useEffect(() => {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(async () => {
       try {
-        console.log(`🔄 Polling de mensagens... conversa: ${conversaSelecionadaId}`);
         await refetchMensagens();
       } catch (e) {
         console.error('❌ Erro no polling:', e);
       }
-    }, 2000);
+    }, 1000);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
@@ -355,37 +352,20 @@ export default function BatePapo() {
       // Sempre refetch conversas para atualizar última mensagem
       refetchConversas();
 
-      // Verificar se a mensagem pertence à conversa aberta (pelo ID direto OU pelo ID da conversa)
+      // Verificar se a mensagem pertence à conversa aberta
       const pertenceConversaAberta = msgData?.conversa_id && msgData.conversa_id === conversaAtualId;
 
       if (pertenceConversaAberta) {
-        console.log(`✅ Mensagem pertence à conversa aberta`);
-        if (msgData?.id) {
-          queryClient.setQueryData(['mensagens-whatsapp', conversaAtualId], (old = []) => {
-            // Evitar duplicata
-            if (old.some(m => m.id === msgData.id || (m.whatsapp_message_id && m.whatsapp_message_id === msgData.whatsapp_message_id))) {
-              console.log(`⚠️ Mensagem duplicada ignorada: ${msgData.id}`);
-              return old;
-            }
-            // Só remove temp_ ao confirmar mensagem do próprio vendedor (não ao receber msg do cliente)
-            const base = msgData.remetente === 'vendedor'
-              ? old.filter(m => !m.id?.startsWith('temp_'))
-              : old;
-            console.log(`✏️ Adicionando mensagem ao state (total: ${base.length + 1})`);
-            return [...base, msgData];
-          });
-        } else {
-          // payload_too_large: fallback para refetch
-          console.log(`⚠️ Payload muito grande, refetch forçado`);
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
-        }
+        // Invalidar para refetch imediato
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
+        
         // Scroll imediato para a última mensagem
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
-        }, 0);
+        }, 50);
       }
       // Não fazer invalidateQueries de mensagens aqui — evita duplicatas
       // A subscription adiciona diretamente via setQueryData quando pertence à conversa aberta
@@ -564,8 +544,8 @@ export default function BatePapo() {
         // Sincronizar imediatamente
         await sincronizar();
         
-        // E a cada 3 segundos
-        const syncInterval = setInterval(sincronizar, 3000);
+        // E a cada 1 segundo
+        const syncInterval = setInterval(sincronizar, 1000);
         return () => clearInterval(syncInterval);
         
         // Tentar variações do telefone (com/sem 9º dígito)
