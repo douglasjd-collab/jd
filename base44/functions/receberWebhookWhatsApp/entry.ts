@@ -97,10 +97,18 @@ function validarTelefone(num) {
   if (!num) return false;
   if (BLOCKLIST.has(num)) return false;
   if (num.startsWith('lid_')) return false;
-  if (!num.startsWith('55')) return false;
-  if (num.length !== 12 && num.length !== 13) return false;
+  if (num.length < 8 || num.length > 15) return false; // padrão internacional E.164
   if (/^(\d)\1{9,}$/.test(num)) return false;
   return true;
+}
+
+function normalizarParaBR(num) {
+  // Se o número tem 11 ou 10 dígitos sem DDI, adiciona 55
+  if (!num.startsWith('55') && (num.length === 10 || num.length === 11)) {
+    return '55' + num;
+  }
+  // Se tem 9 dígitos começa com 9 (celular sem DDD), não é válido — retorna como está
+  return num;
 }
 
 // Processamento principal em background (não bloqueia resposta HTTP)
