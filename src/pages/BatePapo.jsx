@@ -290,11 +290,14 @@ export default function BatePapo() {
     if (!empresaId || !conversaSelecionadaId) return;
     const interval = setInterval(async () => {
       try {
+        console.log(`🔄 Polling de mensagens... conversa: ${conversaSelecionadaId}`);
         await refetchMensagens();
-      } catch (_) {}
+      } catch (e) {
+        console.error('❌ Erro no polling:', e);
+      }
     }, 5000);
     return () => clearInterval(interval);
-  }, [empresaId, conversaSelecionadaId]);
+  }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
   const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
