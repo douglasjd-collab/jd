@@ -563,9 +563,9 @@ export default function NovaVendaConsignado() {
             </div>
           </div>
 
-          <div className="border-l-4 border-l-amber-500 pl-4 py-2 bg-amber-50 rounded space-y-4">
-            <h3 className="font-semibold text-amber-900 mb-4">Dados do Refin da Portabilidade</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border-l-4 border-l-amber-500 pl-4 py-2 bg-amber-50 rounded space-y-2">
+            <h3 className="font-semibold text-amber-900">Dados do Refin da Portabilidade</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Valor Liberado *</Label>
                 <div className="relative">
