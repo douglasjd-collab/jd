@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
         id: conversa.id,
         cliente_nome: conversa.cliente_nome,
         cliente_telefone: conversa.cliente_telefone,
+        whatsapp_id: conversa.whatsapp_id || '',
         ultima_mensagem: conversa.ultima_mensagem,
         data_ultima_mensagem: conversa.data_ultima_mensagem,
         status: conversa.status,
