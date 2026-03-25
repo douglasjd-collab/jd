@@ -1091,89 +1091,136 @@ export default function NovaVendaConsignado() {
         }
 
         {/* Step 4: Revisão Final */}
-        {currentStep === 4 &&
-        <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-white">
-            <CardHeader className="bg-orange-50/50 border-b">
-              <CardTitle className="flex items-center gap-2 text-orange-900">
-                <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">4</span>
-                </div>
-                Revisão Final
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-3">Resumo da Proposta</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-slate-600">Cliente</p>
-                      <p className="font-semibold text-slate-900">{clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-600">Banco</p>
-                      <p className="font-semibold text-slate-900">{formData.banco}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-600">Valor Liberado</p>
-                      <p className="font-semibold text-slate-900">R$ {formatarMoeda(formData.valor_liberado)}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-600">Prazo</p>
-                      <p className="font-semibold text-slate-900">{formData.prazo} meses</p>
-                    </div>
+        {currentStep === 4 && (() => {
+          const convenioSelecionado = convenios.find(c => c.id === formData.convenio_id);
+          const vendedorSelecionado = vendedores.find(v => v.id === formData.vendedor_parceiro_id);
+          const InfoItem = ({ label, value }) => value ? (
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
+              <p className="font-semibold text-slate-900 text-sm mt-0.5">{value}</p>
+            </div>
+          ) : null;
+
+          return (
+            <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-white">
+              <CardHeader className="bg-orange-50/50 border-b">
+                <CardTitle className="flex items-center gap-2 text-orange-900">
+                  <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">4</span>
+                  </div>
+                  Revisão Final
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-5">
+
+                {/* Bloco: Informações do Cliente */}
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+                  <h3 className="font-bold text-purple-900 text-sm uppercase tracking-wide flex items-center gap-2">
+                    👤 Informações do Cliente
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <InfoItem label="Nome" value={clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social} />
+                    <InfoItem label="CPF" value={clienteSelecionado?.cpf || clienteSelecionado?.pj_cnpj} />
+                    <InfoItem label="Nº Benefício / Matrícula" value={formData.numero_beneficio} />
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Número ADE</Label>
-                  <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
+                {/* Bloco: Detalhes da Proposta */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                  <h3 className="font-bold text-blue-900 text-sm uppercase tracking-wide flex items-center gap-2">
+                    📋 Detalhes da Proposta
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <InfoItem label="Tipo de Empréstimo" value={formData.tipo_consignado} />
+                    <InfoItem label="Banco" value={formData.banco} />
+                    <InfoItem label="Convênio" value={convenioSelecionado?.nome} />
+                    <InfoItem label="Vendedor / Parceiro" value={vendedorSelecionado?.nome} />
+                    <InfoItem label="Empresa Parceira" value={formData.empresa_parceira} />
+                  </div>
                 </div>
-                <div>
-                  <Label>Número do Contrato</Label>
-                  <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
+
+                {/* Bloco: Dados Financeiros */}
+                {(isPortabilidade || isRefinPortabilidade) && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+                    <h3 className="font-bold text-purple-900 text-sm uppercase tracking-wide">🔄 Portabilidade - Contrato de Origem</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                      <InfoItem label="Banco de Origem" value={formData.banco_anterior} />
+                      <InfoItem label="Código do Banco" value={formData.origem_banco} />
+                      <InfoItem label="Contrato Portado" value={formData.origem_contrato} />
+                      <InfoItem label="Parcela Origem" value={formData.origem_parcela ? `R$ ${formatarMoeda(formData.origem_parcela)}` : null} />
+                      <InfoItem label="Saldo Devedor" value={formData.origem_saldo_devedor ? `R$ ${formatarMoeda(formData.origem_saldo_devedor)}` : null} />
+                      <InfoItem label="Qt. Parcelas a Vencer" value={formData.origem_prazo_restante} />
+                    </div>
+                  </div>
+                )}
+
+                {(isRefinPortabilidade || (!isPortabilidade && !isRefinPortabilidade)) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                    <h3 className="font-bold text-blue-900 text-sm uppercase tracking-wide">
+                      {isRefinPortabilidade ? '💰 Refin da Portabilidade' : '💰 Dados Financeiros'}
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                      <InfoItem label="Valor Liberado" value={formData.valor_liberado ? `R$ ${formatarMoeda(formData.valor_liberado)}` : null} />
+                      <InfoItem label="Valor Bruto" value={formData.valor_bruto ? `R$ ${formatarMoeda(formData.valor_bruto)}` : null} />
+                      <InfoItem label="Prazo" value={formData.prazo ? `${formData.prazo} meses` : null} />
+                      <InfoItem label="Parcela" value={formData.parcela ? `R$ ${formatarMoeda(formData.parcela)}` : null} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Bloco: Finalização */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                  <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">✅ Finalização</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Número ADE</Label>
+                      <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Número do Contrato</Label>
+                      <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Status</Label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                      {statusPropostas.length > 0 ?
+                        statusPropostas.filter((s) => s.tipo === 'principal' || !s.tipo).map((status) =>
+                          <option key={status.id} value={status.codigo || status.slug}>{status.nome}</option>
+                        ) :
+                        <>
+                          <option value="em_andamento">Em andamento</option>
+                          <option value="pendente">Pendente</option>
+                          <option value="aguardando_formalizacao">Aguardando formalização</option>
+                          <option value="aguardando_cip">Aguardando CIP</option>
+                          <option value="saldo_retornado">Saldo retornado</option>
+                          <option value="aguardando_pagamento">Aguardando pagamento</option>
+                          <option value="pago">Pago</option>
+                          <option value="cancelado">Cancelado</option>
+                        </>
+                      }
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label>Observações</Label>
+                    <textarea
+                      value={formData.observacoes}
+                      onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <Label>Status</Label>
-                <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                
-                  {statusPropostas.length > 0 ?
-                statusPropostas.filter((s) => s.tipo === 'principal' || !s.tipo).map((status) =>
-                <option key={status.id} value={status.codigo || status.slug}>{status.nome}</option>
-                ) :
+              </CardContent>
+            </Card>
+          );
+        })()}
 
-                <>
-                      <option value="em_andamento">Em andamento</option>
-                      <option value="pendente">Pendente</option>
-                      <option value="aguardando_formalizacao">Aguardando formalização</option>
-                      <option value="aguardando_cip">Aguardando CIP</option>
-                      <option value="saldo_retornado">Saldo retornado</option>
-                      <option value="aguardando_pagamento">Aguardando pagamento</option>
-                      <option value="pago">Pago</option>
-                      <option value="cancelado">Cancelado</option>
-                    </>
-                }
-                </select>
-              </div>
-
-              <div>
-                <Label>Observações</Label>
-                <textarea
-                value={formData.observacoes}
-                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
-              
-              </div>
-            </CardContent>
-          </Card>
-        }
 
         {/* Botões de Navegação */}
         <div className="flex gap-3 justify-between pt-6 border-t sticky bottom-0 bg-white p-6 -mx-6 rounded-b-lg">
