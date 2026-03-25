@@ -342,7 +342,7 @@ export default function BatePapo() {
   React.useEffect(() => { conversasRef.current = conversas; }, [conversas]);
 
   useEffect(() => {
-    if (!empresaId) return;
+    if (!empresaId || !refetchConversas) return;
     console.log(`🔌 Conectando subscription de mensagens...`);
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
       console.log(`📨 Event recebido:`, { type: event.type, conversa_id: event.data?.conversa_id });
