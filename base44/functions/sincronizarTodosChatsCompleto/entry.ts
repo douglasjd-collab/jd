@@ -82,53 +82,52 @@ Deno.serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // PASSO 2: Extrair JIDs únicos de todas as mensagens
-    // ═══════════════════════════════════════════════════════════
-    const jidsUnicos = new Set();
-    const jidsMap = {};
-
-    for (const msg of todasMensagens) {
-      const jid = msg.key?.remoteJid || '';
-      
-      // Rejeitar grupos e broadcasts
-      if (jid.includes('@g.us') || jid.includes('@broadcast') || !jid) continue;
-      
-      jidsUnicos.add(jid);
-      if (!jidsMap[jid]) {
-        jidsMap[jid] = {
-          jid,
-          pushName: msg.pushName || msg.senderName || '',
-          lastMessageTime: msg.messageTimestamp || 0
-        };
-      } else if ((msg.messageTimestamp || 0) > jidsMap[jid].lastMessageTime) {
-        jidsMap[jid].lastMessageTime = msg.messageTimestamp || 0;
-        jidsMap[jid].pushName = msg.pushName || jidsMap[jid].pushName;
-      }
-    }
-
-    console.log(`🔗 ${jidsUnicos.size} contatos únicos extraídos das mensagens`);
-
-    // ═══════════════════════════════════════════════════════════
-    // PASSO 3: Normalizar números e filtrar válidos
+    // PASSO 2: Normalizar números e filtrar válidos
     // ═══════════════════════════════════════════════════════════
     const contatosValidos = [];
-    
-    for (const jid of jidsUnicos) {
+    const jidsProcessados = new Set();
+
+    // Processar contatos da API primeiro
+    for (const contato of todosContatos) {
+      const jid = contato.jid || '';
+      if (jidsProcessados.has(jid)) continue;
+      
       const tel = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
       
-      // Validar: 55 + 2 dígitos (DDD) + 8-9 dígitos (número)
       if (!tel.startsWith('55') || (tel.length !== 12 && tel.length !== 13)) {
         continue;
       }
       
-      // Normalizar BR (se 13 dígitos, remover 9 extra)
       const telNorm = tel.length === 13 ? tel.slice(0, 4) + tel.slice(5) : tel;
       
       contatosValidos.push({
         jid,
         tel: telNorm,
-        pushName: jidsMap[jid]?.pushName || `Cliente ${telNorm}`
+        pushName: contato.pushName || contato.senderName || `Cliente ${telNorm}`
       });
+      jidsProcessados.add(jid);
+    }
+
+    // Fallback: processar mensagens se necessário
+    for (const msg of todasMensagens) {
+      const jid = msg.key?.remoteJid || '';
+      if (jidsProcessados.has(jid) || !jid) continue;
+      if (jid.includes('@g.us') || jid.includes('@broadcast')) continue;
+      
+      const tel = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+      
+      if (!tel.startsWith('55') || (tel.length !== 12 && tel.length !== 13)) {
+        continue;
+      }
+      
+      const telNorm = tel.length === 13 ? tel.slice(0, 4) + tel.slice(5) : tel;
+      
+      contatosValidos.push({
+        jid,
+        tel: telNorm,
+        pushName: msg.pushName || msg.senderName || `Cliente ${telNorm}`
+      });
+      jidsProcessados.add(jid);
     }
 
     console.log(`✅ ${contatosValidos.length} contatos válidos filtrados`);
