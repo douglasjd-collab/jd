@@ -816,7 +816,7 @@ export default function BatePapo() {
                 </TabsList>
               </Tabs>
 
-              <ScrollArea className="mt-1 h-full">
+              <ScrollArea className="mt-1 flex-1">
                 <div className="space-y-1 pb-4">
                   {conversasFiltradas.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-slate-400">
