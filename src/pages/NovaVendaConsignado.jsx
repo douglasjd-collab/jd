@@ -463,83 +463,93 @@ export default function NovaVendaConsignado() {
 
     if (formData.tipo_consignado === 'PORTABILIDADE') {
       return (
-        <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-2">
-          <h3 className="font-semibold text-purple-900">Informação da Portabilidade</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label>Código do Banco de Origem</Label>
-              <Input
-                value={formData.origem_banco}
-                onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })}
-                placeholder="Ex: 341, 001, 033..."
-              />
-            </div>
-            <div>
-              <Label>Banco de Origem *</Label>
-              <select
-                value={formData.banco_anterior}
-                onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                required
-              >
-                <option value="">Selecione o banco...</option>
-                {bancos.map((b) => (
-                  <option key={b.id} value={b.nome}>{b.nome}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Contrato Portado *</Label>
-              <Input value={formData.origem_contrato} onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })} required />
-            </div>
-            <div>
-              <Label>Parcela *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input className="pl-10" value={formatarMoeda(formData.origem_parcela)} onChange={(e) => handleMoedaChange('origem_parcela', e.target.value)} required />
-              </div>
-            </div>
-            <div>
-              <Label>Saldo Devedor *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
-              </div>
-            </div>
-            <div>
-              <Label>Qt. Parc. a Vencer *</Label>
-              <Input type="number" placeholder="Ex: 48" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
-            </div>
-            <div>
-              <Label className="flex items-center gap-1">
-                Valor Base Comissão
-                <span className="text-xs text-slate-400 font-normal">(= Vl. Bruto)</span>
-              </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+        <div className="space-y-3">
+          {/* Dados do contrato de origem */}
+          <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-2">
+            <h3 className="font-semibold text-purple-900">Informação da Portabilidade</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Código do Banco de Origem</Label>
                 <Input
-                  className="pl-10 bg-amber-50 border-amber-200"
-                  value={formatarMoeda(formData.valor_base_comissao)}
-                  onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
-                  placeholder="0,00" />
+                  value={formData.origem_banco}
+                  onChange={(e) => setFormData({ ...formData, origem_banco: e.target.value })}
+                  placeholder="Ex: 341, 001, 033..."
+                />
+              </div>
+              <div>
+                <Label>Banco de Origem *</Label>
+                <select
+                  value={formData.banco_anterior}
+                  onChange={(e) => setFormData({ ...formData, banco_anterior: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  required
+                >
+                  <option value="">Selecione o banco...</option>
+                  {bancos.map((b) => (
+                    <option key={b.id} value={b.nome}>{b.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Contrato Portado *</Label>
+                <Input value={formData.origem_contrato} onChange={(e) => setFormData({ ...formData, origem_contrato: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Parcela *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.origem_parcela)} onChange={(e) => handleMoedaChange('origem_parcela', e.target.value)} required />
+                </div>
+              </div>
+              <div>
+                <Label>Saldo Devedor *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
+                </div>
+              </div>
+              <div>
+                <Label>Qt. Parc. a Vencer *</Label>
+                <Input type="number" placeholder="Ex: 48" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
+              </div>
+              <div>
+                <Label className="flex items-center gap-1">
+                  Valor Base Comissão
+                  <span className="text-xs text-slate-400 font-normal">(= Vl. Bruto)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input
+                    className="pl-10 bg-amber-50 border-amber-200"
+                    value={formatarMoeda(formData.valor_base_comissao)}
+                    onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
+                    placeholder="0,00" />
+                </div>
               </div>
             </div>
-            <div>
-              <Label>Valor Liberado</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input className="pl-10" value={formatarMoeda(formData.valor_liberado)} onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} placeholder="0,00" />
+          </div>
+
+          {/* Dados da nova proposta portada */}
+          <div className="border-l-4 border-l-blue-500 pl-4 py-2 bg-blue-50 rounded space-y-2">
+            <h3 className="font-semibold text-blue-900">Dados da Portabilidade</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Valor Liberado *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.valor_liberado)} onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} placeholder="0,00" required />
+                </div>
               </div>
-            </div>
-            <div>
-              <Label>Prazo (meses)</Label>
-              <Input type="number" placeholder="Ex: 84" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} />
-            </div>
-            <div>
-              <Label>Parcela</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input className="pl-10" value={formatarMoeda(formData.parcela)} onChange={(e) => handleMoedaChange('parcela', e.target.value)} placeholder="0,00" />
+              <div>
+                <Label>Prazo (meses) *</Label>
+                <Input type="number" placeholder="Ex: 84" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Parcela *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input className="pl-10" value={formatarMoeda(formData.parcela)} onChange={(e) => handleMoedaChange('parcela', e.target.value)} placeholder="0,00" required />
+                </div>
               </div>
             </div>
           </div>
