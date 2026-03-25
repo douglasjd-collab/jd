@@ -268,10 +268,12 @@ export default function VendasEmprestimos() {
     const dataLib = p.emprestimo_data_liberacao
       ? format(new Date(p.emprestimo_data_liberacao + 'T12:00:00'), 'dd/MM/yyyy')
       : '-';
+    const banco = p.administradora_nome || '-';
 
     const texto = [
       `Nome: ${p.cliente_nome || '-'}`,
       `CPF: ${cpf || '-'}`,
+      `Banco: ${banco}`,
       `Contrato: ${p.contrato || '-'}`,
       `Tipo: ${tipoLabel}`,
       `Corretor/Vendedor: ${p.vendedor_nome || '-'}`,
