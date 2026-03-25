@@ -26,12 +26,20 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
     normStr(p.status) === 'cancelado';
 
   // Propostas pagas no mês
+  // Considera qualquer data relevante: liberação, recebimento comissão, data_venda, ou updated_date
   const propostasPagasMes = React.useMemo(() => {
     const base = propostasEmprestimo.filter(p => {
       if (isCanceladaProposta(p)) return false;
       if (!isPagaProposta(p)) return false;
-      const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
-      return dataPag.startsWith(mesSelecionado);
+      // Verificar qualquer data que indique que o pagamento ocorreu no mês selecionado
+      const datas = [
+        p.emprestimo_data_liberacao,
+        p.data_comissao_recebida,
+        p.data_status_atual,
+        p.data_venda,
+        p.updated_date,
+      ].filter(Boolean);
+      return datas.some(d => String(d).startsWith(mesSelecionado));
     });
     if (isVendedor && user?.colaborador_id) {
       return base.filter(p => p.vendedor_id === user.colaborador_id);
