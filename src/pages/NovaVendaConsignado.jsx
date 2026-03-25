@@ -858,7 +858,26 @@ export default function NovaVendaConsignado() {
                   </Button>
                 </div>
               </div>
-
+              <div>
+                <Label>Tabela</Label>
+                <select
+                  value={formData.tabela_emprestimo_id}
+                  onChange={(e) => handleTabelaChange(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  disabled={!formData.banco && !formData.convenio_id}
+                >
+                  <option value="">Selecione...</option>
+                  {tabelasEmprestimo
+                    .filter(t => {
+                      const bancoMatch = !formData.banco || t.banco === formData.banco;
+                      const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
+                      return bancoMatch && convenioMatch;
+                    })
+                    .map(t => (
+                      <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
+                    ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
