@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
           }
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id: JD_ID,
-            cliente_nome: telefoneNormalizado,
+            cliente_nome: pushName || telefoneNormalizado,
             cliente_telefone: telefoneNormalizado,
             whatsapp_id: messageId,
             status: 'ativa',
