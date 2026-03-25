@@ -1193,8 +1193,8 @@ export default function NovaVendaConsignado() {
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                 >
                   {statusPropostas.length > 0 ? (
-                    statusPropostas.map(status => (
-                      <option key={status.id} value={status.codigo}>{status.nome}</option>
+                    statusPropostas.filter(s => s.tipo === 'principal' || !s.tipo).map(status => (
+                      <option key={status.id} value={status.codigo || status.slug}>{status.nome}</option>
                     ))
                   ) : (
                     <>
