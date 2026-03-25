@@ -249,10 +249,34 @@ export default function BatePapo() {
     refetchInterval: false,
   });
 
+  const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
+    queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
+    enabled: !!conversaSelecionadaId,
+    queryFn: async () => {
+        console.log(`📥 Buscando mensagens da conversa: ${conversaSelecionadaId}`);
+        const msgs = await base44.entities.MensagemWhatsapp.filter(
+          { conversa_id: conversaSelecionadaId },
+          '-data_envio',
+          300
+        );
+        console.log(`✅ ${msgs.length} mensagens encontradas`);
+        const ordenadas = [...msgs].reverse();
+        const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
+        if (naoLidas.length > 0) {
+          console.log(`📌 Marcando ${naoLidas.length} mensagens como lidas`);
+          await Promise.all(naoLidas.map(msg => 
+            base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
+          ));
+        }
+        return ordenadas;
+      },
+      staleTime: 0,
+      refetchInterval: false,
+  });
+
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
   // Selecionar conversa inicial quando a lista carrega
-  // Também re-sincronizar conversa selecionada se o ID mudou (após deduplicação)
   useEffect(() => {
     if (conversas.length === 0) return;
     if (!conversaSelecionada) {
@@ -260,7 +284,6 @@ export default function BatePapo() {
       const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
       selecionarConversa(ultimaConversa || conversas[0]);
     } else {
-      // Se a conversa selecionada não está mais na lista, tentar encontrar pelo telefone
       const aindaExiste = conversas.find(c => c.id === conversaSelecionada.id);
       if (!aindaExiste) {
         const mesmTelefone = conversas.find(c =>
