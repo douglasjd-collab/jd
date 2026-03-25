@@ -630,7 +630,6 @@ export default function BatePapo() {
   });
 
   // Contadores por aba
-  const conversasComHistorico = conversasValidas.filter(c => c.ultima_mensagem && c.ultima_mensagem.trim());
   const conversasSemHistorico = conversasValidas.filter(c => !c.ultima_mensagem || !c.ultima_mensagem.trim());
   
   const contadores = {
@@ -640,7 +639,6 @@ export default function BatePapo() {
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.usuario_responsavel_id === user?.colaborador_id).length,
     grupos: conversasValidas.filter(c => isGrupo(c)).length,
-    comHistorico: conversasComHistorico.filter(c => !isGrupo(c)).length,
   };
 
   const conversasFiltradas = conversasValidas.filter(c => {
