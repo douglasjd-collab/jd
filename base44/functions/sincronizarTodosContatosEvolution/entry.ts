@@ -27,13 +27,13 @@ Deno.serve(async (req) => {
 
     console.log(`🔄 Iniciando sincronização de contatos da Evolution...`);
 
-    // 1. Buscar TODOS os chats da Evolution
+    // 1. Buscar TODOS os chats da Evolution (SEM LIMITE)
     let todosChats = [];
     try {
       const resChats = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
         method: 'POST',
         headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ where: {} })
+        body: JSON.stringify({ where: {}, limit: 5000 }) // Aumentado para 5000
       });
       if (resChats.ok) {
         const data = await resChats.json();
@@ -44,13 +44,13 @@ Deno.serve(async (req) => {
       console.warn(`⚠️ Erro ao buscar chats: ${e.message}`);
     }
 
-    // 2. Buscar TODOS os contatos da Evolution
+    // 2. Buscar TODOS os contatos da Evolution (SEM LIMITE)
     let todosContatos = [];
     try {
       const resContatos = await fetch(`${evolutionUrl}/contact/findContacts/${instanceName}`, {
         method: 'POST',
         headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ where: {} })
+        body: JSON.stringify({ where: {}, limit: 5000 }) // Aumentado para 5000
       });
       if (resContatos.ok) {
         const data = await resContatos.json();
