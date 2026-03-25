@@ -5,6 +5,7 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   const JD_ID = '699696c2c9f5bffc2e67402b';
+  try {
   const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
   const empresa = empresas?.[0];
 
