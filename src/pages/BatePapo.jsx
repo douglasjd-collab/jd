@@ -259,7 +259,7 @@ export default function BatePapo() {
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionadaId },
           '-data_envio',
-          500
+          5000
         );
         const ordenadas = [...msgs].reverse();
         const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
@@ -529,24 +529,28 @@ export default function BatePapo() {
       try {
         const telefoneLimpo = conversaSelecionada.cliente_telefone.replace(/\D/g, '');
         
-        // Sincronizar mensagens recentes imediatamente e a cada 3s
+        // Sincronizar histórico completo da conversa
         const sincronizar = async () => {
           try {
-            const resp = await base44.functions.invoke('sincronizarRecente', { empresa_id: empresaId });
-            if (resp?.data?.ok && resp.data.mensagens_inseridas > 0) {
-              console.log(`✅ ${resp.data.mensagens_inseridas} mensagens sincronizadas`);
+            const resp = await base44.functions.invoke('sincronizarTodosChatsCompleto', { 
+              empresa_id: empresaId,
+              conversa_id: conversaSelecionada.id,
+              numero: conversaSelecionada.cliente_telefone 
+            });
+            if (resp?.data?.ok) {
+              console.log(`✅ Histórico sincronizado para ${conversaSelecionada.cliente_telefone}`);
               queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
             }
           } catch (e) {
-            console.error('⚠️ Erro ao sincronizar mensagens:', e);
+            console.error('⚠️ Erro ao sincronizar histórico:', e);
           }
         };
         
-        // Sincronizar imediatamente
+        // Sincronizar imediatamente ao abrir conversa
         await sincronizar();
         
-        // E a cada 500ms
-        const syncInterval = setInterval(sincronizar, 500);
+        // E a cada 2s para manter atualizado
+        const syncInterval = setInterval(sincronizar, 2000);
         return () => clearInterval(syncInterval);
         
         // Tentar variações do telefone (com/sem 9º dígito)
