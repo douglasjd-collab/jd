@@ -270,6 +270,22 @@ export default function NovaVendaConsignado() {
     }
   };
 
+  // Determina a base de comissão automática pelo tipo de empréstimo
+  const getBaseComissaoAutomatica = (tipo, valorLiberado, valorBruto, tabelaBaseComissao) => {
+    if (['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_CONSIGNADO', 'CARTAO_BENEFICIO', 'SAQUE'].includes(tipo)) {
+      return parseFloat(valorLiberado) || 0;
+    }
+    if (tipo === 'PORTABILIDADE') {
+      return parseFloat(valorBruto) || parseFloat(valorLiberado) || 0;
+    }
+    if (tipo === 'REFIN_PORTABILIDADE') {
+      // A tabela determina: se tabela tem base_comissao='bruto' usa bruto, senão líquido
+      if (tabelaBaseComissao === 'bruto') return parseFloat(valorBruto) || 0;
+      return parseFloat(valorLiberado) || 0;
+    }
+    return parseFloat(valorLiberado) || 0;
+  };
+
   // Recalcular quando prazo, tipo, convênio ou banco mudar
   useEffect(() => {
     if (formData.valor_liberado && formData.prazo) {
