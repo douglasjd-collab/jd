@@ -469,7 +469,7 @@ export default function NovaVendaConsignado() {
     if (isPortabilidade && !isRefinPortabilidade) {
       return (
         <div className="space-y-3">
-          {/* Dados do contrato de origem */}
+          {/* Dados do contrato de origem - apenas portabilidade, sem seção de refin */}
           <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-2">
             <h3 className="font-semibold text-purple-900">Informações da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
