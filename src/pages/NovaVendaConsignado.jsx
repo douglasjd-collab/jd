@@ -383,8 +383,12 @@ export default function NovaVendaConsignado() {
     }
   }, [formData.valor_liberado, formData.valor_bruto, formData.tabela_emprestimo_id]);
 
+  const tipoAtual = (formData.tipo_consignado || '').toUpperCase();
+  const isPortabilidade = tipoAtual === 'PORTABILIDADE' || tipoAtual.includes('PORTABILIDADE') && !tipoAtual.includes('REFIN');
+  const isRefinPortabilidade = (tipoAtual === 'REFIN_PORTABILIDADE' || tipoAtual === 'PORTABILIDADE_REFIN' || (tipoAtual.includes('PORTABILIDADE') && tipoAtual.includes('REFIN')));
+
   const renderCamposPorTipo = () => {
-    if (['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_BENEFICIO', 'CARTAO_CONSIGNADO', 'SAQUE'].includes(formData.tipo_consignado)) {
+    if (['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_BENEFICIO', 'CARTAO_CONSIGNADO', 'SAQUE'].includes(tipoAtual)) {
       return (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
