@@ -618,9 +618,9 @@ export default function BatePapo() {
     return wid.includes('@lid') || tel.includes('lid') || tel.startsWith('lid');
   };
 
-  // Conversas válidas — TODAS as conversas (NENHUM filtro, NADA perdido)
+  // Conversas válidas — exclui @lid e números inválidos
   const conversasValidas = conversas.filter(c => {
-    return true; // 100% das conversas são exibidas
+    return !isContatoFalso(c) && isTelefoneValido(c.cliente_telefone);
   });
 
   // Contadores por aba
