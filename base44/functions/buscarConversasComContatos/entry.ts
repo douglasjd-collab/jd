@@ -65,14 +65,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Buscar mensagens de TODAS as conversas de hoje
+    // Buscar mensagens de TODAS as conversas (sem limite)
     const mensagensMap = {};
-    for (const conversa of conversasHoje) {
+    for (const conversa of conversas) {
       try {
         const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
           { conversa_id: conversa.id },
           'data_envio',
-          300
+          500 // Aumentado para 500 mensagens por conversa
         );
         mensagensMap[conversa.id] = msgs || [];
       } catch (e) {
