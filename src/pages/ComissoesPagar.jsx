@@ -76,6 +76,7 @@ export default function ComissoesPagar() {
     queryKey: ['comissoes-a-pagar', user?.empresa_id],
     queryFn: async () => {
       const filtro = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
+      filtro.produto = 'consorcio';
       return await base44.entities.ComissaoAPagar.filter(filtro, '-created_date', 2000);
     },
     enabled: !!user,
