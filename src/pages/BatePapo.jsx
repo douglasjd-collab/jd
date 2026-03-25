@@ -190,6 +190,24 @@ export default function BatePapo() {
       setCorrigindo(false);
     }
   };
+
+  const sincronizarTodosContatosEvolution = async () => {
+    setSincronizando(true);
+    try {
+      const resp = await base44.functions.invoke('sincronizarTodosContatosEvolution', { empresa_id: empresaId });
+      const data = resp?.data;
+      if (data?.ok) {
+        toast.success(`✅ ${data.criadasNovas} novos contatos importados | ${data.jaExistem} já existiam`);
+        refetchConversas();
+      } else {
+        toast.error('Erro ao importar: ' + (data?.erro || 'Desconhecido'));
+      }
+    } catch (e) {
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setSincronizando(false);
+    }
+  };
   const mensagensEndRef = React.useRef(null);
 
   useEffect(() => {
