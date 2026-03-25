@@ -144,8 +144,8 @@ export default function NovaVendaConsignado() {
 
   const criarVendaMutation = useMutation({
     mutationFn: async (dados) => {
-      const convenioSelecionado = convenios.find(c => c.id === dados.convenio_id);
-      const vendedorSelecionado = vendedores.find(v => v.id === dados.vendedor_parceiro_id);
+      const convenioSelecionado = convenios.find((c) => c.id === dados.convenio_id);
+      const vendedorSelecionado = vendedores.find((v) => v.id === dados.vendedor_parceiro_id);
 
       const proposta = await base44.entities.Proposta.create({
         empresa_id: empresaId,
@@ -177,7 +177,7 @@ export default function NovaVendaConsignado() {
         emprestimo_valor_parcela: parseFloat(dados.parcela) || 0,
         emprestimo_saldo_devedor: parseFloat(dados.saldo_devedor) || 0,
         emprestimo_data_liberacao: dados.data_liberacao || null,
-        emprestimo_banco_anterior: dados.banco_anterior,
+        emprestimo_banco_anterior: dados.banco_anterior
       });
 
       return proposta;
@@ -245,7 +245,7 @@ export default function NovaVendaConsignado() {
     const banco = dadosForm.banco;
 
     // Buscar tabela de comissão aplicável
-    const tabelaAplicavel = tabelasComissao.find(t => {
+    const tabelaAplicavel = tabelasComissao.find((t) => {
       const tipoMatch = t.tipo_operacao === tipo;
       const convenioMatch = !t.convenio_id || t.convenio_id === convenioId;
       const bancoMatch = !t.banco || t.banco === banco;
@@ -261,8 +261,8 @@ export default function NovaVendaConsignado() {
     const base = parseFloat(dadosForm.valor_base_comissao) > 0 ? parseFloat(dadosForm.valor_base_comissao) : baseAuto;
 
     if (tabelaAplicavel && base > 0) {
-      const comissaoEmpresa = (base * tabelaAplicavel.percentual_comissao_empresa) / 100;
-      const comissaoVendedor = (base * tabelaAplicavel.percentual_comissao_vendedor) / 100;
+      const comissaoEmpresa = base * tabelaAplicavel.percentual_comissao_empresa / 100;
+      const comissaoVendedor = base * tabelaAplicavel.percentual_comissao_vendedor / 100;
 
       setFormData({
         ...dadosForm,
@@ -311,7 +311,7 @@ export default function NovaVendaConsignado() {
 
   // Aplicar comissões da tabela selecionada
   const handleTabelaChange = (tabelaId) => {
-    const tabela = tabelasEmprestimo.find(t => t.id === tabelaId);
+    const tabela = tabelasEmprestimo.find((t) => t.id === tabelaId);
     if (tabela) {
       const valorLiberado = parseFloat(formData.valor_liberado) || 0;
       const valorBruto = parseFloat(formData.valor_bruto) || 0;
@@ -322,8 +322,8 @@ export default function NovaVendaConsignado() {
         valorBruto,
         tabela.base_comissao || null
       );
-      const comissaoEmpresa = base > 0 ? (base * tabela.comissao_empresa) / 100 : 0;
-      const comissaoVendedor = base > 0 ? (base * (tabela.comissao_corretor || 0)) / 100 : 0;
+      const comissaoEmpresa = base > 0 ? base * tabela.comissao_empresa / 100 : 0;
+      const comissaoVendedor = base > 0 ? base * (tabela.comissao_corretor || 0) / 100 : 0;
 
       setFormData({
         ...formData,
@@ -353,7 +353,7 @@ export default function NovaVendaConsignado() {
       const valorBruto = parseFloat(formData.valor_bruto) || 0;
       const baseAuto = getBaseComissaoAutomatica(formData.tipo_consignado, valorLiberado, valorBruto, null);
       if (baseAuto > 0) {
-        setFormData(prev => ({ ...prev, valor_base_comissao: baseAuto.toFixed(2) }));
+        setFormData((prev) => ({ ...prev, valor_base_comissao: baseAuto.toFixed(2) }));
       }
     }
   }, [formData.tipo_consignado, formData.valor_liberado, formData.valor_bruto]);
@@ -361,7 +361,7 @@ export default function NovaVendaConsignado() {
   // Recalcular comissões quando valor mudar e tabela estiver selecionada
   useEffect(() => {
     if (formData.tabela_emprestimo_id && (formData.valor_liberado || formData.valor_bruto)) {
-      const tabela = tabelasEmprestimo.find(t => t.id === formData.tabela_emprestimo_id);
+      const tabela = tabelasEmprestimo.find((t) => t.id === formData.tabela_emprestimo_id);
       if (tabela) {
         const valorLiberado = parseFloat(formData.valor_liberado) || 0;
         const valorBruto = parseFloat(formData.valor_bruto) || 0;
@@ -369,9 +369,9 @@ export default function NovaVendaConsignado() {
         const baseManual = parseFloat(formData.valor_base_comissao) || 0;
         const baseAuto = getBaseComissaoAutomatica(formData.tipo_consignado, valorLiberado, valorBruto, tabela.base_comissao || null);
         const base = baseManual > 0 ? baseManual : baseAuto;
-        const comissaoEmpresa = base > 0 ? (base * tabela.comissao_empresa) / 100 : 0;
-        const comissaoVendedor = base > 0 ? (base * (tabela.comissao_corretor || 0)) / 100 : 0;
-        setFormData(prev => ({
+        const comissaoEmpresa = base > 0 ? base * tabela.comissao_empresa / 100 : 0;
+        const comissaoVendedor = base > 0 ? base * (tabela.comissao_corretor || 0) / 100 : 0;
+        setFormData((prev) => ({
           ...prev,
           valor_base_comissao: baseAuto > 0 ? baseAuto.toFixed(2) : prev.valor_base_comissao,
           percentual_comissao_empresa: tabela.comissao_empresa,
@@ -392,13 +392,13 @@ export default function NovaVendaConsignado() {
               <Label>Valor Liberado *</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
+                <Input
                   className="pl-10"
-                  value={formatarMoeda(formData.valor_liberado)} 
-                  onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} 
+                  value={formatarMoeda(formData.valor_liberado)}
+                  onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)}
                   placeholder="0,00"
-                  required 
-                />
+                  required />
+                
               </div>
             </div>
             <div>
@@ -408,12 +408,12 @@ export default function NovaVendaConsignado() {
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
+                <Input
                   className="pl-10 bg-amber-50 border-amber-200"
-                  value={formatarMoeda(formData.valor_base_comissao)} 
-                  onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)} 
-                  placeholder="0,00"
-                />
+                  value={formatarMoeda(formData.valor_base_comissao)}
+                  onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
+                  placeholder="0,00" />
+                
               </div>
             </div>
           </div>
@@ -422,12 +422,12 @@ export default function NovaVendaConsignado() {
               <Label>Valor Bruto</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
+                <Input
                   className="pl-10"
-                  value={formatarMoeda(formData.valor_bruto)} 
-                  onChange={(e) => handleMoedaChange('valor_bruto', e.target.value)} 
-                  placeholder="0,00"
-                />
+                  value={formatarMoeda(formData.valor_bruto)}
+                  onChange={(e) => handleMoedaChange('valor_bruto', e.target.value)}
+                  placeholder="0,00" />
+                
               </div>
             </div>
             <div>
@@ -438,12 +438,12 @@ export default function NovaVendaConsignado() {
               <Label>Parcela</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                <Input 
+                <Input
                   className="pl-10"
-                  value={formatarMoeda(formData.parcela)} 
-                  onChange={(e) => handleMoedaChange('parcela', e.target.value)} 
-                  placeholder="0,00"
-                />
+                  value={formatarMoeda(formData.parcela)}
+                  onChange={(e) => handleMoedaChange('parcela', e.target.value)}
+                  placeholder="0,00" />
+                
               </div>
             </div>
           </div>
@@ -457,14 +457,14 @@ export default function NovaVendaConsignado() {
               <Input type="date" value={formData.data_liberacao} onChange={(e) => setFormData({ ...formData, data_liberacao: e.target.value })} />
             </div>
           </div>
-        </>
-      );
+        </>);
+
     }
 
     if (formData.tipo_consignado === 'PORTABILIDADE') {
       return (
         <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-2">
-          <h3 className="font-semibold text-purple-900">Banco de Origem</h3>
+          <h3 className="font-semibold text-purple-900">Informação da Portabilidade</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label>Banco de Origem *</Label>
@@ -511,13 +511,13 @@ export default function NovaVendaConsignado() {
                   className="pl-10 bg-amber-50 border-amber-200"
                   value={formatarMoeda(formData.valor_base_comissao)}
                   onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
-                  placeholder="0,00"
-                />
+                  placeholder="0,00" />
+                
               </div>
             </div>
           </div>
-        </div>
-      );
+        </div>);
+
     }
 
     if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
@@ -598,19 +598,19 @@ export default function NovaVendaConsignado() {
                   onChange={(e) => handleTabelaChange(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
                   disabled={!formData.banco || !formData.convenio_id}
-                  required
-                >
+                  required>
+                  
                   <option value="">Selecione...</option>
-                  {tabelasEmprestimo
-                    .filter(t => {
-                      const bancoMatch = !formData.banco || t.banco === formData.banco;
-                      const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
-                      const tipoMatch = t.produto === 'REFIN/PORTABILIDADE';
-                      return bancoMatch && convenioMatch && tipoMatch;
-                    })
-                    .map(t => (
-                      <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
-                    ))}
+                  {tabelasEmprestimo.
+                  filter((t) => {
+                    const bancoMatch = !formData.banco || t.banco === formData.banco;
+                    const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
+                    const tipoMatch = t.produto === 'REFIN/PORTABILIDADE';
+                    return bancoMatch && convenioMatch && tipoMatch;
+                  }).
+                  map((t) =>
+                  <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -624,8 +624,8 @@ export default function NovaVendaConsignado() {
                     className="pl-10 bg-amber-50 border-amber-200"
                     value={formatarMoeda(formData.valor_base_comissao)}
                     onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
-                    placeholder="0,00"
-                  />
+                    placeholder="0,00" />
+                  
                 </div>
               </div>
             </div>
@@ -661,8 +661,8 @@ export default function NovaVendaConsignado() {
               </div>
             </div>
           </div>
-        </div>
-      );
+        </div>);
+
     }
   };
 
@@ -670,8 +670,8 @@ export default function NovaVendaConsignado() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
-    );
+      </div>);
+
   }
 
   const stepLabels = ['Informações do Cliente', 'Detalhes da Proposta', 'Estrutura de Comissões', 'Revisão Final'];
@@ -691,10 +691,10 @@ export default function NovaVendaConsignado() {
     <div className="space-y-6">
       {/* Header com navegação */}
       <div className="flex items-center gap-3 mb-6">
-        <button 
+        <button
           onClick={() => navigate(-1)}
-          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-        >
+          className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+          
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
@@ -711,7 +711,7 @@ export default function NovaVendaConsignado() {
             const isActive = currentStep === step;
             const isCompleted = currentStep > step;
             const color = stepColors[idx];
-            
+
             const bgMap = {
               purple: isActive ? 'bg-purple-100 border-purple-300' : isCompleted ? 'bg-purple-50 border-purple-200' : 'bg-slate-50 border-slate-200',
               blue: isActive ? 'bg-blue-100 border-blue-300' : isCompleted ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200',
@@ -731,21 +731,21 @@ export default function NovaVendaConsignado() {
                 key={step}
                 onClick={() => currentStep > step || isActive ? setCurrentStep(step) : null}
                 disabled={currentStep < step}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border whitespace-nowrap transition-all ${bgMap[color]} ${currentStep < step ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'}`}
-              >
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg border whitespace-nowrap transition-all ${bgMap[color]} ${currentStep < step ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'}`}>
+                
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${badgeMap[color]}`}>
                   {step}
                 </div>
                 <span className="text-sm font-medium">{label}</span>
-              </button>
-            );
+              </button>);
+
           })}
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Step 1: Informações do Cliente */}
-        {currentStep === 1 && (
+        {currentStep === 1 &&
         <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-white">
           <CardHeader className="bg-purple-50/50 border-b">
             <CardTitle className="flex items-center gap-2 text-purple-900">
@@ -758,118 +758,118 @@ export default function NovaVendaConsignado() {
           <CardContent className="pt-6 space-y-4">
             <div>
               <Label>Cliente *</Label>
-              {clienteSelecionado ? (
-                <div className="flex items-center justify-between p-4 bg-purple-100 rounded-lg border-2 border-purple-300">
+              {clienteSelecionado ?
+              <div className="flex items-center justify-between p-4 bg-purple-100 rounded-lg border-2 border-purple-300">
                   <span className="font-semibold text-purple-900">{clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social}</span>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => setShowClienteModal(true)}>
                       Alterar
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
+                </div> :
+
+              <div className="space-y-3">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input 
-                      placeholder="Buscar cliente por nome ou ID" 
-                      className="pl-10"
-                      onClick={() => setShowClienteModal(true)}
-                      readOnly
-                    />
+                    <Input
+                    placeholder="Buscar cliente por nome ou ID"
+                    className="pl-10"
+                    onClick={() => setShowClienteModal(true)}
+                    readOnly />
+                  
                   </div>
                   <Button type="button" className="w-full bg-purple-500 hover:bg-purple-600" onClick={() => setShowClienteModal(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Cliente
                   </Button>
                 </div>
-              )}
+              }
             </div>
 
             {/* Número do Benefício / Matrícula */}
-            {clienteSelecionado && (
-              <div>
+            {clienteSelecionado &&
+            <div>
                 <Label>Número do Benefício / Matrícula</Label>
                 <Input
-                  value={formData.numero_beneficio}
-                  onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })}
-                  placeholder="Digite o número do benefício ou matrícula"
-                />
+                value={formData.numero_beneficio}
+                onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })}
+                placeholder="Digite o número do benefício ou matrícula" />
+              
               </div>
-            )}
+            }
 
             {/* Grau de Alfabetização — aparece somente após selecionar cliente */}
-            {clienteSelecionado && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+            {clienteSelecionado &&
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
                 <p className="font-semibold text-slate-800 flex items-center gap-2">🎓 Grau de Alfabetização</p>
 
                 <div>
                   <Label className="text-sm text-slate-600 mb-2 block">O cliente é alfabetizado?</Label>
                   <div className="flex gap-3">
                     <button
-                      type="button"
-                      onClick={() => { setAlfabetizado(true); }}
-                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
-                        alfabetizado === true
-                          ? 'bg-green-500 text-white border-green-500'
-                          : 'bg-white text-slate-700 border-slate-300 hover:border-green-400'
-                      }`}
-                    >
+                    type="button"
+                    onClick={() => {setAlfabetizado(true);}}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+                    alfabetizado === true ?
+                    'bg-green-500 text-white border-green-500' :
+                    'bg-white text-slate-700 border-slate-300 hover:border-green-400'}`
+                    }>
+                    
                       ✅ Sim
                     </button>
                     <button
-                      type="button"
-                      onClick={() => { setAlfabetizado(false); setGrauEscolaridade(''); }}
-                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
-                        alfabetizado === false
-                          ? 'bg-red-500 text-white border-red-500'
-                          : 'bg-white text-slate-700 border-slate-300 hover:border-red-400'
-                      }`}
-                    >
+                    type="button"
+                    onClick={() => {setAlfabetizado(false);setGrauEscolaridade('');}}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
+                    alfabetizado === false ?
+                    'bg-red-500 text-white border-red-500' :
+                    'bg-white text-slate-700 border-slate-300 hover:border-red-400'}`
+                    }>
+                    
                       ❌ Não
                     </button>
                   </div>
                 </div>
 
-                {alfabetizado === true && (
-                  <div>
+                {alfabetizado === true &&
+              <div>
                     <Label className="text-sm text-slate-600 mb-2 block">Grau de escolaridade</Label>
                     <div className="grid grid-cols-1 gap-2">
                       {[
-                        { value: 'analfabeto', label: '📕 Analfabeto', desc: 'Não sabe ler nem escrever.' },
-                        { value: 'fundamental_incompleto', label: '📘 Ensino Fundamental Incompleto', desc: 'Não concluiu o fundamental (até o 9º ano).' },
-                        { value: 'fundamental_completo', label: '📗 Ensino Fundamental Completo', desc: 'Concluiu o 9º ano.' },
-                        { value: 'medio_incompleto', label: '📙 Ensino Médio Incompleto', desc: 'Começou o ensino médio, mas não terminou.' },
-                        { value: 'medio_completo', label: '📓 Ensino Médio Completo', desc: 'Concluiu o ensino médio (antigo 2º grau).' },
-                        { value: 'superior_incompleto', label: '🎓 Ensino Superior Incompleto', desc: 'Está cursando faculdade, mas não terminou.' },
-                        { value: 'superior_completo', label: '🎓 Ensino Superior Completo', desc: 'Concluiu faculdade (graduação).' },
-                        { value: 'pos_graduacao', label: '🎓 Pós-graduação', desc: 'Especialização, MBA, mestrado ou doutorado.' },
-                      ].map(op => (
-                        <button
-                          key={op.value}
-                          type="button"
-                          onClick={() => setGrauEscolaridade(op.value)}
-                          className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-all ${
-                            grauEscolaridade === op.value
-                              ? 'bg-purple-100 border-purple-400 text-purple-900'
-                              : 'bg-white border-slate-200 text-slate-700 hover:border-purple-300'
-                          }`}
-                        >
+                  { value: 'analfabeto', label: '📕 Analfabeto', desc: 'Não sabe ler nem escrever.' },
+                  { value: 'fundamental_incompleto', label: '📘 Ensino Fundamental Incompleto', desc: 'Não concluiu o fundamental (até o 9º ano).' },
+                  { value: 'fundamental_completo', label: '📗 Ensino Fundamental Completo', desc: 'Concluiu o 9º ano.' },
+                  { value: 'medio_incompleto', label: '📙 Ensino Médio Incompleto', desc: 'Começou o ensino médio, mas não terminou.' },
+                  { value: 'medio_completo', label: '📓 Ensino Médio Completo', desc: 'Concluiu o ensino médio (antigo 2º grau).' },
+                  { value: 'superior_incompleto', label: '🎓 Ensino Superior Incompleto', desc: 'Está cursando faculdade, mas não terminou.' },
+                  { value: 'superior_completo', label: '🎓 Ensino Superior Completo', desc: 'Concluiu faculdade (graduação).' },
+                  { value: 'pos_graduacao', label: '🎓 Pós-graduação', desc: 'Especialização, MBA, mestrado ou doutorado.' }].
+                  map((op) =>
+                  <button
+                    key={op.value}
+                    type="button"
+                    onClick={() => setGrauEscolaridade(op.value)}
+                    className={`text-left px-4 py-2.5 rounded-lg border text-sm transition-all ${
+                    grauEscolaridade === op.value ?
+                    'bg-purple-100 border-purple-400 text-purple-900' :
+                    'bg-white border-slate-200 text-slate-700 hover:border-purple-300'}`
+                    }>
+                    
                           <span className="font-medium">{op.label}</span>
                           <span className="text-xs text-slate-500 ml-2">{op.desc}</span>
                         </button>
-                      ))}
+                  )}
                     </div>
                   </div>
-                )}
+              }
               </div>
-            )}
+            }
           </CardContent>
         </Card>
-        )}
+        }
 
         {/* Step 2: Detalhes da Proposta */}
-        {currentStep === 2 && (
+        {currentStep === 2 &&
 
         <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-white">
           <CardHeader className="bg-blue-50/50 border-b">
@@ -890,12 +890,12 @@ export default function NovaVendaConsignado() {
                     value={formData.banco}
                     onChange={(e) => setFormData({ ...formData, banco: e.target.value, tabela_emprestimo_id: '' })}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                    required
-                  >
+                    required>
+                    
                     <option value="">Selecione...</option>
-                    {bancos.map(b => (
-                      <option key={b.id} value={b.nome}>{b.nome}</option>
-                    ))}
+                    {bancos.map((b) =>
+                    <option key={b.id} value={b.nome}>{b.nome}</option>
+                    )}
                   </select>
                   <Button type="button" variant="outline" size="icon" onClick={() => setShowBancoModal(true)} title="Cadastrar novo banco">
                     <Plus className="w-4 h-4" />
@@ -916,15 +916,15 @@ export default function NovaVendaConsignado() {
                     setFormData({ ...formData, ...updates });
                   }}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  required
-                >
+                  required>
+                  
                   <option value="">Selecione...</option>
-                  {tiposEmprestimo.length > 0 ? (
-                    tiposEmprestimo.map(t => (
-                      <option key={t.id} value={t.slug}>{t.nome}</option>
-                    ))
-                  ) : (
-                    <>
+                  {tiposEmprestimo.length > 0 ?
+                  tiposEmprestimo.map((t) =>
+                  <option key={t.id} value={t.slug}>{t.nome}</option>
+                  ) :
+
+                  <>
                       <option value="NOVO">Novo</option>
                       <option value="REFINANCIAMENTO">Refinanciamento</option>
                       <option value="PORTABILIDADE">Portabilidade</option>
@@ -934,7 +934,7 @@ export default function NovaVendaConsignado() {
                       <option value="SAQUE">Saque</option>
                       <option value="CARTAO">Cartão</option>
                     </>
-                  )}
+                  }
                 </select>
               </div>
             </div>
@@ -947,12 +947,12 @@ export default function NovaVendaConsignado() {
                     value={formData.convenio_id}
                     onChange={(e) => setFormData({ ...formData, convenio_id: e.target.value, tabela_emprestimo_id: '' })}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                    required
-                  >
+                    required>
+                    
                     <option value="">Selecione...</option>
-                    {convenios.map(c => (
-                      <option key={c.id} value={c.id}>{c.nome}</option>
-                    ))}
+                    {convenios.map((c) =>
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                    )}
                   </select>
                   <Button type="button" variant="outline" size="icon" onClick={() => setShowConvenioModal(true)} title="Cadastrar novo convênio">
                     <Plus className="w-4 h-4" />
@@ -965,18 +965,18 @@ export default function NovaVendaConsignado() {
                   value={formData.tabela_emprestimo_id}
                   onChange={(e) => handleTabelaChange(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  disabled={!formData.banco && !formData.convenio_id}
-                >
+                  disabled={!formData.banco && !formData.convenio_id}>
+                  
                   <option value="">Selecione...</option>
-                  {tabelasEmprestimo
-                    .filter(t => {
-                      const bancoMatch = !formData.banco || t.banco === formData.banco;
-                      const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
-                      return bancoMatch && convenioMatch;
-                    })
-                    .map(t => (
-                      <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
-                    ))}
+                  {tabelasEmprestimo.
+                  filter((t) => {
+                    const bancoMatch = !formData.banco || t.banco === formData.banco;
+                    const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
+                    return bancoMatch && convenioMatch;
+                  }).
+                  map((t) =>
+                  <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
+                  )}
                 </select>
               </div>
             </div>
@@ -987,12 +987,12 @@ export default function NovaVendaConsignado() {
                 <select
                   value={formData.vendedor_parceiro_id}
                   onChange={(e) => setFormData({ ...formData, vendedor_parceiro_id: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                >
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                  
                   <option value="">Selecione...</option>
-                  {vendedores.map(v => (
-                    <option key={v.id} value={v.id}>{v.nome}</option>
-                  ))}
+                  {vendedores.map((v) =>
+                  <option key={v.id} value={v.id}>{v.nome}</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -1000,12 +1000,12 @@ export default function NovaVendaConsignado() {
                 <select
                   value={formData.empresa_parceira}
                   onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                >
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                  
                   <option value="">Selecione...</option>
-                  {empresasParceiras.map(ep => (
-                    <option key={ep.id} value={ep.nome}>{ep.nome}</option>
-                  ))}
+                  {empresasParceiras.map((ep) =>
+                  <option key={ep.id} value={ep.nome}>{ep.nome}</option>
+                  )}
                 </select>
               </div>
             </div>
@@ -1014,11 +1014,11 @@ export default function NovaVendaConsignado() {
 
           </CardContent>
         </Card>
-        )}
+        }
 
         {/* Step 3: Estrutura de Comissões */}
-        {currentStep === 3 && (user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') && (
-          <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-white">
+        {currentStep === 3 && (user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') &&
+        <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-white">
             <CardHeader className="bg-green-50/50 border-b">
               <CardTitle className="flex items-center gap-2 text-green-900">
                 <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
@@ -1031,79 +1031,79 @@ export default function NovaVendaConsignado() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>% Comissão Empresa</Label>
-                    <Input 
-                      type="number" 
-                      step="0.01"
-                      value={formData.percentual_comissao_empresa} 
-                      onChange={(e) => setFormData({ ...formData, percentual_comissao_empresa: e.target.value })}
-                      placeholder="0.00"
-                      className={formData.percentual_comissao_empresa ? 'bg-green-50 border-green-300' : ''}
-                    />
+                    <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.percentual_comissao_empresa}
+                  onChange={(e) => setFormData({ ...formData, percentual_comissao_empresa: e.target.value })}
+                  placeholder="0.00"
+                  className={formData.percentual_comissao_empresa ? 'bg-green-50 border-green-300' : ''} />
+                
                   </div>
                   <div>
                     <Label>Comissão Empresa Prevista</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                      <Input 
-                        className="pl-10 bg-slate-50"
-                        value={formatarMoeda(formData.comissao_empresa_prevista)}
-                        readOnly
-                      />
+                      <Input
+                    className="pl-10 bg-slate-50"
+                    value={formatarMoeda(formData.comissao_empresa_prevista)}
+                    readOnly />
+                  
                     </div>
                   </div>
                   <div>
                     <Label>Comissão Empresa Recebida</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                      <Input 
-                        className="pl-10"
-                        value={formatarMoeda(formData.comissao_empresa_recebida)} 
-                        onChange={(e) => handleMoedaChange('comissao_empresa_recebida', e.target.value)}
-                        placeholder="0,00"
-                      />
+                      <Input
+                    className="pl-10"
+                    value={formatarMoeda(formData.comissao_empresa_recebida)}
+                    onChange={(e) => handleMoedaChange('comissao_empresa_recebida', e.target.value)}
+                    placeholder="0,00" />
+                  
                     </div>
                   </div>
                   <div>
                     <Label>% Comissão Vendedor</Label>
-                    <Input 
-                      type="number" 
-                      step="0.01"
-                      value={formData.percentual_comissao_vendedor} 
-                      onChange={(e) => setFormData({ ...formData, percentual_comissao_vendedor: e.target.value })}
-                      placeholder="0.00"
-                      className={formData.percentual_comissao_vendedor ? 'bg-green-50 border-green-300' : ''}
-                    />
+                    <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.percentual_comissao_vendedor}
+                  onChange={(e) => setFormData({ ...formData, percentual_comissao_vendedor: e.target.value })}
+                  placeholder="0.00"
+                  className={formData.percentual_comissao_vendedor ? 'bg-green-50 border-green-300' : ''} />
+                
                   </div>
                   <div>
                     <Label>Comissão Vendedor Prevista</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                      <Input 
-                        className="pl-10 bg-slate-50"
-                        value={formatarMoeda(formData.comissao_vendedor_prevista)}
-                        readOnly
-                      />
+                      <Input
+                    className="pl-10 bg-slate-50"
+                    value={formatarMoeda(formData.comissao_vendedor_prevista)}
+                    readOnly />
+                  
                     </div>
                   </div>
                   <div>
                     <Label>Comissão Vendedor Paga</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                      <Input 
-                        className="pl-10"
-                        value={formatarMoeda(formData.comissao_vendedor_paga)} 
-                        onChange={(e) => handleMoedaChange('comissao_vendedor_paga', e.target.value)}
-                        placeholder="0,00"
-                      />
+                      <Input
+                    className="pl-10"
+                    value={formatarMoeda(formData.comissao_vendedor_paga)}
+                    onChange={(e) => handleMoedaChange('comissao_vendedor_paga', e.target.value)}
+                    placeholder="0,00" />
+                  
                     </div>
                   </div>
                 </div>
             </CardContent>
           </Card>
-        )}
+        }
 
-        {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && currentStep === 3 && (
-          <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/50 to-white">
+        {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && currentStep === 3 &&
+        <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/50 to-white">
             <CardHeader className="bg-amber-50/50 border-b">
               <CardTitle className="flex items-center gap-2 text-amber-900">
                 <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
@@ -1116,31 +1116,31 @@ export default function NovaVendaConsignado() {
               <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Percentual</Label>
-                    <Input 
-                      value={formData.percentual_comissao_vendedor + '%'}
-                      readOnly
-                      className="bg-slate-50"
-                    />
+                    <Input
+                  value={formData.percentual_comissao_vendedor + '%'}
+                  readOnly
+                  className="bg-slate-50" />
+                
                   </div>
                   <div>
                     <Label>Valor Previsto</Label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                      <Input 
-                        className="pl-10 bg-slate-50"
-                        value={formatarMoeda(formData.comissao_vendedor_prevista)}
-                        readOnly
-                      />
+                      <Input
+                    className="pl-10 bg-slate-50"
+                    value={formatarMoeda(formData.comissao_vendedor_prevista)}
+                    readOnly />
+                  
                     </div>
                   </div>
                 </div>
             </CardContent>
           </Card>
-        )}
+        }
 
         {/* Step 4: Revisão Final */}
-        {currentStep === 4 && (
-          <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-white">
+        {currentStep === 4 &&
+        <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50/50 to-white">
             <CardHeader className="bg-orange-50/50 border-b">
               <CardTitle className="flex items-center gap-2 text-orange-900">
                 <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -1188,16 +1188,16 @@ export default function NovaVendaConsignado() {
               <div>
                 <Label>Status</Label>
                 <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                >
-                  {statusPropostas.length > 0 ? (
-                    statusPropostas.filter(s => s.tipo === 'principal' || !s.tipo).map(status => (
-                      <option key={status.id} value={status.codigo || status.slug}>{status.nome}</option>
-                    ))
-                  ) : (
-                    <>
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                
+                  {statusPropostas.length > 0 ?
+                statusPropostas.filter((s) => s.tipo === 'principal' || !s.tipo).map((status) =>
+                <option key={status.id} value={status.codigo || status.slug}>{status.nome}</option>
+                ) :
+
+                <>
                       <option value="em_andamento">Em andamento</option>
                       <option value="pendente">Pendente</option>
                       <option value="aguardando_formalizacao">Aguardando formalização</option>
@@ -1207,62 +1207,62 @@ export default function NovaVendaConsignado() {
                       <option value="pago">Pago</option>
                       <option value="cancelado">Cancelado</option>
                     </>
-                  )}
+                }
                 </select>
               </div>
 
               <div>
                 <Label>Observações</Label>
                 <textarea
-                  value={formData.observacoes}
-                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                />
+                value={formData.observacoes}
+                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" />
+              
               </div>
             </CardContent>
           </Card>
-        )}
+        }
 
         {/* Botões de Navegação */}
         <div className="flex gap-3 justify-between pt-6 border-t sticky bottom-0 bg-white p-6 -mx-6 rounded-b-lg">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => {
-              if (currentStep === 1) navigate(-1);
-              else setCurrentStep(currentStep - 1);
-            }}
-          >
+              if (currentStep === 1) navigate(-1);else
+              setCurrentStep(currentStep - 1);
+            }}>
+            
             {currentStep === 1 ? 'Cancelar' : 'Anterior'}
           </Button>
           
           <div className="flex gap-2">
-            {currentStep < 4 && (
-              <Button 
-                type="button" 
-                onClick={() => setCurrentStep(currentStep + 1)}
-                disabled={currentStep === 1 && !clienteSelecionado}
-                className="bg-slate-500 hover:bg-slate-600"
-              >
+            {currentStep < 4 &&
+            <Button
+              type="button"
+              onClick={() => setCurrentStep(currentStep + 1)}
+              disabled={currentStep === 1 && !clienteSelecionado}
+              className="bg-slate-500 hover:bg-slate-600">
+              
                 Próximo
               </Button>
-            )}
-            {currentStep === 4 && (
-              <Button 
-                type="submit" 
-                disabled={criarVendaMutation.isPending} 
-                className="bg-[#23BE84] hover:bg-[#1da570]"
-              >
-                {criarVendaMutation.isPending ? (
-                  <>
+            }
+            {currentStep === 4 &&
+            <Button
+              type="submit"
+              disabled={criarVendaMutation.isPending}
+              className="bg-[#23BE84] hover:bg-[#1da570]">
+              
+                {criarVendaMutation.isPending ?
+              <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Salvando...
-                  </>
-                ) : (
-                  'Salvar Proposta'
-                )}
+                  </> :
+
+              'Salvar Proposta'
+              }
               </Button>
-            )}
+            }
           </div>
         </div>
       </form>
@@ -1275,8 +1275,8 @@ export default function NovaVendaConsignado() {
           setShowClienteModal(false);
         }}
         currentUser={user}
-        empresaIdSelecionada={empresaId}
-      />
+        empresaIdSelecionada={empresaId} />
+      
 
       <ConvenioFormModal
         open={showConvenioModal}
@@ -1291,9 +1291,9 @@ export default function NovaVendaConsignado() {
               tipo: dados.tipo,
               ativo: true
             });
-            
+
             await queryClient.invalidateQueries({ queryKey: ['convenios', empresaId] });
-            
+
             setFormData({ ...formData, convenio_id: novoConvenio.id });
             setShowConvenioModal(false);
             toast.success('Convênio cadastrado com sucesso!');
@@ -1304,8 +1304,8 @@ export default function NovaVendaConsignado() {
           } finally {
             setSalvandoConvenio(false);
           }
-        }}
-      />
+        }} />
+      
 
       <BancoFormModal
         open={showBancoModal}
@@ -1320,9 +1320,9 @@ export default function NovaVendaConsignado() {
               codigo: dados.codigo,
               ativo: true
             });
-            
+
             await queryClient.invalidateQueries({ queryKey: ['bancos', empresaId] });
-            
+
             setFormData({ ...formData, banco: novoBanco.nome });
             setShowBancoModal(false);
             toast.success('Banco cadastrado com sucesso!');
@@ -1333,8 +1333,8 @@ export default function NovaVendaConsignado() {
           } finally {
             setSalvandoBanco(false);
           }
-        }}
-      />
-    </div>
-  );
+        }} />
+      
+    </div>);
+
 }
