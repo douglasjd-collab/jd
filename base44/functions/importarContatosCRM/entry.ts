@@ -19,23 +19,45 @@ Deno.serve(async (req) => {
 
     let criados = 0;
     let erros = [];
+    let rejeitados = 0;
 
     for (const item of contatos) {
       try {
         const telefone = typeof item === 'string' ? item.trim() : (item.telefone || item.numero || '').trim();
-        const nome = item.nome || item.name || telefone;
-
+        
         if (!telefone) continue;
 
-        // Validar número BR
-        const tel = telefone.replace(/\D/g, '');
-        if (!tel.startsWith('55') || (tel.length !== 12 && tel.length !== 13)) {
-          erros.push(`${telefone}: formato inválido`);
+        // Rejeitar texto puro (não é número)
+        if (!/^\d/.test(telefone)) {
+          rejeitados++;
+          console.log(`⏭️ Ignorado (texto): ${telefone}`);
           continue;
         }
 
-        // Normalizar (se 13 dígitos, remover 9 extra)
-        const telNorm = tel.length === 13 ? tel.slice(0, 4) + tel.slice(5) : tel;
+        // Extrair apenas números
+        const tel = telefone.replace(/\D/g, '');
+        
+        // Aceitar número BR válido: 55 + 10-11 dígitos = 12-13 dígitos total
+        if (!tel.startsWith('55')) {
+          rejeitados++;
+          console.log(`⏭️ Rejeitado (sem 55): ${tel}`);
+          continue;
+        }
+
+        if (tel.length < 12 || tel.length > 13) {
+          rejeitados++;
+          console.log(`⏭️ Rejeitado (comprimento ${tel.length}): ${tel}`);
+          continue;
+        }
+
+        // Normalizar: 55 + DDD + número (sem 9 extra)
+        let telNorm = tel;
+        if (tel.length === 13) {
+          // Verificar se tem 9 extra no meio (55 99 XXXXX)
+          if (tel.charAt(2) === '9') {
+            telNorm = tel.slice(0, 2) + tel.slice(3); // Remove o 9 extra
+          }
+        }
 
         // Verificar duplicata
         const existente = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
@@ -52,14 +74,15 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.ContatoWhatsapp.create({
           empresa_id,
           telefone: telNorm,
-          nome: nome || `Cliente ${telNorm}`,
+          nome: `Cliente ${telNorm}`,
           ultima_atualizacao: new Date().toISOString()
         });
 
         criados++;
-        console.log(`✅ ${telNorm} | ${nome}`);
+        console.log(`✅ Criado: ${telNorm}`);
       } catch (e) {
-        erros.push(`Erro: ${e.message}`);
+        erros.push(`Erro em ${item}: ${e.message}`);
+        console.error(`❌ ${item}: ${e.message}`);
       }
     }
 
