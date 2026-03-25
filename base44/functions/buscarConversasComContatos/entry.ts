@@ -81,7 +81,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Montar resultado sem queries adicionais
+    // Buscar mensagens de TODAS as conversas de hoje
+    const mensagensMap = {};
+    for (const conversa of conversasHoje) {
+      try {
+        const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+          { conversa_id: conversa.id },
+          'data_envio',
+          300
+        );
+        mensagensMap[conversa.id] = msgs || [];
+      } catch (e) {
+        console.warn(`⚠️ Erro ao buscar mensagens da conversa ${conversa.id}:`, e.message);
+        mensagensMap[conversa.id] = [];
+      }
+    }
+
+    // Montar resultado com histórico de mensagens
     const resultado = Object.values(conversasPorTelNorm).map(conversa => {
       const tel = conversa.cliente_telefone || '';
       // Tentar telefone exato, depois variação com/sem 9 dígito BR
@@ -109,7 +125,8 @@ Deno.serve(async (req) => {
           telefone: contato.telefone,
           foto_url: contato.foto_url,
           ultima_atualizacao: contato.ultima_atualizacao
-        } : null
+        } : null,
+        mensagens: mensagensMap[conversa.id] || []
       };
     });
 
