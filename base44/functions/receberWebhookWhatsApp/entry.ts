@@ -183,6 +183,7 @@ async function processarWebhook(req, rawBody) {
   let tipoConexao = 'empresa';
 
   let telefoneLimpo = extrairTelefoneValido(remoteJidRaw);
+  if (telefoneLimpo) telefoneLimpo = normalizarParaBR(telefoneLimpo);
 
   // Tentar resolver @lid (tanto do remoteJidRaw quanto do remoteJidOriginal)
   const jidParaResolver = remoteJidRaw.includes('@lid') ? remoteJidRaw
