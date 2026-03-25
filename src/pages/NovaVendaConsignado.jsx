@@ -307,12 +307,21 @@ export default function NovaVendaConsignado() {
     const tabela = tabelasEmprestimo.find(t => t.id === tabelaId);
     if (tabela) {
       const valorLiberado = parseFloat(formData.valor_liberado) || 0;
-      const comissaoEmpresa = valorLiberado > 0 ? (valorLiberado * tabela.comissao_empresa) / 100 : 0;
-      const comissaoVendedor = valorLiberado > 0 ? (valorLiberado * tabela.comissao_corretor) / 100 : 0;
+      const valorBruto = parseFloat(formData.valor_bruto) || 0;
+      // A tabela pode definir a base (bruto ou líquido), especialmente para REFIN_PORTABILIDADE
+      const base = getBaseComissaoAutomatica(
+        formData.tipo_consignado,
+        valorLiberado,
+        valorBruto,
+        tabela.base_comissao || null
+      );
+      const comissaoEmpresa = base > 0 ? (base * tabela.comissao_empresa) / 100 : 0;
+      const comissaoVendedor = base > 0 ? (base * (tabela.comissao_corretor || 0)) / 100 : 0;
 
       setFormData({
         ...formData,
         tabela_emprestimo_id: tabelaId,
+        valor_base_comissao: base > 0 ? base.toFixed(2) : formData.valor_base_comissao,
         percentual_comissao_empresa: tabela.comissao_empresa,
         comissao_empresa_prevista: comissaoEmpresa.toFixed(2),
         percentual_comissao_vendedor: tabela.comissao_corretor,
