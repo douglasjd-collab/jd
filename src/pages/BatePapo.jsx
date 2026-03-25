@@ -802,6 +802,40 @@ export default function BatePapo() {
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
                 </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full border-slate-200"
+                      onClick={async () => {
+                        if (confirm(`Deletar ${conversasSemHistorico.length} conversas sem histórico?`)) {
+                          for (const c of conversasSemHistorico) {
+                            try {
+                              const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
+                              for (const msg of msgs) {
+                                await base44.entities.MensagemWhatsapp.delete(msg.id);
+                              }
+                              await base44.entities.ConversaWhatsapp.delete(c.id);
+                            } catch (e) {
+                              console.error('Erro ao deletar conversa:', e);
+                            }
+                          }
+                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                          if (conversaSelecionada && !conversasSemHistorico.find(c => c.id === conversaSelecionada.id)) {
+                            setConversaSelecionada(null);
+                          }
+                          toast.success(`${conversasSemHistorico.length} conversas deletadas`);
+                        }
+                      }}
+                      title="Deletar conversas vazias"
+                      disabled={conversasSemHistorico.length === 0}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Deletar {conversasSemHistorico.length} conversas sem histórico</p></TooltipContent>
+                </Tooltip>
                 <Button 
                   size="default"
                   className="gap-1.5 rounded-full px-4"
