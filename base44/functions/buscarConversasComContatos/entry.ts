@@ -16,28 +16,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
     }
 
-    // Buscar conversas ativas de hoje (criadas ou com mensagem hoje)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0); // Início do dia
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1); // Fim do dia
-    
+    // Buscar TODAS as conversas (sem nenhum filtro de data ou status)
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-      { 
-        empresa_id: empresaId,
-        status: 'ativa' // Apenas conversas ativas
-      },
+      { empresa_id: empresaId },
       '-data_ultima_mensagem',
       2000
     );
-    
-    // Filtrar apenas conversas de hoje (criadas ou com última mensagem hoje)
-    const conversasHoje = conversas.filter(c => {
-      const dataMsg = c.data_ultima_mensagem ? new Date(c.data_ultima_mensagem) : null;
-      const dataCriacao = c.created_date ? new Date(c.created_date) : null;
-      const dataRef = dataMsg || dataCriacao;
-      return dataRef && dataRef >= hoje && dataRef < amanha;
-    });
 
     // Buscar todos os contatos da empresa de uma vez
     const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
