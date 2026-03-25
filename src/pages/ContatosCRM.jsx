@@ -462,26 +462,29 @@ export default function ContatosCRM() {
           <p className="text-slate-500 mt-1">{contatos.length} contatos cadastrados</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={() => setGerenciarTagsOpen(true)}>
-            <Tag className="w-4 h-4" /> Gerenciar Tags
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-sm relative" onClick={() => setAniversariantesOpen(true)}>
-            <Cake className="w-4 h-4 text-pink-500" /> Aniversariantes
-            {aniversariantesHoje > 0 && (
-              <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">{aniversariantesHoje}</span>
-            )}
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={exportarCSV}>
-            <Download className="w-4 h-4" /> Exportar
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="w-4 h-4" /> Importar
-          </Button>
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={importarCSV} />
-          <Button size="sm" className="gap-1.5 bg-[#1e3a5f] hover:bg-[#2a4a73]" onClick={() => setNovoContatoOpen(true)}>
-            <Plus className="w-4 h-4" /> Novo Contato
-          </Button>
-        </div>
+           <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={() => setGerenciarTagsOpen(true)}>
+             <Tag className="w-4 h-4" /> Gerenciar Tags
+           </Button>
+           <Button variant="outline" size="sm" className="gap-1.5 text-sm relative" onClick={() => setAniversariantesOpen(true)}>
+             <Cake className="w-4 h-4 text-pink-500" /> Aniversariantes
+             {aniversariantesHoje > 0 && (
+               <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">{aniversariantesHoje}</span>
+             )}
+           </Button>
+           <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={exportarCSV}>
+             <Download className="w-4 h-4" /> Exportar
+           </Button>
+           <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={() => fileInputRef.current?.click()}>
+             <Upload className="w-4 h-4" /> CSV
+           </Button>
+           <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={() => setColartextoOpen(true)}>
+             <MessageCircle className="w-4 h-4" /> Colar Números
+           </Button>
+           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={importarCSV} />
+           <Button size="sm" className="gap-1.5 bg-[#1e3a5f] hover:bg-[#2a4a73]" onClick={() => setNovoContatoOpen(true)}>
+             <Plus className="w-4 h-4" /> Novo Contato
+           </Button>
+         </div>
       </div>
 
       {/* Stats rápidos */}
