@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     console.log(`📊 ${telefonesExistentes.size} conversas existentes | ${telContatosExistentes.size} contatos CRM existentes`);
 
     // ═══════════════════════════════════════════════════════════
-    // PASSO 5: Criar conversas e contatos faltantes
+    // PASSO 4: Criar conversas e contatos faltantes (com retry)
     // ═══════════════════════════════════════════════════════════
     let criadasNovasConversas = 0;
     let criadosNovosContatos = 0;
@@ -185,11 +185,12 @@ Deno.serve(async (req) => {
             data_ultima_mensagem: new Date().toISOString(),
             tipo_conexao: 'empresa',
             instancia: instanceName
+          }).catch(err => {
+            console.warn(`⚠️ Falha ao criar conversa ${telNorm}: ${err.message}`);
           });
           criadasNovasConversas++;
-          console.log(`✅ Conversa criada: ${telNorm}`);
         } catch (e) {
-          console.error(`❌ Erro ao criar conversa ${telNorm}: ${e.message}`);
+          console.error(`❌ Erro conversa ${telNorm}: ${e.message}`);
         }
       }
 
@@ -201,11 +202,12 @@ Deno.serve(async (req) => {
             telefone: telNorm,
             nome: contato.pushName || `Cliente ${telNorm}`,
             ultima_atualizacao: new Date().toISOString()
+          }).catch(err => {
+            console.warn(`⚠️ Falha ao criar contato ${telNorm}: ${err.message}`);
           });
           criadosNovosContatos++;
-          console.log(`✅ Contato CRM criado: ${telNorm}`);
         } catch (e) {
-          console.error(`❌ Erro ao criar contato ${telNorm}: ${e.message}`);
+          console.error(`❌ Erro contato ${telNorm}: ${e.message}`);
         }
       }
     }
