@@ -303,7 +303,7 @@ export default function Dashboard() {
 
   // Calcular métricas
   const totalVendasMes = vendasMes.length;
-  const valorTotalVendas = vendasMes.reduce((acc, v) => acc + (v.valor_carta || 0), 0);
+  const valorTotalVendas = vendasMes.reduce((acc, v) => acc + (v.valorCredito || 0), 0);
   
   const comissoesRecebidas = comissoes
     .filter(c => c.tipo === 'receber' && c.status === 'recebida')
