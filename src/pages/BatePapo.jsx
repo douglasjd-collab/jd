@@ -540,13 +540,24 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Recarregar contato quando conversa muda (para garantir foto atualizada)
+  // Sincronizar mensagens e carregar contato quando conversa muda
   React.useEffect(() => {
     if (!conversaSelecionada?.cliente_telefone || !empresaId) return;
     
     (async () => {
       try {
         const telefoneLimpo = conversaSelecionada.cliente_telefone.replace(/\D/g, '');
+        
+        // Sincronizar mensagens recentes
+        try {
+          const resp = await base44.functions.invoke('sincronizarRecente', { empresa_id: empresaId });
+          if (resp?.data?.ok) {
+            console.log(`✅ ${resp.data.mensagens_inseridas || 0} mensagens sincronizadas`);
+            queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+          }
+        } catch (e) {
+          console.error('⚠️ Erro ao sincronizar mensagens:', e);
+        }
         
         // Tentar variações do telefone (com/sem 9º dígito)
         const variacoes = [telefoneLimpo];
