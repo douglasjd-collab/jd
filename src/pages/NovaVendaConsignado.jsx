@@ -631,9 +631,9 @@ export default function NovaVendaConsignado() {
             </div>
           </div>
 
-          <div className="border-l-4 border-l-green-500 pl-4 py-2 bg-green-50 rounded space-y-4">
-            <h3 className="font-semibold text-green-900 mb-4">Dados do Refinanciamento</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="border-l-4 border-l-green-500 pl-4 py-2 bg-green-50 rounded space-y-2">
+            <h3 className="font-semibold text-green-900">Dados do Refinanciamento</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <Label>Parcela (Refin) *</Label>
                 <div className="relative">
