@@ -465,7 +465,7 @@ export default function NovaVendaConsignado() {
 
     }
 
-    if (formData.tipo_consignado === 'PORTABILIDADE') {
+    if (isPortabilidade && !isRefinPortabilidade) {
       return (
         <div className="space-y-3">
           {/* Dados do contrato de origem */}
