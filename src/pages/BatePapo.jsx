@@ -600,10 +600,9 @@ export default function BatePapo() {
     return wid.includes('@lid') || tel.includes('lid') || tel.startsWith('lid');
   };
 
-  // Conversas válidas — incluir TODAS que têm telefone (incluindo @lid enquanto sincroniza)
+  // Conversas válidas — TODAS as conversas (NENHUM filtro, NADA perdido)
   const conversasValidas = conversas.filter(c => {
-    if (!c.cliente_telefone) return false;
-    return true; // Aceitar TODAS (grupos, @lid, qualquer número válido)
+    return true; // 100% das conversas são exibidas
   });
 
   // Contadores por aba
