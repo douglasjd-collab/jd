@@ -858,10 +858,7 @@ export default function NovaVendaConsignado() {
                   </Button>
                 </div>
               </div>
-              <div>
-                <Label>Número do Benefício</Label>
-                <Input value={formData.numero_beneficio} onChange={(e) => setFormData({ ...formData, numero_beneficio: e.target.value })} />
-              </div>
+
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
