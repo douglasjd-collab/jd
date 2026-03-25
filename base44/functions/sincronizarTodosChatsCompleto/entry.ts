@@ -16,8 +16,9 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const empresaId = body.empresa_id || '699696c2c9f5bffc2e67402b';
 
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
+    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId }).catch(() => []);
     if (!empresas?.[0]?.evolution_url || !empresas?.[0]?.evolution_api_key) {
+      console.error('Evolution não configurada');
       return Response.json({ erro: 'Evolution não configurada' }, { status: 400 });
     }
 
@@ -29,26 +30,55 @@ Deno.serve(async (req) => {
     console.log(`🔄 Iniciando sincronização COMPLETA...`);
 
     // ═══════════════════════════════════════════════════════════
-    // PASSO 1: Buscar TODAS as mensagens dos últimos 90 dias
+    // PASSO 1: Buscar contatos diretamente (mais rápido e confiável)
     // ═══════════════════════════════════════════════════════════
-    const agoSeconds = Math.floor((Date.now() - (90 * 24 * 60 * 60 * 1000)) / 1000);
-    let todasMensagens = [];
+    let todosContatos = [];
     try {
-      const resMsgs = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
+      const resContatos = await fetch(`${evolutionUrl}/contact/findContacts/${instanceName}`, {
         method: 'POST',
         headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          where: { messageTimestamp: { $gte: agoSeconds } },
-          limit: 10000
-        })
+        body: JSON.stringify({ limit: 5000, where: {} })
       });
-      if (resMsgs.ok) {
-        const dataMsgs = await resMsgs.json();
-        todasMensagens = Array.isArray(dataMsgs) ? dataMsgs : (dataMsgs.messages?.records || dataMsgs.messages || []);
-        console.log(`📨 ${todasMensagens.length} mensagens encontradas (últimos 90 dias)`);
+      
+      if (resContatos.ok) {
+        const dataContatos = await resContatos.json();
+        const rawContatos = Array.isArray(dataContatos) ? dataContatos : (dataContatos.contacts?.records || dataContatos.contacts || []);
+        
+        for (const c of rawContatos) {
+          const jid = c.jid || c.id || '';
+          if (!jid || jid.includes('@g.us') || jid.includes('@broadcast') || jid.includes('@lid')) continue;
+          
+          todosContatos.push({
+            jid,
+            pushName: c.pushName || c.name || '',
+            senderName: c.senderName || ''
+          });
+        }
+        console.log(`👥 ${todosContatos.length} contatos válidos da Evolution`);
+      } else {
+        console.warn(`⚠️ Status contatos: ${resContatos.status}`);
       }
     } catch (e) {
-      console.warn(`⚠️ Erro ao buscar mensagens: ${e.message}`);
+      console.warn(`⚠️ Erro ao buscar contatos: ${e.message}`);
+    }
+
+    // FALLBACK: Se não conseguir contatos, buscar de mensagens
+    let todasMensagens = [];
+    if (todosContatos.length === 0) {
+      try {
+        const resMsgs = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
+          method: 'POST',
+          headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 5000, where: {} })
+        });
+        if (resMsgs.ok) {
+          const dataMsgs = await resMsgs.json();
+          todasMensagens = Array.isArray(dataMsgs) ? dataMsgs : (dataMsgs.messages?.records || dataMsgs.messages || []);
+          console.log(`📨 ${todasMensagens.length} mensagens (fallback)`);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Erro fallback mensagens: ${e.message}`);
+      }
     }
 
     // ═══════════════════════════════════════════════════════════
