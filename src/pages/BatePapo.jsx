@@ -861,7 +861,7 @@ export default function BatePapo() {
               </Tabs>
 
               <ScrollArea className="mt-1 flex-1">
-                <div className="space-y-1 pb-4">
+                <div className="space-y-1 pb-4 pr-4">
                   {conversasFiltradas.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-slate-400">
                       <MessageCircle className="w-8 h-8 opacity-40" />
