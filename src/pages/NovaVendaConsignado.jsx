@@ -524,6 +524,24 @@ export default function NovaVendaConsignado() {
                   placeholder="0,00" />
               </div>
             </div>
+            <div>
+              <Label>Valor Liberado</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input className="pl-10" value={formatarMoeda(formData.valor_liberado)} onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} placeholder="0,00" />
+              </div>
+            </div>
+            <div>
+              <Label>Prazo (meses)</Label>
+              <Input type="number" placeholder="Ex: 84" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} />
+            </div>
+            <div>
+              <Label>Parcela</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                <Input className="pl-10" value={formatarMoeda(formData.parcela)} onChange={(e) => handleMoedaChange('parcela', e.target.value)} placeholder="0,00" />
+              </div>
+            </div>
           </div>
         </div>);
 
