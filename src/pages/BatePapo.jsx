@@ -231,7 +231,7 @@ export default function BatePapo() {
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
-      const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId });
+      const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId, limit: 10000 });
       const data = resp?.data?.conversas || [];
       
       // Atualizar cache de contatos
