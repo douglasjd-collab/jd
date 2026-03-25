@@ -584,7 +584,7 @@ export default function NovaVendaConsignado() {
                   <Input className="pl-10" value={formatarMoeda(formData.parcela)} onChange={(e) => handleMoedaChange('parcela', e.target.value)} required />
                 </div>
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <Label>Tabela *</Label>
                 <select
                   value={formData.tabela_emprestimo_id}
@@ -605,6 +605,21 @@ export default function NovaVendaConsignado() {
                       <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
                     ))}
                 </select>
+              </div>
+              <div>
+                <Label className="flex items-center gap-1">
+                  Valor Base Comissão
+                  <span className="text-xs text-slate-400 font-normal">(tabela define bruto/líquido)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input
+                    className="pl-10 bg-amber-50 border-amber-200"
+                    value={formatarMoeda(formData.valor_base_comissao)}
+                    onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
             </div>
           </div>
