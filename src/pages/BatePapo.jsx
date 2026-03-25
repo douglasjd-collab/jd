@@ -734,10 +734,10 @@ export default function BatePapo() {
                       onClick={async () => {
                         setCorrigindo(true);
                         try {
-                          const resp = await base44.functions.invoke('corrigirDuplicatasELid', { empresa_id: empresaId });
+                          const resp = await base44.functions.invoke('consolidarConversasDuplicadas', { empresa_id: empresaId });
                           const data = resp?.data;
                           if (data?.ok) {
-                            toast.success(`✅ ${data.duplicatasDeletadas} duplicatas consolidadas | ${data.conversasLidDeletadas} @lid removidos`);
+                            toast.success(data.mensagem);
                             refetchConversas();
                           }
                         } catch (e) {
@@ -747,12 +747,12 @@ export default function BatePapo() {
                         }
                       }}
                       disabled={corrigindo}
-                      title="Corrigir duplicatas e @lid"
+                      title="Consolidar conversas duplicadas do mesmo cliente"
                     >
                       {corrigindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-orange-500" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Corrigir duplicatas e números @lid</p></TooltipContent>
+                  <TooltipContent side="bottom"><p>Consolidar conversas duplicadas</p></TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
