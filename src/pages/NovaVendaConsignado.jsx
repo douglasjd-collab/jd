@@ -873,9 +873,9 @@ export default function NovaVendaConsignado() {
               Detalhes da Proposta
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 space-y-6">
+          <CardContent className="pt-4 space-y-3">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Banco *</Label>
                 <div className="flex gap-2">
@@ -890,13 +890,7 @@ export default function NovaVendaConsignado() {
                       <option key={b.id} value={b.nome}>{b.nome}</option>
                     ))}
                   </select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowBancoModal(true)}
-                    title="Cadastrar novo banco"
-                  >
+                  <Button type="button" variant="outline" size="icon" onClick={() => setShowBancoModal(true)} title="Cadastrar novo banco">
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
@@ -930,7 +924,7 @@ export default function NovaVendaConsignado() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Convênio *</Label>
                 <div className="flex gap-2">
@@ -945,13 +939,7 @@ export default function NovaVendaConsignado() {
                       <option key={c.id} value={c.id}>{c.nome}</option>
                     ))}
                   </select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowConvenioModal(true)}
-                    title="Cadastrar novo convênio"
-                  >
+                  <Button type="button" variant="outline" size="icon" onClick={() => setShowConvenioModal(true)} title="Cadastrar novo convênio">
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
@@ -978,7 +966,7 @@ export default function NovaVendaConsignado() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Vendedor/Parceiro</Label>
                 <select
