@@ -72,6 +72,7 @@ function extrairTelefoneValido(jid) {
 async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instanceName) {
   const lidNumerico = lid.replace(/@lid/g, '').replace(/\D/g, '');
 
+  // Método 1: fetchProfile
   try {
     const res = await fetch(`${evolutionUrl}/contact/fetchProfile/${instanceName}`, {
       method: 'POST',
@@ -87,6 +88,27 @@ async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instance
       }
     }
   } catch (e) { console.warn('⚠️ fetchProfile falhou:', e.message); }
+
+  // Método 2: buscar nas mensagens por remoteJidAlt (mais confiável)
+  try {
+    const res2 = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
+      method: 'POST',
+      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ where: { key: { remoteJid: lid } }, limit: 5 })
+    });
+    if (res2.ok) {
+      const data2 = await res2.json();
+      const msgs = Array.isArray(data2) ? data2 : (data2.messages?.records || data2.messages || []);
+      for (const m of msgs) {
+        const alt = m.key?.remoteJidAlt || m.key?.participant || '';
+        const tel = alt.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+        if (tel && tel.startsWith('55') && (tel.length === 12 || tel.length === 13)) {
+          console.log(`✅ LID resolvido via mensagem_alt: ${lid} → ${tel}`);
+          return tel;
+        }
+      }
+    }
+  } catch (e) { console.warn('⚠️ findMessages lid falhou:', e.message); }
 
   return null;
 }
