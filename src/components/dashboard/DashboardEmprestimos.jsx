@@ -88,8 +88,14 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
       const mesKey = format(date, 'yyyy-MM');
       const pagas = propostasEmprestimo.filter(p => {
         if (isCanceladaProposta(p) || !isPagaProposta(p)) return false;
-        const dataPag = p.emprestimo_data_liberacao || p.data_venda || '';
-        return dataPag.startsWith(mesKey);
+        const datas = [
+          p.emprestimo_data_liberacao,
+          p.data_comissao_recebida,
+          p.data_status_atual,
+          p.data_venda,
+          p.updated_date,
+        ].filter(Boolean);
+        return datas.some(d => String(d).startsWith(mesKey));
       });
       months.push({
         name: format(date, 'MMM', { locale: ptBR }),
