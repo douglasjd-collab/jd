@@ -45,6 +45,7 @@ import {
   Contact,
   Pencil,
   Users,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   Dialog,
