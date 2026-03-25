@@ -277,6 +277,31 @@ Deno.serve(async (req) => {
           });
         }
 
+        // Criar/atualizar contato no CRM com foto do WhatsApp
+        let contatoCrm = null;
+        for (const tel of telefonesVariacoes) {
+          const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+            empresa_id: JD_ID,
+            telefone: tel
+          });
+          if (contatos?.length > 0) { contatoCrm = contatos[0]; break; }
+        }
+
+        if (contatoCrm && fotoUrl) {
+          await base44.asServiceRole.entities.ContatoWhatsapp.update(contatoCrm.id, {
+            foto_url: fotoUrl,
+            ultima_atualizacao: new Date().toISOString()
+          }).catch(() => {});
+        } else if (!contatoCrm && fotoUrl) {
+          await base44.asServiceRole.entities.ContatoWhatsapp.create({
+            empresa_id: JD_ID,
+            telefone: telefoneNormalizado,
+            nome: pushName || telefoneNormalizado,
+            foto_url: fotoUrl,
+            ultima_atualizacao: new Date().toISOString()
+          }).catch(() => {});
+        }
+
         const timestamp = msg.messageTimestamp
           ? new Date(msg.messageTimestamp * 1000).toISOString()
           : new Date().toISOString();
