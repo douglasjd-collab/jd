@@ -277,8 +277,6 @@ export default function BatePapo() {
       refetchInterval: false,
   });
 
-  const conversaSelecionadaId = conversaSelecionada?.id || null;
-
   // Selecionar conversa inicial quando a lista carrega
   useEffect(() => {
     if (conversas.length === 0) return;
