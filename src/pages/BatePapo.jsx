@@ -653,7 +653,6 @@ export default function BatePapo() {
       else if (filtroStatus === 'arquivada') matchStatus = c.status === 'arquivada';
       else if (filtroStatus === 'transferida') matchStatus = c.status === 'encerrada';
       else if (filtroStatus === 'meu') matchStatus = c.usuario_responsavel_id === user?.colaborador_id;
-      else if (filtroStatus === 'comHistorico') matchStatus = c.ultima_mensagem && c.ultima_mensagem.trim();
     }
     return matchSearch && matchStatus;
   });
