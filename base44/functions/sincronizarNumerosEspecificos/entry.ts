@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing empresa_id or numeros array' }, { status: 400 });
     }
 
-    let sincronizadas = 0;
     let criadas = 0;
     let erros = [];
 
@@ -19,33 +18,28 @@ Deno.serve(async (req) => {
       try {
         const numeroFormatado = numero.replace(/\D/g, '');
         
-        // Chamar função de sincronização existente para cada número
-        const respSync = await base44.asServiceRole.functions.invoke('sincronizarTodosChatsCompleto', {
+        // Verificar se conversa já existe
+        const conversasExistentes = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
           empresa_id,
-          numero: numeroFormatado
+          cliente_telefone: numeroFormatado
         });
 
-        if (respSync?.data?.ok) {
-          const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+        if (conversasExistentes.length === 0) {
+          // Criar nova conversa se não existir
+          await base44.asServiceRole.entities.ConversaWhatsapp.create({
             empresa_id,
-            cliente_telefone: numeroFormatado
-          }, '-created_date', 1);
-
-          if (conversas.length > 0) {
-            const conversaExistia = conversas[0].created_date && 
-              (new Date() - new Date(conversas[0].created_date)) > 5000;
-            
-            if (conversaExistia) {
-              sincronizadas++;
-            } else {
-              criadas++;
-            }
-          } else {
-            criadas++;
-          }
+            cliente_id: '',
+            cliente_nome: numeroFormatado,
+            cliente_telefone: numeroFormatado,
+            whatsapp_id: `${numeroFormatado}@c.us`,
+            status: 'ativa',
+            ultima_mensagem: 'Carregando histórico...',
+            data_ultima_mensagem: new Date().toISOString()
+          });
+          criadas++;
         }
       } catch (e) {
-        console.error(`Erro ao processar ${numero}:`, e);
+        console.error(`Erro ao processar ${numero}:`, e.message);
         erros.push({ numero, erro: e.message });
       }
     }
@@ -53,10 +47,8 @@ Deno.serve(async (req) => {
     return Response.json({
       ok: true,
       total: numeros.length,
-      sincronizadas,
       criadas,
-      erros: erros.length,
-      detalhes_erros: erros.length > 0 ? erros.slice(0, 5) : []
+      erros: erros.length
     });
   } catch (error) {
     console.error('Erro geral:', error);
