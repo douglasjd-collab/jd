@@ -855,26 +855,7 @@ export default function NovaVendaConsignado() {
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Banco *</Label>
-                <div className="flex gap-2">
-                  <select
-                    value={formData.banco}
-                    onChange={(e) => setFormData({ ...formData, banco: e.target.value, tabela_emprestimo_id: '' })}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                    required>
-                    
-                    <option value="">Selecione...</option>
-                    {bancos.map((b) =>
-                    <option key={b.id} value={b.nome}>{b.nome}</option>
-                    )}
-                  </select>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setShowBancoModal(true)} title="Cadastrar novo banco">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <Label>Tipo de Empréstimo *</Label>
                 <select
@@ -882,7 +863,6 @@ export default function NovaVendaConsignado() {
                   onChange={(e) => {
                     const novoTipo = e.target.value;
                     const updates = { tipo_consignado: novoTipo };
-                    // Replicar valor_liberado para valor_bruto se o tipo for do grupo bruto=líquido
                     if (TIPOS_BRUTO_IGUAL_LIBERADO.includes(novoTipo) && formData.valor_liberado) {
                       updates.valor_bruto = formData.valor_liberado;
                     }
