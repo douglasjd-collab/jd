@@ -309,7 +309,7 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling rápido (a cada 5s) para garantir mensagens em tempo real
+  // Polling rápido (a cada 2s) para garantir mensagens em tempo real
   useEffect(() => {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(async () => {
@@ -319,7 +319,7 @@ export default function BatePapo() {
       } catch (e) {
         console.error('❌ Erro no polling:', e);
       }
-    }, 5000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
@@ -396,11 +396,11 @@ export default function BatePapo() {
         if (notificadasRef.current.has(msgData.id)) return;
         notificadasRef.current.add(msgData.id);
 
-        // Só notificar mensagens recentes (menos de 30 segundos)
+        // Só notificar mensagens recentes (menos de 60 segundos)
         const dataEnvio = msgData.data_envio ? new Date(msgData.data_envio) : null;
         const agora = new Date();
         const diffSegundos = dataEnvio ? (agora - dataEnvio) / 1000 : 0;
-        if (diffSegundos > 30) return;
+        if (diffSegundos > 60) return;
 
         const conversa = conversasRef.current.find(c => c.id === msgData.conversa_id);
         const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
@@ -548,16 +548,25 @@ export default function BatePapo() {
       try {
         const telefoneLimpo = conversaSelecionada.cliente_telefone.replace(/\D/g, '');
         
-        // Sincronizar mensagens recentes
-        try {
-          const resp = await base44.functions.invoke('sincronizarRecente', { empresa_id: empresaId });
-          if (resp?.data?.ok) {
-            console.log(`✅ ${resp.data.mensagens_inseridas || 0} mensagens sincronizadas`);
-            queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+        // Sincronizar mensagens recentes imediatamente e a cada 3s
+        const sincronizar = async () => {
+          try {
+            const resp = await base44.functions.invoke('sincronizarRecente', { empresa_id: empresaId });
+            if (resp?.data?.ok && resp.data.mensagens_inseridas > 0) {
+              console.log(`✅ ${resp.data.mensagens_inseridas} mensagens sincronizadas`);
+              queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+            }
+          } catch (e) {
+            console.error('⚠️ Erro ao sincronizar mensagens:', e);
           }
-        } catch (e) {
-          console.error('⚠️ Erro ao sincronizar mensagens:', e);
-        }
+        };
+        
+        // Sincronizar imediatamente
+        await sincronizar();
+        
+        // E a cada 3 segundos
+        const syncInterval = setInterval(sincronizar, 3000);
+        return () => clearInterval(syncInterval);
         
         // Tentar variações do telefone (com/sem 9º dígito)
         const variacoes = [telefoneLimpo];
@@ -592,6 +601,7 @@ export default function BatePapo() {
       } catch (e) {
         console.error('❌ Erro ao carregar contato:', e);
       }
+      } finally {}
     })();
   }, [conversaSelecionada?.id, conversaSelecionada?.cliente_telefone, empresaId]);
 
