@@ -288,13 +288,14 @@ export default function NovaVendaConsignado() {
 
   // Determina a base de comissão automática pelo tipo de empréstimo
   const getBaseComissaoAutomatica = (tipo, valorLiberado, valorBruto, tabelaBaseComissao) => {
-    if (['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_CONSIGNADO', 'CARTAO_BENEFICIO', 'SAQUE'].includes(tipo)) {
+    const tipoUp = (tipo || '').toUpperCase();
+    if (['NOVO', 'REFINANCIAMENTO', 'CARTAO', 'CARTAO_CONSIGNADO', 'CARTAO_BENEFICIO', 'SAQUE'].includes(tipoUp)) {
       return parseFloat(valorLiberado) || 0;
     }
-    if (tipo === 'PORTABILIDADE') {
+    if (tipoUp === 'PORTABILIDADE' || (tipoUp.includes('PORTABILIDADE') && !tipoUp.includes('REFIN'))) {
       return parseFloat(valorBruto) || parseFloat(valorLiberado) || 0;
     }
-    if (tipo === 'REFIN_PORTABILIDADE') {
+    if (tipoUp === 'REFIN_PORTABILIDADE' || tipoUp === 'PORTABILIDADE_REFIN' || (tipoUp.includes('PORTABILIDADE') && tipoUp.includes('REFIN'))) {
       // A tabela determina: se tabela tem base_comissao='bruto' usa bruto, senão líquido
       if (tabelaBaseComissao === 'bruto') return parseFloat(valorBruto) || 0;
       return parseFloat(valorLiberado) || 0;
