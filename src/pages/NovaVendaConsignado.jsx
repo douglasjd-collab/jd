@@ -583,26 +583,8 @@ export default function NovaVendaConsignado() {
           </div>
 
           <div className="border-l-4 border-l-amber-500 pl-4 py-2 bg-amber-50 rounded space-y-2">
-            <h3 className="font-semibold text-amber-900">Dados do Refin da Portabilidade</h3>
+            <h3 className="font-semibold text-amber-900">Informação do Refin da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Valor Liberado *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input className="pl-10" value={formatarMoeda(formData.valor_liberado)} onChange={(e) => handleMoedaChange('valor_liberado', e.target.value)} required />
-                </div>
-              </div>
-              <div>
-                <Label>Valor Bruto *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input className="pl-10" value={formatarMoeda(formData.valor_bruto)} onChange={(e) => handleMoedaChange('valor_bruto', e.target.value)} required />
-                </div>
-              </div>
-              <div>
-                <Label>Prazo (meses) *</Label>
-                <Input type="number" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} required />
-              </div>
               <div>
                 <Label>Parcela *</Label>
                 <div className="relative">
@@ -611,72 +593,40 @@ export default function NovaVendaConsignado() {
                 </div>
               </div>
               <div>
-                <Label>Tabela *</Label>
-                <select
-                  value={formData.tabela_emprestimo_id}
-                  onChange={(e) => handleTabelaChange(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-                  disabled={!formData.banco || !formData.convenio_id}
-                  required>
-                  
-                  <option value="">Selecione...</option>
-                  {tabelasEmprestimo.
-                  filter((t) => {
-                    const bancoMatch = !formData.banco || t.banco === formData.banco;
-                    const convenioMatch = !formData.convenio_id || t.convenio_id === formData.convenio_id;
-                    const tipoMatch = t.produto === 'REFIN/PORTABILIDADE';
-                    return bancoMatch && convenioMatch && tipoMatch;
-                  }).
-                  map((t) =>
-                  <option key={t.id} value={t.id}>{t.tabela || t.nome}</option>
-                  )}
-                </select>
+                <Label>Valor Liberado *</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input
+                    className="pl-10"
+                    value={formatarMoeda(formData.valor_liberado)}
+                    onChange={(e) => {
+                      const rawLiberado = e.target.value.replace(/\D/g, '');
+                      const liberado = parseFloat(rawLiberado) / 100 || 0;
+                      const saldo = parseFloat(String(formData.origem_saldo_devedor).replace(',', '.')) || 0;
+                      const bruto = liberado + saldo;
+                      setFormData({ ...formData, valor_liberado: liberado.toFixed(2), valor_bruto: bruto.toFixed(2) });
+                    }}
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <Label className="flex items-center gap-1">
-                  Valor Base Comissão
-                  <span className="text-xs text-slate-400 font-normal">(tabela define bruto/líquido)</span>
+                  Valor Bruto
+                  <span className="text-xs text-slate-400 font-normal">(Saldo Devedor + Vl. Liberado)</span>
                 </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
                   <Input
-                    className="pl-10 bg-amber-50 border-amber-200"
-                    value={formatarMoeda(formData.valor_base_comissao)}
-                    onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
-                    placeholder="0,00" />
-                  
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-l-4 border-l-green-500 pl-4 py-2 bg-green-50 rounded space-y-2">
-            <h3 className="font-semibold text-green-900">Dados do Refinanciamento</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <Label>Parcela (Refin) *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input className="pl-10" value={formatarMoeda(formData.refin_parcela)} onChange={(e) => handleMoedaChange('refin_parcela', e.target.value)} required />
+                    className="pl-10 bg-slate-50 text-slate-600"
+                    value={formatarMoeda(formData.valor_bruto)}
+                    readOnly
+                  />
                 </div>
               </div>
               <div>
-                <Label>Valor Bruto (Refin) *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input className="pl-10" value={formatarMoeda(formData.refin_valor_bruto)} onChange={(e) => handleMoedaChange('refin_valor_bruto', e.target.value)} required />
-                </div>
-              </div>
-              <div>
-                <Label>Valor Liberado (Refin) *</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input className="pl-10" value={formatarMoeda(formData.refin_valor_liberado)} onChange={(e) => handleMoedaChange('refin_valor_liberado', e.target.value)} required />
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <Label>Prazo (Refin - meses) *</Label>
-                <Input type="number" value={formData.refin_prazo} onChange={(e) => setFormData({ ...formData, refin_prazo: e.target.value })} required />
+                <Label>Prazo (meses) *</Label>
+                <Input type="number" placeholder="Ex: 84" value={formData.prazo} onChange={(e) => setFormData({ ...formData, prazo: e.target.value })} required />
               </div>
             </div>
           </div>
