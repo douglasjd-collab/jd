@@ -271,7 +271,7 @@ export default function BatePapo() {
         return ordenadas;
       },
       staleTime: 0,
-      refetchInterval: false,
+      refetchInterval: 300,
       gcTime: 0
   });
 
@@ -307,7 +307,7 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling ultra-agressivo (a cada 500ms) para mensagens em tempo real
+  // Polling ultra-agressivo (a cada 300ms) para mensagens em tempo real
   useEffect(() => {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(async () => {
@@ -316,7 +316,7 @@ export default function BatePapo() {
       } catch (e) {
         console.error('❌ Erro no polling:', e);
       }
-    }, 500);
+    }, 300);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
