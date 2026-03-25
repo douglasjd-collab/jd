@@ -91,106 +91,92 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Buscar Cliente</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Campo de Busca */}
-            <div>
-              <Label htmlFor="busca">CPF ou Nome do Cliente</Label>
-              <div className="relative mt-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  id="busca"
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Digite para buscar (CPF, nome ou apelido)..."
-                  className="pl-10"
-                  autoFocus
-                />
-                {buscando && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
-                )}
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          {/* Header roxo */}
+          <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-5 rounded-t-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+                <Search className="w-5 h-5 text-white" />
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Os resultados aparecem conforme você digita
-              </p>
+              <div>
+                <h2 className="text-lg font-bold text-white">Buscar Cliente</h2>
+                <p className="text-purple-200 text-xs">Pesquise por CPF, nome ou apelido</p>
+              </div>
             </div>
 
-            {/* Resultados da Busca */}
+            {/* Campo de busca dentro do header */}
+            <div className="relative mt-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Digite o CPF, nome ou apelido do cliente..."
+                autoFocus
+                className="w-full pl-10 pr-10 py-3 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-sm outline-none shadow-sm focus:ring-2 focus:ring-purple-300"
+              />
+              {buscando && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-purple-400" />
+              )}
+            </div>
+          </div>
+
+          {/* Corpo */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+
+            {/* Resultados */}
             {busca.trim() && resultados.length > 0 && (
-              <div className="border rounded-lg">
-                <div className="bg-slate-50 p-3 border-b">
-                  <h4 className="font-semibold text-sm">
-                    {resultados.length} cliente(s) encontrado(s)
-                  </h4>
-                </div>
-                <div className="max-h-[400px] overflow-y-auto">
+              <div>
+                <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2">
+                  {resultados.length} cliente(s) encontrado(s)
+                </p>
+                <div className="space-y-2 max-h-[380px] overflow-y-auto">
                   {resultados.map((cliente) => (
                     <div
                       key={cliente.id}
-                      className="p-4 border-b last:border-b-0 hover:bg-blue-50 cursor-pointer transition-colors"
                       onClick={() => handleSelecionarCliente(cliente)}
+                      className="flex items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-purple-400 hover:bg-purple-50 cursor-pointer transition-all shadow-sm"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-slate-900 truncate">
-                            {cliente.nome_completo || cliente.pj_razao_social || 'Cliente sem nome'}
-                            {cliente.pj_nome_fantasia && cliente.pj_razao_social && (
-                              <span className="text-sm text-slate-500 ml-2">({cliente.pj_nome_fantasia})</span>
-                            )}
-                          </h4>
-                          <div className="text-sm text-slate-600 mt-1 space-y-0.5">
-                            <p className="font-mono">
-                              {cliente.tipo_pessoa === 'Física' ? 'CPF' : 'CNPJ'}: {cliente.cpf || cliente.pj_cnpj || '-'}
-                            </p>
-                            {(cliente.celular || cliente.pj_celular) && (
-                              <p>📞 {cliente.celular || cliente.pj_celular}</p>
-                            )}
-                            {(cliente.email || cliente.pj_email) && (
-                              <p className="truncate">✉️ {cliente.email || cliente.pj_email}</p>
-                            )}
-                          </div>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                          <span className="text-purple-700 font-bold text-sm">
+                            {(cliente.nome_completo || cliente.pj_razao_social || '?').charAt(0).toUpperCase()}
+                          </span>
                         </div>
-                        <Button
-                          size="sm"
-                          className="bg-[#23BE84] hover:bg-[#1da570] shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelecionarCliente(cliente);
-                          }}
-                        >
-                          Selecionar
-                        </Button>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-900 truncate">
+                            {cliente.nome_completo || cliente.pj_razao_social || 'Cliente sem nome'}
+                          </p>
+                          <p className="text-xs text-slate-500 font-mono">
+                            {cliente.tipo_pessoa === 'Física' ? 'CPF' : 'CNPJ'}: {cliente.cpf || cliente.pj_cnpj || '-'}
+                            {(cliente.celular || cliente.pj_celular) && ` · 📞 ${cliente.celular || cliente.pj_celular}`}
+                          </p>
+                        </div>
                       </div>
+                      <Button
+                        size="sm"
+                        className="bg-purple-600 hover:bg-purple-700 text-white shrink-0"
+                        onClick={(e) => { e.stopPropagation(); handleSelecionarCliente(cliente); }}
+                      >
+                        Selecionar
+                      </Button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Sem resultados - Botão Cadastrar */}
+            {/* Sem resultados */}
             {busca.trim() && !buscando && resultados.length === 0 && (
-              <div className="text-center py-8 border-2 border-dashed rounded-lg bg-slate-50">
-                <div className="mb-4">
-                  <UserPlus className="w-12 h-12 mx-auto text-slate-400" />
+              <div className="text-center py-10">
+                <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                  <UserPlus className="w-8 h-8 text-slate-400" />
                 </div>
-                <p className="text-slate-600 mb-2 font-medium">
-                  Nenhum cliente encontrado
-                </p>
-                <p className="text-sm text-slate-500 mb-4">
-                  Busca: "{busca}"
-                </p>
+                <p className="font-semibold text-slate-700 mb-1">Nenhum cliente encontrado</p>
+                <p className="text-sm text-slate-400 mb-4">"{busca}" não corresponde a nenhum cadastro</p>
                 <Button
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleNovoCliente();
-                  }}
-                  className="bg-[#23BE84] hover:bg-[#1da570]"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNovoCliente(); }}
+                  className="bg-purple-600 hover:bg-purple-700"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Cadastrar Novo Cliente
@@ -198,27 +184,18 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
               </div>
             )}
 
-            {/* Botão Cadastrar Sempre Visível */}
+            {/* Estado inicial */}
             {!busca.trim() && !buscando && (
-              <div className="text-center py-8 border-2 border-dashed rounded-lg bg-slate-50">
-                <div className="mb-4">
-                  <Search className="w-12 h-12 mx-auto text-slate-400" />
+              <div className="text-center py-10">
+                <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-3">
+                  <Search className="w-8 h-8 text-purple-400" />
                 </div>
-                <p className="text-slate-600 mb-2 font-medium">
-                  Digite para buscar clientes
-                </p>
-                <p className="text-sm text-slate-500 mb-4">
-                  ou cadastre um novo cliente
-                </p>
+                <p className="font-semibold text-slate-700 mb-1">Digite para buscar clientes</p>
+                <p className="text-sm text-slate-400 mb-6">ou cadastre um novo cliente abaixo</p>
                 <Button
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleNovoCliente();
-                  }}
-                  variant="outline"
-                  className="w-full"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNovoCliente(); }}
+                  className="bg-purple-600 hover:bg-purple-700 w-full max-w-xs"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Cadastrar Novo Cliente
