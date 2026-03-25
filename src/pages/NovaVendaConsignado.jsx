@@ -532,8 +532,9 @@ export default function NovaVendaConsignado() {
     if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
       return (
         <div className="space-y-3">
-          <div className="border-l-4 border-l-pink-500 pl-4 py-2 bg-pink-50 rounded space-y-2">
-            <h3 className="font-semibold text-pink-900">Informação da Portabilidade</h3>
+          {/* Seção Portabilidade - mesma estrutura da PORTABILIDADE */}
+          <div className="border-l-4 border-l-purple-500 pl-4 py-2 bg-purple-50 rounded space-y-2">
+            <h3 className="font-semibold text-purple-900">Informação da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Código do Banco de Origem</Label>
@@ -572,16 +573,42 @@ export default function NovaVendaConsignado() {
                 <Label>Saldo Devedor *</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
-                  <Input className="pl-10" value={formatarMoeda(formData.origem_saldo_devedor)} onChange={(e) => handleMoedaChange('origem_saldo_devedor', e.target.value)} required />
+                  <Input
+                    className="pl-10"
+                    value={formatarMoeda(formData.origem_saldo_devedor)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      const saldo = parseFloat(raw) / 100 || 0;
+                      const liberado = parseFloat(formData.valor_liberado) || 0;
+                      setFormData({ ...formData, origem_saldo_devedor: saldo.toFixed(2), valor_bruto: (saldo + liberado).toFixed(2) });
+                    }}
+                    required
+                  />
                 </div>
               </div>
               <div>
                 <Label>Qt. Parc. a Vencer *</Label>
                 <Input type="number" placeholder="Ex: 48" value={formData.origem_prazo_restante} onChange={(e) => setFormData({ ...formData, origem_prazo_restante: e.target.value })} required />
               </div>
+              <div>
+                <Label className="flex items-center gap-1">
+                  Valor Base Comissão
+                  <span className="text-xs text-slate-400 font-normal">(= Vl. Bruto)</span>
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
+                  <Input
+                    className="pl-10 bg-amber-50 border-amber-200"
+                    value={formatarMoeda(formData.valor_base_comissao)}
+                    onChange={(e) => handleMoedaChange('valor_base_comissao', e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
+          {/* Seção Refin */}
           <div className="border-l-4 border-l-amber-500 pl-4 py-2 bg-amber-50 rounded space-y-2">
             <h3 className="font-semibold text-amber-900">Informação do Refin da Portabilidade</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -600,11 +627,10 @@ export default function NovaVendaConsignado() {
                     className="pl-10"
                     value={formatarMoeda(formData.valor_liberado)}
                     onChange={(e) => {
-                      const rawLiberado = e.target.value.replace(/\D/g, '');
-                      const liberado = parseFloat(rawLiberado) / 100 || 0;
-                      const saldo = parseFloat(String(formData.origem_saldo_devedor).replace(',', '.')) || 0;
-                      const bruto = liberado + saldo;
-                      setFormData({ ...formData, valor_liberado: liberado.toFixed(2), valor_bruto: bruto.toFixed(2) });
+                      const raw = e.target.value.replace(/\D/g, '');
+                      const liberado = parseFloat(raw) / 100 || 0;
+                      const saldo = parseFloat(formData.origem_saldo_devedor) || 0;
+                      setFormData({ ...formData, valor_liberado: liberado.toFixed(2), valor_bruto: (saldo + liberado).toFixed(2) });
                     }}
                     required
                   />
@@ -618,7 +644,7 @@ export default function NovaVendaConsignado() {
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">R$</span>
                   <Input
-                    className="pl-10 bg-slate-50 text-slate-600"
+                    className="pl-10 bg-slate-100 text-slate-600"
                     value={formatarMoeda(formData.valor_bruto)}
                     readOnly
                   />
