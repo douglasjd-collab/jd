@@ -619,13 +619,17 @@ export default function BatePapo() {
   });
 
   // Contadores por aba
+  const conversasComHistorico = conversasValidas.filter(c => c.ultima_mensagem && c.ultima_mensagem.trim());
+  const conversasSemHistorico = conversasValidas.filter(c => !c.ultima_mensagem || !c.ultima_mensagem.trim());
+  
   const contadores = {
     todas: conversasValidas.filter(c => !isGrupo(c)).length,
     ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length,
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.usuario_responsavel_id === user?.colaborador_id).length,
-    grupos: conversasValidas.filter(c => isGrupo(c)).length // APENAS GRUPOS
+    grupos: conversasValidas.filter(c => isGrupo(c)).length,
+    comHistorico: conversasComHistorico.filter(c => !isGrupo(c)).length,
   };
 
   const conversasFiltradas = conversasValidas.filter(c => {
@@ -634,12 +638,13 @@ export default function BatePapo() {
     let matchStatus = false;
     if (filtroStatus === 'grupos') matchStatus = isGrupo(c);
     else {
-      if (isGrupo(c)) return false; // grupos só aparecem na aba grupos
+      if (isGrupo(c)) return false;
       if (filtroStatus === 'todas') matchStatus = true;
       else if (filtroStatus === 'ativa') matchStatus = c.status === 'ativa';
       else if (filtroStatus === 'arquivada') matchStatus = c.status === 'arquivada';
       else if (filtroStatus === 'transferida') matchStatus = c.status === 'encerrada';
       else if (filtroStatus === 'meu') matchStatus = c.usuario_responsavel_id === user?.colaborador_id;
+      else if (filtroStatus === 'comHistorico') matchStatus = c.ultima_mensagem && c.ultima_mensagem.trim();
     }
     return matchSearch && matchStatus;
   });
