@@ -194,13 +194,13 @@ export default function BatePapo() {
   const sincronizarTodosContatosEvolution = async () => {
     setSincronizando(true);
     try {
-      const resp = await base44.functions.invoke('sincronizarTodosContatosEvolution', { empresa_id: empresaId });
+      const resp = await base44.functions.invoke('sincronizarTodosChatsCompleto', { empresa_id: empresaId });
       const data = resp?.data;
       if (data?.ok) {
-        toast.success(`✅ ${data.criadasNovas} novos contatos importados | ${data.jaExistem} já existiam`);
+        toast.success(`✅ ${data.totalConversasAgora} conversas total | ${data.criadasNovasConversas} novas | ${data.criadosNovosContatos} contatos CRM`);
         refetchConversas();
       } else {
-        toast.error('Erro ao importar: ' + (data?.erro || 'Desconhecido'));
+        toast.error('Erro ao sincronizar: ' + (data?.erro || 'Desconhecido'));
       }
     } catch (e) {
       toast.error('Erro: ' + e.message);
