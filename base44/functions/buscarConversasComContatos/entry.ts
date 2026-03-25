@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
     // Deduplicar conversas do mesmo telefone — manter a mais recente
     const conversasPorTelNorm = {};
-    for (const conversa of conversasHoje) {
+    for (const conversa of conversas) {
       const tel = conversa.cliente_telefone || '';
       const chave = normalizarTelefone(tel);
       if (!chave) continue; // Apenas descartar se vazio
