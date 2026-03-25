@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const empresaId = body.empresa_id;
+    const limit = body.limit || 10000;
 
     if (!empresaId) {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-data_ultima_mensagem',
-      10000 // Aumentado para 10000 para garantir todas
+      Math.max(limit, 10000) // Garantir mínimo de 10000
     );
 
     // Buscar todos os contatos da empresa de uma vez (SEM LIMITE)
