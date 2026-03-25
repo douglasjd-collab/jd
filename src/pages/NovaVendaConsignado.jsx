@@ -561,7 +561,7 @@ export default function NovaVendaConsignado() {
 
     }
 
-    if (formData.tipo_consignado === 'REFIN_PORTABILIDADE') {
+    if (isRefinPortabilidade) {
       return (
         <div className="space-y-3">
           {/* Seção Portabilidade - idêntica à PORTABILIDADE */}
