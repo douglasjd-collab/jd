@@ -307,7 +307,7 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling agressivo (a cada 1s) para mensagens em tempo real
+  // Polling ultra-agressivo (a cada 500ms) para mensagens em tempo real
   useEffect(() => {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(async () => {
@@ -316,7 +316,7 @@ export default function BatePapo() {
       } catch (e) {
         console.error('❌ Erro no polling:', e);
       }
-    }, 1000);
+    }, 500);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
@@ -545,8 +545,8 @@ export default function BatePapo() {
         // Sincronizar imediatamente
         await sincronizar();
         
-        // E a cada 1 segundo
-        const syncInterval = setInterval(sincronizar, 1000);
+        // E a cada 500ms
+        const syncInterval = setInterval(sincronizar, 500);
         return () => clearInterval(syncInterval);
         
         // Tentar variações do telefone (com/sem 9º dígito)
