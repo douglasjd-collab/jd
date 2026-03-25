@@ -354,12 +354,9 @@ export default function BatePapo() {
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
         }, 0);
-      } else {
-        // Refetch imediato da conversa aberta se for de outra conversa
-        if (conversaAtualId) {
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
-        }
       }
+      // Não fazer invalidateQueries de mensagens aqui — evita duplicatas
+      // A subscription adiciona diretamente via setQueryData quando pertence à conversa aberta
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
       if (msgData?.remetente === 'cliente' && msgData?.id) {
