@@ -16,11 +16,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
     }
 
-    // Buscar TODAS as conversas (sem nenhum filtro de data ou status)
+    // Buscar TODAS as conversas (SEM LIMITE)
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-data_ultima_mensagem',
-      2000
+      10000 // Aumentado para 10000 para garantir todas
     );
 
     // Buscar todos os contatos da empresa de uma vez
