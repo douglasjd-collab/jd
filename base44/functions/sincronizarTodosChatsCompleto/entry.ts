@@ -133,19 +133,19 @@ Deno.serve(async (req) => {
     console.log(`✅ ${contatosValidos.length} contatos válidos filtrados`);
 
     // ═══════════════════════════════════════════════════════════
-    // PASSO 4: Buscar conversas e contatos existentes
+    // PASSO 3: Buscar conversas e contatos existentes
     // ═══════════════════════════════════════════════════════════
     const [conversasExistentes, contatosExistentes] = await Promise.all([
       base44.asServiceRole.entities.ConversaWhatsapp.filter(
         { empresa_id: empresaId },
         '-created_date',
         10000
-      ),
+      ).catch(() => []),
       base44.asServiceRole.entities.ContatoWhatsapp.filter(
         { empresa_id: empresaId },
         '-created_date',
         10000
-      )
+      ).catch(() => [])
     ]);
 
     const telefonesExistentes = new Set(
