@@ -26,6 +26,9 @@ export default function NovaVendaConsignado() {
   const [showBancoModal, setShowBancoModal] = useState(false);
   const [salvandoConvenio, setSalvandoConvenio] = useState(false);
   const [salvandoBanco, setSalvandoBanco] = useState(false);
+  const [alfabetizado, setAlfabetizado] = useState(null); // null | true | false
+  const [grauEscolaridade, setGrauEscolaridade] = useState('');
+
   const [formData, setFormData] = useState({
     tipo_consignado: 'NOVO',
     numero_ade: '',
