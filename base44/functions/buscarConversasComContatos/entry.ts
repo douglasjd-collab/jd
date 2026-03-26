@@ -47,27 +47,8 @@ Deno.serve(async (req) => {
     };
 
     // ═══════════════════════════════════════════════════════════
-    // PASSO 1: Buscar mensagens de TODAS as conversas PRIMEIRO
-    // Isso garante que a deduplicação mantenha a conversa com mensagens
-    // ═══════════════════════════════════════════════════════════
-    const mensagensMap = {};
-    for (const conversa of conversas) {
-      try {
-        const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-          { conversa_id: conversa.id },
-          'data_envio',
-          500
-        );
-        mensagensMap[conversa.id] = msgs || [];
-      } catch (e) {
-        console.warn(`⚠️ Erro mensagens conversa ${conversa.id}:`, e.message);
-        mensagensMap[conversa.id] = [];
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    // PASSO 2: Deduplicar — manter a conversa com MAIS mensagens
-    // Em empate, manter a mais recente
+    // PASSO 1: Deduplicar — manter a conversa mais recente por telefone
+    // Sem buscar mensagens individuais (evita rate limit)
     // ═══════════════════════════════════════════════════════════
     const conversasPorTelNorm = {};
     for (const conversa of conversas) {
@@ -79,26 +60,24 @@ Deno.serve(async (req) => {
       if (!existente) {
         conversasPorTelNorm[chave] = conversa;
       } else {
-        const msgsExistente = mensagensMap[existente.id]?.length || 0;
-        const msgsAtual = mensagensMap[conversa.id]?.length || 0;
+        // Manter a conversa com ultima_mensagem preenchida, ou a mais recente
+        const existenteTemMsg = !!(existente.ultima_mensagem);
+        const atualTemMsg = !!(conversa.ultima_mensagem);
 
-        if (msgsAtual > msgsExistente) {
-          // Preferir a que tem mais mensagens
+        if (atualTemMsg && !existenteTemMsg) {
           conversasPorTelNorm[chave] = conversa;
-        } else if (msgsAtual === msgsExistente) {
-          // Empate: manter a mais recente
+        } else if (atualTemMsg === existenteTemMsg) {
           const dataExistente = new Date(existente.data_ultima_mensagem || existente.created_date || 0);
           const dataAtual = new Date(conversa.data_ultima_mensagem || conversa.created_date || 0);
           if (dataAtual > dataExistente) {
             conversasPorTelNorm[chave] = conversa;
           }
         }
-        // Se existente tem mais mensagens, mantém (não faz nada)
       }
     }
 
     // ═══════════════════════════════════════════════════════════
-    // PASSO 3: Montar resultado final
+    // PASSO 2: Montar resultado final
     // ═══════════════════════════════════════════════════════════
     const resultado = Object.values(conversasPorTelNorm).map(conversa => {
       const tel = conversa.cliente_telefone || '';
@@ -127,7 +106,6 @@ Deno.serve(async (req) => {
           foto_url: contato.foto_url,
           ultima_atualizacao: contato.ultima_atualizacao
         } : null,
-        mensagens: mensagensMap[conversa.id] || []
       };
     });
 
