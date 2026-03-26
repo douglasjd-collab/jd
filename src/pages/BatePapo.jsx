@@ -81,24 +81,34 @@ export default function BatePapo() {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
     
-    // Sincronizar histórico imediatamente
+    // Sincronizar histórico ANTES de exibir
     if (conversa?.id && conversa?.cliente_telefone && empresaId) {
+      setCarregandoHistorico(true);
       try {
-        console.log(`🔄 Sincronizando histórico de ${conversa.cliente_telefone}...`);
-        await base44.functions.invoke('importarMensagensConversa', {
+        console.log(`🔄 Sincronizando histórico completo de ${conversa.cliente_telefone}...`);
+        const syncResp = await base44.functions.invoke('importarMensagensConversa', {
           empresa_id: empresaId,
           telefone: conversa.cliente_telefone,
           conversa_id: conversa.id
         });
-        console.log(`✅ Histórico sincronizado`);
-        // Refetch mensagens imediatamente
-        refetchMensagens?.();
+        console.log(`✅ Sincronizado: ${syncResp?.data?.novasMensagens || 0} novas mensagens`);
+        
+        // Aguardar um pouco e refetch para garantir que as mensagens foram salvas
+        await new Promise(r => setTimeout(r, 500));
+        if (refetchMensagens) {
+          console.log(`🔄 Refetching mensagens...`);
+          await refetchMensagens();
+        }
       } catch (e) {
-        console.error('Erro ao sincronizar histórico:', e);
+        console.error('❌ Erro ao sincronizar histórico:', e);
+        // Mesmo com erro, tentar refetch
+        refetchMensagens?.();
+      } finally {
+        setCarregandoHistorico(false);
       }
     }
     
-    // Carregar foto do contato imediatamente
+    // Carregar foto do contato em paralelo
     if (!conversa?.cliente_telefone || !empresaId) return;
     try {
       const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
@@ -176,6 +186,7 @@ export default function BatePapo() {
 
   const [corrigindo, setCorrigindo] = useState(false);
   const [limpandoTudo, setLimpandoTudo] = useState(false);
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
 
   const limparTudoEReimportar = async () => {
     const primeira = window.confirm(
@@ -382,14 +393,17 @@ export default function BatePapo() {
     queryFn: async () => {
       if (!conversaSelecionadaId) return [];
       try {
+        console.log(`📥 Carregando mensagens para conversa: ${conversaSelecionadaId}`);
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionadaId },
           '-data_envio',
           5000
         );
+        console.log(`✅ Carregadas ${msgs.length} mensagens`);
         const ordenadas = [...msgs].reverse();
         const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
         if (naoLidas.length > 0) {
+          console.log(`👁️ Marcando ${naoLidas.length} mensagens como lidas`);
           await Promise.all(naoLidas.map(msg => 
             base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
           ));
@@ -401,7 +415,7 @@ export default function BatePapo() {
       }
     },
     staleTime: 0,
-    refetchInterval: 2000,
+    refetchInterval: 1500,
     gcTime: 0
   });
 
@@ -1180,9 +1194,12 @@ export default function BatePapo() {
                   {/* Mensagens */}
                   <div className="flex flex-1 flex-col overflow-hidden">
                     <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 pt-4">
-                      {loadingMensagens ? (
+                      {loadingMensagens || carregandoHistorico ? (
                         <div className="flex items-center justify-center h-full">
-                          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                          <div className="text-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
+                            <p className="text-sm text-slate-500">{carregandoHistorico ? 'Carregando histórico...' : 'Carregando mensagens...'}</p>
+                          </div>
                         </div>
                       ) : mensagens.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-slate-400">
