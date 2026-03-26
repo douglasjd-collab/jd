@@ -889,18 +889,18 @@ export default function VendasEmprestimos() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 text-xs gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
-                      onClick={() => { setPropostaResponsavel(p); setResponsavelOpen(true); }}
-                    >
-                      <UserCheck className="w-3.5 h-3.5" /> Responsável
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
                       className="flex-1 text-xs gap-1 border-slate-200 text-slate-600 hover:bg-slate-50"
                       onClick={() => { setPropostaStatus(p); setStatusModalOpen(true); }}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Status
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
+                      onClick={() => { setPropostaResponsavel(p); setResponsavelOpen(true); }}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" /> Responsável
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
