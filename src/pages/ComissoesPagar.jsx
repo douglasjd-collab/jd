@@ -165,10 +165,29 @@ export default function ComissoesPagar() {
     setPagarModal(true);
   };
 
-  const gerarPDF = (comissoesLista, vendedorInfo, dataPagamento, formaPagto, loteCode) => {
+  const gerarPDF = async (comissoesLista, vendedorInfo, dataPagamento, formaPagto, loteCode) => {
     const doc = new jsPDF({ orientation: 'landscape' });
     const totalPago = comissoesLista.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
-    const totalRecebido = comissoesLista.reduce((acc, c) => acc + (c.valor_recebido || 0), 0);
+
+    // Buscar valor do crédito de cada venda pelo venda_id
+    const vendasMap = {};
+    const vendaIds = [...new Set(comissoesLista.map(c => c.venda_id).filter(Boolean))];
+    for (const vid of vendaIds) {
+      try {
+        // Tenta buscar da entidade Venda
+        const vendas = await base44.entities.Venda.filter({ id: vid });
+        if (vendas && vendas.length > 0) vendasMap[vid] = vendas[0];
+      } catch {}
+    }
+
+    // Calcula % de comissão sobre o crédito da venda
+    const getPercSobreCredito = (c) => {
+      const venda = vendasMap[c.venda_id];
+      const credito = venda?.valorCredito || 0;
+      if (!credito || !c.valor_a_pagar) return 0;
+      return (c.valor_a_pagar / credito) * 100;
+    };
+    const getCredito = (c) => vendasMap[c.venda_id]?.valorCredito || 0;
 
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, 297, 22, 'F');
@@ -176,11 +195,11 @@ export default function ComissoesPagar() {
     doc.setFontSize(14); doc.setFont('helvetica', 'bold');
     doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO', 148, 10, { align: 'center' });
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 17, { align: 'center' });
+    doc.text(`Protocolo: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 17, { align: 'center' });
 
     doc.setTextColor(0, 0, 0);
     doc.setFillColor(245, 247, 250);
-    doc.roundedRect(10, 26, 277, 28, 2, 2, 'F');
+    doc.roundedRect(10, 26, 277, 22, 2, 2, 'F');
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
     doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
     doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
@@ -189,33 +208,38 @@ export default function ComissoesPagar() {
     doc.text(moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY'), 90, 39);
     doc.text(formaPagto || '-', 160, 39);
     doc.text(String(comissoesLista.length), 230, 39);
-    if (observacao) {
-      doc.setFont('helvetica', 'bold'); doc.text('Observação:', 14, 46);
-      doc.setFont('helvetica', 'normal'); doc.text(observacao, 45, 46);
-    }
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total Recebido (Adm):', 14, 54); doc.text('Total Pago ao Vendedor:', 120, 48);
-    doc.setTextColor(0, 120, 80); doc.text(fmt(totalRecebido), 70, 54);
-    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 200, 54);
+
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text('Total Pago ao Corretor:', 14, 52);
+    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 80, 52);
     doc.setTextColor(0, 0, 0);
+    if (observacao) {
+      doc.setFont('helvetica', 'normal'); doc.text(`Obs: ${observacao}`, 160, 52);
+    }
 
     doc.autoTable({
-      startY: 64,
-      head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Recebido', '% Com.', 'Vl. a Pagar', 'Administradora']],
-      body: comissoesLista.map(c => [
-        c.cliente_nome || '-',
-        c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-',
-        c.parcela_numero ? `${c.parcela_numero}º` : '-',
-        c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : '-',
-        fmt(c.valor_recebido), `${c.percentual_comissao || 0}%`, fmt(c.valor_a_pagar),
-        c.administradora_nome || '-',
-      ]),
-      foot: [['', '', '', '', fmt(totalRecebido), '', fmt(totalPago), '']],
+      startY: 60,
+      head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Crédito', '% s/ Crédito', 'Vl. a Pagar', 'Administradora']],
+      body: comissoesLista.map(c => {
+        const credito = getCredito(c);
+        const percCredito = getPercSobreCredito(c);
+        return [
+          c.cliente_nome || '-',
+          c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-',
+          c.parcela_numero ? `${c.parcela_numero}º` : '-',
+          c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : '-',
+          credito ? fmt(credito) : '-',
+          credito ? `${percCredito.toFixed(2)}%` : '-',
+          fmt(c.valor_a_pagar),
+          c.administradora_nome || '-',
+        ];
+      }),
+      foot: [['', '', '', '', '', 'Total:', fmt(totalPago), '']],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [30, 30, 30] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 4: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
     const ph = doc.internal.pageSize.height;
@@ -252,7 +276,7 @@ export default function ComissoesPagar() {
         comissoes_ids: JSON.stringify(paraPagar.map(c => c.id)), email_enviado: false,
       });
 
-      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode);
+      await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode);
       queryClient.invalidateQueries(['comissoes-a-pagar']);
       toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.`);
       setPagarModal(false);
