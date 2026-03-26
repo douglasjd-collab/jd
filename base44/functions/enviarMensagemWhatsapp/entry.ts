@@ -208,6 +208,32 @@ Deno.serve(async (req) => {
       result = { raw: responseText };
     }
 
+    // Garantir que a conversa existe
+    console.log('📋 Verificando se conversa existe...');
+    let conversa = null;
+    try {
+      conversa = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id);
+      console.log('✅ Conversa encontrada:', conversa.id);
+    } catch (e) {
+      console.log('⚠️ Conversa não encontrada, criando nova...');
+      
+      // Se não existir, criar a conversa
+      const empresaIdFinal = empresaId || payload.empresa_id || '699696c2c9f5bffc2e67402b';
+      const telefoneLimpo = numeroFormatado.replace(/\D/g, '');
+      
+      conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+        empresa_id: empresaIdFinal,
+        cliente_telefone: telefoneLimpo,
+        cliente_nome: payload.cliente_nome || telefoneLimpo,
+        whatsapp_id: `conv_${Date.now()}`,
+        status: 'ativa',
+        ultima_mensagem: '',
+        data_ultima_mensagem: new Date().toISOString(),
+        tipo_conexao: 'empresa'
+      });
+      console.log('✅ Conversa criada:', conversa.id);
+    }
+
     // Criar registro de mensagem no banco
     console.log('💾 Salvando mensagem no banco...');
     
