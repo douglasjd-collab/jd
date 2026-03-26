@@ -359,7 +359,7 @@ export default function BatePapo() {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(() => {
       if (!document.hidden) refetchMensagens().catch(() => {});
-    }, 2000);
+    }, 500);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
