@@ -456,15 +456,12 @@ Deno.serve(async (req) => {
   const rawBody = await req.text();
   console.log(`📦 Body: ${rawBody.length} bytes`);
 
-  // ⚡ Responder 200 IMEDIATAMENTE para evitar retry do Evolution
-  // O processamento continua em background
-  const responsePromise = Response.json({ success: true, received: true });
-
-  // Processar em background (não bloqueia a resposta)
-  processarWebhook(req, rawBody).catch((error) => {
-    console.error('❌ Erro no processamento background:', error.message);
+  // Processar IMEDIATAMENTE (não em background)
+  await processarWebhook(req, rawBody).catch((error) => {
+    console.error('❌ Erro ao processar:', error.message);
     console.error('❌ STACK:', error.stack);
   });
 
-  return responsePromise;
+  // ⚡ Responder 200 após processar
+  return Response.json({ success: true, received: true });
 });
