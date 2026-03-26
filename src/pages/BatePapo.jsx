@@ -354,12 +354,12 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling agressivo de mensagens — 2s para garantir que novas apareçam
+  // Polling de mensagens — cada 2s para evitar rate limit
   useEffect(() => {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(() => {
       if (!document.hidden) refetchMensagens().catch(() => {});
-    }, 500);
+    }, 2000);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
