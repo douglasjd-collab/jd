@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
   try {
@@ -17,18 +17,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
     }
 
-    // Buscar TODAS as conversas (SEM LIMITE)
+    // Buscar TODAS as conversas
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-data_ultima_mensagem',
-      Math.max(limit, 10000) // Garantir mínimo de 10000
+      Math.max(limit, 10000)
     );
 
-    // Buscar todos os contatos da empresa de uma vez (SEM LIMITE)
+    // Buscar todos os contatos da empresa
     const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
       { empresa_id: empresaId },
       '-created_date',
-      10000 // Aumentado para 10000
+      10000
     );
 
     // Criar mapa de telefone -> contato para lookup O(1)
@@ -39,58 +39,74 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Normalizar telefone para deduplicação (sempre usar versão de 12 dígitos como chave canônica)
+    // Normalizar telefone (sempre 12 dígitos como chave canônica)
     const normalizarTelefone = (tel) => {
       if (!tel || !tel.startsWith('55')) return tel;
-      // Se 13 dígitos (com 9 extra), remover o 9 para normalizar
       if (tel.length === 13) return tel.slice(0, 4) + tel.slice(5);
       return tel;
     };
 
-    // Deduplicar conversas do mesmo telefone — manter a mais recente
-    const conversasPorTelNorm = {};
-    for (const conversa of conversas) {
-      const tel = conversa.cliente_telefone || '';
-      const chave = normalizarTelefone(tel);
-      if (!chave) continue; // Apenas descartar se vazio
-      const existente = conversasPorTelNorm[chave];
-      if (!existente) {
-        conversasPorTelNorm[chave] = conversa;
-      } else {
-        // Manter a mais recente por data_ultima_mensagem
-        const dataExistente = new Date(existente.data_ultima_mensagem || existente.created_date || 0);
-        const dataAtual = new Date(conversa.data_ultima_mensagem || conversa.created_date || 0);
-        if (dataAtual > dataExistente) {
-          conversasPorTelNorm[chave] = conversa;
-        }
-      }
-    }
-
-    // Buscar mensagens de TODAS as conversas (sem limite)
+    // ═══════════════════════════════════════════════════════════
+    // PASSO 1: Buscar mensagens de TODAS as conversas PRIMEIRO
+    // Isso garante que a deduplicação mantenha a conversa com mensagens
+    // ═══════════════════════════════════════════════════════════
     const mensagensMap = {};
     for (const conversa of conversas) {
       try {
         const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
           { conversa_id: conversa.id },
           'data_envio',
-          500 // Aumentado para 500 mensagens por conversa
+          500
         );
         mensagensMap[conversa.id] = msgs || [];
       } catch (e) {
-        console.warn(`⚠️ Erro ao buscar mensagens da conversa ${conversa.id}:`, e.message);
+        console.warn(`⚠️ Erro mensagens conversa ${conversa.id}:`, e.message);
         mensagensMap[conversa.id] = [];
       }
     }
 
-    // Montar resultado com histórico de mensagens
+    // ═══════════════════════════════════════════════════════════
+    // PASSO 2: Deduplicar — manter a conversa com MAIS mensagens
+    // Em empate, manter a mais recente
+    // ═══════════════════════════════════════════════════════════
+    const conversasPorTelNorm = {};
+    for (const conversa of conversas) {
+      const tel = conversa.cliente_telefone || '';
+      const chave = normalizarTelefone(tel);
+      if (!chave) continue;
+
+      const existente = conversasPorTelNorm[chave];
+      if (!existente) {
+        conversasPorTelNorm[chave] = conversa;
+      } else {
+        const msgsExistente = mensagensMap[existente.id]?.length || 0;
+        const msgsAtual = mensagensMap[conversa.id]?.length || 0;
+
+        if (msgsAtual > msgsExistente) {
+          // Preferir a que tem mais mensagens
+          conversasPorTelNorm[chave] = conversa;
+        } else if (msgsAtual === msgsExistente) {
+          // Empate: manter a mais recente
+          const dataExistente = new Date(existente.data_ultima_mensagem || existente.created_date || 0);
+          const dataAtual = new Date(conversa.data_ultima_mensagem || conversa.created_date || 0);
+          if (dataAtual > dataExistente) {
+            conversasPorTelNorm[chave] = conversa;
+          }
+        }
+        // Se existente tem mais mensagens, mantém (não faz nada)
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // PASSO 3: Montar resultado final
+    // ═══════════════════════════════════════════════════════════
     const resultado = Object.values(conversasPorTelNorm).map(conversa => {
       const tel = conversa.cliente_telefone || '';
-      // Tentar telefone exato, depois variação com/sem 9 dígito BR
       let contato = contatoMap[tel] || null;
       if (!contato && tel.startsWith('55')) {
         const variacao = tel.length === 13
-          ? tel.slice(0, 4) + tel.slice(5)   // remove o 9
-          : tel.slice(0, 4) + '9' + tel.slice(4); // adiciona o 9
+          ? tel.slice(0, 4) + tel.slice(5)
+          : tel.slice(0, 4) + '9' + tel.slice(4);
         contato = contatoMap[variacao] || null;
       }
 

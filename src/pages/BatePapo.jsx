@@ -517,28 +517,36 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Sincronizar histórico UMA VEZ ao abrir conversa (sem interval)
+  // Importar histórico da Evolution ao abrir uma conversa sem mensagens
   React.useEffect(() => {
     if (!conversaSelecionada?.id || !conversaSelecionada?.cliente_telefone || !empresaId) return;
+    // Só importa se a conversa não tem mensagens no banco ainda
+    // Aguarda o primeiro carregamento de mensagens para decidir
     let cancelled = false;
 
-    (async () => {
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
       try {
-        // Sincroniza histórico uma única vez ao abrir
-        const resp = await base44.functions.invoke('sincronizarTodosChatsCompleto', {
-          empresa_id: empresaId,
+        const msgsAtuais = queryClient.getQueryData(['mensagens-whatsapp', conversaSelecionada.id]);
+        // Se já tem mensagens, não precisa importar
+        if (msgsAtuais && msgsAtuais.length > 0) return;
+
+        console.log(`📥 Conversa sem mensagens locais — importando da Evolution: ${conversaSelecionada.id}`);
+        const resp = await base44.functions.invoke('importarMensagensConversa', {
           conversa_id: conversaSelecionada.id,
-          numero: conversaSelecionada.cliente_telefone
+          empresa_id: empresaId,
         });
-        if (!cancelled && resp?.data?.ok) {
+        if (!cancelled && resp?.data?.ok && (resp.data.processadas > 0 || resp.data.migradas > 0)) {
+          console.log(`✅ Importadas: ${resp.data.processadas} | Migradas: ${resp.data.migradas}`);
           queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
         }
       } catch (e) {
-        // silencioso — subscription em tempo real cobre novas mensagens
+        console.warn('⚠️ Falha ao importar histórico:', e.message);
       }
-    })();
+    }, 800); // Aguarda 800ms para dar tempo ao primeiro fetch de mensagens completar
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [conversaSelecionada?.id, empresaId]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN
