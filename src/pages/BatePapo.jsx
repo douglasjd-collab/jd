@@ -638,32 +638,25 @@ export default function BatePapo() {
 
   // Conversas válidas — filtra apenas grupos e LID
   const conversasValidas = conversas.filter(c => {
-    if (!c || !c.id) return false;
+    if (!c || !c.id || !c.cliente_telefone) return false;
     
-    const wid = (c.whatsapp_id || '').toLowerCase();
     const tel = (c.cliente_telefone || '').replace(/\D/g, '');
     
-    // ❌ Excluir APENAS: @lid, @g.us (grupos), @broadcast, e LID
-    if (wid.includes('@lid') || wid.includes('@g.us') || wid.includes('@broadcast')) {
-      console.log(`🚫 Excluindo (lid/grupo/broadcast):`, tel);
-      return false;
-    }
+    // ❌ Excluir APENAS números com ID de grupo/broadcast (terminam em @ ou contêm @g.us)
+    const isGrupoOuBroadcast = c.cliente_telefone?.includes('@g.us') || 
+                               c.cliente_telefone?.includes('@broadcast') ||
+                               c.cliente_telefone?.includes('@lid');
     
-    if (tel.startsWith('lid_') || tel.includes('@lid')) {
-      console.log(`🚫 Excluindo (LID):`, tel);
-      return false;
-    }
+    if (isGrupoOuBroadcast) return false;
+    
+    // ❌ Excluir LID formato texto
+    if (tel.startsWith('lid_')) return false;
     
     // ✅ Incluir tudo com telefone válido (8+ dígitos)
-    if (tel.length >= 8) {
-      console.log(`✅ Incluindo:`, tel);
-      return true;
-    }
-    
-    return false;
+    return tel.length >= 8;
   });
   
-  console.log(`📊 CONVERSAS VÁLIDAS: ${conversasValidas.length} de ${conversas.length}`);
+  console.log(`✅ CONVERSAS VÁLIDAS: ${conversasValidas.length} de ${conversas.length}`);
 
   // Contadores por aba
   const conversasSemHistorico = conversasValidas.filter(c => !c.ultima_mensagem || !c.ultima_mensagem.trim());
