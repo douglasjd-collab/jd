@@ -249,27 +249,50 @@ export default function BatePapo() {
   const loadUser = async () => {
     try {
       const me = await base44.auth.me();
-      console.log(`👤 Usuário carregado:`, me.role || me.perfil);
+      console.log(`👤 Usuário carregado:`, me);
       setUser(me);
 
+      // 1. Super admin
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
         const empId = '699696c2c9f5bffc2e67402b';
-        console.log(`🏢 Super admin detectado, usando empresa: ${empId}`);
+        console.log(`✅ Super admin detectado, empresa: ${empId}`);
         setEmpresaId(empId);
-      } else {
-        const colabs = await base44.entities.Colaborador.filter({ 
-          user_id: me.id, 
-          status: 'ativo' 
-        });
-        if (colabs.length > 0) {
-          console.log(`🏢 Colaborador encontrado, empresa: ${colabs[0].empresa_id}`);
-          setEmpresaId(colabs[0].empresa_id);
-        } else {
-          console.warn(`⚠️ Nenhum colaborador ativo encontrado para user_id: ${me.id}`);
-        }
+        return;
       }
+
+      // 2. Tentar empresa_id do usuário autenticado
+      if (me.empresa_id) {
+        console.log(`✅ Empresa encontrada no User: ${me.empresa_id}`);
+        setEmpresaId(me.empresa_id);
+        return;
+      }
+
+      // 3. Buscar Colaborador ativo
+      const colabs = await base44.entities.Colaborador.filter({ 
+        user_id: me.id, 
+        status: 'ativo' 
+      }, '-created_date', 1);
+      
+      if (colabs && colabs.length > 0 && colabs[0].empresa_id) {
+        console.log(`✅ Colaborador encontrado, empresa: ${colabs[0].empresa_id}`);
+        setEmpresaId(colabs[0].empresa_id);
+        return;
+      }
+
+      // 4. Buscar Colaborador inativo como fallback
+      const colabsInativos = await base44.entities.Colaborador.filter({ 
+        user_id: me.id 
+      }, '-created_date', 1);
+      
+      if (colabsInativos && colabsInativos.length > 0 && colabsInativos[0].empresa_id) {
+        console.log(`⚠️ Colaborador inativo, mas usando empresa: ${colabsInativos[0].empresa_id}`);
+        setEmpresaId(colabsInativos[0].empresa_id);
+        return;
+      }
+
+      console.error(`❌ Não foi possível determinar empresa_id`);
     } catch (e) {
-      console.error('Erro ao carregar usuário:', e);
+      console.error('❌ Erro ao carregar usuário:', e);
     }
   };
 
@@ -609,24 +632,38 @@ export default function BatePapo() {
   // Helper: detectar se é grupo
   const isGrupo = (c) => {
     const tel = (c.cliente_telefone || '').replace(/\D/g, '');
-    const wid = c.whatsapp_id || '';
-    return wid.includes('@g.us') || tel.endsWith('@g.us') || wid.endsWith('-') || tel.length > 13;
+    const wid = (c.whatsapp_id || '').toLowerCase();
+    return wid.includes('@g.us') || tel.includes('@g.us') || wid.endsWith('-') || tel.length > 13;
   };
 
-  // Conversas válidas — apenas exclui @lid
+  // Conversas válidas — filtra apenas grupos e LID
   const conversasValidas = conversas.filter(c => {
+    if (!c || !c.id) return false;
+    
     const wid = (c.whatsapp_id || '').toLowerCase();
     const tel = (c.cliente_telefone || '').replace(/\D/g, '');
     
-    // Excluir @lid, @g.us (grupos), @broadcast
-    if (wid.includes('@lid') || wid.includes('@g.us') || wid.includes('@broadcast')) return false;
+    // ❌ Excluir APENAS: @lid, @g.us (grupos), @broadcast, e LID
+    if (wid.includes('@lid') || wid.includes('@g.us') || wid.includes('@broadcast')) {
+      console.log(`🚫 Excluindo (lid/grupo/broadcast):`, tel);
+      return false;
+    }
     
-    // Excluir LID formato texto (ex: "lid_123")
-    if (tel.startsWith('lid_')) return false;
+    if (tel.startsWith('lid_') || tel.includes('@lid')) {
+      console.log(`🚫 Excluindo (LID):`, tel);
+      return false;
+    }
     
-    // Incluir tudo que for número válido
-    return tel.length >= 8;
+    // ✅ Incluir tudo com telefone válido (8+ dígitos)
+    if (tel.length >= 8) {
+      console.log(`✅ Incluindo:`, tel);
+      return true;
+    }
+    
+    return false;
   });
+  
+  console.log(`📊 CONVERSAS VÁLIDAS: ${conversasValidas.length} de ${conversas.length}`);
 
   // Contadores por aba
   const conversasSemHistorico = conversasValidas.filter(c => !c.ultima_mensagem || !c.ultima_mensagem.trim());
@@ -640,28 +677,38 @@ export default function BatePapo() {
     grupos: conversasValidas.filter(c => isGrupo(c)).length,
   };
 
-  const conversasFiltradas = conversasValidas.filter(c => {
-    // Sempre incluir todas as conversas válidas primeiro
-    if (!c.id) return false;
-    
-    const matchSearch = !searchConversas || 
-      (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
-      (c.cliente_telefone || '').includes(searchConversas);
-    
-    let matchStatus = false;
-    if (filtroStatus === 'grupos') matchStatus = isGrupo(c);
-    else {
-      if (isGrupo(c)) return false;
-      if (filtroStatus === 'todas') matchStatus = true;
-      else if (filtroStatus === 'ativa') matchStatus = c.status === 'ativa';
-      else if (filtroStatus === 'arquivada') matchStatus = c.status === 'arquivada';
-      else if (filtroStatus === 'transferida') matchStatus = c.status === 'encerrada';
-      else if (filtroStatus === 'meu') matchStatus = c.usuario_responsavel_id === user?.colaborador_id;
-    }
-    return matchSearch && matchStatus;
-  });
+  const conversasFiltradas = conversasValidas
+    .filter(c => {
+      // 1️⃣ Filtro por busca
+      if (searchConversas) {
+        const match = 
+          (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
+          (c.cliente_telefone || '').includes(searchConversas);
+        if (!match) return false;
+      }
+      
+      // 2️⃣ Filtro por status
+      if (filtroStatus === 'grupos') {
+        return isGrupo(c);
+      } else if (filtroStatus === 'todas') {
+        return !isGrupo(c);
+      } else if (filtroStatus === 'ativa') {
+        return !isGrupo(c) && c.status === 'ativa';
+      } else if (filtroStatus === 'arquivada') {
+        return !isGrupo(c) && c.status === 'arquivada';
+      } else if (filtroStatus === 'transferida') {
+        return !isGrupo(c) && c.status === 'encerrada';
+      } else if (filtroStatus === 'meu') {
+        return !isGrupo(c) && c.usuario_responsavel_id === user?.colaborador_id;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => 
+      new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0)
+    );
   
-  console.log(`🎯 Filtradas: ${conversasFiltradas.length} de ${conversasValidas.length} conversas`);
+  console.log(`✅ Exibindo ${conversasFiltradas.length} conversas (filtro: ${filtroStatus})`);
 
   if (!user || !empresaId) {
     return (
