@@ -158,6 +158,44 @@ export default function BatePapo() {
   };
 
   const [corrigindo, setCorrigindo] = useState(false);
+  const [limpandoTudo, setLimpandoTudo] = useState(false);
+
+  const limparTudoEReimportar = async () => {
+    const primeira = window.confirm(
+      `⚠️ ATENÇÃO: Isso vai APAGAR todas as conversas e mensagens do banco e reimportar do zero via Evolution.\n\nTem certeza?`
+    );
+    if (!primeira) return;
+    const segunda = window.confirm(
+      `🔴 CONFIRMAÇÃO FINAL: Todas as ${conversas.length} conversas e mensagens serão DELETADAS permanentemente.\n\nClique OK para confirmar.`
+    );
+    if (!segunda) return;
+
+    setLimpandoTudo(true);
+    try {
+      toast.message('🗑️ Apagando conversas e mensagens...', { duration: 60000 });
+      const resp = await base44.functions.invoke('limparTudoERecriar', { empresa_id: empresaId, confirmar: true });
+      const data = resp?.data;
+      if (data?.ok) {
+        toast.success(`✅ ${data.mensagem}`);
+        // Aguarda 2s e depois reimporta
+        await new Promise(r => setTimeout(r, 2000));
+        toast.message('📥 Reimportando conversas da Evolution...', { duration: 60000 });
+        const resp2 = await base44.functions.invoke('sincronizarTodosChatsCompleto', { empresa_id: empresaId });
+        const data2 = resp2?.data;
+        if (data2?.ok) {
+          toast.success(`✅ ${data2.totalConversasAgora} conversas reimportadas!`);
+        }
+        refetchConversas();
+        setConversaSelecionada(null);
+      } else {
+        toast.error('Erro: ' + (data?.error || 'Desconhecido'));
+      }
+    } catch (e) {
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setLimpandoTudo(false);
+    }
+  };
 
   const sincronizarChats = async () => {
     setSincronizando(true);
@@ -849,6 +887,21 @@ export default function BatePapo() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom"><p>Deletar {conversasSemHistorico.length} conversas sem histórico</p></TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full border-red-200 bg-red-50 hover:bg-red-100"
+                      onClick={limparTudoEReimportar}
+                      disabled={limpandoTudo || sincronizando}
+                      title="Limpar tudo e reimportar do zero"
+                    >
+                      {limpandoTudo ? <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" /> : <Trash2 className="h-3.5 w-3.5 text-red-600" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-red-700 text-white"><p>🔴 Limpar TUDO e reimportar</p></TooltipContent>
                 </Tooltip>
                 <Button 
                   size="default"
