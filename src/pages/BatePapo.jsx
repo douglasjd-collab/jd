@@ -555,32 +555,14 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Importar histórico da Evolution ao abrir conversa — com debounce para evitar chamadas em cascata
+  // Ao abrir conversa, forçar refetch do histórico
   React.useEffect(() => {
-    if (!conversaSelecionada?.id || !conversaSelecionada?.cliente_telefone || !empresaId) return;
-    let cancelled = false;
-
-    // Aguarda 500ms antes de disparar (evita chamadas paralelas ao trocar rápido de conversa)
-    const timer = setTimeout(async () => {
-      if (cancelled) return;
-      try {
-        const resp = await base44.functions.invoke('importarMensagensConversa', {
-          conversa_id: conversaSelecionada.id,
-          empresa_id: empresaId,
-        });
-        if (!cancelled && resp?.data?.ok) {
-          if (resp.data.processadas > 0 || resp.data.migradas > 0) {
-            queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-            queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-          }
-        }
-      } catch (e) {
-        // silencia erro — mensagens do banco já estão carregadas pelo queryFn
-      }
-    }, 500);
-
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [conversaSelecionada?.id, empresaId]);
+    if (!conversaSelecionada?.id) return;
+    
+    // Invalidar e refetch imediato para garantir que mensagens aparecerão
+    queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+    refetchMensagens?.();
+  }, [conversaSelecionada?.id]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN
   const normalizarTelefone = (tel) => {
