@@ -109,12 +109,13 @@ export default function HistoricoModal({ open, onOpenChange, proposta, empresaId
         created_date: c.created_date,
       }));
 
-      // Merge e ordena por data
-      const todos = [...histMapped, ...comentsMapped, criacao].sort((a, b) => {
+      // Merge e ordena por data (decrescente), criação sempre por último
+      const outros = [...histMapped, ...comentsMapped].sort((a, b) => {
         const da = new Date(a.data_status || a.created_date || 0);
         const db = new Date(b.data_status || b.created_date || 0);
         return db - da;
       });
+      const todos = [...outros, criacao];
 
       return todos;
     },
