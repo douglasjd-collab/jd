@@ -236,18 +236,25 @@ export default function BatePapo() {
 
   useEffect(() => {
     loadUser();
-    if (empresaId) {
-      sincronizarTodosContatosEvolution();
-    }
   }, []);
+
+  useEffect(() => {
+    if (empresaId) {
+      console.log(`🏢 EmpresaId definido: ${empresaId}`);
+      sincronizarTodosContatosEvolution();
+      refetchConversas();
+    }
+  }, [empresaId]);
 
   const loadUser = async () => {
     try {
       const me = await base44.auth.me();
+      console.log(`👤 Usuário carregado:`, me.role || me.perfil);
       setUser(me);
 
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
         const empId = '699696c2c9f5bffc2e67402b';
+        console.log(`🏢 Super admin detectado, usando empresa: ${empId}`);
         setEmpresaId(empId);
       } else {
         const colabs = await base44.entities.Colaborador.filter({ 
@@ -255,7 +262,10 @@ export default function BatePapo() {
           status: 'ativo' 
         });
         if (colabs.length > 0) {
+          console.log(`🏢 Colaborador encontrado, empresa: ${colabs[0].empresa_id}`);
           setEmpresaId(colabs[0].empresa_id);
+        } else {
+          console.warn(`⚠️ Nenhum colaborador ativo encontrado para user_id: ${me.id}`);
         }
       }
     } catch (e) {
