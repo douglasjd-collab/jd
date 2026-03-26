@@ -57,11 +57,13 @@ export default function HistoricoModal({ open, onOpenChange, proposta, empresaId
       ]);
 
       // Montar linha de criação da proposta
+      // Usa created_by (email/login do criador real: colaborador ou importação)
+      const criadorLogin = proposta.created_by || null;
       const criacao = {
         id: `criacao_${proposta.id}`,
         tipo: 'criacao',
-        descricao_evento: `Proposta criada${proposta.vendedor_nome ? ` por ${proposta.vendedor_nome}` : ''}`,
-        usuario_nome: proposta.vendedor_nome || 'Sistema',
+        descricao_evento: `Proposta criada${criadorLogin ? ` por ${criadorLogin}` : ''}`,
+        usuario_nome: criadorLogin || 'Sistema',
         created_date: proposta.created_date,
         _isCriacao: true,
       };
