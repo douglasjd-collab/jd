@@ -592,16 +592,10 @@ export default function BatePapo() {
     return wid.includes('@g.us') || tel.endsWith('@g.us') || wid.endsWith('-') || tel.length > 13;
   };
 
-  // Helper: detectar se é contato falso (@lid)
-  const isContatoFalso = (c) => {
-    const wid = c.whatsapp_id || '';
-    const tel = (c.cliente_telefone || '').replace(/\D/g, '');
-    return wid.includes('@lid') || tel.includes('lid') || tel.startsWith('lid');
-  };
-
-  // Conversas válidas — exclui @lid e números inválidos
+  // Conversas válidas — apenas exclui @lid
   const conversasValidas = conversas.filter(c => {
-    return !isContatoFalso(c) && isTelefoneValido(c.cliente_telefone);
+    const wid = c.whatsapp_id || '';
+    return !wid.includes('@lid');
   });
 
   // Contadores por aba
