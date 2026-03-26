@@ -271,7 +271,7 @@ export default function BatePapo() {
         return ordenadas;
       },
       staleTime: 0,
-      refetchInterval: 300,
+      refetchInterval: false,
       gcTime: 0
   });
 
@@ -307,16 +307,12 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling ultra-agressivo (a cada 300ms) para mensagens em tempo real
+  // Polling leve de mensagens — 5s, controlado por visibilidade da aba
   useEffect(() => {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
-    const interval = setInterval(async () => {
-      try {
-        await refetchMensagens();
-      } catch (e) {
-        console.error('❌ Erro no polling:', e);
-      }
-    }, 300);
+    const interval = setInterval(() => {
+      if (!document.hidden) refetchMensagens().catch(() => {});
+    }, 5000);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
@@ -521,73 +517,29 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Sincronizar mensagens e carregar contato quando conversa muda
+  // Sincronizar histórico UMA VEZ ao abrir conversa (sem interval)
   React.useEffect(() => {
-    if (!conversaSelecionada?.cliente_telefone || !empresaId) return;
-    
+    if (!conversaSelecionada?.id || !conversaSelecionada?.cliente_telefone || !empresaId) return;
+    let cancelled = false;
+
     (async () => {
       try {
-        const telefoneLimpo = conversaSelecionada.cliente_telefone.replace(/\D/g, '');
-        
-        // Sincronizar histórico completo da conversa
-        const sincronizar = async () => {
-          try {
-            const resp = await base44.functions.invoke('sincronizarTodosChatsCompleto', { 
-              empresa_id: empresaId,
-              conversa_id: conversaSelecionada.id,
-              numero: conversaSelecionada.cliente_telefone 
-            });
-            if (resp?.data?.ok) {
-              console.log(`✅ Histórico sincronizado para ${conversaSelecionada.cliente_telefone}`);
-              queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-            }
-          } catch (e) {
-            console.error('⚠️ Erro ao sincronizar histórico:', e);
-          }
-        };
-        
-        // Sincronizar imediatamente ao abrir conversa
-        await sincronizar();
-        
-        // E a cada 2s para manter atualizado
-        const syncInterval = setInterval(sincronizar, 2000);
-        return () => clearInterval(syncInterval);
-        
-        // Tentar variações do telefone (com/sem 9º dígito)
-        const variacoes = [telefoneLimpo];
-        if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
-          variacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
-        } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
-          variacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
-        }
-        
-        let contatoEncontrado = null;
-        for (const tel of variacoes) {
-          const contatos = await base44.entities.ContatoWhatsapp.filter({
-            empresa_id: empresaId,
-            telefone: tel
-          }, '-created_date', 1);
-          
-          if (contatos && contatos.length > 0) {
-            contatoEncontrado = contatos[0];
-            break;
-          }
-        }
-        
-        if (contatoEncontrado) {
-          console.log('✅ Contato carregado:', { nome: contatoEncontrado.nome, foto_url: contatoEncontrado.foto_url });
-          setContatosWhatsapp(prev => ({
-            ...prev,
-            [conversaSelecionada.id]: contatoEncontrado
-          }));
-        } else {
-          console.log('⚠️ Contato não encontrado, usando dados da conversa');
+        // Sincroniza histórico uma única vez ao abrir
+        const resp = await base44.functions.invoke('sincronizarTodosChatsCompleto', {
+          empresa_id: empresaId,
+          conversa_id: conversaSelecionada.id,
+          numero: conversaSelecionada.cliente_telefone
+        });
+        if (!cancelled && resp?.data?.ok) {
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
         }
       } catch (e) {
-        console.error('❌ Erro ao carregar contato:', e);
+        // silencioso — subscription em tempo real cobre novas mensagens
       }
     })();
-  }, [conversaSelecionada?.id, conversaSelecionada?.cliente_telefone, empresaId]);
+
+    return () => { cancelled = true; };
+  }, [conversaSelecionada?.id, empresaId]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN
   const normalizarTelefone = (tel) => {
