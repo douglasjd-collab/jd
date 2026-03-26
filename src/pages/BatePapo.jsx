@@ -81,28 +81,34 @@ export default function BatePapo() {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
     
-    // Sincronizar histórico ANTES de exibir
+    // Sincronizar histórico COM TIMEOUT
     if (conversa?.id && conversa?.cliente_telefone && empresaId) {
       setCarregandoHistorico(true);
+      const timeoutId = setTimeout(() => {
+        console.warn(`⏱️ Timeout na sincronização, exibindo mensagens salvas...`);
+        setCarregandoHistorico(false);
+        refetchMensagens?.();
+      }, 10000); // 10 segundos de timeout
+      
       try {
-        console.log(`🔄 Sincronizando histórico completo de ${conversa.cliente_telefone}...`);
+        console.log(`🔄 Sincronizando histórico de ${conversa.cliente_telefone}...`);
         const syncResp = await base44.functions.invoke('importarMensagensConversa', {
           empresa_id: empresaId,
           telefone: conversa.cliente_telefone,
           conversa_id: conversa.id
         });
+        clearTimeout(timeoutId);
         console.log(`✅ Sincronizado: ${syncResp?.data?.novasMensagens || 0} novas mensagens`);
         
-        // Aguardar um pouco e refetch para garantir que as mensagens foram salvas
-        await new Promise(r => setTimeout(r, 500));
-        if (refetchMensagens) {
-          console.log(`🔄 Refetching mensagens...`);
-          await refetchMensagens();
-        }
+        // Refetch imediato
+        await new Promise(r => setTimeout(r, 200));
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
+        
       } catch (e) {
-        console.error('❌ Erro ao sincronizar histórico:', e);
-        // Mesmo com erro, tentar refetch
-        refetchMensagens?.();
+        clearTimeout(timeoutId);
+        console.error('❌ Erro ao sincronizar:', e?.message);
+        // Mostrar mensagens salvas mesmo com erro
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
       } finally {
         setCarregandoHistorico(false);
       }
@@ -667,10 +673,16 @@ export default function BatePapo() {
   React.useEffect(() => {
     if (!conversaSelecionada?.id) return;
     
-    // Invalidar e refetch imediato para garantir que mensagens aparecerão
+    console.log(`🔄 Acionando refetch de mensagens para conversa: ${conversaSelecionada.id}`);
+    
+    // Invalidar query para forçar novo fetch
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-    refetchMensagens?.();
-  }, [conversaSelecionada?.id]);
+    
+    // Aguardar um pouco e refetch
+    setTimeout(() => {
+      refetchMensagens?.().catch(e => console.error('Erro no refetch:', e));
+    }, 100);
+  }, [conversaSelecionada?.id, refetchMensagens]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN
   const normalizarTelefone = (tel) => {
