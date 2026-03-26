@@ -517,36 +517,35 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Importar histórico da Evolution ao abrir uma conversa sem mensagens
+  // Importar histórico da Evolution ao abrir qualquer conversa — sempre sincroniza em background
   React.useEffect(() => {
     if (!conversaSelecionada?.id || !conversaSelecionada?.cliente_telefone || !empresaId) return;
-    // Só importa se a conversa não tem mensagens no banco ainda
-    // Aguarda o primeiro carregamento de mensagens para decidir
     let cancelled = false;
 
-    const timer = setTimeout(async () => {
+    const importar = async () => {
       if (cancelled) return;
       try {
-        const msgsAtuais = queryClient.getQueryData(['mensagens-whatsapp', conversaSelecionada.id]);
-        // Se já tem mensagens, não precisa importar
-        if (msgsAtuais && msgsAtuais.length > 0) return;
-
-        console.log(`📥 Conversa sem mensagens locais — importando da Evolution: ${conversaSelecionada.id}`);
+        console.log(`📥 Sincronizando histórico da Evolution: ${conversaSelecionada.id}`);
         const resp = await base44.functions.invoke('importarMensagensConversa', {
           conversa_id: conversaSelecionada.id,
           empresa_id: empresaId,
         });
-        if (!cancelled && resp?.data?.ok && (resp.data.processadas > 0 || resp.data.migradas > 0)) {
-          console.log(`✅ Importadas: ${resp.data.processadas} | Migradas: ${resp.data.migradas}`);
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+        if (!cancelled && resp?.data?.ok) {
+          if (resp.data.processadas > 0 || resp.data.migradas > 0) {
+            console.log(`✅ Importadas: ${resp.data.processadas} | Migradas: ${resp.data.migradas}`);
+            queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+            queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+          }
         }
       } catch (e) {
         console.warn('⚠️ Falha ao importar histórico:', e.message);
       }
-    }, 800); // Aguarda 800ms para dar tempo ao primeiro fetch de mensagens completar
+    };
 
-    return () => { cancelled = true; clearTimeout(timer); };
+    // Dispara imediatamente sem aguardar
+    importar();
+
+    return () => { cancelled = true; };
   }, [conversaSelecionada?.id, empresaId]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN

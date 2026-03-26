@@ -119,13 +119,11 @@ Deno.serve(async (req) => {
     }
 
     // Migrar mensagens de duplicatas em lote
+    const MIGRATE_BATCH = 50;
     if (mensagensDeOutrasConversas.length > 0) {
-      for (let i = 0; i < mensagensDeOutrasConversas.length; i += BATCH_SIZE) {
-        const lote = mensagensDeOutrasConversas.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < mensagensDeOutrasConversas.length; i += MIGRATE_BATCH) {
+        const lote = mensagensDeOutrasConversas.slice(i, i + MIGRATE_BATCH);
         await Promise.all(lote.map(id => base44.asServiceRole.entities.MensagemWhatsapp.update(id, { conversa_id })));
-        if (i + BATCH_SIZE < mensagensDeOutrasConversas.length) {
-          await new Promise(r => setTimeout(r, 300));
-        }
       }
       console.log(`🔀 Migradas ${mensagensDeOutrasConversas.length} mensagens de conversas duplicadas`);
     }
@@ -196,17 +194,13 @@ Deno.serve(async (req) => {
       idsExistentes.add(messageId);
     }
 
-    // Inserir em lote (bulkCreate) para evitar rate limit — máx 50 por vez
-    const BATCH_SIZE = 50;
+    // Inserir em lote (bulkCreate) — máx 100 por vez, sem delay
+    const BATCH_SIZE = 100;
     let processadas = 0;
     for (let i = 0; i < novasMensagens.length; i += BATCH_SIZE) {
       const lote = novasMensagens.slice(i, i + BATCH_SIZE);
       await base44.asServiceRole.entities.MensagemWhatsapp.bulkCreate(lote);
       processadas += lote.length;
-      // Pequena pausa entre lotes para não saturar o rate limit
-      if (i + BATCH_SIZE < novasMensagens.length) {
-        await new Promise(r => setTimeout(r, 300));
-      }
     }
 
     // Atualizar última mensagem da conversa se processamos algo
