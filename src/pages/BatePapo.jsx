@@ -345,12 +345,12 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling leve de mensagens — 5s, controlado por visibilidade da aba
+  // Polling agressivo de mensagens — 2s para garantir que novas apareçam
   useEffect(() => {
     if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
     const interval = setInterval(() => {
       if (!document.hidden) refetchMensagens().catch(() => {});
-    }, 5000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
