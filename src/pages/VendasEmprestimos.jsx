@@ -123,6 +123,8 @@ export default function VendasEmprestimos() {
   const { data: propostas = [], isLoading } = useQuery({
     queryKey: ['vendas-emprestimos', currentUser?.empresa_id, currentUser?.perfil],
     enabled: !!currentUser,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     queryFn: () => {
       const isSuperAdmin = currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'master';
       const filter = { produto: 'emprestimo' };
@@ -1009,7 +1011,10 @@ export default function VendasEmprestimos() {
       <PropostaEditModal
         proposta={propostaToEdit}
         open={editModalOpen}
-        onOpenChange={setEditModalOpen}
+        onOpenChange={(open) => {
+          setEditModalOpen(open);
+          if (!open) queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
+        }}
         currentUser={currentUser}
       />
 
