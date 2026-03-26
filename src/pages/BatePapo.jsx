@@ -517,35 +517,31 @@ export default function BatePapo() {
     }
   }, [mensagens]);
 
-  // Importar histórico da Evolution ao abrir qualquer conversa — sempre sincroniza em background
+  // Importar histórico da Evolution ao abrir conversa — com debounce para evitar chamadas em cascata
   React.useEffect(() => {
     if (!conversaSelecionada?.id || !conversaSelecionada?.cliente_telefone || !empresaId) return;
     let cancelled = false;
 
-    const importar = async () => {
+    // Aguarda 500ms antes de disparar (evita chamadas paralelas ao trocar rápido de conversa)
+    const timer = setTimeout(async () => {
       if (cancelled) return;
       try {
-        console.log(`📥 Sincronizando histórico da Evolution: ${conversaSelecionada.id}`);
         const resp = await base44.functions.invoke('importarMensagensConversa', {
           conversa_id: conversaSelecionada.id,
           empresa_id: empresaId,
         });
         if (!cancelled && resp?.data?.ok) {
           if (resp.data.processadas > 0 || resp.data.migradas > 0) {
-            console.log(`✅ Importadas: ${resp.data.processadas} | Migradas: ${resp.data.migradas}`);
             queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
             queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
           }
         }
       } catch (e) {
-        console.warn('⚠️ Falha ao importar histórico:', e.message);
+        // silencia erro — mensagens do banco já estão carregadas pelo queryFn
       }
-    };
+    }, 500);
 
-    // Dispara imediatamente sem aguardar
-    importar();
-
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [conversaSelecionada?.id, empresaId]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN
@@ -953,7 +949,7 @@ export default function BatePapo() {
                             )}
                           </div>
                           <p className="line-clamp-1 text-xs text-slate-500 mt-0.5">
-                            {c.ultima_mensagem || ''}
+                            {c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : ''}
                           </p>
                         </div>
 
