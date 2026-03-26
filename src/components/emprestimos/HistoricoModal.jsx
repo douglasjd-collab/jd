@@ -58,18 +58,17 @@ export default function HistoricoModal({ open, onOpenChange, proposta, empresaId
 
       // Montar linha de criação da proposta
       // Busca o nome do colaborador pelo email do created_by
-      let criadorNome = 'Sistema';
-      if (proposta.created_by) {
+      let criadorNome = proposta.created_by || 'Sistema';
+      if (proposta.created_by && proposta.empresa_id) {
         try {
-          const colabs = await base44.entities.Colaborador.filter({ email: proposta.created_by });
-          if (colabs && colabs.length > 0) {
-            criadorNome = colabs[0].nome || proposta.created_by;
-          } else {
-            // Fallback: exibe o email direto
-            criadorNome = proposta.created_by;
-          }
+          const colabs = await base44.entities.Colaborador.filter({ empresa_id: proposta.empresa_id }, '-created_date', 500);
+          const found = colabs.find(c =>
+            (c.email && c.email.toLowerCase() === proposta.created_by.toLowerCase()) ||
+            (c.user_id && c.user_id === proposta.created_by)
+          );
+          if (found) criadorNome = found.nome || proposta.created_by;
         } catch {
-          criadorNome = proposta.created_by;
+          // mantém o email como fallback
         }
       }
 
