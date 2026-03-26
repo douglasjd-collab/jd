@@ -40,7 +40,12 @@ function decodeBase64JSON(str) {
 function normalizarPayload(rawBody) {
   let parsed = null;
   try { parsed = JSON.parse(rawBody); } catch (_) {}
-  if (!parsed) parsed = decodeBase64JSON(rawBody);
+  if (!parsed) {
+    parsed = decodeBase64JSON(rawBody);
+    if (parsed && typeof parsed === 'string') {
+      try { parsed = JSON.parse(parsed); } catch (_) { return null; }
+    }
+  }
   if (!parsed) return null;
 
   if (parsed.event && typeof parsed.data === 'string' && parsed.data.length > 0) {
