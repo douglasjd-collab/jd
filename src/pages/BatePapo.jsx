@@ -483,15 +483,15 @@ export default function BatePapo() {
 
       if (pertenceConversaAberta) {
         // Forçar refetch imediato
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] }).then(() => {
-          // Scroll para o final após refetch
-          setTimeout(() => {
-            if (scrollAreaRef.current) {
-              const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-              if (viewport) viewport.scrollTop = viewport.scrollHeight;
-            }
-          }, 100);
-        });
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
+        refetchMensagens?.();
+        // Scroll para o final após refetch
+        setTimeout(() => {
+          if (scrollAreaRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) viewport.scrollTop = viewport.scrollHeight;
+          }
+        }, 100);
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
@@ -526,7 +526,7 @@ export default function BatePapo() {
       }
     });
     return unsub;
-  }, [empresaId, refetchConversas]);
+  }, [empresaId, refetchConversas, refetchMensagens]);
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
