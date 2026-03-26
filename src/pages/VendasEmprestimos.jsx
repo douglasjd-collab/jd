@@ -80,6 +80,7 @@ export default function VendasEmprestimos() {
   const [filterStatus, setFilterStatus] = useState('todos');
   const [searchGeral, setSearchGeral] = useState('');
   const [filterVendedor, setFilterVendedor] = useState('todos');
+  const [filterResponsavel, setFilterResponsavel] = useState('todos');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [propostaToDelete, setPropostaToDelete] = useState(null);
@@ -364,7 +365,14 @@ export default function VendasEmprestimos() {
     const matchStatus = filterStatus === 'todos' || 
       filterTodosIds.includes(p.status_id) || 
       (!p.status_id && filterStatusObj && (normStr(p.status) === normStr(filterStatusObj.nome) || normStr(p.status) === normStr(filterStatusObj.codigo)));
-    return matchGeral && matchBanco && matchTipo && matchStatus && matchVendedor;
+    let matchResponsavel = true;
+    if (filterResponsavel !== 'todos') {
+      let responsaveis = [];
+      try { responsaveis = p.responsaveis_json ? JSON.parse(p.responsaveis_json) : []; } catch {}
+      if (responsaveis.length === 0 && p.responsavel_id) responsaveis = [{ id: p.responsavel_id }];
+      matchResponsavel = responsaveis.some(r => r.id === filterResponsavel);
+    }
+    return matchGeral && matchBanco && matchTipo && matchStatus && matchVendedor && matchResponsavel;
   }).sort((a, b) => {
     if (isPagoFilter) {
       const dateA = a.emprestimo_data_liberacao || a.data_venda || '';
@@ -430,6 +438,20 @@ export default function VendasEmprestimos() {
   const vendedoresUnicos = useMemo(() => {
     const nomes = [...new Set(filteredByRole.map(p => p.vendedor_nome).filter(Boolean))].sort();
     return nomes;
+  }, [filteredByRole]);
+
+  // Responsáveis únicos para o filtro
+  const responsaveisUnicos = useMemo(() => {
+    const map = {};
+    filteredByRole.forEach(p => {
+      let responsaveis = [];
+      try { responsaveis = p.responsaveis_json ? JSON.parse(p.responsaveis_json) : []; } catch {}
+      if (responsaveis.length === 0 && p.responsavel_id) {
+        responsaveis = [{ id: p.responsavel_id, nome: p.responsavel_nome, foto: p.responsavel_foto }];
+      }
+      responsaveis.forEach(r => { if (r.id && r.nome) map[r.id] = r; });
+    });
+    return Object.values(map).sort((a, b) => a.nome.localeCompare(b.nome));
   }, [filteredByRole]);
 
   // Counts per tipo for filter pills
@@ -625,6 +647,28 @@ export default function VendasEmprestimos() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input placeholder="Buscar por nome, CPF, Contrato, ADE..." value={searchGeral} onChange={(e) => setSearchGeral(e.target.value)} className="pl-9 border-0 bg-slate-50" />
           </div>
+          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
+            <SelectTrigger className="w-full sm:w-52 border-0 bg-slate-50">
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Responsáveis</SelectItem>
+              {responsaveisUnicos.map(r => (
+                <SelectItem key={r.id} value={r.id}>
+                  <div className="flex items-center gap-2">
+                    {r.foto ? (
+                      <img src={r.foto} alt={r.nome} className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <span className="w-5 h-5 rounded-full bg-purple-400 flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
+                        {r.nome?.charAt(0)?.toUpperCase()}
+                      </span>
+                    )}
+                    {r.nome}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={filterBanco} onValueChange={setFilterBanco}>
             <SelectTrigger className="w-full sm:w-52 border-0 bg-slate-50">
               <SelectValue placeholder="Selecionar banco" />
