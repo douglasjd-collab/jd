@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
             cliente_telefone: telNorm,
             whatsapp_id: `${telNorm}@s.whatsapp.net`,
             status: 'ativa',
-            ultima_mensagem: 'Sincronizado',
+            ultima_mensagem: '',
             data_ultima_mensagem: new Date().toISOString(),
             tipo_conexao: 'empresa',
             instancia: instanceName

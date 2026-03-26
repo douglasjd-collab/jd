@@ -711,203 +711,81 @@ export default function BatePapo() {
                   <p className="text-[11px] text-slate-500">Central de conversas</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 flex-wrap justify-end">
+                {/* Consolidar duplicadas */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 rounded-full border-slate-200"
+                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
                       onClick={async () => {
                         setCorrigindo(true);
                         try {
                           const resp = await base44.functions.invoke('consolidarConversasDuplicadas', { empresa_id: empresaId });
-                          const data = resp?.data;
-                          if (data?.ok) {
-                            toast.success(data.mensagem);
-                            refetchConversas();
-                          }
-                        } catch (e) {
-                          toast.error('Erro: ' + e.message);
-                        } finally {
-                          setCorrigindo(false);
-                        }
+                          if (resp?.data?.ok) { toast.success(resp.data.mensagem); refetchConversas(); }
+                        } catch (e) { toast.error('Erro: ' + e.message); } finally { setCorrigindo(false); }
                       }}
-                      disabled={corrigindo}
-                      title="Consolidar conversas duplicadas do mesmo cliente"
-                    >
+                      disabled={corrigindo}>
                       {corrigindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-orange-500" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Consolidar conversas duplicadas</p></TooltipContent>
+                  <TooltipContent side="bottom"><p>Consolidar duplicadas</p></TooltipContent>
                 </Tooltip>
+
+                {/* Importar todos contatos */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 rounded-full border-slate-200"
-                      onClick={sincronizarTodosContatosEvolution}
-                      disabled={sincronizando}
-                      title="Importar todos os contatos com histórico"
-                    >
+                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
+                      onClick={sincronizarTodosContatosEvolution} disabled={sincronizando}>
                       {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5 text-green-600" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Importar TODOS contatos Evolution</p></TooltipContent>
+                  <TooltipContent side="bottom"><p>Importar todos contatos</p></TooltipContent>
                 </Tooltip>
+
+                {/* Sincronizar fotos */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 rounded-full border-slate-200"
+                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
                       onClick={async () => {
                         setSincronizando(true);
                         try {
                           const resp = await base44.functions.invoke('sincronizarFotosContatos', { empresa_id: empresaId });
-                          const data = resp?.data;
-                          if (data?.ok) {
-                            toast.success(`✅ ${data.fotosAtualizadas}/${data.totalContatos} fotos sincronizadas`);
-                            refetchConversas();
-                          } else {
-                            toast.error('Erro ao sincronizar fotos');
-                          }
-                        } catch (e) {
-                          toast.error('Erro: ' + e.message);
-                        } finally {
-                          setSincronizando(false);
-                        }
+                          if (resp?.data?.ok) { toast.success(`✅ ${resp.data.fotosAtualizadas}/${resp.data.totalContatos} fotos sincronizadas`); refetchConversas(); }
+                          else toast.error('Erro ao sincronizar fotos');
+                        } catch (e) { toast.error('Erro: ' + e.message); } finally { setSincronizando(false); }
                       }}
-                      disabled={sincronizando}
-                      title="Sincronizar fotos de perfil"
-                    >
+                      disabled={sincronizando}>
                       {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5 text-blue-600" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Sincronizar fotos de perfil</p></TooltipContent>
+                  <TooltipContent side="bottom"><p>Sincronizar fotos</p></TooltipContent>
                 </Tooltip>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-8 w-8 rounded-full border-slate-200"
-                  onClick={sincronizarChats}
-                  disabled={sincronizando}
-                  title="Sincronizar conversas da Evolution"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
-                </Button>
+
+                {/* Refresh conversas */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 rounded-full border-slate-200"
-                      onClick={async () => {
-                        const numeros = [
-                          '555197884921', '558796688645', '558721510008', '558799728715', '558781184956',
-                          '558191697050', '558182138712', '558791426333', '5519999243901', '558798157747',
-                          '558788126897', '558788614215', '558781513679', '558296187219', '558196630103',
-                          '5511978832287', '558781793015', '558796238318', '558791074463', '558781275628',
-                          '551931990926', '558781611138', '557996052134', '558199023386', '558799840320',
-                          '558002559999', '558799634655', '5511933197883', '558798044745', '558796228130',
-                          '558796701465', '558198711932', '558799345026', '553388883873', '558781435038',
-                          '556681286312', '558796212059', '558781735834', '558781404486', '558799905641',
-                          '558781494486', '553597095757', '553891945434', '553183641557', '553187740773',
-                          '553391078010', '553499747250', '558799583434', '558184361085', '553194362712',
-                          '553189599972', '553125500487', '553732219200', '553597566874', '553491855442',
-                          '553197933520', '553899853132', '553193262592', '553899191490', '553192047900',
-                          '553191522029', '553591787599', '553196979389', '553198374973', '553599137873',
-                          '553599112545', '553591314833', '553298463929', '553171981982', '553884139192',
-                          '553184341068', '553899766227', '553171318467', '553388036040', '553193793749',
-                          '553591537090', '553184779300', '553171256144', '553186643525', '553187749645',
-                          '553194390533', '553499122416', '553193753209', '553488032395', '5517997292838',
-                          '553186270686', '553194118888', '553398425715', '553184821247', '556493189232',
-                          '553187873190', '553187167668', '553584032981', '553197857797', '553388185041',
-                          '558781177155', '558888950607', '558781652049', '558796444137', '558799645977',
-                          '558781681208', '558000000089', '558796431543', '5511994813325', '558799858251',
-                          '558781418126', '558798118220', '558197781742', '558298019264', '558781374813',
-                          '558798098253', '558198200935', '558799564664', '558796016697', '558781056955',
-                          '558781301029', '558781194149', '558781796200', '558798066287', '558781106561',
-                          '558191187734'
-                        ];
-                        setSincronizando(true);
-                        try {
-                          const resp = await base44.functions.invoke('sincronizarNumerosEspecificos', {
-                            empresa_id: empresaId,
-                            numeros
-                          });
-                          const data = resp?.data;
-                          toast.success(`✅ ${data.sincronizadas} atualizadas | ${data.criadas} novas | ${data.erros} erros`);
-                          refetchConversas();
-                        } catch (e) {
-                          toast.error('Erro: ' + e.message);
-                        } finally {
-                          setSincronizando(false);
-                        }
-                      }}
-                      disabled={sincronizando}
-                      title="Sincronizar 130 números específicos"
-                    >
-                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5 text-purple-600" />}
+                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
+                      onClick={sincronizarChats} disabled={sincronizando}>
+                      <RefreshCw className={`h-3.5 w-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Sincronizar 130 números especiais com histórico</p></TooltipContent>
+                  <TooltipContent side="bottom"><p>Sincronizar conversas</p></TooltipContent>
                 </Tooltip>
+
+                {/* 🔴 Limpar tudo e reimportar */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 rounded-full border-slate-200"
-                      onClick={async () => {
-                        if (confirm(`Deletar ${conversasSemHistorico.length} conversas sem histórico?`)) {
-                          for (const c of conversasSemHistorico) {
-                            try {
-                              const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
-                              for (const msg of msgs) {
-                                await base44.entities.MensagemWhatsapp.delete(msg.id);
-                              }
-                              await base44.entities.ConversaWhatsapp.delete(c.id);
-                            } catch (e) {
-                              console.error('Erro ao deletar conversa:', e);
-                            }
-                          }
-                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                          if (conversaSelecionada && !conversasSemHistorico.find(c => c.id === conversaSelecionada.id)) {
-                            setConversaSelecionada(null);
-                          }
-                          toast.success(`${conversasSemHistorico.length} conversas deletadas`);
-                        }
-                      }}
-                      title="Deletar conversas vazias"
-                      disabled={conversasSemHistorico.length === 0}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Deletar {conversasSemHistorico.length} conversas sem histórico</p></TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-8 w-8 rounded-full border-red-200 bg-red-50 hover:bg-red-100"
+                    <Button size="icon" variant="destructive"
+                      className="h-8 w-8 rounded-full flex-shrink-0"
                       onClick={limparTudoEReimportar}
-                      disabled={limpandoTudo || sincronizando}
-                      title="Limpar tudo e reimportar do zero"
-                    >
-                      {limpandoTudo ? <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" /> : <Trash2 className="h-3.5 w-3.5 text-red-600" />}
+                      disabled={limpandoTudo || sincronizando}>
+                      {limpandoTudo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="bg-red-700 text-white"><p>🔴 Limpar TUDO e reimportar</p></TooltipContent>
                 </Tooltip>
-                <Button 
-                  size="default"
-                  className="gap-1.5 rounded-full px-4"
-                  onClick={() => setNovaConversaOpen(true)}
-                >
+
+                {/* Novo */}
+                <Button size="default" className="gap-1.5 rounded-full px-3 flex-shrink-0" onClick={() => setNovaConversaOpen(true)}>
                   <Plus className="h-4 w-4" />
                   <span className="text-sm font-semibold">Novo</span>
                 </Button>
