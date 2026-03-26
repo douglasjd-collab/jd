@@ -81,6 +81,23 @@ export default function BatePapo() {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
     
+    // Sincronizar histórico imediatamente
+    if (conversa?.id && conversa?.cliente_telefone && empresaId) {
+      try {
+        console.log(`🔄 Sincronizando histórico de ${conversa.cliente_telefone}...`);
+        await base44.functions.invoke('importarMensagensConversa', {
+          empresa_id: empresaId,
+          telefone: conversa.cliente_telefone,
+          conversa_id: conversa.id
+        });
+        console.log(`✅ Histórico sincronizado`);
+        // Refetch mensagens imediatamente
+        refetchMensagens?.();
+      } catch (e) {
+        console.error('Erro ao sincronizar histórico:', e);
+      }
+    }
+    
     // Carregar foto do contato imediatamente
     if (!conversa?.cliente_telefone || !empresaId) return;
     try {
