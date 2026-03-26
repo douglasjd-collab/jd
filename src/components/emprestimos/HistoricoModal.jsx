@@ -38,7 +38,11 @@ const TIPO_BG = {
 function formatDate(d) {
   if (!d) return '';
   try {
-    return format(new Date(d), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    return new Date(d).toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    }).replace(',', ' às');
   } catch { return d; }
 }
 
