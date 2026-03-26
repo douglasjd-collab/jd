@@ -50,11 +50,19 @@ Deno.serve(async (req) => {
     // PASSO 1: Deduplicar — manter a conversa mais recente por telefone
     // Sem buscar mensagens individuais (evita rate limit)
     // ═══════════════════════════════════════════════════════════
+    console.log(`📊 Total conversas carregadas: ${conversas.length}`);
     const conversasPorTelNorm = {};
     for (const conversa of conversas) {
       const tel = conversa.cliente_telefone || '';
+      if (!tel || tel.trim() === '') {
+        console.warn(`⚠️ Conversa sem telefone: ${conversa.id}`);
+        continue;
+      }
       const chave = normalizarTelefone(tel);
-      if (!chave) continue;
+      if (!chave) {
+        console.warn(`⚠️ Telefone inválido: ${tel} (conversa ${conversa.id})`);
+        continue;
+      }
 
       const existente = conversasPorTelNorm[chave];
       if (!existente) {
@@ -90,13 +98,13 @@ Deno.serve(async (req) => {
       }
 
       return {
-        id: conversa.id,
-        cliente_nome: conversa.cliente_nome,
-        cliente_telefone: conversa.cliente_telefone,
-        whatsapp_id: conversa.whatsapp_id || '',
-        ultima_mensagem: conversa.ultima_mensagem,
-        data_ultima_mensagem: conversa.data_ultima_mensagem,
-        status: conversa.status,
+        id: conversa.id || '',
+        cliente_nome: conversa.cliente_nome || '',
+        cliente_telefone: conversa.cliente_telefone || '',
+        whatsapp_id: (conversa.whatsapp_id || '').toLowerCase(),
+        ultima_mensagem: conversa.ultima_mensagem || '',
+        data_ultima_mensagem: conversa.data_ultima_mensagem || new Date().toISOString(),
+        status: conversa.status || 'ativa',
         usuario_responsavel_id: conversa.usuario_responsavel_id || null,
         usuario_responsavel_nome: conversa.usuario_responsavel_nome || null,
         contato: contato ? {
@@ -114,6 +122,7 @@ Deno.serve(async (req) => {
       new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0)
     );
 
+    console.log(`✅ Retornando ${resultado.length} conversas deduplicas`);
     return Response.json({ conversas: resultado }, { status: 200 });
   } catch (error) {
     console.error('Erro em buscarConversasComContatos:', error.message);

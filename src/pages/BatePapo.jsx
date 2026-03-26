@@ -601,8 +601,17 @@ export default function BatePapo() {
 
   // Conversas válidas — apenas exclui @lid
   const conversasValidas = conversas.filter(c => {
-    const wid = c.whatsapp_id || '';
-    return !wid.includes('@lid');
+    const wid = (c.whatsapp_id || '').toLowerCase();
+    const tel = (c.cliente_telefone || '').replace(/\D/g, '');
+    
+    // Excluir @lid, @g.us (grupos), @broadcast
+    if (wid.includes('@lid') || wid.includes('@g.us') || wid.includes('@broadcast')) return false;
+    
+    // Excluir LID formato texto (ex: "lid_123")
+    if (tel.startsWith('lid_')) return false;
+    
+    // Incluir tudo que for número válido
+    return tel.length >= 8;
   });
 
   // Contadores por aba
