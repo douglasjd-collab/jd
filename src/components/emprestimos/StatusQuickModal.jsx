@@ -274,24 +274,6 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
               </div>
             )}
 
-            <div>
-              <Label className="text-sm">Valor do saldo previsto para retorno (R$)</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="0,00"
-                value={cipValorPrevisto}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, '');
-                  if (raw) setCipValorPrevisto(formatarValorBRL(raw));
-                  else setCipValorPrevisto('');
-                }}
-                className="mt-1"
-                autoFocus
-              />
-              <p className="text-xs text-slate-400 mt-1">Campo opcional — informe o valor esperado de retorno do banco</p>
-            </div>
-
             <div className="flex gap-2 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => setAguardandoExtra(null)}>
                 Voltar
