@@ -484,19 +484,17 @@ export default function BatePapo() {
       const pertenceConversaAberta = msgData?.conversa_id && msgData.conversa_id === conversaAtualId;
 
       if (pertenceConversaAberta) {
-        // Invalidar para refetch imediato
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
-        
-        // Scroll imediato para a última mensagem
-        setTimeout(() => {
-          if (scrollAreaRef.current) {
-            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTop = viewport.scrollHeight;
-          }
-        }, 50);
+        // Forçar refetch imediato
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] }).then(() => {
+          // Scroll para o final após refetch
+          setTimeout(() => {
+            if (scrollAreaRef.current) {
+              const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+              if (viewport) viewport.scrollTop = viewport.scrollHeight;
+            }
+          }, 100);
+        });
       }
-      // Não fazer invalidateQueries de mensagens aqui — evita duplicatas
-      // A subscription adiciona diretamente via setQueryData quando pertence à conversa aberta
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
       if (msgData?.remetente === 'cliente' && msgData?.id) {
