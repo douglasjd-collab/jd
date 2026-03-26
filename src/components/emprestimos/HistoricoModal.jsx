@@ -57,13 +57,27 @@ export default function HistoricoModal({ open, onOpenChange, proposta, empresaId
       ]);
 
       // Montar linha de criação da proposta
-      // Usa created_by (email/login do criador real: colaborador ou importação)
-      const criadorLogin = proposta.created_by || null;
+      // Busca o nome do colaborador pelo email do created_by
+      let criadorNome = 'Sistema';
+      if (proposta.created_by) {
+        try {
+          const colabs = await base44.entities.Colaborador.filter({ email: proposta.created_by });
+          if (colabs && colabs.length > 0) {
+            criadorNome = colabs[0].nome || proposta.created_by;
+          } else {
+            // Fallback: exibe o email direto
+            criadorNome = proposta.created_by;
+          }
+        } catch {
+          criadorNome = proposta.created_by;
+        }
+      }
+
       const criacao = {
         id: `criacao_${proposta.id}`,
         tipo: 'criacao',
-        descricao_evento: `Proposta criada${criadorLogin ? ` por ${criadorLogin}` : ''}`,
-        usuario_nome: criadorLogin || 'Sistema',
+        descricao_evento: `Proposta criada por ${criadorNome}`,
+        usuario_nome: criadorNome,
         created_date: proposta.created_date,
         _isCriacao: true,
       };
