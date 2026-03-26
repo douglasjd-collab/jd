@@ -238,11 +238,60 @@ export default function BatePapo() {
     loadUser();
   }, []);
 
+  // Sincronizar histórico de TODAS as conversas
+  const sincronizarHistoricoTodasConversas = async () => {
+    if (!empresaId || !conversas.length) return;
+    setSincronizando(true);
+    try {
+      toast.message('🔄 Sincronizando histórico de TODAS as conversas...', { duration: 60000 });
+      
+      for (let i = 0; i < conversas.length; i++) {
+        const c = conversas[i];
+        if (!c.id || !c.cliente_telefone) continue;
+        
+        console.log(`⏳ Sincronizando histórico ${i + 1}/${conversas.length}: ${c.cliente_telefone}`);
+        
+        try {
+          await base44.functions.invoke('sincronizarHistoricoContato', {
+            empresa_id: empresaId,
+            telefone: c.cliente_telefone,
+            conversa_id: c.id
+          });
+        } catch (e) {
+          console.warn(`⚠️ Erro ao sincronizar ${c.cliente_telefone}:`, e.message);
+        }
+        
+        // Rate limit: aguardar 500ms entre requisições
+        await new Promise(r => setTimeout(r, 500));
+      }
+      
+      toast.success('✅ Histórico de TODAS as conversas sincronizado!');
+      refetchConversas();
+      
+      // Refetch todas as mensagens
+      conversas.forEach(c => {
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', c.id] });
+      });
+    } catch (e) {
+      toast.error('Erro ao sincronizar histórico: ' + e.message);
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
   useEffect(() => {
     if (empresaId) {
       console.log(`🏢 EmpresaId definido: ${empresaId}`);
+      // Sincronizar contatos primeiro
       sincronizarTodosContatosEvolution();
       refetchConversas();
+      
+      // Depois sincronizar histórico agressivamente
+      const timer = setTimeout(() => {
+        sincronizarHistoricoTodasConversas();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
   }, [empresaId]);
 
@@ -798,6 +847,18 @@ export default function BatePapo() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom"><p>Importar todos contatos</p></TooltipContent>
+                </Tooltip>
+
+                {/* Sincronizar histórico completo */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
+                      onClick={sincronizarHistoricoTodasConversas}
+                      disabled={sincronizando}>
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5 text-purple-600" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>🔄 Sincronizar histórico TODAS conversas</p></TooltipContent>
                 </Tooltip>
 
                 {/* Sincronizar fotos */}
