@@ -276,8 +276,10 @@ export default function BatePapo() {
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
+      console.log(`📞 Buscando conversas para empresa: ${empresaId}`);
       const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId, limit: 10000 });
       const data = resp?.data?.conversas || [];
+      console.log(`✅ Recebidas ${data.length} conversas`);
       
       // Atualizar cache de contatos
       const novoCache = {};
@@ -288,7 +290,9 @@ export default function BatePapo() {
       });
       setContatosWhatsapp(prev => ({ ...prev, ...novoCache }));
       
-      return data.filter(c => c.id && c.cliente_telefone);
+      const filtradas = data.filter(c => c.id && c.cliente_telefone);
+      console.log(`🔍 Após filtro: ${filtradas.length} conversas válidas`);
+      return filtradas;
     },
     refetchInterval: false,
   });
@@ -627,8 +631,13 @@ export default function BatePapo() {
   };
 
   const conversasFiltradas = conversasValidas.filter(c => {
-    const matchSearch = (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
+    // Sempre incluir todas as conversas válidas primeiro
+    if (!c.id) return false;
+    
+    const matchSearch = !searchConversas || 
+      (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
       (c.cliente_telefone || '').includes(searchConversas);
+    
     let matchStatus = false;
     if (filtroStatus === 'grupos') matchStatus = isGrupo(c);
     else {
@@ -641,6 +650,8 @@ export default function BatePapo() {
     }
     return matchSearch && matchStatus;
   });
+  
+  console.log(`🎯 Filtradas: ${conversasFiltradas.length} de ${conversasValidas.length} conversas`);
 
   if (!user || !empresaId) {
     return (
