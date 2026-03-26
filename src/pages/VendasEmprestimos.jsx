@@ -899,8 +899,24 @@ export default function VendasEmprestimos() {
                       size="sm"
                       className="flex-1 text-xs gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
                       onClick={() => { setPropostaResponsavel(p); setResponsavelOpen(true); }}
+                      title={p.responsavel_nome || 'Definir Responsável'}
                     >
-                      <UserCheck className="w-3.5 h-3.5" /> Responsável
+                      {p.responsavel_foto ? (
+                        <img
+                          src={p.responsavel_foto}
+                          alt={p.responsavel_nome}
+                          className="w-4 h-4 rounded-full object-cover flex-shrink-0"
+                          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline'; }}
+                        />
+                      ) : p.responsavel_nome ? (
+                        <span className="w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                          {p.responsavel_nome.charAt(0).toUpperCase()}
+                        </span>
+                      ) : (
+                        <UserCheck className="w-3.5 h-3.5" />
+                      )}
+                      <span style={{ display: 'none' }}></span>
+                      {p.responsavel_nome ? p.responsavel_nome.split(' ')[0] : 'Responsável'}
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">

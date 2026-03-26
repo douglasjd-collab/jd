@@ -30,6 +30,7 @@ export default function ResponsavelModal({ open, onOpenChange, proposta, empresa
       await base44.entities.Proposta.update(proposta.id, {
         responsavel_id: colab.id,
         responsavel_nome: colab.nome,
+        responsavel_foto: colab.foto_perfil || null,
       });
 
       // Registrar no histórico
