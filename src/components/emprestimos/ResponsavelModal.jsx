@@ -124,7 +124,18 @@ export default function ResponsavelModal({ open, onOpenChange, proposta, empresa
                   disabled={salvando}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all hover:bg-slate-50 ${isAtual ? 'bg-purple-50 ring-1 ring-purple-200' : ''}`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {c.foto_perfil ? (
+                    <img
+                      src={c.foto_perfil}
+                      alt={c.nome}
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                      onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                    />
+                  ) : null}
+                  <div
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                    style={{ display: c.foto_perfil ? 'none' : 'flex' }}
+                  >
                     {c.nome?.charAt(0)?.toUpperCase() || '?'}
                   </div>
                   <div className="flex-1 min-w-0">
