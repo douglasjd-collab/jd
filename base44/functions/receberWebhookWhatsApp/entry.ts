@@ -201,8 +201,8 @@ async function processarWebhook(req, rawBody) {
     return;
   }
 
-  const JD_ID = '699696c2c9f5bffc2e67402b';
-  let empresaId = JD_ID;
+  // Empresa padrão — tentar identificar pela instância primeiro
+  let empresaId = null;
   let colaboradorId = null;
   let tipoConexao = 'empresa';
 
@@ -346,9 +346,21 @@ async function processarWebhook(req, rawBody) {
     const colab = colaboradoresInst[0];
     tipoConexao = 'usuario';
     colaboradorId = colab.id;
-    empresaId = colab.empresa_id || JD_ID;
+    empresaId = colab.empresa_id;
+    console.log(`✅ Empresa via colaborador: ${empresaId}`);
   } else if (empresasInst?.length > 0) {
     empresaId = empresasInst[0].id;
+    console.log(`✅ Empresa via instância: ${empresaId}`);
+  } else {
+    // Fallback: buscar primeira empresa do sistema
+    const empresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 1);
+    if (empresas?.length > 0) {
+      empresaId = empresas[0].id;
+      console.log(`✅ Empresa fallback: ${empresaId}`);
+    } else {
+      empresaId = '699696c2c9f5bffc2e67402b'; // JD como último recurso
+      console.log(`⚠️ Usando JD padrão`);
+    }
   }
 
   // Contato e cliente
@@ -357,12 +369,12 @@ async function processarWebhook(req, rawBody) {
   const clienteEncontrado = contatosClientes.slice(nVariacoes).find(r => r.length > 0)?.[0] || null;
   const clienteId = clienteEncontrado?.id || '';
 
-  if (!contatoEncontrado) {
+  if (!contatoEncontrado && empresaId) {
     base44.asServiceRole.entities.ContatoWhatsapp.create({
-      empresa_id: empresaId, cliente_id: '',
+      empresa_id: empresaId, cliente_id: clienteId || '',
       telefone: telefoneLimpo, nome: pushName || 'Cliente WhatsApp',
       ultima_atualizacao: new Date().toISOString()
-    }).catch(() => {});
+    }).catch(e => console.log('⚠️ Erro ao criar contato:', e.message));
   }
 
   // Buscar conversa — buscar todas as variações em paralelo e unificar
