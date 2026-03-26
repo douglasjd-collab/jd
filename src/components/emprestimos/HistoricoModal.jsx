@@ -57,26 +57,39 @@ export default function HistoricoModal({ open, onOpenChange, proposta, empresaId
       ]);
 
       // Montar linha de criação da proposta
-      // Busca o nome do colaborador pelo email do created_by
-      let criadorNome = proposta.created_by || 'Sistema';
+      // Busca o nome do colaborador e empresa pelo email do created_by
+      let criadorNome = 'Sistema';
+      let criadorEmpresaNome = null;
+
       if (proposta.created_by && proposta.empresa_id) {
         try {
-          const colabs = await base44.entities.Colaborador.filter({ empresa_id: proposta.empresa_id }, '-created_date', 500);
+          const [colabs, empresas] = await Promise.all([
+            base44.entities.Colaborador.filter({ empresa_id: proposta.empresa_id }, '-created_date', 500),
+            base44.entities.Empresa.filter({ id: proposta.empresa_id }, '-created_date', 1),
+          ]);
           const found = colabs.find(c =>
             (c.email && c.email.toLowerCase() === proposta.created_by.toLowerCase()) ||
             (c.user_id && c.user_id === proposta.created_by)
           );
           if (found) criadorNome = found.nome || proposta.created_by;
+          else criadorNome = proposta.vendedor_nome || proposta.created_by;
+          if (empresas?.[0]) criadorEmpresaNome = empresas[0].nome_fantasia || empresas[0].razao_social || null;
         } catch {
-          // mantém o email como fallback
+          criadorNome = proposta.vendedor_nome || proposta.created_by || 'Sistema';
         }
+      } else if (proposta.vendedor_nome) {
+        criadorNome = proposta.vendedor_nome;
       }
+
+      const descricaoCriacao = criadorEmpresaNome
+        ? `Proposta criada por ${criadorEmpresaNome}, ${criadorNome}`
+        : `Proposta criada por ${criadorNome}`;
 
       const criacao = {
         id: `criacao_${proposta.id}`,
         tipo: 'criacao',
-        descricao_evento: `Proposta criada por ${criadorNome}`,
-        usuario_nome: criadorNome,
+        descricao_evento: descricaoCriacao,
+        usuario_nome: criadorEmpresaNome ? `${criadorEmpresaNome} (${criadorNome})` : criadorNome,
         created_date: proposta.created_date,
         _isCriacao: true,
       };
