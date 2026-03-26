@@ -236,6 +236,9 @@ export default function BatePapo() {
 
   useEffect(() => {
     loadUser();
+    if (empresaId) {
+      sincronizarTodosContatosEvolution();
+    }
   }, []);
 
   const loadUser = async () => {
