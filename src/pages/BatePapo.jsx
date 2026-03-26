@@ -294,6 +294,8 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
+      if (!conversaSelecionadaId) return [];
+      try {
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionadaId },
           '-data_envio',
@@ -307,10 +309,14 @@ export default function BatePapo() {
           ));
         }
         return ordenadas;
-      },
-      staleTime: 0,
-      refetchInterval: false,
-      gcTime: 0
+      } catch (e) {
+        console.error('Erro ao carregar mensagens:', e);
+        return [];
+      }
+    },
+    staleTime: 0,
+    refetchInterval: 2000,
+    gcTime: 0
   });
 
   // Selecionar conversa inicial quando a lista carrega
