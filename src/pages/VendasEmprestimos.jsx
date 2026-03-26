@@ -798,7 +798,29 @@ export default function VendasEmprestimos() {
                         {p.cliente_nome?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                       <div>
-                      <p className="font-bold text-slate-900 text-base leading-tight">{p.cliente_nome || '-'}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-bold text-slate-900 text-base leading-tight">{p.cliente_nome || '-'}</p>
+                        {(() => {
+                          const cliente = getCliente(p.cliente_id);
+                          const tel = cliente?.celular || p.cliente_cpf ? null : null;
+                          const celular = cliente?.celular;
+                          if (!celular) return null;
+                          const numero = celular.replace(/\D/g, '');
+                          const whatsappUrl = `https://wa.me/55${numero}`;
+                          return (
+                            <a
+                              href={whatsappUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`WhatsApp: ${celular}`}
+                              className="text-green-500 hover:text-green-600 transition-colors flex-shrink-0"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </a>
+                          );
+                        })()}
+                      </div>
                       <p className="text-sm text-slate-400 mt-0.5">
                         {cpf && <span className="font-medium text-slate-500">CPF: {cpf}</span>}
                         {p.contrato && <span>{cpf ? ' | ' : ''}Contrato: {p.contrato}</span>}
@@ -969,14 +991,7 @@ export default function VendasEmprestimos() {
                       );
                     })()}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1 text-xs gap-1 bg-green-500 hover:bg-green-600 text-white"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
-                    </Button>
-                  </div>
+
                 </div>
               </div>
             );
