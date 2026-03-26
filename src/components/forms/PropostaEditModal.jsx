@@ -105,6 +105,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Proposta.update(proposta.id, data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
       queryClient.invalidateQueries({ queryKey: ['propostas'] });
       toast.success('Proposta atualizada com sucesso!');
       onOpenChange(false);
