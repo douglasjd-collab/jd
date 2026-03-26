@@ -343,16 +343,18 @@ export default function BatePapo() {
     }
   }, [conversas]);
 
-  // Real-time: atualizar lista de conversas quando chegar nova mensagem
+  // Real-time: atualizar lista de conversas quando chegar nova mensagem ou conversa criada
   useEffect(() => {
     if (!empresaId) return;
     const unsub = base44.entities.ConversaWhatsapp.subscribe((event) => {
+      console.log(`🔔 ConversaWhatsapp ${event.type}:`, event.id);
       if (['create', 'update'].includes(event.type)) {
-        refetchConversas();
+        console.log(`📧 Refetching conversas...`);
+        refetchConversas().catch(e => console.error('Erro ao refetch:', e));
       }
     });
     return unsub;
-  }, [empresaId]);
+  }, [empresaId, refetchConversas]);
 
   // Polling de mensagens — cada 2s para evitar rate limit
   useEffect(() => {
@@ -457,13 +459,15 @@ export default function BatePapo() {
         whatsapp_id: `conv_${Date.now()}`,
         status: 'ativa',
         ultima_mensagem: '',
-        data_ultima_mensagem: new Date().toISOString()
+        data_ultima_mensagem: new Date().toISOString(),
+        tipo_conexao: 'empresa'
       });
     },
     onSuccess: (conversa) => {
-    queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-    selecionarConversa(conversa);
-    setNovaConversaOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      refetchConversas();
+      selecionarConversa(conversa);
+      setNovaConversaOpen(false);
       toast.success('Conversa criada! Envie a primeira mensagem.');
     },
     onError: (error) => {
