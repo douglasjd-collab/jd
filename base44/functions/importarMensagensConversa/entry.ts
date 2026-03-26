@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
         for (const msg of msgsOutra) {
           // Migrar para a conversa correta se ainda não existe
           if (!idsExistentes.has(msg.whatsapp_message_id || '')) {
-            await base44.asServiceRole.entities.MensagemWhatsapp.update(msg.id, { conversa_id });
+            // Acumular IDs para migrar em lote depois
             idsExistentes.add(msg.whatsapp_message_id || msg.id);
             mensagensDeOutrasConversas.push(msg.id);
           }
@@ -118,15 +118,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Migrar mensagens de duplicatas em lote
     if (mensagensDeOutrasConversas.length > 0) {
+      for (let i = 0; i < mensagensDeOutrasConversas.length; i += BATCH_SIZE) {
+        const lote = mensagensDeOutrasConversas.slice(i, i + BATCH_SIZE);
+        await Promise.all(lote.map(id => base44.asServiceRole.entities.MensagemWhatsapp.update(id, { conversa_id })));
+        if (i + BATCH_SIZE < mensagensDeOutrasConversas.length) {
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
       console.log(`🔀 Migradas ${mensagensDeOutrasConversas.length} mensagens de conversas duplicadas`);
     }
 
     // Ordenar cronologicamente
     todasMensagens.sort((a, b) => (a.messageTimestamp || 0) - (b.messageTimestamp || 0));
 
-    let processadas = 0;
     let ignoradas = 0;
+    const novasMensagens = [];
 
     for (const msg of todasMensagens) {
       const key = msg.key || {};
@@ -173,7 +181,7 @@ Deno.serve(async (req) => {
         ? new Date(msg.messageTimestamp * 1000).toISOString()
         : new Date().toISOString();
 
-      await base44.asServiceRole.entities.MensagemWhatsapp.create({
+      novasMensagens.push({
         conversa_id,
         empresa_id,
         remetente: fromMe ? 'vendedor' : 'cliente',
@@ -186,7 +194,19 @@ Deno.serve(async (req) => {
       });
 
       idsExistentes.add(messageId);
-      processadas++;
+    }
+
+    // Inserir em lote (bulkCreate) para evitar rate limit — máx 50 por vez
+    const BATCH_SIZE = 50;
+    let processadas = 0;
+    for (let i = 0; i < novasMensagens.length; i += BATCH_SIZE) {
+      const lote = novasMensagens.slice(i, i + BATCH_SIZE);
+      await base44.asServiceRole.entities.MensagemWhatsapp.bulkCreate(lote);
+      processadas += lote.length;
+      // Pequena pausa entre lotes para não saturar o rate limit
+      if (i + BATCH_SIZE < novasMensagens.length) {
+        await new Promise(r => setTimeout(r, 300));
+      }
     }
 
     // Atualizar última mensagem da conversa se processamos algo
