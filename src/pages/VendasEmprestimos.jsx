@@ -30,7 +30,8 @@ import {
   Search, MoreHorizontal, Pencil, Trash2, Plus, Upload,
         User, Calendar, Building2, FileText, MessageCircle,
         TrendingUp, Clock, CheckCircle2, Settings, Loader2,
-        AlignJustify, Kanban, ArrowRightLeft, DollarSign, Copy, RefreshCw
+        AlignJustify, Kanban, ArrowRightLeft, DollarSign, Copy, RefreshCw,
+        History, UserCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -42,7 +43,8 @@ import moment from 'moment';
 import PropostaEditModal from '@/components/forms/PropostaEditModal';
 import ImportarPropostasLoteModal from '@/components/emprestimos/ImportarPropostasLoteModal';
 import KanbanConfigModal from '@/components/emprestimos/KanbanConfigModal';
-import ComentariosModal from '@/components/emprestimos/ComentariosModal';
+import HistoricoModal from '@/components/emprestimos/HistoricoModal';
+import ResponsavelModal from '@/components/emprestimos/ResponsavelModal';
 import StatusQuickModal from '@/components/emprestimos/StatusQuickModal';
 import PortabilidadeHojeModal from '@/components/emprestimos/PortabilidadeHojeModal';
 
@@ -85,8 +87,10 @@ export default function VendasEmprestimos() {
   const [propostaToEdit, setPropostaToEdit] = useState(null);
   const [importarLoteOpen, setImportarLoteOpen] = useState(false);
   const [kanbanConfigOpen, setKanbanConfigOpen] = useState(false);
-  const [comentariosOpen, setComentariosOpen] = useState(false);
-  const [propostaComentarios, setPropostaComentarios] = useState(null);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
+  const [propostaHistorico, setPropostaHistorico] = useState(null);
+  const [responsavelOpen, setResponsavelOpen] = useState(false);
+  const [propostaResponsavel, setPropostaResponsavel] = useState(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [propostaStatus, setPropostaStatus] = useState(null);
   const [portabilidadeHojeOpen, setPortabilidadeHojeOpen] = useState(false);
@@ -843,9 +847,17 @@ export default function VendasEmprestimos() {
 
                   {/* Info row */}
                   <div className="flex items-center justify-between mt-2 text-sm text-slate-500">
-                    <div className="flex items-center gap-1">
-                      <User className="w-4 h-4" />
-                      <span>{p.vendedor_nome || '-'}</span>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1">
+                        <User className="w-4 h-4" />
+                        <span>{p.vendedor_nome || '-'}</span>
+                      </div>
+                      {p.responsavel_nome && (
+                        <div className="flex items-center gap-1">
+                          <UserCheck className="w-4 h-4 text-purple-500" />
+                          <span className="text-purple-700 font-medium text-xs">{p.responsavel_nome}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       {p.data_venda && (
@@ -870,9 +882,17 @@ export default function VendasEmprestimos() {
                       variant="outline"
                       size="sm"
                       className="flex-1 text-xs gap-1 border-blue-200 text-blue-700 hover:bg-blue-50"
-                      onClick={() => { setPropostaComentarios(p); setComentariosOpen(true); }}
+                      onClick={() => { setPropostaHistorico(p); setHistoricoOpen(true); }}
                     >
-                      <MessageCircle className="w-3.5 h-3.5" /> Comentários
+                      <History className="w-3.5 h-3.5" /> Histórico
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
+                      onClick={() => { setPropostaResponsavel(p); setResponsavelOpen(true); }}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" /> Responsável
                     </Button>
                     <Button
                       variant="outline"
@@ -882,6 +902,8 @@ export default function VendasEmprestimos() {
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Status
                     </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Button
                       size="sm"
                       className="flex-1 text-xs gap-1 bg-green-500 hover:bg-green-600 text-white"
@@ -897,7 +919,8 @@ export default function VendasEmprestimos() {
       ) : null}
       {/* Modals */}
       <ImportarPropostasLoteModal open={importarLoteOpen} onOpenChange={setImportarLoteOpen} />
-      <ComentariosModal open={comentariosOpen} onOpenChange={setComentariosOpen} proposta={propostaComentarios} />
+      <HistoricoModal open={historicoOpen} onOpenChange={setHistoricoOpen} proposta={propostaHistorico} empresaId={currentUser?.empresa_id} />
+      <ResponsavelModal open={responsavelOpen} onOpenChange={setResponsavelOpen} proposta={propostaResponsavel} empresaId={currentUser?.empresa_id} currentUser={currentUser} />
       <StatusQuickModal open={statusModalOpen} onOpenChange={setStatusModalOpen} proposta={propostaStatus} empresaId={currentUser?.empresa_id} />
       <KanbanConfigModal open={kanbanConfigOpen} onOpenChange={setKanbanConfigOpen} empresaId={currentUser?.empresa_id} />
       <PortabilidadeHojeModal open={portabilidadeHojeOpen} onOpenChange={setPortabilidadeHojeOpen} propostas={propostasCip} />

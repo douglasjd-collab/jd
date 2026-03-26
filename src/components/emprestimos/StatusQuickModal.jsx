@@ -100,9 +100,30 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.Proposta.update(proposta.id, data),
+    mutationFn: async (data) => {
+      await base44.entities.Proposta.update(proposta.id, data);
+      // Registrar no histórico automaticamente
+      const statusNome = data.status || proposta.status || '';
+      const descricao = data.emprestimo_data_liberacao
+        ? `Status alterado para: ${statusNome} | Data pagamento: ${data.emprestimo_data_liberacao}`
+        : data.cip_data_entrada
+        ? `Status alterado para: ${statusNome} | Entrada CIP: ${data.cip_data_entrada} | Retorno previsto: ${data.cip_data_retorno_prevista}`
+        : `Status alterado para: ${statusNome}`;
+      try {
+        await base44.entities.HistoricoProposta.create({
+          empresa_id: proposta.empresa_id,
+          proposta_id: proposta.id,
+          tipo: 'status',
+          status: statusNome,
+          descricao_evento: descricao,
+          origem: 'JD',
+          data_status: new Date().toISOString(),
+        });
+      } catch {}
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
+      queryClient.invalidateQueries({ queryKey: ['historico-proposta', proposta?.id] });
       toast.success('Status atualizado!');
       handleClose();
     },
