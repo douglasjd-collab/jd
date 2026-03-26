@@ -81,37 +81,16 @@ export default function BatePapo() {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
     
-    // Sincronizar histórico COM TIMEOUT
+    // Sincronizar histórico em background (sem bloquear exibição)
     if (conversa?.id && conversa?.cliente_telefone && empresaId) {
-      setCarregandoHistorico(true);
-      const timeoutId = setTimeout(() => {
-        console.warn(`⏱️ Timeout na sincronização, exibindo mensagens salvas...`);
-        setCarregandoHistorico(false);
-        refetchMensagens?.();
-      }, 10000); // 10 segundos de timeout
-      
-      try {
-        console.log(`🔄 Sincronizando histórico de ${conversa.cliente_telefone}...`);
-        const syncResp = await base44.functions.invoke('importarMensagensConversa', {
-          empresa_id: empresaId,
-          telefone: conversa.cliente_telefone,
-          conversa_id: conversa.id
-        });
-        clearTimeout(timeoutId);
-        console.log(`✅ Sincronizado: ${syncResp?.data?.novasMensagens || 0} novas mensagens`);
-        
-        // Refetch imediato
-        await new Promise(r => setTimeout(r, 200));
+      base44.functions.invoke('importarMensagensConversa', {
+        empresa_id: empresaId,
+        telefone: conversa.cliente_telefone,
+        conversa_id: conversa.id
+      }).then(() => {
+        // Refetch após sincronizar
         queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
-        
-      } catch (e) {
-        clearTimeout(timeoutId);
-        console.error('❌ Erro ao sincronizar:', e?.message);
-        // Mostrar mensagens salvas mesmo com erro
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
-      } finally {
-        setCarregandoHistorico(false);
-      }
+      }).catch(e => console.error('Erro ao sincronizar:', e));
     }
     
     // Carregar foto do contato em paralelo
@@ -192,7 +171,6 @@ export default function BatePapo() {
 
   const [corrigindo, setCorrigindo] = useState(false);
   const [limpandoTudo, setLimpandoTudo] = useState(false);
-  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
 
   const limparTudoEReimportar = async () => {
     const primeira = window.confirm(
@@ -1206,11 +1184,11 @@ export default function BatePapo() {
                   {/* Mensagens */}
                   <div className="flex flex-1 flex-col overflow-hidden">
                     <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 pt-4">
-                      {loadingMensagens || carregandoHistorico ? (
+                      {loadingMensagens ? (
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center">
                             <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
-                            <p className="text-sm text-slate-500">{carregandoHistorico ? 'Carregando histórico...' : 'Carregando mensagens...'}</p>
+                            <p className="text-sm text-slate-500">Carregando mensagens...</p>
                           </div>
                         </div>
                       ) : mensagens.length === 0 ? (
