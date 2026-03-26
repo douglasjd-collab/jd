@@ -1,18 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, UserCheck, Search } from 'lucide-react';
+import { Loader2, UserCheck, Search, X, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+
+// Helpers para parse/serialize do JSON de responsáveis
+const parseResponsaveis = (json) => {
+  if (!json) return [];
+  try { return JSON.parse(json); } catch { return []; }
+};
 
 export default function ResponsavelModal({ open, onOpenChange, proposta, empresaId, currentUser }) {
   const [search, setSearch] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [selecionados, setSelecionados] = useState([]);
   const queryClient = useQueryClient();
+
+  // Inicializa selecionados com os responsáveis já salvos
+  useEffect(() => {
+    if (open && proposta) {
+      const atuais = parseResponsaveis(proposta.responsaveis_json);
+      // Compatibilidade com legado: se não há json mas há responsavel_id, usa ele
+      if (atuais.length === 0 && proposta.responsavel_id) {
+        setSelecionados([{
+          id: proposta.responsavel_id,
+          nome: proposta.responsavel_nome,
+          foto: proposta.responsavel_foto || null,
+        }]);
+      } else {
+        setSelecionados(atuais);
+      }
+    }
+  }, [open, proposta]);
 
   const { data: colaboradores = [], isLoading } = useQuery({
     queryKey: ['colaboradores-responsavel', empresaId],
@@ -24,21 +48,35 @@ export default function ResponsavelModal({ open, onOpenChange, proposta, empresa
     !search || c.nome?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selecionarResponsavel = async (colab) => {
+  const toggleSelecionado = (colab) => {
+    setSelecionados(prev => {
+      const jaEsta = prev.find(r => r.id === colab.id);
+      if (jaEsta) return prev.filter(r => r.id !== colab.id);
+      return [...prev, { id: colab.id, nome: colab.nome, foto: colab.foto_perfil || null }];
+    });
+  };
+
+  const salvar = async () => {
     setSalvando(true);
     try {
+      const responsaveisJson = JSON.stringify(selecionados);
+      // Mantém legado com o primeiro responsável
+      const primeiro = selecionados[0] || null;
       await base44.entities.Proposta.update(proposta.id, {
-        responsavel_id: colab.id,
-        responsavel_nome: colab.nome,
-        responsavel_foto: colab.foto_perfil || null,
+        responsaveis_json: responsaveisJson,
+        responsavel_id: primeiro?.id || null,
+        responsavel_nome: primeiro?.nome || null,
+        responsavel_foto: primeiro?.foto || null,
       });
 
-      // Registrar no histórico
+      const nomes = selecionados.map(r => r.nome).join(', ');
       await base44.entities.HistoricoProposta.create({
         empresa_id: proposta.empresa_id,
         proposta_id: proposta.id,
         tipo: 'responsavel',
-        descricao_evento: `Responsável alterado para: ${colab.nome}`,
+        descricao_evento: selecionados.length > 0
+          ? `Responsáveis definidos: ${nomes}`
+          : 'Responsáveis removidos',
         usuario_nome: currentUser?.nome_perfil || currentUser?.full_name || 'Sistema',
         usuario_id: currentUser?.id || '',
         origem: 'JD',
@@ -47,39 +85,10 @@ export default function ResponsavelModal({ open, onOpenChange, proposta, empresa
 
       queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
       queryClient.invalidateQueries({ queryKey: ['historico-proposta', proposta.id] });
-      toast.success(`Responsável: ${colab.nome}`);
+      toast.success(selecionados.length > 0 ? `${selecionados.length} responsável(is) definido(s)` : 'Responsáveis removidos');
       onOpenChange(false);
     } catch (e) {
-      toast.error('Erro ao definir responsável');
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  const removerResponsavel = async () => {
-    setSalvando(true);
-    try {
-      await base44.entities.Proposta.update(proposta.id, {
-        responsavel_id: null,
-        responsavel_nome: null,
-      });
-
-      await base44.entities.HistoricoProposta.create({
-        empresa_id: proposta.empresa_id,
-        proposta_id: proposta.id,
-        tipo: 'responsavel',
-        descricao_evento: 'Responsável removido',
-        usuario_nome: currentUser?.nome_perfil || currentUser?.full_name || 'Sistema',
-        usuario_id: currentUser?.id || '',
-        origem: 'JD',
-        data_status: new Date().toISOString(),
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
-      toast.success('Responsável removido');
-      onOpenChange(false);
-    } catch (e) {
-      toast.error('Erro ao remover responsável');
+      toast.error('Erro ao salvar responsáveis');
     } finally {
       setSalvando(false);
     }
@@ -91,14 +100,31 @@ export default function ResponsavelModal({ open, onOpenChange, proposta, empresa
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCheck className="w-5 h-5 text-purple-600" />
-            Definir Responsável
+            Responsáveis pela Proposta
           </DialogTitle>
-          {proposta?.responsavel_nome && (
-            <p className="text-xs text-slate-500 mt-1">
-              Atual: <span className="font-medium text-slate-700">{proposta.responsavel_nome}</span>
-            </p>
-          )}
+          <p className="text-xs text-slate-500 mt-1">Clique para selecionar/remover. Múltiplos permitidos.</p>
         </DialogHeader>
+
+        {/* Selecionados */}
+        {selecionados.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 px-1">
+            {selecionados.map(r => (
+              <div key={r.id} className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 rounded-full pl-1 pr-2 py-0.5">
+                {r.foto ? (
+                  <img src={r.foto} alt={r.nome} className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-purple-400 flex items-center justify-center text-white text-[9px] font-bold">
+                    {r.nome?.charAt(0)?.toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-medium text-purple-800">{r.nome.split(' ')[0]}</span>
+                <button onClick={() => setSelecionados(prev => prev.filter(x => x.id !== r.id))} className="text-purple-400 hover:text-purple-700">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
@@ -110,53 +136,52 @@ export default function ResponsavelModal({ open, onOpenChange, proposta, empresa
           />
         </div>
 
-        <div className="space-y-1 max-h-[300px] overflow-y-auto">
+        <div className="space-y-1 max-h-[280px] overflow-y-auto">
           {isLoading ? (
             <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
           ) : filtrados.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-6">Nenhum colaborador encontrado</p>
           ) : (
             filtrados.map(c => {
-              const isAtual = proposta?.responsavel_id === c.id;
+              const isSelecionado = selecionados.some(r => r.id === c.id);
               return (
                 <button
                   key={c.id}
-                  onClick={() => selecionarResponsavel(c)}
-                  disabled={salvando}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all hover:bg-slate-50 ${isAtual ? 'bg-purple-50 ring-1 ring-purple-200' : ''}`}
+                  onClick={() => toggleSelecionado(c)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all hover:bg-slate-50 ${isSelecionado ? 'bg-purple-50 ring-1 ring-purple-200' : ''}`}
                 >
                   {c.foto_perfil ? (
-                    <img
-                      src={c.foto_perfil}
-                      alt={c.nome}
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                      onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                    />
-                  ) : null}
-                  <div
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ display: c.foto_perfil ? 'none' : 'flex' }}
-                  >
-                    {c.nome?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
+                    <img src={c.foto_perfil} alt={c.nome} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {c.nome?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-800 truncate">{c.nome}</p>
                     <p className="text-xs text-slate-400 capitalize">{c.perfil}</p>
                   </div>
-                  {isAtual && <span className="text-xs text-purple-600 font-semibold">atual</span>}
+                  {isSelecionado && <Check className="w-4 h-4 text-purple-600 flex-shrink-0" />}
                 </button>
               );
             })
           )}
         </div>
 
-        {proposta?.responsavel_id && (
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={removerResponsavel} disabled={salvando} className="text-red-600 border-red-200 hover:bg-red-50 w-full">
-              Remover responsável
+        <DialogFooter className="gap-2 flex-col sm:flex-col">
+          <Button
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={salvar}
+            disabled={salvando}
+          >
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : `Salvar (${selecionados.length} selecionado${selecionados.length !== 1 ? 's' : ''})`}
+          </Button>
+          {selecionados.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setSelecionados([])} className="text-red-600 border-red-200 hover:bg-red-50 w-full text-xs">
+              Remover todos
             </Button>
-          </DialogFooter>
-        )}
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

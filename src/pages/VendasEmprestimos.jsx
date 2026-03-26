@@ -847,17 +847,9 @@ export default function VendasEmprestimos() {
 
                   {/* Info row */}
                   <div className="flex items-center justify-between mt-2 text-sm text-slate-500">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1">
-                        <User className="w-4 h-4" />
-                        <span>{p.vendedor_nome || '-'}</span>
-                      </div>
-                      {p.responsavel_nome && (
-                        <div className="flex items-center gap-1">
-                          <UserCheck className="w-4 h-4 text-purple-500" />
-                          <span className="text-purple-700 font-medium text-xs">{p.responsavel_nome}</span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      <span>{p.vendedor_nome || '-'}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       {p.data_venda && (
@@ -894,30 +886,44 @@ export default function VendasEmprestimos() {
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Status
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 text-xs gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
-                      onClick={() => { setPropostaResponsavel(p); setResponsavelOpen(true); }}
-                      title={p.responsavel_nome || 'Definir Responsável'}
-                    >
-                      {p.responsavel_foto ? (
-                        <img
-                          src={p.responsavel_foto}
-                          alt={p.responsavel_nome}
-                          className="w-4 h-4 rounded-full object-cover flex-shrink-0"
-                          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline'; }}
-                        />
-                      ) : p.responsavel_nome ? (
-                        <span className="w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-                          {p.responsavel_nome.charAt(0).toUpperCase()}
-                        </span>
-                      ) : (
-                        <UserCheck className="w-3.5 h-3.5" />
-                      )}
-                      <span style={{ display: 'none' }}></span>
-                      {p.responsavel_nome ? p.responsavel_nome.split(' ')[0] : 'Responsável'}
-                    </Button>
+                    {(() => {
+                      let responsaveis = [];
+                      try { responsaveis = p.responsaveis_json ? JSON.parse(p.responsaveis_json) : []; } catch {}
+                      if (responsaveis.length === 0 && p.responsavel_id) {
+                        responsaveis = [{ id: p.responsavel_id, nome: p.responsavel_nome, foto: p.responsavel_foto }];
+                      }
+                      const nomes = responsaveis.map(r => r.nome).join(', ');
+                      return (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
+                          onClick={() => { setPropostaResponsavel(p); setResponsavelOpen(true); }}
+                          title={nomes || 'Definir Responsável'}
+                        >
+                          {responsaveis.length > 0 ? (
+                            <div className="flex items-center -space-x-1.5 flex-shrink-0">
+                              {responsaveis.slice(0, 3).map((r, i) => (
+                                r.foto ? (
+                                  <img key={r.id} src={r.foto} alt={r.nome} className="w-4 h-4 rounded-full object-cover border border-white" style={{ zIndex: 3 - i }} />
+                                ) : (
+                                  <span key={r.id} className="w-4 h-4 rounded-full bg-purple-500 text-white text-[8px] font-bold flex items-center justify-center border border-white" style={{ zIndex: 3 - i }}>
+                                    {r.nome?.charAt(0)?.toUpperCase()}
+                                  </span>
+                                )
+                              ))}
+                            </div>
+                          ) : (
+                            <UserCheck className="w-3.5 h-3.5" />
+                          )}
+                          {responsaveis.length > 0 ? (
+                            responsaveis.length === 1
+                              ? responsaveis[0].nome.split(' ')[0]
+                              : `${responsaveis.length} resp.`
+                          ) : 'Responsável'}
+                        </Button>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
