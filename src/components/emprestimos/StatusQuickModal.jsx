@@ -110,12 +110,21 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
         ? `Status alterado para: ${statusNome} | Entrada CIP: ${data.cip_data_entrada} | Retorno previsto: ${data.cip_data_retorno_prevista}`
         : `Status alterado para: ${statusNome}`;
       try {
+        // Buscar nome do usuário logado
+        let usuarioNome = '';
+        try {
+          const me = await base44.auth.me();
+          const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+          usuarioNome = colabs[0]?.nome || me.full_name || me.email || '';
+        } catch {}
+
         await base44.entities.HistoricoProposta.create({
           empresa_id: proposta.empresa_id,
           proposta_id: proposta.id,
           tipo: 'status',
           status: statusNome,
           descricao_evento: descricao,
+          usuario_nome: usuarioNome,
           origem: 'JD',
           data_status: new Date().toISOString(),
         });
