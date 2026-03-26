@@ -155,7 +155,10 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
       return;
     }
     const dataBase = new Date(cipDataEntrada + 'T12:00:00');
-    const dataRetorno = adicionarDiasUteis(dataBase, 5);
+    // Regra: 5 dias úteis contados a partir do PRÓXIMO dia útil após a entrada.
+    // Ex: entrada dia 17 (ter) → próximo dia útil = dia 18 (qua) = dia 1 → +5 dias úteis = dia 25 (qua)
+    // Isso equivale a adicionar 6 dias úteis a partir do dia de entrada.
+    const dataRetorno = adicionarDiasUteis(dataBase, 6);
     const dataRetornoStr = format(dataRetorno, 'yyyy-MM-dd');
     const valorNum = parseFloat(cipValorPrevisto.replace(/\./g, '').replace(',', '.')) || 0;
 
@@ -265,9 +268,9 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
                 <p className="text-blue-800 font-medium">⏱ Prazo de retorno calculado:</p>
                 <p className="text-blue-700 mt-1">
-                  <strong>5 dias úteis</strong> a partir de {format(new Date(cipDataEntrada + 'T12:00:00'), 'dd/MM/yyyy')}
+                  5 dias úteis a partir do próximo dia útil após {format(new Date(cipDataEntrada + 'T12:00:00'), 'dd/MM/yyyy')}
                   {' → '}
-                  <strong>{format(adicionarDiasUteis(new Date(cipDataEntrada + 'T12:00:00'), 5), 'dd/MM/yyyy')}</strong>
+                  <strong>{format(adicionarDiasUteis(new Date(cipDataEntrada + 'T12:00:00'), 6), 'dd/MM/yyyy')}</strong>
                 </p>
               </div>
             )}
