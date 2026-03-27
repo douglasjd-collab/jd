@@ -688,7 +688,7 @@ export default function FunilVendas() {
     const vendedor = vendedores.find(v => v.id === vendedorIdFinal);
     const etapa = etapas.find(e => e.id === formData.etapa_id);
 
-    const produtoFinal = formData.produto || (filterProduto !== 'todos' ? filterProduto : 'consorcio');
+    const produtoFinal = formData.produto;
 
     const data = {
       ...formData,
@@ -885,12 +885,13 @@ export default function FunilVendas() {
         actionLabel="Nova Oportunidade"
         onAction={() => {
           setSelectedOportunidade(null);
+          const produtoSelecionado = filterProduto !== 'todos' ? filterProduto : '';
           setFormData({
             titulo: '',
             cliente_id: '',
             valor_estimado: '',
             etapa_id: '',
-            produto: filterProduto !== 'todos' ? filterProduto : '',
+            produto: produtoSelecionado,
             vendedor_id: currentUser?.id || '',
             origem: '',
             observacoes: '',
@@ -1379,10 +1380,11 @@ export default function FunilVendas() {
               </div>
 
               <div>
-                <Label>Etapa *</Label>
+                <Label>Etapa * {!formData.produto && <span className="text-red-600">(Selecione funil primeiro)</span>}</Label>
                 <Select
                   value={formData.etapa_id}
                   onValueChange={(value) => setFormData({ ...formData, etapa_id: value })}
+                  disabled={!formData.produto}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
