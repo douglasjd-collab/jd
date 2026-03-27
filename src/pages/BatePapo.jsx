@@ -81,30 +81,28 @@ export default function BatePapo() {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
     
-    // Sincronizar histórico em background via função mais robusta
+    // Forçar refetch IMEDIATO de mensagens
+    setTimeout(() => {
+      console.log(`🔄 Refetching mensagens para: ${conversa.id}`);
+      refetchMensagens?.();
+    }, 50);
+    
+    // Sincronizar histórico em background
     if (conversa?.id && conversa?.cliente_telefone && empresaId) {
-      console.log(`🔄 Sincronizando histórico para conversa ${conversa.id} (${conversa.cliente_telefone})...`);
       base44.functions.invoke('sincronizarHistoricoAgressivo', {
         empresa_id: empresaId,
         conversa_id_especifico: conversa.id
-      }).then((resp) => {
-        console.log(`✅ Sincronização concluída:`, resp?.data);
-        // Refetch após sincronizar
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
       }).catch(e => {
-        console.error('Erro ao sincronizar via agressivo:', e);
-        // Fallback: tentar importação simples
+        console.warn('Falha sincronizar histórico:', e);
         base44.functions.invoke('importarMensagensConversa', {
           empresa_id: empresaId,
           telefone: conversa.cliente_telefone,
           conversa_id: conversa.id
-        }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
-        }).catch(e2 => console.error('Erro no fallback:', e2));
+        }).catch(() => {});
       });
     }
     
-    // Carregar foto do contato em paralelo
+    // Carregar foto do contato
     if (!conversa?.cliente_telefone || !empresaId) return;
     try {
       const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
@@ -127,7 +125,7 @@ export default function BatePapo() {
         }
       }
     } catch (e) {
-      console.error('Erro ao carregar foto do contato:', e);
+      console.error('Erro ao carregar foto:', e);
     }
   };
   const [searchConversas, setSearchConversas] = useState('');
@@ -422,7 +420,7 @@ export default function BatePapo() {
       }
     },
     staleTime: 0,
-    refetchInterval: 3000,
+    refetchInterval: 1000,
     gcTime: 0
   });
 
