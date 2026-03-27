@@ -192,14 +192,12 @@ export default function FunilVendas() {
 
   const criarOportunidadeMutation = useMutation({
     mutationFn: async (data) => {
-      console.log('🚀 criarOportunidadeMutation - data recebida:', data);
       const vendedorIdFinal = data.vendedor_id || currentUser?.id;
       const vendedorObj =
         vendedorIdFinal === currentUser?.id ? (currentUserFull || currentUser) : getVendedorById(vendedorIdFinal);
       const fotoPerfil = vendedorObj?.foto_perfil || '';
 
       const empresaId = data.empresa_id || currentUser?.empresa_id || '';
-      console.log('📋 empresa_id:', empresaId, '| produto:', data.produto, '| etapa_id:', data.etapa_id);
 
       const oportunidade = await base44.entities.Oportunidade.create({
         ...data,
@@ -225,9 +223,13 @@ export default function FunilVendas() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
       setFormOpen(false);
+      setSelectedOportunidade(null);
       resetForm();
       toast.success('Oportunidade criada!');
     },
+    onError: (error) => {
+      toast.error('Erro ao criar oportunidade: ' + (error.message || 'Erro desconhecido'));
+    }
   });
 
   const atualizarOportunidadeMutation = useMutation({
