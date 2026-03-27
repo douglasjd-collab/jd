@@ -103,11 +103,15 @@ export default function FunilVendas() {
         return;
       }
 
+      console.log('🔍 loadUser - user.id:', user.id, '| user.role:', user.role, '| user.empresa_id:', user.empresa_id);
+
       // Para super admin, buscar Colaborador para obter empresa_id
       let userData = { ...user };
       
       if (user.role !== 'super_admin') {
         const colabs = await base44.entities.Colaborador.filter({ user_id: user.id });
+        
+        console.log('🔍 Colaboradores encontrados:', colabs?.length, colabs?.map(c => ({ id: c.id, empresa_id: c.empresa_id, status: c.status })));
         
         if (colabs && colabs.length > 0) {
           // Priorizar ativo, depois qualquer um com empresa_id
@@ -121,6 +125,7 @@ export default function FunilVendas() {
             perfil: colab.perfil || 'vendedor',
             full_name: colab.nome || user.full_name
           };
+          console.log('✅ userData setado com colab:', { id: userData.id, empresa_id: userData.empresa_id, colaborador_id: userData.colaborador_id });
         } else {
           console.warn('Usuário sem Colaborador vinculado:', user.email);
           userData = {
@@ -663,6 +668,8 @@ export default function FunilVendas() {
   };
 
   const handleSubmit = async () => {
+    console.log('🎯 handleSubmit iniciado - currentUser:', { id: currentUser?.id, empresa_id: currentUser?.empresa_id, perfil: currentUser?.perfil });
+
     if (!formData.titulo) {
       toast.error('Preencha o Título');
       return;
