@@ -383,7 +383,20 @@ export default function BatePapo() {
           '-data_envio',
           5000
         );
-        console.log(`✅ Carregadas ${msgs.length} mensagens`);
+        console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
+        if (msgs.length === 0) {
+          console.warn(`⚠️ NENHUMA MENSAGEM ENCONTRADA para conversa_id: ${conversaSelecionadaId}`);
+          // Tentar sincronizar histórico
+          const conversa = conversas.find(c => c.id === conversaSelecionadaId);
+          if (conversa?.cliente_telefone && empresaId) {
+            console.log(`🔄 Tentando sincronizar histórico da conversa...`);
+            base44.functions.invoke('importarMensagensConversa', {
+              empresa_id: empresaId,
+              telefone: conversa.cliente_telefone,
+              conversa_id: conversaSelecionadaId
+            }).catch(e => console.error('Erro ao sincronizar:', e));
+          }
+        }
         const ordenadas = [...msgs].reverse();
         const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
         if (naoLidas.length > 0) {
