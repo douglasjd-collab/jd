@@ -157,13 +157,8 @@ export default function FunilVendas() {
   });
 
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
-    queryKey: ['oportunidades', filterProduto],
-    queryFn: () => {
-      if (filterProduto === 'todos') {
-        return base44.entities.Oportunidade.list('-data_ultima_movimentacao');
-      }
-      return base44.entities.Oportunidade.filter({ produto: filterProduto }, '-data_ultima_movimentacao');
-    },
+    queryKey: ['oportunidades'],
+    queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao'),
   });
 
   const { data: clientes = [] } = useQuery({
@@ -756,6 +751,10 @@ export default function FunilVendas() {
         if (!currentUser) return false;
         if (podeVerTodos) return true;
         return o.vendedor_id === currentUser.id;
+      })
+      .filter((o) => {
+        if (filterProduto === 'todos') return true;
+        return o.produto === filterProduto;
       })
       .filter((o) => {
         if (!podeVerTodos) return true;
