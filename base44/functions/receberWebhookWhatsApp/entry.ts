@@ -198,8 +198,9 @@ async function processarWebhook(req, rawBody) {
     return;
   }
 
-  // Empresa padrão — tentar identificar pela instância primeiro
-  let empresaId = null;
+  // Empresa padrão — usar a empresa JD
+  let empresaId = '699696c2c9f5bffc2e67402b';
+  let clienteId = null;
   let colaboradorId = null;
   let tipoConexao = 'empresa';
 
@@ -319,9 +320,6 @@ async function processarWebhook(req, rawBody) {
 
   console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}" | URL: ${arquivo_url ? '✓' : '✗'}`);
 
-  // Usar empresa padrão
-  empresaId = '699696c2c9f5bffc2e67402b';
-  
   // Verificar duplicata
   const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ 
     whatsapp_message_id: messageId 
