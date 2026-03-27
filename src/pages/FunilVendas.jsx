@@ -423,6 +423,28 @@ export default function FunilVendas() {
     }
   });
 
+  const inicializarEtapasPadraoMutation = useMutation({
+    mutationFn: async () => {
+      const empresaId = currentUser?.empresa_id || '';
+      const etapasPadrao = [
+        { nome: 'Novo Lead', cor: '#3b82f6', tipo: 'aberta', ordem: 1 },
+        { nome: 'Em Contato', cor: '#f59e0b', tipo: 'aberta', ordem: 2 },
+        { nome: 'Proposta Enviada', cor: '#8b5cf6', tipo: 'aberta', ordem: 3 },
+        { nome: 'Planejamento de Compra', cor: '#7c3aed', tipo: 'planejamento', ordem: 4 },
+        { nome: 'Ganho', cor: '#10b981', tipo: 'ganho', ordem: 5 },
+        { nome: 'Perdido', cor: '#ef4444', tipo: 'perdida', ordem: 6 },
+      ];
+      for (const e of etapasPadrao) {
+        await base44.entities.EtapaFunil.create({ ...e, empresa_id: empresaId, status: 'ativa' });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
+      toast.success('Funil inicializado com etapas padrão!');
+    },
+    onError: (e) => toast.error('Erro: ' + e.message),
+  });
+
   const excluirOportunidadeMutation = useMutation({
     mutationFn: async (oportunidadeId) => {
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
@@ -795,28 +817,6 @@ export default function FunilVendas() {
   };
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
-
-  const inicializarEtapasPadraoMutation = useMutation({
-    mutationFn: async () => {
-      const empresaId = currentUser?.empresa_id || '';
-      const etapasPadrao = [
-        { nome: 'Novo Lead', cor: '#3b82f6', tipo: 'aberta', ordem: 1 },
-        { nome: 'Em Contato', cor: '#f59e0b', tipo: 'aberta', ordem: 2 },
-        { nome: 'Proposta Enviada', cor: '#8b5cf6', tipo: 'aberta', ordem: 3 },
-        { nome: 'Planejamento de Compra', cor: '#7c3aed', tipo: 'planejamento', ordem: 4 },
-        { nome: 'Ganho', cor: '#10b981', tipo: 'ganho', ordem: 5 },
-        { nome: 'Perdido', cor: '#ef4444', tipo: 'perdida', ordem: 6 },
-      ];
-      for (const e of etapasPadrao) {
-        await base44.entities.EtapaFunil.create({ ...e, empresa_id: empresaId, status: 'ativa' });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
-      toast.success('Funil inicializado com etapas padrão!');
-    },
-    onError: (e) => toast.error('Erro: ' + e.message),
-  });
 
   if (loadingEtapas || loadingOportunidades || !currentUser) {
     return (
