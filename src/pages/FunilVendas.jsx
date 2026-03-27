@@ -186,13 +186,18 @@ export default function FunilVendas() {
 
   const criarOportunidadeMutation = useMutation({
     mutationFn: async (data) => {
+      console.log('🚀 criarOportunidadeMutation - data recebida:', data);
       const vendedorIdFinal = data.vendedor_id || currentUser?.id;
       const vendedorObj =
         vendedorIdFinal === currentUser?.id ? (currentUserFull || currentUser) : getVendedorById(vendedorIdFinal);
       const fotoPerfil = vendedorObj?.foto_perfil || '';
 
+      const empresaId = data.empresa_id || currentUser?.empresa_id || '';
+      console.log('📋 empresa_id:', empresaId, '| produto:', data.produto, '| etapa_id:', data.etapa_id);
+
       const oportunidade = await base44.entities.Oportunidade.create({
         ...data,
+        empresa_id: empresaId,
         data_ultima_movimentacao: new Date().toISOString(),
         status: 'aberta',
         foto_perfil_responsavel: fotoPerfil
@@ -678,9 +683,12 @@ export default function FunilVendas() {
 
     const produtoFinal = formData.produto || (filterProduto !== 'todos' ? filterProduto : 'consorcio');
     
+    const empresaIdFinal = currentUser?.empresa_id || '';
+    console.log('📝 handleSubmit - empresa_id:', empresaIdFinal, '| produto:', produtoFinal, '| etapa_id:', formData.etapa_id, '| vendedor_id:', vendedorIdFinal);
+
     const data = {
       ...formData,
-      empresa_id: currentUser?.empresa_id || '',
+      empresa_id: empresaIdFinal,
       produto: produtoFinal,
       cliente_nome: cliente?.nome_completo || cliente?.pj_razao_social || '',
       cliente_telefone: cliente?.celular || cliente?.pj_celular || '',
