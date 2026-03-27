@@ -796,17 +796,6 @@ export default function FunilVendas() {
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
 
-  if (loadingEtapas || loadingOportunidades || !currentUser) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f] mx-auto mb-4"></div>
-          <p className="text-slate-600">Carregando funil...</p>
-        </div>
-      </div>
-    );
-  }
-
   const inicializarEtapasPadraoMutation = useMutation({
     mutationFn: async () => {
       const empresaId = currentUser?.empresa_id || '';
@@ -828,6 +817,17 @@ export default function FunilVendas() {
     },
     onError: (e) => toast.error('Erro: ' + e.message),
   });
+
+  if (loadingEtapas || loadingOportunidades || !currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1e3a5f] mx-auto mb-4"></div>
+          <p className="text-slate-600">Carregando funil...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (etapas.length === 0) {
     return (
