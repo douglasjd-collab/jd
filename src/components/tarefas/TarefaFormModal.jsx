@@ -29,13 +29,7 @@ const SETORES = [
   { value: 'cobranca', label: 'Cobrança' },
 ];
 
-const TIPOS = [
-  { value: 'abertura_evento', label: 'Abertura de Evento' },
-  { value: 'digitar_proposta', label: 'Digitar Proposta' },
-  { value: 'reuniao', label: 'Reunião' },
-];
-
-export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate }) {
+export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate, tiposList = [] }) {
   const [form, setForm] = useState({});
   const [checklist, setChecklist] = useState([]);
   const [novoItem, setNovoItem] = useState('');
@@ -247,7 +241,8 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
               <Select value={form.tipo || ''} onValueChange={v => setForm({ ...form, tipo: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecionar tipo" /></SelectTrigger>
                 <SelectContent>
-                  {TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  {tiposList.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                  {tiposList.length === 0 && <SelectItem value="_vazio" disabled>Nenhum tipo cadastrado</SelectItem>}
                 </SelectContent>
               </Select>
             </div>

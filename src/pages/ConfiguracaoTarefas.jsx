@@ -28,6 +28,8 @@ export default function ConfiguracaoTarefas() {
   const [editStatus, setEditStatus] = useState(null);
   const [novoTemplate, setNovoTemplate] = useState({ nome: '', itens: '', favorito: false });
   const [editTemplate, setEditTemplate] = useState(null);
+  const [novoTipo, setNovoTipo] = useState('');
+  const [editTipo, setEditTipo] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -88,6 +90,27 @@ export default function ConfiguracaoTarefas() {
 
   const toggleFavorito = (t) => atualizarTemplate.mutate({ id: t.id, data: { favorito: !t.favorito } });
 
+  const { data: tiposList = [] } = useQuery({
+    queryKey: ['tipos-tarefa', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.TipoTarefa.filter({ empresa_id: empresaId }),
+  });
+
+  const criarTipo = useMutation({
+    mutationFn: (nome) => base44.entities.TipoTarefa.create({ nome, empresa_id: empresaId, ativo: true }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tipos-tarefa'] }); setNovoTipo(''); toast.success('Tipo criado!'); },
+  });
+
+  const atualizarTipo = useMutation({
+    mutationFn: ({ id, nome }) => base44.entities.TipoTarefa.update(id, { nome }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tipos-tarefa'] }); setEditTipo(null); toast.success('Tipo atualizado!'); },
+  });
+
+  const excluirTipo = useMutation({
+    mutationFn: (id) => base44.entities.TipoTarefa.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tipos-tarefa'] }); toast.success('Tipo excluído!'); },
+  });
+
   if (!currentUser) return <div className="flex items-center justify-center min-h-[200px]"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]"></div></div>;
 
   const statusExibidos = statusList.length > 0
@@ -144,6 +167,37 @@ export default function ConfiguracaoTarefas() {
             <input type="color" value={novoStatus.cor} onChange={e => setNovoStatus({ ...novoStatus, cor: e.target.value })} className="h-9 w-16 rounded border cursor-pointer" />
           </div>
           <Button onClick={() => { if (!novoStatus.nome.trim()) return toast.error('Informe o nome'); criarStatus.mutate(novoStatus); }} disabled={criarStatus.isPending} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
+            <Plus className="w-4 h-4 mr-1" /> Adicionar
+          </Button>
+        </div>
+      </Card>
+
+      {/* Tipos de Tarefa */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Tipos de Tarefa</h2>
+        <div className="space-y-2 mb-4">
+          {tiposList.length === 0 && <p className="text-sm text-slate-400">Nenhum tipo criado ainda.</p>}
+          {tiposList.map(t => (
+            <div key={t.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+              {editTipo?.id === t.id ? (
+                <>
+                  <Input value={editTipo.nome} onChange={e => setEditTipo({ ...editTipo, nome: e.target.value })} className="flex-1 h-8" autoFocus onKeyDown={e => e.key === 'Enter' && atualizarTipo.mutate({ id: t.id, nome: editTipo.nome })} />
+                  <Button size="sm" onClick={() => atualizarTipo.mutate({ id: t.id, nome: editTipo.nome })} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">Salvar</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditTipo(null)}>Cancelar</Button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm font-medium">{t.nome}</span>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTipo(t)}><Pencil className="w-3 h-3" /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => { if (confirm('Excluir tipo?')) excluirTipo.mutate(t.id); }}><Trash2 className="w-3 h-3" /></Button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input value={novoTipo} onChange={e => setNovoTipo(e.target.value)} placeholder="Ex: Visita, Ligação, Proposta..." onKeyDown={e => e.key === 'Enter' && novoTipo.trim() && criarTipo.mutate(novoTipo.trim())} />
+          <Button onClick={() => { if (!novoTipo.trim()) return toast.error('Informe o nome'); criarTipo.mutate(novoTipo.trim()); }} disabled={criarTipo.isPending} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
             <Plus className="w-4 h-4 mr-1" /> Adicionar
           </Button>
         </div>

@@ -124,6 +124,12 @@ export default function Tarefas() {
     queryFn: () => base44.entities.ChecklistTemplate.filter({ empresa_id: empresaId }),
   });
 
+  const { data: tiposList = [] } = useQuery({
+    queryKey: ['tipos-tarefa', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.TipoTarefa.filter({ empresa_id: empresaId, ativo: true }),
+  });
+
   const registrarHistorico = async ({ tarefaId, acao, descricao, statusAnterior = null, statusNovo = null, valorAnterior = null, valorNovo = null }) => {
     if (!currentUser || !empresaId) return;
     try {
@@ -408,6 +414,7 @@ export default function Tarefas() {
         templates={templates}
         currentUser={currentUser}
         onSaveTemplate={(data) => salvarTemplate.mutate(data)}
+        tiposList={tiposList}
       />
 
       <TarefaDetalhesModal

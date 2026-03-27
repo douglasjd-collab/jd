@@ -1,0 +1,36 @@
+{
+  "name": "TipoTarefa",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome do tipo de tarefa"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
