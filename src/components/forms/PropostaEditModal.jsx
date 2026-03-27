@@ -135,8 +135,9 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
         vendedor_nome: formData.vendedor_nome || '',
         administradora_id: formData.administradora_id || '',
         administradora_nome: formData.administradora_nome || '',
-        empresa_parceira_id: formData.empresa_parceira_id || '',
-        empresa_parceira_nome: formData.empresa_parceira_nome || '',
+        empresa_parceira_id: formData.empresa_parceira_id || proposta.empresa_parceira_id || '',
+        empresa_parceira_nome: formData.empresa_parceira_nome || proposta.empresa_parceira_nome || '',
+        banco_id: formData.banco_id || proposta.banco_id || '',
       };
 
       if (formData.produto === 'emprestimo') {
@@ -330,9 +331,9 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
               <FieldGroup>
                 <Field label="Banco / Administradora" span={2}>
                   {formData.produto === 'emprestimo' ? (
-                    <Select value={formData.administradora_id || ''} onValueChange={(v) => {
+                    <Select value={formData.banco_id || formData.administradora_id || ''} onValueChange={(v) => {
                       const banco = bancos.find(b => b.id === v);
-                      setFormData(prev => ({ ...prev, administradora_id: v, administradora_nome: banco?.nome || '' }));
+                      setFormData(prev => ({ ...prev, banco_id: v, administradora_id: v, administradora_nome: banco?.nome || '' }));
                     }}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>{bancos.map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}</SelectContent>
