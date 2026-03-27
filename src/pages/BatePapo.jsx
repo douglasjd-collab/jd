@@ -77,27 +77,35 @@ export default function BatePapo() {
   // Definir conversaSelecionadaId ANTES de qualquer hook que o use
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
-  const selecionarConversa = async (conversa) => {
+  const selecionarConversa = async (conversa, forcarSync = true) => {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
     
-    // Forçar refetch IMEDIATO de mensagens
-    setTimeout(() => {
-      console.log(`🔄 Refetching mensagens para: ${conversa.id}`);
-      refetchMensagens?.();
-    }, 50);
+    // Invalida cache e força refetch IMEDIATO
+    queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
     
-    // Sincronizar histórico em background
-    if (conversa?.id && conversa?.cliente_telefone && empresaId) {
-      base44.functions.invoke('sincronizarHistoricoAgressivo', {
+    // Sincronizar histórico — IMEDIATO se forcarSync
+    if (conversa?.id && conversa?.cliente_telefone && empresaId && forcarSync) {
+      console.log(`🔄 Sincronizando mensagens para ${conversa.cliente_telefone}...`);
+      
+      // Tentar importação direta ANTES de refetch
+      base44.functions.invoke('importarMensagensConversa', {
         empresa_id: empresaId,
-        conversa_id_especifico: conversa.id
+        telefone: conversa.cliente_telefone,
+        conversa_id: conversa.id
+      }).then(() => {
+        console.log(`✅ Importação concluída`);
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
+        setTimeout(() => refetchMensagens?.(), 100);
       }).catch(e => {
-        console.warn('Falha sincronizar histórico:', e);
-        base44.functions.invoke('importarMensagensConversa', {
+        console.warn('Falha importar:', e);
+        // Fallback: sincronizar histórico completo
+        base44.functions.invoke('sincronizarHistoricoAgressivo', {
           empresa_id: empresaId,
-          telefone: conversa.cliente_telefone,
-          conversa_id: conversa.id
+          conversa_id_especifico: conversa.id
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
+          setTimeout(() => refetchMensagens?.(), 100);
         }).catch(() => {});
       });
     }
@@ -1105,6 +1113,35 @@ export default function BatePapo() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-blue-600 hover:text-blue-700 hover:border-blue-300"
+                          onClick={async () => {
+                            console.log(`🔄 Sincronizando mensagens para ${conversaSelecionada.cliente_telefone}...`);
+                            try {
+                              const resp = await base44.functions.invoke('importarMensagensConversa', {
+                                empresa_id: empresaId,
+                                telefone: conversaSelecionada.cliente_telefone,
+                                conversa_id: conversaSelecionada.id
+                              });
+                              toast.success(`✅ ${resp?.data?.message || 'Mensagens sincronizadas!'}`);
+                              queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+                              setTimeout(() => refetchMensagens?.(), 100);
+                            } catch (e) {
+                              toast.error('Erro ao sincronizar: ' + e.message);
+                            }
+                          }}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Carregar Mensagens
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Importar histórico completo do WhatsApp</TooltipContent>
+                    </Tooltip>
+
                     <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium">
                       <Tag className="h-3.5 w-3.5" />
                       Criar Proposta
