@@ -9,90 +9,136 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Apenas admins podem executar
     if (!['master', 'super_admin', 'admin'].includes(user.perfil)) {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
     const empresaId = user.empresa_id || '699696c2c9f5bffc2e67402b';
-    const hoje = new Date();
-    const umAnoAtras = new Date(hoje.getFullYear() - 1, hoje.getMonth(), hoje.getDate());
+    const hoje = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-    // Buscar todas as vendas quitadas/concluídas
-    const vendas = await base44.asServiceRole.entities.Venda.filter({ 
+    let campanhasEnviadas = 0;
+    let erros = 0;
+    const detalhes = [];
+
+    // ── 1. RENOVAÇÕES DE EMPRÉSTIMO (CampanhaRenovacao) ──────────────────────
+    const renovacoesPendentes = await base44.asServiceRole.entities.CampanhaRenovacao.filter(
+      { empresa_id: empresaId, status: 'aguardando' },
+      'data_agendada_envio',
+      500
+    );
+
+    const renovacoesVencidas = renovacoesPendentes.filter(r => r.data_agendada_envio <= hoje);
+
+    for (const renovacao of renovacoesVencidas) {
+      try {
+        if (!renovacao.cliente_telefone) {
+          await base44.asServiceRole.entities.CampanhaRenovacao.update(renovacao.id, {
+            status: 'erro',
+            motivo_erro: 'Telefone do cliente não cadastrado',
+          });
+          erros++;
+          detalhes.push({ renovacao_id: renovacao.id, erro: 'Sem telefone' });
+          continue;
+        }
+
+        const valorFmt = renovacao.valor_credito
+          ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(renovacao.valor_credito)
+          : 'um crédito especial';
+
+        const mensagem = `Olá ${renovacao.cliente_nome || 'Cliente'}! 👋\n\n`
+          + `Faz exatamente 1 ano desde que você realizou seu empréstimo de ${valorFmt}`
+          + (renovacao.banco_nome ? ` no ${renovacao.banco_nome}` : '')
+          + `. 🎉\n\n`
+          + `Queremos te oferecer uma nova proposta com condições ainda melhores! `
+          + `Que tal renovar e aproveitar mais crédito para realizar seus planos? 💼\n\n`
+          + `Entre em contato conosco e veja o que temos para você! 😊`;
+
+        const respMensagem = await base44.functions.invoke('enviarMensagemWhatsapp', {
+          conversa_id: '',
+          mensagem_texto: mensagem,
+          numero_cliente: renovacao.cliente_telefone,
+          empresa_id: empresaId,
+          arquivo: null
+        });
+
+        if (respMensagem?.data?.success) {
+          await base44.asServiceRole.entities.CampanhaRenovacao.update(renovacao.id, {
+            status: 'enviada',
+            data_envio: new Date().toISOString(),
+            mensagem_enviada: mensagem,
+          });
+
+          // Registrar também no CampanhaLog para histórico consolidado
+          await base44.asServiceRole.entities.CampanhaLog.create({
+            empresa_id: empresaId,
+            cliente_id: renovacao.cliente_id,
+            cliente_nome: renovacao.cliente_nome,
+            cliente_telefone: renovacao.cliente_telefone,
+            venda_id: renovacao.proposta_id,
+            tipo_campanha: 'aniversario_emprestimo',
+            mensagem_enviada: mensagem,
+            status: 'enviada',
+            data_original_quitacao: renovacao.data_pagamento,
+          });
+
+          campanhasEnviadas++;
+          detalhes.push({ renovacao_id: renovacao.id, cliente: renovacao.cliente_nome, status: 'sucesso' });
+        } else {
+          await base44.asServiceRole.entities.CampanhaRenovacao.update(renovacao.id, {
+            status: 'erro',
+            motivo_erro: 'Falha ao enviar mensagem WhatsApp',
+          });
+          erros++;
+          detalhes.push({ renovacao_id: renovacao.id, erro: 'Falha no envio' });
+        }
+      } catch (e) {
+        erros++;
+        detalhes.push({ renovacao_id: renovacao.id, erro: e.message });
+        await base44.asServiceRole.entities.CampanhaRenovacao.update(renovacao.id, {
+          status: 'erro',
+          motivo_erro: e.message,
+        });
+      }
+    }
+
+    // ── 2. CONSÓRCIO (Venda) — lógica original ───────────────────────────────
+    const dataUmAnoAtras = new Date();
+    dataUmAnoAtras.setFullYear(dataUmAnoAtras.getFullYear() - 1);
+
+    const vendas = await base44.asServiceRole.entities.Venda.filter({
       empresa_id: empresaId,
       status: { $in: ['quitada', 'contemplada', 'paga'] }
     }, '-updated_date', 10000);
 
-    let campanhasEnviadas = 0;
-    let erros = 0;
-    const resultado = {
-      ok: true,
-      campanhasEnviadas,
-      erros,
-      detalhes: []
-    };
-
     for (const venda of vendas) {
       try {
-        // Verificar se a venda foi atualizada há aprox. 1 ano atrás
         const dataVenda = venda.updated_date ? new Date(venda.updated_date) : new Date(venda.created_date);
-        const diasPassados = Math.floor((hoje - dataVenda) / (1000 * 60 * 60 * 24));
+        const diasPassados = Math.floor((new Date() - dataVenda) / (1000 * 60 * 60 * 24));
 
-        // Se passou entre 360 e 375 dias (± 2 semanas de margem)
-        if (diasPassados < 360 || diasPassados > 375) {
-          continue;
-        }
+        if (diasPassados < 360 || diasPassados > 375) continue;
 
-        // Buscar cliente
-        const clientes = await base44.asServiceRole.entities.Cliente.filter({ 
-          id: venda.cliente_id 
-        });
-
-        if (!clientes || clientes.length === 0) {
-          erros++;
-          resultado.detalhes.push({
-            venda_id: venda.id,
-            erro: 'Cliente não encontrado'
-          });
-          continue;
-        }
+        const clientes = await base44.asServiceRole.entities.Cliente.filter({ id: venda.cliente_id });
+        if (!clientes || clientes.length === 0) { erros++; continue; }
 
         const cliente = clientes[0];
         const telefone = cliente.celular || cliente.pj_celular;
+        if (!telefone) { erros++; continue; }
 
-        if (!telefone) {
-          erros++;
-          resultado.detalhes.push({
-            venda_id: venda.id,
-            cliente_id: cliente.id,
-            erro: 'Telefone não encontrado'
-          });
-          continue;
-        }
-
-        // Verificar se já enviou campanha recentemente
         const campanhasExistentes = await base44.asServiceRole.entities.CampanhaLog.filter({
           venda_id: venda.id,
           tipo_campanha: 'aniversario_emprestimo'
         });
 
-        // Filtrar campanhas enviadas nos últimos 30 dias
         const campanhasRecentes = campanhasExistentes.filter(c => {
-          const dataCampanha = new Date(c.created_date);
-          const diasDesdeEnvio = Math.floor((hoje - dataCampanha) / (1000 * 60 * 60 * 24));
-          return diasDesdeEnvio < 30;
+          const dias = Math.floor((new Date() - new Date(c.created_date)) / (1000 * 60 * 60 * 24));
+          return dias < 30;
         });
 
-        if (campanhasRecentes.length > 0) {
-          continue;
-        }
+        if (campanhasRecentes.length > 0) continue;
 
-        // Preparar mensagem
-        const tipoVenda = venda.tipo === 'automovel' ? 'empréstimo' : venda.tipo || 'produto';
-        const mensagem = `Olá ${cliente.nome_completo || cliente.pj_razao_social || 'Cliente'}! 👋\n\nFaz um ano que você realizou seu ${tipoVenda} conosco! 🎉\n\nQueremos oferecer uma nova proposta especial para você aumentar seu crédito!\n\nEntre em contato conosco para conhecer as melhores condições. 💼`;
+        const tipoVenda = venda.tipo === 'automovel' ? 'consórcio' : venda.tipo || 'produto';
+        const mensagem = `Olá ${cliente.nome_completo || cliente.pj_razao_social || 'Cliente'}! 👋\n\nFaz um ano que você realizou seu ${tipoVenda} conosco! 🎉\n\nQueremos oferecer uma nova proposta especial para você!\n\nEntre em contato conosco para conhecer as melhores condições. 💼`;
 
-        // Enviar mensagem via WhatsApp
         const respMensagem = await base44.functions.invoke('enviarMensagemWhatsapp', {
           conversa_id: '',
           mensagem_texto: mensagem,
@@ -102,7 +148,6 @@ Deno.serve(async (req) => {
         });
 
         if (respMensagem?.data?.success) {
-          // Registrar campanha enviada
           await base44.asServiceRole.entities.CampanhaLog.create({
             empresa_id: empresaId,
             cliente_id: cliente.id,
@@ -114,39 +159,25 @@ Deno.serve(async (req) => {
             status: 'enviada',
             data_original_quitacao: venda.updated_date || venda.created_date
           });
-
           campanhasEnviadas++;
-          resultado.detalhes.push({
-            venda_id: venda.id,
-            cliente_id: cliente.id,
-            status: 'sucesso'
-          });
         } else {
           erros++;
-          resultado.detalhes.push({
-            venda_id: venda.id,
-            cliente_id: cliente.id,
-            erro: 'Falha ao enviar mensagem'
-          });
         }
       } catch (e) {
         erros++;
-        resultado.detalhes.push({
-          venda_id: venda.id,
-          erro: e.message
-        });
       }
     }
 
-    resultado.campanhasEnviadas = campanhasEnviadas;
-    resultado.erros = erros;
+    return Response.json({
+      ok: true,
+      campanhasEnviadas,
+      erros,
+      renovacoesProcessadas: renovacoesVencidas.length,
+      detalhes,
+    });
 
-    return Response.json(resultado);
   } catch (error) {
     console.error('Erro em verificarEEnviarCampanhas:', error);
-    return Response.json({ 
-      error: error.message,
-      ok: false 
-    }, { status: 500 });
+    return Response.json({ error: error.message, ok: false }, { status: 500 });
   }
 });
