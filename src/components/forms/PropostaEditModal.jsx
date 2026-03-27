@@ -343,15 +343,24 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                       setBancoAlterado(true);
                       setFormData(prev => ({ ...prev, banco_id: v, administradora_id: v, administradora_nome: banco?.nome || '' }));
                     }}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione">
+                          {formData.administradora_nome || bancos.find(b => b.id === (formData.banco_id || formData.administradora_id))?.nome || 'Selecione'}
+                        </SelectValue>
+                      </SelectTrigger>
                       <SelectContent>{bancos.map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}</SelectContent>
                     </Select>
                   ) : (
                     <Select value={formData.administradora_id || ''} onValueChange={(v) => {
                       const adm = administradoras.find(a => a.id === v);
+                      setBancoAlterado(true);
                       setFormData(prev => ({ ...prev, administradora_id: v, administradora_nome: adm?.nome_fantasia || adm?.razao_social || '' }));
                     }}>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione">
+                          {formData.administradora_nome || administradoras.find(a => a.id === formData.administradora_id)?.nome_fantasia || administradoras.find(a => a.id === formData.administradora_id)?.razao_social || 'Selecione'}
+                        </SelectValue>
+                      </SelectTrigger>
                       <SelectContent>{administradoras.map(a => <SelectItem key={a.id} value={a.id}>{a.nome_fantasia || a.razao_social}</SelectItem>)}</SelectContent>
                     </Select>
                   )}
