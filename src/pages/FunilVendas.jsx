@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2 } from 'lucide-react';
+import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
@@ -472,6 +473,13 @@ export default function FunilVendas() {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
+      // Se está sendo movido para etapa de planejamento, registrar data de entrada
+      const entrandoNoPlanejamento = etapaDestino?.tipo === 'planejamento' && !oportunidade?.data_entrada_planejamento;
+      const saindoDoPlanejamento = oportunidade?.etapa_id && (() => {
+        const etapaOrigem = etapas.find(e => e.id === oportunidade.etapa_id);
+        return etapaOrigem?.tipo === 'planejamento' && etapaDestino?.tipo !== 'planejamento';
+      })();
+
       // ✅ UPDATE sempre com empresa_id + campos essenciais
       await base44.entities.Oportunidade.update(oportunidadeId, {
         ...updates,
@@ -487,6 +495,10 @@ export default function FunilVendas() {
             : etapaDestino?.tipo === 'perdida'
             ? 'perdida'
             : 'aberta',
+        ...(entrandoNoPlanejamento ? {
+          data_entrada_planejamento: new Date().toISOString(),
+          campanha_planejamento_ultima: 0,
+        } : {}),
       });
 
       // histórico
@@ -1149,6 +1161,18 @@ export default function FunilVendas() {
 
                                 {oport.telefone_lead && (
                                   <p className="text-xs text-slate-600 mb-2">📞 {oport.telefone_lead}</p>
+                                )}
+
+                                {/* Badge campanhas planejamento */}
+                                {etapaAtual?.tipo === 'planejamento' && (
+                                  <div className="mb-2">
+                                    <p className="text-[9px] text-slate-400 uppercase font-semibold mb-1">Jornada 60 dias</p>
+                                    <CampanhasPlanejamentoBadge
+                                      ultimaCampanha={oport.campanha_planejamento_ultima || 0}
+                                      dataEntrada={oport.data_entrada_planejamento}
+                                      compact={false}
+                                    />
+                                  </div>
                                 )}
 
                                 <div className="flex items-center justify-between text-xs mb-2">

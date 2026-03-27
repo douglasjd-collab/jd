@@ -11,6 +11,7 @@ import {
 import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
+import CampanhasPlanejamentoBadge from './CampanhasPlanejamentoBadge';
 
 export default function OportunidadeCardConsolidado({
   oportunidade,
@@ -119,6 +120,18 @@ export default function OportunidadeCardConsolidado({
       {/* Telefone */}
       {oportunidade.telefone_lead && (
         <p className="text-xs text-slate-600 mb-2">📞 {oportunidade.telefone_lead}</p>
+      )}
+
+      {/* Badge campanhas de planejamento */}
+      {etapaAtual?.tipo === 'planejamento' && (
+        <div className="mb-2">
+          <p className="text-[9px] text-slate-400 uppercase font-semibold mb-1">Campanhas (60 dias)</p>
+          <CampanhasPlanejamentoBadge
+            ultimaCampanha={oportunidade.campanha_planejamento_ultima || 0}
+            dataEntrada={oportunidade.data_entrada_planejamento}
+            compact={false}
+          />
+        </div>
       )}
 
       {/* Valores */}

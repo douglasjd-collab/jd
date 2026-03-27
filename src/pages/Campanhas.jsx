@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
+import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 
 export default function Campanhas() {
   const [user, setUser] = useState(null);
@@ -126,9 +127,43 @@ export default function Campanhas() {
     queryFn: async () => {
       const todasOport = await base44.entities.Oportunidade.filter({ empresa_id: empresaId, status: 'aberta' }, '-data_ultima_movimentacao', 500);
       const etapaIds = etapasPlanejamento.map(e => e.id);
-      return todasOport.filter(o => etapaIds.includes(o.etapa_id));
+      const filtradas = todasOport.filter(o => etapaIds.includes(o.etapa_id));
+
+      // Marcar data de entrada para leads sem ela
+      const semData = filtradas.filter(o => !o.data_entrada_planejamento);
+      for (const o of semData) {
+        base44.entities.Oportunidade.update(o.id, {
+          data_entrada_planejamento: new Date().toISOString(),
+          campanha_planejamento_ultima: 0,
+        }).catch(() => {});
+        o.data_entrada_planejamento = new Date().toISOString();
+        o.campanha_planejamento_ultima = 0;
+      }
+
+      return filtradas;
     },
   });
+
+  // Buscar logs de campanhas de planejamento por oportunidade
+  const { data: logsCampanhasPlanejamento = [], refetch: refetchLogs } = useQuery({
+    queryKey: ['logs-campanhas-planejamento', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.CampanhaLog.filter({ empresa_id: empresaId }, '-created_date', 2000),
+  });
+
+  // Mapa: oportunidade_id -> array de números das campanhas enviadas com sucesso
+  const campanhasEnviadasPorLead = useMemo(() => {
+    const mapa = {};
+    logsCampanhasPlanejamento
+      .filter(l => l.oportunidade_id && l.status === 'enviada' && l.numero_sequencia)
+      .forEach(l => {
+        if (!mapa[l.oportunidade_id]) mapa[l.oportunidade_id] = [];
+        if (!mapa[l.oportunidade_id].includes(l.numero_sequencia)) {
+          mapa[l.oportunidade_id].push(l.numero_sequencia);
+        }
+      });
+    return mapa;
+  }, [logsCampanhasPlanejamento]);
 
   // Enviar campanha quinzenal para leads de planejamento
   const enviarCampanhaPlanejamentoMutation = useMutation({
@@ -575,7 +610,7 @@ export default function Campanhas() {
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 mb-2">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
                 <div className="bg-purple-50 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-purple-700">{oportunidadesPlanejamento.length}</p>
                   <p className="text-xs text-slate-500">Leads no planejamento</p>
@@ -586,13 +621,17 @@ export default function Campanhas() {
                   </p>
                   <p className="text-xs text-slate-500">Com telefone</p>
                 </div>
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-700">
+                    {logsCampanhasPlanejamento.filter(l => l.oportunidade_id && l.status === 'enviada').length}
+                  </p>
+                  <p className="text-xs text-slate-500">Campanhas enviadas</p>
+                </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-emerald-700">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                      oportunidadesPlanejamento.reduce((s, o) => s + (o.valor_estimado || 0), 0)
-                    )}
+                    {oportunidadesPlanejamento.filter(o => (o.campanha_planejamento_ultima || 0) === 4).length}
                   </p>
-                  <p className="text-xs text-slate-500">Valor total estimado</p>
+                  <p className="text-xs text-slate-500">Jornadas completas</p>
                 </div>
               </div>
 
@@ -624,15 +663,26 @@ export default function Campanhas() {
                       const diasParaFechar = o.data_fechamento_prevista
                         ? Math.ceil((new Date(o.data_fechamento_prevista + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24))
                         : null;
+                      const ultimaCampanha = o.campanha_planejamento_ultima || 0;
+                      const diasNoPlano = o.data_entrada_planejamento
+                        ? Math.floor((new Date() - new Date(o.data_entrada_planejamento)) / (1000 * 60 * 60 * 24))
+                        : 0;
 
                       return (
                         <div key={o.id} className="p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                                {(o.cliente_nome || o.titulo)?.charAt(0)?.toUpperCase() || '?'}
+                              <div className="relative flex-shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                                  {(o.cliente_nome || o.titulo)?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                                {ultimaCampanha === 4 && (
+                                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-[8px] font-bold">✓</span>
+                                  </div>
+                                )}
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-sm text-slate-900 truncate">{o.titulo}</p>
                                 {o.cliente_nome && <p className="text-xs text-slate-500 truncate">👤 {o.cliente_nome}</p>}
                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -657,27 +707,40 @@ export default function Campanhas() {
                                   <p className={`text-xs font-semibold ${diasParaFechar !== null && diasParaFechar <= 30 ? 'text-amber-600' : 'text-slate-700'}`}>
                                     {new Date(o.data_fechamento_prevista + 'T12:00:00').toLocaleDateString('pt-BR')}
                                   </p>
-                                  {diasParaFechar !== null && (
-                                    <p className="text-[10px] text-slate-400">
-                                      {diasParaFechar > 0 ? `em ${diasParaFechar}d` : `${Math.abs(diasParaFechar)}d atrás`}
-                                    </p>
-                                  )}
                                 </div>
                               )}
+                              <div className="text-right mt-1">
+                                <p className="text-[10px] text-slate-400">{diasNoPlano}d no plano</p>
+                              </div>
                             </div>
                           </div>
-                          {temTelefone && (
-                            <div className="mt-2 pt-2 border-t border-slate-100">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs gap-1 border-green-200 text-green-700 hover:bg-green-50"
-                                onClick={() => setChatPopup({ nome: o.cliente_nome || o.titulo, telefone: o.telefone_lead || o.cliente_telefone })}
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" /> Conversar agora
-                              </Button>
+
+                          {/* Bolinhas das 4 campanhas */}
+                          <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-[9px] text-slate-400 uppercase font-semibold mb-1.5">Jornada de 60 dias</p>
+                                <CampanhasPlanejamentoBadge
+                                  ultimaCampanha={ultimaCampanha}
+                                  dataEntrada={o.data_entrada_planejamento}
+                                  compact={false}
+                                />
+                              </div>
+                              {temTelefone && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs gap-1 border-green-200 text-green-700 hover:bg-green-50 h-7"
+                                  onClick={() => setChatPopup({ nome: o.cliente_nome || o.titulo, telefone: o.telefone_lead || o.cliente_telefone })}
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" /> Chat
+                                </Button>
+                              )}
                             </div>
-                          )}
+                            {ultimaCampanha === 4 && (
+                              <p className="text-[10px] text-emerald-600 font-semibold mt-1">✅ Jornada completa — 4 campanhas enviadas!</p>
+                            )}
+                          </div>
                         </div>
                       );
                     })

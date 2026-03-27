@@ -1,0 +1,141 @@
+{
+  "name": "Oportunidade",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "T\u00edtulo da oportunidade"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente vinculado"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "cliente_telefone": {
+      "type": "string",
+      "description": "Telefone do cliente"
+    },
+    "telefone_lead": {
+      "type": "string",
+      "description": "Telefone de contato do lead"
+    },
+    "data_cadastro_lead": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de cadastro do lead"
+    },
+    "valor_estimado": {
+      "type": "number",
+      "description": "Valor estimado da venda"
+    },
+    "etapa_id": {
+      "type": "string",
+      "description": "ID da etapa atual"
+    },
+    "etapa_nome": {
+      "type": "string",
+      "description": "Nome da etapa atual"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor respons\u00e1vel principal"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor"
+    },
+    "responsaveis_ids": {
+      "type": "string",
+      "description": "Array JSON com IDs dos respons\u00e1veis (m\u00faltiplos)"
+    },
+    "responsaveis_nomes": {
+      "type": "string",
+      "description": "Array JSON com nomes dos respons\u00e1veis"
+    },
+    "responsaveis_fotos": {
+      "type": "string",
+      "description": "Array JSON com URLs das fotos dos respons\u00e1veis"
+    },
+    "foto_perfil_responsavel": {
+      "type": "string",
+      "description": "URL da foto do respons\u00e1vel principal"
+    },
+    "gerente_id": {
+      "type": "string",
+      "description": "ID do gerente"
+    },
+    "origem": {
+      "type": "string",
+      "description": "Origem do lead"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre a oportunidade"
+    },
+    "data_fechamento_prevista": {
+      "type": "string",
+      "format": "date",
+      "description": "Previs\u00e3o de fechamento"
+    },
+    "data_ultima_movimentacao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data da \u00faltima movimenta\u00e7\u00e3o"
+    },
+    "data_entrada_planejamento": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data em que o lead entrou na etapa de Planejamento de Compra"
+    },
+    "campanha_planejamento_ultima": {
+      "type": "number",
+      "default": 0,
+      "description": "N\u00famero da \u00faltima campanha de planejamento enviada (0 = nenhuma, 1-4)"
+    },
+    "campanha_planejamento_data_ultima": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data do \u00faltimo envio de campanha de planejamento"
+    },
+    "venda_id": {
+      "type": "string",
+      "description": "ID da venda vinculada (quando convertida)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "aberta",
+        "ganha",
+        "perdida"
+      ],
+      "default": "aberta"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "titulo",
+    "etapa_id",
+    "vendedor_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente') return true; return record.vendedor_id === user.id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin') return true; return ['admin', 'gerente', 'vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente') return true; return record.vendedor_id === user.id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin') return true; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

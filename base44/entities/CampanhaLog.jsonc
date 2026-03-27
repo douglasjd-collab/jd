@@ -1,0 +1,88 @@
+{
+  "name": "CampanhaLog",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "cliente_telefone": {
+      "type": "string",
+      "description": "Telefone do cliente"
+    },
+    "venda_id": {
+      "type": "string",
+      "description": "ID da venda/proposta original"
+    },
+    "oportunidade_id": {
+      "type": "string",
+      "description": "ID da oportunidade (para campanhas de planejamento)"
+    },
+    "tipo_campanha": {
+      "type": "string",
+      "enum": [
+        "aniversario_emprestimo",
+        "aniversario_consorcio",
+        "reengajamento",
+        "planejamento_compra_1",
+        "planejamento_compra_2",
+        "planejamento_compra_3",
+        "planejamento_compra_4"
+      ],
+      "description": "Tipo de campanha"
+    },
+    "numero_sequencia": {
+      "type": "number",
+      "description": "N\u00famero da campanha na sequ\u00eancia (1, 2, 3 ou 4)"
+    },
+    "mensagem_enviada": {
+      "type": "string",
+      "description": "Texto da mensagem enviada"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "enviada",
+        "nao_enviada",
+        "erro"
+      ],
+      "default": "enviada",
+      "description": "Status do envio"
+    },
+    "motivo_erro": {
+      "type": "string",
+      "description": "Motivo do erro, se houver"
+    },
+    "data_original_quitacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de quita\u00e7\u00e3o/conclus\u00e3o do empr\u00e9stimo original"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "tipo_campanha"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return false;"
+    }
+  }
+}
