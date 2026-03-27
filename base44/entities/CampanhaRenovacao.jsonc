@@ -48,12 +48,14 @@
       "type": "string",
       "enum": [
         "aguardando",
+        "nova_simulacao",
+        "oportunidade_aceita",
         "enviada",
         "cancelada",
         "erro"
       ],
       "default": "aguardando",
-      "description": "Status da campanha de renova\u00e7\u00e3o"
+      "description": "Status da campanha de renova\u00e7\u00e3o: aguardando=esperando 1 ano, nova_simulacao=prazo chegou/precisa simular, oportunidade_aceita=simula\u00e7\u00e3o aprovada/time vai enviar proposta, enviada=mensagem enviada, cancelada, erro"
     },
     "data_envio": {
       "type": "string",
@@ -67,6 +69,20 @@
     "motivo_erro": {
       "type": "string",
       "description": "Motivo do erro, se houver"
+    },
+    "observacoes_simulacao": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre a nova simula\u00e7\u00e3o/proposta"
+    },
+    "data_simulacao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data em que foi marcado como nova simula\u00e7\u00e3o"
+    },
+    "data_oportunidade_aceita": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data em que a oportunidade foi marcada como aceita"
     }
   },
   "required": [

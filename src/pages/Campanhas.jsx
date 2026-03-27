@@ -44,6 +44,9 @@ export default function Campanhas() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [filtroRenovacao, setFiltroRenovacao] = useState('aguardando');
+  const [modalSimulacaoOpen, setModalSimulacaoOpen] = useState(false);
+  const [renovacaoSelecionada, setRenovacaoSelecionada] = useState(null);
+  const [obsSimulacao, setObsSimulacao] = useState('');
   const [chatPopup, setChatPopup] = useState(null); // { nome, telefone }
   const [campanhaPlanejamentoOpen, setCampanhaPlanejamentoOpen] = useState(false);
   const [mensagemPlanejamento, setMensagemPlanejamento] = useState('');
@@ -229,6 +232,33 @@ export default function Campanhas() {
     onError: (e) => toast.error('Erro: ' + e.message),
   });
 
+  // Marcar como Nova Simulação
+  const marcarSimulacaoMutation = useMutation({
+    mutationFn: ({ id, obs }) => base44.entities.CampanhaRenovacao.update(id, {
+      status: 'nova_simulacao',
+      data_simulacao: new Date().toISOString(),
+      observacoes_simulacao: obs || '',
+    }),
+    onSuccess: () => {
+      toast.success('✅ Marcado como Nova Simulação');
+      setModalSimulacaoOpen(false);
+      setObsSimulacao('');
+      setRenovacaoSelecionada(null);
+      refetchRenovacoes();
+    },
+    onError: (e) => toast.error('Erro: ' + e.message),
+  });
+
+  // Marcar como Oportunidade Aceita
+  const marcarOportunidadeAceitaMutation = useMutation({
+    mutationFn: (id) => base44.entities.CampanhaRenovacao.update(id, {
+      status: 'oportunidade_aceita',
+      data_oportunidade_aceita: new Date().toISOString(),
+    }),
+    onSuccess: () => { toast.success('✅ Oportunidade marcada como Aceita!'); refetchRenovacoes(); },
+    onError: (e) => toast.error('Erro: ' + e.message),
+  });
+
   // Filtros histórico
   const campanhasFiltradas = campanhas.filter(c => {
     const matchSearch =
@@ -246,6 +276,15 @@ export default function Campanhas() {
     return matchSearch && (filtroRenovacao === 'todas' || r.status === filtroRenovacao);
   });
 
+  // Contadores por status para a fila de renovações
+  const renovacaoContadores = {
+    aguardando: renovacoes.filter(r => r.status === 'aguardando').length,
+    nova_simulacao: renovacoes.filter(r => r.status === 'nova_simulacao').length,
+    oportunidade_aceita: renovacoes.filter(r => r.status === 'oportunidade_aceita').length,
+    enviada: renovacoes.filter(r => r.status === 'enviada').length,
+    cancelada: renovacoes.filter(r => r.status === 'cancelada').length,
+  };
+
   const hoje = new Date().toISOString().slice(0, 10);
 
   // Estatísticas
@@ -260,8 +299,11 @@ export default function Campanhas() {
 
   const renovacaoStats = {
     aguardando: renovacoes.filter(r => r.status === 'aguardando').length,
-    vencidas: renovacoes.filter(r => r.status === 'aguardando' && r.data_agendada_envio <= hoje).length,
+    nova_simulacao: renovacoes.filter(r => r.status === 'nova_simulacao').length,
+    oportunidade_aceita: renovacoes.filter(r => r.status === 'oportunidade_aceita').length,
     enviadas: renovacoes.filter(r => r.status === 'enviada').length,
+    // Leads aguardando cujo prazo de 1 ano chegou (mas ainda não foram marcados como nova_simulacao)
+    prontas: renovacoes.filter(r => r.status === 'aguardando' && r.data_agendada_envio <= hoje).length,
   };
 
   const leadsPlanejaFiltrados = oportunidadesPlanejamento.filter(o => {
@@ -322,16 +364,29 @@ export default function Campanhas() {
         </div>
       </div>
 
-      {/* Alerta de renovações vencidas */}
-      {renovacaoStats.vencidas > 0 && (
+      {/* Alerta de prontas para nova simulação */}
+      {renovacaoStats.prontas > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           <div className="flex-1">
             <p className="font-semibold text-amber-900">
-              {renovacaoStats.vencidas} renovação(ões) prontas para envio!
+              {renovacaoStats.prontas} cliente(s) completaram 1 ano — prontos para Nova Simulação!
             </p>
             <p className="text-sm text-amber-700">
-              Clique em "Executar Campanhas Agora" para enviar as mensagens de renovação.
+              Acesse a aba "Fila de Renovações" e marque como "Nova Simulação" para o time comercial simular uma nova proposta.
+            </p>
+          </div>
+        </div>
+      )}
+      {renovacaoStats.oportunidade_aceita > 0 && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold text-emerald-900">
+              {renovacaoStats.oportunidade_aceita} oportunidade(s) aceita(s) aguardando envio pelo time comercial!
+            </p>
+            <p className="text-sm text-emerald-700">
+              Simulação aprovada — o time comercial deve enviar a proposta manualmente ao cliente para negociar.
             </p>
           </div>
         </div>
@@ -355,11 +410,11 @@ export default function Campanhas() {
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500 uppercase font-semibold">Prontas p/ Envio</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{renovacaoStats.vencidas}</p>
-                <p className="text-xs text-slate-400 mt-0.5">data chegou</p>
+                <p className="text-xs text-slate-500 uppercase font-semibold">Nova Simulação</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{renovacaoStats.nova_simulacao}</p>
+                <p className="text-xs text-slate-400 mt-0.5">1 ano completo</p>
               </div>
-              <AlertCircle className="w-8 h-8 text-red-400 opacity-60" />
+              <AlertCircle className="w-8 h-8 text-orange-400 opacity-60" />
             </div>
           </CardContent>
         </Card>
@@ -367,9 +422,9 @@ export default function Campanhas() {
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500 uppercase font-semibold">Enviadas</p>
-                <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.enviadas + renovacaoStats.enviadas}</p>
-                <p className="text-xs text-slate-400 mt-0.5">total histórico</p>
+                <p className="text-xs text-slate-500 uppercase font-semibold">Oport. Aceita</p>
+                <p className="text-3xl font-bold text-emerald-600 mt-1">{renovacaoStats.oportunidade_aceita}</p>
+                <p className="text-xs text-slate-400 mt-0.5">aguard. envio comercial</p>
               </div>
               <CheckCircle2 className="w-8 h-8 text-emerald-400 opacity-60" />
             </div>
@@ -379,9 +434,9 @@ export default function Campanhas() {
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500 uppercase font-semibold">Taxa de Sucesso</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.taxa_sucesso}%</p>
-                <p className="text-xs text-slate-400 mt-0.5">enviadas com sucesso</p>
+                <p className="text-xs text-slate-500 uppercase font-semibold">Enviadas</p>
+                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.enviadas + renovacaoStats.enviadas}</p>
+                <p className="text-xs text-slate-400 mt-0.5">total histórico</p>
               </div>
               <BarChart3 className="w-8 h-8 text-blue-400 opacity-60" />
             </div>
@@ -440,11 +495,13 @@ export default function Campanhas() {
                     className="pl-9"
                   />
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {[
-                    { value: 'aguardando', label: 'Aguardando' },
-                    { value: 'enviada', label: 'Enviadas' },
-                    { value: 'cancelada', label: 'Canceladas' },
+                    { value: 'aguardando', label: 'Aguardando', count: renovacaoContadores.aguardando },
+                    { value: 'nova_simulacao', label: 'Nova Simulação', count: renovacaoContadores.nova_simulacao, color: 'bg-orange-500' },
+                    { value: 'oportunidade_aceita', label: 'Oport. Aceita', count: renovacaoContadores.oportunidade_aceita, color: 'bg-emerald-600' },
+                    { value: 'enviada', label: 'Enviadas', count: renovacaoContadores.enviada },
+                    { value: 'cancelada', label: 'Canceladas', count: renovacaoContadores.cancelada },
                     { value: 'todas', label: 'Todas' },
                   ].map(f => (
                     <Button
@@ -452,8 +509,14 @@ export default function Campanhas() {
                       variant={filtroRenovacao === f.value ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFiltroRenovacao(f.value)}
+                      className="gap-1.5"
                     >
                       {f.label}
+                      {f.count > 0 && (
+                        <span className={`text-white text-[9px] font-bold rounded-full px-1.5 py-0.5 ${f.color || 'bg-slate-500'}`}>
+                          {f.count}
+                        </span>
+                      )}
                     </Button>
                   ))}
                 </div>
@@ -478,20 +541,21 @@ export default function Campanhas() {
                   ) : (
                     renovacoesFiltradas.map(r => {
                       const dias = getDiasRestantes(r.data_agendada_envio);
-                      const vencida = r.status === 'aguardando' && dias !== null && dias <= 0;
+                      const prontoParaSimular = r.status === 'aguardando' && dias !== null && dias <= 0;
                       const proximo = r.status === 'aguardando' && dias !== null && dias > 0 && dias <= 30;
 
+                      const cardColor = r.status === 'nova_simulacao'
+                        ? 'bg-orange-50 border-orange-200'
+                        : r.status === 'oportunidade_aceita'
+                        ? 'bg-emerald-50 border-emerald-200'
+                        : prontoParaSimular
+                        ? 'bg-amber-50 border-amber-200'
+                        : proximo
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'bg-white border-slate-200 hover:bg-slate-50';
+
                       return (
-                        <div
-                          key={r.id}
-                          className={`p-3 rounded-lg border transition-colors ${
-                            vencida
-                              ? 'bg-red-50 border-red-200'
-                              : proximo
-                              ? 'bg-amber-50 border-amber-200'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
+                        <div key={r.id} className={`p-3 rounded-lg border transition-colors ${cardColor}`}>
                           <div className="flex items-start justify-between gap-3">
                             {/* Info cliente */}
                             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -518,23 +582,30 @@ export default function Campanhas() {
                               </div>
                             </div>
 
-                            {/* Datas e status */}
+                            {/* Status badge + datas */}
                             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                              {r.status === 'aguardando' && (
+                              {r.status === 'aguardando' && !prontoParaSimular && (
                                 <div className="text-right">
-                                  <p className="text-[10px] text-slate-400">Envio agendado</p>
-                                  <p className={`text-xs font-semibold ${vencida ? 'text-red-600' : proximo ? 'text-amber-600' : 'text-slate-700'}`}>
+                                  <p className="text-[10px] text-slate-400">1 ano em</p>
+                                  <p className={`text-xs font-semibold ${proximo ? 'text-blue-600' : 'text-slate-700'}`}>
                                     {formatDate(r.data_agendada_envio)}
                                   </p>
                                   {dias !== null && (
-                                    <p className={`text-[10px] ${vencida ? 'text-red-500' : 'text-slate-400'}`}>
-                                      {vencida ? `${Math.abs(dias)}d atrasado` : `em ${dias}d`}
-                                    </p>
+                                    <p className="text-[10px] text-slate-400">em {dias}d</p>
                                   )}
                                 </div>
                               )}
+                              {prontoParaSimular && (
+                                <Badge className="bg-amber-500 text-white text-xs">🔔 Pronto p/ Simular</Badge>
+                              )}
+                              {r.status === 'nova_simulacao' && (
+                                <Badge className="bg-orange-500 text-white text-xs">📋 Nova Simulação</Badge>
+                              )}
+                              {r.status === 'oportunidade_aceita' && (
+                                <Badge className="bg-emerald-600 text-white text-xs">✅ Oport. Aceita</Badge>
+                              )}
                               {r.status === 'enviada' && (
-                                <Badge className="bg-emerald-100 text-emerald-700 text-xs">✓ Enviada</Badge>
+                                <Badge className="bg-blue-100 text-blue-700 text-xs">✓ Enviada</Badge>
                               )}
                               {r.status === 'cancelada' && (
                                 <Badge variant="secondary" className="text-xs">Cancelada</Badge>
@@ -548,19 +619,64 @@ export default function Campanhas() {
                             </div>
                           </div>
 
+                          {/* Observações de simulação */}
+                          {r.observacoes_simulacao && (
+                            <p className="text-xs text-orange-700 bg-orange-50 rounded px-2 py-1 mt-2">
+                              📝 {r.observacoes_simulacao}
+                            </p>
+                          )}
+
                           {/* Ações */}
-                          {r.status === 'aguardando' && (
-                            <div className="flex gap-2 mt-2 pt-2 border-t border-slate-100">
-                              {r.cliente_telefone && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs gap-1 border-green-200 text-green-700 hover:bg-green-50"
-                                  onClick={() => setChatPopup({ nome: r.cliente_nome, telefone: r.cliente_telefone })}
-                                >
-                                  <MessageCircle className="w-3.5 h-3.5" /> Conversar
-                                </Button>
-                              )}
+                          <div className="flex gap-2 mt-2 pt-2 border-t border-slate-100 flex-wrap">
+                            {/* Aguardando + pronto para simular → botão Nova Simulação */}
+                            {prontoParaSimular && (
+                              <Button
+                                size="sm"
+                                className="text-xs gap-1 bg-orange-500 hover:bg-orange-600 text-white"
+                                onClick={() => { setRenovacaoSelecionada(r); setModalSimulacaoOpen(true); }}
+                              >
+                                📋 Marcar Nova Simulação
+                              </Button>
+                            )}
+
+                            {/* Nova Simulação → botão Oportunidade Aceita */}
+                            {r.status === 'nova_simulacao' && (
+                              <Button
+                                size="sm"
+                                className="text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={() => marcarOportunidadeAceitaMutation.mutate(r.id)}
+                                disabled={marcarOportunidadeAceitaMutation.isPending}
+                              >
+                                ✅ Oportunidade Aceita
+                              </Button>
+                            )}
+
+                            {/* Oportunidade Aceita → botão Conversar (envio manual pelo comercial) */}
+                            {r.status === 'oportunidade_aceita' && r.cliente_telefone && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                onClick={() => setChatPopup({ nome: r.cliente_nome, telefone: r.cliente_telefone })}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" /> Enviar Proposta pelo WhatsApp
+                              </Button>
+                            )}
+
+                            {/* Chat disponível para aguardando também */}
+                            {r.status === 'aguardando' && r.cliente_telefone && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs gap-1 border-green-200 text-green-700 hover:bg-green-50"
+                                onClick={() => setChatPopup({ nome: r.cliente_nome, telefone: r.cliente_telefone })}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" /> Conversar
+                              </Button>
+                            )}
+
+                            {/* Cancelar somente para aguardando */}
+                            {r.status === 'aguardando' && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -570,8 +686,9 @@ export default function Campanhas() {
                               >
                                 <X className="w-3.5 h-3.5" /> Cancelar
                               </Button>
-                            </div>
-                          )}
+                            )}
+                          </div>
+
                           {r.motivo_erro && (
                             <p className="text-xs text-red-500 mt-1">⚠️ {r.motivo_erro}</p>
                           )}
@@ -872,6 +989,58 @@ export default function Campanhas() {
                 {enviarCampanhaPlanejamentoMutation.isPending
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
                   : <><Send className="w-4 h-4" /> Enviar para todos</>}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Marcar Nova Simulação */}
+      <Dialog open={modalSimulacaoOpen} onOpenChange={(v) => { setModalSimulacaoOpen(v); if (!v) { setObsSimulacao(''); setRenovacaoSelecionada(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              📋 Marcar como Nova Simulação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {renovacaoSelecionada && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <p className="font-semibold text-sm text-slate-900">{renovacaoSelecionada.cliente_nome}</p>
+                <p className="text-xs text-slate-500">
+                  Empréstimo pago em {formatDate(renovacaoSelecionada.data_pagamento)} — {renovacaoSelecionada.banco_nome}
+                </p>
+                {renovacaoSelecionada.valor_credito > 0 && (
+                  <p className="text-xs font-medium text-emerald-700 mt-1">
+                    Valor original: {formatCurrency(renovacaoSelecionada.valor_credito)}
+                  </p>
+                )}
+              </div>
+            )}
+            <p className="text-sm text-slate-600">
+              O cliente completou 1 ano desde o pagamento. Marque como <strong>Nova Simulação</strong> para que o time comercial faça uma nova simulação e veja se há uma nova proposta aceita.
+            </p>
+            <div>
+              <Label className="text-sm mb-2 block">Observações (opcional)</Label>
+              <Textarea
+                value={obsSimulacao}
+                onChange={(e) => setObsSimulacao(e.target.value)}
+                placeholder="Ex: Cliente já sinalizou interesse. Simular mesmo banco e valor..."
+                rows={3}
+                className="resize-none text-sm"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => { setModalSimulacaoOpen(false); setObsSimulacao(''); setRenovacaoSelecionada(null); }}>
+                Cancelar
+              </Button>
+              <Button
+                className="gap-2 bg-orange-500 hover:bg-orange-600"
+                onClick={() => marcarSimulacaoMutation.mutate({ id: renovacaoSelecionada.id, obs: obsSimulacao })}
+                disabled={marcarSimulacaoMutation.isPending}
+              >
+                {marcarSimulacaoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Confirmar Nova Simulação
               </Button>
             </div>
           </div>
