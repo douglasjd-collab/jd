@@ -111,10 +111,8 @@ export default function FunilVendas() {
       if (user.role !== 'super_admin') {
         const colabs = await base44.entities.Colaborador.filter({ user_id: user.id });
         
-        console.log('🔍 Colaboradores encontrados:', colabs?.length, colabs?.map(c => ({ id: c.id, empresa_id: c.empresa_id, status: c.status })));
-        
         if (colabs && colabs.length > 0) {
-          // Priorizar ativo, depois qualquer um com empresa_id
+          // Priorizar: ativo com empresa_id > qualquer um com empresa_id > primeiro
           const colab = colabs.find(c => c.status === 'ativo' && c.empresa_id) 
             || colabs.find(c => c.empresa_id) 
             || colabs[0];
@@ -125,9 +123,7 @@ export default function FunilVendas() {
             perfil: colab.perfil || 'vendedor',
             full_name: colab.nome || user.full_name
           };
-          console.log('✅ userData setado com colab:', { id: userData.id, empresa_id: userData.empresa_id, colaborador_id: userData.colaborador_id });
         } else {
-          console.warn('Usuário sem Colaborador vinculado:', user.email);
           userData = {
             ...user,
             colaborador_id: null,
@@ -690,29 +686,9 @@ export default function FunilVendas() {
 
     const produtoFinal = formData.produto || (filterProduto !== 'todos' ? filterProduto : 'consorcio');
 
-    // Garantir empresa_id: buscar do colaborador se necessário
-    let empresaIdFinal = currentUser?.empresa_id || '';
-    if (!empresaIdFinal && currentUser?.id) {
-      try {
-        const colabs = await base44.entities.Colaborador.filter({ user_id: currentUser.id, status: 'ativo' });
-        if (colabs && colabs.length > 0) {
-          empresaIdFinal = colabs[0].empresa_id || '';
-          // Atualizar currentUser para futuras operações
-          setCurrentUser(prev => ({ ...prev, empresa_id: empresaIdFinal }));
-        }
-      } catch (e) {
-        console.error('Erro ao buscar empresa_id do colaborador:', e);
-      }
-    }
-
-    if (!empresaIdFinal) {
-      toast.error('Empresa não encontrada. Verifique seu cadastro de colaborador.');
-      return;
-    }
-
     const data = {
       ...formData,
-      empresa_id: empresaIdFinal,
+      empresa_id: currentUser?.empresa_id || '',
       produto: produtoFinal,
       cliente_nome: cliente?.nome_completo || cliente?.pj_razao_social || '',
       cliente_telefone: cliente?.celular || cliente?.pj_celular || '',
