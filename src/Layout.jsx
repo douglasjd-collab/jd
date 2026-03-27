@@ -243,6 +243,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
     { name: 'Bate-papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
+    { name: 'Empresas Parceiras', icon: Building2, page: 'EmpresasParceiras', roles: ['master', 'super_admin', 'admin'] },
     { 
       name: 'Financeiro', 
       icon: Wallet, 
