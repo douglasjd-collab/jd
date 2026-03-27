@@ -54,7 +54,7 @@ const TABS = [
   { key: 'historico', label: 'Histórico', icon: History },
 ];
 
-export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, statusList, currentUser, onUpdate, colaboradores = [] }) {
+export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, statusList, currentUser, onUpdate, colaboradores = [], tiposList = [] }) {
   const [aba, setAba] = useState('detalhes');
   const [novoComentario, setNovoComentario] = useState('');
   const [tipoComentario, setTipoComentario] = useState('comentario');
@@ -213,7 +213,7 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
                   <div className="flex items-center gap-2 bg-slate-50 rounded-lg p-3">
                     <div>
                       <p className="text-xs text-slate-400">Tipo</p>
-                      <p className="font-medium text-slate-800 capitalize">{tarefa.tipo}</p>
+                      <p className="font-medium text-slate-800">{tiposList.find(t => t.id === tarefa.tipo)?.nome || tarefa.tipo}</p>
                     </div>
                   </div>
                 )}

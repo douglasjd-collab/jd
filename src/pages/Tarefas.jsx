@@ -426,6 +426,7 @@ export default function Tarefas() {
         currentUser={currentUser}
         onUpdate={handleUpdate}
         colaboradores={colaboradores}
+        tiposList={tiposList}
       />
 
       <ConfiguracaoTarefasModal
