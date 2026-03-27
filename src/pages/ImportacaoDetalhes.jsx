@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 export default function ImportacaoDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
   const importacaoId = urlParams.get('id');
+  const produto = urlParams.get('produto') || 'consorcio';
 
   const { data: importacao, isLoading: loadingImportacao } = useQuery({
     queryKey: ['importacao', importacaoId],
@@ -152,14 +153,14 @@ export default function ImportacaoDetalhes() {
           </CardHeader>
           <CardContent>
             <TabsContent value="todos">
-              <ItemsTable itens={itens} formatCurrency={formatCurrency} />
-            </TabsContent>
-            <TabsContent value="processados">
-              <ItemsTable itens={itensProcessados} formatCurrency={formatCurrency} />
-            </TabsContent>
-            <TabsContent value="divergencias">
-              <ItemsTable itens={itensDivergencia} formatCurrency={formatCurrency} showMotivo />
-            </TabsContent>
+               <ItemsTable itens={itens} formatCurrency={formatCurrency} produto={produto} />
+             </TabsContent>
+             <TabsContent value="processados">
+               <ItemsTable itens={itensProcessados} formatCurrency={formatCurrency} produto={produto} />
+             </TabsContent>
+             <TabsContent value="divergencias">
+               <ItemsTable itens={itensDivergencia} formatCurrency={formatCurrency} produto={produto} showMotivo />
+             </TabsContent>
           </CardContent>
         </Tabs>
       </Card>
@@ -167,7 +168,7 @@ export default function ImportacaoDetalhes() {
   );
 }
 
-function ItemsTable({ itens, formatCurrency, showMotivo = false }) {
+function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo = false }) {
   if (itens.length === 0) {
     return (
       <div className="text-center py-8 text-slate-500">
@@ -176,6 +177,47 @@ function ItemsTable({ itens, formatCurrency, showMotivo = false }) {
     );
   }
 
+  // Colunas para empréstimo
+  if (produto === 'emprestimos') {
+    return (
+      <div className="overflow-x-auto max-h-96 overflow-y-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Linha</TableHead>
+              <TableHead>Data Recebimento</TableHead>
+              <TableHead>Contrato</TableHead>
+              <TableHead>Valor da Parcela</TableHead>
+              <TableHead>Valor Comissão</TableHead>
+              <TableHead>% Comissão</TableHead>
+              <TableHead>Status</TableHead>
+              {showMotivo && <TableHead>Motivo</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {itens.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.linha}</TableCell>
+                <TableCell>{item.created_date ? format(new Date(item.created_date), 'dd/MM/yyyy') : '-'}</TableCell>
+                <TableCell>{item.contrato || '-'}</TableCell>
+                <TableCell>{formatCurrency(item.valor_parcela || 0)}</TableCell>
+                <TableCell>{formatCurrency(item.valor_recebido)}</TableCell>
+                <TableCell>{item.percentual_comissao || '-'}</TableCell>
+                <TableCell><StatusBadge status={item.status} /></TableCell>
+                {showMotivo && (
+                  <TableCell className="max-w-xs">
+                    <span className="text-sm text-red-600">{item.motivo_divergencia}</span>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
+  // Colunas para consórcio (padrão)
   return (
     <div className="overflow-x-auto max-h-96 overflow-y-auto">
       <Table>
