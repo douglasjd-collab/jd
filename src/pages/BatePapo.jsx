@@ -189,38 +189,35 @@ export default function BatePapo() {
   const [corrigindo, setCorrigindo] = useState(false);
   const [limpandoTudo, setLimpandoTudo] = useState(false);
 
-  const limparTudoEReimportar = async () => {
-    const primeira = window.confirm(
-      `⚠️ ATENÇÃO: Isso vai APAGAR todas as conversas e mensagens do banco e reimportar do zero via Evolution.\n\nTem certeza?`
+  const limparHistoricoCompleto = async () => {
+    const confirmacao = window.confirm(
+      `🔴 LIMPAR TUDO?\n\n${conversas.length} conversas + mensagens serão deletadas.\n\nClique OK para confirmar.`
     );
-    if (!primeira) return;
-    const segunda = window.confirm(
-      `🔴 CONFIRMAÇÃO FINAL: Todas as ${conversas.length} conversas e mensagens serão DELETADAS permanentemente.\n\nClique OK para confirmar.`
-    );
-    if (!segunda) return;
+    if (!confirmacao) return;
 
     setLimpandoTudo(true);
     try {
-      toast.message('🗑️ Apagando conversas e mensagens...', { duration: 60000 });
-      const resp = await base44.functions.invoke('limparTudoERecriar', { empresa_id: empresaId, confirmar: true });
-      const data = resp?.data;
-      if (data?.ok) {
-        toast.success(`✅ ${data.mensagem}`);
-        // Aguarda 2s e depois reimporta
-        await new Promise(r => setTimeout(r, 2000));
-        toast.message('📥 Reimportando conversas da Evolution...', { duration: 60000 });
-        const resp2 = await base44.functions.invoke('sincronizarTodosChatsCompleto', { empresa_id: empresaId });
-        const data2 = resp2?.data;
-        if (data2?.ok) {
-          toast.success(`✅ ${data2.totalConversasAgora} conversas reimportadas!`);
-        }
-        refetchConversas();
-        setConversaSelecionada(null);
-      } else {
-        toast.error('Erro: ' + (data?.error || 'Desconhecido'));
+      toast.message('🗑️ Limpando histórico...', { duration: 30000 });
+      
+      // 1. Apagar todas as mensagens
+      const msgsFiltro = await base44.entities.MensagemWhatsapp.filter({}, '-created_date', 10000);
+      for (const msg of msgsFiltro) {
+        await base44.entities.MensagemWhatsapp.delete(msg.id).catch(() => {});
       }
+      console.log(`✅ ${msgsFiltro.length} mensagens deletadas`);
+      
+      // 2. Apagar todas as conversas
+      const convsFiltro = await base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, '-created_date', 10000);
+      for (const conv of convsFiltro) {
+        await base44.entities.ConversaWhatsapp.delete(conv.id).catch(() => {});
+      }
+      console.log(`✅ ${convsFiltro.length} conversas deletadas`);
+      
+      toast.success(`✅ Histórico limpo! ${convsFiltro.length} conversas + ${msgsFiltro.length} mensagens deletadas`);
+      refetchConversas();
+      setConversaSelecionada(null);
     } catch (e) {
-      toast.error('Erro: ' + e.message);
+      toast.error('Erro ao limpar: ' + e.message);
     } finally {
       setLimpandoTudo(false);
     }
@@ -919,17 +916,17 @@ export default function BatePapo() {
                   <TooltipContent side="bottom"><p>Sincronizar conversas</p></TooltipContent>
                 </Tooltip>
 
-                {/* 🔴 Limpar tudo e reimportar */}
+                {/* 🔴 Limpar histórico */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button size="icon" variant="destructive"
                       className="h-8 w-8 rounded-full flex-shrink-0"
-                      onClick={limparTudoEReimportar}
+                      onClick={limparHistoricoCompleto}
                       disabled={limpandoTudo || sincronizando}>
                       {limpandoTudo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-red-700 text-white"><p>🔴 Limpar TUDO e reimportar</p></TooltipContent>
+                  <TooltipContent side="bottom" className="bg-red-700 text-white"><p>🔴 Limpar histórico completo</p></TooltipContent>
                 </Tooltip>
 
                 {/* Novo */}
