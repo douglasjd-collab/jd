@@ -5,8 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   BarChart3,
   Send,
@@ -22,6 +30,9 @@ import {
   DollarSign,
   X,
   Download,
+  Calendar,
+  Target,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
@@ -33,6 +44,9 @@ export default function Campanhas() {
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [filtroRenovacao, setFiltroRenovacao] = useState('aguardando');
   const [chatPopup, setChatPopup] = useState(null); // { nome, telefone }
+  const [campanhaPlanejamentoOpen, setCampanhaPlanejamentoOpen] = useState(false);
+  const [mensagemPlanejamento, setMensagemPlanejamento] = useState('');
+  const [searchPlanejamento, setSearchPlanejamento] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -98,6 +112,80 @@ export default function Campanhas() {
     onError: (e) => toast.error('Erro: ' + e.message),
   });
 
+  // Buscar etapas tipo "planejamento"
+  const { data: etapasPlanejamento = [] } = useQuery({
+    queryKey: ['etapas-planejamento', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.EtapaFunil.filter({ empresa_id: empresaId, tipo: 'planejamento', status: 'ativa' }),
+  });
+
+  // Buscar oportunidades nas etapas de planejamento
+  const { data: oportunidadesPlanejamento = [], refetch: refetchPlanejamento } = useQuery({
+    queryKey: ['oportunidades-planejamento', empresaId, etapasPlanejamento],
+    enabled: !!empresaId && etapasPlanejamento.length > 0,
+    queryFn: async () => {
+      const todasOport = await base44.entities.Oportunidade.filter({ empresa_id: empresaId, status: 'aberta' }, '-data_ultima_movimentacao', 500);
+      const etapaIds = etapasPlanejamento.map(e => e.id);
+      return todasOport.filter(o => etapaIds.includes(o.etapa_id));
+    },
+  });
+
+  // Enviar campanha quinzenal para leads de planejamento
+  const enviarCampanhaPlanejamentoMutation = useMutation({
+    mutationFn: async ({ mensagem, leads }) => {
+      if (!mensagem.trim()) throw new Error('Digite uma mensagem');
+      if (leads.length === 0) throw new Error('Nenhum lead selecionado');
+
+      let enviados = 0;
+      let erros = 0;
+
+      for (const lead of leads) {
+        const telefone = lead.telefone_lead || lead.cliente_telefone;
+        if (!telefone) continue;
+        try {
+          const textoFinal = mensagem
+            .replace('{nome}', lead.titulo || lead.cliente_nome || 'Prezado(a)')
+            .replace('{valor}', lead.valor_estimado ? `R$ ${Number(lead.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '');
+
+          await base44.functions.invoke('enviarMensagemWhatsapp', {
+            empresa_id: empresaId,
+            telefone,
+            mensagem: textoFinal,
+          });
+
+          // Registrar no histórico
+          await base44.entities.CampanhaLog.create({
+            empresa_id: empresaId,
+            cliente_nome: lead.cliente_nome || lead.titulo,
+            cliente_telefone: telefone,
+            tipo_campanha: 'planejamento_compra',
+            status: 'enviada',
+          });
+
+          enviados++;
+        } catch {
+          erros++;
+          await base44.entities.CampanhaLog.create({
+            empresa_id: empresaId,
+            cliente_nome: lead.cliente_nome || lead.titulo,
+            cliente_telefone: telefone,
+            tipo_campanha: 'planejamento_compra',
+            status: 'erro',
+          });
+        }
+      }
+      return { enviados, erros };
+    },
+    onSuccess: (data) => {
+      toast.success(`✅ ${data.enviados} mensagens enviadas${data.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
+      setCampanhaPlanejamentoOpen(false);
+      setMensagemPlanejamento('');
+      refetchPlanejamento();
+      queryClient.invalidateQueries({ queryKey: ['campanhas'] });
+    },
+    onError: (e) => toast.error('Erro: ' + e.message),
+  });
+
   // Cancelar renovação
   const cancelarRenovacaoMutation = useMutation({
     mutationFn: (id) => base44.entities.CampanhaRenovacao.update(id, { status: 'cancelada' }),
@@ -139,6 +227,13 @@ export default function Campanhas() {
     vencidas: renovacoes.filter(r => r.status === 'aguardando' && r.data_agendada_envio <= hoje).length,
     enviadas: renovacoes.filter(r => r.status === 'enviada').length,
   };
+
+  const leadsPlanejaFiltrados = oportunidadesPlanejamento.filter(o => {
+    const t = searchPlanejamento.toLowerCase();
+    return !t || (o.titulo || '').toLowerCase().includes(t) ||
+      (o.cliente_nome || '').toLowerCase().includes(t) ||
+      (o.telefone_lead || '').includes(t);
+  });
 
   const formatCurrency = (v) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -267,6 +362,15 @@ export default function Campanhas() {
             {renovacaoStats.aguardando > 0 && (
               <span className="ml-1 bg-amber-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
                 {renovacaoStats.aguardando}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="planejamento" className="gap-1.5">
+            <Target className="w-4 h-4" />
+            Planejamento de Compra
+            {leadsPlanejaFiltrados.length > 0 && (
+              <span className="ml-1 bg-purple-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                {oportunidadesPlanejamento.length}
               </span>
             )}
           </TabsTrigger>
@@ -445,6 +549,145 @@ export default function Campanhas() {
           </Card>
         </TabsContent>
 
+        {/* ABA: Planejamento de Compra */}
+        <TabsContent value="planejamento">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Target className="w-5 h-5 text-purple-500" />
+                    Leads — Planejamento de Compra
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Leads que estabeleceram um prazo futuro de fechamento. Envie campanhas quinzenais para manter o interesse.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setCampanhaPlanejamentoOpen(true)}
+                  disabled={oportunidadesPlanejamento.length === 0}
+                  className="gap-2 bg-purple-600 hover:bg-purple-700 whitespace-nowrap flex-shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                  Enviar Campanha Quinzenal
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3 mb-2">
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-purple-700">{oportunidadesPlanejamento.length}</p>
+                  <p className="text-xs text-slate-500">Leads no planejamento</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-700">
+                    {oportunidadesPlanejamento.filter(o => o.telefone_lead || o.cliente_telefone).length}
+                  </p>
+                  <p className="text-xs text-slate-500">Com telefone</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-700">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                      oportunidadesPlanejamento.reduce((s, o) => s + (o.valor_estimado || 0), 0)
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500">Valor total estimado</p>
+                </div>
+              </div>
+
+              {/* Busca */}
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar lead por nome ou telefone..."
+                  value={searchPlanejamento}
+                  onChange={(e) => setSearchPlanejamento(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* Lista */}
+              <ScrollArea className="h-[480px] border rounded-lg">
+                <div className="p-3 space-y-2">
+                  {leadsPlanejaFiltrados.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-2">
+                      <Target className="w-10 h-10 opacity-30" />
+                      <p className="text-sm">Nenhum lead em Planejamento de Compra</p>
+                      <p className="text-xs text-center max-w-xs">
+                        Mova leads do funil para a coluna "Planejamento de Compra" para aparecerem aqui.
+                      </p>
+                    </div>
+                  ) : (
+                    leadsPlanejaFiltrados.map(o => {
+                      const temTelefone = !!(o.telefone_lead || o.cliente_telefone);
+                      const diasParaFechar = o.data_fechamento_prevista
+                        ? Math.ceil((new Date(o.data_fechamento_prevista + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24))
+                        : null;
+
+                      return (
+                        <div key={o.id} className="p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                {(o.cliente_nome || o.titulo)?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm text-slate-900 truncate">{o.titulo}</p>
+                                {o.cliente_nome && <p className="text-xs text-slate-500 truncate">👤 {o.cliente_nome}</p>}
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  {(o.telefone_lead || o.cliente_telefone) && (
+                                    <span className="text-xs text-slate-400">📞 {o.telefone_lead || o.cliente_telefone}</span>
+                                  )}
+                                  {o.valor_estimado > 0 && (
+                                    <span className="text-xs font-medium text-emerald-700">
+                                      💰 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(o.valor_estimado)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              {!temTelefone && (
+                                <Badge variant="secondary" className="text-xs">Sem telefone</Badge>
+                              )}
+                              {o.data_fechamento_prevista && (
+                                <div className="text-right">
+                                  <p className="text-[10px] text-slate-400">Previsão fechamento</p>
+                                  <p className={`text-xs font-semibold ${diasParaFechar !== null && diasParaFechar <= 30 ? 'text-amber-600' : 'text-slate-700'}`}>
+                                    {new Date(o.data_fechamento_prevista + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                  </p>
+                                  {diasParaFechar !== null && (
+                                    <p className="text-[10px] text-slate-400">
+                                      {diasParaFechar > 0 ? `em ${diasParaFechar}d` : `${Math.abs(diasParaFechar)}d atrás`}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {temTelefone && (
+                            <div className="mt-2 pt-2 border-t border-slate-100">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs gap-1 border-green-200 text-green-700 hover:bg-green-50"
+                                onClick={() => setChatPopup({ nome: o.cliente_nome || o.titulo, telefone: o.telefone_lead || o.cliente_telefone })}
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" /> Conversar agora
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ABA: Histórico */}
         <TabsContent value="historico">
           <Card>
@@ -518,6 +761,57 @@ export default function Campanhas() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal envio campanha planejamento */}
+      <Dialog open={campanhaPlanejamentoOpen} onOpenChange={setCampanhaPlanejamentoOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-purple-500" />
+              Enviar Campanha — Planejamento de Compra
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <p className="text-sm text-purple-800">
+                <strong>{oportunidadesPlanejamento.filter(o => o.telefone_lead || o.cliente_telefone).length} leads</strong> com telefone receberão essa mensagem via WhatsApp.
+              </p>
+              <p className="text-xs text-purple-600 mt-1">
+                Use <code className="bg-purple-100 px-1 rounded">{'{nome}'}</code> para o nome do lead e <code className="bg-purple-100 px-1 rounded">{'{valor}'}</code> para o valor estimado.
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-sm mb-2 block">Mensagem da Campanha *</Label>
+              <Textarea
+                value={mensagemPlanejamento}
+                onChange={(e) => setMensagemPlanejamento(e.target.value)}
+                placeholder={`Ex: Olá {nome}! 👋\n\nLembramos que temos uma oferta especial esperando por você.\n\nSua proposta de {valor} ainda está disponível com condições únicas. Que tal fecharmos essa semana?\n\nAguardamos seu contato! 😊`}
+                rows={7}
+                className="resize-none text-sm"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setCampanhaPlanejamentoOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => enviarCampanhaPlanejamentoMutation.mutate({
+                  mensagem: mensagemPlanejamento,
+                  leads: oportunidadesPlanejamento.filter(o => o.telefone_lead || o.cliente_telefone),
+                })}
+                disabled={enviarCampanhaPlanejamentoMutation.isPending || !mensagemPlanejamento.trim()}
+                className="gap-2 bg-purple-600 hover:bg-purple-700"
+              >
+                {enviarCampanhaPlanejamentoMutation.isPending
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
+                  : <><Send className="w-4 h-4" /> Enviar para todos</>}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Chat popup */}
       <ChatPopupModal

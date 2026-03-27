@@ -1,0 +1,71 @@
+{
+  "name": "EtapaFunil",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome da etapa"
+    },
+    "ordem": {
+      "type": "number",
+      "description": "Ordem de exibi\u00e7\u00e3o no funil"
+    },
+    "cor": {
+      "type": "string",
+      "description": "Cor da etapa (hex)",
+      "default": "#3b82f6"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "aberta",
+        "ganho",
+        "perdida",
+        "planejamento"
+      ],
+      "default": "aberta",
+      "description": "Tipo da etapa"
+    },
+    "requer_cliente": {
+      "type": "boolean",
+      "default": false,
+      "description": "Exige cliente vinculado para avan\u00e7ar"
+    },
+    "requer_documentos": {
+      "type": "boolean",
+      "default": false,
+      "description": "Exige documentos para avan\u00e7ar"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "inativa"
+      ],
+      "default": "ativa"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "ordem"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'master') return true; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'master') return true; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return false;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'master') return true; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return false;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'master') return true; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return false;"
+    }
+  }
+}

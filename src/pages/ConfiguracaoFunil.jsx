@@ -266,7 +266,8 @@ export default function ConfiguracaoFunil() {
         const tipos = {
           aberta: { label: 'Aberta', color: 'bg-blue-100 text-blue-700' },
           ganho: { label: 'Ganho', color: 'bg-green-100 text-green-700' },
-          perdida: { label: 'Perdida', color: 'bg-red-100 text-red-700' }
+          perdida: { label: 'Perdida', color: 'bg-red-100 text-red-700' },
+          planejamento: { label: 'Planejamento', color: 'bg-purple-100 text-purple-700' }
         };
         const config = tipos[row.tipo];
         return <StatusBadge status={row.tipo} className={config?.color} />;
@@ -315,13 +316,18 @@ export default function ConfiguracaoFunil() {
                 Editar
               </DropdownMenuItem>
             )}
-            {(isAdmin || isGerente) && (
+            {(isAdmin || isGerente) && row.tipo !== 'ganho' && row.tipo !== 'perdida' && row.tipo !== 'planejamento' && (
               <DropdownMenuItem
                 onClick={() => setDeleteId(row.id)}
                 className="text-red-600"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Excluir
+              </DropdownMenuItem>
+            )}
+            {(row.tipo === 'ganho' || row.tipo === 'perdida' || row.tipo === 'planejamento') && (
+              <DropdownMenuItem disabled className="text-slate-400 text-xs cursor-not-allowed">
+                🔒 Etapa pré-fixada
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -420,6 +426,7 @@ export default function ConfiguracaoFunil() {
                     <SelectItem value="aberta">Aberta</SelectItem>
                     <SelectItem value="ganho">Ganho (conversão)</SelectItem>
                     <SelectItem value="perdida">Perdida</SelectItem>
+                    <SelectItem value="planejamento">Planejamento de Compra</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

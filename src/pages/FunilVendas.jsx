@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
@@ -386,18 +386,36 @@ export default function FunilVendas() {
 
   const criarFunilMutation = useMutation({
     mutationFn: async (data) => {
-      return base44.entities.EtapaFunil.create({
+      const baseOrdem = (etapas?.length || 0) + 1;
+      const empresaId = currentUser?.empresa_id || '';
+
+      // Criar etapa principal do funil
+      const etapaPrincipal = await base44.entities.EtapaFunil.create({
         nome: data.nome,
         cor: data.cor,
         status: 'ativa',
-        ordem: (etapas?.length || 0) + 1
+        ordem: baseOrdem,
+        tipo: 'aberta',
+        empresa_id: empresaId,
       });
+
+      // Criar etapa "Planejamento de Compra" pré-fixada
+      await base44.entities.EtapaFunil.create({
+        nome: 'Planejamento de Compra',
+        cor: '#8b5cf6',
+        status: 'ativa',
+        ordem: baseOrdem + 1,
+        tipo: 'planejamento',
+        empresa_id: empresaId,
+      });
+
+      return etapaPrincipal;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
       setCriarFunilOpen(false);
       setNovoFunil({ nome: '', cor: '#3b82f6' });
-      toast.success('Funil criado com sucesso!');
+      toast.success('Funil criado com sucesso! Coluna "Planejamento de Compra" adicionada automaticamente.');
     },
     onError: (error) => {
       toast.error('Erro ao criar funil: ' + error.message);
@@ -777,6 +795,28 @@ export default function FunilVendas() {
     );
   }
 
+  const inicializarEtapasPadraoMutation = useMutation({
+    mutationFn: async () => {
+      const empresaId = currentUser?.empresa_id || '';
+      const etapasPadrao = [
+        { nome: 'Novo Lead', cor: '#3b82f6', tipo: 'aberta', ordem: 1 },
+        { nome: 'Em Contato', cor: '#f59e0b', tipo: 'aberta', ordem: 2 },
+        { nome: 'Proposta Enviada', cor: '#8b5cf6', tipo: 'aberta', ordem: 3 },
+        { nome: 'Planejamento de Compra', cor: '#7c3aed', tipo: 'planejamento', ordem: 4 },
+        { nome: 'Ganho', cor: '#10b981', tipo: 'ganho', ordem: 5 },
+        { nome: 'Perdido', cor: '#ef4444', tipo: 'perdida', ordem: 6 },
+      ];
+      for (const e of etapasPadrao) {
+        await base44.entities.EtapaFunil.create({ ...e, empresa_id: empresaId, status: 'ativa' });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
+      toast.success('Funil inicializado com etapas padrão!');
+    },
+    onError: (e) => toast.error('Erro: ' + e.message),
+  });
+
   if (etapas.length === 0) {
     return (
       <div className="p-8">
@@ -784,8 +824,16 @@ export default function FunilVendas() {
           title="Funil de Vendas"
           subtitle="Configure as etapas do funil primeiro"
         >
+          <Button
+            onClick={() => inicializarEtapasPadraoMutation.mutate()}
+            disabled={inicializarEtapasPadraoMutation.isPending}
+            className="bg-purple-600 hover:bg-purple-700 gap-2"
+          >
+            {inicializarEtapasPadraoMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Criar Funil Padrão (com Planejamento)
+          </Button>
           <Link to={createPageUrl('ConfiguracaoFunil')}>
-            <Button>Configurar Etapas</Button>
+            <Button variant="outline">Configurar Manualmente</Button>
           </Link>
         </PageHeader>
       </div>
