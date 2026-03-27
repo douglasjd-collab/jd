@@ -118,13 +118,10 @@ async function resolverLidParaTelefone(lid, evolutionUrl, evolutionKey, instance
   return null;
 }
 
-const BLOCKLIST = new Set(['lid_15578500694049', 'lid_131829726244871', 'lid_49328018215052']);
-
 function validarTelefone(num) {
   if (!num) return false;
-  if (BLOCKLIST.has(num)) return false;
   if (num.startsWith('lid_')) return false;
-  if (num.length < 8 || num.length > 15) return false; // padrão internacional E.164
+  if (num.length < 10 || num.length > 15) return false;
   if (/^(\d)\1{9,}$/.test(num)) return false;
   return true;
 }
@@ -322,80 +319,30 @@ async function processarWebhook(req, rawBody) {
 
   console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}" | URL: ${arquivo_url ? '✓' : '✗'}`);
 
-  // Queries em paralelo: dedup + instância + contato + cliente
-  const [existentes, colaboradoresInst, empresasInst, ...contatosClientes] = await Promise.all([
-    base44.asServiceRole.entities.MensagemWhatsapp.filter({ whatsapp_message_id: messageId }),
-    instanceFinal ? base44.asServiceRole.entities.Colaborador.filter({ evolution_instance_name: instanceFinal }) : Promise.resolve([]),
-    instanceFinal ? base44.asServiceRole.entities.Empresa.filter({ evolution_instance_name: instanceFinal }) : Promise.resolve([]),
-    ...telefonesVariacoes.map(tel =>
-      base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: tel })
-    ),
-    ...telefonesVariacoes.map(tel =>
-      base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: tel })
-    )
-  ]);
-
-  // Duplicata
+  // Usar empresa padrão
+  empresaId = '699696c2c9f5bffc2e67402b';
+  
+  // Verificar duplicata
+  const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ 
+    whatsapp_message_id: messageId 
+  });
+  
   if (existentes.length > 0) {
     console.log('⏭️ Duplicata ignorada:', messageId);
     return;
   }
 
-  // Identificar empresa pela instância
-  if (colaboradoresInst?.length > 0) {
-    const colab = colaboradoresInst[0];
-    tipoConexao = 'usuario';
-    colaboradorId = colab.id;
-    empresaId = colab.empresa_id;
-    console.log(`✅ Empresa via colaborador: ${empresaId}`);
-  } else if (empresasInst?.length > 0) {
-    empresaId = empresasInst[0].id;
-    console.log(`✅ Empresa via instância: ${empresaId}`);
-  } else {
-    // Fallback: buscar primeira empresa do sistema
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 1);
-    if (empresas?.length > 0) {
-      empresaId = empresas[0].id;
-      console.log(`✅ Empresa fallback: ${empresaId}`);
-    } else {
-      empresaId = '699696c2c9f5bffc2e67402b'; // JD como último recurso
-      console.log(`⚠️ Usando JD padrão`);
-    }
-  }
+  console.log(`✅ EmpresaId: ${empresaId}`);
 
-  // Contato e cliente
-  const nVariacoes = telefonesVariacoes.length;
-  const contatoEncontrado = contatosClientes.slice(0, nVariacoes).find(r => r.length > 0)?.[0] || null;
-  const clienteEncontrado = contatosClientes.slice(nVariacoes).find(r => r.length > 0)?.[0] || null;
-  const clienteId = clienteEncontrado?.id || '';
-
-  if (!contatoEncontrado && empresaId) {
-    base44.asServiceRole.entities.ContatoWhatsapp.create({
-      empresa_id: empresaId, cliente_id: clienteId || '',
-      telefone: telefoneLimpo, nome: pushName || 'Cliente WhatsApp',
-      ultima_atualizacao: new Date().toISOString()
-    }).catch(e => console.log('⚠️ Erro ao criar contato:', e.message));
-  }
-
-  // Buscar conversa — buscar todas as variações em paralelo e unificar
+  // Buscar conversa
   let conversa = null;
-  const todasConversas = (await Promise.all(
-    telefonesVariacoes.map(tel =>
-      base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId, cliente_telefone: tel })
-    )
-  )).flat();
+  const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+    empresa_id: empresaId,
+    cliente_telefone: telefoneLimpo
+  }, '-data_ultima_mensagem', 1);
 
-  if (todasConversas.length > 0) {
-    // Ordenar pela mais recente
-    todasConversas.sort((a, b) =>
-      new Date(b.data_ultima_mensagem || b.created_date) - new Date(a.data_ultima_mensagem || a.created_date)
-    );
-    conversa = todasConversas[0];
-    // Apagar duplicatas (manter apenas a mais recente)
-    for (let i = 1; i < todasConversas.length; i++) {
-      console.log(`🗑️ Excluindo conversa duplicada: ${todasConversas[i].id}`);
-      base44.asServiceRole.entities.ConversaWhatsapp.delete(todasConversas[i].id).catch(() => {});
-    }
+  if (conversas.length > 0) {
+    conversa = conversas[0];
   }
 
   if (conversa) {
@@ -444,10 +391,17 @@ async function processarWebhook(req, rawBody) {
 
   console.log(`✅ Mensagem salva: ${novaMensagem.id} | remetente: ${remetente}`);
 
-  registrarLog(base44, empresaId, 'mensagem_recebida', {
-    telefone: telefoneLimpo, conteudo: conteudo.substring(0, 100),
-    status: 'sucesso', mensagem_id: novaMensagem.id,
-    conversa_id: conversa.id, instancia: instanceFinal
+  // Log em background
+  base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+    empresa_id: empresaId,
+    tipo_evento: 'mensagem_recebida',
+    telefone: telefoneLimpo,
+    conteudo: conteudo.substring(0, 100),
+    status: 'sucesso',
+    mensagem_id: novaMensagem.id,
+    conversa_id: conversa.id,
+    instancia: instanceFinal,
+    timestamp: new Date().toISOString()
   }).catch(() => {});
 }
 
