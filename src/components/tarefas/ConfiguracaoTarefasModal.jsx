@@ -34,6 +34,8 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
   const [novoStatusNome, setNovoStatusNome] = useState('');
   const [editStatusNome, setEditStatusNome] = useState(null);
   const [statusOrdenado, setStatusOrdenado] = useState([]);
+  const [novoTipo, setNovoTipo] = useState('');
+  const [editTipo, setEditTipo] = useState(null);
   const queryClient = useQueryClient();
 
   // ── Status ──────────────────────────────────────────────
@@ -256,6 +258,28 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
     toast.success('Setor atualizado!');
   };
 
+  // ── Tipos de Tarefa ─────────────────────────────────────
+  const { data: tiposList = [] } = useQuery({
+    queryKey: ['tipos-tarefa', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.TipoTarefa.filter({ empresa_id: empresaId }),
+  });
+
+  const criarTipo = useMutation({
+    mutationFn: (nome) => base44.entities.TipoTarefa.create({ nome, empresa_id: empresaId, ativo: true }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tipos-tarefa'] }); setNovoTipo(''); toast.success('Tipo criado!'); },
+  });
+
+  const atualizarTipo = useMutation({
+    mutationFn: ({ id, nome }) => base44.entities.TipoTarefa.update(id, { nome }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tipos-tarefa'] }); setEditTipo(null); toast.success('Tipo atualizado!'); },
+  });
+
+  const excluirTipo = useMutation({
+    mutationFn: (id) => base44.entities.TipoTarefa.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tipos-tarefa'] }); toast.success('Tipo excluído!'); },
+  });
+
   // lista a exibir: usa statusOrdenado se já foi preenchido, senão statusBase
   const listaExibir = statusOrdenado.length > 0 ? statusOrdenado : statusBase;
 
@@ -280,6 +304,12 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'setores' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
           Setores
+        </button>
+        <button
+          onClick={() => setAba('tipos')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${aba === 'tipos' ? 'border-[#1e3a5f] text-[#1e3a5f]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Tipos de Tarefa
         </button>
       </div>
 
@@ -524,6 +554,60 @@ function ConteudoModal({ empresaId, onStatusChanged }) {
                   onKeyDown={e => e.key === 'Enter' && adicionarSetor()}
                 />
                 <Button size="sm" onClick={adicionarSetor} className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+        {/* ── ABA TIPOS DE TAREFA ── */}
+        {aba === 'tipos' && (
+          <>
+            <div className="space-y-2">
+              {tiposList.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Nenhum tipo cadastrado.</p>}
+              {tiposList.map(t => (
+                <div key={t.id} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border">
+                  {editTipo?.id === t.id ? (
+                    <>
+                      <Input
+                        value={editTipo.nome}
+                        onChange={e => setEditTipo({ ...editTipo, nome: e.target.value })}
+                        className="flex-1 h-7 text-sm"
+                        autoFocus
+                        onKeyDown={e => e.key === 'Enter' && atualizarTipo.mutate({ id: t.id, nome: editTipo.nome })}
+                      />
+                      <Button size="icon" className="h-7 w-7 bg-green-600 hover:bg-green-700" onClick={() => atualizarTipo.mutate({ id: t.id, nome: editTipo.nome })}>
+                        <Check className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTipo(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm font-medium">{t.nome}</span>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTipo(t)}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-700" onClick={() => { if (confirm('Excluir tipo?')) excluirTipo.mutate(t.id); }}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="border rounded-lg p-3 bg-slate-50 space-y-2">
+              <Label className="text-xs font-semibold text-slate-600">Novo Tipo</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={novoTipo}
+                  onChange={e => setNovoTipo(e.target.value)}
+                  placeholder="Ex: Visita, Ligação, Proposta..."
+                  className="flex-1 h-8 text-sm"
+                  onKeyDown={e => e.key === 'Enter' && novoTipo.trim() && criarTipo.mutate(novoTipo.trim())}
+                />
+                <Button size="sm" onClick={() => { if (!novoTipo.trim()) return toast.error('Informe o nome'); criarTipo.mutate(novoTipo.trim()); }} disabled={criarTipo.isPending} className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0">
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
