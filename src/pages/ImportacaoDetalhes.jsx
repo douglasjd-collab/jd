@@ -187,6 +187,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
               <TableHead>Linha</TableHead>
               <TableHead>Data Recebimento</TableHead>
               <TableHead>Contrato</TableHead>
+              <TableHead>Banco</TableHead>
               <TableHead>Valor da Parcela</TableHead>
               <TableHead>Valor Comissão</TableHead>
               <TableHead>% Comissão</TableHead>
@@ -200,9 +201,10 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
                 <TableCell>{item.linha}</TableCell>
                 <TableCell>{item.created_date ? format(new Date(item.created_date), 'dd/MM/yyyy') : '-'}</TableCell>
                 <TableCell>{item.contrato || '-'}</TableCell>
+                <TableCell>{item.banco || '-'}</TableCell>
                 <TableCell>{formatCurrency(item.valor_parcela || 0)}</TableCell>
                 <TableCell>{formatCurrency(item.valor_recebido)}</TableCell>
-                <TableCell>{item.percentual_comissao || '-'}</TableCell>
+                <TableCell>{item.percentual_comissao ? `${item.percentual_comissao}%` : '0%'}</TableCell>
                 <TableCell><StatusBadge status={item.status} /></TableCell>
                 {showMotivo && (
                   <TableCell className="max-w-xs">
