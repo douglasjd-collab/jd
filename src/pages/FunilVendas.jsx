@@ -107,17 +107,18 @@ export default function FunilVendas() {
       let userData = { ...user };
       
       if (user.role !== 'super_admin') {
-        const colabs = await base44.entities.Colaborador.filter(
-          { user_id: user.id, status: 'ativo' }
-        );
+        const colabs = await base44.entities.Colaborador.filter({ user_id: user.id });
         
         if (colabs && colabs.length > 0) {
-          const colab = colabs[0];
+          // Priorizar ativo, depois qualquer um com empresa_id
+          const colab = colabs.find(c => c.status === 'ativo' && c.empresa_id) 
+            || colabs.find(c => c.empresa_id) 
+            || colabs[0];
           userData = {
             ...user,
             colaborador_id: colab.id,
-            empresa_id: colab.empresa_id,
-            perfil: colab.perfil,
+            empresa_id: colab.empresa_id || user.empresa_id || '',
+            perfil: colab.perfil || 'vendedor',
             full_name: colab.nome || user.full_name
           };
         } else {
@@ -125,7 +126,7 @@ export default function FunilVendas() {
           userData = {
             ...user,
             colaborador_id: null,
-            empresa_id: null,
+            empresa_id: user.empresa_id || '',
             perfil: 'vendedor',
             full_name: user.full_name
           };
@@ -661,8 +662,7 @@ export default function FunilVendas() {
     }
   };
 
-  const handleSubmit = () => {
-    console.log('📝 handleSubmit formData:', formData);
+  const handleSubmit = async () => {
     if (!formData.titulo) {
       toast.error('Preencha o Título');
       return;
@@ -682,9 +682,26 @@ export default function FunilVendas() {
     const etapa = etapas.find(e => e.id === formData.etapa_id);
 
     const produtoFinal = formData.produto || (filterProduto !== 'todos' ? filterProduto : 'consorcio');
-    
-    const empresaIdFinal = currentUser?.empresa_id || '';
-    console.log('📝 handleSubmit - empresa_id:', empresaIdFinal, '| produto:', produtoFinal, '| etapa_id:', formData.etapa_id, '| vendedor_id:', vendedorIdFinal);
+
+    // Garantir empresa_id: buscar do colaborador se necessário
+    let empresaIdFinal = currentUser?.empresa_id || '';
+    if (!empresaIdFinal && currentUser?.id) {
+      try {
+        const colabs = await base44.entities.Colaborador.filter({ user_id: currentUser.id, status: 'ativo' });
+        if (colabs && colabs.length > 0) {
+          empresaIdFinal = colabs[0].empresa_id || '';
+          // Atualizar currentUser para futuras operações
+          setCurrentUser(prev => ({ ...prev, empresa_id: empresaIdFinal }));
+        }
+      } catch (e) {
+        console.error('Erro ao buscar empresa_id do colaborador:', e);
+      }
+    }
+
+    if (!empresaIdFinal) {
+      toast.error('Empresa não encontrada. Verifique seu cadastro de colaborador.');
+      return;
+    }
 
     const data = {
       ...formData,
