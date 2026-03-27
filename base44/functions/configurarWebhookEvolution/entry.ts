@@ -33,12 +33,13 @@ Deno.serve(async (req) => {
     console.log('Instance:', INSTANCE_NAME);
 
     // Configurar webhook na Evolution
+    // Tentar com header Authorization Bearer primeiro
     const configResponse = await fetch(
       `${EVOLUTION_API_URL}/webhook/set/${INSTANCE_NAME}`,
       {
         method: 'POST',
         headers: {
-          'apikey': EVOLUTION_API_KEY,
+          'Authorization': `Bearer ${EVOLUTION_API_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
