@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, Eye, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, Eye, MessageCircle, MoreHorizontal, MessageSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
 import CampanhasPlanejamentoBadge from './CampanhasPlanejamentoBadge';
+import ChatPopupModal from '@/components/chat/ChatPopupModal';
 
 export default function OportunidadeCardConsolidado({
   oportunidade,
@@ -33,6 +34,7 @@ export default function OportunidadeCardConsolidado({
   etapaAtual
 }) {
   const [expandirSimulacoes, setExpandirSimulacoes] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const navigate = useNavigate();
 
   const isVendaFechada = etapaAtual?.nome?.toLowerCase().includes('venda fechada') || 
@@ -58,6 +60,7 @@ export default function OportunidadeCardConsolidado({
   const valorTotal = simulacoes?.reduce((sum, sim) => sum + (sim.valor_estimado || 0), 0) || oportunidade.valor_estimado;
 
   return (
+    <>
     <div className={`p-3 rounded-lg shadow-sm transition-all cursor-move ${cardClasses}`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
@@ -147,19 +150,29 @@ export default function OportunidadeCardConsolidado({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {/* Comentários internos */}
           <Button
             size="icon"
             variant="ghost"
             className="h-6 w-6 hover:bg-blue-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              onComentariosClick();
-            }}
-            title="Ver conversas"
+            onClick={(e) => { e.stopPropagation(); onComentariosClick(); }}
+            title="Comentários"
           >
             <MessageCircle className="w-4 h-4 text-blue-600" />
           </Button>
+          {/* Ver conversa WhatsApp */}
+          {(oportunidade.telefone_lead || oportunidade.cliente_telefone) && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6 hover:bg-green-100"
+              onClick={(e) => { e.stopPropagation(); setChatOpen(true); }}
+              title="Ver conversa WhatsApp"
+            >
+              <MessageSquare className="w-4 h-4 text-green-600" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -198,5 +211,21 @@ export default function OportunidadeCardConsolidado({
         </div>
       )}
     </div>
+
+    {/* Chat WhatsApp Popup */}
+
+    {chatOpen && (
+      <ChatPopupModal
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        contato={{
+          telefone: oportunidade.telefone_lead || oportunidade.cliente_telefone,
+          nome: oportunidade.cliente_nome || oportunidade.titulo,
+        }}
+        empresaId={currentUser?.empresa_id}
+        user={currentUser}
+      />
+    )}
+  </>
   );
 }
