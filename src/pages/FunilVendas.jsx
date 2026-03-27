@@ -103,39 +103,43 @@ export default function FunilVendas() {
         return;
       }
 
-      console.log('🔍 loadUser - user.id:', user.id, '| user.role:', user.role, '| user.empresa_id:', user.empresa_id);
-
-      // Para super admin, buscar Colaborador para obter empresa_id
       let userData = { ...user };
+      let empresaIdFinal = user.empresa_id || '';
       
+      // Tentar buscar empresa_id do colaborador
       if (user.role !== 'super_admin') {
         const colabs = await base44.entities.Colaborador.filter({ user_id: user.id });
-        
         if (colabs && colabs.length > 0) {
-          // Priorizar: ativo com empresa_id > qualquer um com empresa_id > primeiro
           const colab = colabs.find(c => c.status === 'ativo' && c.empresa_id) 
             || colabs.find(c => c.empresa_id) 
             || colabs[0];
           userData = {
             ...user,
             colaborador_id: colab.id,
-            empresa_id: colab.empresa_id || user.empresa_id || '',
+            empresa_id: colab.empresa_id || empresaIdFinal || '',
             perfil: colab.perfil || 'vendedor',
             full_name: colab.nome || user.full_name
           };
-        } else {
-          userData = {
-            ...user,
-            colaborador_id: null,
-            empresa_id: user.empresa_id || '',
-            perfil: 'vendedor',
-            full_name: user.full_name
-          };
+          empresaIdFinal = userData.empresa_id;
         }
       } else {
         userData.perfil = 'super_admin';
       }
 
+      // Se ainda não tem empresa_id, buscar primeira empresa (para super_admin sem empresa_id preenchido)
+      if (!empresaIdFinal) {
+        try {
+          const empresas = await base44.entities.Empresa.list(undefined, 1);
+          if (empresas && empresas.length > 0) {
+            empresaIdFinal = empresas[0].id;
+            userData.empresa_id = empresaIdFinal;
+          }
+        } catch (e) {
+          console.warn('Erro ao buscar primeira empresa:', e);
+        }
+      }
+
+      userData.empresa_id = empresaIdFinal || '';
       setCurrentUser(userData);
       setFormData((prev) => ({
         ...prev,
@@ -664,8 +668,6 @@ export default function FunilVendas() {
   };
 
   const handleSubmit = async () => {
-    console.log('🎯 handleSubmit iniciado - currentUser:', { id: currentUser?.id, empresa_id: currentUser?.empresa_id, perfil: currentUser?.perfil });
-
     if (!formData.titulo) {
       toast.error('Preencha o Título');
       return;
