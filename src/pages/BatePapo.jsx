@@ -81,16 +81,27 @@ export default function BatePapo() {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
     
-    // Sincronizar histórico em background (sem bloquear exibição)
+    // Sincronizar histórico em background via função mais robusta
     if (conversa?.id && conversa?.cliente_telefone && empresaId) {
-      base44.functions.invoke('importarMensagensConversa', {
+      console.log(`🔄 Sincronizando histórico para conversa ${conversa.id} (${conversa.cliente_telefone})...`);
+      base44.functions.invoke('sincronizarHistoricoAgressivo', {
         empresa_id: empresaId,
-        telefone: conversa.cliente_telefone,
-        conversa_id: conversa.id
-      }).then(() => {
+        conversa_id_especifico: conversa.id
+      }).then((resp) => {
+        console.log(`✅ Sincronização concluída:`, resp?.data);
         // Refetch após sincronizar
         queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
-      }).catch(e => console.error('Erro ao sincronizar:', e));
+      }).catch(e => {
+        console.error('Erro ao sincronizar via agressivo:', e);
+        // Fallback: tentar importação simples
+        base44.functions.invoke('importarMensagensConversa', {
+          empresa_id: empresaId,
+          telefone: conversa.cliente_telefone,
+          conversa_id: conversa.id
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
+        }).catch(e2 => console.error('Erro no fallback:', e2));
+      });
     }
     
     // Carregar foto do contato em paralelo
@@ -377,30 +388,15 @@ export default function BatePapo() {
     queryFn: async () => {
       if (!conversaSelecionadaId) return [];
       try {
-        console.log(`📥 Carregando mensagens para conversa: ${conversaSelecionadaId}`);
         const msgs = await base44.entities.MensagemWhatsapp.filter(
           { conversa_id: conversaSelecionadaId },
           '-data_envio',
           5000
         );
         console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
-        if (msgs.length === 0) {
-          console.warn(`⚠️ NENHUMA MENSAGEM ENCONTRADA para conversa_id: ${conversaSelecionadaId}`);
-          // Tentar sincronizar histórico
-          const conversa = conversas.find(c => c.id === conversaSelecionadaId);
-          if (conversa?.cliente_telefone && empresaId) {
-            console.log(`🔄 Tentando sincronizar histórico da conversa...`);
-            base44.functions.invoke('importarMensagensConversa', {
-              empresa_id: empresaId,
-              telefone: conversa.cliente_telefone,
-              conversa_id: conversaSelecionadaId
-            }).catch(e => console.error('Erro ao sincronizar:', e));
-          }
-        }
         const ordenadas = [...msgs].reverse();
         const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
         if (naoLidas.length > 0) {
-          console.log(`👁️ Marcando ${naoLidas.length} mensagens como lidas`);
           await Promise.all(naoLidas.map(msg => 
             base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
           ));
@@ -412,7 +408,7 @@ export default function BatePapo() {
       }
     },
     staleTime: 0,
-    refetchInterval: 1500,
+    refetchInterval: 3000,
     gcTime: 0
   });
 
