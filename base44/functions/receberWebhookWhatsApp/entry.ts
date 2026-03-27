@@ -193,6 +193,8 @@ async function processarWebhook(req, rawBody) {
   const remoteJidOriginal = key.remoteJid || '';
   const messageId = key.id || `gen_${Date.now()}`;
 
+  console.log(`📨 Mensagem ${fromMe ? '(ENVIADA)' : '(RECEBIDA)'} | remoteJid: ${remoteJidOriginal} | msgId: ${messageId}`);
+
   if (remoteJidOriginal.includes('@g.us')) {
     console.log('⏭️ Grupo ignorado');
     return;
