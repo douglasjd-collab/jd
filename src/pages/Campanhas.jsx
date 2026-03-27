@@ -18,10 +18,10 @@ import {
   CalendarClock,
   RefreshCw,
   MessageCircle,
-  User,
   Building2,
   DollarSign,
   X,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
@@ -77,6 +77,23 @@ export default function Campanhas() {
       if (data.erros > 0) toast.warning(`⚠️ ${data.erros} erros`);
       refetchCampanhas();
       refetchRenovacoes();
+    },
+    onError: (e) => toast.error('Erro: ' + e.message),
+  });
+
+  // Sincronizar propostas pagas existentes
+  const sincronizarMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await base44.functions.invoke('sincronizarPropostasPagasParaRenovacao', { empresa_id: empresaId });
+      return resp?.data;
+    },
+    onSuccess: (data) => {
+      if (data?.ok) {
+        toast.success(`✅ ${data.criadas} novas renovações importadas (${data.ignoradas} já existiam)`);
+        refetchRenovacoes();
+      } else {
+        toast.error('Erro: ' + (data?.error || 'Desconhecido'));
+      }
     },
     onError: (e) => toast.error('Erro: ' + e.message),
   });
@@ -153,14 +170,25 @@ export default function Campanhas() {
           <h1 className="text-3xl font-bold text-slate-900">Campanhas</h1>
           <p className="text-sm text-slate-500 mt-1">Renovações automáticas e reengajamento de clientes</p>
         </div>
-        <Button
-          onClick={() => executarMutation.mutate()}
-          disabled={executarMutation.isPending}
-          className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-        >
-          {executarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          Executar Campanhas Agora
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => sincronizarMutation.mutate()}
+            disabled={sincronizarMutation.isPending}
+            variant="outline"
+            className="gap-2"
+          >
+            {sincronizarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Importar Propostas Pagas
+          </Button>
+          <Button
+            onClick={() => executarMutation.mutate()}
+            disabled={executarMutation.isPending}
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+          >
+            {executarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Executar Campanhas Agora
+          </Button>
+        </div>
       </div>
 
       {/* Alerta de renovações vencidas */}
