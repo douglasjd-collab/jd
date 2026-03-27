@@ -78,6 +78,7 @@ export default function FunilVendas() {
     cliente_id: '',
     valor_estimado: '',
     etapa_id: '',
+    produto: '',
     vendedor_id: '',
     origem: '',
     observacoes: '',
@@ -658,8 +659,8 @@ export default function FunilVendas() {
   };
 
   const handleSubmit = () => {
-    if (!formData.titulo || !formData.etapa_id) {
-      toast.error('Preencha os campos obrigatórios');
+    if (!formData.titulo || !formData.etapa_id || !formData.produto) {
+      toast.error('Preencha os campos obrigatórios: Título, Funil e Etapa');
       return;
     }
 
@@ -668,7 +669,7 @@ export default function FunilVendas() {
     const vendedor = vendedores.find(v => v.id === vendedorIdFinal);
     const etapa = etapas.find(e => e.id === formData.etapa_id);
 
-    const produtoFinal = filterProduto === 'todos' ? formData.produto || 'consorcio' : filterProduto;
+    const produtoFinal = formData.produto || (filterProduto !== 'todos' ? filterProduto : 'consorcio');
     
     const data = {
       ...formData,
@@ -699,6 +700,7 @@ export default function FunilVendas() {
       cliente_id: '',
       valor_estimado: '',
       etapa_id: '',
+      produto: filterProduto !== 'todos' ? filterProduto : '',
       vendedor_id: currentUser?.id || '',
       origem: '',
       observacoes: '',
@@ -1324,6 +1326,22 @@ export default function FunilVendas() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
+                <Label>Funil *</Label>
+                <Select
+                  value={formData.produto || ''}
+                  onValueChange={(value) => setFormData({ ...formData, produto: value, etapa_id: '' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o funil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="consorcio">🏦 Consórcio</SelectItem>
+                    <SelectItem value="emprestimo">💳 Empréstimo Consignado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label>Etapa *</Label>
                 <Select
                   value={formData.etapa_id}
@@ -1339,7 +1357,9 @@ export default function FunilVendas() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               {(isAdmin || isGerente) && (
                 <div>
                   <Label>Vendedor</Label>
