@@ -147,7 +147,7 @@ function ComentarioPopup({ tarefa, currentUser, open, onClose }) {
   );
 }
 
-export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate, currentUser }) {
+export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate, currentUser, tiposList = [] }) {
   const [selecionada, setSelecionada] = useState(null);
   const [tarefaSelecionada, setTarefaSelecionada] = useState(null);
   const [detalhesOpen, setDetalhesOpen] = useState(false);
@@ -218,7 +218,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                       </div>
                       <div className="min-w-0">
                         <p className="font-medium text-slate-800 truncate">{tarefa.cliente_nome || <span className="text-slate-400 italic">Interna</span>}</p>
-                        {tarefa.tipo && <p className="text-xs text-slate-500 capitalize">{tarefa.tipo}</p>}
+                        {tarefa.tipo && <p className="text-xs text-slate-500">{tiposList.find(t => t.id === tarefa.tipo)?.nome || tarefa.tipo}</p>}
                       </div>
                     </div>
                   </td>

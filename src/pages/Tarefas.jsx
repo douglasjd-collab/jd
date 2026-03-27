@@ -367,6 +367,7 @@ export default function Tarefas() {
           onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
           onUpdate={handleUpdate}
           currentUser={currentUser}
+          tiposList={tiposList}
         />
       ) : null}
 
