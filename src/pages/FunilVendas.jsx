@@ -495,8 +495,8 @@ export default function FunilVendas() {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
       }
 
-      // Se está sendo movido para etapa de planejamento, registrar data de entrada
-      const entrandoNoPlanejamento = etapaDestino?.tipo === 'planejamento' && !oportunidade?.data_entrada_planejamento;
+      // Se está sendo movido para etapa de planejamento E é consórcio, registrar data de entrada
+      const entrandoNoPlanejamento = etapaDestino?.tipo === 'planejamento' && !oportunidade?.data_entrada_planejamento && oportunidade?.produto === 'consorcio';
       const saindoDoPlanejamento = oportunidade?.etapa_id && (() => {
         const etapaOrigem = etapas.find(e => e.id === oportunidade.etapa_id);
         return etapaOrigem?.tipo === 'planejamento' && etapaDestino?.tipo !== 'planejamento';

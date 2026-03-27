@@ -127,7 +127,8 @@ export default function Campanhas() {
     queryFn: async () => {
       const todasOport = await base44.entities.Oportunidade.filter({ empresa_id: empresaId, status: 'aberta' }, '-data_ultima_movimentacao', 500);
       const etapaIds = etapasPlanejamento.map(e => e.id);
-      const filtradas = todasOport.filter(o => etapaIds.includes(o.etapa_id));
+      // Apenas leads do funil de Consórcio
+      const filtradas = todasOport.filter(o => etapaIds.includes(o.etapa_id) && o.produto === 'consorcio');
 
       // Marcar data de entrada para leads sem ela
       const semData = filtradas.filter(o => !o.data_entrada_planejamento);
@@ -593,9 +594,10 @@ export default function Campanhas() {
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Target className="w-5 h-5 text-purple-500" />
                     Leads — Planejamento de Compra
+                    <span className="ml-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded px-1.5 py-0.5">Consórcio</span>
                   </CardTitle>
                   <p className="text-xs text-slate-500 mt-1">
-                    Leads que estabeleceram um prazo futuro de fechamento. Envie campanhas quinzenais para manter o interesse.
+                    Leads do <strong>Funil de Consórcio</strong> na coluna "Planejamento de Compra". Envie campanhas quinzenais para manter o interesse.
                   </p>
                 </div>
                 <Button

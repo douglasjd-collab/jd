@@ -75,8 +75,8 @@ Deno.serve(async (req) => {
     let totalEnviados = 0;
     let totalErros = 0;
 
-    // Buscar todas as oportunidades abertas nessas etapas
-    const todasOport = await base44.asServiceRole.entities.Oportunidade.filter({ status: 'aberta' }, '-created_date', 2000);
+    // Buscar apenas oportunidades de consórcio abertas nessas etapas
+    const todasOport = await base44.asServiceRole.entities.Oportunidade.filter({ status: 'aberta', produto: 'consorcio' }, '-created_date', 2000);
     const oportunidades = todasOport.filter(o => etapaIds.includes(o.etapa_id));
 
     for (const op of oportunidades) {
