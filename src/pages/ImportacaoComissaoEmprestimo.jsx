@@ -832,7 +832,7 @@ export default function ImportacaoComissaoEmprestimo() {
                       </TableCell>
                       <TableCell className="text-right">
                        <div className="flex items-center justify-end gap-2">
-                         <Link to={createPageUrl('ImportacaoDetalhes') + `?id=${imp.id}`}>
+                         <Link to={createPageUrl('ImportacaoDetalhes') + `?id=${imp.id}&produto=emprestimos`}>
                            <Button variant="ghost" size="icon" className="h-8 w-8">
                              <Eye className="w-4 h-4" />
                            </Button>
