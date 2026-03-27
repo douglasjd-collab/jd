@@ -73,6 +73,7 @@ export default function FunilVendas() {
   const [novoResponsavelId, setNovoResponsavelId] = useState('');
   const [responsaveisSelecionados, setResponsaveisSelecionados] = useState([]);
   const [novaEtapaId, setNovaEtapaId] = useState('');
+  const [funilDestino, setFunilDestino] = useState('');
   const [formData, setFormData] = useState({
     titulo: '',
     cliente_id: '',
@@ -295,7 +296,7 @@ export default function FunilVendas() {
   });
 
   const alterarQuadroMutation = useMutation({
-    mutationFn: async ({ oportunidadeId, novaEtapaId }) => {
+    mutationFn: async ({ oportunidadeId, novaEtapaId, novoFunil }) => {
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       const etapaDestino = etapas.find(e => e.id === novaEtapaId);
 
@@ -311,7 +312,8 @@ export default function FunilVendas() {
         etapa_id: novaEtapaId,
         etapa_nome: etapaDestino?.nome || '',
         data_ultima_movimentacao: new Date().toISOString(),
-        status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
+        status: etapaDestino?.tipo === 'ganho' ? 'ganha' : etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta',
+        ...(novoFunil ? { produto: novoFunil } : {}),
       });
 
       // Registrar movimentação
@@ -340,6 +342,7 @@ export default function FunilVendas() {
       setAlterarQuadroOpen(false);
       setOportunidadeParaAlterar(null);
       setNovaEtapaId('');
+      setFunilDestino('');
       toast.success('Quadro alterado!');
     },
     onError: (error) => {
@@ -1730,7 +1733,7 @@ export default function FunilVendas() {
       </Dialog>
 
       {/* Dialog Alterar Quadro */}
-      <Dialog open={alterarQuadroOpen} onOpenChange={setAlterarQuadroOpen}>
+      <Dialog open={alterarQuadroOpen} onOpenChange={(v) => { setAlterarQuadroOpen(v); if (!v) setFunilDestino(''); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Alterar Quadro / Etapa</DialogTitle>
@@ -1741,11 +1744,26 @@ export default function FunilVendas() {
               <p className="font-semibold">{oportunidadeParaAlterar?.titulo}</p>
             </div>
             <div>
-              <Label className="text-sm text-slate-600 mb-2 block">Quadro Atual</Label>
-              <p className="text-sm mb-4">{oportunidadeParaAlterar?.etapa_nome}</p>
+              <Label className="text-sm text-slate-600 mb-1 block">Quadro Atual</Label>
+              <p className="text-sm text-slate-700">{oportunidadeParaAlterar?.etapa_nome}</p>
             </div>
+
             <div>
-              <Label>Novo Quadro *</Label>
+              <Label>Funil de Destino</Label>
+              <Select value={funilDestino} onValueChange={(v) => { setFunilDestino(v); setNovaEtapaId(''); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o funil (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">🔀 Todos os funis</SelectItem>
+                  <SelectItem value="consorcio">🏦 Consórcio</SelectItem>
+                  <SelectItem value="emprestimo">💳 Empréstimo Consignado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Nova Etapa *</Label>
               <Select value={novaEtapaId} onValueChange={setNovaEtapaId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a etapa" />
@@ -1754,10 +1772,7 @@ export default function FunilVendas() {
                   {etapasOrdenadas.map((e) => (
                     <SelectItem key={e.id} value={e.id}>
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: e.cor }}
-                        />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: e.cor }} />
                         {e.nome}
                       </div>
                     </SelectItem>
@@ -1765,8 +1780,9 @@ export default function FunilVendas() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setAlterarQuadroOpen(false)}>
+              <Button variant="outline" onClick={() => { setAlterarQuadroOpen(false); setFunilDestino(''); }}>
                 Cancelar
               </Button>
               <Button 
@@ -1777,7 +1793,8 @@ export default function FunilVendas() {
                   }
                   alterarQuadroMutation.mutate({ 
                     oportunidadeId: oportunidadeParaAlterar.id, 
-                    novaEtapaId 
+                    novaEtapaId,
+                    novoFunil: funilDestino && funilDestino !== 'todos' ? funilDestino : undefined,
                   });
                 }}
                 disabled={alterarQuadroMutation.isPending}
