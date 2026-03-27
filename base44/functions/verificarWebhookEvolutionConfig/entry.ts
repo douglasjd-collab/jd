@@ -9,6 +9,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
+    // Buscar colaborador para obter empresa_id
+    const colaboradores = await base44.entities.Colaborador.filter({ user_id: user.id });
+    if (!colaboradores || colaboradores.length === 0) {
+      return Response.json({ error: 'Colaborador não encontrado' }, { status: 404 });
+    }
+    
+    const empresa_id = colaboradores[0].empresa_id;
+
     const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
     const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY');
     const INSTANCE_NAME = 'PROMOTORAJD';
