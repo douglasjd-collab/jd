@@ -108,7 +108,6 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
 
   const handleSave = () => {
     if (!form.titulo?.trim()) { toast.error('Informe o título da tarefa'); return; }
-    if (!form.cliente_id) { toast.error('Selecione um cliente para a tarefa'); return; }
     if (!form.data_conclusao_prevista) { toast.error('Informe a data de conclusão'); return; }
     if (responsaveisSel.length === 0) { toast.error('Selecione ao menos um responsável'); return; }
 
@@ -182,7 +181,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           {/* Cliente + Prioridade */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative">
-              <Label>Cliente *</Label>
+              <Label>Cliente</Label>
               <div
                 className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm cursor-pointer"
                 onClick={() => setClienteDropdownOpen(o => !o)}
