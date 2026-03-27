@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Check, CheckCheck, Loader2, Download, FileAudio, Mic, X, Maximize2 } from 'lucide-react';
+import { FileText, Check, CheckCheck, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export default function MensagemItem({ mensagem, conversaId }) {
   const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url || null);
@@ -16,8 +19,41 @@ export default function MensagemItem({ mensagem, conversaId }) {
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [pdfAberto, setPdfAberto] = useState(false);
   const [pdfCarregado, setPdfCarregado] = useState(false);
-
+  const [deletando, setDeletando] = useState(false);
+  
+  const queryClient = useQueryClient();
   const isVendedor = mensagem.remetente === 'vendedor';
+
+  const handleDeletar = async () => {
+    if (mensagem.id?.startsWith('temp_')) {
+      // Mensagem temporária (não foi enviada ainda)
+      queryClient.setQueryData(['mensagens-whatsapp', conversaId], (old = []) =>
+        old.filter(m => m.id !== mensagem.id)
+      );
+      toast.success('Mensagem removida');
+      return;
+    }
+
+    if (!confirm('Deseja realmente deletar esta mensagem?')) return;
+
+    setDeletando(true);
+    try {
+      await base44.entities.MensagemWhatsapp.delete(mensagem.id);
+      console.log(`✅ Mensagem ${mensagem.id} deletada do banco`);
+      
+      // Remover do cache localmente
+      queryClient.setQueryData(['mensagens-whatsapp', conversaId], (old = []) =>
+        old.filter(m => m.id !== mensagem.id)
+      );
+      
+      toast.success('Mensagem deletada');
+    } catch (e) {
+      console.error('Erro ao deletar mensagem:', e);
+      toast.error('Erro ao deletar: ' + e.message);
+    } finally {
+      setDeletando(false);
+    }
+  };
 
   // Atualizar mediaUrl se mensagem for atualizada externamente
   useEffect(() => {
@@ -273,7 +309,7 @@ export default function MensagemItem({ mensagem, conversaId }) {
   };
 
   return (
-    <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+    <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
       <div
         className={`max-w-md px-4 py-3 rounded-2xl shadow-sm ${
           isVendedor
@@ -300,6 +336,39 @@ export default function MensagemItem({ mensagem, conversaId }) {
           )}
         </div>
       </div>
+
+      {/* Menu de ações - aparecer ao hover */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            disabled={deletando}
+          >
+            <Trash2 className="w-4 h-4 text-slate-400" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align={isVendedor ? "end" : "start"}>
+          <DropdownMenuItem 
+            onClick={handleDeletar}
+            disabled={deletando}
+            className="text-red-600 focus:text-red-600"
+          >
+            {deletando ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Deletando...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Deletar mensagem
+              </>
+            )}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
