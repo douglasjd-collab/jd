@@ -47,6 +47,7 @@ import HistoricoModal from '@/components/emprestimos/HistoricoModal';
 import ResponsavelModal from '@/components/emprestimos/ResponsavelModal';
 import StatusQuickModal from '@/components/emprestimos/StatusQuickModal';
 import PortabilidadeHojeModal from '@/components/emprestimos/PortabilidadeHojeModal';
+import ChatPopupModal from '@/components/chat/ChatPopupModal';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
@@ -95,6 +96,8 @@ export default function VendasEmprestimos() {
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [propostaStatus, setPropostaStatus] = useState(null);
   const [portabilidadeHojeOpen, setPortabilidadeHojeOpen] = useState(false);
+  const [chatPopupOpen, setChatPopupOpen] = useState(false);
+  const [chatContato, setChatContato] = useState(null);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'kanban'
   const [sincronizandoApi, setSincronizandoApi] = useState(false);
   const queryClient = useQueryClient();
@@ -955,6 +958,24 @@ export default function VendasEmprestimos() {
                       <CheckCircle2 className="w-3.5 h-3.5" /> Status
                     </Button>
                     {(() => {
+                      const cliente = getCliente(p.cliente_id);
+                      const celular = cliente?.celular || p.cliente_cpf ? cliente?.celular : null;
+                      if (!celular) return null;
+                      return (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs gap-1 border-green-200 text-green-700 hover:bg-green-50"
+                          onClick={() => {
+                            setChatContato({ nome: p.cliente_nome, telefone: celular.replace(/\D/g, '') });
+                            setChatPopupOpen(true);
+                          }}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" /> Ver conversa
+                        </Button>
+                      );
+                    })()}
+                    {(() => {
                       let responsaveis = [];
                       try { responsaveis = p.responsaveis_json ? JSON.parse(p.responsaveis_json) : []; } catch {}
                       if (responsaveis.length === 0 && p.responsavel_id) {
@@ -1007,6 +1028,13 @@ export default function VendasEmprestimos() {
       <StatusQuickModal open={statusModalOpen} onOpenChange={setStatusModalOpen} proposta={propostaStatus} empresaId={currentUser?.empresa_id} />
       <KanbanConfigModal open={kanbanConfigOpen} onOpenChange={setKanbanConfigOpen} empresaId={currentUser?.empresa_id} />
       <PortabilidadeHojeModal open={portabilidadeHojeOpen} onOpenChange={setPortabilidadeHojeOpen} propostas={propostasCip} />
+      <ChatPopupModal
+        open={chatPopupOpen}
+        onOpenChange={setChatPopupOpen}
+        contato={chatContato}
+        empresaId={currentUser?.empresa_id}
+        user={currentUser}
+      />
 
       <PropostaEditModal
         proposta={propostaToEdit}
