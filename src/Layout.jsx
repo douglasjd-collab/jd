@@ -330,11 +330,14 @@ export default function Layout({ children, currentPageName }) {
     return menus_permitidos.includes(subKey);
   };
 
+  const userRole = user?.perfil || 'vendedor';
+  const isAdminRole = ['master', 'super_admin', 'admin', 'gerente', 'vendedor'].includes(userRole);
+
   const filteredMenuItems = menuItems.filter(item => {
     // Filtrar por role primeiro
-    if (!item.roles.includes(user?.perfil || 'vendedor')) return false;
+    if (!item.roles.includes(userRole)) return false;
     // Admin/master/super_admin/gerente/vendedor nunca são bloqueados por permissões customizadas
-    if (['master', 'super_admin', 'admin', 'gerente', 'vendedor'].includes(user?.perfil)) return true;
+    if (isAdminRole) return true;
     // Se não há permissões customizadas, libera tudo
     if (!temPermissoesCustomizadas) return true;
     const key = menuPermissaoKey[item.name];
@@ -348,7 +351,7 @@ export default function Layout({ children, currentPageName }) {
     // Filtrar submenus individualmente
     if (
       item.submenu &&
-      !['master', 'super_admin', 'admin', 'gerente', 'vendedor'].includes(user?.perfil) &&
+      !isAdminRole &&
       temPermissoesCustomizadas
     ) {
       const key = menuPermissaoKey[item.name];
