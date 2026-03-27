@@ -295,6 +295,20 @@ export default function BatePapo() {
       console.log(`🏢 EmpresaId definido: ${empresaId}`);
       sincronizarTodosContatosEvolution();
       refetchConversas();
+      
+      // Sincronizar histórico de TODAS as conversas automaticamente
+      setTimeout(() => {
+        console.log(`📨 Sincronizando histórico de TODAS as conversas em background...`);
+        base44.functions.invoke('sincronizarHistoricoAgressivo', {
+          empresa_id: empresaId
+        }).then(() => {
+          console.log(`✅ Históricos sincronizados automaticamente`);
+          // Invalidar todas as queries de mensagens para recarregar
+          conversas.forEach(c => {
+            queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', c.id] });
+          });
+        }).catch(e => console.error('Erro ao sincronizar históricos:', e));
+      }, 2000);
     }
   }, [empresaId]);
 
