@@ -54,10 +54,16 @@ const MoneyInput = ({ value, onChange }) => (
 export default function PropostaEditModal({ proposta, open, onOpenChange, currentUser }) {
   const [formData, setFormData] = useState(proposta || {});
   const [isLoading, setIsLoading] = useState(false);
+  const [bancoAlterado, setBancoAlterado] = useState(false);
+  const [empresaParceiraAlterada, setEmpresaParceiraAlterada] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (proposta) setFormData(proposta);
+    if (proposta) {
+      setFormData(proposta);
+      setBancoAlterado(false);
+      setEmpresaParceiraAlterada(false);
+    }
   }, [proposta]);
 
   const set = (field) => (val) => setFormData(prev => ({ ...prev, [field]: val }));
@@ -133,11 +139,11 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
         data_venda: formData.data_venda || '',
         vendedor_id: formData.vendedor_id || '',
         vendedor_nome: formData.vendedor_nome || '',
-        administradora_id: formData.administradora_id || '',
-        administradora_nome: formData.administradora_nome || '',
-        empresa_parceira_id: formData.empresa_parceira_id || proposta.empresa_parceira_id || '',
-        empresa_parceira_nome: formData.empresa_parceira_nome || proposta.empresa_parceira_nome || '',
-        banco_id: formData.banco_id || proposta.banco_id || '',
+        administradora_id: bancoAlterado ? (formData.administradora_id || '') : (proposta.administradora_id || ''),
+        administradora_nome: bancoAlterado ? (formData.administradora_nome || '') : (proposta.administradora_nome || ''),
+        banco_id: bancoAlterado ? (formData.banco_id || '') : (proposta.banco_id || ''),
+        empresa_parceira_id: empresaParceiraAlterada ? (formData.empresa_parceira_id || '') : (proposta.empresa_parceira_id || ''),
+        empresa_parceira_nome: empresaParceiraAlterada ? (formData.empresa_parceira_nome || '') : (proposta.empresa_parceira_nome || ''),
       };
 
       if (formData.produto === 'emprestimo') {
@@ -204,6 +210,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                 {podeVerEmpresaParceira && (
                   <Field label="Empresa Parceira" span={2}>
                     <Select value={formData.empresa_parceira_id || ''} onValueChange={(v) => {
+                      setEmpresaParceiraAlterada(true);
                       if (!v) {
                         setFormData(prev => ({ ...prev, empresa_parceira_id: '', empresa_parceira_nome: '' }));
                       } else {
@@ -333,6 +340,7 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
                   {formData.produto === 'emprestimo' ? (
                     <Select value={formData.banco_id || formData.administradora_id || ''} onValueChange={(v) => {
                       const banco = bancos.find(b => b.id === v);
+                      setBancoAlterado(true);
                       setFormData(prev => ({ ...prev, banco_id: v, administradora_id: v, administradora_nome: banco?.nome || '' }));
                     }}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
