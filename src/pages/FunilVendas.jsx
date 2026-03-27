@@ -657,8 +657,17 @@ export default function FunilVendas() {
   };
 
   const handleSubmit = () => {
-    if (!formData.titulo || !formData.etapa_id || !formData.produto) {
-      toast.error('Preencha os campos obrigatórios: Título, Funil e Etapa');
+    console.log('📝 handleSubmit formData:', formData);
+    if (!formData.titulo) {
+      toast.error('Preencha o Título');
+      return;
+    }
+    if (!formData.produto) {
+      toast.error('Selecione o Funil');
+      return;
+    }
+    if (!formData.etapa_id) {
+      toast.error('Selecione a Etapa');
       return;
     }
 
@@ -864,7 +873,21 @@ export default function FunilVendas() {
         actionLabel="Nova Oportunidade"
         onAction={() => {
           setSelectedOportunidade(null);
-          resetForm();
+          setFormData({
+            titulo: '',
+            cliente_id: '',
+            valor_estimado: '',
+            etapa_id: '',
+            produto: filterProduto !== 'todos' ? filterProduto : '',
+            vendedor_id: currentUser?.id || '',
+            origem: '',
+            observacoes: '',
+            data_fechamento_prevista: '',
+            telefone_lead: '',
+            data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
+          });
+          setIndicadorNome('');
+          setIndicadorTelefone('');
           setFormOpen(true);
         }}
       >
