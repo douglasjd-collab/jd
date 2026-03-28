@@ -1041,7 +1041,7 @@ export default function ComissoesEmprestimos() {
                   <th className="p-3 text-left font-semibold">Cliente</th>
                   <th className="p-3 text-left font-semibold">Contrato</th>
                   <th className="p-3 text-left font-semibold">Banco</th>
-                  <th className="p-3 text-right font-semibold">Vl. Crédito</th>
+                  <th className="p-3 text-right font-semibold">Vl. Base Comissão</th>
                   <th className="p-3 text-right font-semibold">% a Pagar</th>
                   <th className="p-3 text-right font-semibold">Vl. a Pagar</th>
                   <th className="p-3 text-center font-semibold">Status</th>
@@ -1064,7 +1064,7 @@ export default function ComissoesEmprestimos() {
                       </td>
                       <td className="p-3 text-slate-600">{p.contrato || '-'}</td>
                       <td className="p-3 text-slate-600">{p.administradora_nome || '-'}</td>
-                      <td className="p-3 text-right text-slate-700 font-medium">{fmt(p.valor_credito)}</td>
+                      <td className="p-3 text-right text-slate-700 font-medium">{fmt(getBaseComissao(p))}</td>
                       <td className="p-3 text-right">
                         <Input
                           type="number"
