@@ -279,15 +279,10 @@ export default function Adiantamentos() {
                 <div className="text-right flex-shrink-0">
                   <p className="font-bold text-lg text-slate-800">{fmt(a.valor)}</p>
                 </div>
-                {isAdmin && (
+                {isAdmin && a.status === 'pendente' && (
                   <div className="flex gap-1 flex-shrink-0">
-                    {a.status === 'pendente' && <>
-                      <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs">Editar</Button>
-                      <Button size="sm" variant="outline" onClick={() => handleCancelar(a)} className="h-8 px-2 text-xs text-red-600 hover:text-red-700">Cancelar</Button>
-                    </>}
-                    {a.status === 'descontado' && (
-                      <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs text-orange-600 hover:text-orange-700">Reabrir / Editar</Button>
-                    )}
+                    <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs">Editar</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleCancelar(a)} className="h-8 px-2 text-xs text-red-600 hover:text-red-700">Cancelar</Button>
                   </div>
                 )}
               </div>
