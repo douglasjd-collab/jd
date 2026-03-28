@@ -363,7 +363,6 @@ export default function ConfiguracaoWhatsApp() {
                       value={editMode ? tempWhatsappAccessToken : whatsappAccessToken}
                       onChange={(e) => editMode && setTempWhatsappAccessToken(e.target.value)}
                       readOnly={!editMode}
-                      type="password"
                       placeholder="seu_access_token_aqui"
                       className={editMode ? '' : 'bg-slate-50'}
                     />
