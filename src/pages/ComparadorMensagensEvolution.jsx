@@ -11,6 +11,30 @@ export default function ComparadorMensagensEvolution() {
   const [telefone, setTelefone] = useState('558791426333');
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+
+  const handleSincronizar = async () => {
+    if (!telefone) {
+      toast.error('Preencha o telefone');
+      return;
+    }
+
+    setSincronizando(true);
+    try {
+      const response = await base44.functions.invoke('sincronizarMensagensRigorosoCompleto', {
+        telefone,
+      });
+
+      toast.success(`✅ ${response.data.sincronizadas} mensagens sincronizadas com rigor!`);
+      
+      // Recarregar dados
+      await handlePuxar();
+    } catch (error) {
+      toast.error('Erro: ' + error.message);
+    } finally {
+      setSincronizando(false);
+    }
+  };
 
   const handlePuxar = async () => {
     if (!telefone) {
@@ -53,16 +77,25 @@ export default function ComparadorMensagensEvolution() {
                 placeholder="558791426333"
                 value={telefone}
                 onChange={(e) => setTelefone(e.target.value)}
-                disabled={loading}
+                disabled={loading || sincronizando}
                 className="flex-1"
               />
               <Button
                 onClick={handlePuxar}
-                disabled={loading}
+                disabled={loading || sincronizando}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Puxar
+                Comparar
+              </Button>
+              <Button
+                onClick={handleSincronizar}
+                disabled={loading || sincronizando}
+                className="bg-red-600 hover:bg-red-700"
+                title="Sincroniza com RIGOR: tira TUDO da Evolution e coloca no CRM"
+              >
+                {sincronizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                🔐 Sincronizar RIGOR
               </Button>
             </div>
           </CardContent>
@@ -98,11 +131,20 @@ export default function ComparadorMensagensEvolution() {
             {dados.diferenca > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="font-bold text-red-800">⚠️ {dados.diferenca} mensagens faltam no CRM!</p>
                   <p className="text-sm text-red-700 mt-1">
                     Estas mensagens estão na Evolution API mas não foram sincronizadas para o CRM.
                   </p>
+                  <Button
+                    onClick={handleSincronizar}
+                    disabled={sincronizando}
+                    className="mt-3 bg-red-600 hover:bg-red-700 text-white"
+                    size="sm"
+                  >
+                    {sincronizando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Corrigir Agora com RIGOR
+                  </Button>
                 </div>
               </div>
             )}
