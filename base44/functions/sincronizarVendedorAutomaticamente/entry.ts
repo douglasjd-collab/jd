@@ -19,16 +19,21 @@ Deno.serve(async (req) => {
     }
 
     // Buscar APENAS propostas de empréstimo COM CPF (otimizado)
-    const todasPropostas = await base44.asServiceRole.entities.Proposta.filter(
+    let todasPropostas = await base44.asServiceRole.entities.Proposta.filter(
       { empresa_id, produto: 'emprestimo' },
       null,
       10000
     );
 
+    // Garantir que é um array
+    if (!Array.isArray(todasPropostas)) {
+      todasPropostas = todasPropostas ? [todasPropostas] : [];
+    }
+
     console.log(`Total de propostas: ${todasPropostas.length}`);
 
     // Filtrar apenas as que têm CPF (as sem CPF não podem ser vinculadas de qualquer forma)
-    const propostasComCpf = todasPropostas.filter(p => p.cliente_cpf && String(p.cliente_cpf).trim().length > 0);
+    const propostasComCpf = (Array.isArray(todasPropostas) ? todasPropostas : []).filter(p => p.cliente_cpf && String(p.cliente_cpf).trim().length > 0);
     console.log(`Propostas com CPF preenchido: ${propostasComCpf.length}`);
 
     // Mapear CPF → vendedor_id/nome (das propostas que TÊM vendedor)
