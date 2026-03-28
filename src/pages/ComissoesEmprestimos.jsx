@@ -118,7 +118,20 @@ export default function ComissoesEmprestimos() {
     queryFn: async () => {
       const filtro = { produto: 'emprestimo' };
       if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
-      return await base44.entities.Proposta.filter(filtro, '-data_venda', 2000);
+      const lista = await base44.entities.Proposta.filter(filtro, '-data_venda', 2000);
+
+      // Enriquecer com CPF dos clientes que não têm o campo denormalizado
+      const semCpf = lista.filter(p => !p.cliente_cpf && p.cliente_id);
+      if (semCpf.length > 0) {
+        const idsUnicos = [...new Set(semCpf.map(p => p.cliente_id))];
+        const clientes = await Promise.all(
+          idsUnicos.map(id => base44.entities.Cliente.filter({ id }).then(r => r[0]).catch(() => null))
+        );
+        const cpfMap = {};
+        clientes.filter(Boolean).forEach(c => { cpfMap[c.id] = c.cpf; });
+        return lista.map(p => (!p.cliente_cpf && cpfMap[p.cliente_id]) ? { ...p, cliente_cpf: cpfMap[p.cliente_id] } : p);
+      }
+      return lista;
     },
     enabled: !!user && statusPagoIds.length > 0,
   });
