@@ -75,6 +75,7 @@ export default function ComissoesEmprestimos() {
   const [bancoDtRecebimento, setBancoDtRecebimento] = useState('');
   const [bancoValorRecebido, setBancoValorRecebido] = useState('');
   const [bancoPercentualRecebido, setBancoPercentualRecebido] = useState('');
+  const [bancoBaseComissao, setBancoBaseComissao] = useState('');
 
   // Percentuais personalizados por proposta (sobreescrevem o valor_comissao)
   // key: proposta.id, value: percentual (número)
@@ -246,6 +247,9 @@ export default function ComissoesEmprestimos() {
         updateData.comissao_banco_data_recebimento = bancoDtRecebimento;
         updateData.comissao_banco_valor_recebido = parseFloat(bancoValorRecebido) || 0;
         updateData.comissao_banco_percentual_recebido = parseFloat(bancoPercentualRecebido) || 0;
+        if (bancoBaseComissao && parseFloat(bancoBaseComissao) > 0) {
+          updateData.comissao_banco_base_comissao = parseFloat(bancoBaseComissao);
+        }
         // Atualizar valor_comissao com o valor efetivamente recebido
         updateData.valor_comissao = parseFloat(bancoValorRecebido) || proposta.valor_comissao;
       }
@@ -261,6 +265,7 @@ export default function ComissoesEmprestimos() {
       setBancoDtRecebimento('');
       setBancoValorRecebido('');
       setBancoPercentualRecebido('');
+      setBancoBaseComissao('');
     }
   };
 
@@ -737,8 +742,9 @@ export default function ComissoesEmprestimos() {
                                 onClick={() => {
                                   setPropostaMarcar(p);
                                   setBancoDtRecebimento(p.comissao_banco_data_recebimento || '');
-                                  setBancoValorRecebido(p.comissao_banco_valor_recebido ? String(p.comissao_banco_valor_recebido) : p.valor_comissao ? String(p.valor_comissao) : '');
-                                  setBancoPercentualRecebido(p.comissao_banco_percentual_recebido ? String(p.comissao_banco_percentual_recebido) : getPercentualEmpresa(p) ? String(getPercentualEmpresa(p).toFixed(4)) : '');
+                                                   setBancoValorRecebido(p.comissao_banco_valor_recebido ? String(p.comissao_banco_valor_recebido) : p.valor_comissao ? String(p.valor_comissao) : '');
+                                                   setBancoPercentualRecebido(p.comissao_banco_percentual_recebido ? String(p.comissao_banco_percentual_recebido) : getPercentualEmpresa(p) ? String(getPercentualEmpresa(p).toFixed(4)) : '');
+                                                   setBancoBaseComissao(p.comissao_banco_base_comissao ? String(p.comissao_banco_base_comissao) : '');
                                   setMarcarBancoModal(true);
                                 }}
                                 className={`px-2 py-1 rounded-full text-xs font-semibold transition-colors ${
@@ -780,7 +786,7 @@ export default function ComissoesEmprestimos() {
       {/* Modal: Marcar Comissão Banco */}
       <Dialog open={marcarBancoModal} onOpenChange={(v) => {
         setMarcarBancoModal(v);
-        if (!v) { setBancoDtRecebimento(''); setBancoValorRecebido(''); setBancoPercentualRecebido(''); }
+        if (!v) { setBancoDtRecebimento(''); setBancoValorRecebido(''); setBancoPercentualRecebido(''); setBancoBaseComissao(''); }
       }}>
         <DialogContent className="max-w-md p-0 overflow-hidden">
           {/* Header */}
@@ -839,6 +845,32 @@ export default function ComissoesEmprestimos() {
                     />
                   </div>
 
+                  {/* Campo: Base da Comissão */}
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Vl. B. Comissão <span className="text-slate-400 normal-case font-normal">(valor sobre o qual a comissão foi paga)</span></Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">R$</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={fmt(propostaMarcar.valor_credito)}
+                        className="pl-9 h-10 border-slate-200 focus:border-[#10353C] bg-blue-50/40"
+                        value={bancoBaseComissao}
+                        onChange={e => {
+                          setBancoBaseComissao(e.target.value);
+                          // Recalcular percentual se houver valor recebido
+                          const base = parseFloat(e.target.value) || 0;
+                          const val = parseFloat(bancoValorRecebido) || 0;
+                          if (val > 0 && base > 0) {
+                            setBancoPercentualRecebido(((val / base) * 100).toFixed(4));
+                          }
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">Se vazio, usa o Vl. Bruto ({fmt(propostaMarcar.valor_credito)}) para cálculo do percentual</p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Valor Recebido *</Label>
@@ -854,8 +886,9 @@ export default function ComissoesEmprestimos() {
                           onChange={e => {
                             setBancoValorRecebido(e.target.value);
                             const val = parseFloat(e.target.value) || 0;
-                            if (val > 0 && propostaMarcar.valor_credito) {
-                              setBancoPercentualRecebido(((val / propostaMarcar.valor_credito) * 100).toFixed(4));
+                            const base = parseFloat(bancoBaseComissao) || propostaMarcar.valor_credito || 0;
+                            if (val > 0 && base > 0) {
+                              setBancoPercentualRecebido(((val / base) * 100).toFixed(4));
                             }
                           }}
                         />
@@ -875,8 +908,9 @@ export default function ComissoesEmprestimos() {
                           onChange={e => {
                             setBancoPercentualRecebido(e.target.value);
                             const perc = parseFloat(e.target.value) || 0;
-                            if (perc > 0 && propostaMarcar.valor_credito) {
-                              setBancoValorRecebido(((propostaMarcar.valor_credito * perc) / 100).toFixed(2));
+                            const base = parseFloat(bancoBaseComissao) || propostaMarcar.valor_credito || 0;
+                            if (perc > 0 && base > 0) {
+                              setBancoValorRecebido(((base * perc) / 100).toFixed(2));
                             }
                           }}
                         />
@@ -889,7 +923,10 @@ export default function ComissoesEmprestimos() {
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       <p className="text-emerald-700 text-xs">
-                        <strong>{fmt(parseFloat(bancoValorRecebido))}</strong> referente a <strong>{parseFloat(bancoPercentualRecebido).toFixed(4)}%</strong> de {fmt(propostaMarcar.valor_credito)}
+                        <strong>{fmt(parseFloat(bancoValorRecebido))}</strong> referente a <strong>{parseFloat(bancoPercentualRecebido).toFixed(4)}%</strong> de {fmt(parseFloat(bancoBaseComissao) || propostaMarcar.valor_credito)}
+                        {bancoBaseComissao && parseFloat(bancoBaseComissao) > 0 && parseFloat(bancoBaseComissao) !== propostaMarcar.valor_credito && (
+                          <span className="text-slate-500 ml-1">(base: {fmt(parseFloat(bancoBaseComissao))})</span>
+                        )}
                       </p>
                     </div>
                   )}
