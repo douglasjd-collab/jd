@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     let headerRowIndex = 0;
     let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colCelular;
     let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colComissaoPercentual, colContrato, colTabela;
-    let colDataRecebComissao, colDataPagCliente, colDataCadastroProp;
+    let colDataRecebComissao, colDataPagCliente, colDataCadastroProp, colValorBaseComissao;
 
     if (layout && Object.keys(layout).length > 0) {
       // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
@@ -118,6 +118,7 @@ Deno.serve(async (req) => {
       colDataPagCliente    = colLetterToIndex(layout.data_pagamento_cliente || layout.data_liberacao);
       colDataCadastroProp  = colLetterToIndex(layout.data_cadastro_proposta || layout.data_digitacao);
       colCelular           = colLetterToIndex(layout.celular);
+      colValorBaseComissao = colLetterToIndex(layout.valor_base_comissao);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
@@ -312,6 +313,7 @@ Deno.serve(async (req) => {
         const dataPagClienteVal     = colDataPagCliente     >= 0 ? row[colDataPagCliente]                          : null;
         const dataCadastroPropVal   = colDataCadastroProp   >= 0 ? row[colDataCadastroProp]                        : null;
         const celularVal            = colCelular            >= 0 ? String(row[colCelular]            ?? '').trim() : '';
+        const valorBaseComissaoVal  = colValorBaseComissao  >= 0 ? row[colValorBaseComissao]                        : null;
 
         if (!nomeVal && !cpfVal) {
           ignoradas++;
@@ -440,6 +442,7 @@ Deno.serve(async (req) => {
           tabela_comissao_nome:        tabelaComissao ? (tabelaComissao.tabela || tabelaComissao.nome) : null,
           emprestimo_data_liberacao:   parseData(dataPagClienteVal) || undefined,
           data_comissao_recebida:      parseData(dataRecebComissaoVal) || undefined,
+          comissao_banco_base_comissao: valorBaseComissaoVal ? parseValor(valorBaseComissaoVal) : undefined,
         };
 
         // Adicionar IDs somente se existirem (campos string)

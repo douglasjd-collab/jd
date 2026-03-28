@@ -44,6 +44,7 @@ const CAMPOS_PRODUCAO = [
   { key: 'empresa_parceira', label: 'Empresa Parceira', obrigatorio: false },
   { key: 'valor_liberado', label: 'Valor Liberado', obrigatorio: true },
   { key: 'valor_bruto', label: 'Valor Bruto', obrigatorio: false },
+  { key: 'valor_base_comissao', label: 'Valor Base Comissão', obrigatorio: false },
   { key: 'prazo_meses', label: 'Prazo (meses)', obrigatorio: false },
   { key: 'valor_parcela', label: 'Parcela', obrigatorio: false },
   { key: 'data_liberacao', label: 'Data de Liberação', obrigatorio: false },
