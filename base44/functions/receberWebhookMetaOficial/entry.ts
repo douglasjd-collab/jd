@@ -1,34 +1,27 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
-  try {
-    // ════════════════════════════════════════════════════════════════════
-    // [1] VERIFICAÇÃO INICIAL (GET request para validar webhook)
-    // ════════════════════════════════════════════════════════════════════
-    if (req.method === 'GET') {
-      const url = new URL(req.url);
-      const mode = url.searchParams.get('hub.mode');
-      const token = url.searchParams.get('hub.verify_token');
-      const challenge = url.searchParams.get('hub.challenge');
+  // ════════════════════════════════════════════════════════════════════
+  // [1] VERIFICAÇÃO INICIAL (GET request para validar webhook)
+  // ════════════════════════════════════════════════════════════════════
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    const mode = url.searchParams.get('hub.mode');
+    const token = url.searchParams.get('hub.verify_token');
+    const challenge = url.searchParams.get('hub.challenge');
 
-      // ⚠️ IMPORTANTE: Use exatamente o token que você configurou na Meta
-      const VERIFY_TOKEN_ESPERADO = 'QTKxBcm2UVQiHqM9CQW7Bx58gqSVmm74';
+    // ⚠️ IMPORTANTE: Use exatamente o token que você configurou na Meta
+    const VERIFY_TOKEN_ESPERADO = 'QTKxBcm2UVQiHqM9CQW7Bx58gqSVmm74';
 
-      console.log('🔍 Validação de webhook recebida');
-      console.log(`   mode=${mode}, token=${token?.substring(0,8)}..., challenge=${challenge?.substring(0,8)}...`);
-
-      // Resposta simples e direta para Meta - EXATAMENTE como Meta espera
-      if (mode === 'subscribe' && token === VERIFY_TOKEN_ESPERADO && challenge) {
-        console.log('✅ WEBHOOK VALIDADO - Retornando challenge:', challenge);
-        return new Response(challenge);
-      }
-
-      console.log('❌ Validação falhou');
-      console.log(`   Modo correto: ${mode === 'subscribe'}`);
-      console.log(`   Token match: ${token === VERIFY_TOKEN_ESPERADO}`);
-      console.log(`   Challenge presente: ${!!challenge}`);
-      return new Response('', { status: 403 });
+    // Resposta IMEDIATA - sem delay
+    if (mode === 'subscribe' && token === VERIFY_TOKEN_ESPERADO && challenge) {
+      return new Response(challenge, { status: 200 });
     }
+
+    return new Response('', { status: 403 });
+  }
+
+  try {
 
     // ════════════════════════════════════════════════════════════════════
     // [2] PROCESSAR WEBHOOK POST (mensagens reais)
