@@ -691,7 +691,7 @@ export default function ComissoesEmprestimos() {
                           <th className="p-3 text-left font-semibold">Tipo</th>
                           <th className="p-3 text-left font-semibold">Banco</th>
                           <th className="p-3 text-left font-semibold">Data Lib.</th>
-                          <th className="p-3 text-right font-semibold">Vl. Bruto</th>
+                          <th className="p-3 text-right font-semibold">Vl. Base Comissão</th>
                           <th className="p-3 text-right font-semibold">Vl. Líquido</th>
                           <th className="p-3 text-right font-semibold">Vl. Parcela</th>
                           <th className="p-3 text-right font-semibold">Comissão Empresa %</th>
@@ -718,7 +718,12 @@ export default function ComissoesEmprestimos() {
                                 ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY')
                                 : p.data_venda ? moment(p.data_venda).format('DD/MM/YYYY') : '-'}
                             </td>
-                            <td className="p-3 text-right font-medium">{fmt(p.valor_credito)}</td>
+                            <td className="p-3 text-right font-medium">
+                              {p.comissao_banco_base_comissao
+                                ? <span className="text-blue-700 font-semibold">{fmt(p.comissao_banco_base_comissao)}</span>
+                                : <span className="text-slate-600">{fmt(p.valor_credito)}</span>
+                              }
+                            </td>
                             <td className="p-3 text-right font-medium text-slate-600">{p.valor_liquido ? fmt(p.valor_liquido) : '-'}</td>
                             <td className="p-3 text-right text-slate-500 text-xs">{p.emprestimo_valor_parcela ? fmt(p.emprestimo_valor_parcela) : '-'}</td>
                             <td className="p-3 text-right text-slate-500 text-xs font-semibold">
