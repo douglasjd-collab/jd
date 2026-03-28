@@ -284,7 +284,7 @@ export default function Layout({ children, currentPageName }) {
       icon: Upload, 
       roles: ['master', 'super_admin', 'admin', 'gerente'],
       submenu: [
-        { name: 'Importar Propostas (Empréstimo)', page: 'ImportacaoProducao' },
+        { name: 'IMP. Propostas Empréstimo', page: 'ImportacaoProducao' },
         { name: 'IMP. Comissão Consórcio', page: 'ImportacaoComissao' },
         { name: 'IMP. Comissão Empréstimo', page: 'ImportacaoComissaoEmprestimo' },
         { name: 'Importar Planos', page: 'ImportacaoPlanos' },
