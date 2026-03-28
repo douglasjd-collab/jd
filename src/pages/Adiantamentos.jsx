@@ -39,6 +39,7 @@ export default function Adiantamentos() {
     data: moment().format('YYYY-MM-DD'),
     motivo: '',
     observacoes: '',
+    status: 'pendente',
   });
 
   const queryClient = useQueryClient();
@@ -116,6 +117,7 @@ export default function Adiantamentos() {
         data: adi.data || moment().format('YYYY-MM-DD'),
         motivo: adi.motivo || '',
         observacoes: adi.observacoes || '',
+        status: adi.status || 'pendente',
       });
     } else {
       setEditando(null);
@@ -153,7 +155,9 @@ export default function Adiantamentos() {
         data: form.data,
         motivo: form.motivo || '',
         observacoes: form.observacoes || '',
-        status: editando?.status || 'pendente',
+        status: form.status || editando?.status || 'pendente',
+        // Limpar data_desconto ao reabrir
+        ...(form.status === 'pendente' ? { data_desconto: null, lote_pagamento_id: null } : {}),
       };
       if (editando) {
         await base44.entities.Adiantamento.update(editando.id, data);
@@ -271,10 +275,15 @@ export default function Adiantamentos() {
               <div className="text-right flex-shrink-0">
                 <p className="font-bold text-lg text-slate-800">{fmt(a.valor)}</p>
               </div>
-              {isAdmin && a.status === 'pendente' && (
+              {isAdmin && (
                 <div className="flex gap-1 flex-shrink-0">
-                  <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs">Editar</Button>
-                  <Button size="sm" variant="outline" onClick={() => handleCancelar(a)} className="h-8 px-2 text-xs text-red-600 hover:text-red-700">Cancelar</Button>
+                  {a.status === 'pendente' && <>
+                    <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs">Editar</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleCancelar(a)} className="h-8 px-2 text-xs text-red-600 hover:text-red-700">Cancelar</Button>
+                  </>}
+                  {a.status === 'descontado' && (
+                    <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs text-orange-600 hover:text-orange-700">Reabrir / Editar</Button>
+                  )}
                 </div>
               )}
             </Card>
@@ -348,6 +357,20 @@ export default function Adiantamentos() {
               <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Observações</Label>
               <Input placeholder="Observações adicionais..." value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
             </div>
+
+            {editando?.status === 'descontado' && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-orange-700">⚠️ Este adiantamento está marcado como descontado. Para reabrir (ex: desconto parcial), altere o status abaixo:</p>
+                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="descontado">✅ Descontado</SelectItem>
+                    <SelectItem value="pendente">⏳ Pendente (reabrir)</SelectItem>
+                    <SelectItem value="cancelado">❌ Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2 mt-2">
             <Button variant="outline" onClick={() => setModalOpen(false)} disabled={isSaving}>Cancelar</Button>
