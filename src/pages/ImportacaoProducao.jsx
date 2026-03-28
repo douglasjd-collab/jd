@@ -4,10 +4,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Loader2, AlertTriangle, FileText, X, CheckCircle2, Settings, Tag, Eye } from 'lucide-react';
+import { Upload, Loader2, AlertTriangle, FileText, X, CheckCircle2, Settings, Tag, Eye, History, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 export default function ImportacaoProducao() {
   const [user, setUser] = useState(null);
@@ -22,6 +23,10 @@ export default function ImportacaoProducao() {
   const [resultado, setResultado] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState(null); // { headers, rows }
+  const [historico, setHistorico] = useState([]);
+  const [showHistorico, setShowHistorico] = useState(false);
+  const [desfazendoId, setDesfazendoId] = useState(null);
+  const [confirmDesfazer, setConfirmDesfazer] = useState(null); // log a desfazer
   const inputRef = useRef(null);
 
   useEffect(() => { init(); }, []);
@@ -40,10 +45,38 @@ export default function ImportacaoProducao() {
     }
     setEmpresaId(eid);
     if (eid) {
-      const eps = await base44.entities.EmpresaParceira.filter({ empresa_id: eid, ativo: true }, 'nome');
+      const [eps, hist] = await Promise.all([
+        base44.entities.EmpresaParceira.filter({ empresa_id: eid, ativo: true }, 'nome'),
+        base44.entities.ImportacaoPropostasLog.filter({ empresa_id: eid }, '-created_date', 20),
+      ]);
       setEmpresasParceiras(eps);
+      setHistorico(hist);
     }
     setLoading(false);
+  };
+
+  const recarregarHistorico = async () => {
+    if (!empresaId) return;
+    const hist = await base44.entities.ImportacaoPropostasLog.filter({ empresa_id: empresaId }, '-created_date', 20);
+    setHistorico(hist);
+  };
+
+  const handleDesfazer = async (log) => {
+    setDesfazendoId(log.id);
+    try {
+      const resp = await base44.functions.invoke('desfazerImportacaoPropostas', { log_id: log.id });
+      if (resp.data.error) {
+        toast.error(resp.data.error);
+      } else {
+        toast.success(`${resp.data.excluidas} proposta(s) excluída(s) com sucesso!`);
+        recarregarHistorico();
+      }
+    } catch (err) {
+      toast.error('Erro ao desfazer: ' + err.message);
+    } finally {
+      setDesfazendoId(null);
+      setConfirmDesfazer(null);
+    }
   };
 
   const handleEmpresaChange = async (epId) => {
@@ -101,6 +134,8 @@ export default function ImportacaoProducao() {
         file_url,
         empresa_parceira_id: empresaParceiraId,
         layout: layoutSel?.mapeamento || null,
+        layout_id: layoutId,
+        arquivo_nome: file.name,
         atualizar_telefone: layoutSel?.atualizar_telefone || false,
       });
 
@@ -115,6 +150,7 @@ export default function ImportacaoProducao() {
         const total = (data.criadas || 0) + (data.atualizadas || 0);
         toast.success(`${total} proposta(s) processada(s) com sucesso!`);
         setResultado(data);
+        recarregarHistorico();
       }
     } catch (err) {
       console.error('Erro ao importar:', err);
@@ -136,11 +172,22 @@ export default function ImportacaoProducao() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Importar Propostas de Empréstimos"
-        subtitle="Importe propostas de empréstimos"
-        backTo="Importacao"
-      />
+      <div className="flex items-start justify-between">
+        <PageHeader
+          title="Importar Propostas de Empréstimos"
+          subtitle="Importe propostas de empréstimos"
+          backTo="Importacao"
+        />
+        {historico.length > 0 && (
+          <button
+            onClick={() => setShowHistorico(!showHistorico)}
+            className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 transition-colors mt-1"
+          >
+            <History className="w-4 h-4" />
+            Histórico ({historico.length})
+          </button>
+        )}
+      </div>
 
       <Card className="border-0 shadow-sm">
         <CardContent className="p-6 space-y-6">
@@ -360,6 +407,71 @@ export default function ImportacaoProducao() {
           )}
         </CardContent>
       </Card>
+      {/* Histórico de importações */}
+      {showHistorico && historico.length > 0 && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <History className="w-4 h-4" /> Histórico de Importações
+            </h3>
+            <div className="space-y-2">
+              {historico.map(log => (
+                <div key={log.id} className={`flex items-center gap-4 p-3 rounded-xl border ${log.status === 'desfeita' ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-slate-200'}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-slate-800 truncate">{log.arquivo_nome || 'Arquivo sem nome'}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {log.empresa_parceira_nome} · {log.criadas} criada(s), {log.atualizadas} atualizada(s) ·{' '}
+                      {new Date(log.created_date).toLocaleString('pt-BR')} · {log.usuario_nome}
+                    </p>
+                  </div>
+                  {log.status === 'desfeita' ? (
+                    <span className="text-xs text-slate-400 font-medium px-2 py-1 bg-slate-100 rounded-full">Desfeita</span>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDesfazer(log)}
+                      disabled={desfazendoId === log.id}
+                      className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 border border-red-200 hover:border-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Desfazer
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Modal confirmação desfazer */}
+      <Dialog open={!!confirmDesfazer} onOpenChange={() => setConfirmDesfazer(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-700">Desfazer Importação</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-2 text-sm text-slate-700">
+            <p>Isso irá <strong>excluir permanentemente</strong> as <strong>{confirmDesfazer?.criadas}</strong> proposta(s) criadas nesta importação:</p>
+            <div className="bg-slate-50 border rounded-lg p-3 text-xs space-y-1">
+              <p><span className="text-slate-500">Arquivo:</span> {confirmDesfazer?.arquivo_nome}</p>
+              <p><span className="text-slate-500">Parceira:</span> {confirmDesfazer?.empresa_parceira_nome}</p>
+              <p><span className="text-slate-500">Importado por:</span> {confirmDesfazer?.usuario_nome}</p>
+              <p><span className="text-slate-500">Data:</span> {confirmDesfazer && new Date(confirmDesfazer.created_date).toLocaleString('pt-BR')}</p>
+            </div>
+            <p className="text-red-600 font-medium">⚠️ As propostas atualizadas (não criadas) NÃO serão revertidas.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDesfazer(null)}>Cancelar</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white gap-2"
+              disabled={desfazendoId === confirmDesfazer?.id}
+              onClick={() => handleDesfazer(confirmDesfazer)}
+            >
+              {desfazendoId === confirmDesfazer?.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Confirmar Exclusão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

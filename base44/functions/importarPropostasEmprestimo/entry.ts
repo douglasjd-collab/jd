@@ -302,6 +302,7 @@ Deno.serve(async (req) => {
     let pendentes_tipo = 0;
     const erros = [];
     const previews = [];
+    const propostasCriadasIds = []; // para log de desfazer
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
@@ -497,19 +498,27 @@ Deno.serve(async (req) => {
           updatePayload.vendedor_nome = vendedorVal;
         }
 
-        // Verificar duplicidade por contrato + banco
+        // Verificar duplicidade por contrato + banco (ou por CPF+banco quando sem contrato)
         const contratoFinal = proposta.contrato || null;
         const administradoraId = proposta.administradora_id || null;
         const administradoraNome = proposta.administradora_nome || null;
+        const cpfFinal = normCpf(proposta.cliente_cpf || '');
 
-        const propostaExistente = contratoFinal
-          ? propostasExistentes.find(p => {
-              const contratoMatch = p.contrato && p.contrato === contratoFinal;
-              const bancoMatch = (administradoraId && p.administradora_id === administradoraId) ||
-                                 (administradoraNome && p.administradora_nome === administradoraNome);
-              return contratoMatch && bancoMatch;
-            })
-          : null;
+        const propostaExistente = propostasExistentes.find(p => {
+          const bancoMatch = (administradoraId && p.administradora_id === administradoraId) ||
+                             (administradoraNome && normStr(p.administradora_nome || '') === normStr(administradoraNome || ''));
+          if (!bancoMatch) return false;
+
+          if (contratoFinal && p.contrato) {
+            // Deduplicação por contrato + banco (mais confiável)
+            return p.contrato === contratoFinal;
+          }
+          if (!contratoFinal && cpfFinal && cpfFinal.length >= 11) {
+            // Sem contrato: deduplicar por CPF + banco
+            return normCpf(p.cliente_cpf || '') === cpfFinal;
+          }
+          return false;
+        }) || null;
 
         if (propostaExistente) {
           // Proposta existente — atualizar status, datas, valores e parcela
@@ -540,10 +549,11 @@ Deno.serve(async (req) => {
           if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...updateData };
           console.log(`Atualizada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
         } else {
-          await base44.asServiceRole.entities.Proposta.create(proposta);
+          const nova = await base44.asServiceRole.entities.Proposta.create(proposta);
           criadas++;
+          propostasCriadasIds.push(nova.id);
           // Adicionar ao cache local para evitar duplicatas na mesma importação
-          propostasExistentes.push({ ...proposta, id: '_new_' + i });
+          propostasExistentes.push({ ...proposta, id: nova.id });
         }
 
         previews.push({
@@ -600,6 +610,38 @@ Deno.serve(async (req) => {
       console.error('Erro ao vincular vendedores automáticos:', err.message);
     }
     // ───────────────────────────────────────────────────────────────────────────
+
+    // ── Salvar log da importação (para histórico e desfazer) ──────────────────
+    try {
+      const empresaParceiras = body.empresa_parceira_id
+        ? toArray(await base44.asServiceRole.entities.EmpresaParceira.filter({ id: body.empresa_parceira_id }))
+        : [];
+      const epNome = empresaParceiras[0]?.nome || '';
+
+      // Buscar layout nome
+      let layoutNome = '';
+      if (body.layout_id) {
+        const lays = toArray(await base44.asServiceRole.entities.LayoutImportacao.filter({ id: body.layout_id }));
+        layoutNome = lays[0]?.nome || '';
+      }
+
+      await base44.asServiceRole.entities.ImportacaoPropostasLog.create({
+        empresa_id: empresaId,
+        empresa_parceira_id: body.empresa_parceira_id || null,
+        empresa_parceira_nome: epNome,
+        layout_nome: layoutNome,
+        arquivo_nome: body.arquivo_nome || '',
+        usuario_nome: user.full_name || '',
+        criadas,
+        atualizadas,
+        ignoradas,
+        propostas_ids_criadas: JSON.stringify(propostasCriadasIds),
+        status: 'concluida',
+      });
+    } catch (logErr) {
+      console.error('Erro ao salvar log:', logErr.message);
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     return Response.json({
       success: true,
