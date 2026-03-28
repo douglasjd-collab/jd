@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
       const challenge = url.searchParams.get('hub.challenge');
 
       // ⚠️ IMPORTANTE: Use exatamente o token que você configurou na Meta
-      const VERIFY_TOKEN_ESPERADO = 'nxk3Ee0eWjuwI9VKdQCGpHEFZbxNlK9t';
+      const VERIFY_TOKEN_ESPERADO = 'QTKxBcm2UVQiHqM9CQW7Bx58gqSVmm74';
 
       console.log('🔍 Validação de webhook recebida');
       console.log(`   mode=${mode}, token=${token?.substring(0,8)}..., challenge=${challenge?.substring(0,8)}...`);
