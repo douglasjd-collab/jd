@@ -149,6 +149,9 @@ export default function ConfiguracaoWhatsApp() {
         return;
       }
 
+      // Garantir que o token não fica vazio
+      const tokenParaSalvar = tempWhatsappVerifyToken || gerarVerifyTokenPadrao();
+      
       await base44.entities.Empresa.update(empresaId, {
         evolution_url: tempUrl,
         evolution_instance_name: tempInstance,
@@ -156,7 +159,7 @@ export default function ConfiguracaoWhatsApp() {
         whatsapp_access_token: tempWhatsappAccessToken,
         whatsapp_phone_number_id: tempWhatsappPhoneNumberId,
         whatsapp_business_account_id: tempWhatsappBusinessAccountId,
-        whatsapp_verify_token: tempWhatsappVerifyToken,
+        whatsapp_verify_token: tokenParaSalvar,
       });
 
       setEvolutionUrl(tempUrl);
@@ -165,14 +168,14 @@ export default function ConfiguracaoWhatsApp() {
       setWhatsappAccessToken(tempWhatsappAccessToken);
       setWhatsappPhoneNumberId(tempWhatsappPhoneNumberId);
       setWhatsappBusinessAccountId(tempWhatsappBusinessAccountId);
-      setWhatsappVerifyToken(tempWhatsappVerifyToken);
+      setWhatsappVerifyToken(tokenParaSalvar);
       
       // Gerar novo webhook URL com o nome da instância
       const novaUrl = gerarUrlWebhook(tempInstance);
       setWebhookUrl(novaUrl);
       
       setEditMode(false);
-      toast.success('✅ Configurações WhatsApp salvas! A URL do webhook foi atualizada automaticamente.');
+      toast.success('✅ Configurações WhatsApp salvas!\n\n🔐 Token de Verificação: ' + tokenParaSalvar.slice(0, 8) + '...\n\nCole na Meta em Configuration → Webhooks → Verify Token');
     } catch (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } finally {

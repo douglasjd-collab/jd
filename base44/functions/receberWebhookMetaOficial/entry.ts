@@ -11,20 +11,43 @@ Deno.serve(async (req) => {
       const token = url.searchParams.get('hub.verify_token');
       const challenge = url.searchParams.get('hub.challenge');
 
-      // Token configurado - DEVE CORRESPONDER ao que está em ConfiguracaoWhatsApp
-      const VERIFY_TOKEN_ESPERADO = Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'seu_verify_token_aqui';
+      // Token configurado - buscar do banco de dados
+      const base44 = createClientFromRequest(req);
+      let VERIFY_TOKEN_ESPERADO = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
+      
+      // Se não estiver em env, buscar da empresa
+      if (!VERIFY_TOKEN_ESPERADO) {
+        try {
+          const empresas = await base44.asServiceRole.entities.Empresa.filter(
+            { status: 'ativa' },
+            null,
+            1
+          );
+          if (empresas.length > 0 && empresas[0].whatsapp_verify_token) {
+            VERIFY_TOKEN_ESPERADO = empresas[0].whatsapp_verify_token;
+          }
+        } catch (e) {
+          console.log('⚠️  Não conseguiu buscar token do banco');
+        }
+      }
 
       console.log('🔍 GET request de validação recebido');
       console.log(`   Mode: ${mode}`);
       console.log(`   Token recebido: ${token?.slice(0, 10)}...`);
       console.log(`   Token esperado: ${VERIFY_TOKEN_ESPERADO?.slice(0, 10)}...`);
+      console.log(`   Challenge: ${challenge}`);
 
-      if (mode === 'subscribe' && token === VERIFY_TOKEN_ESPERADO) {
+      if (mode === 'subscribe' && token === VERIFY_TOKEN_ESPERADO && challenge) {
         console.log('✅ Webhook validado com sucesso!');
-        return new Response(challenge, { status: 200 });
+        return new Response(challenge, { 
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' }
+        });
       } else {
-        console.log('❌ Verificação falhou - token inválido');
-        return new Response('Verificação falhou', { status: 403 });
+        console.log('❌ Verificação falhou');
+        console.log(`   Token match: ${token === VERIFY_TOKEN_ESPERADO}`);
+        console.log(`   Mode: ${mode === 'subscribe'}`);
+        return new Response('', { status: 403 });
       }
     }
 
@@ -32,7 +55,6 @@ Deno.serve(async (req) => {
     // [2] PROCESSAR WEBHOOK POST (mensagens reais)
     // ════════════════════════════════════════════════════════════════════
     if (req.method === 'POST') {
-      const base44 = createClientFromRequest(req);
       const body = await req.json();
 
       console.log('\n' + '='.repeat(80));
@@ -46,11 +68,14 @@ Deno.serve(async (req) => {
       }
 
       const entry = body.entry[0];
-      if (!entry.changes) {
+      if (!entry.changes || entry.changes.length === 0) {
         return Response.json({ ok: true });
       }
 
       const change = entry.changes[0];
+      if (!change || !change.value) {
+        return Response.json({ ok: true });
+      }
       const value = change.value;
 
       // Pode ser uma mensagem ou uma confirmação de status
@@ -80,6 +105,7 @@ Deno.serve(async (req) => {
       // ══════════════════════════════════════════════════════════════════
       // [4] GARANTIR EMPRESA
       // ══════════════════════════════════════════════════════════════════
+      const base44 = createClientFromRequest(req);
       let empresas = await base44.asServiceRole.entities.Empresa.filter(
         { status: 'ativa' },
         null,
