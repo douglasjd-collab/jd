@@ -457,38 +457,44 @@ Deno.serve(async (req) => {
         }
 
         const propostaBase = {
-          empresa_id:                  empresaId,
-          produto:                     'emprestimo',
-          cliente_nome:                nomeVal || cliente?.nome_completo || '',
-          cliente_cpf:                 cpfVal || cliente?.cpf || null,
-          administradora_nome:         banco?.nome || bancoVal || null,
-          emprestimo_convenio_nome:    conv?.nome || convenioVal || null,
-          emprestimo_tipo:             tipo || null,
-          tipo_importacao_original:    tipoPendente ? tipoVal : undefined,
-          pendente_vinculacao_tipo:    tipoPendente ? true : undefined,
-          emprestimo_numero_ade:       adeVal || null,
-          emprestimo_numero_beneficio: beneficioVal || null,
-          emprestimo_prazo:            prazo,
-          emprestimo_valor_parcela:    parcela || undefined,
-          contrato:                    contratoVal || adeVal || null,
-          vendedor_nome:               vend?.nome || vendedorVal || null,
-          data_venda:                  parseData(dataCadastroPropVal) || dataVend,
-          valor_credito:               valorBruto > 0 ? valorBruto : (valor > 0 ? valor : undefined),
-          valor_liquido:               valor > 0 ? valor : undefined,
-          valor_comissao:              comissao,
-          status:                      statusVal || null,
-          status_id:                   statusId || null,
-          tabela_comissao_id:          tabelaComissao?.id || null,
-          tabela_comissao_nome:        tabelaComissao ? (tabelaComissao.tabela || tabelaComissao.nome) : null,
-          emprestimo_data_liberacao:   parseData(dataPagClienteVal) || undefined,
-          data_comissao_recebida:      parseData(dataRecebComissaoVal) || undefined,
-          comissao_banco_base_comissao: valorBaseComissaoVal ? parseValor(valorBaseComissaoVal) : undefined,
-        };
+           empresa_id:                  empresaId,
+           produto:                     'emprestimo',
+           cliente_nome:                nomeVal || cliente?.nome_completo || '',
+           cliente_cpf:                 cpfVal || cliente?.cpf || null,
+           administradora_nome:         banco?.nome || bancoVal || null,
+           emprestimo_convenio_nome:    conv?.nome || convenioVal || null,
+           emprestimo_tipo:             tipo || null,
+           tipo_importacao_original:    tipoPendente ? tipoVal : undefined,
+           pendente_vinculacao_tipo:    tipoPendente ? true : undefined,
+           emprestimo_numero_ade:       adeVal || null,
+           emprestimo_numero_beneficio: beneficioVal || null,
+           emprestimo_prazo:            prazo,
+           emprestimo_valor_parcela:    parcela || undefined,
+           contrato:                    contratoVal || adeVal || null,
+           vendedor_nome:               vend?.nome || vendedorVal || null,
+           data_venda:                  parseData(dataCadastroPropVal) || dataVend,
+           valor_credito:               valorBruto > 0 ? valorBruto : (valor > 0 ? valor : undefined),
+           valor_liquido:               valor > 0 ? valor : undefined,
+           valor_comissao:              comissao,
+           status:                      statusVal || null,
+           status_id:                   statusId || null,
+           tabela_comissao_id:          tabelaComissao?.id || null,
+           tabela_comissao_nome:        tabelaComissao ? (tabelaComissao.tabela || tabelaComissao.nome) : null,
+           emprestimo_data_liberacao:   parseData(dataPagClienteVal) || undefined,
+           data_comissao_recebida:      parseData(dataRecebComissaoVal) || undefined,
+           comissao_banco_base_comissao: valorBaseComissaoVal ? parseValor(valorBaseComissaoVal) : undefined,
+         };
 
-        // Adicionar IDs somente se existirem (campos string)
-        propostaBase.cliente_id = cliente?.id || 'importado';
-        propostaBase.administradora_id = banco?.id || null;
-        if (conv?.id) propostaBase.emprestimo_convenio_id = conv.id;
+         // Adicionar IDs somente se existirem (campos string)
+         propostaBase.cliente_id = cliente?.id || 'importado';
+         propostaBase.administradora_id = banco?.id || null;
+         if (conv?.id) propostaBase.emprestimo_convenio_id = conv.id;
+
+         // 🏢 Adicionar empresa parceira selecionada no formulário
+         if (body.empresa_parceira_id) {
+           propostaBase.empresa_parceira_id = body.empresa_parceira_id;
+           propostaBase.empresa_parceira_nome = body.empresa_parceira_nome || '';
+         }
 
         // Vincular vendedor
         if (vend?.id) {
@@ -576,7 +582,12 @@ Deno.serve(async (req) => {
               updateData.tabela_comissao_id = tabelaComissao.id;
               updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
             }
-            
+            // 🏢 Atualizar empresa parceira se informada
+            if (body.empresa_parceira_id) {
+              updateData.empresa_parceira_id = body.empresa_parceira_id;
+              updateData.empresa_parceira_nome = body.empresa_parceira_nome || '';
+            }
+
             await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
             atualizadas++;
             const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
@@ -635,6 +646,11 @@ Deno.serve(async (req) => {
                 }
                 if (valor > 0) updateDataFinal.valor_liquido = valor;
                 if (comissaoVal) updateDataFinal.valor_comissao = parseValor(comissaoVal);
+                // 🏢 Atualizar empresa parceira se informada
+                if (body.empresa_parceira_id) {
+                  updateDataFinal.empresa_parceira_id = body.empresa_parceira_id;
+                  updateDataFinal.empresa_parceira_nome = body.empresa_parceira_nome || '';
+                }
 
                 await base44.asServiceRole.entities.Proposta.update(propostaFinalCheck.id, updateDataFinal);
                 atualizadas++;
