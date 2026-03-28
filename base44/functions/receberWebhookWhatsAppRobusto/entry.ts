@@ -105,14 +105,21 @@ Deno.serve(async (req) => {
       console.log(`[INFO] Webhook genérico processado`);
     }
 
-    if (!telefone || !mensagemTexto) {
-      console.log('[INFO] Webhook recebido mas sem dados relevantes');
-      return Response.json({ success: true, message: 'Webhook recebido' });
+    // Ser MENOS rigoroso: aceitar mesmo se faltar dados
+    if (!telefone) {
+      console.log('[WARN] Telefone não extraído do webhook');
+      return Response.json({ success: true, message: 'Webhook recebido mas sem telefone' });
+    }
+
+    // Se mensagem estiver vazia, usar placeholder
+    if (!mensagemTexto) {
+      mensagemTexto = '[Mensagem sem conteúdo]';
     }
 
     console.log(`[DATA] Telefone: ${telefone}`);
     console.log(`[DATA] Mensagem: "${mensagemTexto.slice(0, 50)}..."`);
     console.log(`[DATA] ID: ${messageId}`);
+    console.log(`[DATA] Remetente: ${remetente}`);
 
     // ════════════════════════════════════════════════════════════════════
     // [3] Determinar empresa
@@ -130,8 +137,19 @@ Deno.serve(async (req) => {
     }
 
     if (!empresaId) {
-      console.warn('[WARN] Empresa não encontrada');
-      return Response.json({ success: true, message: 'Sem empresa' });
+      console.warn('[WARN] Empresa não encontrada - criando padrão');
+      // Criar empresa padrão se não existir
+      try {
+        const novaEmpresa = await base44.asServiceRole.entities.Empresa.create({
+          nome: 'JD Promotora',
+          status: 'ativa',
+        });
+        empresaId = novaEmpresa.id;
+        console.log(`[EMPRESA] Criada: ${empresaId}`);
+      } catch (e) {
+        console.error('Erro ao criar empresa:', e.message);
+        return Response.json({ error: 'Sem empresa' }, { status: 500 });
+      }
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -204,7 +222,7 @@ Deno.serve(async (req) => {
     // ════════════════════════════════════════════════════════════════════
     let mensagemId = null;
     try {
-      // Verificar se já existe
+      // Verificar se já existe (MAS não bloquear se messageId for vazio)
       if (messageId) {
         const msgExistentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
           conversa_id: conversaId,
@@ -212,9 +230,11 @@ Deno.serve(async (req) => {
         }, null, 1);
 
         if (msgExistentes.length > 0) {
-          console.log(`[MSG] Duplicata detectada, pulando`);
+          console.log(`[MSG] Duplicata detectada com ID ${messageId}, pulando`);
           return Response.json({ success: true, message: 'Duplicata ignorada' });
         }
+      } else {
+        console.log(`[WARN] Sem messageId, salvando mesmo assim`);
       }
 
       // Criar mensagem
@@ -240,7 +260,30 @@ Deno.serve(async (req) => {
 
     } catch (err) {
       console.error('[ERRO] Falha ao salvar mensagem:', err.message);
-      return Response.json({ error: 'Falha ao salvar mensagem' }, { status: 500 });
+      console.log('[RETRY] Tentando novamente com dados minimalistas...');
+      
+      try {
+        // Tentar novamente com dados minimalistas
+        const novaMsg = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+          conversa_id: conversaId,
+          empresa_id: empresaId,
+          remetente: remetente || 'cliente',
+          tipo_conteudo: 'texto',
+          texto: (mensagemTexto || '').slice(0, 500),
+          data_envio: new Date().toISOString(),
+          status: 'entregue',
+        });
+        mensagemId = novaMsg.id;
+        console.log(`[MSG-RETRY] Criada com sucesso: ${mensagemId}`);
+
+        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversaId, {
+          ultima_mensagem: (mensagemTexto || '').slice(0, 100),
+          data_ultima_mensagem: new Date().toISOString(),
+        });
+      } catch (retryErr) {
+        console.error('[ERRO-RETRY] Falha novamente:', retryErr.message);
+        return Response.json({ error: 'Falha ao salvar mensagem' }, { status: 500 });
+      }
     }
 
     console.log(`${'='.repeat(80)}`);
