@@ -300,6 +300,7 @@ export default function ImportacaoProducao() {
                         <strong>{resultado.criadas || 0}</strong> nova(s) criada(s)
                         {resultado.atualizadas > 0 && <>, <strong>{resultado.atualizadas}</strong> atualizada(s)</>}
                         {resultado.ignoradas > 0 && `, ${resultado.ignoradas} ignorada(s)`}
+                        {resultado.vinculados_auto > 0 && <>, <strong className="text-blue-700">{resultado.vinculados_auto} vendedor(es) vinculado(s) automaticamente</strong></>}
                         {resultado.pendentes_tipo > 0 && <>, <strong className="text-orange-700">{resultado.pendentes_tipo} com tipo pendente</strong></>}
                       </p>
                       {resultado.erros?.length > 0 && (

@@ -562,12 +562,52 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Vincular vendedor automaticamente ──────────────────────────────────────
+    // Para cada proposta sem vendedor, verificar se o mesmo cliente (por CPF)
+    // tem OUTRA proposta COM vendedor → vincular o mesmo vendedor automaticamente.
+    let vinculados_auto = 0;
+    try {
+      // Recarregar propostas atualizadas
+      const todasPropostas = toArray(
+        await base44.asServiceRole.entities.Proposta.filter({ empresa_id: empresaId, produto: 'emprestimo' }, null, 5000)
+      );
+
+      // Mapear CPF → vendedor_id/nome (da proposta que tem vendedor)
+      const cpfVendedorMap = {};
+      for (const p of todasPropostas) {
+        const cpf = normCpf(p.cliente_cpf || '');
+        if (cpf && p.vendedor_id && p.vendedor_nome) {
+          cpfVendedorMap[cpf] = { vendedor_id: p.vendedor_id, vendedor_nome: p.vendedor_nome };
+        }
+      }
+
+      // Aplicar vendedor nas propostas sem vendedor do mesmo CPF
+      for (const p of todasPropostas) {
+        const cpf = normCpf(p.cliente_cpf || '');
+        if (!cpf) continue;
+        if (p.vendedor_id) continue; // já tem vendedor
+        const vInfo = cpfVendedorMap[cpf];
+        if (!vInfo) continue;
+
+        await base44.asServiceRole.entities.Proposta.update(p.id, {
+          vendedor_id: vInfo.vendedor_id,
+          vendedor_nome: vInfo.vendedor_nome,
+        });
+        vinculados_auto++;
+        console.log(`Vendedor vinculado automaticamente: ${p.cliente_nome} (${p.contrato}) → ${vInfo.vendedor_nome}`);
+      }
+    } catch (err) {
+      console.error('Erro ao vincular vendedores automáticos:', err.message);
+    }
+    // ───────────────────────────────────────────────────────────────────────────
+
     return Response.json({
       success: true,
       criadas,
       atualizadas,
       ignoradas,
       pendentes_tipo,
+      vinculados_auto,
       tipos_nao_mapeados: Object.keys(tiposNaoMapeados),
       erros: erros.slice(0, 20),
       previews: previews.slice(0, 5),
