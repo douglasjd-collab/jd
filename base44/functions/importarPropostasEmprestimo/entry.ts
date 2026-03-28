@@ -344,12 +344,7 @@ Deno.serve(async (req) => {
       try {
         const nomeVal      = colNome      >= 0 ? String(row[colNome]      ?? '').trim() : '';
         const cpfVal       = colCpf       >= 0 ? String(row[colCpf]       ?? '').trim() : '';
-        let bancoVal       = colBanco     >= 0 ? String(row[colBanco]     ?? '').trim() : '';
-        // Se BANCO vazio, tentar usar FINANCEIRA (coluna comum para banco)
-        if (!bancoVal) {
-          const colFinanceira = header.findIndex(h => h.includes('financeira'));
-          if (colFinanceira >= 0) bancoVal = String(row[colFinanceira] ?? '').trim();
-        }
+        const bancoVal     = colBanco     >= 0 ? String(row[colBanco]     ?? '').trim() : '';
         const convenioVal  = colConvenio  >= 0 ? String(row[colConvenio]  ?? '').trim() : '';
         const tipoVal      = colTipo      >= 0 ? String(row[colTipo]      ?? '').trim() : '';
         const valorVal     = colValor     >= 0 ? row[colValor]                           : 0;
