@@ -411,16 +411,97 @@ export default function ConfiguracaoWhatsApp() {
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                  <p className="text-sm text-blue-900 font-semibold mb-2">📖 Onde encontrar essas credenciais?</p>
-                  <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                    <li>Acesse <strong>developers.facebook.com</strong></li>
-                    <li>Vá em seu App do WhatsApp Business</li>
-                    <li>Em <strong>Settings → API Setup</strong> encontre o Access Token</li>
-                    <li>Em <strong>Phone Numbers</strong> encontre o Phone Number ID</li>
-                    <li>Em <strong>Settings → Business Accounts</strong> encontre o Account ID</li>
-                  </ol>
+                   <p className="text-sm text-blue-900 font-semibold mb-2">📖 Onde encontrar essas credenciais?</p>
+                   <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                     <li>Acesse <strong>developers.facebook.com</strong></li>
+                     <li>Vá em seu App do WhatsApp Business</li>
+                     <li>Em <strong>Settings → API Setup</strong> encontre o Access Token</li>
+                     <li>Em <strong>Phone Numbers</strong> encontre o Phone Number ID</li>
+                     <li>Em <strong>Settings → Business Accounts</strong> encontre o Account ID</li>
+                   </ol>
+                 </div>
+
+                {/* SEÇÃO DO WEBHOOK - PARA ADICIONAR NO FACEBOOK */}
+                <div className="border-2 border-purple-500 rounded-lg p-4 bg-purple-50 mt-6">
+                  <h3 className="text-lg font-bold text-purple-900 mb-4">🔗 Configuração de Webhook (para Meta)</h3>
+                  <p className="text-sm text-purple-800 mb-4">Cole os valores abaixo em <strong>Meta for Developers → Seu App → Configuration → Webhooks</strong></p>
+
+                  {/* Callback URL */}
+                  <div className="mb-4">
+                    <Label className="mb-2 block font-semibold text-purple-900">📲 Callback URL</Label>
+                    <p className="text-xs text-purple-700 mb-2">Cole este valor em: <strong>Meta → Configuration → Webhooks → Callback URL</strong></p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={WEBHOOK_URL_OFICIAL}
+                        readOnly
+                        className="bg-white border-2 border-purple-400 font-mono text-sm text-purple-700"
+                      />
+                      <Button
+                        variant="default"
+                        className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+                        onClick={() => {
+                          copyToClipboard(WEBHOOK_URL_OFICIAL, 'webhook-oficial');
+                          toast.success('✅ Callback URL copiada!');
+                        }}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Verify Token */}
+                  <div>
+                    <Label className="mb-2 block font-semibold text-purple-900">🔐 Verify Token</Label>
+                    <p className="text-xs text-purple-700 mb-2">Cole este valor em: <strong>Meta → Configuration → Webhooks → Verify Token</strong></p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={editMode ? tempWhatsappVerifyToken : whatsappVerifyToken}
+                        onChange={(e) => editMode && setTempWhatsappVerifyToken(e.target.value)}
+                        readOnly={!editMode}
+                        className={`font-mono text-sm ${editMode ? '' : 'bg-white border-2 border-purple-400 text-purple-700'}`}
+                        placeholder="Será gerado quando você clicar em Gerar"
+                      />
+                      {editMode && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const token = gerarVerifyToken();
+                            toast.success('✅ Token gerado!');
+                          }}
+                          title="Gerar novo token aleatório"
+                        >
+                          🔄 Gerar Token
+                        </Button>
+                      )}
+                      {!editMode && whatsappVerifyToken && (
+                        <Button 
+                          variant="default" 
+                          className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+                          onClick={() => {
+                            copyToClipboard(whatsappVerifyToken, 'verify');
+                            toast.success('✅ Verify Token copiado!');
+                          }}
+                        >
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copiar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg">
+                    <p className="text-xs text-blue-900 font-semibold">💡 Passo a passo:</p>
+                    <ol className="text-xs text-blue-800 mt-2 space-y-1 list-decimal list-inside">
+                      <li>Copie a <strong>Callback URL</strong> acima</li>
+                      <li>Vá em Meta for Developers → Seu App WhatsApp</li>
+                      <li>Em <strong>Configuration → Webhooks → Callback URL</strong>, cole a URL</li>
+                      <li>Em <strong>Verify Token</strong>, gere um token clicando em "Gerar Token" (em modo editar) ou cole o que já existe</li>
+                      <li>Clique em <strong>"Verify and Save"</strong></li>
+                    </ol>
+                  </div>
                 </div>
-              </TabsContent>
+                </TabsContent>
             </Tabs>
 
             {editMode && (
