@@ -498,27 +498,39 @@ Deno.serve(async (req) => {
           updatePayload.vendedor_nome = vendedorVal;
         }
 
-        // Verificar duplicidade por contrato + banco (ou por CPF+banco quando sem contrato)
-        const contratoFinal = proposta.contrato || null;
-        const administradoraId = proposta.administradora_id || null;
-        const administradoraNome = proposta.administradora_nome || null;
-        const cpfFinal = normCpf(proposta.cliente_cpf || '');
+        // Verificar duplicidade por contrato + banco (RIGOROSO)
+         const contratoFinal = proposta.contrato || null;
+         const administradoraId = proposta.administradora_id || null;
+         const administradoraNome = proposta.administradora_nome || null;
+         const cpfFinal = normCpf(proposta.cliente_cpf || '');
 
-        const propostaExistente = propostasExistentes.find(p => {
-          const bancoMatch = (administradoraId && p.administradora_id === administradoraId) ||
-                             (administradoraNome && normStr(p.administradora_nome || '') === normStr(administradoraNome || ''));
-          if (!bancoMatch) return false;
+         // Validação: contrato + banco NUNCA podem duplicar
+         let propostaExistente = null;
 
-          if (contratoFinal && p.contrato) {
-            // Deduplicação por contrato + banco (mais confiável)
-            return p.contrato === contratoFinal;
-          }
-          if (!contratoFinal && cpfFinal && cpfFinal.length >= 11) {
-            // Sem contrato: deduplicar por CPF + banco
-            return normCpf(p.cliente_cpf || '') === cpfFinal;
-          }
-          return false;
-        }) || null;
+         if (contratoFinal && administradoraId) {
+           // Procurar por contrato + banco (ID) — MAIS ESPECÍFICO
+           propostaExistente = propostasExistentes.find(p =>
+             p.contrato === contratoFinal && p.administradora_id === administradoraId
+           );
+         } else if (contratoFinal && administradoraNome) {
+           // Procurar por contrato + banco (nome normalizado)
+           propostaExistente = propostasExistentes.find(p =>
+             p.contrato === contratoFinal && normStr(p.administradora_nome || '') === normStr(administradoraNome || '')
+           );
+         }
+
+         // Se não encontrou por contrato, procurar por CPF + banco
+         if (!propostaExistente && cpfFinal && cpfFinal.length >= 11) {
+           if (administradoraId) {
+             propostaExistente = propostasExistentes.find(p =>
+               normCpf(p.cliente_cpf || '') === cpfFinal && p.administradora_id === administradoraId
+             );
+           } else if (administradoraNome) {
+             propostaExistente = propostasExistentes.find(p =>
+               normCpf(p.cliente_cpf || '') === cpfFinal && normStr(p.administradora_nome || '') === normStr(administradoraNome || '')
+             );
+           }
+         }
 
         if (propostaExistente) {
           // Proposta existente — atualizar status, datas, valores e parcela
