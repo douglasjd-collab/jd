@@ -463,16 +463,16 @@ export default function ConfiguracaoWhatsApp() {
                   {/* Verify Token */}
                   <div>
                     <Label className="mb-2 block font-semibold text-purple-900">🔐 Verify Token</Label>
-                    <p className="text-xs text-purple-700 mb-2">Cole este valor em: <strong>Meta → Configuration → Webhooks → Verify Token</strong></p>
-                    <div className="flex gap-2">
-                      <Input
-                        value={editMode ? tempWhatsappVerifyToken : whatsappVerifyToken}
-                        onChange={(e) => editMode && setTempWhatsappVerifyToken(e.target.value)}
-                        readOnly={!editMode}
-                        className={`font-mono text-sm ${editMode ? '' : 'bg-white border-2 border-purple-400 text-purple-700'}`}
-                        placeholder="Será gerado quando você clicar em Gerar"
-                      />
-                      {editMode && (
+                    <p className="text-xs text-purple-700 mb-3">Cole este valor em: <strong>Meta → Configuration → Webhooks → Verify Token</strong></p>
+
+                    {editMode ? (
+                      <div className="flex gap-2 mb-3">
+                        <Input
+                          value={tempWhatsappVerifyToken}
+                          onChange={(e) => setTempWhatsappVerifyToken(e.target.value)}
+                          className="font-mono text-sm"
+                          placeholder="Será gerado quando você clicar em Gerar"
+                        />
                         <Button
                           variant="outline"
                           onClick={() => {
@@ -483,21 +483,36 @@ export default function ConfiguracaoWhatsApp() {
                         >
                           🔄 Gerar Token
                         </Button>
-                      )}
-                      {!editMode && whatsappVerifyToken && (
-                        <Button 
-                          variant="default" 
-                          className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
-                          onClick={() => {
-                            copyToClipboard(whatsappVerifyToken, 'verify');
-                            toast.success('✅ Verify Token copiado!');
-                          }}
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copiar
-                        </Button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <>
+                        {whatsappVerifyToken ? (
+                          <div className="bg-purple-100 border-2 border-purple-500 rounded-lg p-4 mb-3">
+                            <p className="text-xs text-purple-700 font-semibold mb-2">Token para copiar:</p>
+                            <div className="flex gap-2">
+                              <code className="flex-1 bg-white p-2 rounded font-mono text-sm text-purple-900 break-all select-all">
+                                {whatsappVerifyToken}
+                              </code>
+                              <Button 
+                                variant="default" 
+                                className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap flex-shrink-0"
+                                onClick={() => {
+                                  copyToClipboard(whatsappVerifyToken, 'verify');
+                                  toast.success('✅ Token copiado! Cole na Meta');
+                                }}
+                              >
+                                <Copy className="w-4 h-4 mr-2" />
+                                Copiar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-3">
+                            <p className="text-xs text-amber-800">Clique em "Editar" para gerar um token de verificação</p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg">
