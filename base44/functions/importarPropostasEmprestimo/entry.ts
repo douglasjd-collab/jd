@@ -529,19 +529,33 @@ Deno.serve(async (req) => {
           updatePayload.vendedor_nome = vendedorVal;
         }
 
-        // 🔐 DEDUPLICAÇÃO COM CHAVE ÚNICA: 100% efetiva
-        const chaveUnica = gerarChaveUnica(proposta.administradora_nome, proposta.contrato);
+        // 🔐 DEDUPLICAÇÃO: Procura PRIMEIRO por contrato+banco (propostas existentes), DEPOIS salva chave_unica
+        const contratoFinal = proposta.contrato || null;
+        const administradoraId = proposta.administradora_id || null;
+        const administradoraNome = proposta.administradora_nome || null;
+        const chaveUnica = gerarChaveUnica(administradoraNome, contratoFinal);
 
-        if (!chaveUnica) {
-          // Sem contrato ou banco → não conseguimos gerar chave = ignorar
-          ignoradas++;
-          console.log(`⚠️ IGNORADA (sem contrato/banco): ${nomeVal}`);
-        } else {
-          // Adicionar chave única à proposta
-          proposta.chave_unica = chaveUnica;
+        try {
+          let propostaExistente = null;
 
-          try {
-            // Procurar proposta existente pela chave única (única busca necessária!)
+          // Nível 1: Buscar por contrato + banco_id (mais rigoroso)
+          if (contratoFinal && administradoraId) {
+            const resultado = toArray(
+              await base44.asServiceRole.entities.Proposta.filter({
+                empresa_id: empresaId,
+                contrato: contratoFinal,
+                administradora_id: administradoraId,
+                produto: 'emprestimo',
+              })
+            );
+            if (resultado.length > 0) {
+              propostaExistente = resultado[0];
+              console.log(`🔍 ENCONTRADA por contrato+banco: ${contratoFinal}`);
+            }
+          }
+
+          // Nível 2: Se não achou, buscar por chave_unica (para futuras importações)
+          if (!propostaExistente && chaveUnica) {
             const resultado = toArray(
               await base44.asServiceRole.entities.Proposta.filter({
                 empresa_id: empresaId,
@@ -549,54 +563,61 @@ Deno.serve(async (req) => {
                 produto: 'emprestimo',
               })
             );
-
             if (resultado.length > 0) {
-              // 🔴 Proposta JÁ EXISTE!
-              const propostaExistente = resultado[0];
-
-              if (temComissaoPaga(propostaExistente)) {
-                // ❌ NUNCA TOCA EM PROPOSTA COM COMISSÃO PAGA
-                ignoradas++;
-                console.log(`❌ IGNORADA (chave: ${chaveUnica}, comissão paga): ${nomeVal}`);
-              } else {
-                // ✅ Seguro atualizar — comissão não foi paga
-                const updateData = {};
-                if (statusVal) {
-                  updateData.status = statusVal;
-                  updateData.status_id = statusId || null;
-                }
-                if (dataVend) updateData.data_venda = dataVend;
-                if (parseData(dataPagClienteVal)) updateData.emprestimo_data_liberacao = parseData(dataPagClienteVal);
-                if (valorBruto > 0) updateData.valor_credito = valorBruto;
-                else if (valor > 0) updateData.valor_credito = valor;
-                if (valor > 0) updateData.valor_liquido = valor;
-                if (comissaoVal) updateData.valor_comissao = parseValor(comissaoVal);
-                if (parcela) updateData.emprestimo_valor_parcela = parcela;
-                if (prazo) updateData.emprestimo_prazo = prazo;
-                if (tabelaComissao?.id) {
-                  updateData.tabela_comissao_id = tabelaComissao.id;
-                  updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
-                }
-                if (body.empresa_parceira_id) {
-                  updateData.empresa_parceira_id = body.empresa_parceira_id;
-                  updateData.empresa_parceira_nome = body.empresa_parceira_nome || '';
-                }
-
-                await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
-                atualizadas++;
-                console.log(`✅ ATUALIZADA (chave: ${chaveUnica}): ${nomeVal}`);
-              }
-            } else {
-              // 🆕 Realmente é nova — CRIAR com segurança
-              const nova = await base44.asServiceRole.entities.Proposta.create(proposta);
-              criadas++;
-              propostasCriadasIds.push(nova.id);
-              console.log(`🆕 CRIADA (chave: ${chaveUnica}): ${nomeVal}`);
+              propostaExistente = resultado[0];
+              console.log(`🔍 ENCONTRADA por chave_unica: ${chaveUnica}`);
             }
-          } catch (err) {
-            console.error(`❌ Erro ao processar chave ${chaveUnica}:`, err.message);
-            ignoradas++;
           }
+
+          if (propostaExistente) {
+            // 🔴 Proposta JÁ EXISTE!
+            if (temComissaoPaga(propostaExistente)) {
+              // ❌ NUNCA TOCA EM PROPOSTA COM COMISSÃO PAGA
+              ignoradas++;
+              console.log(`❌ IGNORADA (comissão paga): ${contratoFinal || nomeVal}`);
+            } else {
+              // ✅ Seguro atualizar — comissão não foi paga
+              const updateData = {};
+              if (statusVal) {
+                updateData.status = statusVal;
+                updateData.status_id = statusId || null;
+              }
+              if (dataVend) updateData.data_venda = dataVend;
+              if (parseData(dataPagClienteVal)) updateData.emprestimo_data_liberacao = parseData(dataPagClienteVal);
+              if (valorBruto > 0) updateData.valor_credito = valorBruto;
+              else if (valor > 0) updateData.valor_credito = valor;
+              if (valor > 0) updateData.valor_liquido = valor;
+              if (comissaoVal) updateData.valor_comissao = parseValor(comissaoVal);
+              if (parcela) updateData.emprestimo_valor_parcela = parcela;
+              if (prazo) updateData.emprestimo_prazo = prazo;
+              if (tabelaComissao?.id) {
+                updateData.tabela_comissao_id = tabelaComissao.id;
+                updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
+              }
+              if (body.empresa_parceira_id) {
+                updateData.empresa_parceira_id = body.empresa_parceira_id;
+                updateData.empresa_parceira_nome = body.empresa_parceira_nome || '';
+              }
+              // Adicionar chave_unica se não tiver
+              if (chaveUnica && !propostaExistente.chave_unica) {
+                updateData.chave_unica = chaveUnica;
+              }
+
+              await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
+              atualizadas++;
+              console.log(`✅ ATUALIZADA: ${contratoFinal || nomeVal}`);
+            }
+          } else {
+            // 🆕 Realmente é nova — CRIAR com segurança
+            if (chaveUnica) proposta.chave_unica = chaveUnica;
+            const nova = await base44.asServiceRole.entities.Proposta.create(proposta);
+            criadas++;
+            propostasCriadasIds.push(nova.id);
+            console.log(`🆕 CRIADA: ${contratoFinal || nomeVal}`);
+          }
+        } catch (err) {
+          console.error(`❌ Erro ao processar ${contratoFinal || nomeVal}:`, err.message);
+          ignoradas++;
         }
 
         previews.push({
