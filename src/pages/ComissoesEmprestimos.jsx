@@ -512,29 +512,63 @@ export default function ComissoesEmprestimos() {
         });
       }
 
-      // Descontar adiantamentos selecionados
+      // Descontar adiantamentos selecionados (com suporte a desconto parcial)
       const adisDesc = Array.from(adiantamentosSelecionados)
         .map(id => adiantamentosVendedor.find(a => a.id === id))
         .filter(Boolean);
 
+      // Calcular quanto realmente pode ser descontado (limitado ao valor bruto das comissões)
+      let saldoDisponivel = valorTotalBruto;
+
       for (const adi of adisDesc) {
-        await base44.entities.Adiantamento.update(adi.id, {
-          status: 'descontado',
-          data_desconto: dataPagamento,
-          lote_pagamento_id: lote.id,
-        });
-        // Lança despesa "Adiantamento de Salário" para o financeiro
+        if (saldoDisponivel <= 0) break;
+
+        const valorDescontar = Math.min(adi.valor, saldoDisponivel);
+        const valorRestante = adi.valor - valorDescontar;
+        saldoDisponivel -= valorDescontar;
+
+        if (valorRestante > 0.01) {
+          // Desconto parcial: atualiza o adiantamento original com o valor restante e cria novo pendente
+          await base44.entities.Adiantamento.update(adi.id, {
+            valor: valorRestante,
+            status: 'pendente',
+            observacao: `Parcialmente descontado no lote ${loteCode}. Restante: R$ ${valorRestante.toFixed(2)}`,
+          });
+          // Cria registro do valor efetivamente descontado (para histórico/despesa)
+          await base44.entities.Adiantamento.create({
+            empresa_id: adi.empresa_id || vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
+            colaborador_id: adi.colaborador_id,
+            colaborador_nome: adi.colaborador_nome,
+            parceiro_nome: adi.parceiro_nome,
+            valor: valorDescontar,
+            data: adi.data,
+            motivo: adi.motivo,
+            status: 'descontado',
+            data_desconto: dataPagamento,
+            lote_pagamento_id: lote.id,
+            observacao: `Desconto parcial do lote ${loteCode}. Original: R$ ${adi.valor.toFixed(2)}`,
+          });
+        } else {
+          // Desconto total
+          await base44.entities.Adiantamento.update(adi.id, {
+            status: 'descontado',
+            data_desconto: dataPagamento,
+            lote_pagamento_id: lote.id,
+          });
+        }
+
+        // Lança despesa "Adiantamento de Salário" para o financeiro pelo valor efetivamente descontado
         await base44.entities.Despesa.create({
           empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
           descricao: `Adiantamento de Salário — ${adi.colaborador_nome || adi.parceiro_nome}${adi.motivo ? ` (${adi.motivo})` : ''}`,
           categoria: 'Adiantamento de Salários',
-          valor: adi.valor,
+          valor: valorDescontar,
           data: adi.data,
           data_pagamento: dataPagamento,
           status: 'pago',
           responsavel_id: adi.colaborador_id || user?.colaborador_id || '',
           responsavel_nome: adi.colaborador_nome || adi.parceiro_nome || '',
-          observacao: `Descontado no lote ${loteCode}`,
+          observacao: `Descontado no lote ${loteCode}${valorRestante > 0.01 ? ` (parcial, restam R$ ${valorRestante.toFixed(2)})` : ''}`,
           usuario_id: user?.colaborador_id || '',
           usuario_nome: user?.full_name || '',
         });
