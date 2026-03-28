@@ -53,11 +53,22 @@ Deno.serve(async (req) => {
     let clienteNome = null;
     let messageId = null;
 
+    let remetente = 'cliente'; // Padrão: mensagem recebida
+    
     if (body?.data?.message) {
       // Formato: Evolution API webhook padrão
       eventType = 'message';
       const msg = body.data.message;
-      telefone = (msg.from || msg.sender || '').replace(/\D/g, '');
+      
+      // Detectar se é mensagem ENVIADA (fromMe) ou RECEBIDA
+      if (msg.fromMe || msg.from_me || msg.me) {
+        remetente = 'vendedor';
+        telefone = (msg.to || msg.recipient || '').replace(/\D/g, '');
+      } else {
+        remetente = 'cliente';
+        telefone = (msg.from || msg.sender || '').replace(/\D/g, '');
+      }
+      
       mensagemTexto = msg.body || msg.text || '';
       instancia = body.instance?.name || 'JDPROMOTORA';
       messageId = msg.id || msg.key?.id;
@@ -67,7 +78,16 @@ Deno.serve(async (req) => {
       eventType = 'message';
       if (body.data?.messages && body.data.messages.length > 0) {
         const msg = body.data.messages[0];
-        telefone = (msg.key?.remoteJid || msg.from || '').split('@')[0].replace(/\D/g, '');
+        
+        // Detectar se é mensagem ENVIADA (fromMe) ou RECEBIDA
+        if (msg.key?.fromMe) {
+          remetente = 'vendedor';
+          telefone = (msg.key?.remoteJid || '').split('@')[0].replace(/\D/g, '');
+        } else {
+          remetente = 'cliente';
+          telefone = (msg.key?.remoteJid || msg.from || '').split('@')[0].replace(/\D/g, '');
+        }
+        
         mensagemTexto = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
         messageId = msg.key?.id || msg.id;
         instancia = body.instance || 'JDPROMOTORA';
@@ -201,7 +221,7 @@ Deno.serve(async (req) => {
       const novaMsg = await base44.asServiceRole.entities.MensagemWhatsapp.create({
         conversa_id: conversaId,
         empresa_id: empresaId,
-        remetente: 'cliente',
+        remetente: remetente,
         tipo_conteudo: 'texto',
         texto: mensagemTexto,
         whatsapp_message_id: messageId || null,
