@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
     let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colCelular;
     let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colComissaoPercentual, colContrato, colTabela;
     let colDataRecebComissao, colDataPagCliente, colDataCadastroProp, colValorBaseComissao;
+    let colValorBruto, colParcela;
 
     if (layout && Object.keys(layout).length > 0) {
       // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
@@ -103,7 +104,9 @@ Deno.serve(async (req) => {
       colBanco             = colLetterToIndex(layout.banco);
       colConvenio          = colLetterToIndex(layout.convenio);
       colTipo              = colLetterToIndex(layout.tipo_consignado || layout.tipo_operacao);
-      colValor             = colLetterToIndex(layout.valor_liquido || layout.valor_liberado || layout.valor_bruto || layout.valor_operacao);
+      colValor             = colLetterToIndex(layout.valor_liquido || layout.valor_liberado);
+      colValorBruto        = colLetterToIndex(layout.valor_bruto || layout.valor_operacao);
+      colParcela           = colLetterToIndex(layout.parcela || layout.valor_parcela);
       colPrazo             = colLetterToIndex(layout.prazo_meses);
       colAde               = colLetterToIndex(layout.numero_ade || layout.numero_proposta || layout.numero_contrato);
       colBeneficio         = colLetterToIndex(layout.numero_beneficio);
@@ -327,6 +330,8 @@ Deno.serve(async (req) => {
         const dataCadastroPropVal   = colDataCadastroProp   >= 0 ? row[colDataCadastroProp]                        : null;
         const celularVal            = colCelular            >= 0 ? String(row[colCelular]            ?? '').trim() : '';
         const valorBaseComissaoVal  = colValorBaseComissao  >= 0 ? row[colValorBaseComissao]                        : null;
+        const valorBrutoVal         = colValorBruto         >= 0 ? row[colValorBruto]                                : null;
+        const parcelaVal            = colParcela            >= 0 ? row[colParcela]                                   : null;
 
         if (!nomeVal && !cpfVal) {
           ignoradas++;
@@ -393,8 +398,10 @@ Deno.serve(async (req) => {
           // Se já existe → não alterar nada (manter dados originais cadastrados)
         }
 
-        const valor    = parseValor(valorVal);
-        const prazo    = prazoVal ? (parseInt(String(prazoVal).replace(/\D/g, '')) || null) : null;
+        const valor        = parseValor(valorVal);      // valor líquido (coluna valor_liquido/valor_liberado)
+        const valorBruto   = valorBrutoVal ? parseValor(valorBrutoVal) : 0; // valor bruto (coluna valor_bruto)
+        const parcela      = parcelaVal ? parseValor(parcelaVal) : null;
+        const prazo        = prazoVal ? (parseInt(String(prazoVal).replace(/\D/g, '')) || null) : null;
         const dataVend = parseData(dataVal) || new Date().toISOString().slice(0, 10);
         const tipo     = normTipo(tipoVal);
         const comissao = comissaoVal ? parseValor(comissaoVal) : null;
@@ -444,10 +451,12 @@ Deno.serve(async (req) => {
           emprestimo_numero_ade:       adeVal || null,
           emprestimo_numero_beneficio: beneficioVal || null,
           emprestimo_prazo:            prazo,
+          emprestimo_valor_parcela:    parcela || undefined,
           contrato:                    contratoVal || adeVal || null,
           vendedor_nome:               vend?.nome || vendedorVal || null,
           data_venda:                  parseData(dataCadastroPropVal) || dataVend,
-          valor_credito:               valor,
+          valor_credito:               valorBruto > 0 ? valorBruto : (valor > 0 ? valor : undefined),
+          valor_liquido:               valor > 0 ? valor : undefined,
           valor_comissao:              comissao,
           status:                      statusVal || null,
           status_id:                   statusId || null,
@@ -512,15 +521,13 @@ Deno.serve(async (req) => {
           }
           if (dataVend) updateData.data_venda = dataVend;
           if (parseData(dataPagClienteVal)) updateData.emprestimo_data_liberacao = parseData(dataPagClienteVal);
-          if (valor > 0) updateData.valor_credito = valor;
-          // valor_liquido: lido da coluna valor_liquido/valor_liberado do layout
-          const valorLiquidoVal = layout?.valor_liquido || layout?.valor_liberado ? row[colLetterToIndex(layout?.valor_liquido || layout?.valor_liberado)] : null;
-          if (valorLiquidoVal) updateData.valor_liquido = parseValor(valorLiquidoVal);
+          if (valorBruto > 0) updateData.valor_credito = valorBruto;
+          else if (valor > 0) updateData.valor_credito = valor;
+          if (valor > 0) updateData.valor_liquido = valor;
           if (valorBaseComissaoVal) updateData.comissao_banco_base_comissao = parseValor(valorBaseComissaoVal);
           if (comissaoVal) updateData.valor_comissao = parseValor(comissaoVal);
-          // parcela
-          const parcelaVal = colPrazo >= 0 ? row[colPrazo] : null;
-          if (parcelaVal) updateData.emprestimo_prazo = parseInt(String(parcelaVal).replace(/\D/g, '')) || null;
+          if (parcela) updateData.emprestimo_valor_parcela = parcela;
+          if (prazo) updateData.emprestimo_prazo = prazo;
           // tabela
           if (tabelaComissao?.id) {
             updateData.tabela_comissao_id = tabelaComissao.id;
