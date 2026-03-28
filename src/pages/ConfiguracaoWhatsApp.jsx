@@ -89,11 +89,21 @@ export default function ConfiguracaoWhatsApp() {
     setWhatsappAccessToken(empresaData.whatsapp_access_token || '');
     setWhatsappPhoneNumberId(empresaData.whatsapp_phone_number_id || '');
     setWhatsappBusinessAccountId(empresaData.whatsapp_business_account_id || '');
-    setWhatsappVerifyToken(empresaData.whatsapp_verify_token || '');
+    // Se não houver token, gerar um padrão
+    setWhatsappVerifyToken(empresaData.whatsapp_verify_token || gerarVerifyTokenPadrao());
     
     // Gerar URL webhook com nome da instância
     const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
     setWebhookUrl(webhookGerada);
+  };
+
+  const gerarVerifyTokenPadrao = () => {
+    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let token = '';
+    for (let i = 0; i < 32; i++) {
+      token += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    return token;
   };
 
   const BASE_WEBHOOK_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
@@ -187,7 +197,7 @@ export default function ConfiguracaoWhatsApp() {
     return token;
   };
 
-  const WEBHOOK_URL_OFICIAL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookDuplaAPI';
+  const WEBHOOK_URL_OFICIAL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookMetaOficial';
 
   const handleMudarEmpresa = (empId) => {
     setSelectedEmpresaId(empId);
@@ -515,14 +525,15 @@ export default function ConfiguracaoWhatsApp() {
                     )}
                   </div>
 
-                  <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg">
-                    <p className="text-xs text-blue-900 font-semibold">💡 Passo a passo:</p>
-                    <ol className="text-xs text-blue-800 mt-2 space-y-1 list-decimal list-inside">
-                      <li>Copie a <strong>Callback URL</strong> acima</li>
-                      <li>Vá em Meta for Developers → Seu App WhatsApp</li>
-                      <li>Em <strong>Configuration → Webhooks → Callback URL</strong>, cole a URL</li>
-                      <li>Em <strong>Verify Token</strong>, gere um token clicando em "Gerar Token" (em modo editar) ou cole o que já existe</li>
-                      <li>Clique em <strong>"Verify and Save"</strong></li>
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-100 to-cyan-100 border-2 border-blue-400 rounded-lg">
+                    <p className="text-sm text-blue-900 font-bold mb-3">💡 Configurar na Meta - Passo a Passo:</p>
+                    <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                      <li><strong>Acesse</strong> Meta for Developers → Seu App WhatsApp</li>
+                      <li><strong>Vá em</strong> Configuration → Webhooks</li>
+                      <li><strong>Cole a Callback URL</strong> (roxo acima) no campo <code className="bg-white px-2 py-1 rounded text-xs">Callback URL</code></li>
+                      <li><strong>Cole o Verify Token</strong> (roxo acima) no campo <code className="bg-white px-2 py-1 rounded text-xs">Verify Token</code></li>
+                      <li><strong>Clique</strong> em <code className="bg-white px-2 py-1 rounded text-xs font-bold">Verify and Save</code></li>
+                      <li>✅ Se aparecer verde = sucesso! Salve a configuração</li>
                     </ol>
                   </div>
                 </div>
