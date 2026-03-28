@@ -235,14 +235,15 @@ async function processarWebhook(req, rawBody) {
 
       // 3. Tentar via Evolution API (fetchProfile + histórico de mensagens)
       if (!telefoneLimpo) {
-        const empresaData = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
-        if (empresaData?.[0]?.evolution_url) {
-          const emp = empresaData[0];
+        const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+        const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+        const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || instanceFinal;
+        if (evolutionUrl && evolutionKey && evolutionInstance) {
           telefoneLimpo = await resolverLidParaTelefone(
             remoteJidOriginal,
-            emp.evolution_url.replace(/\/$/, ''),
-            emp.evolution_api_key,
-            emp.evolution_instance_name
+            evolutionUrl.replace(/\/$/, ''),
+            evolutionKey,
+            evolutionInstance
           );
         }
       }
