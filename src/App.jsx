@@ -14,6 +14,7 @@ import ConfiguracaoApi from './pages/ConfiguracaoApi';
 import Adiantamentos from './pages/Adiantamentos';
 import Campanhas from './pages/Campanhas';
 import HistoricoImportacaoPropostas from './pages/HistoricoImportacaoPropostas';
+import TesteWebhookWhatsApp from './pages/TesteWebhookWhatsApp';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
       <Route path="/Adiantamentos" element={<LayoutWrapper currentPageName="Adiantamentos"><Adiantamentos /></LayoutWrapper>} />
       <Route path="/Campanhas" element={<LayoutWrapper currentPageName="Campanhas"><Campanhas /></LayoutWrapper>} />
       <Route path="/HistoricoImportacaoPropostas" element={<LayoutWrapper currentPageName="HistoricoImportacaoPropostas"><HistoricoImportacaoPropostas /></LayoutWrapper>} />
+      <Route path="/TesteWebhookWhatsApp" element={<LayoutWrapper currentPageName="TesteWebhookWhatsApp"><TesteWebhookWhatsApp /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
