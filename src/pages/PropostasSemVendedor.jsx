@@ -298,6 +298,7 @@ export default function PropostasSemVendedor() {
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Data da Proposta</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Nº Contrato</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Cliente</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600">CPF</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Banco</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Tipo</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Valor Liberado</th>
@@ -326,6 +327,9 @@ export default function PropostasSemVendedor() {
                         <td className="px-4 py-3 font-mono text-slate-700">{p.contrato || '-'}</td>
                         <td className="px-4 py-3">
                           <div className="font-medium text-slate-900">{p.cliente_nome || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-slate-600">
+                          {p.cliente_cpf || '-'}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
