@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, UserCheck, Loader2, Users, ArrowLeft, Zap } from 'lucide-react';
+import { Search, UserCheck, Loader2, Users, ArrowLeft, Zap, Bug } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -111,6 +111,18 @@ export default function PropostasSemVendedor() {
     },
     onError: (err) => toast.error(`Erro na sincronização: ${err.message}`),
   });
+
+  const handleDebug = async () => {
+    try {
+      const resp = await base44.functions.invoke('debugSincronizacaoVendedor', {
+        empresa_id: currentUser.empresa_id,
+      });
+      console.log('🐛 DEBUG:', resp.data);
+      toast.info('Debug enviado - veja console para detalhes');
+    } catch (err) {
+      toast.error('Erro no debug: ' + err.message);
+    }
+  };
 
   const semVendedor = propostas.filter(p => !p.vendedor_id || p.vendedor_id === '');
 
@@ -227,14 +239,25 @@ export default function PropostasSemVendedor() {
                 <p className="text-xs text-blue-700 mt-0.5">Vincula propostas sem vendedor baseado no CPF de propostas já vinculadas</p>
               </div>
             </div>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 gap-2 whitespace-nowrap"
-              disabled={semVendedor.length === 0 || sincronizarMutation.isPending}
-              onClick={() => sincronizarMutation.mutate()}
-            >
-              {sincronizarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-              {sincronizarMutation.isPending ? 'Sincronizando...' : 'Sincronizar Agora'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleDebug}
+              >
+                <Bug className="w-4 h-4" />
+                Debug
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 gap-2 whitespace-nowrap"
+                disabled={semVendedor.length === 0 || sincronizarMutation.isPending}
+                onClick={() => sincronizarMutation.mutate()}
+              >
+                {sincronizarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                {sincronizarMutation.isPending ? 'Sincronizando...' : 'Sincronizar Agora'}
+              </Button>
+            </div>
           </div>
 
           {/* Atribuição Manual */}
