@@ -30,7 +30,8 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { file_url, layout } = body;
+    const { file_url, layout, atualizar_telefone } = body;
+    const atualizarTelefone = atualizar_telefone === true;
 
     if (!file_url) {
       return Response.json({ error: 'URL do arquivo não fornecida' }, { status: 400 });
@@ -90,7 +91,7 @@ Deno.serve(async (req) => {
     };
 
     let headerRowIndex = 0;
-    let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo;
+    let colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colCelular;
     let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colComissaoPercentual, colContrato, colTabela;
     let colDataRecebComissao, colDataPagCliente, colDataCadastroProp;
 
@@ -116,6 +117,7 @@ Deno.serve(async (req) => {
       colDataRecebComissao = colLetterToIndex(layout.data_recebimento_comissao);
       colDataPagCliente    = colLetterToIndex(layout.data_pagamento_cliente || layout.data_liberacao);
       colDataCadastroProp  = colLetterToIndex(layout.data_cadastro_proposta || layout.data_digitacao);
+      colCelular           = colLetterToIndex(layout.celular);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
@@ -152,6 +154,7 @@ Deno.serve(async (req) => {
       colComissao  = findCol('comissao', 'comisso');
       colContrato  = findCol('contrato', 'ade');
       colTabela    = findCol('tabela', 'produto');
+      colCelular   = findCol('celular', 'telefone', 'fone');
     }
 
     console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
@@ -308,6 +311,7 @@ Deno.serve(async (req) => {
         const dataRecebComissaoVal  = colDataRecebComissao  >= 0 ? row[colDataRecebComissao]                       : null;
         const dataPagClienteVal     = colDataPagCliente     >= 0 ? row[colDataPagCliente]                          : null;
         const dataCadastroPropVal   = colDataCadastroProp   >= 0 ? row[colDataCadastroProp]                        : null;
+        const celularVal            = colCelular            >= 0 ? String(row[colCelular]            ?? '').trim() : '';
 
         if (!nomeVal && !cpfVal) {
           ignoradas++;
@@ -316,8 +320,30 @@ Deno.serve(async (req) => {
 
         const banco   = findBanco(bancoVal);
         const conv    = findConvenio(convenioVal);
-        const cliente = findCliente(cpfVal, nomeVal);
+        let cliente = findCliente(cpfVal, nomeVal);
         const vend    = findVendedor(vendedorVal);
+
+        // Criar ou atualizar cliente
+        if (!cliente && (cpfVal || nomeVal)) {
+          // Criar novo cliente com dados básicos da planilha
+          const novoCliente = await base44.asServiceRole.entities.Cliente.create({
+            empresa_id: empresaId,
+            tipo_pessoa: 'Física',
+            nome_completo: nomeVal || '',
+            cpf: cpfVal || null,
+            celular: celularVal || null,
+            status: 'ativo',
+          });
+          clientes.push(novoCliente);
+          cliente = novoCliente;
+          console.log(`Cliente criado: ${nomeVal} (${cpfVal})`);
+        } else if (cliente && atualizarTelefone && celularVal) {
+          // Atualizar apenas telefone se configurado e veio no arquivo
+          await base44.asServiceRole.entities.Cliente.update(cliente.id, { celular: celularVal });
+          cliente = { ...cliente, celular: celularVal };
+          const idx = clientes.findIndex(c => c.id === cliente.id);
+          if (idx >= 0) clientes[idx] = cliente;
+        }
 
         // Encontrar tabela de comissão por Banco + Tabela (combinação única)
         let tabelaComissao = null;

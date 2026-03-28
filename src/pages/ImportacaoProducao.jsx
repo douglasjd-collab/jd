@@ -85,6 +85,7 @@ export default function ImportacaoProducao() {
         file_url,
         empresa_parceira_id: empresaParceiraId,
         layout: layoutSel?.mapeamento || null,
+        atualizar_telefone: layoutSel?.atualizar_telefone || false,
       });
 
       const data = resp.data;

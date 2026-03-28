@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Save, Copy, ChevronLeft, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 
@@ -48,6 +49,7 @@ const CAMPOS_PRODUCAO = [
   { key: 'data_liberacao', label: 'Data de Liberação', obrigatorio: false },
   { key: 'data_digitacao', label: 'Data de Digitação', obrigatorio: false },
   { key: 'numero_contrato', label: 'Nº Contrato', obrigatorio: true },
+  { key: 'numero_ade', label: 'Número ADE', obrigatorio: true },
   { key: 'status_contrato', label: 'Status', obrigatorio: true },
   { key: 'comissao_empresa', label: 'Comissão Empresa (Lançamento)', obrigatorio: false },
   { key: 'comissao_empresa_percentual', label: 'Comissão Empresa %', obrigatorio: false },
@@ -102,6 +104,7 @@ export default function LayoutImportacaoConfig() {
   const [saving, setSaving] = useState(false);
   const [tipo, setTipo] = useState(tipoParam);
   const [modoEdicao, setModoEdicao] = useState(false);
+  const [atualizarTelefone, setAtualizarTelefone] = useState(false);
 
   const campos = tipo === 'producao' ? CAMPOS_PRODUCAO : CAMPOS_COMISSAO;
 
@@ -144,12 +147,14 @@ export default function LayoutImportacaoConfig() {
     if (layoutSelecionadoId === 'novo') {
       setNomeLayout('');
       setMapeamento({});
+      setAtualizarTelefone(false);
       setModoEdicao(true);
     } else {
       const lay = layouts.find(l => l.id === layoutSelecionadoId);
       if (lay) {
         setNomeLayout(lay.nome);
         setMapeamento({ ...(lay.mapeamento || {}) });
+        setAtualizarTelefone(lay.atualizar_telefone || false);
         setModoEdicao(false);
       }
     }
@@ -179,6 +184,7 @@ export default function LayoutImportacaoConfig() {
       tipo,
       nome: nomeLayout,
       mapeamento,
+      atualizar_telefone: tipo === 'producao' ? atualizarTelefone : undefined,
     };
 
     if (layoutSelecionadoId === 'novo') {
@@ -339,6 +345,21 @@ export default function LayoutImportacaoConfig() {
           <p className="mt-1 px-3 py-2 rounded-md border bg-slate-50 text-slate-700 text-sm">{nomeLayout}</p>
         )}
       </div>
+
+      {/* Opção atualizar telefone (apenas produção) */}
+      {tipo === 'producao' && (
+        <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl max-w-lg">
+          <Checkbox
+            id="atualizar_telefone"
+            checked={atualizarTelefone}
+            onCheckedChange={val => setAtualizarTelefone(!!val)}
+            disabled={!modoEdicao && layoutSelecionadoId !== 'novo'}
+          />
+          <label htmlFor="atualizar_telefone" className="text-sm text-blue-800 cursor-pointer select-none">
+            <span className="font-semibold">Atualizar telefone do cliente</span> ao importar — se o cliente já existir e a planilha tiver telefone, o celular será atualizado. Caso contrário, permanece o cadastrado.
+          </label>
+        </div>
+      )}
 
       {/* Tabela de mapeamento */}
       <Card>
