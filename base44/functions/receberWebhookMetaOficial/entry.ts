@@ -11,44 +11,24 @@ Deno.serve(async (req) => {
       const token = url.searchParams.get('hub.verify_token');
       const challenge = url.searchParams.get('hub.challenge');
 
-      // Token configurado - buscar do banco de dados
-      const base44 = createClientFromRequest(req);
-      let VERIFY_TOKEN_ESPERADO = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
-      
-      // Se não estiver em env, buscar da empresa
-      if (!VERIFY_TOKEN_ESPERADO) {
-        try {
-          const empresas = await base44.asServiceRole.entities.Empresa.filter(
-            { status: 'ativa' },
-            null,
-            1
-          );
-          if (empresas.length > 0 && empresas[0].whatsapp_verify_token) {
-            VERIFY_TOKEN_ESPERADO = empresas[0].whatsapp_verify_token;
-          }
-        } catch (e) {
-          console.log('⚠️  Não conseguiu buscar token do banco');
-        }
-      }
+      // ⚠️ IMPORTANTE: Use exatamente o token que você configurou na Meta
+      // Se não conseguir fazer funcionar aqui, defina um env var simples
+      const VERIFY_TOKEN_ESPERADO = 'X0CxOo66XHmJ9qjVYdmAEuUbY46qJ0TF';
 
-      console.log('🔍 GET request de validação recebido');
-      console.log(`   Mode: ${mode}`);
-      console.log(`   Token recebido: ${token?.slice(0, 10)}...`);
-      console.log(`   Token esperado: ${VERIFY_TOKEN_ESPERADO?.slice(0, 10)}...`);
-      console.log(`   Challenge: ${challenge}`);
+      console.log('🔍 Validação de webhook recebida');
+      console.log(`   mode=${mode}, token=${token?.substring(0,8)}..., challenge=${challenge?.substring(0,8)}...`);
 
+      // Resposta simples e direta para Meta
       if (mode === 'subscribe' && token === VERIFY_TOKEN_ESPERADO && challenge) {
-        console.log('✅ Webhook validado com sucesso!');
+        console.log('✅ WEBHOOK VALIDADO');
         return new Response(challenge, { 
           status: 200,
           headers: { 'Content-Type': 'text/plain' }
         });
-      } else {
-        console.log('❌ Verificação falhou');
-        console.log(`   Token match: ${token === VERIFY_TOKEN_ESPERADO}`);
-        console.log(`   Mode: ${mode === 'subscribe'}`);
-        return new Response('', { status: 403 });
       }
+
+      console.log('❌ Validação falhou - rejeitando');
+      return new Response('Unauthorized', { status: 403 });
     }
 
     // ════════════════════════════════════════════════════════════════════
