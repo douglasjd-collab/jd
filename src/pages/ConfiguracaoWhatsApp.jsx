@@ -177,7 +177,17 @@ export default function ConfiguracaoWhatsApp() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const gerarVerifyToken = () => {
+    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let token = '';
+    for (let i = 0; i < 32; i++) {
+      token += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    setTempWhatsappVerifyToken(token);
+    return token;
+  };
 
+  const WEBHOOK_URL_OFICIAL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookDuplaAPI';
 
   const handleMudarEmpresa = (empId) => {
     setSelectedEmpresaId(empId);
