@@ -19,8 +19,6 @@ export default function ExportarHistoricoConversa() {
     }
 
     setLoading(true);
-    setHistorico(null);
-    setResumo(null);
 
     try {
       const response = await base44.functions.invoke('exportarHistoricoConversaBD', {
