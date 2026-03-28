@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CheckCircle2, TrendingUp } from 'lucide-react';
+import { CheckCircle2, TrendingUp, Calculator } from 'lucide-react';
 
 const COLORS = ['#1e3a5f', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -66,6 +66,11 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
   const valorBrutoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   const valorLiquidoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_liquido || p.valor_credito || 0), 0);
 
+  // Base Comissão: usa comissao_banco_base_comissao se disponível, senão valor_liquido, senão valor_credito
+  const baseComissaoPagoMes = propostasPagasMes.reduce((acc, p) => {
+    return acc + (p.comissao_banco_base_comissao || p.valor_liquido || p.valor_credito || 0);
+  }, 0);
+
   const rankingEmprestimos = React.useMemo(() => {
     const vendedorStats = {};
     propostasPagasMes.forEach(p => {
@@ -110,7 +115,7 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
   return (
     <div className="space-y-6">
       {/* Cards de Empréstimos do Mês */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-emerald-100">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-11 h-11 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -125,6 +130,23 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
           <div className="flex items-center justify-between">
             <p className="text-sm text-slate-500">{propostasPagasMes.length} proposta(s) paga(s)</p>
             <p className="text-sm text-slate-500">Bruto: <span className="font-medium text-slate-700">{formatCurrency(valorBrutoPagoMes)}</span></p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-5 shadow-sm border border-blue-100">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-11 h-11 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Calculator className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Base Comissão (Mês)</p>
+              <p className="text-2xl font-bold text-blue-700">{formatCurrency(baseComissaoPagoMes)}</p>
+              <p className="text-xs text-slate-400 mt-0.5">Valor base p/ cálculo da comissão</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">{propostasPagasMes.length} proposta(s) paga(s)</p>
+            <p className="text-sm text-slate-500 text-xs italic">Líq. ou Base Banco</p>
           </div>
         </div>
 
