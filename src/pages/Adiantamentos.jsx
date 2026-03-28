@@ -249,45 +249,68 @@ export default function Adiantamentos() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map(a => (
-            <Card key={a.id} className="p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 flex-shrink-0">
-                {(a.colaborador_nome || a.parceiro_nome || '?').charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-slate-800">{a.colaborador_nome || a.parceiro_nome || '-'}</p>
-                  <Badge className={`text-xs ${a.pessoa_tipo === 'vendedor' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                    {a.pessoa_tipo === 'vendedor' ? 'Vendedor' : 'Parceiro'}
-                  </Badge>
-                  <Badge className={`text-xs ${STATUS_COLORS[a.status]}`}>
-                    {a.status === 'pendente' ? '⏳ Pendente' : a.status === 'descontado' ? '✅ Descontado' : '❌ Cancelado'}
-                  </Badge>
+          {filtered.map(a => {
+            let historicoDescontos = [];
+            try { historicoDescontos = JSON.parse(a.historico_descontos || '[]'); } catch {}
+            return (
+            <Card key={a.id} className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 flex-shrink-0">
+                  {(a.colaborador_nome || a.parceiro_nome || '?').charAt(0).toUpperCase()}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                  <span>{moment(a.data).format('DD/MM/YYYY')}</span>
-                  {a.motivo && <><span>•</span><span>{a.motivo}</span></>}
-                  {a.status === 'descontado' && a.data_desconto && (
-                    <><span>•</span><span className="text-green-600">Descontado em {moment(a.data_desconto).format('DD/MM/YYYY')}</span></>
-                  )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-slate-800">{a.colaborador_nome || a.parceiro_nome || '-'}</p>
+                    <Badge className={`text-xs ${a.pessoa_tipo === 'vendedor' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {a.pessoa_tipo === 'vendedor' ? 'Vendedor' : 'Parceiro'}
+                    </Badge>
+                    <Badge className={`text-xs ${STATUS_COLORS[a.status]}`}>
+                      {a.status === 'pendente' ? '⏳ Pendente' : a.status === 'descontado' ? '✅ Descontado' : '❌ Cancelado'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+                    <span>{moment(a.data).format('DD/MM/YYYY')}</span>
+                    {a.motivo && <><span>•</span><span>{a.motivo}</span></>}
+                    {a.status === 'descontado' && a.data_desconto && (
+                      <><span>•</span><span className="text-green-600">Descontado em {moment(a.data_desconto).format('DD/MM/YYYY')}</span></>
+                    )}
+                  </div>
                 </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="font-bold text-lg text-slate-800">{fmt(a.valor)}</p>
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-1 flex-shrink-0">
+                    {a.status === 'pendente' && <>
+                      <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs">Editar</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleCancelar(a)} className="h-8 px-2 text-xs text-red-600 hover:text-red-700">Cancelar</Button>
+                    </>}
+                    {a.status === 'descontado' && (
+                      <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs text-orange-600 hover:text-orange-700">Reabrir / Editar</Button>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="text-right flex-shrink-0">
-                <p className="font-bold text-lg text-slate-800">{fmt(a.valor)}</p>
-              </div>
-              {isAdmin && (
-                <div className="flex gap-1 flex-shrink-0">
-                  {a.status === 'pendente' && <>
-                    <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs">Editar</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleCancelar(a)} className="h-8 px-2 text-xs text-red-600 hover:text-red-700">Cancelar</Button>
-                  </>}
-                  {a.status === 'descontado' && (
-                    <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs text-orange-600 hover:text-orange-700">Reabrir / Editar</Button>
-                  )}
+
+              {/* Histórico de descontos parciais */}
+              {historicoDescontos.length > 0 && (
+                <div className="mt-3 ml-14 border-l-2 border-orange-200 pl-3 space-y-1">
+                  <p className="text-xs font-semibold text-orange-700 mb-1">Histórico de Descontos Parciais</p>
+                  {historicoDescontos.map((h, i) => (
+                    <div key={i} className="flex items-center gap-3 text-xs text-slate-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
+                      <span className="font-semibold text-orange-700">{fmt(h.valor)}</span>
+                      <span className="text-slate-400">•</span>
+                      <span>{moment(h.data_desconto).format('DD/MM/YYYY')}</span>
+                      <span className="text-slate-400">•</span>
+                      <span className="font-mono text-slate-500">{h.lote_codigo || h.lote_id}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

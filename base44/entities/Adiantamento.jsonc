@@ -1,0 +1,93 @@
+{
+  "name": "Adiantamento",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "pessoa_tipo": {
+      "type": "string",
+      "enum": [
+        "vendedor",
+        "parceiro"
+      ],
+      "description": "Tipo de pessoa"
+    },
+    "colaborador_id": {
+      "type": "string",
+      "description": "ID do colaborador/vendedor"
+    },
+    "colaborador_nome": {
+      "type": "string",
+      "description": "Nome do colaborador/vendedor"
+    },
+    "parceiro_id": {
+      "type": "string",
+      "description": "ID do parceiro"
+    },
+    "parceiro_nome": {
+      "type": "string",
+      "description": "Nome do parceiro"
+    },
+    "valor": {
+      "type": "number",
+      "description": "Valor do adiantamento"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do adiantamento"
+    },
+    "motivo": {
+      "type": "string",
+      "description": "Motivo do adiantamento"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "descontado",
+        "cancelado"
+      ],
+      "default": "pendente"
+    },
+    "data_desconto": {
+      "type": "string",
+      "format": "date",
+      "description": "Data em que foi descontado"
+    },
+    "lote_pagamento_id": {
+      "type": "string",
+      "description": "ID do lote de pagamento que descontou"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es"
+    },
+    "historico_descontos": {
+      "type": "string",
+      "description": "JSON array com hist\u00f3rico de descontos parciais: [{valor, data_desconto, lote_codigo, lote_id}]"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "pessoa_tipo",
+    "valor",
+    "data"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

@@ -529,9 +529,19 @@ export default function ComissoesEmprestimos() {
 
         if (valorRestante > 0.01) {
           // Desconto parcial: atualiza o adiantamento original com o valor restante e cria novo pendente
+          // Appenda ao histórico de descontos parciais
+          let historicoAtual = [];
+          try { historicoAtual = JSON.parse(adi.historico_descontos || '[]'); } catch {}
+          historicoAtual.push({
+            valor: valorDescontar,
+            data_desconto: dataPagamento,
+            lote_codigo: loteCode,
+            lote_id: lote.id,
+          });
           await base44.entities.Adiantamento.update(adi.id, {
             valor: valorRestante,
             status: 'pendente',
+            historico_descontos: JSON.stringify(historicoAtual),
             observacao: `Parcialmente descontado no lote ${loteCode}. Restante: R$ ${valorRestante.toFixed(2)}`,
           });
           // Cria registro do valor efetivamente descontado (para histórico/despesa)
