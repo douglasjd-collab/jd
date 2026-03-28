@@ -28,6 +28,14 @@ export default function ExportarHistoricoConversa() {
       if (response.data.success) {
         setResumo(response.data.resumo);
         setHistorico(response.data.historico);
+        
+        // DEBUG: Log das mensagens
+        console.log('📊 HISTÓRICO CARREGADO:');
+        console.log(`Total: ${response.data.historico.length} mensagens`);
+        console.log(`Clientes (recebidas): ${response.data.historico.filter(m => m.remetente === '👤 Cliente').length}`);
+        console.log(`Vendedores (enviadas): ${response.data.historico.filter(m => m.remetente === '💼 Vendedor').length}`);
+        console.log('Primeiras 3 mensagens:', response.data.historico.slice(0, 3));
+        
         toast.success('Histórico carregado!');
       } else {
         toast.error(response.data.error);
