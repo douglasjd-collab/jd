@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -26,12 +27,21 @@ export default function ConfiguracaoWhatsApp() {
   const [tempUrl, setTempUrl] = useState('');
   const [tempInstance, setTempInstance] = useState('');
   const [tempApiKey, setTempApiKey] = useState('');
+  const [tempWhatsappAccessToken, setTempWhatsappAccessToken] = useState('');
+  const [tempWhatsappPhoneNumberId, setTempWhatsappPhoneNumberId] = useState('');
+  const [tempWhatsappBusinessAccountId, setTempWhatsappBusinessAccountId] = useState('');
+  const [tempWhatsappVerifyToken, setTempWhatsappVerifyToken] = useState('');
+  const [whatsappAccessToken, setWhatsappAccessToken] = useState('');
+  const [whatsappPhoneNumberId, setWhatsappPhoneNumberId] = useState('');
+  const [whatsappBusinessAccountId, setWhatsappBusinessAccountId] = useState('');
+  const [whatsappVerifyToken, setWhatsappVerifyToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [atualizandoWebhook, setAtualizandoWebhook] = useState(false);
   const [user, setUser] = useState(null);
   const [empresa, setEmpresa] = useState(null);
   const [empresas, setEmpresas] = useState([]);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState(null);
+  const [apiTab, setApiTab] = useState('evolution');
 
   useEffect(() => {
     carregarDados();
@@ -76,6 +86,10 @@ export default function ConfiguracaoWhatsApp() {
     setEvolutionUrl(empresaData.evolution_url || '');
     setInstanceName(empresaData.evolution_instance_name || '');
     setApiKey(empresaData.evolution_api_key || '');
+    setWhatsappAccessToken(empresaData.whatsapp_access_token || '');
+    setWhatsappPhoneNumberId(empresaData.whatsapp_phone_number_id || '');
+    setWhatsappBusinessAccountId(empresaData.whatsapp_business_account_id || '');
+    setWhatsappVerifyToken(empresaData.whatsapp_verify_token || '');
     
     // Gerar URL webhook com nome da instância
     const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
@@ -107,6 +121,10 @@ export default function ConfiguracaoWhatsApp() {
       setTempUrl(evolutionUrl);
       setTempInstance(instanceName);
       setTempApiKey(apiKey);
+      setTempWhatsappAccessToken(whatsappAccessToken);
+      setTempWhatsappPhoneNumberId(whatsappPhoneNumberId);
+      setTempWhatsappBusinessAccountId(whatsappBusinessAccountId);
+      setTempWhatsappVerifyToken(whatsappVerifyToken);
     }
     setEditMode(!editMode);
   };
@@ -124,12 +142,20 @@ export default function ConfiguracaoWhatsApp() {
       await base44.entities.Empresa.update(empresaId, {
         evolution_url: tempUrl,
         evolution_instance_name: tempInstance,
-        evolution_api_key: tempApiKey
+        evolution_api_key: tempApiKey,
+        whatsapp_access_token: tempWhatsappAccessToken,
+        whatsapp_phone_number_id: tempWhatsappPhoneNumberId,
+        whatsapp_business_account_id: tempWhatsappBusinessAccountId,
+        whatsapp_verify_token: tempWhatsappVerifyToken,
       });
 
       setEvolutionUrl(tempUrl);
       setInstanceName(tempInstance);
       setApiKey(tempApiKey);
+      setWhatsappAccessToken(tempWhatsappAccessToken);
+      setWhatsappPhoneNumberId(tempWhatsappPhoneNumberId);
+      setWhatsappBusinessAccountId(tempWhatsappBusinessAccountId);
+      setWhatsappVerifyToken(tempWhatsappVerifyToken);
       
       // Gerar novo webhook URL com o nome da instância
       const novaUrl = gerarUrlWebhook(tempInstance);
@@ -216,12 +242,12 @@ export default function ConfiguracaoWhatsApp() {
           </CardContent>
         </Card>
 
-        {/* Informações da Evolution API */}
+        {/* Abas de APIs */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <span>⚙️</span> Dados da Evolution API
+                <span>⚙️</span> Credenciais WhatsApp
               </CardTitle>
               <Button
                 variant={editMode ? 'outline' : 'default'}
@@ -233,7 +259,15 @@ export default function ConfiguracaoWhatsApp() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
+            <Tabs defaultValue="evolution" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="evolution">🟣 API Evolution</TabsTrigger>
+                <TabsTrigger value="oficial">🟢 API Oficial</TabsTrigger>
+              </TabsList>
+
+              {/* TAB EVOLUTION */}
+              <TabsContent value="evolution" className="space-y-4 mt-4">
 
             <div>
               <Label className="mb-2 block">URL da API</Label>
@@ -290,8 +324,107 @@ export default function ConfiguracaoWhatsApp() {
               </div>
             </div>
 
+              </TabsContent>
+
+              {/* TAB API OFICIAL */}
+              <TabsContent value="oficial" className="space-y-4 mt-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-green-900 font-semibold mb-2">🟢 API Oficial do WhatsApp (Meta)</p>
+                  <p className="text-sm text-green-800">Configure suas credenciais oficiais da API WhatsApp Business</p>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Access Token</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={editMode ? tempWhatsappAccessToken : whatsappAccessToken}
+                      onChange={(e) => editMode && setTempWhatsappAccessToken(e.target.value)}
+                      readOnly={!editMode}
+                      type="password"
+                      placeholder="seu_access_token_aqui"
+                      className={editMode ? '' : 'bg-slate-50'}
+                    />
+                    {!editMode && whatsappAccessToken && (
+                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappAccessToken, 'token')}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Token de acesso do seu app Meta/WhatsApp</p>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Phone Number ID</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={editMode ? tempWhatsappPhoneNumberId : whatsappPhoneNumberId}
+                      onChange={(e) => editMode && setTempWhatsappPhoneNumberId(e.target.value)}
+                      readOnly={!editMode}
+                      placeholder="seu_phone_number_id_aqui"
+                      className={editMode ? '' : 'bg-slate-50'}
+                    />
+                    {!editMode && whatsappPhoneNumberId && (
+                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappPhoneNumberId, 'phone')}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">ID do número de telefone no WhatsApp Business</p>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Business Account ID</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={editMode ? tempWhatsappBusinessAccountId : whatsappBusinessAccountId}
+                      onChange={(e) => editMode && setTempWhatsappBusinessAccountId(e.target.value)}
+                      readOnly={!editMode}
+                      placeholder="seu_business_account_id_aqui"
+                      className={editMode ? '' : 'bg-slate-50'}
+                    />
+                    {!editMode && whatsappBusinessAccountId && (
+                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappBusinessAccountId, 'account')}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">ID da sua conta comercial no WhatsApp</p>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Webhook Verification Token</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={editMode ? tempWhatsappVerifyToken : whatsappVerifyToken}
+                      onChange={(e) => editMode && setTempWhatsappVerifyToken(e.target.value)}
+                      readOnly={!editMode}
+                      placeholder="seu_verification_token_aqui"
+                      className={editMode ? '' : 'bg-slate-50'}
+                    />
+                    {!editMode && whatsappVerifyToken && (
+                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappVerifyToken, 'verify')}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Token para verificação do webhook</p>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                  <p className="text-sm text-blue-900 font-semibold mb-2">📖 Onde encontrar essas credenciais?</p>
+                  <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                    <li>Acesse <strong>developers.facebook.com</strong></li>
+                    <li>Vá em seu App do WhatsApp Business</li>
+                    <li>Em <strong>Settings → API Setup</strong> encontre o Access Token</li>
+                    <li>Em <strong>Phone Numbers</strong> encontre o Phone Number ID</li>
+                    <li>Em <strong>Settings → Business Accounts</strong> encontre o Account ID</li>
+                  </ol>
+                </div>
+              </TabsContent>
+            </Tabs>
+
             {editMode && (
-              <div className="flex gap-2 justify-end pt-4 border-t">
+              <div className="flex gap-2 justify-end pt-4 border-t mt-4">
                 <Button
                   variant="outline"
                   onClick={handleEditMode}
