@@ -24,7 +24,6 @@ export default function ImportacaoProducao() {
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState(null); // { headers, rows }
   const [historico, setHistorico] = useState([]);
-  const [showHistorico, setShowHistorico] = useState(false);
   const [desfazendoId, setDesfazendoId] = useState(null);
   const [confirmDesfazer, setConfirmDesfazer] = useState(null); // log a desfazer
   const inputRef = useRef(null);
@@ -172,22 +171,11 @@ export default function ImportacaoProducao() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <PageHeader
-          title="Importar Propostas de Empréstimos"
-          subtitle="Importe propostas de empréstimos"
-          backTo="Importacao"
-        />
-        {historico.length > 0 && (
-          <button
-            onClick={() => setShowHistorico(!showHistorico)}
-            className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 transition-colors mt-1"
-          >
-            <History className="w-4 h-4" />
-            Histórico ({historico.length})
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Importar Propostas de Empréstimos"
+        subtitle="Importe propostas de empréstimos"
+        backTo="Importacao"
+      />
 
       <Card className="border-0 shadow-sm">
         <CardContent className="p-6 space-y-6">
@@ -408,7 +396,7 @@ export default function ImportacaoProducao() {
         </CardContent>
       </Card>
       {/* Histórico de importações */}
-      {showHistorico && historico.length > 0 && (
+      {historico.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6">
             <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
