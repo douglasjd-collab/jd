@@ -17,17 +17,17 @@ Deno.serve(async (req) => {
       console.log('🔍 Validação de webhook recebida');
       console.log(`   mode=${mode}, token=${token?.substring(0,8)}..., challenge=${challenge?.substring(0,8)}...`);
 
-      // Resposta simples e direta para Meta
+      // Resposta simples e direta para Meta - EXATAMENTE como Meta espera
       if (mode === 'subscribe' && token === VERIFY_TOKEN_ESPERADO && challenge) {
-        console.log('✅ WEBHOOK VALIDADO');
-        return new Response(challenge, { 
-          status: 200,
-          headers: { 'Content-Type': 'text/plain' }
-        });
+        console.log('✅ WEBHOOK VALIDADO - Retornando challenge:', challenge);
+        return new Response(challenge);
       }
 
-      console.log('❌ Validação falhou - rejeitando');
-      return new Response('Unauthorized', { status: 403 });
+      console.log('❌ Validação falhou');
+      console.log(`   Modo correto: ${mode === 'subscribe'}`);
+      console.log(`   Token match: ${token === VERIFY_TOKEN_ESPERADO}`);
+      console.log(`   Challenge presente: ${!!challenge}`);
+      return new Response('', { status: 403 });
     }
 
     // ════════════════════════════════════════════════════════════════════
