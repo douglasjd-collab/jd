@@ -745,7 +745,10 @@ export default function ComissoesEmprestimos() {
                       <tbody>
                         {vendedor.propostas.map(p => (
                           <tr key={p.id} className="border-b hover:bg-slate-50 transition-colors">
-                            <td className="p-3 font-medium text-slate-900">{p.cliente_nome || '-'}</td>
+                            <td className="p-3">
+                               <p className="font-medium text-slate-900">{p.cliente_nome || '-'}</p>
+                               {p.cliente_cpf && <p className="text-xs text-slate-400 mt-0.5">{p.cliente_cpf}</p>}
+                             </td>
                             <td className="p-3 text-slate-600">{p.contrato || '-'}</td>
                             <td className="p-3 text-slate-600">
                               <span className="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700">
