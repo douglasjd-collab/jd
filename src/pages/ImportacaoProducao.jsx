@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Loader2, AlertTriangle, FileText, X, CheckCircle2, Settings, Tag } from 'lucide-react';
+import { Upload, Loader2, AlertTriangle, FileText, X, CheckCircle2, Settings, Tag, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
@@ -21,6 +21,7 @@ export default function ImportacaoProducao() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [dragging, setDragging] = useState(false);
+  const [preview, setPreview] = useState(null); // { headers, rows }
   const inputRef = useRef(null);
 
   useEffect(() => { init(); }, []);
@@ -63,6 +64,21 @@ export default function ImportacaoProducao() {
     }
     setFile(f);
     setResultado(null);
+    setPreview(null);
+    // Gerar pré-visualização lendo as primeiras linhas do arquivo
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 8);
+        const delimiter = (lines[0] || '').includes(';') ? ';' : ',';
+        const parsed = lines.map(l => l.split(delimiter).map(c => c.trim().replace(/^"|"$/g, '')));
+        if (parsed.length > 0) {
+          setPreview({ headers: parsed[0], rows: parsed.slice(1, 6) });
+        }
+      } catch {}
+    };
+    reader.readAsText(f, 'ISO-8859-1');
   };
 
   const handleDrop = (e) => {
@@ -223,12 +239,43 @@ export default function ImportacaoProducao() {
                       <p className="font-medium text-green-900 truncate">{file.name}</p>
                       <p className="text-sm text-green-700">{(file.size / 1024).toFixed(1)} KB</p>
                     </div>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setFile(null)} disabled={isProcessing}>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => { setFile(null); setPreview(null); }} disabled={isProcessing}>
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Pré-visualização do arquivo */}
+          {preview && !resultado && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="w-4 h-4 text-blue-600" />
+                <Label className="text-sm font-semibold text-blue-800">Pré-visualização ({preview.rows.length} primeiras linhas)</Label>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-blue-100">
+                <table className="w-full text-xs">
+                  <thead className="bg-blue-50">
+                    <tr>
+                      {preview.headers.map((h, i) => (
+                        <th key={i} className="p-2 text-left font-semibold text-blue-800 whitespace-nowrap border-r border-blue-100 last:border-0">{h || `Col ${i+1}`}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.rows.map((row, ri) => (
+                      <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                        {preview.headers.map((_, ci) => (
+                          <td key={ci} className="p-2 text-slate-700 whitespace-nowrap border-r border-slate-100 last:border-0 max-w-[180px] overflow-hidden text-ellipsis">{row[ci] ?? ''}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Verifique se as colunas correspondem ao layout configurado antes de importar.</p>
             </div>
           )}
 

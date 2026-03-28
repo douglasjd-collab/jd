@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import * as XLSX from 'npm:xlsx@0.18.5';
 
 Deno.serve(async (req) => {
@@ -160,17 +160,30 @@ Deno.serve(async (req) => {
 
     console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
 
-    // Buscar dados de referência
-    const [bancos, convenios, clientes, vendedores, statusList, propostasExistentes, tabelasComissao, tiposEmprestimo] = await Promise.all([
-      base44.entities.Banco.filter({ empresa_id: empresaId }),
-      base44.entities.Convenio.filter({ empresa_id: empresaId }),
-      base44.entities.Cliente.filter({ empresa_id: empresaId }),
-      base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }),
-      base44.entities.StatusProposta.filter({ empresa_id: empresaId }),
-      base44.asServiceRole.entities.Proposta.filter({ empresa_id: empresaId, produto: 'emprestimo' }),
-      base44.entities.TabelaEmprestimo.filter({ empresa_id: empresaId, ativo: true }),
-      base44.entities.TipoEmprestimo.filter({ empresa_id: empresaId, ativo: true }),
+    // Buscar dados de referência — garantir que todos retornam arrays
+    const toArray = (v) => Array.isArray(v) ? v : (v?.items || v?.data || v?.results || []);
+
+    const [bancosRaw, conveniosRaw, clientesRaw, vendedoresRaw, statusListRaw, propostasExistentesRaw, tabelasComissaoRaw, tiposEmprestimoRaw] = await Promise.all([
+      base44.asServiceRole.entities.Banco.filter({ empresa_id: empresaId }, null, 2000),
+      base44.asServiceRole.entities.Convenio.filter({ empresa_id: empresaId }, null, 2000),
+      base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000),
+      base44.asServiceRole.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, null, 500),
+      base44.asServiceRole.entities.StatusProposta.filter({ empresa_id: empresaId }, null, 500),
+      base44.asServiceRole.entities.Proposta.filter({ empresa_id: empresaId, produto: 'emprestimo' }, null, 5000),
+      base44.asServiceRole.entities.TabelaEmprestimo.filter({ empresa_id: empresaId, ativo: true }, null, 500),
+      base44.asServiceRole.entities.TipoEmprestimo.filter({ empresa_id: empresaId, ativo: true }, null, 200),
     ]);
+
+    const bancos = toArray(bancosRaw);
+    const convenios = toArray(conveniosRaw);
+    const clientes = toArray(clientesRaw);
+    const vendedores = toArray(vendedoresRaw);
+    const statusList = toArray(statusListRaw);
+    const propostasExistentes = toArray(propostasExistentesRaw);
+    const tabelasComissao = toArray(tabelasComissaoRaw);
+    const tiposEmprestimo = toArray(tiposEmprestimoRaw);
+
+    console.log(`Dados carregados: ${clientes.length} clientes, ${propostasExistentes.length} propostas, ${bancos.length} bancos`);
 
     const normStr = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ')
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -490,29 +503,35 @@ Deno.serve(async (req) => {
           : null;
 
         if (propostaExistente) {
-          // Proposta duplicada encontrada (banco + contrato) — atualizar apenas status e data de pagamento
+          // Proposta existente — atualizar status, datas, valores e parcela
           const updateData = {};
           
-          // Atualizar status se veio no arquivo
           if (statusVal) {
             updateData.status = statusVal;
             updateData.status_id = statusId || null;
           }
-          
-          // Atualizar data de venda se veio no arquivo (pode ser data de pagamento)
-          if (dataVend) {
-            updateData.data_venda = dataVend;
+          if (dataVend) updateData.data_venda = dataVend;
+          if (parseData(dataPagClienteVal)) updateData.emprestimo_data_liberacao = parseData(dataPagClienteVal);
+          if (valor > 0) updateData.valor_credito = valor;
+          // valor_liquido: lido da coluna valor_liquido/valor_liberado do layout
+          const valorLiquidoVal = layout?.valor_liquido || layout?.valor_liberado ? row[colLetterToIndex(layout?.valor_liquido || layout?.valor_liberado)] : null;
+          if (valorLiquidoVal) updateData.valor_liquido = parseValor(valorLiquidoVal);
+          if (valorBaseComissaoVal) updateData.comissao_banco_base_comissao = parseValor(valorBaseComissaoVal);
+          if (comissaoVal) updateData.valor_comissao = parseValor(comissaoVal);
+          // parcela
+          const parcelaVal = colPrazo >= 0 ? row[colPrazo] : null;
+          if (parcelaVal) updateData.emprestimo_prazo = parseInt(String(parcelaVal).replace(/\D/g, '')) || null;
+          // tabela
+          if (tabelaComissao?.id) {
+            updateData.tabela_comissao_id = tabelaComissao.id;
+            updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
           }
           
-          if (Object.keys(updateData).length > 0) {
-            await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
-            atualizadas++;
-            const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
-            if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...updateData };
-          } else {
-            ignoradas++;
-          }
-          console.log(`Duplicata atualizada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
+          await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
+          atualizadas++;
+          const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
+          if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...updateData };
+          console.log(`Atualizada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
         } else {
           await base44.asServiceRole.entities.Proposta.create(proposta);
           criadas++;
