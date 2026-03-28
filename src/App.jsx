@@ -18,6 +18,7 @@ import TesteWebhookWhatsApp from './pages/TesteWebhookWhatsApp';
 import ExportarHistoricoConversa from './pages/ExportarHistoricoConversa';
 import MonitorWebhookAgressivo from './pages/MonitorWebhookAgressivo';
 import ComparadorMensagensEvolution from './pages/ComparadorMensagensEvolution';
+import RastreadorMensagens from './pages/RastreadorMensagens';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -80,6 +81,7 @@ const AuthenticatedApp = () => {
       <Route path="/ExportarHistoricoConversa" element={<LayoutWrapper currentPageName="ExportarHistoricoConversa"><ExportarHistoricoConversa /></LayoutWrapper>} />
       <Route path="/MonitorWebhookAgressivo" element={<LayoutWrapper currentPageName="MonitorWebhookAgressivo"><MonitorWebhookAgressivo /></LayoutWrapper>} />
       <Route path="/ComparadorMensagensEvolution" element={<LayoutWrapper currentPageName="ComparadorMensagensEvolution"><ComparadorMensagensEvolution /></LayoutWrapper>} />
+      <Route path="/RastreadorMensagens" element={<LayoutWrapper currentPageName="RastreadorMensagens"><RastreadorMensagens /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
