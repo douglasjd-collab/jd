@@ -102,11 +102,11 @@ Deno.serve(async (req) => {
       colBanco             = colLetterToIndex(layout.banco);
       colConvenio          = colLetterToIndex(layout.convenio);
       colTipo              = colLetterToIndex(layout.tipo_consignado || layout.tipo_operacao);
-      colValor             = colLetterToIndex(layout.valor_liberado || layout.valor_bruto || layout.valor_operacao);
+      colValor             = colLetterToIndex(layout.valor_liquido || layout.valor_liberado || layout.valor_bruto || layout.valor_operacao);
       colPrazo             = colLetterToIndex(layout.prazo_meses);
-      colAde               = colLetterToIndex(layout.numero_proposta || layout.numero_contrato);
+      colAde               = colLetterToIndex(layout.numero_ade || layout.numero_proposta || layout.numero_contrato);
       colBeneficio         = colLetterToIndex(layout.numero_beneficio);
-      colData              = colLetterToIndex(layout.data_proposta || layout.data_liberacao || layout.data_digitacao);
+      colData              = colLetterToIndex(layout.data_digitacao || layout.data_proposta || layout.data_liberacao);
       colVendedor          = colLetterToIndex(layout.usuario_digitador || layout.assessor);
       colStatus            = colLetterToIndex(layout.status_contrato || layout.status);
       colComissao          = colLetterToIndex(layout.comissao_empresa);
@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
       colContrato          = colLetterToIndex(layout.numero_contrato);
       colTabela            = colLetterToIndex(layout.tabela || layout.tabela_comissao);
       colDataRecebComissao = colLetterToIndex(layout.data_recebimento_comissao);
-      colDataPagCliente    = colLetterToIndex(layout.data_pagamento_cliente);
-      colDataCadastroProp  = colLetterToIndex(layout.data_cadastro_proposta);
+      colDataPagCliente    = colLetterToIndex(layout.data_pagamento_cliente || layout.data_liberacao);
+      colDataCadastroProp  = colLetterToIndex(layout.data_cadastro_proposta || layout.data_digitacao);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
@@ -405,7 +405,7 @@ Deno.serve(async (req) => {
           emprestimo_prazo:            prazo,
           contrato:                    contratoVal || adeVal || null,
           vendedor_nome:               vend?.nome || vendedorVal || null,
-          data_venda:                  dataVend,
+          data_venda:                  parseData(dataCadastroPropVal) || dataVend,
           valor_credito:               valor,
           valor_comissao:              comissao,
           status:                      statusVal || null,
@@ -414,7 +414,6 @@ Deno.serve(async (req) => {
           tabela_comissao_nome:        tabelaComissao ? (tabelaComissao.tabela || tabelaComissao.nome) : null,
           emprestimo_data_liberacao:   parseData(dataPagClienteVal) || undefined,
           data_comissao_recebida:      parseData(dataRecebComissaoVal) || undefined,
-          data_venda:                  parseData(dataCadastroPropVal) || dataVend,
         };
 
         // Adicionar IDs somente se existirem (campos string)
