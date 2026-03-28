@@ -1,129 +1,97 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
-// Função para registrar TUDO que chega no webhook
+// Webhook que rastreia TUDO o que entra, sem processar
 Deno.serve(async (req) => {
   const timestamp = new Date().toISOString();
-  const rastreamento = {
-    timestamp,
-    url: req.url,
-    metodo: req.method,
-    headers: Object.fromEntries(req.headers),
-    etapas: []
-  };
+  const method = req.method;
+  const url = new URL(req.url);
+  const path = url.pathname;
+  const query = url.search;
+
+  console.log(`\n${'='.repeat(80)}`);
+  console.log(`[${timestamp}] WEBHOOK RASTREADOR ATIVADO`);
+  console.log(`METHOD: ${method}`);
+  console.log(`PATH: ${path}`);
+  console.log(`QUERY: ${query}`);
+  console.log(`${'='.repeat(80)}`);
 
   try {
-    // ETAPA 1: Receber o body
-    rastreamento.etapas.push({
-      numero: 1,
-      nome: 'Receber body',
-      status: 'iniciando'
-    });
+    // Capturar headers
+    const headers = {};
+    for (const [key, value] of req.headers.entries()) {
+      headers[key] = value;
+    }
+    console.log('\n[HEADERS]');
+    console.log(JSON.stringify(headers, null, 2));
 
-    const rawBody = await req.text();
-    rastreamento.etapas[0].status = 'completo';
-    rastreamento.etapas[0].tamanho_bytes = rawBody.length;
-    rastreamento.etapas[0].primeiros_100_chars = rawBody.substring(0, 100);
-
-    // ETAPA 2: Parsear JSON
-    rastreamento.etapas.push({
-      numero: 2,
-      nome: 'Parsear JSON',
-      status: 'iniciando'
-    });
-
-    let payload = {};
+    // Capturar body
+    let body = null;
+    let bodyText = '';
     try {
-      payload = rawBody ? JSON.parse(rawBody) : {};
-      rastreamento.etapas[1].status = 'completo';
-      rastreamento.etapas[1].keys = Object.keys(payload);
-    } catch (err) {
-      rastreamento.etapas[1].status = 'erro';
-      rastreamento.etapas[1].erro = err.message;
-      
-      // Tentar Base64
-      try {
-        const decoded = atob(rawBody.trim());
-        payload = JSON.parse(decoded);
-        rastreamento.etapas[1].status = 'completo_base64';
-        rastreamento.etapas[1].keys = Object.keys(payload);
-      } catch (e2) {
-        rastreamento.etapas[1].erro_base64 = e2.message;
+      bodyText = await req.clone().text();
+      if (bodyText) {
+        try {
+          body = JSON.parse(bodyText);
+        } catch {
+          body = bodyText;
+        }
       }
+    } catch (e) {
+      console.log('[ERRO ao ler body]:', e.message);
     }
 
-    // ETAPA 3: Extrair informações
-    rastreamento.etapas.push({
-      numero: 3,
-      nome: 'Extrair informações',
-      status: 'completo',
-      event: payload.event,
-      instance: payload.instance,
-      has_data: !!payload.data,
-      data_type: typeof payload.data,
-      data_keys: payload.data ? Object.keys(payload.data || {}) : []
-    });
+    console.log('\n[BODY]');
+    if (body) {
+      console.log(JSON.stringify(body, null, 2));
+    } else {
+      console.log('(vazio)');
+    }
 
-    // ETAPA 4: Conectar ao Base44
-    rastreamento.etapas.push({
-      numero: 4,
-      nome: 'Conectar Base44',
-      status: 'iniciando'
-    });
+    // Salvar registro no banco
+    try {
+      const base44 = createClientFromRequest(req);
+      
+      // Criar um log genérico na entidade apropriada se existir
+      // Ou apenas logar localmente
+      console.log('\n[TENTANDO SALVAR NO BANCO]');
+      const empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 1);
+      if (empresas && empresas.length > 0) {
+        const empresaId = empresas[0].id;
+        
+        // Tentar criar um registro de log
+        try {
+          await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+            empresa_id: empresaId,
+            timestamp: timestamp,
+            method: method,
+            path: path,
+            query: query,
+            headers_json: JSON.stringify(headers),
+            body_json: JSON.stringify(body || {}),
+            event_type: body?.event || 'unknown',
+          });
+          console.log('✅ Log salvo no banco com sucesso');
+        } catch (e) {
+          console.log('⚠️ Erro ao salvar log:', e.message);
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Erro ao acessar banco:', e.message);
+    }
 
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    
-    rastreamento.etapas[3].status = 'completo';
-    rastreamento.etapas[3].usuario_id = user?.id;
-    rastreamento.etapas[3].empresa_id = user?.empresa_id;
-
-    // ETAPA 5: Registrar no banco
-    rastreamento.etapas.push({
-      numero: 5,
-      nome: 'Registrar rastreamento',
-      status: 'iniciando'
-    });
-
-    const registroRastreamento = await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
-      empresa_id: user?.empresa_id || '',
-      tipo_evento: 'rastreamento_webhook',
-      status: 'sucesso',
-      conteudo: JSON.stringify(rastreamento),
-      instancia: payload.instance || 'desconhecida',
-      timestamp
-    });
-
-    rastreamento.etapas[4].status = 'completo';
-    rastreamento.etapas[4].registro_id = registroRastreamento.id;
+    console.log(`\n${'='.repeat(80)}\n`);
 
     return Response.json({
-      sucesso: true,
-      rastreamento,
-      proximo_passo: 'Verifique em Diagnóstico > Logs > Tipo Evento = rastreamento_webhook'
+      success: true,
+      message: 'Webhook rastreado com sucesso',
+      timestamp: timestamp,
+      eventType: body?.event || 'unknown',
     });
 
   } catch (error) {
-    rastreamento.etapas.push({
-      numero: 999,
-      nome: 'Erro crítico',
-      status: 'erro',
-      mensagem: error.message,
-      stack: error.stack
-    });
-
-    // Tentar registrar erro mesmo assim
-    try {
-      const base44 = createClientFromRequest(req);
-      await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
-        empresa_id: '',
-        tipo_evento: 'erro_rastreamento',
-        status: 'erro',
-        conteudo: JSON.stringify(rastreamento),
-        mensagem_erro: error.message,
-        timestamp
-      });
-    } catch (_) {}
-
-    return Response.json(rastreamento, { status: 500 });
+    console.error('[ERRO CRÍTICO]:', error.message);
+    return Response.json({
+      error: error.message,
+    }, { status: 500 });
   }
 });
