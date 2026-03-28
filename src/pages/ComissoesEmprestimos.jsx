@@ -67,6 +67,7 @@ export default function ComissoesEmprestimos() {
   // Adiantamentos a descontar no modal de pagamento
   const [adiantamentosVendedor, setAdiantamentosVendedor] = useState([]);
   const [adiantamentosSelecionados, setAdiantamentosSelecionados] = useState(new Set());
+  const [dadosBancariosVendedor, setDadosBancariosVendedor] = useState(null);
 
   // Modal marcar comissão do banco
   const [marcarBancoModal, setMarcarBancoModal] = useState(false);
@@ -219,14 +220,32 @@ export default function ComissoesEmprestimos() {
     setObservacao('');
     setAdiantamentosSelecionados(new Set());
 
-    // Busca adiantamentos pendentes desse vendedor
+    // Busca adiantamentos pendentes e dados bancários do vendedor em paralelo
     try {
       const filtro = { status: 'pendente' };
       if (vendedor.vendedor_id) filtro.colaborador_id = vendedor.vendedor_id;
-      const adis = await base44.entities.Adiantamento.filter(filtro);
+      const [adis, colabs] = await Promise.all([
+        base44.entities.Adiantamento.filter(filtro),
+        vendedor.vendedor_id
+          ? base44.entities.Colaborador.filter({ id: vendedor.vendedor_id })
+          : Promise.resolve([]),
+      ]);
       setAdiantamentosVendedor(adis.filter(a => a.colaborador_id === vendedor.vendedor_id || (!vendedor.vendedor_id && !a.colaborador_id)));
+      if (colabs.length > 0) {
+        const c = colabs[0];
+        setDadosBancariosVendedor({
+          banco: c.banco_nome || c.banco || null,
+          agencia: c.agencia || null,
+          conta: c.conta || null,
+          tipo_conta: c.tipo_conta || null,
+          pix: c.pix_chave || c.chave_pix || null,
+        });
+      } else {
+        setDadosBancariosVendedor(null);
+      }
     } catch {
       setAdiantamentosVendedor([]);
+      setDadosBancariosVendedor(null);
     }
 
     setPagarModal(true);
@@ -269,7 +288,7 @@ export default function ComissoesEmprestimos() {
     }
   };
 
-  const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = []) => {
+  const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null) => {
     const doc = new jsPDF({ orientation: 'landscape' });
 
     // Cálculo correto: usa valor_liquido como base se disponível
@@ -290,6 +309,8 @@ export default function ComissoesEmprestimos() {
     doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 17, { align: 'center' });
 
     doc.setTextColor(0, 0, 0);
+
+    // Bloco principal: vendedor + pagamento
     doc.setFillColor(245, 247, 250);
     doc.roundedRect(10, 26, 277, 22, 2, 2, 'F');
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
@@ -301,8 +322,27 @@ export default function ComissoesEmprestimos() {
     doc.text(formaPagto || '-', 160, 39);
     doc.text(String(propostasLista.length), 230, 39);
 
+    // Bloco de dados bancários (se disponíveis)
+    let tableStartY = 54;
+    if (dadosBancarios && (dadosBancarios.banco || dadosBancarios.pix)) {
+      doc.setFillColor(235, 245, 255);
+      doc.roundedRect(10, 51, 277, 16, 2, 2, 'F');
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(16, 53, 60);
+      doc.text('Dados Bancarios / PIX:', 14, 57);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      const partes = [];
+      if (dadosBancarios.banco) partes.push('Banco: ' + dadosBancarios.banco);
+      if (dadosBancarios.agencia) partes.push('Ag: ' + dadosBancarios.agencia);
+      if (dadosBancarios.conta) partes.push('Conta: ' + dadosBancarios.conta + (dadosBancarios.tipo_conta ? ' (' + dadosBancarios.tipo_conta + ')' : ''));
+      if (dadosBancarios.pix) partes.push('PIX: ' + dadosBancarios.pix);
+      doc.text(partes.join('   |   '), 14, 63);
+      tableStartY = 72;
+    }
+
     doc.autoTable({
-      startY: 54,
+      startY: tableStartY,
       head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
       body: propostasLista.map(p => {
         const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
@@ -489,7 +529,7 @@ export default function ComissoesEmprestimos() {
       // PDF usa os valores já calculados (congelados)
       const percMapFinal = {};
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
-      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc);
+      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor);
 
       queryClient.invalidateQueries(['propostas-emp-comissoes']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
