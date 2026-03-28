@@ -343,13 +343,14 @@ export default function ComissoesEmprestimos() {
 
     doc.autoTable({
       startY: tableStartY,
-      head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
+      head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
       body: propostasLista.map(p => {
         const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
         const base = p.valor_liquido || p.valor_credito || 0;
         const valPagar = base * (perc / 100);
         return [
           p.cliente_nome || '-',
+          p.cliente_cpf || '-',
           p.contrato || '-',
           getTipoLabel(p.emprestimo_tipo),
           p.administradora_nome || '-',
@@ -361,12 +362,12 @@ export default function ComissoesEmprestimos() {
           fmt(valPagar),
         ];
       }),
-      foot: [['', '', '', '', '', '', '', '', 'Subtotal Comissões:', fmt(totalBruto)]],
+      foot: [['', '', '', '', '', '', '', '', '', 'Subtotal Comissões:', fmt(totalBruto)]],
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
     let cursorY = doc.lastAutoTable.finalY + 6;
