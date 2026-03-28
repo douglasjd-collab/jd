@@ -396,12 +396,14 @@ export default function ImportacaoProducao() {
         </CardContent>
       </Card>
       {/* Histórico de importações */}
-      {historico.length > 0 && (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-6">
-            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-              <History className="w-4 h-4" /> Histórico de Importações
-            </h3>
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-6">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <History className="w-4 h-4" /> Histórico de Importações
+          </h3>
+          {historico.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">Nenhuma importação registrada ainda.</p>
+          ) : (
             <div className="space-y-2">
               {historico.map(log => (
                 <div key={log.id} className={`flex items-center gap-4 p-3 rounded-xl border ${log.status === 'desfeita' ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-slate-200'}`}>
@@ -427,9 +429,9 @@ export default function ImportacaoProducao() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Modal confirmação desfazer */}
       <Dialog open={!!confirmDesfazer} onOpenChange={() => setConfirmDesfazer(null)}>
