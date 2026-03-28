@@ -99,9 +99,7 @@ export default function PropostasSemVendedor() {
 
   const sincronizarMutation = useMutation({
     mutationFn: async () => {
-      const resp = await base44.functions.invoke('sincronizarVendedorAutomaticamente', {
-        empresa_id: currentUser.empresa_id,
-      });
+      const resp = await base44.functions.invoke('sincronizarVendedorAutomaticamente', {});
       return resp.data;
     },
     onSuccess: (data) => {

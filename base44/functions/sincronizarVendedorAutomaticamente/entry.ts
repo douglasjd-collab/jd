@@ -12,13 +12,19 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { empresa_id } = body;
+    let { empresa_id } = body;
+
+    // Se não veio no body, pega do usuário autenticado
+    if (!empresa_id && user?.empresa_id) {
+      empresa_id = user.empresa_id;
+    }
 
     console.log(`=== SINCRONIZAÇÃO INICIADA ===`);
-    console.log(`empresa_id recebida: ${empresa_id}`);
+    console.log(`Usuário: ${user?.email}`);
+    console.log(`empresa_id usada: ${empresa_id}`);
 
     if (!empresa_id) {
-      return Response.json({ error: 'empresa_id é obrigatório' }, { status: 400 });
+      return Response.json({ error: 'empresa_id não encontrada' }, { status: 400 });
     }
 
     // Buscar APENAS propostas de empréstimo COM CPF (otimizado)
