@@ -570,11 +570,69 @@ Deno.serve(async (req) => {
             console.log(`Atualizada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
           }
         } else {
-          const nova = await base44.asServiceRole.entities.Proposta.create(proposta);
-          criadas++;
-          propostasCriadasIds.push(nova.id);
-          // Adicionar ao cache local para evitar duplicatas na mesma importação
-          propostasExistentes.push({ ...proposta, id: nova.id });
+          // VERIFICAÇÃO FINAL ANTES DE CRIAR: Procurar na base completa (não só no cache local)
+          try {
+            let propostaFinalCheck = null;
+            
+            // 1. Procura por contrato + banco (ID)
+            if (contratoFinal && administradoraId) {
+              const resultado = toArray(
+                await base44.asServiceRole.entities.Proposta.filter({
+                  empresa_id: empresaId,
+                  contrato: contratoFinal,
+                  administradora_id: administradoraId,
+                  produto: 'emprestimo',
+                })
+              );
+              if (resultado.length > 0) propostaFinalCheck = resultado[0];
+            }
+            
+            // 2. Se não achou e tem CPF, procura por CPF + banco
+            if (!propostaFinalCheck && cpfFinal && cpfFinal.length >= 11 && administradoraId) {
+              const resultado = toArray(
+                await base44.asServiceRole.entities.Proposta.filter({
+                  empresa_id: empresaId,
+                  cliente_cpf: cpfFinal,
+                  administradora_id: administradoraId,
+                  produto: 'emprestimo',
+                })
+              );
+              if (resultado.length > 0) propostaFinalCheck = resultado[0];
+            }
+            
+            if (propostaFinalCheck) {
+              // Proposta já existe na base — atualizar se comissão não foi paga
+              const comissaoPagaCheck = propostaFinalCheck.comissao_banco_recebida === true || 
+                                        propostaFinalCheck.comissao_vendedor_paga === true;
+              
+              if (comissaoPagaCheck) {
+                ignoradas++;
+                console.log(`IGNORADA (final check, comissão paga): ${contratoFinal} / ${administradoraNome}`);
+              } else {
+                // Atualizar campos
+                const updateDataFinal = {};
+                if (statusVal) {
+                  updateDataFinal.status = statusVal;
+                  updateDataFinal.status_id = statusId || null;
+                }
+                if (valor > 0) updateDataFinal.valor_liquido = valor;
+                if (comissaoVal) updateDataFinal.valor_comissao = parseValor(comissaoVal);
+                
+                await base44.asServiceRole.entities.Proposta.update(propostaFinalCheck.id, updateDataFinal);
+                atualizadas++;
+                console.log(`Atualizada (final check): ${contratoFinal} / ${administradoraNome}`);
+              }
+            } else {
+              // Confirmar que realmente é nova — criar
+              const nova = await base44.asServiceRole.entities.Proposta.create(proposta);
+              criadas++;
+              propostasCriadasIds.push(nova.id);
+              propostasExistentes.push({ ...proposta, id: nova.id });
+            }
+          } catch (checkErr) {
+            console.error(`Erro no check final para ${contratoFinal}:`, checkErr.message);
+            ignoradas++;
+          }
         }
 
         previews.push({
