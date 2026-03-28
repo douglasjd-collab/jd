@@ -1,5 +1,5 @@
 Deno.serve(async (req) => {
-  const VERIFY_TOKEN = 'QTKxBcm2UVQiHqM9CQW7Bx58gqSVmm74';
+  const VERIFY_TOKEN = '07f4bcb2UTGd3gKFFcC9YTDe0iu9zRmmr4';
 
   // GET - validação do webhook pela Meta
   if (req.method === 'GET') {
