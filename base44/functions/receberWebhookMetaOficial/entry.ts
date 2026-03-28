@@ -10,15 +10,13 @@ Deno.serve(async (req) => {
     const token = url.searchParams.get('hub.verify_token');
     const challenge = url.searchParams.get('hub.challenge');
 
-    // ⚠️ IMPORTANTE: Use exatamente o token que você configurou na Meta
     const VERIFY_TOKEN_ESPERADO = 'QTKxBcm2UVQiHqM9CQW7Bx58gqSVmm74';
 
-    // Resposta IMEDIATA - sem delay
     if (mode === 'subscribe' && token === VERIFY_TOKEN_ESPERADO && challenge) {
-      return new Response(challenge, { status: 200 });
+      return new Response(challenge);
     }
 
-    return new Response('', { status: 403 });
+    return new Response('Unauthorized', { status: 403 });
   }
 
   try {
