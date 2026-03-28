@@ -18,38 +18,43 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id é obrigatório' }, { status: 400 });
     }
 
-    // Buscar todas as propostas de empréstimo da empresa
+    // Buscar APENAS propostas de empréstimo COM CPF (otimizado)
     const todasPropostas = await base44.asServiceRole.entities.Proposta.filter(
       { empresa_id, produto: 'emprestimo' },
       null,
-      5000
+      10000
     );
 
-    console.log(`Total de propostas na empresa: ${todasPropostas.length}`);
+    console.log(`Total de propostas: ${todasPropostas.length}`);
+
+    // Filtrar apenas as que têm CPF (as sem CPF não podem ser vinculadas de qualquer forma)
+    const propostasComCpf = todasPropostas.filter(p => p.cliente_cpf && String(p.cliente_cpf).trim().length > 0);
+    console.log(`Propostas com CPF preenchido: ${propostasComCpf.length}`);
 
     // Mapear CPF → vendedor_id/nome (das propostas que TÊM vendedor)
     const cpfVendedorMap = {};
     let comVendedor = 0;
 
-    for (const p of todasPropostas) {
+    for (const p of propostasComCpf) {
       const cpf = normCpf(p.cliente_cpf);
-      if (cpf && p.vendedor_id) {
-        cpfVendedorMap[cpf] = { vendedor_id: p.vendedor_id, vendedor_nome: p.vendedor_nome };
-        comVendedor++;
+      if (cpf && p.vendedor_id && p.vendedor_nome) {
+        if (!cpfVendedorMap[cpf]) {
+          cpfVendedorMap[cpf] = { vendedor_id: p.vendedor_id, vendedor_nome: p.vendedor_nome };
+          comVendedor++;
+        }
       }
     }
 
     console.log(`Propostas com vendedor: ${comVendedor}`);
-    console.log(`CPFs únicos com vendedor: ${Object.keys(cpfVendedorMap).length}`);
-    console.log(`Mapa: ${JSON.stringify(Object.keys(cpfVendedorMap).slice(0, 5))}`);
+    console.log(`CPFs únicos com vendedor mapeado: ${Object.keys(cpfVendedorMap).length}`);
 
     // Sincronizar propostas SEM vendedor com as que TÊM vendedor (por CPF)
     let vinculadas = 0;
     const updates = [];
 
-    for (const p of todasPropostas) {
+    for (const p of propostasComCpf) {
       // Pular se já tem vendedor
-      if (p.vendedor_id) continue;
+      if (p.vendedor_id && p.vendedor_nome) continue;
 
       const cpf = normCpf(p.cliente_cpf);
       if (!cpf) continue;
@@ -64,7 +69,7 @@ Deno.serve(async (req) => {
       });
       vinculadas++;
 
-      console.log(`Vinculando ${p.cliente_nome} (CPF: ${cpf}) → ${vInfo.vendedor_nome}`);
+      console.log(`Vinculando: ${p.cliente_nome} (CPF: ${cpf}) → ${vInfo.vendedor_nome}`);
     }
 
     console.log(`Total a sincronizar: ${vinculadas}`);
