@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, UserCheck, Loader2, Users, ArrowLeft } from 'lucide-react';
+import { Search, UserCheck, Loader2, Users, ArrowLeft, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -95,6 +95,21 @@ export default function PropostasSemVendedor() {
       setVendedorParaAtribuir('');
     },
     onError: () => toast.error('Erro ao atribuir vendedor'),
+  });
+
+  const sincronizarMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await base44.functions.invoke('sincronizarVendedorAutomaticamente', {
+        empresa_id: currentUser.empresa_id,
+      });
+      return resp.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['propostas-sem-vendedor'] });
+      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
+      toast.success(`✅ ${data.vinculadas || 0} proposta(s) sincronizada(s)!`);
+    },
+    onError: (err) => toast.error(`Erro na sincronização: ${err.message}`),
   });
 
   const semVendedor = propostas.filter(p => !p.vendedor_id || p.vendedor_id === '');
@@ -198,34 +213,58 @@ export default function PropostasSemVendedor() {
         </div>
       </div>
 
-      {/* Atribuição em lote */}
+      {/* Atribuição em lote + Sincronização */}
       {isAdmin && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Users className="w-5 h-5 text-slate-400" />
-            <Select value={vendedorParaAtribuir} onValueChange={setVendedorParaAtribuir}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Selecionar Vendedor" />
-              </SelectTrigger>
-              <SelectContent>
-                {vendedores.map(v => (
-                  <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="space-y-3">
+          {/* Sincronização Automática */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-200 rounded-lg">
+                <Zap className="w-5 h-5 text-blue-700" />
+              </div>
+              <div>
+                <p className="font-semibold text-blue-900">Sincronizar Vendedor Automaticamente</p>
+                <p className="text-xs text-blue-700 mt-0.5">Vincula propostas sem vendedor baseado no CPF de propostas já vinculadas</p>
+              </div>
+            </div>
             <Button
-              className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
-              disabled={!vendedorParaAtribuir || selectedIds.length === 0 || atribuirMutation.isPending}
-              onClick={() => atribuirMutation.mutate({ ids: selectedIds, vendedorId: vendedorParaAtribuir })}
+              className="bg-blue-600 hover:bg-blue-700 gap-2 whitespace-nowrap"
+              disabled={semVendedor.length === 0 || sincronizarMutation.isPending}
+              onClick={() => sincronizarMutation.mutate()}
             >
-              {atribuirMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-              Atribuir vendedor aos selecionados ({selectedIds.length})
+              {sincronizarMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {sincronizarMutation.isPending ? 'Sincronizando...' : 'Sincronizar Agora'}
             </Button>
-            {selectedIds.length > 0 && (
-              <button onClick={() => setSelectedIds([])} className="text-sm text-slate-500 hover:text-slate-700">
-                Limpar seleção
-              </button>
-            )}
+          </div>
+
+          {/* Atribuição Manual */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Users className="w-5 h-5 text-slate-400" />
+              <Select value={vendedorParaAtribuir} onValueChange={setVendedorParaAtribuir}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Selecionar Vendedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendedores.map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
+                disabled={!vendedorParaAtribuir || selectedIds.length === 0 || atribuirMutation.isPending}
+                onClick={() => atribuirMutation.mutate({ ids: selectedIds, vendedorId: vendedorParaAtribuir })}
+              >
+                {atribuirMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                Atribuir vendedor aos selecionados ({selectedIds.length})
+              </Button>
+              {selectedIds.length > 0 && (
+                <button onClick={() => setSelectedIds([])} className="text-sm text-slate-500 hover:text-slate-700">
+                  Limpar seleção
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
