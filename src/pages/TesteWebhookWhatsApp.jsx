@@ -59,14 +59,15 @@ export default function TesteWebhookWhatsApp() {
     setLoading(true);
 
     try {
-      const response = await base44.functions.invoke('diagnosticarContato', {
+      const response = await base44.functions.invoke('debugMensagensNaoChegam', {
         telefone,
       });
 
       setResultado({
         success: response.data.success,
         diagnostico: response.data.diagnostico,
-        problemas: response.data.problemas,
+        proximos_passos: response.data.proximos_passos,
+        avisoUrgente: response.data.avisoUrgente,
       });
     } catch (error) {
       toast.error('Erro: ' + error.message);
@@ -133,7 +134,7 @@ export default function TesteWebhookWhatsApp() {
               <AlertCircle className="w-5 h-5" />
               Diagnóstico de Contato
             </CardTitle>
-            <CardDescription>Verifique se o contato está sendo sincronizado</CardDescription>
+            <CardDescription>Encontra EXATAMENTE por que as mensagens não chegam</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div>
@@ -152,7 +153,7 @@ export default function TesteWebhookWhatsApp() {
               className="w-full bg-amber-600 hover:bg-amber-700"
             >
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Diagnosticar
+              🔍 Debug: Por que não chegam mensagens?
             </Button>
           </CardContent>
         </Card>
@@ -175,11 +176,17 @@ export default function TesteWebhookWhatsApp() {
                 {JSON.stringify(resultado, null, 2)}
               </pre>
 
-              {resultado.problemas && resultado.problemas.length > 0 && (
+              {resultado.avisoUrgente && (
+                <div className="mt-4 p-3 bg-red-100 border border-red-400 rounded">
+                  <p className="text-sm font-bold text-red-800">{resultado.avisoUrgente}</p>
+                </div>
+              )}
+
+              {resultado.proximos_passos && resultado.proximos_passos.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <h4 className="font-medium text-red-800">⚠️ Problemas encontrados:</h4>
-                  {resultado.problemas.map((p, i) => (
-                    <p key={i} className="text-sm text-red-700">• {p}</p>
+                  <h4 className="font-medium text-amber-800">🔧 Próximos passos:</h4>
+                  {resultado.proximos_passos.map((p, i) => (
+                    <p key={i} className="text-sm text-amber-700">• {p}</p>
                   ))}
                 </div>
               )}
@@ -197,13 +204,16 @@ export default function TesteWebhookWhatsApp() {
               <strong>1. Testar Webhook:</strong> Simula uma mensagem chegando da Evolution API. A mensagem deve aparecer na conversa do CRM em tempo real.
             </p>
             <p>
-              <strong>2. Diagnosticar:</strong> Verifica se o contato, conversa e mensagens estão sendo sincronizadas corretamente.
+              <strong>2. Debug:</strong> Encontra EXATAMENTE por que as mensagens não chegam - verifica cliente, conversa, mensagens e webhook logs.
             </p>
             <p>
               <strong>3. Automação:</strong> A cada 5 minutos, o sistema sincroniza automaticamente todas as conversas.
             </p>
             <p className="text-blue-800 font-medium mt-3">
-              ✅ Se ambos os testes passarem, o sistema está funcionando corretamente!
+              ✅ Se testar webhook passar, o sistema está funcionando corretamente!
+            </p>
+            <p className="text-red-800 font-medium mt-2">
+              ❌ Se Debug mostrar "Nenhuma mensagem chegam", vá em Configuração WhatsApp
             </p>
           </CardContent>
         </Card>
