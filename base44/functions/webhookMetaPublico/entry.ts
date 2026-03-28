@@ -1,6 +1,18 @@
 Deno.serve(async (req) => {
   const VERIFY_TOKEN = '07f4bcb2UTGd3gKFFcC9YTDe0iu9zRmmr4';
 
+  // Responder a CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      }
+    });
+  }
+
   // GET - validação do webhook pela Meta
   if (req.method === 'GET') {
     const url = new URL(req.url);
