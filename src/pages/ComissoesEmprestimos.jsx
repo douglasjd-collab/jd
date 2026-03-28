@@ -1058,7 +1058,10 @@ export default function ComissoesEmprestimos() {
                           <Checkbox checked={isSel} onCheckedChange={() => toggleModalItem(p.id)} />
                         ) : <div className="w-4" />}
                       </td>
-                      <td className="p-3 font-medium">{p.cliente_nome || '-'}</td>
+                      <td className="p-3">
+                        <p className="font-medium">{p.cliente_nome || '-'}</p>
+                        {p.cliente_cpf && <p className="text-xs text-slate-400 mt-0.5">{p.cliente_cpf}</p>}
+                      </td>
                       <td className="p-3 text-slate-600">{p.contrato || '-'}</td>
                       <td className="p-3 text-slate-600">{p.administradora_nome || '-'}</td>
                       <td className="p-3 text-right text-slate-700 font-medium">{fmt(p.valor_credito)}</td>
