@@ -533,33 +533,42 @@ Deno.serve(async (req) => {
          }
 
         if (propostaExistente) {
-          // Proposta existente — atualizar status, datas, valores e parcela
-          const updateData = {};
+          // PROTEÇÃO: Se comissão já foi paga, NÃO ATUALIZAR E NÃO DUPLICAR
+          const comissaoPaga = propostaExistente.comissao_banco_recebida === true || 
+                                propostaExistente.comissao_vendedor_paga === true;
           
-          if (statusVal) {
-            updateData.status = statusVal;
-            updateData.status_id = statusId || null;
+          if (comissaoPaga) {
+            ignoradas++;
+            console.log(`IGNORADA (comissão paga): Contrato ${contratoFinal} / Banco ${administradoraNome}`);
+          } else {
+            // Proposta existente — atualizar status, datas, valores e parcela
+            const updateData = {};
+            
+            if (statusVal) {
+              updateData.status = statusVal;
+              updateData.status_id = statusId || null;
+            }
+            if (dataVend) updateData.data_venda = dataVend;
+            if (parseData(dataPagClienteVal)) updateData.emprestimo_data_liberacao = parseData(dataPagClienteVal);
+            if (valorBruto > 0) updateData.valor_credito = valorBruto;
+            else if (valor > 0) updateData.valor_credito = valor;
+            if (valor > 0) updateData.valor_liquido = valor;
+            if (valorBaseComissaoVal) updateData.comissao_banco_base_comissao = parseValor(valorBaseComissaoVal);
+            if (comissaoVal) updateData.valor_comissao = parseValor(comissaoVal);
+            if (parcela) updateData.emprestimo_valor_parcela = parcela;
+            if (prazo) updateData.emprestimo_prazo = prazo;
+            // tabela
+            if (tabelaComissao?.id) {
+              updateData.tabela_comissao_id = tabelaComissao.id;
+              updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
+            }
+            
+            await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
+            atualizadas++;
+            const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
+            if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...updateData };
+            console.log(`Atualizada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
           }
-          if (dataVend) updateData.data_venda = dataVend;
-          if (parseData(dataPagClienteVal)) updateData.emprestimo_data_liberacao = parseData(dataPagClienteVal);
-          if (valorBruto > 0) updateData.valor_credito = valorBruto;
-          else if (valor > 0) updateData.valor_credito = valor;
-          if (valor > 0) updateData.valor_liquido = valor;
-          if (valorBaseComissaoVal) updateData.comissao_banco_base_comissao = parseValor(valorBaseComissaoVal);
-          if (comissaoVal) updateData.valor_comissao = parseValor(comissaoVal);
-          if (parcela) updateData.emprestimo_valor_parcela = parcela;
-          if (prazo) updateData.emprestimo_prazo = prazo;
-          // tabela
-          if (tabelaComissao?.id) {
-            updateData.tabela_comissao_id = tabelaComissao.id;
-            updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
-          }
-          
-          await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
-          atualizadas++;
-          const idx = propostasExistentes.findIndex(p => p.id === propostaExistente.id);
-          if (idx >= 0) propostasExistentes[idx] = { ...propostaExistente, ...updateData };
-          console.log(`Atualizada: Contrato ${contratoFinal} / Banco ${administradoraNome}`);
         } else {
           const nova = await base44.asServiceRole.entities.Proposta.create(proposta);
           criadas++;
