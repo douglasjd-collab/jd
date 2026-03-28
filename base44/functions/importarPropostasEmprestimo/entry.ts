@@ -203,10 +203,17 @@ Deno.serve(async (req) => {
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const normCpf = cpf => String(cpf || '').replace(/\D/g, '');
     
+    // 🔐 NORMALIZAR CONTRATO: Remove tudo que não é número
+    const normalizarContrato = (contrato) => {
+      if (!contrato) return null;
+      const norm = String(contrato).trim().replace(/\D/g, '');
+      return norm.length > 0 ? norm : null;
+    };
+
     // 🔐 DEDUPLICAÇÃO: Gera chave única = banco_normalizado + contrato
     const gerarChaveUnica = (bancoNome, contrato) => {
       const bancoNorm = normStr(bancoNome || '').replace(/\s+/g, '');
-      const contratoNorm = String(contrato || '').replace(/\D/g, '');
+      const contratoNorm = normalizarContrato(contrato);
       if (!bancoNorm || !contratoNorm) return null;
       return `${bancoNorm}_${contratoNorm}`;
     };
@@ -530,7 +537,7 @@ Deno.serve(async (req) => {
         }
 
         // 🔐 DEDUPLICAÇÃO: Procura PRIMEIRO por contrato+banco (propostas existentes), DEPOIS salva chave_unica
-        const contratoFinal = proposta.contrato || null;
+        const contratoFinal = normalizarContrato(proposta.contrato);
         const administradoraId = proposta.administradora_id || null;
         const administradoraNome = proposta.administradora_nome || null;
         const chaveUnica = gerarChaveUnica(administradoraNome, contratoFinal);
@@ -538,19 +545,21 @@ Deno.serve(async (req) => {
         try {
           let propostaExistente = null;
 
-          // Nível 1: Buscar por contrato + banco_id (mais rigoroso)
+          // Nível 1: Buscar por contrato NORMALIZADO + banco_id (mais rigoroso)
           if (contratoFinal && administradoraId) {
-            const resultado = toArray(
+            // Buscar todas as propostas e filtrar manualmente (pois precisa comparar contrato normalizado)
+            const todasProps = toArray(
               await base44.asServiceRole.entities.Proposta.filter({
                 empresa_id: empresaId,
-                contrato: contratoFinal,
                 administradora_id: administradoraId,
                 produto: 'emprestimo',
-              })
+              }, null, 5000)
             );
-            if (resultado.length > 0) {
-              propostaExistente = resultado[0];
-              console.log(`🔍 ENCONTRADA por contrato+banco: ${contratoFinal}`);
+            propostaExistente = todasProps.find(p => 
+              normalizarContrato(p.contrato) === contratoFinal
+            );
+            if (propostaExistente) {
+              console.log(`🔍 ENCONTRADA por contrato+banco (normalizado): ${contratoFinal}`);
             }
           }
 
@@ -571,10 +580,15 @@ Deno.serve(async (req) => {
 
           if (propostaExistente) {
             // 🔴 Proposta JÁ EXISTE!
-            if (temComissaoPaga(propostaExistente)) {
-              // ❌ NUNCA TOCA EM PROPOSTA COM COMISSÃO PAGA
+            // Verificar se status é PAGO (não mexer em propostas pagas)
+            const statusProp = statusList.find(s => s.id === propostaExistente.status_id);
+            const isPago = statusProp?.nome?.toLowerCase().includes('pago') || 
+                          propostaExistente.status?.toLowerCase().includes('pago');
+            
+            if (temComissaoPaga(propostaExistente) || isPago) {
+              // ❌ NUNCA TOCA EM PROPOSTA COM COMISSÃO PAGA OU COM STATUS PAGO
               ignoradas++;
-              console.log(`❌ IGNORADA (comissão paga): ${contratoFinal || nomeVal}`);
+              console.log(`❌ IGNORADA (comissão paga ou status PAGO): ${contratoFinal || nomeVal}`);
             } else {
               // ✅ Seguro atualizar — comissão não foi paga
               const updateData = {};
