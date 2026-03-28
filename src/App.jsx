@@ -20,6 +20,7 @@ import MonitorWebhookAgressivo from './pages/MonitorWebhookAgressivo';
 import ComparadorMensagensEvolution from './pages/ComparadorMensagensEvolution';
 import RastreadorMensagens from './pages/RastreadorMensagens';
 import StatusRecebimentoMensagens from './pages/StatusRecebimentoMensagens';
+import SincronizacaoAgressivaMensagens from './pages/SincronizacaoAgressivaMensagens';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -84,6 +85,7 @@ const AuthenticatedApp = () => {
       <Route path="/ComparadorMensagensEvolution" element={<LayoutWrapper currentPageName="ComparadorMensagensEvolution"><ComparadorMensagensEvolution /></LayoutWrapper>} />
       <Route path="/RastreadorMensagens" element={<LayoutWrapper currentPageName="RastreadorMensagens"><RastreadorMensagens /></LayoutWrapper>} />
       <Route path="/StatusRecebimentoMensagens" element={<LayoutWrapper currentPageName="StatusRecebimentoMensagens"><StatusRecebimentoMensagens /></LayoutWrapper>} />
+      <Route path="/SincronizacaoAgressivaMensagens" element={<LayoutWrapper currentPageName="SincronizacaoAgressivaMensagens"><SincronizacaoAgressivaMensagens /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
