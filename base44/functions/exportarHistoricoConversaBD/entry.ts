@@ -56,14 +56,22 @@ Deno.serve(async (req) => {
     console.log(`   Última mensagem: ${conversa.data_ultima_mensagem}\n`);
 
     // ════════════════════════════════════════════════════════════════════
-    // PASSO 2: Buscar mensagens
+    // PASSO 2: Buscar mensagens (enviadas E recebidas)
     // ════════════════════════════════════════════════════════════════════
-    console.log(`[PASSO 2] Buscando mensagens...`);
-    const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+    console.log(`[PASSO 2] Buscando todas as mensagens (enviadas + recebidas)...`);
+    const todasMensagensRaw = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
       conversa_id: conversa.id,
     }, 'created_date', 5000);
 
-    console.log(`✅ ${mensagens.length} mensagens encontradas`);
+    // Separar mensagens por remetente para debug
+    const mensagensCliente = todasMensagensRaw.filter(m => m.remetente === 'cliente');
+    const mensagensVendedor = todasMensagensRaw.filter(m => m.remetente === 'vendedor');
+    
+    console.log(`   - Recebidas (cliente): ${mensagensCliente.length}`);
+    console.log(`   - Enviadas (vendedor): ${mensagensVendedor.length}`);
+    
+    const mensagens = todasMensagensRaw;
+    console.log(`✅ ${mensagens.length} mensagens no total`);
 
     if (mensagens.length === 0) {
       console.log(`\n⚠️ AVISO: Nenhuma mensagem foi sincronizada ainda.`);
