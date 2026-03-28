@@ -14,6 +14,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { empresa_id } = body;
 
+    console.log(`=== SINCRONIZAÇÃO INICIADA ===`);
+    console.log(`empresa_id recebida: ${empresa_id}`);
+
     if (!empresa_id) {
       return Response.json({ error: 'empresa_id é obrigatório' }, { status: 400 });
     }
@@ -31,6 +34,12 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Total de propostas: ${todasPropostas.length}`);
+    
+    // Log dos primeiros registros para verificar estrutura
+    if (todasPropostas.length > 0) {
+      const sample = todasPropostas[0];
+      console.log(`Amostra de proposta: ID=${sample.id}, CPF=${sample.cliente_cpf}, Vendedor=${sample.vendedor_id}`);
+    }
 
     // Filtrar apenas as que têm CPF (as sem CPF não podem ser vinculadas de qualquer forma)
     const propostasComCpf = (Array.isArray(todasPropostas) ? todasPropostas : []).filter(p => p.cliente_cpf && String(p.cliente_cpf).trim().length > 0);
