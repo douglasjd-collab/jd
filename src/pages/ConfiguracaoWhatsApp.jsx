@@ -408,69 +408,6 @@ export default function ConfiguracaoWhatsApp() {
                    </ol>
                  </div>
 
-                {/* SEÇÃO DO WEBHOOK - PARA ADICIONAR NO FACEBOOK */}
-                <div className="border-2 border-purple-500 rounded-lg p-4 bg-purple-50 mt-6">
-                  <h3 className="text-lg font-bold text-purple-900 mb-4">🔗 Configuração de Webhook (para Meta)</h3>
-                  <p className="text-sm text-purple-800 mb-4">Cole os valores abaixo em <strong>Meta for Developers → Seu App → Configuration → Webhooks</strong></p>
-
-                  {/* Callback URL */}
-                  <div className="mb-4">
-                    <Label className="mb-2 block font-semibold text-purple-900">📲 Callback URL</Label>
-                    <p className="text-xs text-purple-700 mb-2">Cole este valor em: <strong>Meta → Configuration → Webhooks → Callback URL</strong></p>
-                    <div className="flex gap-2">
-                      <Input
-                        value={WEBHOOK_URL_OFICIAL}
-                        readOnly
-                        className="bg-white border-2 border-purple-400 font-mono text-sm text-purple-700"
-                      />
-                      <Button
-                        variant="default"
-                        className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
-                        onClick={() => {
-                          copyToClipboard(WEBHOOK_URL_OFICIAL, 'webhook-oficial');
-                          toast.success('✅ Callback URL copiada!');
-                        }}
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Copiar
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Verify Token - FIXO */}
-                  <div>
-                    <Label className="mb-2 block font-semibold text-purple-900">🔐 Verify Token (FIXO)</Label>
-                    <p className="text-xs text-purple-700 mb-3">Cole este valor em: <strong>Meta → Configuration → Webhooks → Verify Token</strong></p>
-                    <div className="bg-purple-100 border-2 border-purple-500 rounded-lg p-4 mb-3">
-                      <p className="text-xs text-purple-700 font-semibold mb-2">⚠️ Token fixo — use EXATAMENTE este valor na Meta:</p>
-                      <div className="flex gap-2">
-                        <code className="flex-1 bg-white p-3 rounded font-mono text-base font-bold text-purple-900 break-all select-all border-2 border-purple-300">
-                          {VERIFY_TOKEN_FIXO}
-                        </code>
-                        <Button
-                          variant="default"
-                          className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap flex-shrink-0"
-                          onClick={() => { copyToClipboard(VERIFY_TOKEN_FIXO, 'verify'); toast.success('✅ Token copiado! Cole na Meta'); }}
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copiar
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-100 to-cyan-100 border-2 border-blue-400 rounded-lg">
-                    <p className="text-sm text-blue-900 font-bold mb-3">💡 Configurar na Meta - Passo a Passo:</p>
-                    <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-                      <li><strong>Acesse</strong> Meta for Developers → Seu App WhatsApp</li>
-                      <li><strong>Vá em</strong> Configuration → Webhooks</li>
-                      <li><strong>Cole a Callback URL</strong> (roxo acima) no campo <code className="bg-white px-2 py-1 rounded text-xs">Callback URL</code></li>
-                      <li><strong>Cole o Verify Token</strong> (roxo acima) no campo <code className="bg-white px-2 py-1 rounded text-xs">Verify Token</code></li>
-                      <li><strong>Clique</strong> em <code className="bg-white px-2 py-1 rounded text-xs font-bold">Verify and Save</code></li>
-                      <li>✅ Se aparecer verde = sucesso! Salve a configuração</li>
-                    </ol>
-                  </div>
-                </div>
                 </TabsContent>
             </Tabs>
 
@@ -491,6 +428,55 @@ export default function ConfiguracaoWhatsApp() {
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Webhook Meta - SEMPRE VISÍVEL */}
+        <Card className="border-2 border-purple-500 bg-gradient-to-br from-purple-50 to-white">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-purple-900">
+              🔗 Webhook da Meta (API Oficial)
+            </CardTitle>
+            <CardDescription className="text-purple-700 font-medium">
+              Cole estes valores em Meta for Developers → Seu App → Configuration → Webhooks
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="mb-2 block font-semibold text-purple-900">📲 Callback URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={WEBHOOK_URL_OFICIAL}
+                  readOnly
+                  className="bg-white border-2 border-purple-400 font-mono text-sm text-purple-700"
+                />
+                <Button
+                  variant="default"
+                  className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+                  onClick={() => { copyToClipboard(WEBHOOK_URL_OFICIAL, 'webhook-oficial'); toast.success('✅ Callback URL copiada!'); }}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copiar
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-2 block font-semibold text-purple-900">🔐 Verify Token</Label>
+              <div className="flex gap-2">
+                <code className="flex-1 bg-white px-4 py-2 rounded-md font-mono text-base font-bold text-purple-900 break-all select-all border-2 border-purple-400 flex items-center">
+                  {VERIFY_TOKEN_FIXO}
+                </code>
+                <Button
+                  variant="default"
+                  className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap flex-shrink-0"
+                  onClick={() => { copyToClipboard(VERIFY_TOKEN_FIXO, 'verify'); toast.success('✅ Token copiado! Cole na Meta'); }}
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copiar
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
