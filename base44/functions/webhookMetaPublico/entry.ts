@@ -1,5 +1,5 @@
 Deno.serve(async (req) => {
-  const VERIFY_TOKEN = '07f4bcb2UTGd3gKFFcC9YTDe0iu9zRmmr4';
+  const VERIFY_TOKEN = 'WAZE_CRM_WEBHOOK_2024';
 
   // Responder a CORS preflight
   if (req.method === 'OPTIONS') {
