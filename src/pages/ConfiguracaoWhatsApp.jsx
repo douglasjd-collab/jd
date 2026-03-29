@@ -107,7 +107,7 @@ export default function ConfiguracaoWhatsApp() {
     return token;
   };
 
-  const BASE_WEBHOOK_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
+  const BASE_WEBHOOK_URL = 'https://app--waze-crm.base44.app/api/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
 
   const gerarUrlWebhook = (instancia) => {
     if (!instancia) return BASE_WEBHOOK_URL;
