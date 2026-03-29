@@ -35,6 +35,9 @@ export default function ConfiguracaoWhatsApp() {
   const [whatsappPhoneNumberId, setWhatsappPhoneNumberId] = useState('');
   const [whatsappBusinessAccountId, setWhatsappBusinessAccountId] = useState('');
   const [whatsappVerifyToken, setWhatsappVerifyToken] = useState('');
+  const [tokenTipo, setTokenTipo] = useState('permanente');
+  const [tokenAtualizadoEm, setTokenAtualizadoEm] = useState(null);
+  const [tempTokenTipo, setTempTokenTipo] = useState('permanente');
   const [saving, setSaving] = useState(false);
   const [atualizandoWebhook, setAtualizandoWebhook] = useState(false);
   const [testandoMeta, setTestandoMeta] = useState(false);
