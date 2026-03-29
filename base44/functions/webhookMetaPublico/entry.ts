@@ -3,8 +3,27 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 const VERIFY_TOKEN = 'WAZE_CRM_WEBHOOK_2024';
 
 Deno.serve(async (req) => {
-  // Criar cliente ANTES de consumir o body
-  const base44 = createClientFromRequest(req);
+  const url = new URL(req.url);
+
+  // ── GET: Verificação do webhook pela Meta ─────────────────────────────
+  // IMPORTANTE: responder ANTES de criar o cliente Base44
+  if (req.method === 'GET') {
+    const mode      = url.searchParams.get('hub.mode');
+    const token     = url.searchParams.get('hub.verify_token');
+    const challenge = url.searchParams.get('hub.challenge');
+
+    console.log('🔎 Verificação Meta:', { mode, token, challenge });
+
+    if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
+      console.log('✅ Webhook VALIDADO!');
+      return new Response(challenge, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
+    console.log('❌ Token inválido ou parâmetros faltando');
+    return new Response('Forbidden', { status: 403 });
+  }
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -18,23 +37,6 @@ Deno.serve(async (req) => {
     });
   }
 
-  const url = new URL(req.url);
-
-  // ── GET: Verificação do webhook pela Meta ─────────────────────────────
-  if (req.method === 'GET') {
-    const mode      = url.searchParams.get('hub.mode');
-    const token     = url.searchParams.get('hub.verify_token');
-    const challenge = url.searchParams.get('hub.challenge');
-
-    console.log('🔎 Verificação Meta:', { mode, token, challenge });
-
-    if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
-      console.log('✅ Webhook VALIDADO!');
-      return new Response(challenge, { status: 200, headers: { 'Content-Type': 'text/plain' } });
-    }
-    return new Response('Forbidden', { status: 403 });
-  }
-
   // ── POST: Mensagem real enviada pela Meta ─────────────────────────────
   if (req.method === 'POST') {
     let body;
@@ -46,8 +48,9 @@ Deno.serve(async (req) => {
 
     console.log('📨 Webhook Meta POST recebido. Entries:', body?.entry?.length || 0);
 
-    // Processar de forma síncrona (aguarda antes de responder)
-    // Meta aguarda até 20s — seguro processar aqui
+    // Criar cliente apenas para o POST (precisa salvar no banco)
+    const base44 = createClientFromRequest(req);
+
     try {
       await processarMensagemMeta(body, base44);
     } catch (err) {
