@@ -136,6 +136,7 @@ export default function ConfiguracaoWhatsApp() {
       setTempWhatsappPhoneNumberId(whatsappPhoneNumberId);
       setTempWhatsappBusinessAccountId(whatsappBusinessAccountId);
       setTempWhatsappVerifyToken(whatsappVerifyToken);
+      setTempTokenTipo(tokenTipo || 'permanente');
     }
     setEditMode(!editMode);
   };
@@ -150,33 +151,49 @@ export default function ConfiguracaoWhatsApp() {
         return;
       }
 
-      // Garantir que o token não fica vazio
-      const tokenParaSalvar = tempWhatsappVerifyToken || gerarVerifyTokenPadrao();
-      
-      await base44.entities.Empresa.update(empresaId, {
+      // Salvar via função backend para garantir que passa pela regra de segurança
+      const resp = await base44.functions.invoke('salvarConfigWhatsApp', {
+        empresa_id: empresaId,
         evolution_url: tempUrl,
         evolution_instance_name: tempInstance,
         evolution_api_key: tempApiKey,
         whatsapp_access_token: tempWhatsappAccessToken,
         whatsapp_phone_number_id: tempWhatsappPhoneNumberId,
         whatsapp_business_account_id: tempWhatsappBusinessAccountId,
-        whatsapp_verify_token: tokenParaSalvar,
+        whatsapp_verify_token: tempWhatsappVerifyToken || 'WAZE_CRM_WEBHOOK_2024',
+        whatsapp_token_tipo: tempTokenTipo || 'permanente',
+        whatsapp_token_atualizado_em: new Date().toISOString(),
       });
 
+      if (!resp.data?.success) {
+        throw new Error(resp.data?.error || 'Erro ao salvar');
+      }
+
+      // Atualizar estado local com os valores salvos
       setEvolutionUrl(tempUrl);
       setInstanceName(tempInstance);
       setApiKey(tempApiKey);
       setWhatsappAccessToken(tempWhatsappAccessToken);
       setWhatsappPhoneNumberId(tempWhatsappPhoneNumberId);
       setWhatsappBusinessAccountId(tempWhatsappBusinessAccountId);
-      setWhatsappVerifyToken(tokenParaSalvar);
+      setWhatsappVerifyToken(tempWhatsappVerifyToken || 'WAZE_CRM_WEBHOOK_2024');
+      setTokenTipo(tempTokenTipo || 'permanente');
+      setTokenAtualizadoEm(new Date().toISOString());
+
+      // Atualizar objeto empresa no estado
+      setEmpresa(prev => ({
+        ...prev,
+        whatsapp_access_token: tempWhatsappAccessToken,
+        whatsapp_phone_number_id: tempWhatsappPhoneNumberId,
+        whatsapp_business_account_id: tempWhatsappBusinessAccountId,
+        whatsapp_token_tipo: tempTokenTipo || 'permanente',
+      }));
       
-      // Gerar novo webhook URL com o nome da instância
       const novaUrl = gerarUrlWebhook(tempInstance);
       setWebhookUrl(novaUrl);
       
       setEditMode(false);
-      toast.success('✅ Configurações WhatsApp salvas!\n\n🔐 Token de Verificação: ' + tokenParaSalvar.slice(0, 8) + '...\n\nCole na Meta em Configuration → Webhooks → Verify Token');
+      toast.success('✅ Configurações salvas com sucesso no banco de dados!');
     } catch (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } finally {
