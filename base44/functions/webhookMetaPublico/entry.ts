@@ -121,16 +121,27 @@ async function salvarMensagem(base44, value, message) {
 
   console.log(`📱 Mensagem de ${telefoneLimpo}: "${(texto || '').slice(0, 60)}"`);
 
-  // Buscar empresa pelo phone_number_id ou pela primeira ativa
-  const phoneNumberId = value.metadata?.phone_number_id;
-  let empresas;
+  // Buscar empresa pelo phone_number_id
+  const phoneNumberId = String(value.metadata?.phone_number_id || '').trim();
+  let empresas = [];
+
   if (phoneNumberId) {
-    empresas = await base44.asServiceRole.entities.Empresa.filter({ whatsapp_phone_number_id: phoneNumberId }, null, 1);
-    console.log(`🏢 Empresa por phone_number_id (${phoneNumberId}): ${empresas?.length || 0} encontrada(s)`);
-  }
-  if (!empresas || empresas.length === 0) {
+    // Buscar todas empresas com access_token configurado e comparar phone_number_id
+    const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
+    const match = todasEmpresas.filter(e => String(e.whatsapp_phone_number_id || '').trim() === phoneNumberId);
+    if (match.length > 0) {
+      empresas = match;
+      console.log(`🏢 Empresa encontrada por phone_number_id (${phoneNumberId}): ${match[0].nome}`);
+    } else {
+      console.log(`⚠️ Nenhuma empresa com phone_number_id=${phoneNumberId}. IDs cadastrados: ${todasEmpresas.map(e => e.whatsapp_phone_number_id).join(', ')}`);
+      // fallback: pegar a que tem access_token configurado
+      const comToken = todasEmpresas.filter(e => e.whatsapp_access_token && e.whatsapp_phone_number_id);
+      empresas = comToken.length > 0 ? [comToken[0]] : [todasEmpresas[0]];
+      console.log(`🏢 Fallback empresa: ${empresas[0]?.nome}`);
+    }
+  } else {
     empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 1);
-    console.log(`🏢 Empresa por status ativa: ${empresas?.length || 0} encontrada(s)`);
+    console.log(`🏢 Empresa por status ativa (sem phone_number_id no payload): ${empresas?.length || 0}`);
   }
   if (!empresas || empresas.length === 0) {
     console.log('❌ Nenhuma empresa encontrada');
@@ -158,11 +169,20 @@ async function salvarMensagem(base44, value, message) {
     console.log(`👤 Cliente: ${cliente.id} (${cliente.nome_completo})`);
   }
 
-  // Garantir conversa
+  // Garantir conversa — buscar por telefone OU cliente_id
   let conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
     empresa_id: empresaId,
-    cliente_id: cliente.id,
+    cliente_telefone: telefoneLimpo,
   }, null, 1);
+  
+  // fallback: buscar por cliente_id
+  if (!conversas || conversas.length === 0) {
+    conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+      empresa_id: empresaId,
+      cliente_id: cliente.id,
+    }, null, 1);
+  }
+
   let conversa;
   if (conversas.length === 0) {
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
@@ -178,6 +198,14 @@ async function salvarMensagem(base44, value, message) {
     console.log(`✨ Conversa criada: ${conversa.id}`);
   } else {
     conversa = conversas[0];
+    // Garantir que cliente_telefone está preenchido
+    if (!conversa.cliente_telefone) {
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+        cliente_telefone: telefoneLimpo,
+        cliente_id: cliente.id,
+        cliente_nome: cliente.nome_completo,
+      });
+    }
     console.log(`💬 Conversa: ${conversa.id}`);
   }
 
