@@ -508,16 +508,22 @@ export default function BatePapo() {
       const pertenceConversaAberta = msgData?.conversa_id && msgData.conversa_id === conversaAtualId;
 
       if (pertenceConversaAberta) {
-        // Forçar refetch imediato
+        // Forçar refetch imediato — múltiplas tentativas para garantir
         queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         refetchMensagens?.();
+        setTimeout(() => refetchMensagens?.(), 300);
+        setTimeout(() => refetchMensagens?.(), 800);
         // Scroll para o final após refetch
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
-        }, 100);
+        }, 500);
+      } else if (msgData?.conversa_id && conversaAtualId) {
+        // A mensagem chegou numa conversa diferente da aberta — pode ser variação de telefone
+        // Refetch das conversas para atualizar lista
+        refetchConversas?.();
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem

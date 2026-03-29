@@ -169,26 +169,59 @@ async function salvarMensagem(base44, value, message) {
     console.log(`👤 Cliente: ${cliente.id} (${cliente.nome_completo})`);
   }
 
-  // Garantir conversa — buscar por telefone OU cliente_id
-  let conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-    empresa_id: empresaId,
-    cliente_telefone: telefoneLimpo,
-  }, null, 1);
-  
-  // fallback: buscar por cliente_id
-  if (!conversas || conversas.length === 0) {
-    conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-      empresa_id: empresaId,
-      cliente_id: cliente.id,
-    }, null, 1);
-  }
+  // Variações do telefone (com/sem nono dígito)
+  const tel12 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13
+    ? telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5) : null;
+  const tel13 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12
+    ? telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4) : null;
+  const variacoes = [telefoneLimpo, tel12, tel13].filter(Boolean);
 
-  let conversa;
-  if (conversas.length === 0) {
+  // Buscar TODAS as conversas do número (pode ter duplicatas) — pegar a mais ANTIGA (primeira criada)
+  const todasConversasEmpresa = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+    empresa_id: empresaId,
+  }, 'created_date', 500); // ordem crescente = mais antigas primeiro
+
+  const conversasDoNumero = todasConversasEmpresa.filter(c => {
+    const t = String(c.cliente_telefone || '').replace(/\D/g, '');
+    return variacoes.includes(t);
+  });
+
+  let conversa = null;
+
+  if (conversasDoNumero.length > 0) {
+    // Usar a conversa mais ANTIGA como principal
+    conversa = conversasDoNumero[0];
+
+    // Se houver duplicatas, migrar mensagens para a mais antiga e arquivar as outras
+    if (conversasDoNumero.length > 1) {
+      console.log(`⚠️ ${conversasDoNumero.length} conversas duplicadas encontradas para ${telefoneLimpo} — consolidando...`);
+      for (const dup of conversasDoNumero.slice(1)) {
+        // Migrar mensagens
+        const msgsDup = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+          { conversa_id: dup.id }, null, 500
+        );
+        for (const m of msgsDup) {
+          await base44.asServiceRole.entities.MensagemWhatsapp.update(m.id, { conversa_id: conversa.id });
+        }
+        // Arquivar duplicata
+        await base44.asServiceRole.entities.ConversaWhatsapp.update(dup.id, { status: 'arquivada' });
+        console.log(`🗄️ Conversa ${dup.id} arquivada (${msgsDup.length} msgs migradas)`);
+      }
+    }
+
+    // Garantir dados atualizados na conversa principal
+    const update = { instancia: 'META_OFICIAL', status: 'ativa' };
+    if (!conversa.cliente_telefone || conversa.cliente_telefone !== telefoneLimpo) update.cliente_telefone = telefoneLimpo;
+    if (!conversa.cliente_id && cliente?.id) update.cliente_id = cliente.id;
+    if (!conversa.cliente_nome && cliente?.nome_completo) update.cliente_nome = cliente.nome_completo;
+    await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, update);
+    console.log(`💬 Conversa principal: ${conversa.id}`);
+  } else {
+    // Nenhuma conversa — criar
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId,
-      cliente_id: cliente.id,
-      cliente_nome: cliente.nome_completo,
+      cliente_id: cliente?.id,
+      cliente_nome: cliente?.nome_completo || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
       whatsapp_id: telefoneLimpo,
       status: 'ativa',
@@ -196,17 +229,6 @@ async function salvarMensagem(base44, value, message) {
       instancia: 'META_OFICIAL',
     });
     console.log(`✨ Conversa criada: ${conversa.id}`);
-  } else {
-    conversa = conversas[0];
-    // Garantir que cliente_telefone está preenchido
-    if (!conversa.cliente_telefone) {
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-        cliente_telefone: telefoneLimpo,
-        cliente_id: cliente.id,
-        cliente_nome: cliente.nome_completo,
-      });
-    }
-    console.log(`💬 Conversa: ${conversa.id}`);
   }
 
   // Verificar duplicata
