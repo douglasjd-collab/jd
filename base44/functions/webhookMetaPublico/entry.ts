@@ -22,13 +22,20 @@ Deno.serve(async (req) => {
 
     console.log('🔍 GET recebido:', { mode, token: token?.slice(0,8), challenge: challenge?.slice(0,8) });
 
+    console.log('📋 Token recebido:', token);
+    console.log('📋 Token esperado:', VERIFY_TOKEN);
+    console.log('📋 Iguais?', token === VERIFY_TOKEN);
+
     if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
-      console.log('✅ Webhook validado!');
-      return new Response(challenge);
+      console.log('✅ Webhook validado! Retornando challenge:', challenge);
+      return new Response(challenge, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' }
+      });
     }
 
-    console.log('❌ Validação falhou');
-    return new Response('Invalid', { status: 403 });
+    console.log('❌ Validação falhou - mode:', mode, 'token match:', token === VERIFY_TOKEN, 'challenge:', !!challenge);
+    return new Response(challenge || 'Invalid', { status: 403 });
   }
 
   // POST - mensagens reais
