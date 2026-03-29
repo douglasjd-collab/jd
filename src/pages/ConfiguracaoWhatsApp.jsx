@@ -89,8 +89,7 @@ export default function ConfiguracaoWhatsApp() {
     setWhatsappAccessToken(empresaData.whatsapp_access_token || '');
     setWhatsappPhoneNumberId(empresaData.whatsapp_phone_number_id || '');
     setWhatsappBusinessAccountId(empresaData.whatsapp_business_account_id || '');
-    // Se não houver token, gerar um padrão
-    setWhatsappVerifyToken(empresaData.whatsapp_verify_token || gerarVerifyTokenPadrao());
+    setWhatsappVerifyToken(empresaData.whatsapp_verify_token || '');
     
     // Gerar URL webhook com nome da instância
     const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
@@ -356,81 +355,46 @@ export default function ConfiguracaoWhatsApp() {
                   <p className="text-sm text-green-800">Configure suas credenciais oficiais da API WhatsApp Business</p>
                 </div>
 
-                <div>
-                  <Label className="mb-2 block">Access Token</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      value={editMode ? tempWhatsappAccessToken : whatsappAccessToken}
-                      onChange={(e) => editMode && setTempWhatsappAccessToken(e.target.value)}
-                      readOnly={!editMode}
-                      placeholder="seu_access_token_aqui"
-                      className={editMode ? '' : 'bg-slate-50'}
-                    />
-                    {!editMode && whatsappAccessToken && (
-                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappAccessToken, 'token')}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
+                {[
+                  { label: 'Access Token', key: 'token', value: whatsappAccessToken, tempValue: tempWhatsappAccessToken, setter: setTempWhatsappAccessToken, placeholder: 'seu_access_token_aqui', hint: 'Token de acesso do seu app Meta/WhatsApp' },
+                  { label: 'Phone Number ID', key: 'phone', value: whatsappPhoneNumberId, tempValue: tempWhatsappPhoneNumberId, setter: setTempWhatsappPhoneNumberId, placeholder: 'seu_phone_number_id_aqui', hint: 'ID do número de telefone no WhatsApp Business' },
+                  { label: 'Business Account ID', key: 'account', value: whatsappBusinessAccountId, tempValue: tempWhatsappBusinessAccountId, setter: setTempWhatsappBusinessAccountId, placeholder: 'seu_business_account_id_aqui', hint: 'ID da sua conta comercial no WhatsApp' },
+                  { label: 'Webhook Verification Token', key: 'verify', value: whatsappVerifyToken, tempValue: tempWhatsappVerifyToken, setter: setTempWhatsappVerifyToken, placeholder: 'seu_verification_token_aqui', hint: 'Token para verificação do webhook' },
+                ].map(({ label, key, value, tempValue, setter, placeholder, hint }) => (
+                  <div key={key}>
+                    <Label className="mb-2 block">{label}</Label>
+                    {editMode ? (
+                      <div className="flex gap-2">
+                        <Input
+                          value={tempValue}
+                          onChange={(e) => setter(e.target.value)}
+                          placeholder={placeholder}
+                        />
+                        {key === 'verify' && (
+                          <Button variant="outline" onClick={() => { const t = gerarVerifyToken(); toast.success('Token gerado!'); }} title="Gerar token aleatório">
+                            🔄
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        {value ? (
+                          <>
+                            <Input value={value} readOnly className="bg-slate-50 font-mono text-sm" />
+                            <Button variant="outline" size="icon" onClick={() => copyToClipboard(value, key)}>
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <div className="flex-1 px-3 py-2 border rounded-md bg-amber-50 border-amber-200 text-sm text-amber-700 italic">
+                            Não configurado — clique em "Editar" para preencher
+                          </div>
+                        )}
+                      </div>
                     )}
+                    <p className="text-xs text-slate-500 mt-1">{hint}</p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Token de acesso do seu app Meta/WhatsApp</p>
-                </div>
-
-                <div>
-                  <Label className="mb-2 block">Phone Number ID</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      value={editMode ? tempWhatsappPhoneNumberId : whatsappPhoneNumberId}
-                      onChange={(e) => editMode && setTempWhatsappPhoneNumberId(e.target.value)}
-                      readOnly={!editMode}
-                      placeholder="seu_phone_number_id_aqui"
-                      className={editMode ? '' : 'bg-slate-50'}
-                    />
-                    {!editMode && whatsappPhoneNumberId && (
-                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappPhoneNumberId, 'phone')}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">ID do número de telefone no WhatsApp Business</p>
-                </div>
-
-                <div>
-                  <Label className="mb-2 block">Business Account ID</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      value={editMode ? tempWhatsappBusinessAccountId : whatsappBusinessAccountId}
-                      onChange={(e) => editMode && setTempWhatsappBusinessAccountId(e.target.value)}
-                      readOnly={!editMode}
-                      placeholder="seu_business_account_id_aqui"
-                      className={editMode ? '' : 'bg-slate-50'}
-                    />
-                    {!editMode && whatsappBusinessAccountId && (
-                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappBusinessAccountId, 'account')}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">ID da sua conta comercial no WhatsApp</p>
-                </div>
-
-                <div>
-                  <Label className="mb-2 block">Webhook Verification Token</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      value={editMode ? tempWhatsappVerifyToken : whatsappVerifyToken}
-                      onChange={(e) => editMode && setTempWhatsappVerifyToken(e.target.value)}
-                      readOnly={!editMode}
-                      placeholder="seu_verification_token_aqui"
-                      className={editMode ? '' : 'bg-slate-50'}
-                    />
-                    {!editMode && whatsappVerifyToken && (
-                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(whatsappVerifyToken, 'verify')}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">Token para verificação do webhook</p>
-                </div>
+                ))}
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                    <p className="text-sm text-blue-900 font-semibold mb-2">📖 Onde encontrar essas credenciais?</p>
@@ -476,54 +440,27 @@ export default function ConfiguracaoWhatsApp() {
                   <div>
                     <Label className="mb-2 block font-semibold text-purple-900">🔐 Verify Token</Label>
                     <p className="text-xs text-purple-700 mb-3">Cole este valor em: <strong>Meta → Configuration → Webhooks → Verify Token</strong></p>
-
-                    {editMode ? (
-                      <div className="flex gap-2 mb-3">
-                        <Input
-                          value={tempWhatsappVerifyToken}
-                          onChange={(e) => setTempWhatsappVerifyToken(e.target.value)}
-                          className="font-mono text-sm"
-                          placeholder="Será gerado quando você clicar em Gerar"
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const token = gerarVerifyToken();
-                            toast.success('✅ Token gerado!');
-                          }}
-                          title="Gerar novo token aleatório"
-                        >
-                          🔄 Gerar Token
-                        </Button>
+                    {whatsappVerifyToken ? (
+                      <div className="bg-purple-100 border-2 border-purple-500 rounded-lg p-4 mb-3">
+                        <p className="text-xs text-purple-700 font-semibold mb-2">Token para copiar:</p>
+                        <div className="flex gap-2">
+                          <code className="flex-1 bg-white p-2 rounded font-mono text-sm text-purple-900 break-all select-all">
+                            {whatsappVerifyToken}
+                          </code>
+                          <Button
+                            variant="default"
+                            className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap flex-shrink-0"
+                            onClick={() => { copyToClipboard(whatsappVerifyToken, 'verify'); toast.success('✅ Token copiado! Cole na Meta'); }}
+                          >
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copiar
+                          </Button>
+                        </div>
                       </div>
                     ) : (
-                      <>
-                        {whatsappVerifyToken ? (
-                          <div className="bg-purple-100 border-2 border-purple-500 rounded-lg p-4 mb-3">
-                            <p className="text-xs text-purple-700 font-semibold mb-2">Token para copiar:</p>
-                            <div className="flex gap-2">
-                              <code className="flex-1 bg-white p-2 rounded font-mono text-sm text-purple-900 break-all select-all">
-                                {whatsappVerifyToken}
-                              </code>
-                              <Button 
-                                variant="default" 
-                                className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap flex-shrink-0"
-                                onClick={() => {
-                                  copyToClipboard(whatsappVerifyToken, 'verify');
-                                  toast.success('✅ Token copiado! Cole na Meta');
-                                }}
-                              >
-                                <Copy className="w-4 h-4 mr-2" />
-                                Copiar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-3">
-                            <p className="text-xs text-amber-800">Clique em "Editar" para gerar um token de verificação</p>
-                          </div>
-                        )}
-                      </>
+                      <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-3">
+                        <p className="text-xs text-amber-800">Clique em "Editar" para configurar um token de verificação</p>
+                      </div>
                     )}
                   </div>
 
