@@ -3,6 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 const VERIFY_TOKEN = 'WAZE_CRM_WEBHOOK_2024';
 
 Deno.serve(async (req) => {
+  // Criar cliente ANTES de consumir o body
+  const base44 = createClientFromRequest(req);
+
   // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -41,13 +44,16 @@ Deno.serve(async (req) => {
       return new Response('EVENT_RECEIVED', { status: 200, headers: { 'Content-Type': 'text/plain' } });
     }
 
-    console.log('📨 Webhook Meta POST recebido:', JSON.stringify(body).slice(0, 400));
+    console.log('📨 Webhook Meta POST recebido. Entries:', body?.entry?.length || 0);
 
-    // Criar cliente com o req original e processar em background
-    const base44 = createClientFromRequest(req);
-    processarMensagemMeta(body, base44).catch(err => console.error('Erro ao processar:', err.message));
+    // Processar de forma síncrona (aguarda antes de responder)
+    // Meta aguarda até 20s — seguro processar aqui
+    try {
+      await processarMensagemMeta(body, base44);
+    } catch (err) {
+      console.error('❌ Erro ao processar:', err.message);
+    }
 
-    // Responder imediatamente (requisito da Meta)
     return new Response('EVENT_RECEIVED', { status: 200, headers: { 'Content-Type': 'text/plain' } });
   }
 
@@ -55,34 +61,37 @@ Deno.serve(async (req) => {
 });
 
 async function processarMensagemMeta(body, base44) {
-  // Só processar payloads do WhatsApp Business
-  if (!body.entry || !Array.isArray(body.entry)) return;
+  console.log('🔄 Iniciando processamento...');
+
+  if (!body.entry || !Array.isArray(body.entry)) {
+    console.log('⚠️ Payload sem entry, ignorando');
+    return;
+  }
 
   for (const entry of body.entry) {
     for (const change of (entry.changes || [])) {
       const value = change.value;
 
-      // ── Processar mensagens recebidas ─────────────────────────────────
       const messages = value.messages || [];
+      console.log(`📬 ${messages.length} mensagem(ns) para processar`);
       for (const message of messages) {
-        await salvarMensagem(base44, value, message, false);
+        await salvarMensagem(base44, value, message);
       }
 
-      // ── Processar status de entrega/leitura ───────────────────────────
       const statuses = value.statuses || [];
       for (const status of statuses) {
         await atualizarStatusMensagem(base44, status);
       }
     }
   }
+  console.log('✅ Processamento concluído');
 }
 
-async function salvarMensagem(base44, value, message, fromMe) {
+async function salvarMensagem(base44, value, message) {
   const telefoneLimpo = String(message.from || '').replace(/\D/g, '');
   const msgId = message.id;
   const timestamp = message.timestamp;
 
-  // Tipo e conteúdo
   let tipoConteudo = 'texto';
   let texto = null;
   let arquivoUrl = null;
@@ -107,16 +116,18 @@ async function salvarMensagem(base44, value, message, fromMe) {
     texto = `[${message.type || 'Mensagem'}]`;
   }
 
-  console.log(`📱 Mensagem de ${telefoneLimpo}: ${(texto || '').slice(0, 60)}`);
+  console.log(`📱 Mensagem de ${telefoneLimpo}: "${(texto || '').slice(0, 60)}"`);
 
-  // Garantir empresa — primeiro pelo phone_number_id, depois pela primeira ativa
+  // Buscar empresa pelo phone_number_id ou pela primeira ativa
   const phoneNumberId = value.metadata?.phone_number_id;
   let empresas;
   if (phoneNumberId) {
     empresas = await base44.asServiceRole.entities.Empresa.filter({ whatsapp_phone_number_id: phoneNumberId }, null, 1);
+    console.log(`🏢 Empresa por phone_number_id (${phoneNumberId}): ${empresas?.length || 0} encontrada(s)`);
   }
   if (!empresas || empresas.length === 0) {
     empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 1);
+    console.log(`🏢 Empresa por status ativa: ${empresas?.length || 0} encontrada(s)`);
   }
   if (!empresas || empresas.length === 0) {
     console.log('❌ Nenhuma empresa encontrada');
@@ -124,6 +135,7 @@ async function salvarMensagem(base44, value, message, fromMe) {
   }
   const empresa = empresas[0];
   const empresaId = empresa.id;
+  console.log(`🏢 Empresa: ${empresa.nome} (${empresaId})`);
 
   // Garantir cliente
   let clientes = await base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: telefoneLimpo }, null, 1);
@@ -137,9 +149,10 @@ async function salvarMensagem(base44, value, message, fromMe) {
       nome_completo: nomeContato,
       status: 'ativo',
     });
-    console.log(`✨ Cliente criado: ${cliente.id} (${nomeContato})`);
+    console.log(`✨ Cliente criado: ${cliente.id}`);
   } else {
     cliente = clientes[0];
+    console.log(`👤 Cliente: ${cliente.id} (${cliente.nome_completo})`);
   }
 
   // Garantir conversa
@@ -162,6 +175,7 @@ async function salvarMensagem(base44, value, message, fromMe) {
     console.log(`✨ Conversa criada: ${conversa.id}`);
   } else {
     conversa = conversas[0];
+    console.log(`💬 Conversa: ${conversa.id}`);
   }
 
   // Verificar duplicata
@@ -178,7 +192,7 @@ async function salvarMensagem(base44, value, message, fromMe) {
   const mensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
     conversa_id: conversa.id,
     empresa_id: empresaId,
-    remetente: fromMe ? 'vendedor' : 'cliente',
+    remetente: 'cliente',
     tipo_conteudo: tipoConteudo,
     texto: String(texto || '').slice(0, 5000),
     arquivo_url: arquivoUrl,
@@ -195,7 +209,7 @@ async function salvarMensagem(base44, value, message, fromMe) {
     instancia: 'META_OFICIAL',
   });
 
-  console.log(`✅ Mensagem salva: ${mensagem.id} | Conversa: ${conversa.id}`);
+  console.log(`✅ Mensagem salva! ID: ${mensagem.id}`);
 }
 
 async function atualizarStatusMensagem(base44, status) {
@@ -212,6 +226,6 @@ async function atualizarStatusMensagem(base44, status) {
 
   if (msgs.length > 0) {
     await base44.asServiceRole.entities.MensagemWhatsapp.update(msgs[0].id, { status: novoStatus });
-    console.log(`📬 Status atualizado: ${msgId} → ${novoStatus}`);
+    console.log(`📬 Status: ${msgId} → ${novoStatus}`);
   }
 }
