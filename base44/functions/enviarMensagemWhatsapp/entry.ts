@@ -52,160 +52,177 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'numero_cliente é obrigatório' }, { status: 400 });
     }
 
-    // Buscar empresa e credenciais Evolution
+    // Buscar empresa e credenciais
     let evolutionApiKey, evolutionApiUrl, instanceName;
-    
-    // Tentar obter empresa_id do payload ou user
     let empresaId = payload.empresa_id || user.empresa_id;
-    
-    // SE USAR INSTÂNCIA TESTE, DEVE SER JD PROMOTORA
+    let empresa = null;
+
     if (empresaId) {
-      const empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
+      empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
       if (empresa) {
         instanceName = empresa.evolution_instance_name;
-        
-        // Se a instância é TESTE, redirecionar para JD Promotora
         evolutionApiKey = empresa.evolution_api_key;
         evolutionApiUrl = empresa.evolution_url;
         console.log('📦 Credenciais da empresa carregadas:', { instanceName });
       }
     }
-    
-    // Fallback para variáveis de ambiente se não encontrar na empresa
+
+    // Fallback para variáveis de ambiente
     if (!evolutionApiKey) evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
     if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
-    console.log('🔐 Verificando credenciais Evolution:');
-    console.log('  - URL:', evolutionApiUrl ? '✅' : '❌');
-    console.log('  - Key:', evolutionApiKey ? '✅' : '❌');
-    console.log('  - Instance:', instanceName ? '✅' : '❌');
+    // Detectar se usa API Oficial Meta
+    const usaMetaOficial = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
+    console.log('🔌 Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
 
-    if (!evolutionApiKey || !evolutionApiUrl || !instanceName) {
-      console.error('❌ Credenciais Evolution faltando');
-      return Response.json({ 
-        error: 'Evolution API não configurada. Configure na página de Configuração WhatsApp' 
-      }, { status: 400 });
-    }
-
-    // Detectar se é grupo (@g.us)
+    // Formatar número
     const isGrupo = numero_cliente.includes('@g.us');
-    
-    // Formatar número (grupos mantêm o JID, individuais limpam formatação)
     const numeroFormatado = isGrupo ? numero_cliente : numero_cliente.replace(/\D/g, '');
-    console.log('📱 Número/JID formatado:', numeroFormatado, isGrupo ? '(grupo)' : '(individual)');
+    console.log('📱 Número formatado:', numeroFormatado);
 
-    // Validar número apenas para conversas individuais
     if (!isGrupo && numeroFormatado.length < 10) {
-      console.error('❌ Número inválido - menos de 10 dígitos');
-      return Response.json({ 
-        error: 'Número de telefone inválido. Deve ter pelo menos 10 dígitos',
-        success: false
-      }, { status: 400 });
-    }
-
-    // Preparar requisição para Evolution — texto ou mídia
-    const baseUrl = evolutionApiUrl.replace(/\/$/, '');
-    let endpoint, requestPayload;
-
-    if (arquivo && arquivo.base64) {
-      // Detectar tipo e endpoint correto
-      const tipo = arquivo.tipo || '';
-      if (tipo.startsWith('image')) {
-        endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
-        requestPayload = {
-          number: numeroFormatado,
-          mediatype: 'image',
-          media: arquivo.base64,
-          fileName: arquivo.nome,
-          caption: mensagem_texto || ''
-        };
-      } else if (tipo.startsWith('audio')) {
-        endpoint = `${baseUrl}/message/sendWhatsAppAudio/${instanceName}`;
-        requestPayload = {
-          number: numeroFormatado,
-          audio: arquivo.base64,
-          encoding: true
-        };
-      } else if (tipo.startsWith('video')) {
-        endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
-        requestPayload = {
-          number: numeroFormatado,
-          mediatype: 'video',
-          media: arquivo.base64,
-          fileName: arquivo.nome,
-          caption: mensagem_texto || ''
-        };
-      } else {
-        // PDF ou documento
-        endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
-        requestPayload = {
-          number: numeroFormatado,
-          mediatype: 'document',
-          media: arquivo.base64,
-          fileName: arquivo.nome,
-          caption: mensagem_texto || ''
-        };
-      }
-    } else {
-      endpoint = `${baseUrl}/message/sendText/${instanceName}`;
-      requestPayload = {
-        number: numeroFormatado,
-        text: mensagem_texto.trim()
-      };
-    }
-
-    console.log('🎯 Endpoint:', endpoint);
-    console.log('📦 Payload tipo:', arquivo ? arquivo.tipo : 'texto');
-    console.log('📱 Número:', numeroFormatado);
-
-    // Enviar para Evolution API
-    console.log('📤 Enviando para Evolution API...');
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': evolutionApiKey
-      },
-      body: JSON.stringify(requestPayload)
-    });
-
-    console.log('📥 Status Evolution:', response.status);
-    const responseText = await response.text();
-    console.log('📥 Response body:', responseText.substring(0, 500));
-
-    if (!response.ok) {
-      console.error('❌ Evolution API retornou erro:');
-      console.error('Status:', response.status);
-      console.error('Body:', responseText);
-
-      // Analisar erro específico
-      let mensagemErro = 'Erro ao enviar via WhatsApp';
-      try {
-        const errorData = JSON.parse(responseText);
-        if (errorData.response?.message) {
-          const msg = errorData.response.message[0];
-          if (msg && msg.exists === false) {
-            mensagemErro = `Número ${msg.number} não possui WhatsApp ativo`;
-          }
-        }
-      } catch (_) {}
-
-      return Response.json({ 
-        error: mensagemErro,
-        details: responseText,
-        status: response.status,
-        success: false
-      }, { status: 400 });
+      return Response.json({ error: 'Número de telefone inválido', success: false }, { status: 400 });
     }
 
     let result;
-    try {
-      result = JSON.parse(responseText);
-      console.log('✅ Resposta parseada:', result);
-    } catch (e) {
-      console.error('⚠️ Erro ao parsear resposta Evolution:', e.message);
-      result = { raw: responseText };
+
+    if (usaMetaOficial) {
+      // ── ENVIO VIA API OFICIAL META ──────────────────────────────────────
+      const accessToken = empresa.whatsapp_access_token;
+      const phoneNumberId = empresa.whatsapp_phone_number_id;
+      const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+
+      let metaPayload;
+
+      if (arquivo && arquivo.base64) {
+        // Para mídia via API Oficial, precisamos de uma URL pública
+        // Fazer upload primeiro e usar a URL
+        const tipo = arquivo.tipo || '';
+        let mediaType = 'document';
+        if (tipo.startsWith('image')) mediaType = 'image';
+        else if (tipo.startsWith('video')) mediaType = 'video';
+        else if (tipo.startsWith('audio')) mediaType = 'audio';
+
+        // Upload para obter URL pública
+        const binaryStr = atob(arquivo.base64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: arquivo.tipo || 'application/octet-stream' });
+        const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
+        const fileUrl = uploadRes?.file_url;
+
+        if (!fileUrl) throw new Error('Falha ao fazer upload do arquivo para envio via Meta');
+
+        metaPayload = {
+          messaging_product: 'whatsapp',
+          to: numeroFormatado,
+          type: mediaType,
+          [mediaType]: {
+            link: fileUrl,
+            caption: mensagem_texto || undefined,
+            filename: arquivo.nome || undefined
+          }
+        };
+      } else {
+        metaPayload = {
+          messaging_product: 'whatsapp',
+          to: numeroFormatado,
+          type: 'text',
+          text: { body: mensagem_texto.trim() }
+        };
+      }
+
+      console.log('📤 Enviando via API Oficial Meta...');
+      const metaResp = await fetch(metaUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(metaPayload)
+      });
+
+      const metaText = await metaResp.text();
+      console.log('📥 Status Meta:', metaResp.status, metaText.substring(0, 300));
+
+      if (!metaResp.ok) {
+        let errMsg = 'Erro ao enviar via API Oficial Meta';
+        try {
+          const errData = JSON.parse(metaText);
+          errMsg = errData.error?.message || errMsg;
+        } catch (_) {}
+        return Response.json({ error: errMsg, details: metaText, success: false }, { status: 400 });
+      }
+
+      const metaData = JSON.parse(metaText);
+      result = { key: { id: metaData.messages?.[0]?.id }, messageId: metaData.messages?.[0]?.id };
+      console.log('✅ Mensagem enviada via Meta:', result.key?.id);
+
+    } else {
+      // ── ENVIO VIA EVOLUTION API ─────────────────────────────────────────
+      console.log('🔐 Verificando credenciais Evolution:');
+      console.log('  - URL:', evolutionApiUrl ? '✅' : '❌');
+      console.log('  - Key:', evolutionApiKey ? '✅' : '❌');
+      console.log('  - Instance:', instanceName ? '✅' : '❌');
+
+      if (!evolutionApiKey || !evolutionApiUrl || !instanceName) {
+        return Response.json({ 
+          error: 'Nenhuma API configurada. Configure a API Oficial Meta ou a Evolution API na página de Configuração WhatsApp' 
+        }, { status: 400 });
+      }
+
+      const baseUrl = evolutionApiUrl.replace(/\/$/, '');
+      let endpoint, requestPayload;
+
+      if (arquivo && arquivo.base64) {
+        const tipo = arquivo.tipo || '';
+        if (tipo.startsWith('image')) {
+          endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
+          requestPayload = { number: numeroFormatado, mediatype: 'image', media: arquivo.base64, fileName: arquivo.nome, caption: mensagem_texto || '' };
+        } else if (tipo.startsWith('audio')) {
+          endpoint = `${baseUrl}/message/sendWhatsAppAudio/${instanceName}`;
+          requestPayload = { number: numeroFormatado, audio: arquivo.base64, encoding: true };
+        } else if (tipo.startsWith('video')) {
+          endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
+          requestPayload = { number: numeroFormatado, mediatype: 'video', media: arquivo.base64, fileName: arquivo.nome, caption: mensagem_texto || '' };
+        } else {
+          endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
+          requestPayload = { number: numeroFormatado, mediatype: 'document', media: arquivo.base64, fileName: arquivo.nome, caption: mensagem_texto || '' };
+        }
+      } else {
+        endpoint = `${baseUrl}/message/sendText/${instanceName}`;
+        requestPayload = { number: numeroFormatado, text: mensagem_texto.trim() };
+      }
+
+      console.log('🎯 Endpoint:', endpoint);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
+        body: JSON.stringify(requestPayload)
+      });
+
+      const responseText = await response.text();
+      console.log('📥 Status Evolution:', response.status, responseText.substring(0, 300));
+
+      if (!response.ok) {
+        let mensagemErro = 'Erro ao enviar via WhatsApp';
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.response?.message) {
+            const msg = errorData.response.message[0];
+            if (msg && msg.exists === false) mensagemErro = `Número ${msg.number} não possui WhatsApp ativo`;
+          }
+        } catch (_) {}
+        return Response.json({ error: mensagemErro, details: responseText, status: response.status, success: false }, { status: 400 });
+      }
+
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        result = { raw: responseText };
+      }
+      console.log('✅ Enviado via Evolution');
     }
 
     // Garantir que a conversa existe
