@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
+import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -37,6 +37,8 @@ export default function ConfiguracaoWhatsApp() {
   const [whatsappVerifyToken, setWhatsappVerifyToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [atualizandoWebhook, setAtualizandoWebhook] = useState(false);
+  const [testandoMeta, setTestandoMeta] = useState(false);
+  const [statusMeta, setStatusMeta] = useState(null); // null | {success, phone_number, verified_name, quality_rating, error}
   const [user, setUser] = useState(null);
   const [empresa, setEmpresa] = useState(null);
   const [empresas, setEmpresas] = useState([]);
@@ -201,6 +203,21 @@ export default function ConfiguracaoWhatsApp() {
 
   const WEBHOOK_URL_OFICIAL = 'https://app--waze-crm.base44.app/api/apps/6950a9860c8af0e2ff10fc9e/functions/webhookMetaPublico';
   const VERIFY_TOKEN_FIXO = 'WAZE_CRM_WEBHOOK_2024';
+
+  const testarConexaoMeta = async () => {
+    if (!whatsappPhoneNumberId || !whatsappAccessToken) {
+      toast.error('Preencha o Phone Number ID e o Access Token antes de testar');
+      return;
+    }
+    setTestandoMeta(true);
+    setStatusMeta(null);
+    const resp = await base44.functions.invoke('testarConexaoMetaOficial', {
+      phone_number_id: whatsappPhoneNumberId,
+      access_token: whatsappAccessToken,
+    });
+    setStatusMeta(resp.data);
+    setTestandoMeta(false);
+  };
 
   const handleMudarEmpresa = (empId) => {
     setSelectedEmpresaId(empId);
@@ -476,6 +493,88 @@ export default function ConfiguracaoWhatsApp() {
                 >
                   {saving ? 'Salvando...' : 'Salvar'}
                 </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Status da API Oficial Meta */}
+        <Card className={`border-2 ${statusMeta?.success ? 'border-green-500 bg-gradient-to-br from-green-50 to-white' : statusMeta?.error ? 'border-red-400 bg-gradient-to-br from-red-50 to-white' : 'border-slate-200'}`}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Wifi className="w-5 h-5" />
+                Status da API Oficial (Meta)
+              </CardTitle>
+              <Button
+                onClick={testarConexaoMeta}
+                disabled={testandoMeta || !whatsappPhoneNumberId || !whatsappAccessToken}
+                size="sm"
+                variant={statusMeta?.success ? 'outline' : 'default'}
+              >
+                {testandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Testando...</> : '🔌 Testar Conexão'}
+              </Button>
+            </div>
+            <CardDescription>
+              Verifica se as credenciais da API Oficial estão corretas e funcionando
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!statusMeta && !testandoMeta && (
+              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <Wifi className="w-5 h-5 text-slate-400" />
+                <div>
+                  <p className="text-sm font-medium text-slate-600">Conexão não testada</p>
+                  <p className="text-xs text-slate-500">
+                    {(!whatsappPhoneNumberId || !whatsappAccessToken)
+                      ? 'Preencha as credenciais na aba "API Oficial" e clique em Testar Conexão'
+                      : 'Clique em "Testar Conexão" para verificar se as credenciais estão corretas'}
+                  </p>
+                </div>
+              </div>
+            )}
+            {testandoMeta && (
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                <p className="text-sm text-blue-700">Conectando à API da Meta...</p>
+              </div>
+            )}
+            {statusMeta?.success && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 bg-green-100 rounded-lg border border-green-300">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-bold text-green-800">✅ Conexão OK — API Oficial funcionando!</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Número de Telefone</p>
+                    <p className="font-bold text-green-700">{statusMeta.phone_number}</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Nome Verificado</p>
+                    <p className="font-bold text-green-700">{statusMeta.verified_name}</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Qualidade</p>
+                    <p className="font-bold text-green-700">{statusMeta.quality_rating || '—'}</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Modo da Conta</p>
+                    <p className="font-bold text-green-700">{statusMeta.account_mode || '—'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {statusMeta?.error && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-3 bg-red-100 rounded-lg border border-red-300">
+                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-red-800">❌ Erro na conexão</p>
+                    <p className="text-xs text-red-700 mt-1">{statusMeta.error}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 px-1">Verifique se o Access Token e o Phone Number ID estão corretos na aba "API Oficial".</p>
               </div>
             )}
           </CardContent>
