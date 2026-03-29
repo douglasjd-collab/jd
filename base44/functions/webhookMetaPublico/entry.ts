@@ -13,45 +13,66 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Ler o body completo como texto para diagnóstico
+  const rawBody = await req.text();
+  console.log('📥 Method:', req.method);
+  console.log('📥 URL:', req.url);
+  console.log('📥 Body raw:', rawBody.slice(0, 500));
+
+  let mode, token, challenge;
+
+  // 1. Tentar query string da URL
   const url = new URL(req.url);
+  mode = url.searchParams.get('hub.mode');
+  token = url.searchParams.get('hub.verify_token');
+  challenge = url.searchParams.get('hub.challenge');
 
-  // Tentar pegar params de query string (GET da Meta)
-  let mode = url.searchParams.get('hub.mode');
-  let token = url.searchParams.get('hub.verify_token');
-  let challenge = url.searchParams.get('hub.challenge');
+  console.log('🔎 Query params:', { mode, token, challenge });
 
-  // Se não veio na query, tentar do body (POST)
-  if (!mode) {
+  // 2. Se não veio na query, tentar do body JSON
+  if (!mode && rawBody) {
     try {
-      const body = await req.json();
+      const body = JSON.parse(rawBody);
+      console.log('📦 Body parsed:', JSON.stringify(body).slice(0, 300));
+
+      // Verificação hub
       mode = body['hub.mode'] || body.mode;
-      token = body['hub.verify_token'] || body.verify_token;
+      token = body['hub.verify_token'] || body.verify_token || body.token;
       challenge = body['hub.challenge'] || body.challenge;
 
-      // Se for POST de mensagem real da Meta
+      // Mensagem real da Meta (POST)
       if (body.object === 'whatsapp_business_account' || body.entry) {
-        console.log('📨 Mensagem Meta recebida:', JSON.stringify(body).slice(0, 200));
+        console.log('📨 Mensagem Meta recebida');
         return new Response('EVENT_RECEIVED', {
           status: 200,
           headers: { 'Content-Type': 'text/plain' }
         });
       }
     } catch (_) {
-      // body vazio ou não-JSON, ignorar
+      // tentar form-urlencoded
+      try {
+        const params = new URLSearchParams(rawBody);
+        mode = params.get('hub.mode');
+        token = params.get('hub.verify_token');
+        challenge = params.get('hub.challenge');
+        console.log('📦 Form params:', { mode, token, challenge });
+      } catch (__) {
+        // ignorar
+      }
     }
   }
 
-  console.log('🔍 Verificação webhook:', { mode, tokenRecebido: token, tokenEsperado: VERIFY_TOKEN, challenge, match: token === VERIFY_TOKEN });
+  console.log('🔍 Verificação:', { mode, token, tokenEsperado: VERIFY_TOKEN, challenge, match: token === VERIFY_TOKEN });
 
-  // Validação do webhook (GET da Meta)
+  // Validação do webhook
   if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
-    console.log('✅ Webhook validado! Challenge:', challenge);
+    console.log('✅ Webhook VALIDADO! Retornando challenge:', challenge);
     return new Response(challenge, {
       status: 200,
       headers: { 'Content-Type': 'text/plain' }
     });
   }
 
-  console.log('❌ Falhou: mode=' + mode + ' match=' + (token === VERIFY_TOKEN));
+  console.log('❌ Validação falhou');
   return new Response('Forbidden', { status: 403 });
 });

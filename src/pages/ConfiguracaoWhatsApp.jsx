@@ -199,7 +199,7 @@ export default function ConfiguracaoWhatsApp() {
     return token;
   };
 
-  const WEBHOOK_URL_OFICIAL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/webhookMetaPublico';
+  const WEBHOOK_URL_OFICIAL = 'https://app--waze-crm.base44.app/api/apps/6950a9860c8af0e2ff10fc9e/functions/webhookMetaPublico';
   const VERIFY_TOKEN_FIXO = 'WAZE_CRM_WEBHOOK_2024';
 
   const handleMudarEmpresa = (empId) => {
