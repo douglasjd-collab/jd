@@ -629,11 +629,11 @@ export default function NovaVendaConsignado() {
   }
 
   const stepLabels = ['Informações do Cliente', 'Detalhes da Proposta', 'Estrutura de Comissões', 'Revisão Final'];
-  const stepColors = ['purple', 'blue', 'green', 'orange'];
+  const stepColors = ['teal', 'blue', 'green', 'orange'];
 
   const getStepColor = (step) => {
     const colors = {
-      purple: 'bg-purple-100 text-purple-900 border-purple-200',
+      teal: 'bg-teal-100 text-teal-900 border-teal-200',
       blue: 'bg-blue-100 text-blue-900 border-blue-200',
       green: 'bg-green-100 text-green-900 border-green-200',
       orange: 'bg-orange-100 text-orange-900 border-orange-200'
@@ -667,14 +667,14 @@ export default function NovaVendaConsignado() {
             const color = stepColors[idx];
 
             const bgMap = {
-              purple: isActive ? 'bg-purple-100 border-purple-300' : isCompleted ? 'bg-purple-50 border-purple-200' : 'bg-slate-50 border-slate-200',
+              teal: isActive ? 'bg-teal-100 border-teal-300' : isCompleted ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200',
               blue: isActive ? 'bg-blue-100 border-blue-300' : isCompleted ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200',
               green: isActive ? 'bg-green-100 border-green-300' : isCompleted ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200',
               orange: isActive ? 'bg-orange-100 border-orange-300' : isCompleted ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'
             };
 
             const badgeMap = {
-              purple: 'bg-purple-500 text-white',
+              teal: 'bg-[#10353C] text-white',
               blue: 'bg-blue-500 text-white',
               green: 'bg-green-500 text-white',
               orange: 'bg-orange-500 text-white'
@@ -700,10 +700,10 @@ export default function NovaVendaConsignado() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Step 1: Informações do Cliente */}
         {currentStep === 1 &&
-        <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-white">
-          <CardHeader className="bg-purple-50/50 border-b">
-            <CardTitle className="flex items-center gap-2 text-purple-900">
-              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+        <Card className="border-l-4 border-l-[#10353C] bg-gradient-to-br from-teal-50/50 to-white">
+          <CardHeader className="bg-teal-50/50 border-b">
+            <CardTitle className="flex items-center gap-2 text-[#10353C]">
+              <div className="w-8 h-8 bg-[#10353C] rounded-lg flex items-center justify-center">
                 <span className="text-white text-sm font-bold">1</span>
               </div>
               Informações do Cliente
@@ -713,8 +713,8 @@ export default function NovaVendaConsignado() {
             <div>
               <Label>Cliente *</Label>
               {clienteSelecionado ?
-              <div className="flex items-center justify-between p-4 bg-purple-100 rounded-lg border-2 border-purple-300">
-                  <span className="font-semibold text-purple-900">{clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social}</span>
+              <div className="flex items-center justify-between p-4 bg-teal-50 rounded-lg border-2 border-[#10353C]/40">
+                  <span className="font-semibold text-[#10353C]">{clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social}</span>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => setShowClienteModal(true)}>
                       Alterar
@@ -732,7 +732,7 @@ export default function NovaVendaConsignado() {
                     readOnly />
                   
                   </div>
-                  <Button type="button" className="w-full bg-purple-500 hover:bg-purple-600" onClick={() => setShowClienteModal(true)}>
+                  <Button type="button" className="w-full bg-[#10353C] hover:bg-[#1a4a52]" onClick={() => setShowClienteModal(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Cliente
                   </Button>
