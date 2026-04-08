@@ -109,21 +109,23 @@ export default function ComissoesEmprestimos() {
     .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStr(s.nome)))
     .map(s => s.id);
 
-  const isPaga = (p) =>
-    (p.status_id && statusPagoIds.includes(p.status_id)) ||
-    ['pago', 'paga'].includes(normStr(p.status));
+  const isPaga = (p) => {
+    if (p.status_id && statusPagoIds.includes(p.status_id)) return true;
+    const s = normStr(p.status);
+    return ['pago', 'paga', 'operacao finalizada', 'operação finalizada',
+            'finalizado', 'finalizada', 'concluido', 'concluída', 'concluida'].some(v => s.includes(v));
+  };
 
   const { data: propostas = [], isLoading } = useQuery({
     queryKey: ['propostas-emp-cons-comissoes', user?.empresa_id],
     queryFn: async () => {
-      // Busca empréstimo E consignado (podem ter produto diferente no banco)
+      // Busca TODOS os produtos exceto consórcio e financiamento
+      // (emprestimo, consignado, ou qualquer outro valor que não seja consórcio/financiamento)
       const filtroBase = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
-      const [listaEmp, listaCons] = await Promise.all([
-        base44.entities.Proposta.filter({ ...filtroBase, produto: 'emprestimo' }, '-data_venda', 2000),
-        base44.entities.Proposta.filter({ ...filtroBase, produto: 'consignado' }, '-data_venda', 2000),
-      ]);
-      const lista = [...listaEmp, ...listaCons];
-
+      const todas = await base44.entities.Proposta.filter(filtroBase, '-data_venda', 3000);
+      const lista = todas.filter(p =>
+        p.produto !== 'consorcio' && p.produto !== 'financiamento'
+      );
       return lista;
     },
     enabled: !!user && statusPagoIds.length > 0,
