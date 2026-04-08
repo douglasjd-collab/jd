@@ -514,7 +514,7 @@ export default function VendasEmprestimos() {
           </Button>
           <Button
             className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
-            onClick={() => navigate(createPageUrl('NovaVendaEmprestimo'))}
+            onClick={() => navigate(createPageUrl('NovaVendaConsignado'))}
           >
             <Plus className="w-4 h-4" />
             Nova Venda
