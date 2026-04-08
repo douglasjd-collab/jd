@@ -148,17 +148,36 @@ Deno.serve(async (req) => {
       colBanco     = findCol('banco', 'financeira', 'administradora');
       colConvenio  = findCol('convenio', 'convnio', 'orgao');
       colTipo      = findCol('tipo', 'modalidade');
-      colValor     = findCol('valor', 'vlr');
       colPrazo     = findCol('prazo');
       colAde       = findCol('ade', 'proposta', 'contrato');
       colBeneficio = findCol('beneficio', 'benefic', 'matricula', 'benef');
-      colData      = findCol('data', 'emisso', 'proposta', 'venda', 'liberacao');
+      colData      = findCol('liberacao', 'emisso', 'venda');
       colVendedor  = findCol('digitador', 'assessor', 'vendedor', 'corretor');
       colStatus    = findCol('status');
-      colComissao  = findCol('comissao', 'comisso');
       colContrato  = findCol('contrato', 'ade');
       colTabela    = findCol('tabela', 'produto');
       colCelular   = findCol('celular', 'telefone', 'fone');
+      colValorBruto = findCol('bruto', 'valor bruto', 'valor operacao');
+      colValor     = findCol('liquido', 'lquido', 'liberado');
+      if (colValor < 0) colValor = findCol('valor', 'vlr');
+
+      // Comissão: preferir coluna com "$" ou "valor" de comissão, não percentual
+      // "Comissão ($)" vem depois de "Comissão (%)" no cabeçalho
+      const comissaoPercentualIdx = findCol('comissao (%)', 'comisso (%)');
+      const comissaoValorIdx      = findCol('comissao ($)', 'comisso ($)');
+      if (comissaoValorIdx >= 0) {
+        colComissao = comissaoValorIdx;
+        colComissaoPercentual = comissaoPercentualIdx >= 0 ? comissaoPercentualIdx : -1;
+      } else {
+        // Fallback: se só existe uma coluna de comissão, usa como valor
+        colComissao = findCol('comissao', 'comisso');
+      }
+
+      // "Data Pagamento" no YUPPIE/CREFAZ = data que o banco pagou a comissão (coluna AB)
+      colDataRecebComissao = findCol('data pagamento', 'data pag', 'pagamento comissao', 'dt pagamento');
+      colDataPagCliente    = findCol('data liberacao', 'data liberação', 'data lib');
+      colValorBaseComissao = findCol('base comissao', 'base comisso', 'base de comissao', 'base calculo');
+      colParcela           = findCol('vl. parcela', 'vlr parcela', 'valor parcela', 'parcela');
     }
 
     console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
