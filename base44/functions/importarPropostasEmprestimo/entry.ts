@@ -236,11 +236,13 @@ Deno.serve(async (req) => {
 
     const findCliente = (cpf, nome) => {
       const cpfNorm = normCpf(cpf);
+      // Prioridade 1: buscar por CPF normalizado (mais confiável)
       if (cpfNorm.length >= 11) {
         const byCpf = clientes.find(c => normCpf(c.cpf) === cpfNorm || normCpf(c.pj_cnpj) === cpfNorm);
         if (byCpf) return byCpf;
       }
-      if (nome) {
+      // Prioridade 2: buscar por nome exato (apenas se CPF vazio)
+      if (!cpfNorm && nome) {
         return clientes.find(c => normStr(c.nome_completo) === normStr(nome));
       }
       return null;
@@ -378,25 +380,47 @@ Deno.serve(async (req) => {
 
         // Criar ou atualizar cliente
         if (!cliente && (cpfVal || nomeVal)) {
-          // Criar novo cliente com dados básicos da planilha
-          const novoCliente = await base44.asServiceRole.entities.Cliente.create({
-            empresa_id: empresaId,
-            tipo_pessoa: 'Física',
-            nome_completo: nomeVal || '',
-            cpf: cpfVal || null,
-            celular: celularVal || null,
-            status: 'ativo',
-          });
-          clientes.push(novoCliente);
-          cliente = novoCliente;
-          console.log(`Cliente criado: ${nomeVal} (${cpfVal})`);
+          // 🔐 Verificação extra no banco antes de criar — evita duplicata quando mesmo CPF aparece
+          // em linhas consecutivas com formatos diferentes
+          const cpfNormCheck = normCpf(cpfVal);
+          if (cpfNormCheck.length >= 11) {
+            // Tenta buscar direto no banco para garantir
+            const existentes = await base44.asServiceRole.entities.Cliente.filter({
+              empresa_id: empresaId,
+              cpf: cpfVal,
+            }, null, 1);
+            if (existentes.length > 0) {
+              cliente = existentes[0];
+              // Garantir que está no cache local para próximas linhas
+              if (!clientes.find(c => c.id === cliente.id)) {
+                clientes.push(cliente);
+              }
+              console.log(`Cliente encontrado no banco (2ª verificação): ${nomeVal} (${cpfVal})`);
+            }
+          }
+
+          if (!cliente) {
+            // Criar novo cliente com dados básicos da planilha
+            const novoCliente = await base44.asServiceRole.entities.Cliente.create({
+              empresa_id: empresaId,
+              tipo_pessoa: 'Física',
+              nome_completo: nomeVal || '',
+              cpf: cpfNormCheck.length >= 11 ? cpfNormCheck : (cpfVal || null),
+              celular: celularVal || null,
+              status: 'ativo',
+            });
+            clientes.push(novoCliente);
+            cliente = novoCliente;
+            console.log(`Cliente CRIADO: ${nomeVal} (${cpfVal})`);
+          }
         } else if (cliente && atualizarTelefone && celularVal) {
-          // Atualizar apenas telefone se configurado e veio no arquivo
+          // Atualizar apenas telefone se a opção estiver marcada e o telefone veio no arquivo
           await base44.asServiceRole.entities.Cliente.update(cliente.id, { celular: celularVal });
           cliente = { ...cliente, celular: celularVal };
           const idx = clientes.findIndex(c => c.id === cliente.id);
           if (idx >= 0) clientes[idx] = cliente;
         }
+        // ⚠️ Se cliente existe e atualizarTelefone === false → NÃO toca no celular
 
         // Encontrar tabela de comissão por Banco + Tabela (combinação única)
         let tabelaComissao = null;
@@ -575,6 +599,44 @@ Deno.serve(async (req) => {
             if (resultado.length > 0) {
               propostaExistente = resultado[0];
               console.log(`🔍 ENCONTRADA por chave_unica: ${chaveUnica}`);
+            }
+          }
+
+          // Nível 3: Buscar por ADE/contrato sem banco (quando banco não foi mapeado)
+          if (!propostaExistente && contratoFinal && !administradoraId) {
+            const todasSemBanco = toArray(
+              await base44.asServiceRole.entities.Proposta.filter({
+                empresa_id: empresaId,
+                produto: 'emprestimo',
+              }, null, 5000)
+            );
+            propostaExistente = todasSemBanco.find(p =>
+              normalizarContrato(p.contrato) === contratoFinal ||
+              normalizarContrato(p.emprestimo_numero_ade) === contratoFinal
+            );
+            if (propostaExistente) {
+              console.log(`🔍 ENCONTRADA por contrato sem banco: ${contratoFinal}`);
+            }
+          }
+
+          // Nível 4: Buscar por ADE (emprestimo_numero_ade) + banco_id
+          if (!propostaExistente && adeVal && administradoraId) {
+            const adeNorm = normalizarContrato(adeVal);
+            if (adeNorm) {
+              const todasAde = toArray(
+                await base44.asServiceRole.entities.Proposta.filter({
+                  empresa_id: empresaId,
+                  administradora_id: administradoraId,
+                  produto: 'emprestimo',
+                }, null, 5000)
+              );
+              propostaExistente = todasAde.find(p =>
+                normalizarContrato(p.emprestimo_numero_ade) === adeNorm ||
+                normalizarContrato(p.contrato) === adeNorm
+              );
+              if (propostaExistente) {
+                console.log(`🔍 ENCONTRADA por ADE+banco: ${adeNorm}`);
+              }
             }
           }
 
