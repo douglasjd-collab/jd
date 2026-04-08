@@ -22,6 +22,7 @@ import RastreadorMensagens from './pages/RastreadorMensagens';
 import StatusRecebimentoMensagens from './pages/StatusRecebimentoMensagens';
 import SincronizacaoAgressivaMensagens from './pages/SincronizacaoAgressivaMensagens';
 import ConfiguracaoDuplaAPI from './pages/ConfiguracaoDuplaAPI';
+import TabelasComissaoVendedor from './pages/TabelasComissaoVendedor';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -88,6 +89,7 @@ const AuthenticatedApp = () => {
       <Route path="/StatusRecebimentoMensagens" element={<LayoutWrapper currentPageName="StatusRecebimentoMensagens"><StatusRecebimentoMensagens /></LayoutWrapper>} />
       <Route path="/SincronizacaoAgressivaMensagens" element={<LayoutWrapper currentPageName="SincronizacaoAgressivaMensagens"><SincronizacaoAgressivaMensagens /></LayoutWrapper>} />
       <Route path="/ConfiguracaoDuplaAPI" element={<LayoutWrapper currentPageName="ConfiguracaoDuplaAPI"><ConfiguracaoDuplaAPI /></LayoutWrapper>} />
+      <Route path="/TabelasComissaoVendedor" element={<LayoutWrapper currentPageName="TabelasComissaoVendedor"><TabelasComissaoVendedor /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

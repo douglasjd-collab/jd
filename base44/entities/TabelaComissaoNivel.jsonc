@@ -1,0 +1,86 @@
+{
+  "name": "TabelaComissaoNivel",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nivel_id": {
+      "type": "string",
+      "description": "ID do n\u00edvel (NivelComissaoVendedor)"
+    },
+    "nivel_nome": {
+      "type": "string",
+      "description": "Nome do n\u00edvel (denormalizado)"
+    },
+    "produto": {
+      "type": "string",
+      "description": "Produto (emprestimo, consignado, etc)"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Nome do banco (vazio = todos)"
+    },
+    "convenio_id": {
+      "type": "string",
+      "description": "ID do conv\u00eanio (null = todos)"
+    },
+    "convenio_nome": {
+      "type": "string",
+      "description": "Nome do conv\u00eanio"
+    },
+    "tipo_operacao": {
+      "type": "string",
+      "description": "Tipo de opera\u00e7\u00e3o (NOVO, REFINANCIAMENTO, etc \u2014 vazio = todos)"
+    },
+    "prazo_min": {
+      "type": "number",
+      "description": "Prazo m\u00ednimo (0 = sem limite m\u00ednimo)"
+    },
+    "prazo_max": {
+      "type": "number",
+      "description": "Prazo m\u00e1ximo (999 = sem limite m\u00e1ximo)"
+    },
+    "percentual_vendedor": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o do vendedor sobre a base"
+    },
+    "valor_fixo_vendedor": {
+      "type": "number",
+      "description": "Valor fixo de comiss\u00e3o (alternativo ao percentual)"
+    },
+    "tipo_comissao": {
+      "type": "string",
+      "enum": [
+        "percentual",
+        "fixo"
+      ],
+      "default": "percentual",
+      "description": "Se a comiss\u00e3o \u00e9 percentual ou valor fixo"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nivel_id",
+    "percentual_vendedor"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
