@@ -114,11 +114,15 @@ export default function ComissoesEmprestimos() {
     ['pago', 'paga'].includes(normStr(p.status));
 
   const { data: propostas = [], isLoading } = useQuery({
-    queryKey: ['propostas-emp-comissoes', user?.empresa_id],
+    queryKey: ['propostas-emp-cons-comissoes', user?.empresa_id],
     queryFn: async () => {
-      const filtro = { produto: 'emprestimo' };
-      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
-      const lista = await base44.entities.Proposta.filter(filtro, '-data_venda', 2000);
+      // Busca empréstimo E consignado (podem ter produto diferente no banco)
+      const filtroBase = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
+      const [listaEmp, listaCons] = await Promise.all([
+        base44.entities.Proposta.filter({ ...filtroBase, produto: 'emprestimo' }, '-data_venda', 2000),
+        base44.entities.Proposta.filter({ ...filtroBase, produto: 'consignado' }, '-data_venda', 2000),
+      ]);
+      const lista = [...listaEmp, ...listaCons];
 
       // Enriquecer com CPF dos clientes que não têm o campo denormalizado
       const semCpf = lista.filter(p => !p.cliente_cpf && p.cliente_id);
@@ -286,7 +290,7 @@ export default function ComissoesEmprestimos() {
         updateData.valor_comissao = parseFloat(bancoValorRecebido) || proposta.valor_comissao;
       }
       await base44.entities.Proposta.update(proposta.id, updateData);
-      queryClient.invalidateQueries(['propostas-emp-comissoes']);
+      queryClient.invalidateQueries(['propostas-emp-cons-comissoes']);
       toast.success(novoStatus ? 'Comissão do banco marcada como recebida!' : 'Desmarcado');
     } catch (err) {
       toast.error('Erro ao atualizar');
@@ -589,7 +593,7 @@ export default function ComissoesEmprestimos() {
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
       gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor);
 
-      queryClient.invalidateQueries(['propostas-emp-comissoes']);
+      queryClient.invalidateQueries(['propostas-emp-cons-comissoes']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
       toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.${msgAdis}`);
       setPagarModal(false);
