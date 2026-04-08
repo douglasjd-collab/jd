@@ -55,6 +55,7 @@ const CAMPOS_PRODUCAO = [
   { key: 'comissao_empresa', label: 'Comissão Empresa (Lançamento)', obrigatorio: false },
   { key: 'comissao_empresa_percentual', label: 'Comissão Empresa %', obrigatorio: false },
   { key: 'comissao_vendedor', label: 'Comissão Vendedor', obrigatorio: false },
+  { key: 'data_recebimento_comissao', label: 'Data de Recebimento da Comissão', obrigatorio: false },
 ];
 
 const CAMPOS_COMISSAO = [

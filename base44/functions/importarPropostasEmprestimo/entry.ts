@@ -528,6 +528,8 @@ Deno.serve(async (req) => {
            tabela_comissao_nome:        tabelaComissao ? (tabelaComissao.tabela || tabelaComissao.nome) : null,
            emprestimo_data_liberacao:   parseData(dataPagClienteVal) || undefined,
            data_comissao_recebida:      parseData(dataRecebComissaoVal) || undefined,
+           comissao_banco_recebida:     parseData(dataRecebComissaoVal) ? true : undefined,
+           comissao_recebida:           parseData(dataRecebComissaoVal) ? parseValor(comissaoVal) || undefined : undefined,
            comissao_banco_base_comissao: valorBaseComissaoVal ? parseValor(valorBaseComissaoVal) : undefined,
          };
 
@@ -696,6 +698,13 @@ Deno.serve(async (req) => {
                 updateData.emprestimo_convenio_nome = conv.nome;
               } else if (convenioVal) {
                 updateData.emprestimo_convenio_nome = convenioVal;
+              }
+              // Se tiver data de recebimento de comissão no arquivo → marcar como recebida
+              const dataRecebComissaoParsed = parseData(dataRecebComissaoVal);
+              if (dataRecebComissaoParsed) {
+                updateData.data_comissao_recebida = dataRecebComissaoParsed;
+                updateData.comissao_banco_recebida = true;
+                if (comissaoVal) updateData.comissao_recebida = parseValor(comissaoVal);
               }
               // Adicionar chave_unica se não tiver
               if (chaveUnica && !propostaExistente.chave_unica) {
