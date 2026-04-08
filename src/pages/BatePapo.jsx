@@ -424,10 +424,9 @@ export default function BatePapo() {
         return [];
       }
     },
-    staleTime: 2000,
-    refetchInterval: 3000,
-    gcTime: 60000,
-    placeholderData: (prev) => prev,
+    staleTime: 0,
+    refetchInterval: 1000,
+    gcTime: 0
   });
 
   // Selecionar conversa inicial quando a lista carrega
@@ -464,7 +463,14 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId, refetchConversas]);
 
-  // Polling removido — refetchInterval na query cuida disso sem piscar
+  // Polling de mensagens — cada 2s para evitar rate limit
+  useEffect(() => {
+    if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
+    const interval = setInterval(() => {
+      if (!document.hidden) refetchMensagens().catch(() => {});
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [empresaId, conversaSelecionadaId, refetchMensagens]);
 
 
 
