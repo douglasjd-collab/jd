@@ -1,0 +1,225 @@
+{
+  "name": "Empresa",
+  "type": "object",
+  "properties": {
+    "codigo": {
+      "type": "string",
+      "description": "C\u00f3digo da empresa (gerado automaticamente: EMP01, EMP02, etc)"
+    },
+    "cpf_cnpj": {
+      "type": "string",
+      "description": "CPF ou CNPJ da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome da empresa"
+    },
+    "tipo_empresa": {
+      "type": "string",
+      "enum": [
+        "MEI",
+        "ME",
+        "LTDA"
+      ],
+      "description": "Tipo da empresa (MEI, ME ou LTDA)"
+    },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone de contato"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email da empresa"
+    },
+    "endereco_rua": {
+      "type": "string",
+      "description": "Rua/Logradouro"
+    },
+    "endereco_numero": {
+      "type": "string",
+      "description": "N\u00famero"
+    },
+    "endereco_complemento": {
+      "type": "string",
+      "description": "Complemento"
+    },
+    "endereco_cep": {
+      "type": "string",
+      "description": "CEP"
+    },
+    "endereco_cidade": {
+      "type": "string",
+      "description": "Cidade"
+    },
+    "endereco_estado": {
+      "type": "string",
+      "description": "Estado (UF)"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL do logo da empresa"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "inativa",
+        "suspensa"
+      ],
+      "default": "ativa",
+      "description": "Status da empresa"
+    },
+    "status_licenca": {
+      "type": "string",
+      "enum": [
+        "trial",
+        "ativa",
+        "expirada",
+        "suspensa"
+      ],
+      "default": "trial",
+      "description": "Status da licen\u00e7a"
+    },
+    "data_criacao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de cria\u00e7\u00e3o da subconta"
+    },
+    "data_expiracao_licenca": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de expira\u00e7\u00e3o da licen\u00e7a"
+    },
+    "tipo_licenca": {
+      "type": "string",
+      "enum": [
+        "gratuita",
+        "basica",
+        "profissional",
+        "empresa"
+      ],
+      "default": "basica",
+      "description": "Tipo/plano de licen\u00e7a"
+    },
+    "limite_usuarios": {
+      "type": "number",
+      "default": 5,
+      "description": "N\u00famero m\u00e1ximo de usu\u00e1rios permitidos"
+    },
+    "usuarios_ativos": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de usu\u00e1rios ativos"
+    },
+    "total_clientes": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de clientes na base"
+    },
+    "total_vendas": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de vendas registradas"
+    },
+    "valor_mensal": {
+      "type": "number",
+      "description": "Valor mensal da licen\u00e7a"
+    },
+    "data_proximo_pagamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do pr\u00f3ximo pagamento"
+    },
+    "whatsapp_conectado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se WhatsApp est\u00e1 configurado"
+    },
+    "whatsapp_api_preferida": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "evolution",
+        "meta_oficial"
+      ],
+      "default": "auto",
+      "description": "API preferida para envio/recebimento: auto (detecta), evolution (Evolution API n\u00e3o oficial), meta_oficial (API Oficial Meta)"
+    },
+    "evolution_url": {
+      "type": "string",
+      "description": "URL da API Evolution para WhatsApp (espec\u00edfica da empresa)"
+    },
+    "evolution_instance_name": {
+      "type": "string",
+      "description": "Nome da inst\u00e2ncia Evolution"
+    },
+    "evolution_api_key": {
+      "type": "string",
+      "description": "Chave API Evolution"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es gerais sobre a subconta"
+    },
+    "email_admin": {
+      "type": "string",
+      "description": "Email do administrador da subconta"
+    },
+    "whatsapp_access_token": {
+      "type": "string",
+      "description": "Access Token da API Oficial Meta WhatsApp"
+    },
+    "whatsapp_phone_number_id": {
+      "type": "string",
+      "description": "Phone Number ID da API Oficial Meta WhatsApp"
+    },
+    "whatsapp_business_account_id": {
+      "type": "string",
+      "description": "Business Account ID da API Oficial Meta WhatsApp"
+    },
+    "whatsapp_verify_token": {
+      "type": "string",
+      "description": "Token de verifica\u00e7\u00e3o do webhook Meta"
+    },
+    "whatsapp_token_tipo": {
+      "type": "string",
+      "enum": [
+        "temporario",
+        "permanente"
+      ],
+      "default": "temporario",
+      "description": "Tipo do token: tempor\u00e1rio (expira em 24h) ou permanente"
+    },
+    "whatsapp_token_atualizado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da \u00faltima atualiza\u00e7\u00e3o do token"
+    }
+  },
+  "required": [
+    "codigo",
+    "cpf_cnpj",
+    "nome",
+    "telefone",
+    "email",
+    "endereco_rua",
+    "endereco_numero",
+    "endereco_cep",
+    "endereco_cidade",
+    "endereco_estado"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin') return true; return record.id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return user.perfil === 'super_admin';"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin') return true; return user.perfil === 'admin' && record.id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'super_admin';"
+    }
+  }
+}

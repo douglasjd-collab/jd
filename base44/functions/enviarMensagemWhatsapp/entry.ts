@@ -72,9 +72,23 @@ Deno.serve(async (req) => {
     if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
-    // Detectar se usa API Oficial Meta
-    const usaMetaOficial = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
-    console.log('🔌 Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
+    // Determinar qual API usar baseado na preferência configurada
+    const apiPreferida = empresa?.whatsapp_api_preferida || 'auto';
+    const temCredenciaisMeta = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
+    const temCredenciaisEvolution = !!(evolutionApiKey && evolutionApiUrl && instanceName);
+
+    let usaMetaOficial;
+    if (apiPreferida === 'meta_oficial') {
+      usaMetaOficial = temCredenciaisMeta;
+      if (!temCredenciaisMeta) console.warn('⚠️ API Oficial Meta configurada como preferida, mas credenciais faltando — tentando Evolution');
+    } else if (apiPreferida === 'evolution') {
+      usaMetaOficial = false;
+    } else {
+      // auto: prioriza Evolution se tiver credenciais, senão usa Meta
+      usaMetaOficial = !temCredenciaisEvolution && temCredenciaisMeta;
+    }
+
+    console.log('🔌 API preferida:', apiPreferida, '→ Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
 
     // Formatar número
     const isGrupo = numero_cliente.includes('@g.us');

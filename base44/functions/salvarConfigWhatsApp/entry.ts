@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
       whatsapp_verify_token,
       whatsapp_token_tipo,
       whatsapp_token_atualizado_em,
+      whatsapp_api_preferida,
     } = body;
 
     if (!empresa_id) {
@@ -47,7 +48,8 @@ Deno.serve(async (req) => {
       whatsapp_verify_token: whatsapp_verify_token || 'WAZE_CRM_WEBHOOK_2024',
       whatsapp_token_tipo: whatsapp_token_tipo || 'permanente',
       whatsapp_token_atualizado_em: whatsapp_token_atualizado_em || new Date().toISOString(),
-      whatsapp_conectado: !!(whatsapp_access_token && whatsapp_phone_number_id),
+      whatsapp_api_preferida: whatsapp_api_preferida || 'auto',
+      whatsapp_conectado: !!(evolution_instance_name || (whatsapp_access_token && whatsapp_phone_number_id)),
     });
 
     console.log(`✅ Config WhatsApp salva para empresa ${empresa_id} | token: ${whatsapp_access_token ? 'preenchido' : 'vazio'} | phone_id: ${whatsapp_phone_number_id || 'vazio'}`);

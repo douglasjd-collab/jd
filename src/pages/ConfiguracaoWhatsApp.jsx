@@ -47,6 +47,8 @@ export default function ConfiguracaoWhatsApp() {
   const [empresas, setEmpresas] = useState([]);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState(null);
   const [apiTab, setApiTab] = useState('evolution');
+  const [apiPreferida, setApiPreferida] = useState('auto');
+  const [tempApiPreferida, setTempApiPreferida] = useState('auto');
 
   useEffect(() => {
     carregarDados();
@@ -95,6 +97,7 @@ export default function ConfiguracaoWhatsApp() {
     setWhatsappPhoneNumberId(empresaData.whatsapp_phone_number_id || '');
     setWhatsappBusinessAccountId(empresaData.whatsapp_business_account_id || '');
     setWhatsappVerifyToken(empresaData.whatsapp_verify_token || '');
+    setApiPreferida(empresaData.whatsapp_api_preferida || 'auto');
     
     // Gerar URL webhook com nome da instância
     const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
@@ -140,6 +143,7 @@ export default function ConfiguracaoWhatsApp() {
       setTempWhatsappBusinessAccountId(whatsappBusinessAccountId);
       setTempWhatsappVerifyToken(whatsappVerifyToken);
       setTempTokenTipo(tokenTipo || 'permanente');
+      setTempApiPreferida(apiPreferida || 'auto');
     }
     setEditMode(!editMode);
   };
@@ -166,6 +170,7 @@ export default function ConfiguracaoWhatsApp() {
         whatsapp_verify_token: tempWhatsappVerifyToken || 'WAZE_CRM_WEBHOOK_2024',
         whatsapp_token_tipo: tempTokenTipo || 'permanente',
         whatsapp_token_atualizado_em: new Date().toISOString(),
+        whatsapp_api_preferida: tempApiPreferida || 'auto',
       });
 
       if (!resp.data?.success) {
@@ -182,6 +187,7 @@ export default function ConfiguracaoWhatsApp() {
       setWhatsappVerifyToken(tempWhatsappVerifyToken || 'WAZE_CRM_WEBHOOK_2024');
       setTokenTipo(tempTokenTipo || 'permanente');
       setTokenAtualizadoEm(new Date().toISOString());
+      setApiPreferida(tempApiPreferida || 'auto');
 
       // Atualizar objeto empresa no estado
       setEmpresa(prev => ({
@@ -349,6 +355,66 @@ export default function ConfiguracaoWhatsApp() {
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Seletor de API Preferida */}
+        <Card className="border-2 border-blue-400 bg-gradient-to-br from-blue-50 to-white">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-900">
+              🔀 Qual API usar para enviar e receber mensagens?
+            </CardTitle>
+            <CardDescription className="text-blue-700">
+              Escolha qual API o sistema deve usar. Você pode ter ambas configuradas e trocar quando quiser.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                {
+                  value: 'evolution',
+                  label: '🟣 Evolution API',
+                  desc: 'API não oficial — conecta pelo QR Code. Mais recursos (grupos, fotos, histórico).',
+                  color: 'purple',
+                },
+                {
+                  value: 'meta_oficial',
+                  label: '🟢 API Oficial Meta',
+                  desc: 'API oficial do WhatsApp Business — exige aprovação da Meta. Mais estável e segura.',
+                  color: 'green',
+                },
+                {
+                  value: 'auto',
+                  label: '⚡ Automático',
+                  desc: 'O sistema detecta: usa Evolution se configurada, caso contrário usa Meta Oficial.',
+                  color: 'slate',
+                },
+              ].map(opt => {
+                const isActive = (editMode ? tempApiPreferida : apiPreferida) === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={!editMode}
+                    onClick={() => editMode && setTempApiPreferida(opt.value)}
+                    className={`text-left p-4 rounded-xl border-2 transition-all ${
+                      isActive
+                        ? opt.color === 'purple' ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-300'
+                          : opt.color === 'green' ? 'border-green-500 bg-green-50 ring-2 ring-green-300'
+                          : 'border-blue-500 bg-blue-50 ring-2 ring-blue-300'
+                        : 'border-slate-200 bg-white opacity-70'
+                    } ${editMode ? 'cursor-pointer hover:opacity-100' : 'cursor-default'}`}
+                  >
+                    <p className="font-bold text-sm mb-1">{opt.label}</p>
+                    <p className="text-xs text-slate-600">{opt.desc}</p>
+                    {isActive && <p className="text-xs font-bold mt-2 text-blue-700">✅ SELECIONADA</p>}
+                  </button>
+                );
+              })}
+            </div>
+            {!editMode && (
+              <p className="text-xs text-slate-500 mt-3 text-center">Clique em "Editar" nas credenciais abaixo para alterar a API preferida.</p>
+            )}
           </CardContent>
         </Card>
 
