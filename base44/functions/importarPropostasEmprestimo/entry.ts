@@ -552,14 +552,14 @@ Deno.serve(async (req) => {
            propostaBase.emprestimo_convenio_nome = convenioVal;
          }
 
-        // Vincular vendedor
+        // Vincular vendedor (apenas se a planilha trouxer um vendedor resolvido)
         if (vend?.id) {
           propostaBase.vendedor_id = vend.id;
           propostaBase.vendedor_nome = vend.nome;
         } else if (vendedorVal) {
-          // Digitador informado no arquivo mas não encontrou vínculo -> sem vendedor
-          propostaBase.vendedor_id = null;
+          // Digitador informado no arquivo mas não encontrou vínculo → salva nome, sem sobrescrever id
           propostaBase.vendedor_nome = vendedorVal;
+          // vendedor_id fica sem valor → null é removido no filter abaixo
         }
 
         // Remover campos null para criação (mas mantemos para update separado)
@@ -706,6 +706,14 @@ Deno.serve(async (req) => {
                 updateData.comissao_banco_recebida = true;
                 if (comissaoVal) updateData.comissao_recebida = parseValor(comissaoVal);
               }
+              // Vendedor: só atualizar se a planilha trouxer um vendedor resolvido (vend != null)
+              // Se a proposta já tem vendedor no CRM e a planilha não tem → preservar o do CRM
+              if (vend?.id) {
+                updateData.vendedor_id = vend.id;
+                updateData.vendedor_nome = vend.nome;
+              }
+              // Se vend é null → não incluir vendedor no updateData → CRM preserva o que já tem
+
               // Adicionar chave_unica se não tiver
               if (chaveUnica && !propostaExistente.chave_unica) {
                 updateData.chave_unica = chaveUnica;
