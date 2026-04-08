@@ -92,30 +92,30 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          {/* Header roxo */}
-          <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-5 rounded-t-lg">
+          {/* Header verde escuro */}
+          <div className="bg-gradient-to-r from-[#10353C] to-[#1a4a52] px-6 py-5 rounded-t-lg">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
                 <Search className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">Buscar Cliente</h2>
-                <p className="text-purple-200 text-xs">Pesquise por CPF, nome ou apelido</p>
+                <p className="text-teal-200 text-xs">Pesquise por CPF, nome ou apelido</p>
               </div>
             </div>
 
             {/* Campo de busca dentro do header */}
             <div className="relative mt-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400" />
               <input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Digite o CPF, nome ou apelido do cliente..."
                 autoFocus
-                className="w-full pl-10 pr-10 py-3 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-sm outline-none shadow-sm focus:ring-2 focus:ring-purple-300"
+                className="w-full pl-10 pr-10 py-3 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-sm outline-none shadow-sm focus:ring-2 focus:ring-teal-300"
               />
               {buscando && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-purple-400" />
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-teal-400" />
               )}
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
             {/* Resultados */}
             {busca.trim() && resultados.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2">
+                <p className="text-xs font-semibold text-teal-800 uppercase tracking-wide mb-2">
                   {resultados.length} cliente(s) encontrado(s)
                 </p>
                 <div className="space-y-2 max-h-[380px] overflow-y-auto">
@@ -134,11 +134,11 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
                     <div
                       key={cliente.id}
                       onClick={() => handleSelecionarCliente(cliente)}
-                      className="flex items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-purple-400 hover:bg-purple-50 cursor-pointer transition-all shadow-sm"
+                      className="flex items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 cursor-pointer transition-all shadow-sm"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-                          <span className="text-purple-700 font-bold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+                          <span className="text-teal-800 font-bold text-sm">
                             {(cliente.nome_completo || cliente.pj_razao_social || '?').charAt(0).toUpperCase()}
                           </span>
                         </div>
@@ -154,7 +154,7 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
                       </div>
                       <Button
                         size="sm"
-                        className="bg-purple-600 hover:bg-purple-700 text-white shrink-0"
+                        className="bg-[#10353C] hover:bg-[#1a4a52] text-white shrink-0"
                         onClick={(e) => { e.stopPropagation(); handleSelecionarCliente(cliente); }}
                       >
                         Selecionar
@@ -176,7 +176,7 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
                 <Button
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNovoCliente(); }}
-                  className="bg-purple-600 hover:bg-purple-700"
+                  className="bg-[#10353C] hover:bg-[#1a4a52]"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Cadastrar Novo Cliente
@@ -187,15 +187,15 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
             {/* Estado inicial */}
             {!busca.trim() && !buscando && (
               <div className="text-center py-10">
-                <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-3">
-                  <Search className="w-8 h-8 text-purple-400" />
+                <div className="w-16 h-16 mx-auto bg-teal-100 rounded-full flex items-center justify-center mb-3">
+                  <Search className="w-8 h-8 text-teal-600" />
                 </div>
                 <p className="font-semibold text-slate-700 mb-1">Digite para buscar clientes</p>
                 <p className="text-sm text-slate-400 mb-6">ou cadastre um novo cliente abaixo</p>
                 <Button
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNovoCliente(); }}
-                  className="bg-purple-600 hover:bg-purple-700 w-full max-w-xs"
+                  className="bg-[#10353C] hover:bg-[#1a4a52] w-full max-w-xs"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Cadastrar Novo Cliente
