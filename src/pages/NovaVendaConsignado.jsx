@@ -790,7 +790,6 @@ export default function NovaVendaConsignado() {
                     <Label className="text-sm text-slate-600 mb-2 block">Grau de escolaridade</Label>
                     <div className="grid grid-cols-1 gap-2">
                       {[
-                  { value: 'analfabeto', label: '📕 Analfabeto', desc: 'Não sabe ler nem escrever.' },
                   { value: 'fundamental_incompleto', label: '📘 Ensino Fundamental Incompleto', desc: 'Não concluiu o fundamental (até o 9º ano).' },
                   { value: 'fundamental_completo', label: '📗 Ensino Fundamental Completo', desc: 'Concluiu o 9º ano.' },
                   { value: 'medio_incompleto', label: '📙 Ensino Médio Incompleto', desc: 'Começou o ensino médio, mas não terminou.' },
