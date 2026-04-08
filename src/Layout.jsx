@@ -56,6 +56,7 @@ export default function Layout({ children, currentPageName }) {
   const [novaVendaConsorcioOpen, setNovaVendaConsorcioOpen] = useState(false);
   const [tarefasVencidas, setTarefasVencidas] = useState(0);
   const [tarefasNovas, setTarefasNovas] = useState(0);
+  const [comissoesPendentes, setComissoesPendentes] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -76,6 +77,25 @@ export default function Layout({ children, currentPageName }) {
     loadUser();
     loadLogo();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    // Buscar comissões pendentes (vendedores com comissão do banco recebida mas não paga ao vendedor)
+    const isAdminPerfil = ['master', 'super_admin', 'admin'].includes(user.perfil);
+    if (isAdminPerfil) {
+      const filtroBase = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+      base44.entities.Proposta.filter(filtroBase, null, 3000).then(propostas => {
+        const comPendencia = propostas.filter(p =>
+          p.produto !== 'consorcio' && p.produto !== 'financiamento' &&
+          p.comissao_banco_recebida === true &&
+          !p.comissao_vendedor_paga
+        );
+        // Contar vendedores únicos com pendência
+        const vendedoresUnicos = new Set(comPendencia.map(p => p.vendedor_id || 'sem-vendedor'));
+        setComissoesPendentes(vendedoresUnicos.size);
+      }).catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -564,7 +584,12 @@ export default function Layout({ children, currentPageName }) {
                                       : "text-white/70 hover:bg-white/10 hover:text-white"
                                   )}
                                 >
-                                  {sub.name}
+                                  <span className="flex-1">{sub.name}</span>
+                                  {sub.page === 'ComissoesEmprestimos' && comissoesPendentes > 0 && (
+                                    <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight">
+                                      {comissoesPendentes}
+                                    </span>
+                                  )}
                                 </button>
                               ))}
                             </div>
