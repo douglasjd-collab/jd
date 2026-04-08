@@ -329,6 +329,13 @@ Deno.serve(async (req) => {
       return 'NOVO';
     };
 
+    // Pré-carregar nome da empresa parceira (evitar busca repetida no loop)
+    let empresaParceiraNome = body.empresa_parceira_nome || '';
+    if (body.empresa_parceira_id && !empresaParceiraNome) {
+      const epList = toArray(await base44.asServiceRole.entities.EmpresaParceira.filter({ id: body.empresa_parceira_id }, null, 1));
+      empresaParceiraNome = epList[0]?.nome || '';
+    }
+
     const dataRows = rows.slice(headerRowIndex + 1);
     let criadas = 0;
     let atualizadas = 0;
@@ -532,7 +539,15 @@ Deno.serve(async (req) => {
          // 🏢 Adicionar empresa parceira selecionada no formulário
          if (body.empresa_parceira_id) {
            propostaBase.empresa_parceira_id = body.empresa_parceira_id;
-           propostaBase.empresa_parceira_nome = body.empresa_parceira_nome || '';
+           // Buscar nome da empresa parceira se não veio no payload
+           propostaBase.empresa_parceira_nome = empresaParceiraNome;
+         }
+         // 🏦 Convênio — garantir que está sempre preenchido quando informado
+         if (conv?.id) {
+           propostaBase.emprestimo_convenio_id = conv.id;
+           propostaBase.emprestimo_convenio_nome = conv.nome;
+         } else if (convenioVal) {
+           propostaBase.emprestimo_convenio_nome = convenioVal;
          }
 
         // Vincular vendedor
@@ -670,9 +685,17 @@ Deno.serve(async (req) => {
                 updateData.tabela_comissao_id = tabelaComissao.id;
                 updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
               }
+              // Sempre salvar empresa parceira quando informada na importação
               if (body.empresa_parceira_id) {
                 updateData.empresa_parceira_id = body.empresa_parceira_id;
-                updateData.empresa_parceira_nome = body.empresa_parceira_nome || '';
+                updateData.empresa_parceira_nome = empresaParceiraNome;
+              }
+              // Sempre salvar convênio quando informado no arquivo
+              if (conv?.id) {
+                updateData.emprestimo_convenio_id = conv.id;
+                updateData.emprestimo_convenio_nome = conv.nome;
+              } else if (convenioVal) {
+                updateData.emprestimo_convenio_nome = convenioVal;
               }
               // Adicionar chave_unica se não tiver
               if (chaveUnica && !propostaExistente.chave_unica) {
