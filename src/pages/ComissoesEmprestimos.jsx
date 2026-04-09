@@ -131,8 +131,8 @@ export default function ComissoesEmprestimos() {
     enabled: !!user && statusPagoIds.length > 0,
   });
 
-  // Apenas propostas pagas geram comissão
-  const propostasPagas = propostas.filter(isPaga);
+  // Propostas que geram comissão: status "pago/finalizado" OU comissão do banco já recebida
+  const propostasPagas = propostas.filter(p => isPaga(p) || p.comissao_banco_recebida === true);
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
