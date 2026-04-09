@@ -504,26 +504,18 @@ export default function BatePapo() {
       // Sempre refetch conversas para atualizar última mensagem
       refetchConversas();
 
-      // Verificar se a mensagem pertence à conversa aberta
-      const pertenceConversaAberta = msgData?.conversa_id && msgData.conversa_id === conversaAtualId;
-
-      if (pertenceConversaAberta) {
-        // Forçar refetch imediato — múltiplas tentativas para garantir
+      // SEMPRE refetch mensagens da conversa aberta — não depender do conversa_id no payload
+      if (conversaAtualId) {
         queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         refetchMensagens?.();
-        setTimeout(() => refetchMensagens?.(), 300);
-        setTimeout(() => refetchMensagens?.(), 800);
+        setTimeout(() => refetchMensagens?.(), 500);
         // Scroll para o final após refetch
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
-        }, 500);
-      } else if (msgData?.conversa_id && conversaAtualId) {
-        // A mensagem chegou numa conversa diferente da aberta — pode ser variação de telefone
-        // Refetch das conversas para atualizar lista
-        refetchConversas?.();
+        }, 600);
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem

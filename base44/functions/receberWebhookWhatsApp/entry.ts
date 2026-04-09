@@ -335,15 +335,17 @@ async function processarWebhook(req, rawBody) {
 
   console.log(`✅ EmpresaId: ${empresaId}`);
 
-  // Buscar conversa
+  // Buscar conversa por telefone e suas variações (12 ou 13 dígitos)
   let conversa = null;
-  const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-    empresa_id: empresaId,
-    cliente_telefone: telefoneLimpo
-  }, '-data_ultima_mensagem', 1);
-
-  if (conversas.length > 0) {
-    conversa = conversas[0];
+  for (const tel of telefonesVariacoes) {
+    const convs = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+      empresa_id: empresaId,
+      cliente_telefone: tel
+    }, '-data_ultima_mensagem', 1);
+    if (convs.length > 0) {
+      conversa = convs[0];
+      break;
+    }
   }
 
   if (conversa) {
