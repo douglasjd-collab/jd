@@ -379,6 +379,51 @@ async function processarWebhook(req, rawBody) {
     console.log(`✅ Conversa criada: ${conversa.id} | Tel: ${telefoneLimpo}`);
   }
 
+  // Upsert ContatoWhatsapp — garantir que existe com nome e foto
+  // Buscar contato existente por qualquer variação do telefone
+  let contatoExistente = null;
+  for (const tel of telefonesVariacoes) {
+    const found = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
+      { empresa_id: empresaId, telefone: tel }, '-created_date', 1
+    );
+    if (found.length > 0) { contatoExistente = found[0]; break; }
+  }
+
+  // Tentar buscar foto de perfil da Evolution
+  let fotoUrl = contatoExistente?.foto_url || null;
+  try {
+    const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+    const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || instanceFinal;
+    if (evolutionUrl && evolutionKey && evolutionInstance) {
+      const resProfile = await fetch(`${evolutionUrl.replace(/\/$/, '')}/contact/fetchProfile/${evolutionInstance}`, {
+        method: 'POST',
+        headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: telefoneLimpo })
+      });
+      if (resProfile.ok) {
+        const profileData = await resProfile.json();
+        const novaFoto = profileData?.profilePictureUrl || profileData?.picture || profileData?.pictureUrl;
+        if (novaFoto && novaFoto.trim().length > 0) fotoUrl = novaFoto;
+      }
+    }
+  } catch (e) { console.warn('⚠️ Erro ao buscar foto:', e.message); }
+
+  if (contatoExistente) {
+    const updates = { ultima_atualizacao: new Date().toISOString() };
+    if (!contatoExistente.nome && pushName) updates.nome = pushName;
+    if (fotoUrl && fotoUrl !== contatoExistente.foto_url) updates.foto_url = fotoUrl;
+    base44.asServiceRole.entities.ContatoWhatsapp.update(contatoExistente.id, updates).catch(() => {});
+  } else if (!fromMe) {
+    base44.asServiceRole.entities.ContatoWhatsapp.create({
+      empresa_id: empresaId,
+      telefone: telefoneLimpo,
+      nome: pushName || telefoneLimpo,
+      foto_url: fotoUrl || null,
+      ultima_atualizacao: new Date().toISOString()
+    }).catch(() => {});
+  }
+
   // Salvar mensagem
   const remetente = fromMe ? 'vendedor' : 'cliente';
   const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
