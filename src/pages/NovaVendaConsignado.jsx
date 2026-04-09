@@ -147,6 +147,16 @@ export default function NovaVendaConsignado() {
     queryFn: () => base44.entities.StatusProposta.filter({ empresa_id: empresaId, ativo: true }, 'ordem')
   });
 
+  // Quando os status personalizados carregarem, inicializar o formData.status com o primeiro
+  useEffect(() => {
+    if (statusPropostas && statusPropostas.length > 0) {
+      const primeiroStatus = statusPropostas.find(s => s.tipo === 'principal' || !s.tipo);
+      if (primeiroStatus) {
+        setFormData(prev => ({ ...prev, status: primeiroStatus.codigo || primeiroStatus.slug || '' }));
+      }
+    }
+  }, [statusPropostas]);
+
   const criarVendaMutation = useMutation({
     mutationFn: async (dados) => {
       const convenioSelecionado = convenios.find((c) => c.id === dados.convenio_id);
