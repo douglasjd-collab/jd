@@ -232,7 +232,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Gestão de Usuários', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
-    { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVenda', roles: ALL_ROLES },
+    { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVendaConsignado', roles: ALL_ROLES },
     { 
       name: 'Empréstimos', 
       icon: FileText, 
