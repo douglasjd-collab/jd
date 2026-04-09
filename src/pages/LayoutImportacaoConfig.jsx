@@ -64,7 +64,7 @@ const CAMPOS_COMISSAO = [
   { key: 'nome_completo', label: 'Nome Completo', obrigatorio: true },
   { key: 'cpf', label: 'CPF', obrigatorio: false },
   { key: 'banco', label: 'Banco', obrigatorio: true },
-  { key: 'tabela_comissao', label: 'Tabela de Comissão', obrigatorio: true },
+  { key: 'tabela_comissao', label: 'Tabela de Comissão', obrigatorio: false },
   { key: 'convenio', label: 'Convênio', obrigatorio: false },
   { key: 'tipo_consignado', label: 'Tipo de Consignado', obrigatorio: false },
   { key: 'numero_beneficio', label: 'Número do Benefício', obrigatorio: false },
