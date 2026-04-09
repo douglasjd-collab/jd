@@ -299,7 +299,7 @@ export default function ComissoesEmprestimos() {
   const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null) => {
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // Cálculo correto: usa valor_liquido como base se disponível
+    // Cálculo correto: usa percMap congelado no momento do pagamento
     const totalBruto = propostasLista.reduce((acc, p) => {
       const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
       const base = p.valor_liquido || p.valor_credito || 0;
@@ -370,7 +370,7 @@ export default function ComissoesEmprestimos() {
           fmt(valPagar),
         ];
       }),
-      foot: [['', '', '', '', '', '', '', '', '', 'Subtotal Comissões:', fmt(totalBruto)]],
+      foot: [['', '', '', '', '', '', '', '', 'Subtotal Comissões:', fmt(totalBruto)]],
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
