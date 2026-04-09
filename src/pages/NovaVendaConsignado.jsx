@@ -72,7 +72,7 @@ export default function NovaVendaConsignado() {
     percentual_comissao_vendedor: '',
     comissao_vendedor_prevista: '',
     comissao_vendedor_paga: '',
-    status: 'em_andamento',
+    status: 'aguardando_digitacao',
     empresa_parceira: '',
     observacoes: ''
   });
@@ -203,12 +203,9 @@ export default function NovaVendaConsignado() {
       toast.error('Selecione um cliente');
       return;
     }
-    if (!formData.numero_contrato) {
-      toast.error('Número do Contrato é obrigatório');
-      return;
-    }
-    if (formData.status === 'pago' && !formData.numero_contrato) {
-      toast.error('Para o status Pago é necessário informar o Número do Contrato');
+    // Contrato é obrigatório apenas quando o status não for "aguardando digitação"
+    if (formData.status !== 'aguardando_digitacao' && !formData.numero_contrato) {
+      toast.error('Número do Contrato é obrigatório para o status selecionado');
       return;
     }
     criarVendaMutation.mutate(formData);
@@ -1183,7 +1180,10 @@ export default function NovaVendaConsignado() {
                       <Input value={formData.numero_ade} onChange={(e) => setFormData({ ...formData, numero_ade: e.target.value })} />
                     </div>
                     <div>
-                      <Label>Número do Contrato</Label>
+                      <Label>
+                        Número do Contrato
+                        {formData.status !== 'aguardando_digitacao' && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
                       <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
                     </div>
                   </div>
@@ -1199,6 +1199,7 @@ export default function NovaVendaConsignado() {
                           <option key={status.id} value={status.codigo || status.slug}>{status.nome}</option>
                         ) :
                         <>
+                          <option value="aguardando_digitacao">Aguardando Digitação</option>
                           <option value="em_andamento">Em andamento</option>
                           <option value="pendente">Pendente</option>
                           <option value="aguardando_formalizacao">Aguardando formalização</option>
