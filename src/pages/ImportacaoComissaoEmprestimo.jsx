@@ -431,17 +431,17 @@ export default function ImportacaoComissaoEmprestimo() {
             itemMotivos[idx] = motivoDivergencia;
             divergencias++;
           } else {
-            recebimentosParaCriar.push({
+            const recObj = {
               _itemIdx: idx,
               empresa_id: propostaEncontrada.empresa_id,
               venda_id: propostaEncontrada.id,
-              cliente_id: propostaEncontrada.cliente_id,
-              cliente_nome: propostaEncontrada.cliente_nome,
-              vendedor_id: propostaEncontrada.vendedor_id,
-              vendedor_nome: propostaEncontrada.vendedor_nome,
-              administradora_id: propostaEncontrada.administradora_id,
-              administradora_nome: item.banco || propostaEncontrada.administradora_nome,
-              contrato: propostaEncontrada.contrato || propostaEncontrada.emprestimo_numero_ade,
+              cliente_id: propostaEncontrada.cliente_id || undefined,
+              cliente_nome: propostaEncontrada.cliente_nome || undefined,
+              vendedor_id: propostaEncontrada.vendedor_id || undefined,
+              vendedor_nome: propostaEncontrada.vendedor_nome || undefined,
+              administradora_id: propostaEncontrada.administradora_id || undefined,
+              administradora_nome: item.banco || propostaEncontrada.administradora_nome || undefined,
+              contrato: propostaEncontrada.contrato || propostaEncontrada.emprestimo_numero_ade || undefined,
               data_recebimento: dataRecebimento,
               valor_recebido: valorRecebido,
               origem_importacao_id: importacao.id,
@@ -451,8 +451,10 @@ export default function ImportacaoComissaoEmprestimo() {
               valor_a_pagar: valorRecebido,
               status_recebimento: 'recebida',
               status_pagamento: 'a_pagar',
-              observacoes: [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ') || undefined,
-            });
+            };
+            const obs = [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ');
+            if (obs) recObj.observacoes = obs;
+            recebimentosParaCriar.push(recObj);
             processados++;
             valorTotal += valorRecebido;
           }
@@ -495,23 +497,26 @@ export default function ImportacaoComissaoEmprestimo() {
         const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosData);
 
         // Criar ComissaoAPagar para cada recebimento
-        const comissoesAPagar = recebimentosCriados.map(rec => ({
-          empresa_id: rec.empresa_id,
-          recebimento_id: rec.id,
-          venda_id: rec.venda_id,
-          cliente_id: rec.cliente_id,
-          cliente_nome: rec.cliente_nome,
-          vendedor_id: rec.vendedor_id,
-          vendedor_nome: rec.vendedor_nome,
-          administradora_id: rec.administradora_id,
-          administradora_nome: rec.administradora_nome,
-          contrato: rec.contrato,
-          data_recebimento: rec.data_recebimento,
-          valor_recebido: rec.valor_recebido,
-          percentual_comissao: rec.percentual_comissao,
-          valor_a_pagar: rec.valor_a_pagar,
-          status_pagamento: 'a_pagar',
-        }));
+        const comissoesAPagar = recebimentosCriados.map(rec => {
+          const ca = {
+            empresa_id: rec.empresa_id,
+            recebimento_id: rec.id,
+            venda_id: rec.venda_id,
+            data_recebimento: rec.data_recebimento,
+            valor_recebido: rec.valor_recebido,
+            percentual_comissao: rec.percentual_comissao,
+            valor_a_pagar: rec.valor_a_pagar,
+            status_pagamento: 'a_pagar',
+          };
+          if (rec.cliente_id) ca.cliente_id = rec.cliente_id;
+          if (rec.cliente_nome) ca.cliente_nome = rec.cliente_nome;
+          if (rec.vendedor_id) ca.vendedor_id = rec.vendedor_id;
+          if (rec.vendedor_nome) ca.vendedor_nome = rec.vendedor_nome;
+          if (rec.administradora_id) ca.administradora_id = rec.administradora_id;
+          if (rec.administradora_nome) ca.administradora_nome = rec.administradora_nome;
+          if (rec.contrato) ca.contrato = rec.contrato;
+          return ca;
+        });
         await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
         // Atualizar proposta: apenas comissao_banco_recebida + percentual + valor_comissao + data_recebimento
