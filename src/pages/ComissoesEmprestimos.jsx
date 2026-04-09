@@ -187,7 +187,7 @@ export default function ComissoesEmprestimos() {
 
   // Percentual da empresa (comissão recebida do banco) = valor_comissao / base de cálculo
   const getPercentualEmpresa = (p) => {
-    const base = p.comissao_banco_base_comissao || p.valor_liquido || p.valor_credito;
+    const base = p.comissao_banco_base_comissao || p.valor_credito;
     if (p.valor_comissao && base) {
       return parseFloat(((p.valor_comissao / base) * 100).toFixed(4));
     }
@@ -195,8 +195,12 @@ export default function ComissoesEmprestimos() {
   };
 
   // Percentual do vendedor (editável)
-  // Prioridade: 1. editado pelo usuário nesta tela, 2. percentual_comissao_vendedor da proposta/tabela, 3. percentual da empresa como fallback
+  // Se comissao_banco_base_comissao está definido, sempre recalcula com base correta.
+  // Senão usa percentual_comissao_vendedor salvo (legado) ou percentual empresa.
   const getPercentualVendedorDefault = (p) => {
+    if (p.comissao_banco_base_comissao) {
+      return getPercentualEmpresa(p);
+    }
     if (p.percentual_comissao_vendedor != null && p.percentual_comissao_vendedor > 0) {
       return parseFloat(p.percentual_comissao_vendedor);
     }
@@ -207,8 +211,8 @@ export default function ComissoesEmprestimos() {
     return percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualVendedorDefault(p);
   };
 
-  // Base de cálculo da comissão: prioriza base_comissao do banco, depois valor_liquido, depois valor_credito
-  const getBaseComissao = (p) => p.comissao_banco_base_comissao || p.valor_liquido || p.valor_credito || 0;
+  // Base de cálculo da comissão: usa base_comissao do banco se disponível, senão valor_credito (bruto)
+  const getBaseComissao = (p) => p.comissao_banco_base_comissao || p.valor_credito || 0;
 
   // Valor a pagar ao vendedor
   const getValorAPagar = (p) => {
@@ -302,7 +306,7 @@ export default function ComissoesEmprestimos() {
     // Cálculo correto: usa percMap congelado no momento do pagamento
     const totalBruto = propostasLista.reduce((acc, p) => {
       const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
-      const base = p.comissao_banco_base_comissao || p.valor_liquido || p.valor_credito || 0;
+      const base = p.comissao_banco_base_comissao || p.valor_credito || 0;
       return acc + base * (perc / 100);
     }, 0);
     const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
@@ -354,7 +358,7 @@ export default function ComissoesEmprestimos() {
       head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
       body: propostasLista.map(p => {
         const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
-        const base = p.comissao_banco_base_comissao || p.valor_liquido || p.valor_credito || 0;
+        const base = p.comissao_banco_base_comissao || p.valor_credito || 0;
         const valPagar = base * (perc / 100);
         return [
           p.cliente_nome || '-',
@@ -447,7 +451,7 @@ export default function ComissoesEmprestimos() {
       const itensComValores = paraPagar.map(p => {
         const percVendedor = percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualEmpresa(p);
         const percEmpresa = getPercentualEmpresa(p);
-        const base = p.comissao_banco_base_comissao || p.valor_liquido || p.valor_credito || 0;
+        const base = p.comissao_banco_base_comissao || p.valor_credito || 0;
         const valVendedor = base * (percVendedor / 100);
         const editadoManual = percentuaisCustom[p.id] !== undefined;
         return { p, percVendedor, percEmpresa, valVendedor, editadoManual };
