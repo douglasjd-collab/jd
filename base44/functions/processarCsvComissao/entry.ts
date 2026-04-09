@@ -277,27 +277,60 @@ Deno.serve(async (req) => {
       
       // Remove BOM se existir
       csvContent = csvContent.replace(/^\uFEFF/, '');
-      
-      const lines = csvContent.split(/\r?\n/).filter(l => l.trim() !== '');
-      console.log(`CSV: ${lines.length} linhas brutas`);
 
-      // Detectar delimitador (semicolon, comma, tab)
-      const firstLine = lines[0] || '';
+      // Detectar delimitador (semicolon, comma, tab) usando a primeira linha real
+      const firstNewline = csvContent.indexOf('\n');
+      const firstLine = firstNewline >= 0 ? csvContent.slice(0, firstNewline) : csvContent;
       const delimiter = firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ',';
 
-      const parseLine = (line) => {
-        const values = [];
-        let cur = '', inQ = false;
-        for (const ch of line) {
-          if (ch === '"') { inQ = !inQ; }
-          else if (ch === delimiter && !inQ) { values.push(cur.replace(/^"|"$/g, '').trim()); cur = ''; }
-          else { cur += ch; }
+      // Parser CSV robusto que respeita campos multi-linha entre aspas
+      const parseCSV = (content, delim) => {
+        const rows = [];
+        let row = [];
+        let cur = '';
+        let inQ = false;
+        let i = 0;
+        while (i < content.length) {
+          const ch = content[i];
+          if (ch === '"') {
+            if (inQ && content[i + 1] === '"') {
+              // aspas escapadas ""
+              cur += '"';
+              i += 2;
+              continue;
+            }
+            inQ = !inQ;
+          } else if (ch === delim && !inQ) {
+            row.push(cur.replace(/^\s+|\s+$/g, ''));
+            cur = '';
+          } else if ((ch === '\n' || (ch === '\r' && content[i + 1] === '\n')) && !inQ) {
+            if (ch === '\r') i++; // pula o \n do \r\n
+            row.push(cur.replace(/^\s+|\s+$/g, ''));
+            // Ignora linhas completamente vazias
+            if (row.some(v => v !== '')) rows.push(row);
+            row = [];
+            cur = '';
+          } else {
+            // Dentro de campo multi-linha com aspas: substitui quebra de linha interna por espaço
+            if ((ch === '\n' || ch === '\r') && inQ) {
+              cur += ' ';
+              if (ch === '\r' && content[i + 1] === '\n') i++;
+            } else {
+              cur += ch;
+            }
+          }
+          i++;
         }
-        values.push(cur.replace(/^"|"$/g, '').trim());
-        return values;
+        // última célula/linha
+        if (cur || row.length > 0) {
+          row.push(cur.replace(/^\s+|\s+$/g, ''));
+          if (row.some(v => v !== '')) rows.push(row);
+        }
+        return rows;
       };
 
-      const rows = lines.map(l => parseLine(l));
+      const rows = parseCSV(csvContent, delimiter);
+      console.log(`CSV: ${rows.length} linhas após parsing robusto (multi-linha)`);
       processarLinhas(rows, layoutMapeamento ? layoutLinhaInicio - 1 : 1);
     }
 
