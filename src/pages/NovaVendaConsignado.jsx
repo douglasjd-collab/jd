@@ -91,8 +91,13 @@ export default function NovaVendaConsignado() {
     } else {
       const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
       if (colabs.length > 0) {
-        setUser({ ...me, perfil: colabs[0].perfil });
-        setEmpresaId(colabs[0].empresa_id);
+        const colab = colabs[0];
+        setUser({ ...me, perfil: colab.perfil, colaborador_id: colab.id, colaborador_nome: colab.nome });
+        setEmpresaId(colab.empresa_id);
+        // Se for vendedor, pré-selecionar ele mesmo como vendedor da proposta
+        if (colab.perfil === 'vendedor' || colab.perfil === 'funcionario') {
+          setFormData(prev => ({ ...prev, vendedor_parceiro_id: colab.id }));
+        }
       } else {
         setUser(me);
       }
@@ -162,14 +167,19 @@ export default function NovaVendaConsignado() {
       const convenioSelecionado = convenios.find((c) => c.id === dados.convenio_id);
       const vendedorSelecionado = vendedores.find((v) => v.id === dados.vendedor_parceiro_id);
 
+      // Vendedor: se for perfil vendedor, forçar ele mesmo; senão usar selecionado
+      const isVendedorPerfil = user?.perfil === 'vendedor' || user?.perfil === 'funcionario';
+      const vendedorId = isVendedorPerfil ? user.colaborador_id : (vendedorSelecionado?.id || user.colaborador_id || user.id);
+      const vendedorNome = isVendedorPerfil ? (user.colaborador_nome || user.full_name) : (vendedorSelecionado?.nome || user.full_name);
+
       const proposta = await base44.entities.Proposta.create({
         empresa_id: empresaId,
         produto: 'emprestimo',
         cliente_id: clienteSelecionado.id,
         cliente_nome: clienteSelecionado.nome_completo || clienteSelecionado.pj_razao_social,
         cliente_cpf: clienteSelecionado.cpf || '',
-        vendedor_id: vendedorSelecionado?.id || user.id,
-        vendedor_nome: vendedorSelecionado?.nome || user.full_name,
+        vendedor_id: vendedorId,
+        vendedor_nome: vendedorNome,
         administradora_id: '',
         administradora_nome: dados.banco || '',
         contrato: dados.numero_contrato,
@@ -947,16 +957,22 @@ export default function NovaVendaConsignado() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label>Vendedor/Parceiro</Label>
-                <select
-                  value={formData.vendedor_parceiro_id}
-                  onChange={(e) => setFormData({ ...formData, vendedor_parceiro_id: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
-                  
-                  <option value="">Selecione...</option>
-                  {vendedores.map((v) =>
-                  <option key={v.id} value={v.id}>{v.nome}</option>
-                  )}
-                </select>
+                {(user?.perfil === 'vendedor' || user?.perfil === 'funcionario') ? (
+                  <div className="flex h-9 w-full items-center rounded-md border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700 cursor-not-allowed">
+                    {user?.colaborador_nome || user?.full_name}
+                    <span className="ml-auto text-xs text-slate-400">(você)</span>
+                  </div>
+                ) : (
+                  <select
+                    value={formData.vendedor_parceiro_id}
+                    onChange={(e) => setFormData({ ...formData, vendedor_parceiro_id: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                    <option value="">Selecione...</option>
+                    {vendedores.map((v) =>
+                    <option key={v.id} value={v.id}>{v.nome}</option>
+                    )}
+                  </select>
+                )}
               </div>
               <div>
                 <Label>Empresa Parceira</Label>
