@@ -54,8 +54,10 @@ const CAMPOS_PRODUCAO = [
   { key: 'status_contrato', label: 'Status', obrigatorio: true },
   { key: 'comissao_empresa', label: 'Comissão Empresa (Lançamento)', obrigatorio: false },
   { key: 'comissao_empresa_percentual', label: 'Comissão Empresa %', obrigatorio: false },
-  { key: 'comissao_vendedor', label: 'Comissão Vendedor', obrigatorio: false },
-  { key: 'data_recebimento_comissao', label: 'Data de Recebimento da Comissão', obrigatorio: false },
+  { key: 'comissao_vendedor', label: 'Comissão Vendedor R$ (já pago)', obrigatorio: false },
+  { key: 'comissao_vendedor_percentual', label: 'Comissão Vendedor % (já pago)', obrigatorio: false },
+  { key: 'data_recebimento_comissao', label: 'Data de Recebimento da Comissão (Empresa)', obrigatorio: false },
+  { key: 'data_pagamento_vendedor', label: 'Data de Pagamento ao Vendedor', obrigatorio: false },
 ];
 
 const CAMPOS_COMISSAO = [

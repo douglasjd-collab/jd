@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
     let colAde, colBeneficio, colData, colVendedor, colStatus, colComissao, colComissaoPercentual, colContrato, colTabela;
     let colDataRecebComissao, colDataPagCliente, colDataCadastroProp, colValorBaseComissao;
     let colValorBruto, colParcela;
+    let colComissaoVendedor, colComissaoVendedorPercentual, colDataPagamentoVendedor;
 
     if (layout && Object.keys(layout).length > 0) {
       // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
@@ -120,8 +121,11 @@ Deno.serve(async (req) => {
       colDataRecebComissao = colLetterToIndex(layout.data_recebimento_comissao);
       colDataPagCliente    = colLetterToIndex(layout.data_pagamento_cliente || layout.data_liberacao);
       colDataCadastroProp  = colLetterToIndex(layout.data_cadastro_proposta || layout.data_digitacao);
-      colCelular           = colLetterToIndex(layout.celular);
-      colValorBaseComissao = colLetterToIndex(layout.valor_base_comissao);
+      colCelular                  = colLetterToIndex(layout.celular);
+      colValorBaseComissao        = colLetterToIndex(layout.valor_base_comissao);
+      colComissaoVendedor         = colLetterToIndex(layout.comissao_vendedor);
+      colComissaoVendedorPercentual = colLetterToIndex(layout.comissao_vendedor_percentual);
+      colDataPagamentoVendedor    = colLetterToIndex(layout.data_pagamento_vendedor);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
@@ -178,6 +182,9 @@ Deno.serve(async (req) => {
       colDataPagCliente    = findCol('data liberacao', 'data liberação', 'data lib');
       colValorBaseComissao = findCol('base comissao', 'base comisso', 'base de comissao', 'base calculo');
       colParcela           = findCol('vl. parcela', 'vlr parcela', 'valor parcela', 'parcela');
+      colComissaoVendedor  = findCol('comissao vendedor', 'comisso vendedor', 'vlr vendedor', 'valor vendedor');
+      colComissaoVendedorPercentual = findCol('% vendedor', 'perc vendedor', 'percentual vendedor');
+      colDataPagamentoVendedor = findCol('data pagto vendedor', 'data pag vendedor', 'dt pag vendedor', 'pagamento vendedor');
     }
 
     console.log('Indices de colunas:', JSON.stringify({ colNome, colCpf, colBanco, colConvenio, colTipo, colValor, colPrazo, colStatus, colVendedor, colBeneficio, colAde }));
@@ -390,9 +397,12 @@ Deno.serve(async (req) => {
         const dataPagClienteVal     = colDataPagCliente     >= 0 ? row[colDataPagCliente]                          : null;
         const dataCadastroPropVal   = colDataCadastroProp   >= 0 ? row[colDataCadastroProp]                        : null;
         const celularVal            = colCelular            >= 0 ? String(row[colCelular]            ?? '').trim() : '';
-        const valorBaseComissaoVal  = colValorBaseComissao  >= 0 ? row[colValorBaseComissao]                        : null;
-        const valorBrutoVal         = colValorBruto         >= 0 ? row[colValorBruto]                                : null;
-        const parcelaVal            = colParcela            >= 0 ? row[colParcela]                                   : null;
+        const valorBaseComissaoVal      = colValorBaseComissao      >= 0 ? row[colValorBaseComissao]      : null;
+        const valorBrutoVal             = colValorBruto             >= 0 ? row[colValorBruto]             : null;
+        const parcelaVal                = colParcela                >= 0 ? row[colParcela]                : null;
+        const comissaoVendedorVal       = colComissaoVendedor       >= 0 ? row[colComissaoVendedor]       : null;
+        const comissaoVendedorPercVal   = colComissaoVendedorPercentual >= 0 ? row[colComissaoVendedorPercentual] : null;
+        const dataPagamentoVendedorVal  = colDataPagamentoVendedor  >= 0 ? row[colDataPagamentoVendedor]  : null;
 
         if (!nomeVal && !cpfVal) {
           ignoradas++;
@@ -550,6 +560,11 @@ Deno.serve(async (req) => {
            comissao_banco_recebida:     parseData(dataRecebComissaoVal) ? true : undefined,
            comissao_recebida:           parseData(dataRecebComissaoVal) ? parseValor(comissaoVal) || undefined : undefined,
            comissao_banco_base_comissao: valorBaseComissaoVal ? parseValor(valorBaseComissaoVal) : undefined,
+           // Comissão do vendedor já paga (vinda do relatório)
+           comissao_vendedor_paga:             parseData(dataPagamentoVendedorVal) ? true : undefined,
+           comissao_vendedor_data_pagamento:   parseData(dataPagamentoVendedorVal) || undefined,
+           valor_comissao_vendedor_pago:       comissaoVendedorVal ? parseValor(comissaoVendedorVal) || undefined : undefined,
+           percentual_comissao_vendedor:       comissaoVendedorPercVal ? parseValor(comissaoVendedorPercVal) || undefined : undefined,
          };
 
          // Adicionar IDs somente se existirem (campos string)
@@ -724,6 +739,14 @@ Deno.serve(async (req) => {
                 updateData.data_comissao_recebida = dataRecebComissaoParsed;
                 updateData.comissao_banco_recebida = true;
                 if (comissaoVal) updateData.comissao_recebida = parseValor(comissaoVal);
+              }
+              // Se tiver data de pagamento ao vendedor no arquivo → marcar comissão do vendedor como paga
+              const dataPagVendedorParsed = parseData(dataPagamentoVendedorVal);
+              if (dataPagVendedorParsed) {
+                updateData.comissao_vendedor_paga = true;
+                updateData.comissao_vendedor_data_pagamento = dataPagVendedorParsed;
+                if (comissaoVendedorVal) updateData.valor_comissao_vendedor_pago = parseValor(comissaoVendedorVal);
+                if (comissaoVendedorPercVal) updateData.percentual_comissao_vendedor = parseValor(comissaoVendedorPercVal);
               }
               // Vendedor: só atualizar se a planilha trouxer um vendedor resolvido (vend != null)
               // Se a proposta já tem vendedor no CRM e a planilha não tem → preservar o do CRM
