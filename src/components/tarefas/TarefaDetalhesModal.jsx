@@ -117,7 +117,7 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col overflow-hidden p-0 gap-0">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
 
         {/* ── CABEÇALHO ── */}
         <div className="px-6 pt-5 pb-4 border-b bg-white">
