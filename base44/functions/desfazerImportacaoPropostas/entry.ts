@@ -10,9 +10,13 @@ Deno.serve(async (req) => {
     if (!log_id) return Response.json({ error: 'log_id obrigatório' }, { status: 400 });
 
     // Buscar o log
-    const logs = await base44.asServiceRole.entities.ImportacaoPropostasLog.filter({ id: log_id });
-    if (!logs || logs.length === 0) return Response.json({ error: 'Log não encontrado' }, { status: 404 });
-    const log = logs[0];
+    let log;
+    try {
+      log = await base44.asServiceRole.entities.ImportacaoPropostasLog.get(log_id);
+    } catch {
+      return Response.json({ error: 'Log não encontrado' }, { status: 404 });
+    }
+    if (!log) return Response.json({ error: 'Log não encontrado' }, { status: 404 });
 
     if (log.status === 'desfeita') {
       return Response.json({ error: 'Esta importação já foi desfeita' }, { status: 400 });
