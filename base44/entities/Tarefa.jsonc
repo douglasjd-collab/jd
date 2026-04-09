@@ -1,0 +1,154 @@
+{
+  "name": "Tarefa",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "T\u00edtulo da tarefa"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o da tarefa"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente (denormalizado)"
+    },
+    "cliente_cpf": {
+      "type": "string",
+      "description": "CPF do cliente (denormalizado)"
+    },
+    "cliente_telefone": {
+      "type": "string",
+      "description": "Telefone do cliente (denormalizado)"
+    },
+    "senha_gov": {
+      "type": "string",
+      "description": "Senha GOV do cliente"
+    },
+    "setor": {
+      "type": "string",
+      "enum": [
+        "consorcio",
+        "emprestimo",
+        "financiamento",
+        "administrativo",
+        "cobranca"
+      ],
+      "description": "Setor/funil da tarefa"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "documento",
+        "ligacao",
+        "cobranca",
+        "visita",
+        "analise",
+        "pendencia",
+        "outros"
+      ],
+      "description": "Tipo da tarefa"
+    },
+    "origem": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "sistema",
+        "cliente",
+        "whatsapp"
+      ],
+      "default": "manual",
+      "description": "Origem da tarefa"
+    },
+    "data_cadastro": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de cadastro"
+    },
+    "data_conclusao_prevista": {
+      "type": "string",
+      "format": "date",
+      "description": "Data prevista de conclus\u00e3o"
+    },
+    "data_conclusao_real": {
+      "type": "string",
+      "format": "date",
+      "description": "Data real de conclus\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "default": "a_fazer",
+      "description": "Status da tarefa"
+    },
+    "prioridade": {
+      "type": "string",
+      "enum": [
+        "baixa",
+        "media",
+        "alta",
+        "urgente"
+      ],
+      "default": "media",
+      "description": "Prioridade"
+    },
+    "responsavel_principal_id": {
+      "type": "string"
+    },
+    "responsavel_principal_nome": {
+      "type": "string"
+    },
+    "responsaveis_ids": {
+      "type": "string",
+      "description": "JSON array de IDs dos respons\u00e1veis"
+    },
+    "responsaveis_nomes": {
+      "type": "string",
+      "description": "JSON array de nomes dos respons\u00e1veis"
+    },
+    "responsaveis_fotos": {
+      "type": "string",
+      "description": "JSON array de fotos dos respons\u00e1veis"
+    },
+    "checklist": {
+      "type": "string",
+      "description": "JSON array de {id, texto, checked}"
+    },
+    "checklist_template_id": {
+      "type": "string"
+    },
+    "criado_por_id": {
+      "type": "string"
+    },
+    "criado_por_nome": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "titulo",
+    "data_conclusao_prevista"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

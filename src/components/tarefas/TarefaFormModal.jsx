@@ -49,6 +49,9 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           descricao: tarefa.descricao || '',
           cliente_id: tarefa.cliente_id || '',
           cliente_nome: tarefa.cliente_nome || '',
+          cliente_cpf: tarefa.cliente_cpf || '',
+          cliente_telefone: tarefa.cliente_telefone || '',
+          senha_gov: tarefa.senha_gov || '',
           setor: tarefa.setor || '',
           tipo: tarefa.tipo || '',
           origem: tarefa.origem || 'manual',
@@ -172,6 +175,12 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             <Input value={form.titulo || ''} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Título da tarefa" />
           </div>
 
+          {/* Senha GOV */}
+          <div>
+            <Label>Senha GOV</Label>
+            <Input value={form.senha_gov || ''} onChange={e => setForm({ ...form, senha_gov: e.target.value })} placeholder="Senha GOV do cliente (opcional)" />
+          </div>
+
           {/* Cliente + Prioridade */}
           <div className="grid grid-cols-2 gap-4">
             <div className="relative">
@@ -202,7 +211,16 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
                       ? <div className="px-3 py-4 text-sm text-slate-400 text-center">Nenhum cliente encontrado</div>
                       : clientesFiltrados.map(c => (
                         <div key={c.id} className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100"
-                          onClick={() => { setForm({ ...form, cliente_id: c.id }); setClienteDropdownOpen(false); setClienteSearch(''); }}>
+                          onClick={() => {
+                            setForm({
+                              ...form,
+                              cliente_id: c.id,
+                              cliente_cpf: c.cpf || '',
+                              cliente_telefone: c.celular || c.telefone_fixo || '',
+                            });
+                            setClienteDropdownOpen(false);
+                            setClienteSearch('');
+                          }}>
                           {c.nome_completo || c.pj_razao_social}
                         </div>
                       ))}
