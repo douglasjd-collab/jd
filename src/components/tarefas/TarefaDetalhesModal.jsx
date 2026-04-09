@@ -378,7 +378,7 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
           </div>
 
           {/* ── Sidebar direita ── */}
-          <div className="w-64 flex-shrink-0 border-l bg-slate-50 flex flex-col">
+          <div className="w-80 flex-shrink-0 border-l bg-slate-50 flex flex-col">
             <div className="flex-1 overflow-y-auto p-4 space-y-5">
 
               {/* Responsável */}
