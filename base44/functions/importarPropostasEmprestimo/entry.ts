@@ -230,10 +230,10 @@ Deno.serve(async (req) => {
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const normCpf = cpf => String(cpf || '').replace(/\D/g, '');
     
-    // 🔐 NORMALIZAR CONTRATO: Remove tudo que não é número
+    // 🔐 NORMALIZAR CONTRATO: Remove espaços e caracteres especiais, mantém alfanumérico
     const normalizarContrato = (contrato) => {
       if (!contrato) return null;
-      const norm = String(contrato).trim().replace(/\D/g, '');
+      const norm = String(contrato).trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       return norm.length > 0 ? norm : null;
     };
 
@@ -245,10 +245,11 @@ Deno.serve(async (req) => {
       return `${bancoNorm}_${contratoNorm}`;
     };
     
-    // Função para verificar se proposta tem comissão paga (NUNCA deve tocar em propostas com comissão paga)
+    // Função para verificar se proposta tem comissão do VENDEDOR paga (NUNCA deve tocar nessas)
+    // comissao_banco_recebida NÃO bloqueia atualização — a proposta pode ser atualizada normalmente
     const temComissaoPaga = (prop) => {
       if (!prop) return false;
-      return prop.comissao_banco_recebida === true || prop.comissao_vendedor_paga === true;
+      return prop.comissao_vendedor_paga === true;
     };
 
     const findBanco = (nome) => {
@@ -303,7 +304,9 @@ Deno.serve(async (req) => {
     const parseValor = (val) => {
       if (val === null || val === undefined || val === '') return 0;
       if (typeof val === 'number') return val;
-      return parseFloat(String(val).replace(/\./g, '').replace(',', '.')) || 0;
+      // Remove R$, espaços, pontos de milhar; troca vírgula decimal por ponto
+      const str = String(val).replace(/R\$\s*/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+      return parseFloat(str) || 0;
     };
 
     const parseData = (val) => {
@@ -694,54 +697,67 @@ Deno.serve(async (req) => {
 
           if (propostaExistente) {
             // 🔴 Proposta JÁ EXISTE!
-            // Verificar se status é PAGO (não mexer em propostas pagas)
-            const statusProp = statusList.find(s => s.id === propostaExistente.status_id);
-            const isPago = statusProp?.nome?.toLowerCase().includes('pago') || 
-                          propostaExistente.status?.toLowerCase().includes('pago');
-            
-            if (temComissaoPaga(propostaExistente) || isPago) {
-              // ❌ NUNCA TOCA EM PROPOSTA COM COMISSÃO PAGA OU COM STATUS PAGO
+            // Só bloquear se comissão do VENDEDOR já foi paga (financeiro fechado)
+            if (temComissaoPaga(propostaExistente)) {
               ignoradas++;
-              console.log(`❌ IGNORADA (comissão paga ou status PAGO): ${contratoFinal || nomeVal}`);
+              console.log(`❌ IGNORADA (comissão do vendedor já paga): ${contratoFinal || nomeVal}`);
             } else {
-              // ✅ Seguro atualizar — comissão não foi paga
+              // ✅ Atualizar apenas campos que vieram preenchidos no arquivo
               const updateData = {};
+
+              // Status
               if (statusVal) {
                 updateData.status = statusVal;
-                updateData.status_id = statusId || null;
+                if (statusId) updateData.status_id = statusId;
               }
+
+              // Datas
               if (dataVend) updateData.data_venda = dataVend;
-              if (parseData(dataPagClienteVal)) updateData.emprestimo_data_liberacao = parseData(dataPagClienteVal);
+              const dataPagClienteParsed = parseData(dataPagClienteVal);
+              if (dataPagClienteParsed) updateData.emprestimo_data_liberacao = dataPagClienteParsed;
+
+              // Valores financeiros
               if (valorBruto > 0) updateData.valor_credito = valorBruto;
               else if (valor > 0) updateData.valor_credito = valor;
               if (valor > 0) updateData.valor_liquido = valor;
               if (comissaoVal) updateData.valor_comissao = parseValor(comissaoVal);
               if (parcela) updateData.emprestimo_valor_parcela = parcela;
               if (prazo) updateData.emprestimo_prazo = prazo;
+              if (valorBaseComissaoVal) updateData.comissao_banco_base_comissao = parseValor(valorBaseComissaoVal);
+
+              // Tabela de comissão
               if (tabelaComissao?.id) {
                 updateData.tabela_comissao_id = tabelaComissao.id;
                 updateData.tabela_comissao_nome = tabelaComissao.tabela || tabelaComissao.nome;
               }
-              // Sempre salvar empresa parceira quando informada na importação
+
+              // Empresa parceira
               if (body.empresa_parceira_id) {
                 updateData.empresa_parceira_id = body.empresa_parceira_id;
                 updateData.empresa_parceira_nome = empresaParceiraNome;
               }
-              // Sempre salvar convênio quando informado no arquivo
+
+              // Convênio
               if (conv?.id) {
                 updateData.emprestimo_convenio_id = conv.id;
                 updateData.emprestimo_convenio_nome = conv.nome;
               } else if (convenioVal) {
                 updateData.emprestimo_convenio_nome = convenioVal;
               }
-              // Se tiver data de recebimento de comissão no arquivo → marcar como recebida
+
+              // Banco
+              if (banco?.id) updateData.administradora_id = banco.id;
+              if (banco?.nome || bancoVal) updateData.administradora_nome = banco?.nome || bancoVal;
+
+              // Comissão empresa (data de recebimento)
               const dataRecebComissaoParsed = parseData(dataRecebComissaoVal);
               if (dataRecebComissaoParsed) {
                 updateData.data_comissao_recebida = dataRecebComissaoParsed;
                 updateData.comissao_banco_recebida = true;
                 if (comissaoVal) updateData.comissao_recebida = parseValor(comissaoVal);
               }
-              // Se tiver data de pagamento ao vendedor no arquivo → marcar comissão do vendedor como paga
+
+              // Comissão vendedor já paga
               const dataPagVendedorParsed = parseData(dataPagamentoVendedorVal);
               if (dataPagVendedorParsed) {
                 updateData.comissao_vendedor_paga = true;
@@ -749,15 +765,19 @@ Deno.serve(async (req) => {
                 if (comissaoVendedorVal) updateData.valor_comissao_vendedor_pago = parseValor(comissaoVendedorVal);
                 if (comissaoVendedorPercVal) updateData.percentual_comissao_vendedor = parseValor(comissaoVendedorPercVal);
               }
-              // Vendedor: só atualizar se a planilha trouxer um vendedor resolvido (vend != null)
-              // Se a proposta já tem vendedor no CRM e a planilha não tem → preservar o do CRM
+
+              // Telefone: só atualizar se vier preenchido no arquivo E a opção estiver marcada
+              if (atualizarTelefone && celularVal && cliente?.id) {
+                await base44.asServiceRole.entities.Cliente.update(cliente.id, { celular: celularVal });
+              }
+
+              // Vendedor: preservar o do CRM se a planilha não trouxer
               if (vend?.id) {
                 updateData.vendedor_id = vend.id;
                 updateData.vendedor_nome = vend.nome;
               }
-              // Se vend é null → não incluir vendedor no updateData → CRM preserva o que já tem
 
-              // Adicionar chave_unica se não tiver
+              // Chave única
               if (chaveUnica && !propostaExistente.chave_unica) {
                 updateData.chave_unica = chaveUnica;
               }
