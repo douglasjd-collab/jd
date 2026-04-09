@@ -951,7 +951,8 @@ export default function NovaVendaConsignado() {
                 <select
                   value={formData.empresa_parceira}
                   onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                  disabled={['vendedor', 'funcionario', 'colaborador'].includes(user?.perfil)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                   
                   <option value="">Selecione...</option>
                   {empresasParceiras.map((ep) =>
