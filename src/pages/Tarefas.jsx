@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -372,36 +373,60 @@ export default function Tarefas() {
       ) : null}
 
       {modoVisualizacao === 'kanban' && (
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {statusList.map(status => {
-          const colTarefas = tarefasFiltradas.filter(t => t.status === status.slug);
-          return (
-            <div key={status.slug} className="flex-shrink-0 w-80">
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderTop: `4px solid ${status.cor}` }}>
-                <div className="px-4 py-3 flex items-center justify-between border-b bg-slate-50">
-                  <h3 className="font-semibold text-slate-800 text-sm">{status.nome}</h3>
-                  <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium">{colTarefas.length}</span>
-                </div>
-                <div className="p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
-                  {colTarefas.map(tarefa => (
-                    <TarefaCard
-                      key={tarefa.id}
-                      tarefa={tarefa}
-                      statusList={statusList}
-                      onEdit={(t) => { setTarefaSelecionada(t); setFormOpen(true); }}
-                      onDelete={(t) => { if (confirm(`Excluir tarefa "${t.titulo}"?`)) excluirTarefa.mutate(t); }}
-                      onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
-                    />
-                  ))}
-                  {colTarefas.length === 0 && (
-                    <div className="text-center py-8 text-slate-300 text-xs">Nenhuma tarefa</div>
-                  )}
+      <DragDropContext onDragEnd={({ source, destination, draggableId }) => {
+        if (!destination || destination.droppableId === source.droppableId) return;
+        handleUpdate(draggableId, { status: destination.droppableId });
+      }}>
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {statusList.map(status => {
+            const colTarefas = tarefasFiltradas.filter(t => t.status === status.slug);
+            return (
+              <div key={status.slug} className="flex-shrink-0 w-80">
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderTop: `4px solid ${status.cor}` }}>
+                  <div className="px-4 py-3 flex items-center justify-between border-b bg-slate-50">
+                    <h3 className="font-semibold text-slate-800 text-sm">{status.nome}</h3>
+                    <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium">{colTarefas.length}</span>
+                  </div>
+                  <Droppable droppableId={status.slug}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                      >
+                        {colTarefas.map((tarefa, index) => (
+                          <Draggable key={tarefa.id} draggableId={tarefa.id} index={index}>
+                            {(prov, snap) => (
+                              <div
+                                ref={prov.innerRef}
+                                {...prov.draggableProps}
+                                {...prov.dragHandleProps}
+                                className={snap.isDragging ? 'opacity-80 rotate-1 shadow-xl' : ''}
+                              >
+                                <TarefaCard
+                                  tarefa={tarefa}
+                                  statusList={statusList}
+                                  onEdit={(t) => { setTarefaSelecionada(t); setFormOpen(true); }}
+                                  onDelete={(t) => { if (confirm(`Excluir tarefa "${t.titulo}"?`)) excluirTarefa.mutate(t); }}
+                                  onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {colTarefas.length === 0 && (
+                          <div className="text-center py-8 text-slate-300 text-xs">Nenhuma tarefa</div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      </DragDropContext>
       )}
 
       <TarefaFormModal
