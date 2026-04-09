@@ -248,7 +248,7 @@ export default function ImportacaoComissaoEmprestimo() {
       if (propostaEncontrada && !motivoDivergencia) {
         // Calcular valor monetário da comissão
         const pctComissao = parseFloat(item.percentual_comissao) || 0;
-        let valorRecebido = parseFloat(item.valor) || 0;
+        let valorRecebido = parseFloat(item.valor_comissao || item.valor) || 0;
         // Se o valor parece ser percentual (< 100) e temos valor_credito, calcula o valor monetário
         if (valorRecebido === 0 && pctComissao > 0 && propostaEncontrada.valor_credito) {
           valorRecebido = parseFloat(((propostaEncontrada.valor_credito * pctComissao) / 100).toFixed(2));
@@ -261,7 +261,6 @@ export default function ImportacaoComissaoEmprestimo() {
           motivoDivergencia = 'Recebimento duplicado';
           propostaEncontrada = null;
         } else {
-          const valorAPagar = valorRecebido;
           recebimentosParaCriar.push({
             empresa_id: propostaEncontrada.empresa_id,
             venda_id: propostaEncontrada.id,
@@ -278,13 +277,10 @@ export default function ImportacaoComissaoEmprestimo() {
             linha_importacao: items.indexOf(item) + 1,
             hash_duplicidade: hashDuplicidade,
             percentual_comissao: pctComissao,
-            valor_a_pagar: valorAPagar,
+            valor_a_pagar: valorRecebido,
             status_recebimento: 'recebida',
             status_pagamento: 'a_pagar',
             observacoes: [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ') || undefined,
-            _valor_bruto: item.valor_bruto || null,
-            _valor_liquido: item.valor_liquido || null,
-            _valor_parcela: item.valor_parcela || null,
           });
           processados++;
           valorTotal += valorRecebido;
@@ -321,26 +317,24 @@ export default function ImportacaoComissaoEmprestimo() {
       }));
       await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-      // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida + valores bruto/líquido/parcela
+      // Atualizar proposta: apenas comissao_banco_recebida + percentual + valor_comissao + data_recebimento
       const atualizacoesPorVenda = {};
-      for (let i = 0; i < recebimentosCriados.length; i++) {
-        const rec = recebimentosCriados[i];
-        const orig = recebimentosParaCriar[i];
-        if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_bruto: orig._valor_bruto, valor_liquido: orig._valor_liquido, valor_parcela: orig._valor_parcela };
+      for (const rec of recebimentosCriados) {
+        if (!atualizacoesPorVenda[rec.venda_id]) {
+          atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+        }
         atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
       }
       for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
         const p = await base44.entities.Proposta.get(vendaId);
         if (p) {
-          const updateProposta = {
+          await base44.entities.Proposta.update(vendaId, {
             comissao_banco_recebida: true,
             valor_comissao: info.valor,
             comissao_recebida: (p.comissao_recebida || 0) + info.valor,
-          };
-          if (info.valor_bruto) updateProposta.valor_credito = info.valor_bruto;
-          if (info.valor_liquido) updateProposta.valor_liquido = info.valor_liquido;
-          if (info.valor_parcela) updateProposta.emprestimo_valor_parcela = info.valor_parcela;
-          await base44.entities.Proposta.update(vendaId, updateProposta);
+            data_comissao_recebida: info.data,
+            percentual_comissao_vendedor: info.pct || p.percentual_comissao_vendedor,
+          });
         }
       }
     }
@@ -422,7 +416,8 @@ export default function ImportacaoComissaoEmprestimo() {
 
         if (propostaEncontrada && !motivoDivergencia) {
           const pctComissao = parseFloat(item.percentual_comissao) || 0;
-          let valorRecebido = parseFloat(item.valor) || 0;
+          // Usa valor_comissao ou valor (compatível com ambos os campos do layout)
+          let valorRecebido = parseFloat(item.valor_comissao || item.valor) || 0;
           if (valorRecebido === 0 && pctComissao > 0 && propostaEncontrada.valor_credito) {
             valorRecebido = parseFloat(((propostaEncontrada.valor_credito * pctComissao) / 100).toFixed(2));
           }
@@ -438,9 +433,6 @@ export default function ImportacaoComissaoEmprestimo() {
           } else {
             recebimentosParaCriar.push({
               _itemIdx: idx,
-              _valor_bruto: item.valor_bruto || null,
-              _valor_liquido: item.valor_liquido || null,
-              _valor_parcela: item.valor_parcela || null,
               empresa_id: propostaEncontrada.empresa_id,
               venda_id: propostaEncontrada.id,
               cliente_id: propostaEncontrada.cliente_id,
@@ -499,7 +491,7 @@ export default function ImportacaoComissaoEmprestimo() {
       }
 
       if (recebimentosParaCriar.length > 0) {
-        const recebimentosData = recebimentosParaCriar.map(({ _itemIdx, _valor_bruto, _valor_liquido, _valor_parcela, ...rest }) => rest);
+        const recebimentosData = recebimentosParaCriar.map(({ _itemIdx, ...rest }) => rest);
         const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosData);
 
         // Criar ComissaoAPagar para cada recebimento
@@ -522,26 +514,24 @@ export default function ImportacaoComissaoEmprestimo() {
         }));
         await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-        // Atualizar proposta: comissao_banco_recebida + valor_comissao + comissao_recebida + bruto/líquido/parcela
+        // Atualizar proposta: apenas comissao_banco_recebida + percentual + valor_comissao + data_recebimento
         const atualizacoesPorVenda = {};
-        for (let i = 0; i < recebimentosCriados.length; i++) {
-          const rec = recebimentosCriados[i];
-          const orig = recebimentosParaCriar[i];
-          if (!atualizacoesPorVenda[rec.venda_id]) atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_bruto: orig._valor_bruto, valor_liquido: orig._valor_liquido, valor_parcela: orig._valor_parcela };
+        for (const rec of recebimentosCriados) {
+          if (!atualizacoesPorVenda[rec.venda_id]) {
+            atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+          }
           atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
         }
         for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
           const p = await base44.entities.Proposta.get(vendaId);
           if (p) {
-            const updateProposta = {
+            await base44.entities.Proposta.update(vendaId, {
               comissao_banco_recebida: true,
               valor_comissao: info.valor,
               comissao_recebida: (p.comissao_recebida || 0) + info.valor,
-            };
-            if (info.valor_bruto) updateProposta.valor_credito = info.valor_bruto;
-            if (info.valor_liquido) updateProposta.valor_liquido = info.valor_liquido;
-            if (info.valor_parcela) updateProposta.emprestimo_valor_parcela = info.valor_parcela;
-            await base44.entities.Proposta.update(vendaId, updateProposta);
+              data_comissao_recebida: info.data,
+              percentual_comissao_vendedor: info.pct || p.percentual_comissao_vendedor,
+            });
           }
         }
       }
