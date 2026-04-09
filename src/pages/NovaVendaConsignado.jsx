@@ -224,7 +224,13 @@ export default function NovaVendaConsignado() {
       return;
     }
     // Contrato é obrigatório apenas quando o status não for "aguardando digitação"
-    if (formData.status !== 'aguardando_digitacao' && !formData.numero_contrato) {
+    const statusAtual = formData.status || '';
+    const isAguardandoDigitacao = statusAtual.toLowerCase().includes('aguardando') && statusAtual.toLowerCase().includes('digit');
+    const statusObj = statusPropostas.find(s => (s.codigo || s.slug) === statusAtual);
+    const nomeStatus = (statusObj?.nome || '').toLowerCase();
+    const isAguardandoDigitacaoPorNome = nomeStatus.includes('aguardando') && nomeStatus.includes('digit');
+
+    if (!isAguardandoDigitacao && !isAguardandoDigitacaoPorNome && !formData.numero_contrato) {
       toast.error('Número do Contrato é obrigatório para o status selecionado');
       return;
     }
@@ -1208,7 +1214,13 @@ export default function NovaVendaConsignado() {
                     <div>
                       <Label>
                         Número do Contrato
-                        {formData.status !== 'aguardando_digitacao' && <span className="text-red-500 ml-1">*</span>}
+                        {(() => {
+                          const s = formData.status || '';
+                          const obj = statusPropostas.find(x => (x.codigo || x.slug) === s);
+                          const nome = (obj?.nome || '').toLowerCase();
+                          const isAguDig = (s.toLowerCase().includes('aguardando') && s.toLowerCase().includes('digit')) || (nome.includes('aguardando') && nome.includes('digit'));
+                          return !isAguDig ? <span className="text-red-500 ml-1">*</span> : null;
+                        })()}
                       </Label>
                       <Input value={formData.numero_contrato} onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })} />
                     </div>
