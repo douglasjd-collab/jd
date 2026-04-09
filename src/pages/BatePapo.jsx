@@ -296,22 +296,7 @@ export default function BatePapo() {
   useEffect(() => {
     if (empresaId) {
       console.log(`🏢 EmpresaId definido: ${empresaId}`);
-      sincronizarTodosContatosEvolution();
       refetchConversas();
-      
-      // Sincronizar histórico de TODAS as conversas automaticamente
-      setTimeout(() => {
-        console.log(`📨 Sincronizando histórico de TODAS as conversas em background...`);
-        base44.functions.invoke('sincronizarHistoricoAgressivo', {
-          empresa_id: empresaId
-        }).then(() => {
-          console.log(`✅ Históricos sincronizados automaticamente`);
-          // Invalidar todas as queries de mensagens para recarregar
-          conversas.forEach(c => {
-            queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', c.id] });
-          });
-        }).catch(e => console.error('Erro ao sincronizar históricos:', e));
-      }, 2000);
     }
   }, [empresaId]);
 
@@ -377,6 +362,7 @@ export default function BatePapo() {
   const { data: conversas = [], refetch: refetchConversas } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
+    staleTime: 30000,
     queryFn: async () => {
       console.log(`📞 Buscando conversas para empresa: ${empresaId}`);
       const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId, limit: 10000 });
@@ -397,6 +383,7 @@ export default function BatePapo() {
       return filtradas;
     },
     refetchInterval: false,
+    placeholderData: (prev) => prev,
   });
 
   const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
@@ -451,17 +438,19 @@ export default function BatePapo() {
   }, [conversas]);
 
   // Real-time: atualizar lista de conversas quando chegar nova mensagem ou conversa criada
+  const refetchConversasRef = React.useRef(refetchConversas);
+  React.useEffect(() => { refetchConversasRef.current = refetchConversas; }, [refetchConversas]);
+
   useEffect(() => {
     if (!empresaId) return;
     const unsub = base44.entities.ConversaWhatsapp.subscribe((event) => {
       console.log(`🔔 ConversaWhatsapp ${event.type}:`, event.id);
       if (['create', 'update'].includes(event.type)) {
-        console.log(`📧 Refetching conversas...`);
-        refetchConversas().catch(e => console.error('Erro ao refetch:', e));
+        refetchConversasRef.current?.().catch(e => console.error('Erro ao refetch:', e));
       }
     });
     return unsub;
-  }, [empresaId, refetchConversas]);
+  }, [empresaId]);
 
   // Polling de mensagens — cada 2s para evitar rate limit
   useEffect(() => {
