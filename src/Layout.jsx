@@ -352,7 +352,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const userRole = user?.perfil || 'vendedor';
-  const isAdminRole = ['master', 'super_admin', 'admin', 'gerente', 'vendedor'].includes(userRole);
+  const isAdminRole = ['master', 'super_admin', 'admin'].includes(userRole);
 
   const filteredMenuItems = menuItems.filter(item => {
     // Filtrar por role primeiro
