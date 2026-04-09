@@ -100,32 +100,33 @@ Deno.serve(async (req) => {
     if (layout && Object.keys(layout).length > 0) {
       // Usar layout configurado — mapeamento letra -> índice (baseado em coluna Excel A=0)
       console.log('Usando layout configurado:', JSON.stringify(layout));
-      colNome              = colLetterToIndex(layout.nome_completo);
-      colCpf               = colLetterToIndex(layout.cpf);
-      colBanco             = colLetterToIndex(layout.banco);
-      colConvenio          = colLetterToIndex(layout.convenio);
-      colTipo              = colLetterToIndex(layout.tipo_consignado || layout.tipo_operacao);
-      colValor             = colLetterToIndex(layout.valor_liquido || layout.valor_liberado);
-      colValorBruto        = colLetterToIndex(layout.valor_bruto || layout.valor_operacao);
-      colParcela           = colLetterToIndex(layout.parcela || layout.valor_parcela);
-      colPrazo             = colLetterToIndex(layout.prazo_meses);
-      colAde               = colLetterToIndex(layout.numero_ade || layout.numero_proposta || layout.numero_contrato);
-      colBeneficio         = colLetterToIndex(layout.numero_beneficio);
-      colData              = colLetterToIndex(layout.data_digitacao || layout.data_proposta || layout.data_liberacao);
-      colVendedor          = colLetterToIndex(layout.usuario_digitador || layout.assessor);
-      colStatus            = colLetterToIndex(layout.status_contrato || layout.status);
-      colComissao          = colLetterToIndex(layout.comissao_empresa);
+      // Nomes dos campos são os mesmos que os keys em CAMPOS_PRODUCAO na config de layout
+      colNome               = colLetterToIndex(layout.nome_completo);
+      colCpf                = colLetterToIndex(layout.cpf);
+      colBanco              = colLetterToIndex(layout.banco);
+      colConvenio           = colLetterToIndex(layout.convenio);
+      colTipo               = colLetterToIndex(layout.tipo_consignado);
+      colValor              = colLetterToIndex(layout.valor_liberado);
+      colValorBruto         = colLetterToIndex(layout.valor_bruto);
+      colParcela            = colLetterToIndex(layout.valor_parcela);
+      colPrazo              = colLetterToIndex(layout.prazo_meses);
+      colAde                = colLetterToIndex(layout.numero_ade);
+      colBeneficio          = colLetterToIndex(layout.numero_beneficio);
+      colData               = colLetterToIndex(layout.data_digitacao);
+      colVendedor           = colLetterToIndex(layout.usuario_digitador);
+      colStatus             = colLetterToIndex(layout.status_contrato);
+      colComissao           = colLetterToIndex(layout.comissao_empresa);
       colComissaoPercentual = colLetterToIndex(layout.comissao_empresa_percentual);
-      colContrato          = colLetterToIndex(layout.numero_contrato);
-      colTabela            = colLetterToIndex(layout.tabela || layout.tabela_comissao);
-      colDataRecebComissao = colLetterToIndex(layout.data_recebimento_comissao);
-      colDataPagCliente    = colLetterToIndex(layout.data_pagamento_cliente || layout.data_liberacao);
-      colDataCadastroProp  = colLetterToIndex(layout.data_cadastro_proposta || layout.data_digitacao);
-      colCelular                  = colLetterToIndex(layout.celular);
-      colValorBaseComissao        = colLetterToIndex(layout.valor_base_comissao);
-      colComissaoVendedor         = colLetterToIndex(layout.comissao_vendedor);
+      colContrato           = colLetterToIndex(layout.numero_contrato);
+      colTabela             = colLetterToIndex(layout.tabela);
+      colDataRecebComissao  = colLetterToIndex(layout.data_recebimento_comissao);
+      colDataPagCliente     = colLetterToIndex(layout.data_liberacao);
+      colDataCadastroProp   = colLetterToIndex(layout.data_digitacao); // mesmo campo que data
+      colCelular                    = colLetterToIndex(layout.celular);
+      colValorBaseComissao          = colLetterToIndex(layout.valor_base_comissao);
+      colComissaoVendedor           = colLetterToIndex(layout.comissao_vendedor);
       colComissaoVendedorPercentual = colLetterToIndex(layout.comissao_vendedor_percentual);
-      colDataPagamentoVendedor    = colLetterToIndex(layout.data_pagamento_vendedor);
+      colDataPagamentoVendedor      = colLetterToIndex(layout.data_pagamento_vendedor);
     } else {
       // Detecção automática por cabeçalho
       for (let i = 0; i < Math.min(5, rows.length); i++) {
