@@ -303,13 +303,16 @@ export default function VendasEmprestimos() {
     if (sincronizandoApi) return;
     setSincronizandoApi(true);
     try {
-      // Busca todas as configurações ativas da empresa
-      const configs = await base44.entities.ConfiguracaoApiBanco.filter({
-        empresa_id: currentUser.empresa_id,
-        integracao_ativa: true,
-      });
+      // Busca todas as configurações da empresa (filtra ativas em JS)
+      const filtro = currentUser.empresa_id ? { empresa_id: currentUser.empresa_id } : {};
+      const todasConfigs = await base44.entities.ConfiguracaoApiBanco.filter(filtro);
+      const configs = (todasConfigs || []).filter(c => c.integracao_ativa === true || c.integracao_ativa === 'true');
       if (!configs || configs.length === 0) {
-        toast.error('Nenhuma integração de API ativa. Configure em Configuração API.');
+        if (todasConfigs && todasConfigs.length > 0) {
+          toast.error(`Você tem ${todasConfigs.length} integração(ões) cadastrada(s) mas nenhuma está ativa. Ative em Configuração API.`);
+        } else {
+          toast.error('Nenhuma integração de API cadastrada. Configure em Configuração API.');
+        }
         return;
       }
       let totalImportadas = 0;
@@ -324,10 +327,11 @@ export default function VendasEmprestimos() {
           totalImportadas += res.data.importadas || 0;
           totalAtualizadas += res.data.atualizadas || 0;
           totalClientesCriados += res.data.clientes_criados || 0;
+        } else if (res.data?.error) {
+          toast.error(res.data.error);
         }
       }
-      const msg = `Sincronização concluída: ${totalImportadas} propostas novas, ${totalAtualizadas} atualizadas${totalClientesCriados > 0 ? `, ${totalClientesCriados} clientes criados` : ''}`;
-      toast.success(msg);
+      toast.success(`Sincronização concluída: ${totalImportadas} novas, ${totalAtualizadas} atualizadas${totalClientesCriados > 0 ? `, ${totalClientesCriados} clientes` : ''}`);
       queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
     } catch (e) {
       toast.error('Erro na sincronização: ' + e.message);
@@ -335,6 +339,7 @@ export default function VendasEmprestimos() {
       setSincronizandoApi(false);
     }
   };
+
   const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
   const podeVerEmpresaParceira = ['master', 'super_admin', 'admin', 'gerente', 'colaborador'].includes(currentUser?.perfil);
 
