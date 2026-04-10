@@ -155,6 +155,7 @@ export default function VendasEmprestimos() {
   });
 
   const gerarSegundaViaComissao = async (p) => {
+    if (!propostas || propostas.length === 0) return;
     const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
     // Buscar todas as propostas do mesmo vendedor pagas na mesma data
