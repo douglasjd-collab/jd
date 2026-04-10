@@ -294,19 +294,20 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
 export default function Saques() {
   const [user, setUser] = useState(null);
   const [colab, setColab] = useState(null);
-  const [loteParaQuitar, setLoteParaQuitar] = useState(null);
-  const [loteParaReprogramar, setLoteParaReprogramar] = useState(null);
-  const [quitando, setQuitando] = useState(false);
-  const [reprogramando, setReprogramando] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
 
   const loadUser = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
-    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' }, '-created_date', 1);
-    if (colabs?.length > 0) setColab(colabs[0]);
+    try {
+      const me = await base44.auth.me();
+      setUser(me);
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date', 5);
+      if (colabs?.length > 0) setColab(colabs[0]);
+    } finally {
+      setLoadingUser(false);
+    }
   };
 
   const isMaster = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
@@ -475,10 +476,18 @@ export default function Saques() {
     ? ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Vendedor', 'Status', 'Ações']
     : ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Status', 'Ações'];
 
-  if (!user || !empresaId) {
+  if (loadingUser) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (!user || !empresaId) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-slate-500 text-sm">Não foi possível identificar sua empresa. Verifique seu cadastro de colaborador.</p>
       </div>
     );
   }
