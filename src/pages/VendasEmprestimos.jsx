@@ -409,22 +409,9 @@ export default function VendasEmprestimos() {
 
   // Vendedores únicos para o filtro
   const vendedoresUnicos = useMemo(() => {
+    if (!filteredByRole || filteredByRole.length === 0) return [];
     const nomes = [...new Set(filteredByRole.map(p => p.vendedor_nome).filter(Boolean))].sort();
     return nomes;
-  }, [filteredByRole]);
-
-  // Responsáveis únicos para o filtro
-  const responsaveisUnicos = useMemo(() => {
-    const map = {};
-    filteredByRole.forEach(p => {
-      let responsaveis = [];
-      try { responsaveis = p.responsaveis_json ? JSON.parse(p.responsaveis_json) : []; } catch {}
-      if (responsaveis.length === 0 && p.responsavel_id) {
-        responsaveis = [{ id: p.responsavel_id, nome: p.responsavel_nome, foto: p.responsavel_foto }];
-      }
-      responsaveis.forEach(r => { if (r.id && r.nome) map[r.id] = r; });
-    });
-    return Object.values(map).sort((a, b) => a.nome.localeCompare(b.nome));
   }, [filteredByRole]);
 
   // Counts per tipo for filter pills
