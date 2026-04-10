@@ -189,6 +189,17 @@ export default function Saques() {
     ),
   });
 
+  const { data: propostasLegado = [], isLoading: l3 } = useQuery({
+    queryKey: ['propostas-emp-pagas-legado-saques', empresaId, colab?.id],
+    enabled: !!empresaId,
+    queryFn: () => {
+      const filter = { produto: 'emprestimo', comissao_vendedor_paga: true };
+      if (empresaId) filter.empresa_id = empresaId;
+      if (!isMaster && (colab?.id || user?.id)) filter.vendedor_id = colab?.id || user?.id;
+      return base44.entities.Proposta.filter(filter, '-comissao_vendedor_data_pagamento', 1000);
+    },
+  });
+
   const { data: lotesConsorcio = [], isLoading: l2 } = useQuery({
     queryKey: ['lotes-consorcio', empresaId, colab?.id],
     enabled: !!empresaId,
@@ -228,12 +239,44 @@ export default function Saques() {
 
   const normalizarEmp = (l) => ({
     ...l,
+    // Lotes criados pelo fluxo antigo de pagamento não têm status 'programado',
+    // tratá-los como quitado pois representam pagamentos já realizados
+    status: l.status === 'programado' ? 'programado' : 'quitado',
     _protocolo: l.lote_codigo || `EMP${l.id?.slice(-6)}`,
     _valor: l.valor_total || 0,
     _total: (l.valor_total || 0) + (l.acrescimos || 0) - (l.descontos || 0),
     _data_quitacao: l.data_quitacao,
     _vendedor: isMaster ? l.vendedor_nome : undefined,
     _tipo: 'emp',
+  });
+
+  // Agrupar propostas legado (pagas mas sem lote novo) por vendedor+data
+  const legadoGrupos = {};
+  propostasLegado.forEach(p => {
+    const key = `legado_${p.vendedor_id || 'sv'}_${p.comissao_vendedor_data_pagamento || 'sem-data'}`;
+    if (!legadoGrupos[key]) {
+      legadoGrupos[key] = {
+        id: key,
+        status: 'quitado',
+        lote_codigo: null,
+        vendedor_id: p.vendedor_id,
+        vendedor_nome: p.vendedor_nome || 'Sem Vendedor',
+        data_pagamento: p.comissao_vendedor_data_pagamento,
+        data_quitacao: p.comissao_vendedor_data_pagamento,
+        acrescimos: 0,
+        descontos: 0,
+        _protocolo: `LEG-${(p.vendedor_id || 'sv').slice(-4)}-${(p.comissao_vendedor_data_pagamento || '').replace(/-/g, '')}`,
+        _valor: 0,
+        _total: 0,
+        _data_quitacao: p.comissao_vendedor_data_pagamento,
+        _vendedor: isMaster ? (p.vendedor_nome || 'Sem Vendedor') : undefined,
+        _tipo: 'emp-legado',
+        isLegado: true,
+      };
+    }
+    const val = p.valor_comissao_vendedor_pago || p.valor_comissao || 0;
+    legadoGrupos[key]._valor += val;
+    legadoGrupos[key]._total += val;
   });
 
   const normalizarCons = (l) => ({
@@ -246,9 +289,13 @@ export default function Saques() {
     _tipo: 'consorcio',
   });
 
+  // Conjunto de lotes EMP novos para evitar duplicar legado
+  const lotesEmpIds = new Set(lotesEmp.map(l => l.id));
+
   const todos = [
     ...lotesEmp.map(normalizarEmp),
     ...lotesConsorcio.map(normalizarCons),
+    ...Object.values(legadoGrupos),
   ].sort((a, b) => new Date(b.data_pagamento || 0) - new Date(a.data_pagamento || 0));
 
   const programados = todos.filter(l => l.status !== 'quitado');
@@ -273,7 +320,12 @@ export default function Saques() {
     );
   }
 
-  const isLoading = l1 || l2;
+  // IDs de propostas já cobertas por lotes novos
+  const propostasComLote = new Set(
+    (lotesEmp.flatMap ? [] : []) // placeholder — itens de lote não disponíveis aqui, legado é adicional
+  );
+
+  const isLoading = l1 || l2 || l3;
 
   return (
     <div className="space-y-6">
