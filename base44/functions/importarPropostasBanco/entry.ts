@@ -97,122 +97,49 @@ Deno.serve(async (req) => {
       if (finantoToken) {
         authHeaders['Authorization'] = `Bearer ${finantoToken}`;
         console.log('[Finanto] Usando FINANTOBANK_ACCESS_TOKEN');
-      } else {
+      } else if (config.username && config.password) {
+        // Priorizar autenticação via usuário/senha para FinantoBank
         try {
-          const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key, config.login_url);
-          authHeaders = { ...authHeaders, ...extraHeaders };
-        } catch (authErr) {
-          console.log(`[Finanto] Erro na autenticação: ${authErr.message}`);
-        }
-      }
-    } else {
-      try {
-        const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key, config.login_url);
-        authHeaders = { ...authHeaders, ...extraHeaders };
-      } catch (authErr) {
-        console.log(`[API] Erro na autenticação: ${authErr.message}`);
-      }
-    }
-
-    const mapeamentos = await base44.asServiceRole.entities.MapeamentoStatusBanco.filter({ configuracao_api_id: config.id });
-    const mapearStatus = (statusExterno) => {
-      if (!statusExterno) return statusExterno;
-      const mapa = mapeamentos.find(m => m.status_externo.toUpperCase() === String(statusExterno).toUpperCase());
-      return mapa ? mapa.status_interno : statusExterno;
-    };
-
-    const [propostasExistentes, clientesExistentes] = await Promise.all([
-      base44.asServiceRole.entities.Proposta.filter({ empresa_id, produto: 'emprestimo' }),
-      base44.asServiceRole.entities.Cliente.filter({ empresa_id }),
-    ]);
-
-    const codigosExistentes = new Set(propostasExistentes.map(p => p.codigo_proposta_banco).filter(Boolean));
-
-    const clientesPorCpf = {};
-    for (const c of clientesExistentes) {
-      const cpf = (c.cpf || c.pj_cnpj || '').replace(/\D/g, '');
-      if (cpf) clientesPorCpf[cpf] = c;
-    }
-
-    const obterOuCriarCliente = async (clienteNome, clienteCpfRaw, celular, dataNasc) => {
-      const cpfLimpo = (clienteCpfRaw || '').replace(/\D/g, '');
-      if (!cpfLimpo && !clienteNome) return null;
-      if (cpfLimpo && clientesPorCpf[cpfLimpo]) return { cliente: clientesPorCpf[cpfLimpo], criou: false };
-
-      const novoCliente = await base44.asServiceRole.entities.Cliente.create({
-        empresa_id,
-        tipo_pessoa: 'Física',
-        nome_completo: clienteNome || 'Cliente Importado',
-        cpf: clienteCpfRaw || '',
-        celular: celular || '',
-        data_nascimento: dataNasc || '',
-        status: 'ativo',
-      });
-
-      if (cpfLimpo) clientesPorCpf[cpfLimpo] = novoCliente;
-      return { cliente: novoCliente, criou: true };
-    };
-
-    let importadas = 0;
-    let atualizadas = 0;
-    let clientesCriados = 0;
-    let erros = 0;
-    let propostasApi = [];
-    let ultimoStatusHttp = null;
-    let ultimoResponseData = null;
-    let endpointUsado = null;
-
-    const propostasUrls = config.propostas_url
-      ? [config.propostas_url]
-      : isAjin
-        ? [`${baseUrl}/v3/loan-products/search/basic`]
-        : isFinanto
-          ? [`${baseUrl}/loans`, `${baseUrl}/propostas`, `${baseUrl}/proposals`]
-          : [
-              `${baseUrl}/propostas`, `${baseUrl}/proposals`,
-              `${baseUrl}/contratos`, `${baseUrl}/emprestimos`, `${baseUrl}/loans`,
-            ];
-
-    for (const url of propostasUrls) {
-      try {
-        console.log(`[API] Tentando endpoint: ${url}`);
-
-        const fetchOptions = isAjin
-          ? { method: 'POST', headers: authHeaders, body: JSON.stringify({ offset: 0, limit: 500 }) }
-          : { method: 'GET', headers: authHeaders };
-
-        const res = await fetch(url, fetchOptions);
-        ultimoStatusHttp = res.status;
-        console.log(`[API] Status ${res.status} para ${url}`);
-
-        if (res.ok) {
-          const data = await res.json();
-          ultimoResponseData = data;
-
-          if (Array.isArray(data)) {
-            propostasApi = data;
-          } else if (data.data && Array.isArray(data.data)) {
-            propostasApi = data.data;
-          } else if (data.items && Array.isArray(data.items)) {
-            propostasApi = data.items;
-          } else if (data.content && Array.isArray(data.content)) {
-            propostasApi = data.content;
-          } else if (data.result && Array.isArray(data.result)) {
-            propostasApi = data.result;
-          } else if (data.propostas && Array.isArray(data.propostas)) {
-            propostasApi = data.propostas;
-          } else if (data.loans && Array.isArray(data.loans)) {
-            propostasApi = data.loans;
+          console.log('[Finanto] Tentando autenticação com Usuário e Senha');
+          const loginUrls = config.login_url
+            ? [config.login_url]
+            : [
+                `${baseUrl}/sign-in`,
+                `${baseUrl}/login`,
+                `${baseUrl}/api/login`,
+                `${baseUrl}/auth/login`,
+              ];
+          
+          for (const loginUrl of loginUrls) {
+            try {
+              console.log(`[Finanto] POST ${loginUrl}`);
+              const loginRes = await fetch(loginUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: config.username, password: config.password }),
+              });
+              console.log(`[Finanto] ${loginUrl} HTTP ${loginRes.status}`);
+              
+              if (loginRes.ok) {
+                const loginData = await loginRes.json();
+                const token = loginData.token || loginData.access_token || loginData.accessToken || loginData.jwt || loginData.data?.token;
+                if (token) {
+                  authHeaders['Authorization'] = `Bearer ${token}`;
+                  console.log(`[Finanto] Token obtido: ${token.slice(0, 20)}...`);
+                  break;
+                }
+              }
+            } catch (e) {
+              console.log(`[Finanto] Erro em ${loginUrl}: ${e.message}`);
+            }
           }
-
-          endpointUsado = url;
-          console.log(`[API] ${propostasApi.length} registros em ${url}`);
-          if (propostasApi.length > 0) break;
+          if (!authHeaders['Authorization']) {
+            console.log('[Finanto] Nenhum token obtido. Tentando acesso sem autenticação.');
+          }
+        } catch (authErr) {
+          console.log(`[Finanto] Erro geral na autenticação: ${authErr.message}`);
         }
-      } catch (endpointErr) {
-        console.log(`[API] Erro no endpoint: ${endpointErr.message}`);
-      }
-    }
+
 
     await base44.asServiceRole.entities.LogIntegracaoBanco.create({
       empresa_id,
