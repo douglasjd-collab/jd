@@ -150,31 +150,35 @@ Deno.serve(async (req) => {
               continue;
             }
             ultimoResponseData = data;
+            console.log(`[Finanto] Response JSON (primeiros 500 chars):`, JSON.stringify(data).substring(0, 500));
             
             // Extrair propostas
             if (Array.isArray(data)) {
               propostasApi = data;
+              console.log(`[Finanto] Encontrado como Array direto`);
             } else if (data.data && Array.isArray(data.data)) {
               propostasApi = data.data;
+              console.log(`[Finanto] Encontrado em data.data`);
             } else if (data.propostas && Array.isArray(data.propostas)) {
               propostasApi = data.propostas;
+              console.log(`[Finanto] Encontrado em data.propostas`);
             } else if (data.loans && Array.isArray(data.loans)) {
               propostasApi = data.loans;
+              console.log(`[Finanto] Encontrado em data.loans`);
             } else if (data.items && Array.isArray(data.items)) {
               propostasApi = data.items;
+              console.log(`[Finanto] Encontrado em data.items`);
             } else if (data.records && Array.isArray(data.records)) {
               propostasApi = data.records;
+              console.log(`[Finanto] Encontrado em data.records`);
             } else if (data.result && Array.isArray(data.result)) {
               propostasApi = data.result;
+              console.log(`[Finanto] Encontrado em data.result`);
             } else {
               const chaves = Object.keys(data || {}).slice(0, 10);
-              console.log(`[Finanto] Nenhuma chave array. Disponíveis: ${chaves.join(', ')}`);
+              console.log(`[Finanto] ESTRUTURA NÃO RECONHECIDA. Chaves disponíveis: ${chaves.join(', ')}`);
               propostasApi = [];
             }
-            
-            endpointUsado = url;
-            console.log(`[Finanto] ${propostasApi.length} propostas encontradas`);
-            if (propostasApi.length > 0) break;
           }
         } catch (e) {
           console.log(`[Finanto] Erro fetch: ${e.message}`);
