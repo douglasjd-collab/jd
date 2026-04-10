@@ -32,10 +32,21 @@ Deno.serve(async (req) => {
     );
 
     // Criar mapa de telefone -> contato para lookup O(1)
+    // Indexar por múltiplas variações para maximizar match
     const contatoMap = {};
+    const variantes = (tel) => {
+      if (!tel) return [];
+      const t = tel.replace(/\D/g, '');
+      const vs = [t];
+      if (t.startsWith('55') && t.length === 13) vs.push(t.slice(0, 4) + t.slice(5)); // sem 9
+      if (t.startsWith('55') && t.length === 12) vs.push(t.slice(0, 4) + '9' + t.slice(4)); // com 9
+      return vs;
+    };
     for (const c of contatos) {
       if (c.telefone) {
-        contatoMap[c.telefone] = c;
+        for (const v of variantes(c.telefone)) {
+          if (!contatoMap[v]) contatoMap[v] = c;
+        }
       }
     }
 
@@ -88,13 +99,11 @@ Deno.serve(async (req) => {
     // PASSO 2: Montar resultado final
     // ═══════════════════════════════════════════════════════════
     const resultado = Object.values(conversasPorTelNorm).map(conversa => {
-      const tel = conversa.cliente_telefone || '';
-      let contato = contatoMap[tel] || null;
-      if (!contato && tel.startsWith('55')) {
-        const variacao = tel.length === 13
-          ? tel.slice(0, 4) + tel.slice(5)
-          : tel.slice(0, 4) + '9' + tel.slice(4);
-        contato = contatoMap[variacao] || null;
+      const tel = (conversa.cliente_telefone || '').replace(/\D/g, '');
+      // Buscar contato por todas as variantes do número
+      let contato = null;
+      for (const v of variantes(tel)) {
+        if (contatoMap[v]) { contato = contatoMap[v]; break; }
       }
 
       return {
