@@ -1,0 +1,116 @@
+{
+  "name": "PagamentoComissaoLote",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "lote_code": {
+      "type": "string",
+      "description": "C\u00f3digo do lote (EMPAY0001, EMPAY0002...)"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do pagamento"
+    },
+    "data_quitacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de quita\u00e7\u00e3o efetiva"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "description": "Forma de pagamento (PIX, Dinheiro, Transfer\u00eancia)"
+    },
+    "total_itens": {
+      "type": "number",
+      "description": "Quantidade de comiss\u00f5es pagas"
+    },
+    "total_pago": {
+      "type": "number",
+      "description": "Valor total pago"
+    },
+    "acrescimos": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor de acr\u00e9scimos"
+    },
+    "descontos": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor de descontos/adiantamentos"
+    },
+    "observacao": {
+      "type": "string",
+      "description": "Observa\u00e7\u00e3o sobre o pagamento"
+    },
+    "gerado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que gerou"
+    },
+    "gerado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que gerou"
+    },
+    "comissoes_ids": {
+      "type": "string",
+      "description": "Array JSON com IDs das comiss\u00f5es pagas"
+    },
+    "relatorio_html": {
+      "type": "string",
+      "description": "HTML do relat\u00f3rio gerado"
+    },
+    "email_enviado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o e-mail foi enviado com sucesso"
+    },
+    "email_vendedor": {
+      "type": "string",
+      "description": "E-mail do vendedor para onde foi enviado"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "programado",
+        "quitado"
+      ],
+      "default": "programado",
+      "description": "Status do lote: programado (pendente) ou quitado (pago)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "lote_code",
+    "vendedor_id",
+    "data_pagamento",
+    "forma_pagamento",
+    "total_itens",
+    "total_pago",
+    "gerado_por_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
