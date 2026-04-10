@@ -15,6 +15,40 @@ import { ptBR } from 'date-fns/locale';
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const fmtDate = (d) => d ? format(new Date(d + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-';
 
+function ModalReprogramar({ lote, onClose, onConfirm, loading }) {
+  if (!lote) return null;
+  return (
+    <Dialog open={!!lote} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Reprogramar Comissão</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <p className="text-sm text-slate-600">Protocolo: <span className="font-semibold">{lote._protocolo}</span></p>
+            <p className="text-sm text-slate-600">Vendedor: <span className="font-semibold">{lote.vendedor_nome || '-'}</span></p>
+            <p className="text-sm text-slate-600">Valor: <span className="font-semibold">{fmt(lote._total)}</span></p>
+          </div>
+          <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-md p-3">
+            ⚠️ Esta ação irá reverter o status para <strong>Programado</strong>, removendo a data de quitação e o comprovante.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+            <Button
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+              onClick={onConfirm}
+              disabled={loading}
+            >
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirmar Reprogramação
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ModalQuitar({ lote, onClose, onConfirm, loading }) {
   const [dataQuitacao, setDataQuitacao] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [comprovante, setComprovante] = useState(null);
@@ -90,7 +124,7 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar }) {
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar }) {
   const total = lotes.reduce((acc, l) => ({
     valor: acc.valor + (l._valor || 0),
     acrescimos: acc.acrescimos + (l.acrescimos || 0),
@@ -137,7 +171,7 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar }) {
                         className={l.status === 'quitado'
                           ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
                           : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
-                        onClick={l.status !== 'quitado' ? () => onQuitar(l) : undefined}
+                        onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
                       >
                         {l.status === 'quitado' ? 'Quitado' : 'Programado'}
                       </Badge>
@@ -165,7 +199,9 @@ export default function Saques() {
   const [user, setUser] = useState(null);
   const [colab, setColab] = useState(null);
   const [loteParaQuitar, setLoteParaQuitar] = useState(null);
+  const [loteParaReprogramar, setLoteParaReprogramar] = useState(null);
   const [quitando, setQuitando] = useState(false);
+  const [reprogramando, setReprogramando] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -235,6 +271,34 @@ export default function Saques() {
     if (!loteParaQuitar) return;
     setQuitando(true);
     quitarMutation.mutate({ id: loteParaQuitar.id, tipo: loteParaQuitar._tipo, dataQuitacao, comprovante_url });
+  };
+
+  const reprogramarMutation = useMutation({
+    mutationFn: async ({ id, tipo }) => {
+      const payload = { status: 'programado', data_quitacao: null, comprovante_url: null };
+      if (tipo === 'emp') {
+        await base44.entities.LotePagamentoComissaoEmprestimo.update(id, payload);
+      } else {
+        await base44.entities.PagamentoComissaoLote.update(id, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
+      queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
+      toast.success('Comissão reprogramada com sucesso!');
+      setLoteParaReprogramar(null);
+      setReprogramando(false);
+    },
+    onError: () => {
+      toast.error('Erro ao reprogramar comissão');
+      setReprogramando(false);
+    },
+  });
+
+  const handleConfirmarReprogramacao = () => {
+    if (!loteParaReprogramar) return;
+    setReprogramando(true);
+    reprogramarMutation.mutate({ id: loteParaReprogramar.id, tipo: loteParaReprogramar._tipo });
   };
 
   const normalizarEmp = (l) => ({
@@ -398,6 +462,7 @@ export default function Saques() {
             emptyMsg="Nenhuma comissão quitada"
             cor="bg-slate-700"
             onQuitar={() => {}}
+            onReprogramar={isMaster ? setLoteParaReprogramar : undefined}
           />
         </div>
       )}
@@ -407,6 +472,12 @@ export default function Saques() {
         onClose={() => setLoteParaQuitar(null)}
         onConfirm={handleConfirmarQuitacao}
         loading={quitando}
+      />
+      <ModalReprogramar
+        lote={loteParaReprogramar}
+        onClose={() => setLoteParaReprogramar(null)}
+        onConfirm={handleConfirmarReprogramacao}
+        loading={reprogramando}
       />
     </div>
   );
