@@ -90,6 +90,7 @@ export default function ConfiguracaoApi() {
       queryClient.invalidateQueries({ queryKey: ['configuracoes-api'] });
       setModalOpen(false);
       setEditando(null);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['logs-integracao'] }), 300);
       toast.success('Configuração salva!');
     },
   });
