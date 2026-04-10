@@ -78,6 +78,12 @@ Deno.serve(async (req) => {
           }));
       }
 
+      // Buscar adiantamentos descontados neste lote
+      let adiantamentosDesc = [];
+      try {
+        adiantamentosDesc = await base44.asServiceRole.entities.Adiantamento.filter({ lote_pagamento_id: lote_id });
+      } catch (_) { adiantamentosDesc = []; }
+
       const subtotal = loteItens.reduce((acc, item) => acc + (item.valor_vendedor_pago || 0), 0);
       const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
       const totalLiquido = lote.valor_total ?? Math.max(0, subtotal - totalAdiantamentos);
