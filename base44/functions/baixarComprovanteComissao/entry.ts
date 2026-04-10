@@ -2,13 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import { jsPDF } from 'npm:jspdf@2.5.2';
 import 'npm:jspdf-autotable@3.8.4';
 
-function removerAcentos(str) {
-  if (!str) return '';
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
 function fmt(v) {
-  return 'R$ ' + (v || 0).toFixed(2).replace('.', ',');
+  return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function fmtDate(d) {
@@ -16,6 +11,19 @@ function fmtDate(d) {
   const dateStr = String(d).length <= 10 ? d + 'T12:00:00' : d;
   return new Date(dateStr).toLocaleDateString('pt-BR');
 }
+
+function fmtDateTime(d) {
+  return new Date(d).toLocaleString('pt-BR');
+}
+
+const TIPO_LABELS = {
+  'NOVO': 'Novo', 'novo': 'Novo',
+  'REFINANCIAMENTO': 'Refin', 'refinanciamento': 'Refin',
+  'PORTABILIDADE': 'Portabilidade', 'portabilidade': 'Portabilidade',
+  'CARTAO_CONSIGNADO': 'Cartão', 'cartao_consignado': 'Cartão',
+  'REFIN_PORTABILIDADE': 'Refin/Port', 'refin_portabilidade': 'Refin/Port',
+};
+const getTipoLabel = (tipo) => TIPO_LABELS[tipo] || tipo || '-';
 
 Deno.serve(async (req) => {
   try {
@@ -26,122 +34,139 @@ Deno.serve(async (req) => {
     const { lote_id, tipo } = await req.json();
     if (!lote_id || !tipo) return Response.json({ error: 'lote_id e tipo sao obrigatorios' }, { status: 400 });
 
-    // ─── CONSÓRCIO: retorna o relatorio_html armazenado ───────────────────────
+    // ─── CONSÓRCIO: retorna o relatorio_html armazenado ────────────────────────
     if (tipo === 'consorcio') {
-      const lote = await base44.asServiceRole.entities.PagamentoComissaoLote.filter({ id: lote_id });
-      const l = lote?.[0];
+      const lotes = await base44.asServiceRole.entities.PagamentoComissaoLote.filter({ id: lote_id });
+      const l = lotes?.[0];
       if (!l) return Response.json({ error: 'Lote nao encontrado' }, { status: 404 });
-
-      if (l.relatorio_html) {
-        return Response.json({ relatorio_html: l.relatorio_html });
-      }
+      if (l.relatorio_html) return Response.json({ relatorio_html: l.relatorio_html });
       return Response.json({ error: 'Relatorio nao disponivel para este lote' }, { status: 404 });
     }
 
-    // ─── EMPRÉSTIMOS: busca o lote e propostas associadas, gera PDF detalhado ─
+    // ─── EMPRÉSTIMOS: busca lote + snapshots ComissaoEmprestimoPaga ────────────
     if (tipo === 'emp') {
       const lotes = await base44.asServiceRole.entities.LotePagamentoComissaoEmprestimo.filter({ id: lote_id });
       const lote = lotes?.[0];
       if (!lote) return Response.json({ error: 'Lote nao encontrado' }, { status: 404 });
 
-      // Buscar propostas pagas neste lote (vendedor + data_pagamento)
-      const todasPropostas = await base44.asServiceRole.entities.Proposta.filter({
-        empresa_id: lote.empresa_id,
-        vendedor_id: lote.vendedor_id,
-        comissao_vendedor_paga: true,
-        comissao_vendedor_data_pagamento: lote.data_pagamento,
-      }, '-data_venda', 500);
+      // Buscar snapshots dos itens do lote
+      const loteItens = await base44.asServiceRole.entities.ComissaoEmprestimoPaga.filter(
+        { lote_pagamento_id: lote_id }, '-created_date', 500
+      );
 
-      const propostas = todasPropostas.filter(p => p.produto === 'emprestimo' || p.emprestimo_tipo);
+      // Buscar adiantamentos descontados neste lote
+      let adiantamentosDesc = [];
+      try {
+        adiantamentosDesc = await base44.asServiceRole.entities.Adiantamento.filter({ lote_pagamento_id: lote_id });
+      } catch {}
 
-      // Gerar PDF comprovante detalhado
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const subtotal = loteItens.reduce((acc, item) => acc + (item.valor_vendedor_pago || 0), 0);
+      const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
+      const totalLiquido = lote.valor_total ?? Math.max(0, subtotal - totalAdiantamentos);
 
-      // Cabeçalho
+      // Gerar PDF idêntico ao ComissoesPagasEmprestimos.jsx
+      const doc = new jsPDF({ orientation: 'landscape' });
+
       doc.setFillColor(16, 53, 60);
       doc.rect(0, 0, 297, 22, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
       doc.text('COMPROVANTE DE PAGAMENTO DE COMISSAO - EMPRESTIMOS', 148, 10, { align: 'center' });
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Lote: ${lote.lote_codigo || lote_id} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 148, 17, { align: 'center' });
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+      doc.text(`Lote: ${lote.lote_codigo || lote_id}  |  Gerado em: ${fmtDateTime(new Date())}`, 148, 17, { align: 'center' });
 
-      // Dados do vendedor
-      doc.setTextColor(0);
-      doc.setFillColor(245, 247, 250);
-      doc.rect(10, 26, 277, 18, 'F');
-      doc.setFontSize(9);
+      // Marca 2ª VIA
+      doc.setFontSize(8); doc.setTextColor(180, 0, 0);
       doc.setFont('helvetica', 'bold');
-      doc.text('Vendedor:', 14, 32);
-      doc.text('Data Pagamento:', 90, 32);
-      doc.text('Forma Pagamento:', 170, 32);
-      doc.text('Qtd. Itens:', 240, 32);
+      doc.text('2a VIA', 280, 10, { align: 'right' });
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFillColor(245, 247, 250);
+      doc.roundedRect(10, 26, 277, 22, 2, 2, 'F');
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
+      doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text(removerAcentos(lote.vendedor_nome || '-'), 14, 39);
+      doc.text(lote.vendedor_nome || '-', 14, 39);
       doc.text(fmtDate(lote.data_pagamento), 90, 39);
-      doc.text(removerAcentos(lote.forma_pagamento || '-'), 170, 39);
-      doc.text(String(propostas.length), 240, 39);
-
-      // Tabela de propostas
-      const rows = propostas.map(p => [
-        removerAcentos(p.cliente_nome || '-'),
-        p.contrato || '-',
-        removerAcentos(p.emprestimo_tipo || 'Novo'),
-        removerAcentos(p.administradora_nome || p.empresa_parceira_nome || '-'),
-        fmtDate(p.emprestimo_data_liberacao),
-        fmt(p.valor_credito),
-        fmt(p.valor_liquido),
-        p.emprestimo_valor_parcela ? fmt(p.emprestimo_valor_parcela) : '-',
-        (p.percentual_comissao_vendedor || 0).toFixed(2) + '%',
-        fmt(p.valor_comissao_vendedor_pago || p.valor_comissao),
-      ]);
-
-      const subtotal = propostas.reduce((a, p) => a + (p.valor_comissao_vendedor_pago || p.valor_comissao || 0), 0);
+      doc.text(lote.forma_pagamento || '-', 160, 39);
+      doc.text(String(loteItens.length || lote.quantidade_propostas || 0), 230, 39);
 
       doc.autoTable({
-        startY: 48,
+        startY: 54,
         head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Liquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
-        body: rows,
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [16, 53, 60], textColor: [255, 255, 255], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 247, 250] },
-        columnStyles: {
-          9: { textColor: [0, 0, 200], fontStyle: 'bold', halign: 'right' },
-          5: { halign: 'right' },
-          6: { halign: 'right' },
-          7: { halign: 'right' },
-        },
-        margin: { left: 10, right: 10 },
+        body: loteItens.map(item => [
+          item.cliente_nome || '-',
+          item.contrato || '-',
+          getTipoLabel(item.emprestimo_tipo),
+          item.banco || '-',
+          fmtDate(item.data_liberacao),
+          fmt(item.valor_credito),
+          item.valor_liquido ? fmt(item.valor_liquido) : '-',
+          item.valor_parcela ? fmt(item.valor_parcela) : '-',
+          `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
+          fmt(item.valor_vendedor_pago),
+        ]),
+        foot: [['', '', '', '', '', '', '', '', 'Subtotal Comissoes:', fmt(subtotal)]],
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right', textColor: [0, 80, 180] } },
       });
 
-      const finalY = doc.lastAutoTable.finalY || 48;
+      let cursorY = doc.lastAutoTable.finalY + 6;
 
-      // Subtotal
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Subtotal Comissoes:', 200, finalY + 8);
-      doc.setTextColor(0, 0, 200);
-      doc.text(fmt(subtotal), 280, finalY + 8, { align: 'right' });
+      // Adiantamentos descontados
+      if (adiantamentosDesc.length > 0) {
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        doc.setTextColor(180, 80, 0);
+        doc.text('Adiantamentos Descontados:', 14, cursorY + 5);
+        cursorY += 3;
 
-      // Total final
+        doc.autoTable({
+          startY: cursorY + 4,
+          head: [['Descricao / Motivo', 'Data Adiantamento', 'Valor Descontado']],
+          body: adiantamentosDesc.map(a => [
+            a.motivo || 'Adiantamento de Salario',
+            fmtDate(a.data_desconto || a.data),
+            fmt(a.valor),
+          ]),
+          foot: [['', 'Total Adiantamentos:', fmt(totalAdiantamentos)]],
+          styles: { fontSize: 7, cellPadding: 2 },
+          headStyles: { fillColor: [180, 90, 0], textColor: 255, fontStyle: 'bold' },
+          footStyles: { fillColor: [255, 240, 220], fontStyle: 'bold', textColor: [150, 60, 0] },
+          columnStyles: { 2: { halign: 'right' } },
+          margin: { left: 14, right: 14 },
+        });
+
+        cursorY = doc.lastAutoTable.finalY + 4;
+      }
+
+      // Resumo final
+      const boxH = adiantamentosDesc.length > 0 ? 22 : 12;
       doc.setFillColor(16, 53, 60);
-      doc.rect(10, finalY + 12, 277, 12, 'F');
+      doc.roundedRect(10, cursorY, 277, boxH, 2, 2, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(`TOTAL A PAGAR: ${fmt(lote.valor_total || subtotal)}`, 18, finalY + 20);
+      if (adiantamentosDesc.length > 0) {
+        doc.setFontSize(10);
+        doc.text(`Subtotal: ${fmt(subtotal)}`, 16, cursorY + 7);
+        doc.text(`(-) Adiantamentos: ${fmt(totalAdiantamentos)}`, 110, cursorY + 7);
+        doc.setFontSize(11);
+        doc.text(`VALOR LIQUIDO A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 17);
+      } else {
+        doc.setFontSize(10);
+        doc.text(`TOTAL A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 8);
+      }
 
-      const pdfBytes = doc.output('arraybuffer');
-      return new Response(pdfBytes, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="comprovante_${lote.lote_codigo || lote_id}.pdf"`,
-        },
-      });
+      const ph = doc.internal.pageSize.height;
+      doc.setFontSize(7); doc.setTextColor(100, 100, 100);
+      doc.text(`Gerado em ${fmtDateTime(new Date())}`, 148, ph - 5, { align: 'center' });
+
+      // Retorna PDF como base64
+      const pdfBase64 = doc.output('datauristring');
+      return Response.json({ pdf_base64: pdfBase64, filename: `comissao_emp_${(lote.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${lote.data_pagamento?.replace(/-/g, '') || 'data'}_2via.pdf` });
     }
 
     return Response.json({ error: 'Tipo invalido' }, { status: 400 });

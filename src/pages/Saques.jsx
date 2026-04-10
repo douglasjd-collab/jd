@@ -70,6 +70,15 @@ async function exportarLinhaPDF(lote) {
         return;
       }
 
+      // Retorno PDF como base64 (data URI)
+      if (res.data?.pdf_base64) {
+        const a = document.createElement('a');
+        a.href = res.data.pdf_base64;
+        a.download = res.data.filename || `comprovante_${lote._protocolo}.pdf`;
+        a.click();
+        return;
+      }
+
       // Para emprestimos: retorna PDF binario via Blob
       if (res.data instanceof ArrayBuffer || res.data?.byteLength) {
         const blob = new Blob([res.data], { type: 'application/pdf' });
