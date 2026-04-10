@@ -315,13 +315,18 @@ export default function VendasEmprestimos() {
         }
         return;
       }
+      const empresaId = currentUser?.empresa_id;
+      if (!empresaId) {
+        toast.error('Empresa não identificada. Verifique seu cadastro.');
+        return;
+      }
       let totalImportadas = 0;
       let totalAtualizadas = 0;
       let totalClientesCriados = 0;
       for (const cfg of configs) {
         const res = await base44.functions.invoke('importarPropostasBanco', {
           configuracao_id: cfg.id,
-          empresa_id: currentUser.empresa_id,
+          empresa_id: String(empresaId),
         });
         if (res.data?.success) {
           totalImportadas += res.data.importadas || 0;
