@@ -59,7 +59,7 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor }) {
                   </tr>
                 ))}
                 <tr className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-                  <td className="px-3 py-2 text-xs" colSpan={l._data_quitacao !== undefined ? 3 : 2}>Total: {lotes.length}</td>
+                  <td className="px-3 py-2 text-xs" colSpan={lotes[0]?._data_quitacao !== undefined ? 3 : 2}>Total: {lotes.length}</td>
                   <td className="px-3 py-2 text-xs">{fmt(total.valor)}</td>
                   <td className="px-3 py-2 text-xs">{fmt(total.acrescimos)}</td>
                   <td className="px-3 py-2 text-xs text-red-600">{fmt(total.descontos)}</td>
