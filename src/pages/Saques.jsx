@@ -15,7 +15,15 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-const fmtDate = (d) => d ? format(new Date(d + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-';
+const fmtDate = (d) => {
+  if (!d) return '-';
+  try {
+    const dateStr = String(d).length <= 10 ? d + 'T12:00:00' : d;
+    return format(new Date(dateStr), 'dd/MM/yyyy', { locale: ptBR });
+  } catch {
+    return '-';
+  }
+};
 
 function exportarPDF(titulo, lotes, colunas, mostrarQuitacao) {
   const doc = new jsPDF({ orientation: 'landscape' });
