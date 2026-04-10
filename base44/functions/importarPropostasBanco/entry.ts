@@ -126,7 +126,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      const urls = config.propostas_url ? [config.propostas_url] : [`${baseUrl}/loans`, `${baseUrl}/propostas`, `${baseUrl}/api/loans`, `${baseUrl}/api/propostas`];
+      const urls = config.propostas_url ? [config.propostas_url] : [
+        baseUrl, // Tenta URL base diretamente
+        `${baseUrl}/loans`,
+        `${baseUrl}/propostas`,
+        `${baseUrl}/api/loans`,
+        `${baseUrl}/api/propostas`,
+      ];
       propostasUrls = urls;
       
       for (const url of urls) {
