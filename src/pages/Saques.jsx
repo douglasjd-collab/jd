@@ -124,15 +124,7 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar }) {
-  const total = lotes.reduce((acc, l) => ({
-    valor: acc.valor + (l._valor || 0),
-    acrescimos: acc.acrescimos + (l.acrescimos || 0),
-    descontos: acc.descontos + (l.descontos || 0),
-    total: acc.total + (l._total || 0),
-  }), { valor: 0, acrescimos: 0, descontos: 0, total: 0 });
-
-  const temQuitacao = lotes[0]?._data_quitacao !== undefined;
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao }) {
 
   return (
     <div className="space-y-2">
@@ -155,8 +147,8 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                   <tr key={l.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
                     <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
-                    {temQuitacao && (
-                      <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
+                    {mostrarQuitacao && (
+                     <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
                     )}
                     <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">{fmt(l._valor)}</td>
                     <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(l.acrescimos || 0)}</td>
@@ -179,7 +171,7 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                   </tr>
                 ))}
                 <tr className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-                  <td className="px-3 py-2 text-xs" colSpan={temQuitacao ? 3 : 2}>Total: {lotes.length}</td>
+                  <td className="px-3 py-2 text-xs" colSpan={mostrarQuitacao ? 3 : 2}>Total: {lotes.length}</td>
                   <td className="px-3 py-2 text-xs">{fmt(total.valor)}</td>
                   <td className="px-3 py-2 text-xs">{fmt(total.acrescimos)}</td>
                   <td className="px-3 py-2 text-xs text-red-600">{fmt(total.descontos)}</td>
@@ -454,6 +446,7 @@ export default function Saques() {
             emptyMsg="Nenhuma comissão programada"
             cor="bg-slate-700"
             onQuitar={setLoteParaQuitar}
+            mostrarQuitacao={false}
           />
           <TabelaLotes
             titulo="Comissões Quitadas"
@@ -463,6 +456,7 @@ export default function Saques() {
             cor="bg-slate-700"
             onQuitar={() => {}}
             onReprogramar={isMaster ? setLoteParaReprogramar : undefined}
+            mostrarQuitacao={true}
           />
         </div>
       )}
