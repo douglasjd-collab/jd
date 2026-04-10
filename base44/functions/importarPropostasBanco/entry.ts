@@ -9,54 +9,14 @@ function extrairBaseUrl(url) {
   }
 }
 
-async function autenticarFinanto(baseUrl, username, password, apiKey, loginUrl) {
-  if (username && password) {
-    const bodyFormats = [
-      { username, password },
-      { login: username, senha: password },
-      { login: username, password },
-      { email: username, password },
-      { usuario: username, senha: password },
-    ];
-
-    const loginUrlsToTry = loginUrl
-      ? [loginUrl]
-      : [
-          `${baseUrl}/sign-in`, `${baseUrl}/finanto/sign-in`,
-          `${baseUrl}/login`, `${baseUrl}/auth/login`, `${baseUrl}/api/login`,
-        ];
-
-    for (const fullLoginUrl of loginUrlsToTry) {
-      for (const body of bodyFormats) {
-        try {
-          const res = await fetch(fullLoginUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(body),
-          });
-          const contentType = res.headers.get('content-type') || '';
-          console.log(`[Auth] ${fullLoginUrl} HTTP ${res.status}`);
-          if (res.ok && contentType.includes('json')) {
-            const data = await res.json();
-            const token = data.token || data.access_token || data.accessToken || data.jwt ||
-              data.data?.token || data.data?.access_token || data.result?.token;
-            if (token) {
-              console.log(`[Auth] Token obtido via ${fullLoginUrl}`);
-              return { Authorization: `Bearer ${token}` };
-            }
-          }
-        } catch (e) {
-          console.log(`[Auth] Erro em ${fullLoginUrl}: ${e.message}`);
-        }
-      }
-    }
-  }
-
-  if (apiKey && !apiKey.startsWith('http')) {
-    return { Authorization: `Bearer ${apiKey}`, 'X-API-Key': apiKey };
-  }
-
-  return {};
+function mapearStatus(statusExterno) {
+  if (!statusExterno) return 'pendente';
+  const s = String(statusExterno).toLowerCase();
+  if (s.includes('aprovado') || s.includes('approved')) return 'aprovado';
+  if (s.includes('recusado') || s.includes('rejected') || s.includes('denied')) return 'recusado';
+  if (s.includes('pago') || s.includes('paid') || s.includes('liberado')) return 'pago';
+  if (s.includes('analise') || s.includes('analysis') || s.includes('em_analise')) return 'em_analise';
+  return 'pendente';
 }
 
 Deno.serve(async (req) => {
@@ -87,67 +47,112 @@ Deno.serve(async (req) => {
     const isFinanto = baseUrl.includes('finanto') || baseUrl.includes('joinbank');
 
     let authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    let propostasApi = [];
+    let ultimoStatusHttp = 0;
+    let ultimoResponseData = null;
+    let endpointUsado = '';
+    let propostasUrls = [];
 
     if (isAjin) {
       const apiKey = config.api_key || '';
       authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'apikey': apiKey };
       console.log(`[API] Modo Ajin.io, apikey: ${apiKey ? 'OK' : 'VAZIO'}`);
+      
+      const urls = config.propostas_url ? [config.propostas_url] : [`${baseUrl}/propostas`, `${baseUrl}/api/propostas`];
+      propostasUrls = urls;
+      
+      for (const url of urls) {
+        try {
+          console.log(`[Ajin] GET ${url}`);
+          const res = await fetch(url, { method: 'GET', headers: authHeaders });
+          ultimoStatusHttp = res.status;
+          console.log(`[Ajin] ${url} HTTP ${res.status}`);
+          
+          if (res.ok) {
+            const data = await res.json();
+            ultimoResponseData = data;
+            propostasApi = Array.isArray(data) ? data : (data.data || data.propostas || data.items || []);
+            endpointUsado = url;
+            console.log(`[Ajin] ${propostasApi.length} propostas extraídas de ${url}`);
+            if (propostasApi.length > 0) break;
+          }
+        } catch (e) {
+          console.log(`[Ajin] Erro em ${url}: ${e.message}`);
+        }
+      }
     } else if (isFinanto) {
       const finantoToken = Deno.env.get('FINANTOBANK_ACCESS_TOKEN') || '';
       if (finantoToken) {
         authHeaders['Authorization'] = `Bearer ${finantoToken}`;
         console.log('[Finanto] Usando FINANTOBANK_ACCESS_TOKEN');
       } else if (config.username && config.password) {
-        // Priorizar autenticação via usuário/senha para FinantoBank
-        try {
-          console.log('[Finanto] Tentando autenticação com Usuário e Senha');
-          const loginUrls = config.login_url
-            ? [config.login_url]
-            : [
-                `${baseUrl}/sign-in`,
-                `${baseUrl}/login`,
-                `${baseUrl}/api/login`,
-                `${baseUrl}/auth/login`,
-              ];
-          
-          for (const loginUrl of loginUrls) {
-            try {
-              console.log(`[Finanto] POST ${loginUrl}`);
-              const loginRes = await fetch(loginUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: config.username, password: config.password }),
-              });
-              console.log(`[Finanto] ${loginUrl} HTTP ${loginRes.status}`);
-              
-              if (loginRes.ok) {
-                const loginData = await loginRes.json();
-                const token = loginData.token || loginData.access_token || loginData.accessToken || loginData.jwt || loginData.data?.token;
-                if (token) {
-                  authHeaders['Authorization'] = `Bearer ${token}`;
-                  console.log(`[Finanto] Token obtido: ${token.slice(0, 20)}...`);
-                  break;
-                }
+        console.log('[Finanto] Tentando autenticação com Usuário e Senha');
+        const loginUrls = config.login_url
+          ? [config.login_url]
+          : [`${baseUrl}/sign-in`, `${baseUrl}/login`, `${baseUrl}/api/login`, `${baseUrl}/auth/login`];
+        
+        for (const loginUrl of loginUrls) {
+          try {
+            console.log(`[Finanto] POST ${loginUrl}`);
+            const loginRes = await fetch(loginUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: config.username, password: config.password }),
+            });
+            console.log(`[Finanto] ${loginUrl} HTTP ${loginRes.status}`);
+            
+            if (loginRes.ok) {
+              const loginData = await loginRes.json();
+              const token = loginData.token || loginData.access_token || loginData.accessToken || loginData.jwt || loginData.data?.token;
+              if (token) {
+                authHeaders['Authorization'] = `Bearer ${token}`;
+                console.log(`[Finanto] Token obtido: ${token.slice(0, 20)}...`);
+                break;
               }
-            } catch (e) {
-              console.log(`[Finanto] Erro em ${loginUrl}: ${e.message}`);
             }
+          } catch (e) {
+            console.log(`[Finanto] Erro em ${loginUrl}: ${e.message}`);
           }
-          if (!authHeaders['Authorization']) {
-            console.log('[Finanto] Nenhum token obtido. Tentando acesso sem autenticação.');
-          }
-        } catch (authErr) {
-          console.log(`[Finanto] Erro geral na autenticação: ${authErr.message}`);
         }
+        if (!authHeaders['Authorization']) {
+          console.log('[Finanto] Nenhum token obtido. Tentando acesso sem autenticação.');
+        }
+      }
 
+      const urls = config.propostas_url ? [config.propostas_url] : [`${baseUrl}/loans`, `${baseUrl}/propostas`, `${baseUrl}/api/loans`, `${baseUrl}/api/propostas`];
+      propostasUrls = urls;
+      
+      for (const url of urls) {
+        try {
+          console.log(`[Finanto] GET ${url}`);
+          const res = await fetch(url, { method: 'GET', headers: authHeaders });
+          ultimoStatusHttp = res.status;
+          console.log(`[Finanto] ${url} HTTP ${res.status}`);
+          
+          if (res.ok) {
+            const data = await res.json();
+            ultimoResponseData = data;
+            propostasApi = Array.isArray(data) ? data : (data.data || data.propostas || data.loans || data.items || []);
+            endpointUsado = url;
+            console.log(`[Finanto] ${propostasApi.length} propostas extraídas de ${url}`);
+            if (propostasApi.length > 0) break;
+          }
+        } catch (e) {
+          console.log(`[Finanto] Erro em ${url}: ${e.message}`);
+        }
+      }
+    }
 
+    // Log da tentativa
+    let importadas = 0, atualizadas = 0, clientesCriados = 0, erros = 0;
+    
     await base44.asServiceRole.entities.LogIntegracaoBanco.create({
       empresa_id,
       banco_id: config.banco_id,
       configuracao_api_id: config.id,
       tipo_acao: 'importar_propostas',
       request_json: JSON.stringify({ baseUrl, endpointUsado, propostasUrls }),
-      response_json: JSON.stringify(ultimoResponseData).slice(0, 5000),
+      response_json: JSON.stringify(ultimoResponseData || {}).slice(0, 5000),
       status_http: ultimoStatusHttp,
       sucesso: propostasApi.length > 0,
       mensagem_erro: propostasApi.length === 0 ? `Nenhuma proposta. HTTP: ${ultimoStatusHttp}. Endpoints: ${propostasUrls.join(', ')}` : null,
@@ -166,115 +171,53 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Fetch propostas já existentes
+    const propostasExistentes = await base44.asServiceRole.entities.Proposta.filter({ configuracao_api_id: config.id });
+    const codigosExistentes = new Set(propostasExistentes.map(p => p.codigo_proposta_banco));
+
     for (const item of propostasApi) {
       try {
-        const codigoBanco = String(
-          item.id || item.codigo || item.numero || item.contrato ||
-          item.id_proposta || item.codigo_proposta || item.proposalId || item.contractNumber || ''
-        );
+        const codigoBanco = String(item.id || item.codigo || item.numero || item.contractNumber || '');
         if (!codigoBanco) continue;
 
-        const statusExterno = item.status || item.situacao || item.status_proposta || item.statusCode;
+        const statusExterno = item.status || item.statusCode || '';
         const statusInterno = mapearStatus(statusExterno);
 
-        const clienteNome = item.customer?.name || item.client?.name || item.cliente_nome || item.nomeCliente || '';
-        const clienteCpf = item.customer?.document || item.customer?.cpf || item.client?.cpf || item.cpf || item.documento || '';
-        const clienteCelular = item.customer?.phone || item.client?.phone || item.celular || item.telefone || '';
-        const clienteDataNasc = item.customer?.birthDate || item.data_nascimento || '';
-
-        const valorCredito = parseFloat(item.amount || item.valor || item.valor_credito || item.principal || 0);
-        const valorLiquido = parseFloat(item.netAmount || item.valor_liquido || valorCredito || 0);
-
-        const dataVenda = (item.createdAt || item.data_criacao || item.data_proposta || item.data || new Date().toISOString()).slice(0, 10);
-        const dataLib = (item.releaseDate || item.data_liberacao || item.data_pagamento || '');
-
-        const TIPO_AJIN_MAP = { 1: 'NOVO', 2: 'REFINANCIAMENTO', 3: 'PORTABILIDADE_PURA', 4: 'REFIN_PORTABILIDADE', 5: 'REFINANCIAMENTO' };
-        const tipoEmprestimo = (item.operation?.code && TIPO_AJIN_MAP[item.operation.code]) || item.tipo || item.tipo_operacao || 'NOVO';
-
-        const prazo = parseInt(item.installments || item.prazo || 0);
-        const valorParcela = parseFloat(item.installmentAmount || item.valor_parcela || 0);
-        const contrato = item.contractNumber || item.contrato || codigoBanco;
-        const convenioNome = item.agreement?.name || item.convenio || item.orgao || '';
-        const vendedorNome = item.agent?.name || item.vendedor || item.agente || '';
-        const ade = item.ade || item.numero_ade || '';
-        const beneficio = item.registrationNumber || item.matricula || item.numero_beneficio || '';
+        const clienteNome = item.customerName || item.nome_cliente || '';
+        const clienteCpf = item.document || item.cpf || '';
+        const valorCredito = parseFloat(item.amount || item.valor || 0);
 
         if (codigosExistentes.has(codigoBanco)) {
           const existente = propostasExistentes.find(p => p.codigo_proposta_banco === codigoBanco);
           if (existente && statusExterno && statusExterno !== existente.status_externo_atual) {
-            const updateData = {
+            await base44.asServiceRole.entities.Proposta.update(existente.id, {
               status_atual: statusInterno,
               status_externo_atual: statusExterno,
               data_status_atual: new Date().toISOString(),
               data_ultima_atualizacao_api: new Date().toISOString(),
               api_sincronizada: true,
-              payload_ultima_resposta_json: JSON.stringify(item).slice(0, 3000),
-            };
-
-            if (!existente.cliente_id && clienteCpf) {
-              const result = await obterOuCriarCliente(clienteNome, clienteCpf, clienteCelular, clienteDataNasc);
-              if (result) {
-                updateData.cliente_id = result.cliente.id;
-                updateData.cliente_nome = result.cliente.nome_completo;
-                updateData.cliente_cpf = clienteCpf;
-                if (result.criou) clientesCriados++;
-              }
-            }
-
-            await base44.asServiceRole.entities.Proposta.update(existente.id, updateData);
-            await base44.asServiceRole.entities.HistoricoProposta.create({
-              empresa_id, proposta_id: existente.id, banco_id: config.banco_id,
-              configuracao_api_id: config.id, status: statusInterno, status_externo: statusExterno,
-              data_status: new Date().toISOString(),
-              descricao_evento: `Status atualizado via sincronização: ${statusExterno}`,
-              origem: 'API_BANCO', payload_evento_json: JSON.stringify(item).slice(0, 3000),
             });
             atualizadas++;
           }
           continue;
         }
 
-        let clienteId = '';
-        let clienteNomeNorm = clienteNome;
-        let clienteCpfNorm = clienteCpf;
-
-        if (clienteCpf || clienteNome) {
-          const result = await obterOuCriarCliente(clienteNome, clienteCpf, clienteCelular, clienteDataNasc);
-          if (result) {
-            clienteId = result.cliente.id;
-            clienteNomeNorm = result.cliente.nome_completo || clienteNome;
-            clienteCpfNorm = result.cliente.cpf || clienteCpf;
-            if (result.criou) clientesCriados++;
-          }
-        }
-
-        const novaProposta = await base44.asServiceRole.entities.Proposta.create({
+        await base44.asServiceRole.entities.Proposta.create({
           empresa_id, produto: 'emprestimo',
-          cliente_id: clienteId, cliente_nome: clienteNomeNorm, cliente_cpf: clienteCpfNorm,
+          cliente_nome: clienteNome, cliente_cpf: clienteCpf,
           administradora_id: config.banco_id, administradora_nome: config.banco_nome || '',
           banco_id: config.banco_id, configuracao_api_id: config.id,
-          codigo_proposta_banco: codigoBanco, contrato,
-          status: statusInterno || statusExterno || 'importado',
+          codigo_proposta_banco: codigoBanco,
+          status: statusInterno || 'importado',
           status_atual: statusInterno, status_externo_atual: statusExterno,
-          data_venda: dataVenda, valor_credito: valorCredito, valor_liquido: valorLiquido,
-          emprestimo_tipo: tipoEmprestimo, emprestimo_prazo: prazo, emprestimo_valor_parcela: valorParcela,
-          emprestimo_data_liberacao: dataLib ? String(dataLib).slice(0, 10) : '',
-          emprestimo_convenio_nome: convenioNome, emprestimo_numero_ade: ade,
-          emprestimo_numero_beneficio: beneficio, vendedor_nome: vendedorNome,
-          data_status_atual: new Date().toISOString(), data_ultima_atualizacao_api: new Date().toISOString(),
-          api_sincronizada: true, payload_ultima_resposta_json: JSON.stringify(item).slice(0, 3000),
+          data_venda: new Date().toISOString().slice(0, 10),
+          valor_credito: valorCredito,
+          data_status_atual: new Date().toISOString(),
+          data_ultima_atualizacao_api: new Date().toISOString(),
+          api_sincronizada: true,
         });
 
         codigosExistentes.add(codigoBanco);
-
-        await base44.asServiceRole.entities.HistoricoProposta.create({
-          empresa_id, proposta_id: novaProposta.id, banco_id: config.banco_id,
-          configuracao_api_id: config.id, status: statusInterno || statusExterno,
-          status_externo: statusExterno, data_status: new Date().toISOString(),
-          descricao_evento: 'Proposta importada via API', origem: 'API_BANCO',
-          payload_evento_json: JSON.stringify(item).slice(0, 3000),
-        });
-
         importadas++;
       } catch (e) {
         erros++;
