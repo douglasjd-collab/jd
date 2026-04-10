@@ -208,7 +208,7 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao }) {
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster }) {
   const total = lotes.reduce((acc, l) => ({
     valor: acc.valor + (l._valor || 0),
     acrescimos: acc.acrescimos + (l.acrescimos || 0),
@@ -241,58 +241,50 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
-           {lotes.length === 0 ? (
-             <tr><td colSpan={colunas.length} className="px-3 py-6 text-center text-slate-400 text-xs">{emptyMsg}</td></tr>
-           ) : (
-             <>
-               {lotes.map((l) => (
-                 <tr key={l.id} className="hover:bg-slate-50 transition-colors">
-                   <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
-                   <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
-                   {mostrarQuitacao && (
-                     <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
-                   )}
-                   <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">{fmt(l._valor)}</td>
-                   <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(l.acrescimos || 0)}</td>
-                   <td className="px-3 py-2 text-xs text-red-600 whitespace-nowrap">{fmt(l.descontos || 0)}</td>
-                   <td className="px-3 py-2 text-xs font-bold text-slate-800 whitespace-nowrap">{fmt(l._total)}</td>
-                   {l._vendedor !== undefined && (
-                     <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">{l._vendedor}</td>
-                   )}
-                   <td className="px-3 py-2">
-                     <Badge
-                       variant="outline"
-                       className={l.status === 'quitado'
-                         ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                         : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
-                       onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
-                     >
-                       {l.status === 'quitado' ? 'Quitado' : 'Programado'}
-                     </Badge>
-                   </td>
-                   <td className="px-3 py-2">
-                     <div className="flex gap-1">
-                       <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
-                         <FileSpreadsheet className="w-3.5 h-3.5" />
-                       </button>
-                       <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l, mostrarQuitacao)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
-                         <FileText className="w-3.5 h-3.5" />
-                       </button>
-                     </div>
-                   </td>
-                 </tr>
-               ))}
-               <tr className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-                 <td className="px-3 py-2 text-xs" colSpan={mostrarQuitacao ? 3 : 2}>Total: {lotes.length}</td>
-                 <td className="px-3 py-2 text-xs">{fmt(total.valor)}</td>
-                 <td className="px-3 py-2 text-xs">{fmt(total.acrescimos)}</td>
-                 <td className="px-3 py-2 text-xs text-red-600">{fmt(total.descontos)}</td>
-                 <td className="px-3 py-2 text-xs">{fmt(total.total)}</td>
-                 <td className="px-3 py-2" colSpan={2}></td>
-               </tr>
-               </>
-               )}
-               </tbody>
+            {lotes.length === 0 ? (
+              <tr>
+                <td colSpan={colunas.length} className="px-3 py-6 text-center text-slate-400 text-xs">{emptyMsg}</td>
+              </tr>
+            ) : (
+              lotes.map((l) => (
+                <tr key={l.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
+                  <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
+                  {mostrarQuitacao && (
+                    <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
+                  )}
+                  <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">{fmt(l._valor)}</td>
+                  <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(l.acrescimos || 0)}</td>
+                  <td className="px-3 py-2 text-xs text-red-600 whitespace-nowrap">{fmt(l.descontos || 0)}</td>
+                  <td className="px-3 py-2 text-xs font-bold text-slate-800 whitespace-nowrap">{fmt(l._total)}</td>
+                  {isMaster && (
+                    <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">{l.vendedor_nome || '-'}</td>
+                  )}
+                  <td className="px-3 py-2">
+                    <Badge
+                      variant="outline"
+                      className={l.status === 'quitado'
+                        ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                        : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
+                      onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
+                    >
+                      {l.status === 'quitado' ? 'Quitado' : 'Programado'}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-1">
+                      <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                      </button>
+                      <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l, mostrarQuitacao)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
+                        <FileText className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
         </table>
       </div>
     </div>
@@ -555,6 +547,7 @@ export default function Saques() {
             cor="bg-slate-700"
             onQuitar={setLoteParaQuitar}
             mostrarQuitacao={false}
+            isMaster={isMaster}
           />
           <TabelaLotes
             titulo="Comissões Quitadas"
@@ -565,6 +558,7 @@ export default function Saques() {
             onQuitar={() => {}}
             onReprogramar={isMaster ? setLoteParaReprogramar : undefined}
             mostrarQuitacao={true}
+            isMaster={isMaster}
           />
         </div>
       )}
