@@ -60,121 +60,119 @@ async function autenticarFinanto(baseUrl, username, password, apiKey, loginUrl) 
 }
 
 Deno.serve(async (req) => {
-  const base44 = createClientFromRequest(req);
-  const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!['admin', 'gerente', 'master', 'super_admin', 'colaborador'].includes(user.perfil)) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const isAdmin = ['admin', 'gerente', 'master', 'super_admin', 'colaborador'].includes(user.perfil || user.role);
+    if (!isAdmin) {
+      console.error(`[AUTH] Acesso negado. user.perfil=${user.perfil}, user.role=${user.role}`);
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-  const { configuracao_id, empresa_id } = await req.json();
+    const body = await req.json();
+    const { configuracao_id, empresa_id } = body;
 
-  const configs = await base44.asServiceRole.entities.ConfiguracaoApiBanco.filter({ id: configuracao_id });
-  if (!configs || configs.length === 0) return Response.json({ error: 'Configuração não encontrada' }, { status: 404 });
-  const config = configs[0];
+    const configs = await base44.asServiceRole.entities.ConfiguracaoApiBanco.filter({ id: configuracao_id });
+    if (!configs || configs.length === 0) return Response.json({ error: 'Configuração não encontrada' }, { status: 404 });
+    const config = configs[0];
 
-  if (!config.integracao_ativa) return Response.json({ error: 'Integração inativa' }, { status: 400 });
+    if (!config.integracao_ativa) return Response.json({ error: 'Integração inativa' }, { status: 400 });
 
-  const baseUrl = extrairBaseUrl(config.base_url);
-  console.log(`[API] Base URL: ${baseUrl}`);
+    const baseUrl = extrairBaseUrl(config.base_url);
+    console.log(`[API] Base URL: ${baseUrl}`);
 
-  // Detecta tipo de API
-  const isAjin = baseUrl.includes('ajin.io') || (config.propostas_url || '').includes('ajin.io');
-  const isFinanto = baseUrl.includes('finanto') || baseUrl.includes('joinbank');
+    const isAjin = baseUrl.includes('ajin.io') || (config.propostas_url || '').includes('ajin.io');
+    const isFinanto = baseUrl.includes('finanto') || baseUrl.includes('joinbank');
 
-  // Monta headers de autenticação
-  let authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    let authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
 
-  if (isAjin) {
-    const apiKey = config.api_key || '';
-    authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'apikey': apiKey };
-    console.log(`[API] Modo Ajin.io, apikey: ${apiKey ? 'OK' : 'VAZIO'}`);
-  } else if (isFinanto) {
-    // FinantoBank: usa o token salvo nos segredos
-    const finantoToken = Deno.env.get('FINANTOBANK_ACCESS_TOKEN') || '';
-    if (finantoToken) {
-      authHeaders['Authorization'] = `Bearer ${finantoToken}`;
-      console.log('[Finanto] Usando FINANTOBANK_ACCESS_TOKEN');
+    if (isAjin) {
+      const apiKey = config.api_key || '';
+      authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'apikey': apiKey };
+      console.log(`[API] Modo Ajin.io, apikey: ${apiKey ? 'OK' : 'VAZIO'}`);
+    } else if (isFinanto) {
+      const finantoToken = Deno.env.get('FINANTOBANK_ACCESS_TOKEN') || '';
+      if (finantoToken) {
+        authHeaders['Authorization'] = `Bearer ${finantoToken}`;
+        console.log('[Finanto] Usando FINANTOBANK_ACCESS_TOKEN');
+      } else {
+        try {
+          const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key, config.login_url);
+          authHeaders = { ...authHeaders, ...extraHeaders };
+        } catch (authErr) {
+          console.log(`[Finanto] Erro na autenticação: ${authErr.message}`);
+        }
+      }
     } else {
-      // Fallback: tenta login com credenciais da configuração
       try {
         const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key, config.login_url);
         authHeaders = { ...authHeaders, ...extraHeaders };
       } catch (authErr) {
-        console.log(`[Finanto] Erro na autenticação: ${authErr.message}`);
+        console.log(`[API] Erro na autenticação: ${authErr.message}`);
       }
     }
-  } else {
-    try {
-      const extraHeaders = await autenticarFinanto(baseUrl, config.username, config.password, config.api_key, config.login_url);
-      authHeaders = { ...authHeaders, ...extraHeaders };
-    } catch (authErr) {
-      console.log(`[API] Erro na autenticação: ${authErr.message}`);
+
+    const mapeamentos = await base44.asServiceRole.entities.MapeamentoStatusBanco.filter({ configuracao_api_id: config.id });
+    const mapearStatus = (statusExterno) => {
+      if (!statusExterno) return statusExterno;
+      const mapa = mapeamentos.find(m => m.status_externo.toUpperCase() === String(statusExterno).toUpperCase());
+      return mapa ? mapa.status_interno : statusExterno;
+    };
+
+    const [propostasExistentes, clientesExistentes] = await Promise.all([
+      base44.asServiceRole.entities.Proposta.filter({ empresa_id, produto: 'emprestimo' }),
+      base44.asServiceRole.entities.Cliente.filter({ empresa_id }),
+    ]);
+
+    const codigosExistentes = new Set(propostasExistentes.map(p => p.codigo_proposta_banco).filter(Boolean));
+
+    const clientesPorCpf = {};
+    for (const c of clientesExistentes) {
+      const cpf = (c.cpf || c.pj_cnpj || '').replace(/\D/g, '');
+      if (cpf) clientesPorCpf[cpf] = c;
     }
-  }
 
-  // Busca mapeamentos de status e dados existentes
-  const mapeamentos = await base44.asServiceRole.entities.MapeamentoStatusBanco.filter({ configuracao_api_id: config.id });
-  const mapearStatus = (statusExterno) => {
-    if (!statusExterno) return statusExterno;
-    const mapa = mapeamentos.find(m => m.status_externo.toUpperCase() === String(statusExterno).toUpperCase());
-    return mapa ? mapa.status_interno : statusExterno;
-  };
+    const obterOuCriarCliente = async (clienteNome, clienteCpfRaw, celular, dataNasc) => {
+      const cpfLimpo = (clienteCpfRaw || '').replace(/\D/g, '');
+      if (!cpfLimpo && !clienteNome) return null;
+      if (cpfLimpo && clientesPorCpf[cpfLimpo]) return { cliente: clientesPorCpf[cpfLimpo], criou: false };
 
-  const [propostasExistentes, clientesExistentes] = await Promise.all([
-    base44.asServiceRole.entities.Proposta.filter({ empresa_id, produto: 'emprestimo' }),
-    base44.asServiceRole.entities.Cliente.filter({ empresa_id }),
-  ]);
+      const novoCliente = await base44.asServiceRole.entities.Cliente.create({
+        empresa_id,
+        tipo_pessoa: 'Física',
+        nome_completo: clienteNome || 'Cliente Importado',
+        cpf: clienteCpfRaw || '',
+        celular: celular || '',
+        data_nascimento: dataNasc || '',
+        status: 'ativo',
+      });
 
-  const codigosExistentes = new Set(propostasExistentes.map(p => p.codigo_proposta_banco).filter(Boolean));
+      if (cpfLimpo) clientesPorCpf[cpfLimpo] = novoCliente;
+      return { cliente: novoCliente, criou: true };
+    };
 
-  const clientesPorCpf = {};
-  for (const c of clientesExistentes) {
-    const cpf = (c.cpf || c.pj_cnpj || '').replace(/\D/g, '');
-    if (cpf) clientesPorCpf[cpf] = c;
-  }
+    let importadas = 0;
+    let atualizadas = 0;
+    let clientesCriados = 0;
+    let erros = 0;
+    let propostasApi = [];
+    let ultimoStatusHttp = null;
+    let ultimoResponseData = null;
+    let endpointUsado = null;
 
-  const obterOuCriarCliente = async (clienteNome, clienteCpfRaw, celular, dataNasc) => {
-    const cpfLimpo = (clienteCpfRaw || '').replace(/\D/g, '');
-    if (!cpfLimpo && !clienteNome) return null;
-    if (cpfLimpo && clientesPorCpf[cpfLimpo]) return { cliente: clientesPorCpf[cpfLimpo], criou: false };
+    const propostasUrls = config.propostas_url
+      ? [config.propostas_url]
+      : isAjin
+        ? [`${baseUrl}/v3/loan-products/search/basic`]
+        : isFinanto
+          ? [`${baseUrl}/loans`, `${baseUrl}/propostas`, `${baseUrl}/proposals`]
+          : [
+              `${baseUrl}/propostas`, `${baseUrl}/proposals`,
+              `${baseUrl}/contratos`, `${baseUrl}/emprestimos`, `${baseUrl}/loans`,
+            ];
 
-    const novoCliente = await base44.asServiceRole.entities.Cliente.create({
-      empresa_id,
-      tipo_pessoa: 'Física',
-      nome_completo: clienteNome || 'Cliente Importado',
-      cpf: clienteCpfRaw || '',
-      celular: celular || '',
-      data_nascimento: dataNasc || '',
-      status: 'ativo',
-    });
-
-    if (cpfLimpo) clientesPorCpf[cpfLimpo] = novoCliente;
-    return { cliente: novoCliente, criou: true };
-  };
-
-  let importadas = 0;
-  let atualizadas = 0;
-  let clientesCriados = 0;
-  let erros = 0;
-  let propostasApi = [];
-  let ultimoStatusHttp = null;
-  let ultimoResponseData = null;
-  let endpointUsado = null;
-
-  // URLs de propostas a tentar
-  const propostasUrls = config.propostas_url
-    ? [config.propostas_url]
-    : isAjin
-      ? [`${baseUrl}/v3/loan-products/search/basic`]
-      : isFinanto
-        ? [`${baseUrl}/loans`, `${baseUrl}/propostas`, `${baseUrl}/proposals`]
-        : [
-            `${baseUrl}/propostas`, `${baseUrl}/proposals`,
-            `${baseUrl}/contratos`, `${baseUrl}/emprestimos`, `${baseUrl}/loans`,
-          ];
-
-  try {
     for (const url of propostasUrls) {
       try {
         console.log(`[API] Tentando endpoint: ${url}`);
@@ -371,11 +369,6 @@ Deno.serve(async (req) => {
 
   } catch (e) {
     console.error(`[API] Erro geral: ${e.message}`);
-    await base44.asServiceRole.entities.LogIntegracaoBanco.create({
-      empresa_id, banco_id: config.banco_id, configuracao_api_id: config.id,
-      tipo_acao: 'importar_propostas', sucesso: false,
-      mensagem_erro: e.message, executado_em: new Date().toISOString(),
-    });
     return Response.json({ success: false, error: e.message, importadas: 0, atualizadas: 0, clientes_criados: 0 });
   }
 });
