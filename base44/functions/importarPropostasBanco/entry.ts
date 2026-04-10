@@ -124,12 +124,12 @@ Deno.serve(async (req) => {
       }
 
       const urls = config.propostas_url ? [config.propostas_url] : [
+        `${baseUrl}/loans`,
         `${baseUrl}/mub-balances`,
         baseUrl,
         `${baseUrl}/main`,
         `${baseUrl}/api/loans`,
         `${baseUrl}/api/propostas`,
-        `${baseUrl}/loans`,
         `${baseUrl}/propostas`,
       ];
       propostasUrls = urls;
