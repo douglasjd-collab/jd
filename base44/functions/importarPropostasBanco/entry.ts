@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (isAjin) {
       const apiKey = config.api_key || '';
       authHeaders = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'apikey': apiKey };
-      console.log(`[API] Modo Ajin.io, apikey: ${apiKey ? 'OK' : 'VAZIO'}`);
+      console.log(`[API] Modo Ajin.io`);
       
       const urls = config.propostas_url ? [config.propostas_url] : [`${baseUrl}/propostas`, `${baseUrl}/api/propostas`];
       propostasUrls = urls;
@@ -66,25 +66,25 @@ Deno.serve(async (req) => {
           console.log(`[Ajin] GET ${url}`);
           const res = await fetch(url, { method: 'GET', headers: authHeaders });
           ultimoStatusHttp = res.status;
-          console.log(`[Ajin] ${url} HTTP ${res.status}`);
+          console.log(`[Ajin] HTTP ${res.status}`);
           
           if (res.ok) {
             const data = await res.json();
             ultimoResponseData = data;
             propostasApi = Array.isArray(data) ? data : (data.data || data.propostas || data.items || []);
             endpointUsado = url;
-            console.log(`[Ajin] ${propostasApi.length} propostas extraídas de ${url}`);
+            console.log(`[Ajin] ${propostasApi.length} propostas`);
             if (propostasApi.length > 0) break;
           }
         } catch (e) {
-          console.log(`[Ajin] Erro em ${url}: ${e.message}`);
+          console.log(`[Ajin] Erro: ${e.message}`);
         }
       }
     } else if (isFinanto) {
       const finantoToken = Deno.env.get('FINANTOBANK_ACCESS_TOKEN') || '';
       if (finantoToken) {
         authHeaders['Authorization'] = `Bearer ${finantoToken}`;
-        console.log('[Finanto] Usando FINANTOBANK_ACCESS_TOKEN');
+        console.log('[Finanto] Token de secret usado');
       } else if (config.username && config.password) {
         console.log('[Finanto] Tentando autenticação com Usuário e Senha');
         const loginUrls = config.login_url
@@ -106,28 +106,25 @@ Deno.serve(async (req) => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ username: config.username, password: config.password }),
             });
-            console.log(`[Finanto] ${loginUrl} HTTP ${loginRes.status}`);
+            console.log(`[Finanto] Login HTTP ${loginRes.status}`);
             
             if (loginRes.ok) {
               const loginData = await loginRes.json();
               const token = loginData.token || loginData.access_token || loginData.accessToken || loginData.jwt || loginData.data?.token;
               if (token) {
                 authHeaders['Authorization'] = `Bearer ${token}`;
-                console.log(`[Finanto] Token obtido: ${token.slice(0, 20)}...`);
+                console.log(`[Finanto] Token obtido`);
                 break;
               }
             }
           } catch (e) {
-            console.log(`[Finanto] Erro em ${loginUrl}: ${e.message}`);
+            console.log(`[Finanto] Login erro: ${e.message}`);
           }
-        }
-        if (!authHeaders['Authorization']) {
-          console.log('[Finanto] Nenhum token obtido. Tentando acesso sem autenticação.');
         }
       }
 
       const urls = config.propostas_url ? [config.propostas_url] : [
-        baseUrl, // Tenta URL base diretamente
+        baseUrl,
         `${baseUrl}/loans`,
         `${baseUrl}/propostas`,
         `${baseUrl}/api/loans`,
@@ -140,13 +137,19 @@ Deno.serve(async (req) => {
           console.log(`[Finanto] GET ${url}`);
           const res = await fetch(url, { method: 'GET', headers: authHeaders });
           ultimoStatusHttp = res.status;
-          console.log(`[Finanto] ${url} HTTP ${res.status}`);
+          console.log(`[Finanto] HTTP ${res.status}`);
           
           if (res.ok) {
-            const data = await res.json();
+            let data;
+            try {
+              data = await res.json();
+            } catch (parseErr) {
+              console.log(`[Finanto] Parse error`);
+              continue;
+            }
             ultimoResponseData = data;
             
-            // Tentar vários caminhos para extrair propostas
+            // Extrair propostas
             if (Array.isArray(data)) {
               propostasApi = data;
             } else if (data.data && Array.isArray(data.data)) {
@@ -162,20 +165,21 @@ Deno.serve(async (req) => {
             } else if (data.result && Array.isArray(data.result)) {
               propostasApi = data.result;
             } else {
+              const chaves = Object.keys(data || {}).slice(0, 10);
+              console.log(`[Finanto] Nenhuma chave array. Disponíveis: ${chaves.join(', ')}`);
               propostasApi = [];
             }
             
             endpointUsado = url;
-            console.log(`[Finanto] ${propostasApi.length} propostas de ${url}`);
+            console.log(`[Finanto] ${propostasApi.length} propostas encontradas`);
             if (propostasApi.length > 0) break;
           }
         } catch (e) {
-          console.log(`[Finanto] Erro ${url}: ${e.message}`);
+          console.log(`[Finanto] Erro fetch: ${e.message}`);
         }
       }
     }
 
-    // Log da tentativa
     let importadas = 0, atualizadas = 0, clientesCriados = 0, erros = 0;
     
     await base44.asServiceRole.entities.LogIntegracaoBanco.create({
@@ -187,7 +191,7 @@ Deno.serve(async (req) => {
       response_json: JSON.stringify(ultimoResponseData || {}).slice(0, 5000),
       status_http: ultimoStatusHttp,
       sucesso: propostasApi.length > 0,
-      mensagem_erro: propostasApi.length === 0 ? `Nenhuma proposta. HTTP: ${ultimoStatusHttp}. Endpoints: ${propostasUrls.join(', ')}` : null,
+      mensagem_erro: propostasApi.length === 0 ? `Nenhuma proposta. HTTP: ${ultimoStatusHttp}` : null,
       executado_em: new Date().toISOString(),
     });
 
@@ -203,7 +207,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch propostas já existentes
+    // Fetch propostas existentes
     const propostasExistentes = await base44.asServiceRole.entities.Proposta.filter({ configuracao_api_id: config.id });
     const codigosExistentes = new Set(propostasExistentes.map(p => p.codigo_proposta_banco));
 
@@ -253,7 +257,7 @@ Deno.serve(async (req) => {
         importadas++;
       } catch (e) {
         erros++;
-        console.error(`[API] Erro ao processar item: ${e.message}`);
+        console.error(`Erro ao processar item: ${e.message}`);
       }
     }
 
@@ -270,7 +274,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (e) {
-    console.error(`[API] Erro geral: ${e.message}`);
+    console.error(`Erro geral: ${e.message}`);
     return Response.json({ success: false, error: e.message, importadas: 0, atualizadas: 0, clientes_criados: 0 });
   }
 });
