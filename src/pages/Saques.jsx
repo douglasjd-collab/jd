@@ -328,6 +328,7 @@ export default function Saques() {
   const { data: lotesEmp = [], isLoading: l1 } = useQuery({
     queryKey: ['lotes-emp', empresaId, colab?.id],
     enabled: userLoaded,
+    throwOnError: false,
     queryFn: () => base44.entities.LotePagamentoComissaoEmprestimo.filter(
       isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id },
       '-created_date', 500
@@ -337,6 +338,7 @@ export default function Saques() {
   const { data: propostasLegado = [], isLoading: l3 } = useQuery({
     queryKey: ['propostas-emp-pagas-legado-saques', empresaId, colab?.id],
     enabled: userLoaded,
+    throwOnError: false,
     queryFn: () => {
       const filter = { produto: 'emprestimo', comissao_vendedor_paga: true };
       if (empresaId) filter.empresa_id = empresaId;
@@ -348,6 +350,7 @@ export default function Saques() {
   const { data: lotesConsorcio = [], isLoading: l2 } = useQuery({
     queryKey: ['lotes-consorcio', empresaId, colab?.id],
     enabled: userLoaded,
+    throwOnError: false,
     queryFn: () => base44.entities.PagamentoComissaoLote.filter(
       isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id },
       '-created_date', 500
