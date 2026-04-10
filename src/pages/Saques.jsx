@@ -240,10 +240,10 @@ export default function Saques() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Saques"
-        subtitle="Gerencie suas solicitações de saque"
+        title="Minhas Comissões"
+        subtitle="Gerencie suas solicitações de comissão"
         {...(!isAdmin && {
-          actionLabel: "Solicitar Saque",
+          actionLabel: "Solicitar Comissão",
           actionIcon: Wallet,
           onAction: () => setSolicitarOpen(true)
         })}
@@ -308,7 +308,7 @@ export default function Saques() {
       <Dialog open={solicitarOpen} onOpenChange={setSolicitarOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Solicitar Saque</DialogTitle>
+            <DialogTitle>Solicitar Comissão</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSolicitar} className="space-y-4">
