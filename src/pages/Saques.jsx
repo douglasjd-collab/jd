@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -17,6 +17,24 @@ const fmtDate = (d) => d ? format(new Date(d + 'T12:00:00'), 'dd/MM/yyyy', { loc
 
 function ModalQuitar({ lote, onClose, onConfirm, loading }) {
   const [dataQuitacao, setDataQuitacao] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [comprovante, setComprovante] = useState(null);
+  const [nomeArquivo, setNomeArquivo] = useState('');
+  const [uploadando, setUploadando] = useState(false);
+
+  const handleArquivo = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadando(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setComprovante(file_url);
+      setNomeArquivo(file.name);
+    } catch {
+      toast.error('Erro ao fazer upload do comprovante');
+    } finally {
+      setUploadando(false);
+    }
+  };
 
   return (
     <Dialog open={!!lote} onOpenChange={onClose}>
@@ -38,12 +56,29 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
               onChange={e => setDataQuitacao(e.target.value)}
             />
           </div>
+          <div className="space-y-1">
+            <Label>Comprovante (opcional)</Label>
+            <label className="flex items-center gap-2 cursor-pointer border border-dashed border-slate-300 rounded-md px-3 py-2 hover:bg-slate-50 transition-colors">
+              {uploadando ? (
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+              ) : (
+                <Paperclip className="w-4 h-4 text-slate-400" />
+              )}
+              <span className="text-xs text-slate-500 truncate">
+                {nomeArquivo || 'Clique para anexar comprovante'}
+              </span>
+              <input type="file" className="hidden" accept="image/*,application/pdf" onChange={handleArquivo} />
+            </label>
+            {comprovante && (
+              <a href={comprovante} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline">Ver anexo</a>
+            )}
+          </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+            <Button variant="outline" onClick={onClose} disabled={loading || uploadando}>Cancelar</Button>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => onConfirm(dataQuitacao)}
-              disabled={loading || !dataQuitacao}
+              onClick={() => onConfirm(dataQuitacao, comprovante)}
+              disabled={loading || uploadando || !dataQuitacao}
             >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar Quitação
@@ -164,11 +199,12 @@ export default function Saques() {
   });
 
   const quitarMutation = useMutation({
-    mutationFn: async ({ id, tipo, dataQuitacao }) => {
+    mutationFn: async ({ id, tipo, dataQuitacao, comprovante_url }) => {
+      const payload = { status: 'quitado', data_quitacao: dataQuitacao, ...(comprovante_url ? { comprovante_url } : {}) };
       if (tipo === 'emp') {
-        await base44.entities.LotePagamentoComissaoEmprestimo.update(id, { status: 'quitado', data_quitacao: dataQuitacao });
+        await base44.entities.LotePagamentoComissaoEmprestimo.update(id, payload);
       } else {
-        await base44.entities.PagamentoComissaoLote.update(id, { status: 'quitado', data_quitacao: dataQuitacao });
+        await base44.entities.PagamentoComissaoLote.update(id, payload);
       }
     },
     onSuccess: () => {
@@ -184,10 +220,10 @@ export default function Saques() {
     },
   });
 
-  const handleConfirmarQuitacao = (dataQuitacao) => {
+  const handleConfirmarQuitacao = (dataQuitacao, comprovante_url) => {
     if (!loteParaQuitar) return;
     setQuitando(true);
-    quitarMutation.mutate({ id: loteParaQuitar.id, tipo: loteParaQuitar._tipo, dataQuitacao });
+    quitarMutation.mutate({ id: loteParaQuitar.id, tipo: loteParaQuitar._tipo, dataQuitacao, comprovante_url });
   };
 
   const normalizarEmp = (l) => ({
