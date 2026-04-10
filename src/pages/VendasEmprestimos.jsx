@@ -126,6 +126,52 @@ export default function VendasEmprestimos() {
     }
   };
 
+  const { data: propostas = [], isLoading } = useQuery({
+    queryKey: ['vendas-emprestimos', currentUser?.empresa_id, currentUser?.perfil],
+    enabled: !!currentUser,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: () => {
+      const isSuperAdmin = currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'master';
+      const filter = { produto: 'emprestimo' };
+      if (!isSuperAdmin && currentUser?.empresa_id) filter.empresa_id = currentUser.empresa_id;
+      return base44.entities.Proposta.filter(filter, '-data_venda', 500);
+    },
+  });
+
+  const { data: bancos = [] } = useQuery({
+    queryKey: ['bancos-emprestimos'],
+    queryFn: () => base44.entities.Banco.filter({ ativo: true }),
+  });
+
+  const getBanco = (administradoraId) => bancos.find(b => b.id === administradoraId);
+
+  const { data: clientes = [] } = useQuery({
+    queryKey: ['clientes-emprestimos'],
+    queryFn: () => base44.entities.Cliente.list(),
+  });
+
+  const { data: statusList = [] } = useQuery({
+    queryKey: ['status-propostas-emprestimos'],
+    queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
+  });
+
+  const { data: tabelasEmprestimo = [] } = useQuery({
+    queryKey: ['tabelas-emprestimo-parceira', currentUser?.empresa_id],
+    queryFn: () => base44.entities.TabelaEmprestimo.filter(
+      currentUser?.empresa_id ? { empresa_id: currentUser.empresa_id } : {},
+      undefined,
+      500
+    ),
+    enabled: !!currentUser,
+  });
+
+  const getEmpresaParceiraNome = (tabelaComissaoId) => {
+    if (!tabelaComissaoId) return null;
+    const tabela = tabelasEmprestimo.find(t => t.id === tabelaComissaoId);
+    return tabela?.empresa_parceira_nome || null;
+  };
+
   const getCliente = (clienteId) => clientes.find(c => c.id === clienteId);
   const getClienteCpf = (clienteId) => {
     const c = getCliente(clienteId);
@@ -414,12 +460,30 @@ export default function VendasEmprestimos() {
     return nomes;
   }, [filteredByRole]);
 
-  // Counts per tipo for filter pills
-  const countByTipo = (tipo) => tipo === 'todos'
-    ? filteredByRole.length
-    : filteredByRole.filter(p => p.emprestimo_tipo === tipo).length;
+  // Responsáveis únicos para o filtro
+  const responsaveisUnicos = useMemo(() => {
+    if (!filteredByRole || filteredByRole.length === 0) return [];
+    const map = {};
+    filteredByRole.forEach(p => {
+      let responsaveis = [];
+      try { responsaveis = p.responsaveis_json ? JSON.parse(p.responsaveis_json) : []; } catch {}
+      if (responsaveis.length === 0 && p.responsavel_id) {
+        responsaveis = [{ id: p.responsavel_id, nome: p.responsavel_nome, foto: p.responsavel_foto }];
+      }
+      responsaveis.forEach(r => { if (r.id && r.nome) map[r.id] = r; });
+    });
+    return Object.values(map).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [filteredByRole]);
 
-  if (!currentUser) {
+  // Counts per tipo for filter pills
+  const countByTipo = (tipo) => {
+    if (!filteredByRole || filteredByRole.length === 0) return 0;
+    return tipo === 'todos'
+      ? filteredByRole.length
+      : filteredByRole.filter(p => p.emprestimo_tipo === tipo).length;
+  };
+
+  if (!currentUser || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#23BE84]"></div>
