@@ -310,21 +310,25 @@ export default function Saques() {
     }
   };
 
-  const isMaster = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
+  const perfil = colab?.perfil || user?.role || '';
+  const isMaster = ['master', 'super_admin', 'admin'].includes(perfil);
   const empresaId = colab?.empresa_id || user?.empresa_id;
+
+  const userLoaded = !loadingUser && !!user;
+  const filtroBase = empresaId ? { empresa_id: empresaId } : {};
 
   const { data: lotesEmp = [], isLoading: l1 } = useQuery({
     queryKey: ['lotes-emp', empresaId, colab?.id],
-    enabled: !!empresaId,
+    enabled: userLoaded,
     queryFn: () => base44.entities.LotePagamentoComissaoEmprestimo.filter(
-      isMaster ? { empresa_id: empresaId } : { empresa_id: empresaId, vendedor_id: colab?.id || user?.id },
+      isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id },
       '-created_date', 500
     ),
   });
 
   const { data: propostasLegado = [], isLoading: l3 } = useQuery({
     queryKey: ['propostas-emp-pagas-legado-saques', empresaId, colab?.id],
-    enabled: !!empresaId,
+    enabled: userLoaded,
     queryFn: () => {
       const filter = { produto: 'emprestimo', comissao_vendedor_paga: true };
       if (empresaId) filter.empresa_id = empresaId;
@@ -335,9 +339,9 @@ export default function Saques() {
 
   const { data: lotesConsorcio = [], isLoading: l2 } = useQuery({
     queryKey: ['lotes-consorcio', empresaId, colab?.id],
-    enabled: !!empresaId,
+    enabled: userLoaded,
     queryFn: () => base44.entities.PagamentoComissaoLote.filter(
-      isMaster ? { empresa_id: empresaId } : { empresa_id: empresaId, vendedor_id: colab?.id || user?.id },
+      isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id },
       '-created_date', 500
     ),
   });
@@ -484,10 +488,10 @@ export default function Saques() {
     );
   }
 
-  if (!user || !empresaId) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-slate-500 text-sm">Não foi possível identificar sua empresa. Verifique seu cadastro de colaborador.</p>
+        <p className="text-slate-500 text-sm">Não foi possível carregar o usuário.</p>
       </div>
     );
   }
