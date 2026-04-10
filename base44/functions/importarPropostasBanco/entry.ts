@@ -145,13 +145,32 @@ Deno.serve(async (req) => {
           if (res.ok) {
             const data = await res.json();
             ultimoResponseData = data;
-            propostasApi = Array.isArray(data) ? data : (data.data || data.propostas || data.loans || data.items || []);
+            
+            // Tentar vários caminhos para extrair propostas
+            if (Array.isArray(data)) {
+              propostasApi = data;
+            } else if (data.data && Array.isArray(data.data)) {
+              propostasApi = data.data;
+            } else if (data.propostas && Array.isArray(data.propostas)) {
+              propostasApi = data.propostas;
+            } else if (data.loans && Array.isArray(data.loans)) {
+              propostasApi = data.loans;
+            } else if (data.items && Array.isArray(data.items)) {
+              propostasApi = data.items;
+            } else if (data.records && Array.isArray(data.records)) {
+              propostasApi = data.records;
+            } else if (data.result && Array.isArray(data.result)) {
+              propostasApi = data.result;
+            } else {
+              propostasApi = [];
+            }
+            
             endpointUsado = url;
-            console.log(`[Finanto] ${propostasApi.length} propostas extraídas de ${url}`);
+            console.log(`[Finanto] ${propostasApi.length} propostas de ${url}`);
             if (propostasApi.length > 0) break;
           }
         } catch (e) {
-          console.log(`[Finanto] Erro em ${url}: ${e.message}`);
+          console.log(`[Finanto] Erro ${url}: ${e.message}`);
         }
       }
     }
