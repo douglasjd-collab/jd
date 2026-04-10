@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       status: res.status,
       estrutura_resposta: estrutura,
       chaves_totais: chaves,
-      resposta_completa: data,
+      resposta_completa_json: JSON.stringify(data),
       tamanho_bytes: texto.length,
     });
 
@@ -88,8 +88,7 @@ Deno.serve(async (req) => {
     console.error(`[DEBUG] Erro:`, e.message);
     return Response.json({ 
       success: false, 
-      error: e.message,
-      stack: e.stack 
+      error: e.message
     }, { status: 500 });
   }
 });
