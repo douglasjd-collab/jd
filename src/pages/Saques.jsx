@@ -38,6 +38,64 @@ function exportarPDF(titulo, lotes, colunas, mostrarQuitacao) {
   doc.save(`${titulo.replace(/\s+/g, '_')}.pdf`);
 }
 
+function exportarLinhaPDF(lote, mostrarQuitacao) {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text('Relatório de Comissão', 14, 16);
+  doc.setFontSize(9);
+  doc.text(`Protocolo: ${lote._protocolo}`, 14, 23);
+  doc.text(`Gerado em: ${fmtDate(new Date().toISOString().slice(0, 10))}`, 14, 29);
+  const colunas = [
+    'Nº Protocolo', 'Data Programada',
+    ...(mostrarQuitacao ? ['Data Quitação'] : []),
+    'Valor Comissão', 'Acréscimos', 'Descontos', 'Total',
+    ...(lote._vendedor !== undefined ? ['Vendedor'] : []),
+    'Status',
+  ];
+  const row = [
+    lote._protocolo,
+    fmtDate(lote.data_pagamento),
+    ...(mostrarQuitacao ? [fmtDate(lote.data_quitacao)] : []),
+    fmt(lote._valor),
+    fmt(lote.acrescimos || 0),
+    fmt(lote.descontos || 0),
+    fmt(lote._total),
+    ...(lote._vendedor !== undefined ? [lote._vendedor] : []),
+    lote.status === 'quitado' ? 'Quitado' : 'Programado',
+  ];
+  autoTable(doc, { head: [colunas], body: [row], startY: 34, styles: { fontSize: 9 } });
+  doc.save(`Comissao_${lote._protocolo}.pdf`);
+}
+
+function exportarLinhaCSV(lote, mostrarQuitacao) {
+  const colunas = [
+    'Nº Protocolo', 'Data Programada',
+    ...(mostrarQuitacao ? ['Data Quitação'] : []),
+    'Valor Comissão', 'Acréscimos', 'Descontos', 'Total',
+    ...(lote._vendedor !== undefined ? ['Vendedor'] : []),
+    'Status',
+  ];
+  const row = [
+    lote._protocolo,
+    fmtDate(lote.data_pagamento),
+    ...(mostrarQuitacao ? [fmtDate(lote.data_quitacao)] : []),
+    (lote._valor || 0).toFixed(2).replace('.', ','),
+    (lote.acrescimos || 0).toFixed(2).replace('.', ','),
+    (lote.descontos || 0).toFixed(2).replace('.', ','),
+    (lote._total || 0).toFixed(2).replace('.', ','),
+    ...(lote._vendedor !== undefined ? [lote._vendedor] : []),
+    lote.status === 'quitado' ? 'Quitado' : 'Programado',
+  ];
+  const csvContent = [colunas, row].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Comissao_${lote._protocolo}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function exportarCSV(titulo, lotes, colunas, mostrarQuitacao) {
   const rows = lotes.map(l => [
     l._protocolo,
@@ -183,46 +241,48 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
-            {lotes.length === 0 ? (
-              <tr><td colSpan={colunas.length} className="px-3 py-6 text-center text-slate-400 text-xs">{emptyMsg}</td></tr>
-            ) : (
-              <>
-                {lotes.map((l) => (
-                  <tr key={l.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
-                    <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
-                    {mostrarQuitacao && (
-                      <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
-                    )}
-                    <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">{fmt(l._valor)}</td>
-                    <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(l.acrescimos || 0)}</td>
-                    <td className="px-3 py-2 text-xs text-red-600 whitespace-nowrap">{fmt(l.descontos || 0)}</td>
-                    <td className="px-3 py-2 text-xs font-bold text-slate-800 whitespace-nowrap">{fmt(l._total)}</td>
-                    {l._vendedor !== undefined && (
-                      <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">{l._vendedor}</td>
-                    )}
-                    <td className="px-3 py-2">
-                      <Badge
-                        variant="outline"
-                        className={l.status === 'quitado'
-                          ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                          : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
-                        onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
-                      >
-                        {l.status === 'quitado' ? 'Quitado' : 'Programado'}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-                  <td className="px-3 py-2 text-xs" colSpan={mostrarQuitacao ? 3 : 2}>Total: {lotes.length}</td>
-                  <td className="px-3 py-2 text-xs">{fmt(total.valor)}</td>
-                  <td className="px-3 py-2 text-xs">{fmt(total.acrescimos)}</td>
-                  <td className="px-3 py-2 text-xs text-red-600">{fmt(total.descontos)}</td>
-                  <td className="px-3 py-2 text-xs">{fmt(total.total)}</td>
-                  <td className="px-3 py-2" colSpan={2}></td>
-                </tr>
-              </>
+           {lotes.length === 0 ? (
+             <tr><td colSpan={colunas.length} className="px-3 py-6 text-center text-slate-400 text-xs">{emptyMsg}</td></tr>
+           ) : (
+             <>
+               {lotes.map((l) => (
+                 <tr key={l.id} className="hover:bg-slate-50 transition-colors">
+                   <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
+                   <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
+                   {mostrarQuitacao && (
+                     <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
+                   )}
+                   <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">{fmt(l._valor)}</td>
+                   <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(l.acrescimos || 0)}</td>
+                   <td className="px-3 py-2 text-xs text-red-600 whitespace-nowrap">{fmt(l.descontos || 0)}</td>
+                   <td className="px-3 py-2 text-xs font-bold text-slate-800 whitespace-nowrap">{fmt(l._total)}</td>
+                   {l._vendedor !== undefined && (
+                     <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">{l._vendedor}</td>
+                   )}
+                   <td className="px-3 py-2">
+                     <Badge
+                       variant="outline"
+                       className={l.status === 'quitado'
+                         ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                         : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
+                       onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
+                     >
+                       {l.status === 'quitado' ? 'Quitado' : 'Programado'}
+                     </Badge>
+                   </td>
+                   <td className="px-3 py-2">
+                     <div className="flex gap-1">
+                       <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
+                         <FileSpreadsheet className="w-3.5 h-3.5" />
+                       </button>
+                       <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l, mostrarQuitacao)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
+                         <FileText className="w-3.5 h-3.5" />
+                       </button>
+                     </div>
+                   </td>
+                 </tr>
+               ))}
+               <tr className="bg-slate-50 font-semibold border-t-2 border-slate-200">
             )}
           </tbody>
         </table>
