@@ -995,7 +995,7 @@ export default function BatePapo() {
                         onClick={() => selecionarConversa(c)}
                       >
                         <AvatarContato 
-                           contato={c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
+                           contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
                            className="h-10 w-10 flex-shrink-0"
                          />
 
