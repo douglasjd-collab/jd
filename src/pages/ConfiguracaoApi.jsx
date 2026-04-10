@@ -499,11 +499,16 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
   const setE = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
   const handleSave = () => {
+    // Limpar campos vazios para evitar repreencher
+    const cleanForm = { ...form };
+    if (cleanForm.api_key === '') delete cleanForm.api_key;
+    if (cleanForm.username === '') delete cleanForm.username;
+    if (cleanForm.password === '') delete cleanForm.password;
     if (!form.nome_integracao || !form.banco_id) {
       return;
     }
-    const banco = bancos.find(b => b.id === form.banco_id);
-    onSave({ ...form, banco_nome: banco?.nome || '' });
+    const banco = bancos.find(b => b.id === cleanForm.banco_id);
+    onSave({ ...cleanForm, banco_nome: banco?.nome || '' });
   };
 
   return (
