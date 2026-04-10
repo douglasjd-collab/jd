@@ -283,8 +283,16 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                  </tr>
                ))}
                <tr className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-            )}
-          </tbody>
+                 <td className="px-3 py-2 text-xs" colSpan={mostrarQuitacao ? 3 : 2}>Total: {lotes.length}</td>
+                 <td className="px-3 py-2 text-xs">{fmt(total.valor)}</td>
+                 <td className="px-3 py-2 text-xs">{fmt(total.acrescimos)}</td>
+                 <td className="px-3 py-2 text-xs text-red-600">{fmt(total.descontos)}</td>
+                 <td className="px-3 py-2 text-xs">{fmt(total.total)}</td>
+                 <td className="px-3 py-2" colSpan={2}></td>
+               </tr>
+               </>
+               )}
+               </tbody>
         </table>
       </div>
     </div>
