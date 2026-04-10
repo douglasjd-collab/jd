@@ -7,13 +7,58 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const fmtDate = (d) => d ? format(new Date(d + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-';
+
+function exportarPDF(titulo, lotes, colunas, mostrarQuitacao) {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  doc.setFontSize(14);
+  doc.text(titulo, 14, 16);
+  doc.setFontSize(9);
+  doc.text(`Gerado em: ${fmtDate(new Date().toISOString().slice(0, 10))}`, 14, 23);
+  const rows = lotes.map(l => [
+    l._protocolo,
+    fmtDate(l.data_pagamento),
+    ...(mostrarQuitacao ? [fmtDate(l.data_quitacao)] : []),
+    fmt(l._valor),
+    fmt(l.acrescimos || 0),
+    fmt(l.descontos || 0),
+    fmt(l._total),
+    ...(l._vendedor !== undefined ? [l._vendedor] : []),
+    l.status === 'quitado' ? 'Quitado' : 'Programado',
+  ]);
+  autoTable(doc, { head: [colunas], body: rows, startY: 28, styles: { fontSize: 8 } });
+  doc.save(`${titulo.replace(/\s+/g, '_')}.pdf`);
+}
+
+function exportarCSV(titulo, lotes, colunas, mostrarQuitacao) {
+  const rows = lotes.map(l => [
+    l._protocolo,
+    fmtDate(l.data_pagamento),
+    ...(mostrarQuitacao ? [fmtDate(l.data_quitacao)] : []),
+    (l._valor || 0).toFixed(2).replace('.', ','),
+    (l.acrescimos || 0).toFixed(2).replace('.', ','),
+    (l.descontos || 0).toFixed(2).replace('.', ','),
+    (l._total || 0).toFixed(2).replace('.', ','),
+    ...(l._vendedor !== undefined ? [l._vendedor] : []),
+    l.status === 'quitado' ? 'Quitado' : 'Programado',
+  ]);
+  const csvContent = [colunas, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${titulo.replace(/\s+/g, '_')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function ModalReprogramar({ lote, onClose, onConfirm, loading }) {
   if (!lote) return null;
@@ -34,11 +79,7 @@ function ModalReprogramar({ lote, onClose, onConfirm, loading }) {
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-            <Button
-              className="bg-amber-500 hover:bg-amber-600 text-white"
-              onClick={onConfirm}
-              disabled={loading}
-            >
+            <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={onConfirm} disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar Reprogramação
             </Button>
@@ -83,24 +124,13 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
           </div>
           <div className="space-y-1">
             <Label htmlFor="data_quitacao">Data da Quitação</Label>
-            <Input
-              id="data_quitacao"
-              type="date"
-              value={dataQuitacao}
-              onChange={e => setDataQuitacao(e.target.value)}
-            />
+            <Input id="data_quitacao" type="date" value={dataQuitacao} onChange={e => setDataQuitacao(e.target.value)} />
           </div>
           <div className="space-y-1">
             <Label>Comprovante (opcional)</Label>
             <label className="flex items-center gap-2 cursor-pointer border border-dashed border-slate-300 rounded-md px-3 py-2 hover:bg-slate-50 transition-colors">
-              {uploadando ? (
-                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-              ) : (
-                <Paperclip className="w-4 h-4 text-slate-400" />
-              )}
-              <span className="text-xs text-slate-500 truncate">
-                {nomeArquivo || 'Clique para anexar comprovante'}
-              </span>
+              {uploadando ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <Paperclip className="w-4 h-4 text-slate-400" />}
+              <span className="text-xs text-slate-500 truncate">{nomeArquivo || 'Clique para anexar comprovante'}</span>
               <input type="file" className="hidden" accept="image/*,application/pdf" onChange={handleArquivo} />
             </label>
             {comprovante && (
@@ -109,11 +139,7 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={onClose} disabled={loading || uploadando}>Cancelar</Button>
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => onConfirm(dataQuitacao, comprovante)}
-              disabled={loading || uploadando || !dataQuitacao}
-            >
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => onConfirm(dataQuitacao, comprovante)} disabled={loading || uploadando || !dataQuitacao}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar Quitação
             </Button>
@@ -134,7 +160,19 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
 
   return (
     <div className="space-y-2">
-      <h2 className="text-base font-semibold text-slate-700">{titulo}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-slate-700">{titulo}</h2>
+        {lotes.length > 0 && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => exportarCSV(titulo, lotes, colunas, mostrarQuitacao)}>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" /> Excel
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => exportarPDF(titulo, lotes, colunas, mostrarQuitacao)}>
+              <FileText className="w-3.5 h-3.5 text-red-600" /> PDF
+            </Button>
+          </div>
+        )}
+      </div>
       <div className="rounded-lg border overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead className={`${cor} text-white`}>
@@ -154,7 +192,7 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                     <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
                     <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
                     {mostrarQuitacao && (
-                     <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
+                      <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
                     )}
                     <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">{fmt(l._valor)}</td>
                     <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(l.acrescimos || 0)}</td>
@@ -301,8 +339,6 @@ export default function Saques() {
 
   const normalizarEmp = (l) => ({
     ...l,
-    // Lotes criados pelo fluxo antigo de pagamento não têm status 'programado',
-    // tratá-los como quitado pois representam pagamentos já realizados
     status: l.status === 'programado' ? 'programado' : 'quitado',
     _protocolo: l.lote_codigo || `EMP${l.id?.slice(-6)}`,
     _valor: l.valor_total || 0,
@@ -312,7 +348,6 @@ export default function Saques() {
     _tipo: 'emp',
   });
 
-  // Agrupar propostas legado (pagas mas sem lote novo) por vendedor+data
   const legadoGrupos = {};
   propostasLegado.forEach(p => {
     const key = `legado_${p.vendedor_id || 'sv'}_${p.comissao_vendedor_data_pagamento || 'sem-data'}`;
@@ -320,7 +355,6 @@ export default function Saques() {
       legadoGrupos[key] = {
         id: key,
         status: 'quitado',
-        lote_codigo: null,
         vendedor_id: p.vendedor_id,
         vendedor_nome: p.vendedor_nome || 'Sem Vendedor',
         data_pagamento: p.comissao_vendedor_data_pagamento,
@@ -330,7 +364,6 @@ export default function Saques() {
         _protocolo: `LEG-${(p.vendedor_id || 'sv').slice(-4)}-${(p.comissao_vendedor_data_pagamento || '').replace(/-/g, '')}`,
         _valor: 0,
         _total: 0,
-        _data_quitacao: p.comissao_vendedor_data_pagamento,
         _vendedor: isMaster ? (p.vendedor_nome || 'Sem Vendedor') : undefined,
         _tipo: 'emp-legado',
         isLegado: true,
@@ -351,20 +384,16 @@ export default function Saques() {
     _tipo: 'consorcio',
   });
 
-  // Conjunto de lotes EMP novos para evitar duplicar legado
-  const lotesEmpIds = new Set(lotesEmp.map(l => l.id));
-
   const lotesEmpNorm = lotesEmp.map(normalizarEmp);
 
-  // Remover entradas legado que são duplicatas de um lote EMPC novo
-  // (mesmo vendedor + mesma data + mesmo valor)
-  const legadoFiltrado = Object.values(legadoGrupos).filter(leg => {
-    return !lotesEmpNorm.some(emp =>
+  // Remover entradas legado que são duplicatas de um lote EMPC (mesmo vendedor + data + valor)
+  const legadoFiltrado = Object.values(legadoGrupos).filter(leg =>
+    !lotesEmpNorm.some(emp =>
       emp.vendedor_id === leg.vendedor_id &&
       emp.data_pagamento === leg.data_pagamento &&
       Math.abs(emp._total - leg._total) < 0.01
-    );
-  });
+    )
+  );
 
   const todos = [
     ...lotesEmpNorm,
@@ -394,20 +423,13 @@ export default function Saques() {
     );
   }
 
-  // IDs de propostas já cobertas por lotes novos
-  const propostasComLote = new Set(
-    (lotesEmp.flatMap ? [] : []) // placeholder — itens de lote não disponíveis aqui, legado é adicional
-  );
-
   const isLoading = l1 || l2 || l3;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Minhas Comissões</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Histórico de comissões programadas e quitadas</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Minhas Comissões</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Histórico de comissões programadas e quitadas</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
