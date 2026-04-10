@@ -306,7 +306,7 @@ export default function VendasEmprestimos() {
   const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
   const podeVerEmpresaParceira = ['master', 'super_admin', 'admin', 'gerente', 'colaborador'].includes(currentUser?.perfil);
 
-  const filteredByRole = propostas.filter(p => {
+  const filteredByRole = (propostas || []).filter(p => {
     if (podeVerTodos) return true;
     return p.vendedor_id === currentUser?.colaborador_id;
   });
