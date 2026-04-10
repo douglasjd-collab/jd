@@ -125,6 +125,12 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
 }
 
 function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao }) {
+  const total = lotes.reduce((acc, l) => ({
+    valor: acc.valor + (l._valor || 0),
+    acrescimos: acc.acrescimos + (l.acrescimos || 0),
+    descontos: acc.descontos + (l.descontos || 0),
+    total: acc.total + (l._total || 0),
+  }), { valor: 0, acrescimos: 0, descontos: 0, total: 0 });
 
   return (
     <div className="space-y-2">
