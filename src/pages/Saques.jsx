@@ -354,10 +354,22 @@ export default function Saques() {
   // Conjunto de lotes EMP novos para evitar duplicar legado
   const lotesEmpIds = new Set(lotesEmp.map(l => l.id));
 
+  const lotesEmpNorm = lotesEmp.map(normalizarEmp);
+
+  // Remover entradas legado que são duplicatas de um lote EMPC novo
+  // (mesmo vendedor + mesma data + mesmo valor)
+  const legadoFiltrado = Object.values(legadoGrupos).filter(leg => {
+    return !lotesEmpNorm.some(emp =>
+      emp.vendedor_id === leg.vendedor_id &&
+      emp.data_pagamento === leg.data_pagamento &&
+      Math.abs(emp._total - leg._total) < 0.01
+    );
+  });
+
   const todos = [
-    ...lotesEmp.map(normalizarEmp),
+    ...lotesEmpNorm,
     ...lotesConsorcio.map(normalizarCons),
-    ...Object.values(legadoGrupos),
+    ...legadoFiltrado,
   ].sort((a, b) => new Date(b.data_pagamento || 0) - new Date(a.data_pagamento || 0));
 
   const programados = todos.filter(l => l.status !== 'quitado');
