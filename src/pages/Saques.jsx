@@ -303,6 +303,10 @@ export default function Saques() {
   const [user, setUser] = useState(null);
   const [colab, setColab] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [loteParaQuitar, setLoteParaQuitar] = useState(null);
+  const [loteParaReprogramar, setLoteParaReprogramar] = useState(null);
+  const [quitando, setQuitando] = useState(false);
+  const [reprogramando, setReprogramando] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
