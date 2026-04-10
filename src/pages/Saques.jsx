@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle, Clock, DollarSign, TrendingUp, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -12,7 +15,47 @@ import { ptBR } from 'date-fns/locale';
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const fmtDate = (d) => d ? format(new Date(d + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : '-';
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor }) {
+function ModalQuitar({ lote, onClose, onConfirm, loading }) {
+  const [dataQuitacao, setDataQuitacao] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  return (
+    <Dialog open={!!lote} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Quitar Comissão</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <p className="text-sm text-slate-600">Protocolo: <span className="font-semibold">{lote?._protocolo}</span></p>
+            <p className="text-sm text-slate-600">Valor: <span className="font-semibold">{lote ? fmt(lote._total) : ''}</span></p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="data_quitacao">Data da Quitação</Label>
+            <Input
+              id="data_quitacao"
+              type="date"
+              value={dataQuitacao}
+              onChange={e => setDataQuitacao(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => onConfirm(dataQuitacao)}
+              disabled={loading || !dataQuitacao}
+            >
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirmar Quitação
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar }) {
   const total = lotes.reduce((acc, l) => ({
     valor: acc.valor + (l._valor || 0),
     acrescimos: acc.acrescimos + (l.acrescimos || 0),
@@ -20,15 +63,17 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor }) {
     total: acc.total + (l._total || 0),
   }), { valor: 0, acrescimos: 0, descontos: 0, total: 0 });
 
+  const temQuitacao = lotes[0]?._data_quitacao !== undefined;
+
   return (
     <div className="space-y-2">
       <h2 className="text-base font-semibold text-slate-700">{titulo}</h2>
-      <div className="rounded-lg border overflow-hidden">
+      <div className="rounded-lg border overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead className={`${cor} text-white`}>
             <tr>
               {colunas.map(c => (
-                <th key={c} className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide">{c}</th>
+                <th key={c} className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap">{c}</th>
               ))}
             </tr>
           </thead>
@@ -39,27 +84,33 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor }) {
               <>
                 {lotes.map((l) => (
                   <tr key={l.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700">{l._protocolo}</td>
-                    <td className="px-3 py-2 text-xs">{fmtDate(l.data_pagamento)}</td>
-                    {l._data_quitacao !== undefined && (
-                      <td className="px-3 py-2 text-xs">{fmtDate(l.data_quitacao)}</td>
+                    <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
+                    <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
+                    {temQuitacao && (
+                      <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
                     )}
-                    <td className="px-3 py-2 text-xs font-medium">{fmt(l._valor)}</td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{fmt(l.acrescimos || 0)}</td>
-                    <td className="px-3 py-2 text-xs text-red-600">{fmt(l.descontos || 0)}</td>
-                    <td className="px-3 py-2 text-xs font-bold text-slate-800">{fmt(l._total)}</td>
-                    {l._vendedor && (
-                      <td className="px-3 py-2 text-xs text-slate-600">{l._vendedor}</td>
+                    <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">{fmt(l._valor)}</td>
+                    <td className="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{fmt(l.acrescimos || 0)}</td>
+                    <td className="px-3 py-2 text-xs text-red-600 whitespace-nowrap">{fmt(l.descontos || 0)}</td>
+                    <td className="px-3 py-2 text-xs font-bold text-slate-800 whitespace-nowrap">{fmt(l._total)}</td>
+                    {l._vendedor !== undefined && (
+                      <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">{l._vendedor}</td>
                     )}
                     <td className="px-3 py-2">
-                      <Badge variant="outline" className={l.status === 'quitado' ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : 'border-amber-300 text-amber-700 bg-amber-50'}>
+                      <Badge
+                        variant="outline"
+                        className={l.status === 'quitado'
+                          ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                          : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
+                        onClick={l.status !== 'quitado' ? () => onQuitar(l) : undefined}
+                      >
                         {l.status === 'quitado' ? 'Quitado' : 'Programado'}
                       </Badge>
                     </td>
                   </tr>
                 ))}
                 <tr className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-                  <td className="px-3 py-2 text-xs" colSpan={lotes[0]?._data_quitacao !== undefined ? 3 : 2}>Total: {lotes.length}</td>
+                  <td className="px-3 py-2 text-xs" colSpan={temQuitacao ? 3 : 2}>Total: {lotes.length}</td>
                   <td className="px-3 py-2 text-xs">{fmt(total.valor)}</td>
                   <td className="px-3 py-2 text-xs">{fmt(total.acrescimos)}</td>
                   <td className="px-3 py-2 text-xs text-red-600">{fmt(total.descontos)}</td>
@@ -78,6 +129,8 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor }) {
 export default function Saques() {
   const [user, setUser] = useState(null);
   const [colab, setColab] = useState(null);
+  const [loteParaQuitar, setLoteParaQuitar] = useState(null);
+  const [quitando, setQuitando] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -111,21 +164,31 @@ export default function Saques() {
   });
 
   const quitarMutation = useMutation({
-    mutationFn: async ({ id, tipo }) => {
-      const hoje = format(new Date(), 'yyyy-MM-dd');
+    mutationFn: async ({ id, tipo, dataQuitacao }) => {
       if (tipo === 'emp') {
-        await base44.entities.LotePagamentoComissaoEmprestimo.update(id, { status: 'quitado', data_quitacao: hoje });
+        await base44.entities.LotePagamentoComissaoEmprestimo.update(id, { status: 'quitado', data_quitacao: dataQuitacao });
       } else {
-        await base44.entities.PagamentoComissaoLote.update(id, { status: 'quitado', data_quitacao: hoje });
+        await base44.entities.PagamentoComissaoLote.update(id, { status: 'quitado', data_quitacao: dataQuitacao });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
       queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
       toast.success('Comissão marcada como quitada!');
+      setLoteParaQuitar(null);
+      setQuitando(false);
     },
-    onError: () => toast.error('Erro ao quitar comissão'),
+    onError: () => {
+      toast.error('Erro ao quitar comissão');
+      setQuitando(false);
+    },
   });
+
+  const handleConfirmarQuitacao = (dataQuitacao) => {
+    if (!loteParaQuitar) return;
+    setQuitando(true);
+    quitarMutation.mutate({ id: loteParaQuitar.id, tipo: loteParaQuitar._tipo, dataQuitacao });
+  };
 
   const normalizarEmp = (l) => ({
     ...l,
@@ -178,7 +241,6 @@ export default function Saques() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Minhas Comissões</h1>
@@ -186,7 +248,6 @@ export default function Saques() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-0 shadow-sm bg-amber-50">
           <CardContent className="p-5 flex items-center gap-3">
@@ -234,25 +295,31 @@ export default function Saques() {
         </div>
       ) : (
         <div className="space-y-8">
-          {/* Programadas */}
           <TabelaLotes
             titulo="Comissões Programadas"
             lotes={programados}
             colunas={colunasProgr}
             emptyMsg="Nenhuma comissão programada"
             cor="bg-slate-700"
+            onQuitar={setLoteParaQuitar}
           />
-
-          {/* Quitadas */}
           <TabelaLotes
             titulo="Comissões Quitadas"
             lotes={quitados}
             colunas={colunasQuit}
             emptyMsg="Nenhuma comissão quitada"
             cor="bg-slate-700"
+            onQuitar={() => {}}
           />
         </div>
       )}
+
+      <ModalQuitar
+        lote={loteParaQuitar}
+        onClose={() => setLoteParaQuitar(null)}
+        onConfirm={handleConfirmarQuitacao}
+        loading={quitando}
+      />
     </div>
   );
 }
