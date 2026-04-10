@@ -318,18 +318,16 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                     <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">{l.vendedor_nome || '-'}</td>
                   )}
                   <td className="px-3 py-2">
-                    <Badge
-                      variant="outline"
-                      className={l.status === 'quitado'
-                        ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                        : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
-                      onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
-                    >
-                      {l.status === 'quitado' ? 'Quitado' : 'Programado'}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <Badge
+                        variant="outline"
+                        className={l.status === 'quitado'
+                          ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                          : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
+                        onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
+                      >
+                        {l.status === 'quitado' ? 'Quitado' : 'Programado'}
+                      </Badge>
                       <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
                         <FileSpreadsheet className="w-3.5 h-3.5" />
                       </button>
@@ -537,12 +535,12 @@ export default function Saques() {
   const totalQuitado = quitados.reduce((a, l) => a + l._total, 0);
 
   const colunasProgr = isMaster
-    ? ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Vendedor', 'Status', 'Ações']
-    : ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Status', 'Ações'];
+    ? ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Vendedor', 'Status / Ações']
+    : ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Status / Ações'];
 
   const colunasQuit = isMaster
-    ? ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Vendedor', 'Status', 'Ações']
-    : ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Status', 'Ações'];
+    ? ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Vendedor', 'Status / Ações']
+    : ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Status / Ações'];
 
   if (loadingUser) {
     return (
