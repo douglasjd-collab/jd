@@ -89,7 +89,14 @@ Deno.serve(async (req) => {
         console.log('[Finanto] Tentando autenticação com Usuário e Senha');
         const loginUrls = config.login_url
           ? [config.login_url]
-          : [`${baseUrl}/sign-in`, `${baseUrl}/login`, `${baseUrl}/api/login`, `${baseUrl}/auth/login`];
+          : [
+              `${baseUrl}/api/auth/login`,
+              `${baseUrl}/auth/login`,
+              `${baseUrl}/api/login`,
+              `${baseUrl}/login`,
+              `${baseUrl}/sign-in`,
+              `${baseUrl}/auth`,
+            ];
         
         for (const loginUrl of loginUrls) {
           try {
