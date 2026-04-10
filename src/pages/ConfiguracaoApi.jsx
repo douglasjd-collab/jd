@@ -513,7 +513,6 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
     if (cleanForm.username === '') delete cleanForm.username;
     if (cleanForm.password === '') delete cleanForm.password;
     if (cleanForm.login_url === '') delete cleanForm.login_url;
-    if (cleanForm.propostas_url === '') delete cleanForm.propostas_url;
     const banco = bancos.find(b => b.id === cleanForm.banco_id);
     onSave({ ...cleanForm, banco_nome: banco?.nome || '' });
   };
@@ -548,8 +547,8 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
               <Input value={form.login_url || ''} onChange={setE('login_url')} placeholder="https://api.joinbank.com.br/sign-in" />
             </div>
             <div className="col-span-2">
-              <Label className="text-xs mb-1 block">URL de Propostas * <span className="text-slate-400 font-normal">(endpoint exato de listagem)</span></Label>
-              <Input value={form.propostas_url || ''} onChange={setE('propostas_url')} placeholder="https://api.joinbank.com.br/propostas" />
+              <Label className="text-xs mb-1 block">URL de Propostas <span className="text-slate-400 font-normal">(endpoint exato de listagem)</span></Label>
+              <Input value={form.propostas_url || ''} onChange={setE('propostas_url')} placeholder="https://finanto.joinbank.com.br/loans" />
             </div>
             <div>
               <Label className="text-xs mb-1 block">Ambiente</Label>
