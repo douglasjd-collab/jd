@@ -47,26 +47,49 @@ function exportarPDF(titulo, lotes, colunas, mostrarQuitacao) {
 }
 
 async function exportarLinhaPDF(lote) {
-  // Para lotes de empréstimo com ID real, busca o comprovante detalhado do backend
-  if (lote._tipo === 'emp' && !lote.isLegado) {
+  // Lotes legado: sem backend, usa PDF simples
+  if (lote.isLegado) {
+    exportarLinhaPDFSimples(lote);
+    return;
+  }
+
+  // Emprestimos e Consorcio com ID real: busca comprovante do backend
+  if (lote._tipo === 'emp' || lote._tipo === 'consorcio') {
     try {
-      const res = await base44.functions.invoke('gerarPdfComissaoPaga', { lote_id: lote.id });
-      if (res.data?.pdf_url) {
-        window.open(res.data.pdf_url, '_blank');
-        return;
-      }
+      const res = await base44.functions.invoke('baixarComprovanteComissao', {
+        lote_id: lote.id,
+        tipo: lote._tipo,
+      });
+
+      // Para consorcio: retorna HTML para abrir/imprimir
       if (res.data?.relatorio_html) {
         const win = window.open('', '_blank');
         win.document.write(res.data.relatorio_html);
         win.document.close();
-        win.print();
+        setTimeout(() => win.print(), 800);
+        return;
+      }
+
+      // Para emprestimos: retorna PDF binario via Blob
+      if (res.data instanceof ArrayBuffer || res.data?.byteLength) {
+        const blob = new Blob([res.data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `comprovante_${lote._protocolo}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
         return;
       }
     } catch (e) {
       // fallback para PDF simples
     }
   }
-  // Fallback: PDF simples
+
+  exportarLinhaPDFSimples(lote);
+}
+
+function exportarLinhaPDFSimples(lote) {
   const doc = new jsPDF({ orientation: 'landscape' });
   doc.setFontSize(14);
   doc.text('Relatório de Comissão', 14, 16);
