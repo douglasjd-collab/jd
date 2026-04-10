@@ -137,6 +137,10 @@ export default function ConfiguracaoApi() {
 
   const handleSincronizar = async () => {
     if (!activeConfig) return;
+    if (!activeConfig.api_key && !activeConfig.username) {
+      toast.error('Configure as credenciais (API Key ou Usuário/Senha) antes de sincronizar.');
+      return;
+    }
     setSincronizando(true);
     try {
       const res = await base44.functions.invoke('importarPropostasBanco', {
@@ -144,7 +148,7 @@ export default function ConfiguracaoApi() {
         empresa_id: currentUser?.empresa_id || activeConfig.empresa_id,
       });
       if (res.data.success) {
-        const msg = `Sincronização concluída: ${res.data.importadas || 0} novas, ${res.data.atualizadas || 0} atualizadas${res.data.clientes_criados > 0 ? `, ${res.data.clientes_criados} clientes criados` : ''}`;
+        const msg = `Sincronização concluída: ${res.data.importadas || 0} novas, ${res.data.atualizadas || 0} atualizadas${res.data.clientes_criados > 0 ? `, ${res.data.clientes_criados} clientes criados` : ''}` ;
         toast.success(msg);
       } else {
         toast.error(res.data.error || 'Erro na sincronização');
