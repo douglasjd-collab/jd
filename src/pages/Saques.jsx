@@ -46,7 +46,27 @@ function exportarPDF(titulo, lotes, colunas, mostrarQuitacao) {
   doc.save(`${titulo.replace(/\s+/g, '_')}.pdf`);
 }
 
-function exportarLinhaPDF(lote, mostrarQuitacao) {
+async function exportarLinhaPDF(lote) {
+  // Para lotes de empréstimo com ID real, busca o comprovante detalhado do backend
+  if (lote._tipo === 'emp' && !lote.isLegado) {
+    try {
+      const res = await base44.functions.invoke('gerarPdfComissaoPaga', { lote_id: lote.id });
+      if (res.data?.pdf_url) {
+        window.open(res.data.pdf_url, '_blank');
+        return;
+      }
+      if (res.data?.relatorio_html) {
+        const win = window.open('', '_blank');
+        win.document.write(res.data.relatorio_html);
+        win.document.close();
+        win.print();
+        return;
+      }
+    } catch (e) {
+      // fallback para PDF simples
+    }
+  }
+  // Fallback: PDF simples
   const doc = new jsPDF({ orientation: 'landscape' });
   doc.setFontSize(14);
   doc.text('Relatório de Comissão', 14, 16);
@@ -54,16 +74,13 @@ function exportarLinhaPDF(lote, mostrarQuitacao) {
   doc.text(`Protocolo: ${lote._protocolo}`, 14, 23);
   doc.text(`Gerado em: ${fmtDate(new Date().toISOString().slice(0, 10))}`, 14, 29);
   const colunas = [
-    'Nº Protocolo', 'Data Programada',
-    ...(mostrarQuitacao ? ['Data Quitação'] : []),
-    'Valor Comissão', 'Acréscimos', 'Descontos', 'Total',
+    'Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total',
     ...(lote._vendedor !== undefined ? ['Vendedor'] : []),
     'Status',
   ];
   const row = [
     lote._protocolo,
     fmtDate(lote.data_pagamento),
-    ...(mostrarQuitacao ? [fmtDate(lote.data_quitacao)] : []),
     fmt(lote._valor),
     fmt(lote.acrescimos || 0),
     fmt(lote.descontos || 0),
@@ -284,7 +301,7 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                       <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
                         <FileSpreadsheet className="w-3.5 h-3.5" />
                       </button>
-                      <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l, mostrarQuitacao)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
+                      <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
                         <FileText className="w-3.5 h-3.5" />
                       </button>
                     </div>
