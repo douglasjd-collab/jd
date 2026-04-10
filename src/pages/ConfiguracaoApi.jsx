@@ -504,16 +504,16 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
   const setE = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
   const handleSave = () => {
-    // Limpar campos vazios para evitar repreencher
+    if (!form.nome_integracao || !form.banco_id) {
+      toast.error('Preencha Nome da Integração e Banco');
+      return;
+    }
     const cleanForm = { ...form };
     if (cleanForm.api_key === '') delete cleanForm.api_key;
     if (cleanForm.username === '') delete cleanForm.username;
     if (cleanForm.password === '') delete cleanForm.password;
     if (cleanForm.login_url === '') delete cleanForm.login_url;
     if (cleanForm.propostas_url === '') delete cleanForm.propostas_url;
-    if (!form.nome_integracao || !form.banco_id) {
-      return;
-    }
     const banco = bancos.find(b => b.id === cleanForm.banco_id);
     onSave({ ...cleanForm, banco_nome: banco?.nome || '' });
   };
