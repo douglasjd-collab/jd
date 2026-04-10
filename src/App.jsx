@@ -24,6 +24,7 @@ import SincronizacaoAgressivaMensagens from './pages/SincronizacaoAgressivaMensa
 import ConfiguracaoDuplaAPI from './pages/ConfiguracaoDuplaAPI';
 import TabelasComissaoVendedor from './pages/TabelasComissaoVendedor';
 import IntegracaoFinantoBank from './pages/IntegracaoFinantoBank';
+import DebugFinanto from './pages/DebugFinanto';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -92,6 +93,7 @@ const AuthenticatedApp = () => {
       <Route path="/ConfiguracaoDuplaAPI" element={<LayoutWrapper currentPageName="ConfiguracaoDuplaAPI"><ConfiguracaoDuplaAPI /></LayoutWrapper>} />
       <Route path="/TabelasComissaoVendedor" element={<LayoutWrapper currentPageName="TabelasComissaoVendedor"><TabelasComissaoVendedor /></LayoutWrapper>} />
       <Route path="/IntegracaoFinantoBank" element={<LayoutWrapper currentPageName="IntegracaoFinantoBank"><IntegracaoFinantoBank /></LayoutWrapper>} />
+      <Route path="/DebugFinanto" element={<LayoutWrapper currentPageName="DebugFinanto"><DebugFinanto /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
