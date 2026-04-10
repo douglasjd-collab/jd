@@ -509,6 +509,8 @@ function ConfiguracaoModal({ open, onOpenChange, editando, bancos, onSave, isLoa
     if (cleanForm.api_key === '') delete cleanForm.api_key;
     if (cleanForm.username === '') delete cleanForm.username;
     if (cleanForm.password === '') delete cleanForm.password;
+    if (cleanForm.login_url === '') delete cleanForm.login_url;
+    if (cleanForm.propostas_url === '') delete cleanForm.propostas_url;
     if (!form.nome_integracao || !form.banco_id) {
       return;
     }
