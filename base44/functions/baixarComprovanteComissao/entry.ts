@@ -49,16 +49,34 @@ Deno.serve(async (req) => {
       const lote = lotes?.[0];
       if (!lote) return Response.json({ error: 'Lote nao encontrado' }, { status: 404 });
 
-      // Buscar snapshots dos itens do lote
-      const loteItens = await base44.asServiceRole.entities.ComissaoEmprestimoPaga.filter(
+      // Buscar snapshots dos itens do lote (novo sistema)
+      let loteItens = await base44.asServiceRole.entities.ComissaoEmprestimoPaga.filter(
         { lote_pagamento_id: lote_id }, '-created_date', 500
       );
 
-      // Buscar adiantamentos descontados neste lote
-      let adiantamentosDesc = [];
-      try {
-        adiantamentosDesc = await base44.asServiceRole.entities.Adiantamento.filter({ lote_pagamento_id: lote_id });
-      } catch {}
+      // Fallback: lotes antigos não têm ComissaoEmprestimoPaga, busca nas Propostas
+      if (loteItens.length === 0 && lote.vendedor_id && lote.data_pagamento) {
+        const propostasLote = await base44.asServiceRole.entities.Proposta.filter({
+          empresa_id: lote.empresa_id,
+          vendedor_id: lote.vendedor_id,
+          comissao_vendedor_paga: true,
+          comissao_vendedor_data_pagamento: lote.data_pagamento,
+        }, '-data_venda', 500);
+        loteItens = propostasLote
+          .filter(p => p.produto === 'emprestimo' || p.emprestimo_tipo)
+          .map(p => ({
+            cliente_nome: p.cliente_nome,
+            contrato: p.contrato,
+            emprestimo_tipo: p.emprestimo_tipo,
+            banco: p.administradora_nome || p.empresa_parceira_nome,
+            data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
+            valor_credito: p.valor_credito || 0,
+            valor_liquido: p.valor_liquido || null,
+            valor_parcela: p.emprestimo_valor_parcela || null,
+            percentual_vendedor_pago: p.percentual_comissao_vendedor || 0,
+            valor_vendedor_pago: p.valor_comissao_vendedor_pago || p.valor_comissao || 0,
+          }));
+      }
 
       const subtotal = loteItens.reduce((acc, item) => acc + (item.valor_vendedor_pago || 0), 0);
       const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
