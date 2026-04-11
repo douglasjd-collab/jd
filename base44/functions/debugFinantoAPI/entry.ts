@@ -23,14 +23,13 @@ Deno.serve(async (req) => {
 
     if (!url) return Response.json({ error: 'URL obrigatória' }, { status: 400 });
 
-    const token = Deno.env.get('FINANTOBANK_ACCESS_TOKEN') || '';
+    const token = Deno.env.get('AJIN_API_KEY') || '';
     const headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
 
     if (token) {
-      // Ajin.io usa header 'apikey', não Bearer
       headers['apikey'] = token;
     }
 
