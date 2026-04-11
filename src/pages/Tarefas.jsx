@@ -379,15 +379,16 @@ export default function Tarefas() {
       }}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {statusList.map(status => {
-            const colTarefas = tarefasFiltradas.filter(t => t.status === status.slug);
+            const statusKey = status.slug || status.id;
+            const colTarefas = tarefasFiltradas.filter(t => t.status === statusKey);
             return (
-              <div key={status.slug} className="flex-shrink-0 w-80">
+              <div key={statusKey} className="flex-shrink-0 w-80">
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ borderTop: `4px solid ${status.cor}` }}>
                   <div className="px-4 py-3 flex items-center justify-between border-b bg-slate-50">
                     <h3 className="font-semibold text-slate-800 text-sm">{status.nome}</h3>
                     <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium">{colTarefas.length}</span>
                   </div>
-                  <Droppable droppableId={status.slug}>
+                  <Droppable droppableId={statusKey}>
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}

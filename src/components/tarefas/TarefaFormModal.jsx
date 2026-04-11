@@ -69,7 +69,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           setor: '', tipo: '', origem: 'manual',
           data_cadastro: format(new Date(), 'yyyy-MM-dd'),
           data_conclusao_prevista: '',
-          status: statusList?.[0]?.slug || 'a_fazer',
+          status: statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
           prioridade: 'media',
           responsavel_principal_id: currentUser?.id || '',
         });
@@ -284,7 +284,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             <Select value={form.status || ''} onValueChange={v => setForm({ ...form, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {statusList.map(s => <SelectItem key={s.slug} value={s.slug}>{s.nome}</SelectItem>)}
+                {statusList.map(s => <SelectItem key={s.slug || s.id} value={s.slug || s.id}>{s.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
