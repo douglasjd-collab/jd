@@ -80,7 +80,7 @@ export default function Tarefas() {
 
   const { data: statusCustom = [] } = useQuery({
     queryKey: ['status-tarefa', empresaId],
-    enabled: !!empresaId,
+    enabled: !!currentUser,
     queryFn: () => base44.entities.StatusTarefa.filter({ empresa_id: empresaId, ativo: true }),
   });
 
@@ -94,11 +94,11 @@ export default function Tarefas() {
 
   const { data: tarefas = [] } = useQuery({
     queryKey: ['tarefas', empresaId, currentUser?.colaborador_id, isAdminPerfil],
-    enabled: !!empresaId && !!currentUser,
+    enabled: !!currentUser,
     queryFn: async () => {
-      const todas = await base44.entities.Tarefa.filter({ empresa_id: empresaId }, '-created_date');
+      const filtro = empresaId ? { empresa_id: empresaId } : {};
+      const todas = await base44.entities.Tarefa.filter(filtro, '-created_date');
       if (isAdminPerfil) return todas;
-      // Não-admin: filtrar apenas onde é responsável
       return todas.filter(t => {
         let ids = [];
         try { ids = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
@@ -162,7 +162,7 @@ export default function Tarefas() {
       await registrarHistorico({ tarefaId: tarefa.id, acao: 'criou', descricao: `Criou a tarefa "${tarefa.titulo}"`, statusNovo: tarefa.status });
       return tarefa;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tarefas'] }); setFormOpen(false); toast.success('Tarefa criada!'); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tarefas'] }); queryClient.refetchQueries({ queryKey: ['tarefas'] }); setFormOpen(false); toast.success('Tarefa criada!'); },
   });
 
   const atualizarTarefa = useMutation({

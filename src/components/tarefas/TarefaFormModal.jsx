@@ -71,10 +71,10 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           data_conclusao_prevista: '',
           status: statusInicial || statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
           prioridade: 'media',
-          responsavel_principal_id: currentUser?.id || '',
+          responsavel_principal_id: currentUser?.colaborador_id || currentUser?.id || '',
         });
         setChecklist([]);
-        setResponsaveisSel(currentUser ? [currentUser.id] : []);
+        setResponsaveisSel(currentUser?.colaborador_id ? [currentUser.colaborador_id] : (currentUser?.id ? [currentUser.id] : []));
       }
       setSalvarTemplate(false);
       setNomeTemplate('');
@@ -83,7 +83,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
       setClienteDropdownOpen(false);
       setResponsavelSearch('');
     }
-  }, [open, tarefa]);
+  }, [open, tarefa, statusInicial, statusList]);
 
   const toggleResponsavel = (id) => {
     setResponsaveisSel(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -106,23 +106,28 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   const handleSave = () => {
     if (!form.titulo?.trim()) { toast.error('Informe o título da tarefa'); return; }
     if (!form.data_conclusao_prevista) { toast.error('Informe a data de conclusão'); return; }
-    if (responsaveisSel.length === 0) { toast.error('Selecione ao menos um responsável'); return; }
 
-    const responsaveisData = responsaveisSel.map(id => {
+    const responsaveisFinais = responsaveisSel.length > 0
+      ? responsaveisSel
+      : (currentUser?.colaborador_id ? [currentUser.colaborador_id] : []);
+
+    if (responsaveisFinais.length === 0) { toast.error('Selecione ao menos um responsável'); return; }
+
+    const responsaveisData = responsaveisFinais.map(id => {
       const c = colaboradores.find(x => x.id === id);
       return { id, nome: c?.nome || c?.full_name || '', foto: c?.foto_perfil || '' };
     });
 
     const cliente = clientes.find(c => c.id === form.cliente_id);
-    const principalColab = colaboradores.find(c => c.id === (form.responsavel_principal_id || responsaveisSel[0]));
+    const principalColab = colaboradores.find(c => c.id === (form.responsavel_principal_id || responsaveisFinais[0]));
 
     const data = {
       ...form,
       cliente_nome: cliente?.nome_completo || cliente?.pj_razao_social || form.cliente_nome || '',
-      responsavel_principal_id: form.responsavel_principal_id || responsaveisSel[0] || '',
+      responsavel_principal_id: form.responsavel_principal_id || responsaveisFinais[0] || '',
       responsavel_principal_nome: principalColab?.nome || '',
       checklist: JSON.stringify(checklist),
-      responsaveis_ids: JSON.stringify(responsaveisSel),
+      responsaveis_ids: JSON.stringify(responsaveisFinais),
       responsaveis_nomes: JSON.stringify(responsaveisData.map(r => r.nome)),
       responsaveis_fotos: JSON.stringify(responsaveisData.map(r => r.foto)),
     };
