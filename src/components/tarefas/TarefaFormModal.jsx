@@ -29,7 +29,7 @@ const SETORES = [
   { value: 'cobranca', label: 'Cobrança' },
 ];
 
-export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate, tiposList = [] }) {
+export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate, tiposList = [], statusInicial = null }) {
   const [form, setForm] = useState({});
   const [checklist, setChecklist] = useState([]);
   const [novoItem, setNovoItem] = useState('');
@@ -69,7 +69,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           setor: '', tipo: '', origem: 'manual',
           data_cadastro: format(new Date(), 'yyyy-MM-dd'),
           data_conclusao_prevista: '',
-          status: statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
+          status: statusInicial || statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
           prioridade: 'media',
           responsavel_principal_id: currentUser?.id || '',
         });
