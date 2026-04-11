@@ -30,7 +30,8 @@ Deno.serve(async (req) => {
     };
 
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      // Ajin.io usa header 'apikey', não Bearer
+      headers['apikey'] = token;
     }
 
     console.log(`[DEBUG] GET ${url}`);
