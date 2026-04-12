@@ -195,6 +195,8 @@ export default function Clientes() {
     }
   });
 
+  const normCpf = (cpf) => String(cpf || '').replace(/\D/g, '');
+
   const handleSubmit = async (data) => {
     try {
       const user = await base44.auth.me();
@@ -210,16 +212,18 @@ export default function Clientes() {
         let clienteJaExiste = false;
         
         if (tipopessoa === 'Física' && data.cpf) {
+          const cpfNorm = normCpf(data.cpf);
           clienteJaExiste = clientes.some(c => 
-            c.tipo_pessoa === 'Física' && c.cpf === data.cpf
+            c.tipo_pessoa === 'Física' && normCpf(c.cpf) === cpfNorm
           );
           if (clienteJaExiste) {
             toast.error('Já existe um cliente com este CPF cadastrado.');
             return;
           }
         } else if (tipopessoa === 'Jurídica' && data.pj_cnpj) {
+          const cnpjNorm = normCpf(data.pj_cnpj);
           clienteJaExiste = clientes.some(c => 
-            c.tipo_pessoa === 'Jurídica' && c.pj_cnpj === data.pj_cnpj
+            c.tipo_pessoa === 'Jurídica' && normCpf(c.pj_cnpj) === cnpjNorm
           );
           if (clienteJaExiste) {
             toast.error('Já existe um cliente com este CNPJ cadastrado.');
@@ -250,6 +254,10 @@ export default function Clientes() {
       }
 
       // Garantir que empresa_id seja uma string válida
+      // Normalizar CPF/CNPJ antes de salvar (remover formatação)
+      if (data.cpf) data.cpf = normCpf(data.cpf);
+      if (data.pj_cnpj) data.pj_cnpj = normCpf(data.pj_cnpj);
+
       const clienteData = {
         ...data,
         vendedor_id,

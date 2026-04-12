@@ -424,10 +424,10 @@ Deno.serve(async (req) => {
           // em linhas consecutivas com formatos diferentes
           const cpfNormCheck = normCpf(cpfVal);
           if (cpfNormCheck.length >= 11) {
-            // Tenta buscar direto no banco para garantir
+            // Tenta buscar direto no banco para garantir (buscar pelo CPF normalizado sem formatação)
             const existentes = await base44.asServiceRole.entities.Cliente.filter({
               empresa_id: empresaId,
-              cpf: cpfVal,
+              cpf: cpfNormCheck,
             }, null, 1);
             if (existentes.length > 0) {
               cliente = existentes[0];
