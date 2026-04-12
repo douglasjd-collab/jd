@@ -736,7 +736,7 @@ export default function ImportacaoComissao() {
               <Label>
                 Pré-visualização ({previewData.items.length} registros)
                 <span className="text-xs text-slate-500 ml-2">
-                  (Compare GRUPO/COTA aqui com os valores no Menu > Propostas > Consórcio)
+                  (Compare GRUPO/COTA aqui com os valores no Menu {">"}  Propostas {">"}  Consórcio)
                 </span>
               </Label>
               <div className="mt-2 border rounded-xl overflow-hidden max-h-64 overflow-y-auto">

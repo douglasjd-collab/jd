@@ -26,6 +26,11 @@ export default function ImportacaoProducao() {
   const [historico, setHistorico] = useState([]);
   const [desfazendoId, setDesfazendoId] = useState(null);
   const [confirmDesfazer, setConfirmDesfazer] = useState(null); // log a desfazer
+  const [visualizarLog, setVisualizarLog] = useState(null);
+  const [visualizarOpen, setVisualizarOpen] = useState(false);
+  const [visualizarPropostas, setVisualizarPropostas] = useState([]);
+  const [loadingVisualizar, setLoadingVisualizar] = useState(false);
+  const [visualizarAba, setVisualizarAba] = useState('criadas');
   const inputRef = useRef(null);
 
   useEffect(() => { init(); }, []);
@@ -58,6 +63,32 @@ export default function ImportacaoProducao() {
     if (!empresaId) return;
     const hist = await base44.entities.ImportacaoPropostasLog.filter({ empresa_id: empresaId }, '-created_date', 20);
     setHistorico(hist);
+  };
+
+  const handleVisualizar = async (log) => {
+    setVisualizarLog(log);
+    setVisualizarOpen(true);
+    setVisualizarAba('criadas');
+    setVisualizarPropostas([]);
+    setLoadingVisualizar(true);
+    try {
+      const ids = log.propostas_ids_criadas ? JSON.parse(log.propostas_ids_criadas) : [];
+      if (ids.length > 0) {
+        const propostas = await Promise.all(
+          // buscar em lotes de 50 para não sobrecarregar
+          Array.from({ length: Math.ceil(ids.length / 50) }, (_, i) =>
+            base44.entities.Proposta.filter({ empresa_id: log.empresa_id }, null, 1000)
+          )
+        );
+        const flat = propostas.flat();
+        const filtradas = flat.filter(p => ids.includes(p.id));
+        setVisualizarPropostas(filtradas);
+      }
+    } catch (err) {
+      toast.error('Erro ao carregar propostas: ' + err.message);
+    } finally {
+      setLoadingVisualizar(false);
+    }
   };
 
   const handleDesfazer = async (log) => {
@@ -414,6 +445,14 @@ export default function ImportacaoProducao() {
                       {new Date(log.created_date).toLocaleString('pt-BR')} · {log.usuario_nome}
                     </p>
                   </div>
+                  <button
+                    onClick={() => handleVisualizar(log)}
+                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors"
+                    title="Visualizar propostas"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Ver
+                  </button>
                   {log.status === 'desfeita' ? (
                     <span className="text-xs text-slate-400 font-medium px-2 py-1 bg-slate-100 rounded-full">Desfeita</span>
                   ) : (
@@ -462,6 +501,132 @@ export default function ImportacaoProducao() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Visualizar Propostas da Importação */}
+      <Dialog open={visualizarOpen} onOpenChange={setVisualizarOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Propostas da Importação — {visualizarLog?.arquivo_nome}</DialogTitle>
+            <p className="text-xs text-slate-500">{visualizarLog?.empresa_parceira_nome} · {visualizarLog && new Date(visualizarLog.created_date).toLocaleString('pt-BR')} · {visualizarLog?.usuario_nome}</p>
+          </DialogHeader>
+
+          {/* Resumo */}
+          <div className="grid grid-cols-3 gap-3 my-2">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-green-700">{visualizarLog?.criadas || 0}</p>
+              <p className="text-xs text-green-600 mt-0.5">Criadas</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-blue-700">{visualizarLog?.atualizadas || 0}</p>
+              <p className="text-xs text-blue-600 mt-0.5">Atualizadas</p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-orange-700">{visualizarPropostas.filter(p => p.pendente_vinculacao_tipo).length}</p>
+              <p className="text-xs text-orange-600 mt-0.5">Pendentes (tipo)</p>
+            </div>
+          </div>
+
+          {/* Abas */}
+          <div className="flex gap-1 border-b pb-0">
+            {[
+              { key: 'criadas', label: `Criadas (${visualizarPropostas.filter(p => !p.pendente_vinculacao_tipo).length})`, color: 'green' },
+              { key: 'pendentes', label: `Pendentes (${visualizarPropostas.filter(p => p.pendente_vinculacao_tipo).length})`, color: 'orange' },
+              { key: 'atualizadas', label: `Atualizadas (${visualizarLog?.atualizadas || 0})`, color: 'blue' },
+            ].map(aba => (
+              <button
+                key={aba.key}
+                onClick={() => setVisualizarAba(aba.key)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  visualizarAba === aba.key
+                    ? `border-${aba.color}-600 text-${aba.color}-700`
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {aba.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Conteúdo */}
+          <div className="flex-1 overflow-y-auto">
+            {loadingVisualizar ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-7 h-7 animate-spin text-slate-400" />
+                <span className="ml-3 text-slate-500">Carregando propostas...</span>
+              </div>
+            ) : (
+              <>
+                {visualizarAba === 'criadas' && (
+                  <PropostasTable
+                    propostas={visualizarPropostas.filter(p => !p.pendente_vinculacao_tipo)}
+                    emptyMsg="Nenhuma proposta criada com sucesso nesta importação."
+                  />
+                )}
+                {visualizarAba === 'pendentes' && (
+                  <PropostasTable
+                    propostas={visualizarPropostas.filter(p => p.pendente_vinculacao_tipo)}
+                    emptyMsg="Nenhuma proposta pendente de tipo nesta importação."
+                    showTipoPendente
+                  />
+                )}
+                {visualizarAba === 'atualizadas' && (
+                  <div className="p-6 text-center text-slate-500">
+                    <p className="text-sm">Esta importação atualizou <strong>{visualizarLog?.atualizadas || 0}</strong> proposta(s) já existentes.</p>
+                    <p className="text-xs text-slate-400 mt-2">Os IDs das propostas atualizadas não são armazenados no histórico — apenas as criadas são rastreadas individualmente.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function PropostasTable({ propostas, emptyMsg, showTipoPendente }) {
+  const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+  if (propostas.length === 0) {
+    return <div className="p-8 text-center text-slate-400 text-sm">{emptyMsg}</div>;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50 border-b sticky top-0">
+          <tr>
+            <th className="px-3 py-2 text-left font-semibold text-slate-700">Cliente</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-700">CPF</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-700">Contrato</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-700">Banco/Parceira</th>
+            <th className="px-3 py-2 text-left font-semibold text-slate-700">Vendedor</th>
+            <th className="px-3 py-2 text-right font-semibold text-slate-700">Valor</th>
+            {showTipoPendente && <th className="px-3 py-2 text-left font-semibold text-slate-700">Tipo Original</th>}
+            <th className="px-3 py-2 text-left font-semibold text-slate-700">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {propostas.map((p, i) => (
+            <tr key={p.id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <td className="px-3 py-2 max-w-[160px] truncate">{p.cliente_nome || '-'}</td>
+              <td className="px-3 py-2 font-mono text-xs">{p.cliente_cpf || '-'}</td>
+              <td className="px-3 py-2 font-mono">{p.contrato || '-'}</td>
+              <td className="px-3 py-2">{p.administradora_nome || p.empresa_parceira_nome || '-'}</td>
+              <td className="px-3 py-2">{p.vendedor_nome || '-'}</td>
+              <td className="px-3 py-2 text-right font-semibold">{fmt(p.valor_credito || p.valor_liquido)}</td>
+              {showTipoPendente && <td className="px-3 py-2 text-xs font-mono text-orange-700">{p.tipo_importacao_original || p.emprestimo_tipo || '-'}</td>}
+              <td className="px-3 py-2">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  p.pendente_vinculacao_tipo
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {p.pendente_vinculacao_tipo ? '⚠ Tipo pendente' : '✓ OK'}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
