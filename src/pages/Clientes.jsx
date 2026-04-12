@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Eye, GitMerge, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
@@ -37,6 +37,8 @@ export default function Clientes() {
   const [openDelete, setOpenDelete] = useState(false);
   const [search, setSearch] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [deduplicando, setDeduplicando] = useState(false);
+  const [confirmDedup, setConfirmDedup] = useState(false);
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -270,6 +272,28 @@ export default function Clientes() {
     }
   };
 
+  const isAdmin = ['admin', 'gerente', 'master', 'super_admin'].includes(currentUser?.perfil);
+
+  const handleDeduplicar = async () => {
+    setConfirmDedup(false);
+    setDeduplicando(true);
+    try {
+      const resp = await base44.functions.invoke('deduplicarClientes', {
+        empresa_id: currentUser?.empresa_id || null
+      });
+      if (resp.data.error) {
+        toast.error(resp.data.error);
+      } else {
+        toast.success(resp.data.message);
+        queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      }
+    } catch (err) {
+      toast.error('Erro ao deduplicar: ' + err.message);
+    } finally {
+      setDeduplicando(false);
+    }
+  };
+
   const filteredClientes = clientes.filter(c => 
     c.nome?.toLowerCase().includes(search.toLowerCase()) ||
     c.nome_completo?.toLowerCase().includes(search.toLowerCase()) ||
@@ -358,8 +382,20 @@ export default function Clientes() {
         onAction={() => {
           setClienteParaEditar(null);
           setOpenForm(true);
-        }}
-      />
+        }}>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-orange-600 border-orange-300 hover:bg-orange-50"
+            onClick={() => setConfirmDedup(true)}
+            disabled={deduplicando}
+          >
+            {deduplicando ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitMerge className="w-4 h-4" />}
+            Deduplicar Clientes
+          </Button>
+        )}
+      </PageHeader>
 
       {/* Search */}
       <div className="relative max-w-md">
@@ -389,6 +425,24 @@ export default function Clientes() {
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
+
+      {/* Confirm Deduplicar */}
+      <AlertDialog open={confirmDedup} onOpenChange={setConfirmDedup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deduplicar Clientes por CPF?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá localizar clientes com o mesmo CPF e mantê-los como um único registro. Será mantido o cliente que possui telefone (ou o mais antigo). Dados complementares serão mesclados. Propostas, oportunidades e tarefas serão reatribuídas ao cliente mantido. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeduplicar} className="bg-orange-600 hover:bg-orange-700">
+              Confirmar Deduplicação
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>

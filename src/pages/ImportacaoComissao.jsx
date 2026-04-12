@@ -221,7 +221,8 @@ export default function ImportacaoComissao() {
         else if (vendasMatch.length > 1) motivoDivergencia = 'Múltiplas vendas encontradas';
         else motivoDivergencia = 'Venda não encontrada pelo contrato';
       } else if (grupoRaw && cotaRaw) {
-        const { venda, motivo } = await encontrarVendaConsorcioPorGrupoCota({ grupoRaw, cotaRaw, administradora_id: selectedAdmin, empresa_id: empresaIdFinal });
+        const vendasLocal = await base44.entities.VendaConsorcio.filter({ administradora_id: selectedAdmin, ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {}) });
+        const { venda, motivo } = encontrarVendaEmCache(vendasLocal.map(v => ({ ...v, venda_base_id: v.venda_base_id || v.id })), { grupoRaw, cotaRaw, contrato: '', administradora_id: selectedAdmin });
         vendaConsorcioEncontrada = venda;
         motivoDivergencia = motivo || '';
       } else {
