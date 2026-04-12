@@ -12,12 +12,23 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const empresa_id = body.empresa_id || null;
 
-    // Buscar todos os clientes da empresa
-    const clientes = empresa_id
-      ? await base44.asServiceRole.entities.Cliente.filter({ empresa_id })
-      : await base44.asServiceRole.entities.Cliente.list(null, 10000);
+    // Buscar tudo em paralelo de uma vez
+    const [clientes, propostas, oportunidades, tarefas] = await Promise.all([
+      empresa_id
+        ? base44.asServiceRole.entities.Cliente.filter({ empresa_id }, null, 10000)
+        : base44.asServiceRole.entities.Cliente.list(null, 10000),
+      empresa_id
+        ? base44.asServiceRole.entities.Proposta.filter({ empresa_id }, null, 10000)
+        : base44.asServiceRole.entities.Proposta.list(null, 10000),
+      empresa_id
+        ? base44.asServiceRole.entities.Oportunidade.filter({ empresa_id }, null, 5000)
+        : base44.asServiceRole.entities.Oportunidade.list(null, 5000),
+      empresa_id
+        ? base44.asServiceRole.entities.Tarefa.filter({ empresa_id }, null, 5000)
+        : base44.asServiceRole.entities.Tarefa.list(null, 5000),
+    ]);
 
-    // Agrupar por CPF (normalizado: só dígitos)
+    // Agrupar por CPF normalizado
     const grupoPorCpf = {};
     for (const c of clientes) {
       const cpf = (c.cpf || '').replace(/\D/g, '');
@@ -26,40 +37,57 @@ Deno.serve(async (req) => {
       grupoPorCpf[cpf].push(c);
     }
 
+    // Montar mapas em memória para evitar queries extras
+    const propostasPorCliente = {};
+    for (const p of propostas) {
+      if (!p.cliente_id) continue;
+      if (!propostasPorCliente[p.cliente_id]) propostasPorCliente[p.cliente_id] = [];
+      propostasPorCliente[p.cliente_id].push(p);
+    }
+    const oportunidadesPorCliente = {};
+    for (const o of oportunidades) {
+      if (!o.cliente_id) continue;
+      if (!oportunidadesPorCliente[o.cliente_id]) oportunidadesPorCliente[o.cliente_id] = [];
+      oportunidadesPorCliente[o.cliente_id].push(o);
+    }
+    const tarefasPorCliente = {};
+    for (const t of tarefas) {
+      if (!t.cliente_id) continue;
+      if (!tarefasPorCliente[t.cliente_id]) tarefasPorCliente[t.cliente_id] = [];
+      tarefasPorCliente[t.cliente_id].push(t);
+    }
+
     let mesclados = 0;
     let excluidos = 0;
 
-    for (const [cpf, grupo] of Object.entries(grupoPorCpf)) {
+    for (const [, grupo] of Object.entries(grupoPorCpf)) {
       if (grupo.length <= 1) continue;
 
-      // Escolher o "principal": prefere o que tem celular/telefone, depois o mais antigo
+      // Principal: prefere quem tem telefone, depois mais antigo
       grupo.sort((a, b) => {
         const aTemTel = !!(a.celular || a.telefone_fixo || a.telefone);
         const bTemTel = !!(b.celular || b.telefone_fixo || b.telefone);
         if (aTemTel && !bTemTel) return -1;
         if (!aTemTel && bTemTel) return 1;
-        // Mais antigo primeiro
         return new Date(a.created_date || 0) - new Date(b.created_date || 0);
       });
 
       const principal = grupo[0];
       const duplicados = grupo.slice(1);
 
-      // Mesclar dados do principal com dados dos duplicados (preencher campos vazios)
+      // Mesclar campos vazios do principal com dados dos duplicados
       const atualizar = {};
       for (const dup of duplicados) {
-        if (!principal.celular && dup.celular) atualizar.celular = dup.celular;
-        if (!principal.telefone_fixo && dup.telefone_fixo) atualizar.telefone_fixo = dup.telefone_fixo;
-        if (!principal.email && dup.email) atualizar.email = dup.email;
-        if (!principal.data_nascimento && dup.data_nascimento) atualizar.data_nascimento = dup.data_nascimento;
-        if (!principal.nome_mae && dup.nome_mae) atualizar.nome_mae = dup.nome_mae;
-        if (!principal.rg && dup.rg) atualizar.rg = dup.rg;
-        if (!principal.cep && dup.cep) atualizar.cep = dup.cep;
-        if (!principal.logradouro && dup.logradouro) atualizar.logradouro = dup.logradouro;
-        if (!principal.numero && dup.numero) atualizar.numero = dup.numero;
-        if (!principal.bairro && dup.bairro) atualizar.bairro = dup.bairro;
-        if (!principal.cidade && dup.cidade) atualizar.cidade = dup.cidade;
-        if (!principal.estado && dup.estado) atualizar.estado = dup.estado;
+        if (!principal.celular && !atualizar.celular && dup.celular) atualizar.celular = dup.celular;
+        if (!principal.telefone_fixo && !atualizar.telefone_fixo && dup.telefone_fixo) atualizar.telefone_fixo = dup.telefone_fixo;
+        if (!principal.email && !atualizar.email && dup.email) atualizar.email = dup.email;
+        if (!principal.data_nascimento && !atualizar.data_nascimento && dup.data_nascimento) atualizar.data_nascimento = dup.data_nascimento;
+        if (!principal.nome_mae && !atualizar.nome_mae && dup.nome_mae) atualizar.nome_mae = dup.nome_mae;
+        if (!principal.rg && !atualizar.rg && dup.rg) atualizar.rg = dup.rg;
+        if (!principal.cep && !atualizar.cep && dup.cep) atualizar.cep = dup.cep;
+        if (!principal.logradouro && !atualizar.logradouro && dup.logradouro) atualizar.logradouro = dup.logradouro;
+        if (!principal.cidade && !atualizar.cidade && dup.cidade) atualizar.cidade = dup.cidade;
+        if (!principal.estado && !atualizar.estado && dup.estado) atualizar.estado = dup.estado;
       }
 
       if (Object.keys(atualizar).length > 0) {
@@ -67,36 +95,37 @@ Deno.serve(async (req) => {
         mesclados++;
       }
 
-      // Redirecionar propostas/vendas/tarefas do duplicado para o principal
+      // Reatribuir registros e excluir duplicados
       for (const dup of duplicados) {
-        // Atualizar Propostas
-        const propostas = await base44.asServiceRole.entities.Proposta.filter({ cliente_id: dup.id });
-        for (const p of propostas) {
+        const nomeP = principal.nome_completo || principal.nome;
+
+        // Propostas
+        const props = propostasPorCliente[dup.id] || [];
+        for (const p of props) {
           await base44.asServiceRole.entities.Proposta.update(p.id, {
             cliente_id: principal.id,
-            cliente_nome: principal.nome_completo || principal.nome || p.cliente_nome,
+            cliente_nome: nomeP || p.cliente_nome,
           });
         }
 
-        // Atualizar Oportunidades
-        const oportunidades = await base44.asServiceRole.entities.Oportunidade.filter({ cliente_id: dup.id });
-        for (const o of oportunidades) {
+        // Oportunidades
+        const ops = oportunidadesPorCliente[dup.id] || [];
+        for (const o of ops) {
           await base44.asServiceRole.entities.Oportunidade.update(o.id, {
             cliente_id: principal.id,
-            cliente_nome: principal.nome_completo || principal.nome || o.cliente_nome,
+            cliente_nome: nomeP || o.cliente_nome,
           });
         }
 
-        // Atualizar Tarefas
-        const tarefas = await base44.asServiceRole.entities.Tarefa.filter({ cliente_id: dup.id });
-        for (const t of tarefas) {
+        // Tarefas
+        const tars = tarefasPorCliente[dup.id] || [];
+        for (const t of tars) {
           await base44.asServiceRole.entities.Tarefa.update(t.id, {
             cliente_id: principal.id,
-            cliente_nome: principal.nome_completo || principal.nome || t.cliente_nome,
+            cliente_nome: nomeP || t.cliente_nome,
           });
         }
 
-        // Excluir duplicado
         await base44.asServiceRole.entities.Cliente.delete(dup.id);
         excluidos++;
       }
@@ -106,7 +135,7 @@ Deno.serve(async (req) => {
       success: true,
       mesclados,
       excluidos,
-      message: `${excluidos} cliente(s) duplicado(s) removido(s), ${mesclados} atualizado(s) com dados mesclados.`
+      message: `${excluidos} cliente(s) duplicado(s) removido(s), ${mesclados} registro(s) atualizado(s) com dados mesclados.`
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
