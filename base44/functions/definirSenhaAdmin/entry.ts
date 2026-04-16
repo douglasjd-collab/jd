@@ -2,6 +2,10 @@ import { createClientFromRequest, createClient } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
+    // Ler o body primeiro, antes de qualquer outra coisa
+    const body = await req.json();
+    const { email, senha, empresa_id, nome } = body;
+
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
@@ -13,8 +17,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { email, senha, empresa_id, nome } = await req.json();
-
     if (!email || !senha || !empresa_id) {
       return Response.json({ error: 'email, senha e empresa_id são obrigatórios' }, { status: 400 });
     }
@@ -23,7 +25,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'A senha deve ter pelo menos 6 caracteres' }, { status: 400 });
     }
 
-    // Criar cliente sem contexto de request para usar auth.register()
+    // Criar cliente anônimo para usar auth.register()
     const APP_ID = Deno.env.get('BASE44_APP_ID');
     const anonClient = createClient({ appId: APP_ID });
 
@@ -59,7 +61,6 @@ Deno.serve(async (req) => {
     }
 
     if (!userRecord) {
-      // Usuário pode já existir mas ainda não disponível — retornar sucesso parcial
       return Response.json({ success: true, message: 'Usuário registrado. Vincule o admin manualmente se necessário.' });
     }
 
