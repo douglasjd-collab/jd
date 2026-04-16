@@ -30,26 +30,26 @@ Deno.serve(async (req) => {
 
       const colaboradorData = {
         user_id: userRecord.id,
-        nome: nome || userRecord.full_name || email,
+        nome: nome || userRecord.full_name || email.split('@')[0],
         email: email,
         perfil: 'admin',
         empresa_id: empresa_id,
         empresa_nome: empresa?.nome || '',
         status: 'ativo',
-      };
+        };
 
-      const existingColab = await base44.asServiceRole.entities.Colaborador.filter({ user_id: userRecord.id });
-      if (existingColab.length > 0) {
+        const existingColab = await base44.asServiceRole.entities.Colaborador.filter({ user_id: userRecord.id });
+        if (existingColab.length > 0) {
         await base44.asServiceRole.entities.Colaborador.update(existingColab[0].id, colaboradorData);
-      } else {
+        } else {
         await base44.asServiceRole.entities.Colaborador.create(colaboradorData);
-      }
+        }
 
-      return Response.json({
+        return Response.json({
         success: true,
         message: `Usuário ${email} já existe no sistema. Acesso à subconta configurado com sucesso.`,
         ja_existia: true,
-      });
+        });
     }
 
     // Usuário não existe — convidar via SDK

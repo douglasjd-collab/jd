@@ -28,7 +28,7 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
     telefone: empresa?.telefone || '',
     tipo_licenca: empresa?.tipo_licenca || 'basica',
     limite_usuarios: empresa?.limite_usuarios || 5,
-    email_admin: empresa?.email_admin || '',
+    nome_admin: empresa?.nome_admin || '',
     valor_mensal: empresa?.valor_mensal || '',
     observacoes: empresa?.observacoes || '',
   });
@@ -44,7 +44,7 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
       const resp = await base44.functions.invoke('definirSenhaAdmin', {
         email: emailLogin,
         empresa_id: empresa.id,
-        nome: formData.email_admin || formData.nome,
+        nome: formData.nome_admin || formData.nome,
       });
       if (resp.data?.success) {
         if (resp.data?.ja_existia) {
@@ -115,10 +115,11 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
             <div>
               <Label>Nome do Admin</Label>
               <Input
-                value={formData.email_admin}
-                onChange={(e) => setFormData({ ...formData, email_admin: e.target.value })}
+                value={formData.nome_admin}
+                onChange={(e) => setFormData({ ...formData, nome_admin: e.target.value })}
                 placeholder="Ex: João Silva"
               />
+              <p className="text-xs text-slate-400 mt-1">Login: {formData.email || empresa?.email || '—'}</p>
             </div>
           </div>
 

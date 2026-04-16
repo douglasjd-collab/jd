@@ -56,7 +56,7 @@ const INITIAL_FORM = {
   endereco_estado: '',
   tipo_licenca: 'basica',
   limite_usuarios: 5,
-  email_admin: '',
+  nome_admin: '',
 };
 
 export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
@@ -172,11 +172,11 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
                 <div>
                   <Label>Nome do Admin</Label>
                   <Input
-                    value={formData.email_admin}
-                    onChange={(e) => setFormData({ ...formData, email_admin: e.target.value })}
+                    value={formData.nome_admin}
+                    onChange={(e) => setFormData({ ...formData, nome_admin: e.target.value })}
                     placeholder="Ex: João Silva"
                   />
-                  <p className="text-xs text-slate-400 mt-1">O email de acesso será o email da empresa</p>
+                  <p className="text-xs text-slate-400 mt-1">Login de acesso: {formData.email || 'email da empresa'}</p>
                 </div>
                 <div>
                   <Label>Tipo de Licença</Label>
