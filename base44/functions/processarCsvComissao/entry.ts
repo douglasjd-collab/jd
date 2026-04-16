@@ -222,8 +222,9 @@ Deno.serve(async (req) => {
           const pct = pctStr !== '' && !isNaN(parseFloat(pctStr)) ? parseFloat(pctStr) : null;
           const contratoFinal = contratoRaw === '-' ? '' : contratoRaw;
 
-          // Campos Valor Bruto, Valor Líquido, Valor Parcela
+          // Campos Valor Bruto, Valor Base Comissão, Valor Líquido, Valor Parcela
           const valorBruto = m.valor_bruto ? parseValor(row[colLetraParaIdx(m.valor_bruto)] ?? '') : null;
+          const valorBaseComissao = m.valor_base_comissao ? parseValor(row[colLetraParaIdx(m.valor_base_comissao)] ?? '') : null;
           const valorLiquido = m.valor_liquido ? parseValor(row[colLetraParaIdx(m.valor_liquido)] ?? '') : null;
           const valorParcela = m.valor_parcela ? parseValor(row[colLetraParaIdx(m.valor_parcela)] ?? '') : null;
 
@@ -231,7 +232,7 @@ Deno.serve(async (req) => {
           if (!nomeCompleto && !cpfRaw && !contratoFinal && !numeroAde) continue;
 
           // adiciona campos extras ao item
-          items.push({ data_recebimento, contrato: contratoFinal, grupo: grupoRaw, cota: cotaRaw, valor: parseValor(valorRaw), parcela: parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1, cpf: cpfRaw, nome_completo: nomeCompleto, percentual_comissao: pct, numero_ade: numeroAde, banco, convenio, tipo_consignado: tipoConsignado, vendedor, valor_bruto: valorBruto || undefined, valor_liquido: valorLiquido || undefined, valor_parcela: valorParcela || undefined });
+          items.push({ data_recebimento, contrato: contratoFinal, grupo: grupoRaw, cota: cotaRaw, valor: parseValor(valorRaw), parcela: parseInt(String(parcelaRaw).replace(/\D/g, ''), 10) || 1, cpf: cpfRaw, nome_completo: nomeCompleto, percentual_comissao: pct, numero_ade: numeroAde, banco, convenio, tipo_consignado: tipoConsignado, vendedor, valor_bruto: valorBruto || undefined, valor_base_comissao: valorBaseComissao || undefined, valor_liquido: valorLiquido || undefined, valor_parcela: valorParcela || undefined });
           continue;
         } else {
           // Layout padrão: A=Data, B=Contrato, C=Grupo, D=Cota, E=Valor, F=Parcela

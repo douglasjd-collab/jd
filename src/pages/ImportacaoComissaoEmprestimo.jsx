@@ -317,24 +317,31 @@ export default function ImportacaoComissaoEmprestimo() {
       }));
       await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-      // Atualizar proposta: apenas comissao_banco_recebida + percentual + valor_comissao + data_recebimento
+      // Atualizar proposta: comissao_banco_recebida + percentual + valor_comissao + data_recebimento + valor_credito
       const atualizacoesPorVenda = {};
-      for (const rec of recebimentosCriados) {
+      for (let ri = 0; ri < recebimentosCriados.length; ri++) {
+        const rec = recebimentosCriados[ri];
+        const itemOriginal = items[ri] || {};
         if (!atualizacoesPorVenda[rec.venda_id]) {
-          atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+          atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_base_comissao: itemOriginal.valor_base_comissao || null };
         }
         atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
+        if (!atualizacoesPorVenda[rec.venda_id].valor_base_comissao && itemOriginal.valor_base_comissao) {
+          atualizacoesPorVenda[rec.venda_id].valor_base_comissao = itemOriginal.valor_base_comissao;
+        }
       }
       for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
         const p = await base44.entities.Proposta.get(vendaId);
         if (p) {
-          await base44.entities.Proposta.update(vendaId, {
+          const upd = {
             comissao_banco_recebida: true,
             valor_comissao: info.valor,
             comissao_recebida: (p.comissao_recebida || 0) + info.valor,
             data_comissao_recebida: info.data,
             percentual_comissao_vendedor: info.pct || p.percentual_comissao_vendedor,
-          });
+          };
+          if (info.valor_base_comissao) upd.valor_credito = info.valor_base_comissao;
+          await base44.entities.Proposta.update(vendaId, upd);
         }
       }
     }
@@ -519,24 +526,31 @@ export default function ImportacaoComissaoEmprestimo() {
         });
         await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-        // Atualizar proposta: apenas comissao_banco_recebida + percentual + valor_comissao + data_recebimento
+        // Atualizar proposta: comissao_banco_recebida + percentual + valor_comissao + data_recebimento + valor_credito
         const atualizacoesPorVenda = {};
-        for (const rec of recebimentosCriados) {
+        for (let ri = 0; ri < recebimentosCriados.length; ri++) {
+          const rec = recebimentosCriados[ri];
+          const itemOriginal = previewData.items[rec._itemIdx ?? ri] || {};
           if (!atualizacoesPorVenda[rec.venda_id]) {
-            atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento };
+            atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_base_comissao: itemOriginal.valor_base_comissao || null };
           }
           atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
+          if (!atualizacoesPorVenda[rec.venda_id].valor_base_comissao && itemOriginal.valor_base_comissao) {
+            atualizacoesPorVenda[rec.venda_id].valor_base_comissao = itemOriginal.valor_base_comissao;
+          }
         }
         for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
           const p = await base44.entities.Proposta.get(vendaId);
           if (p) {
-            await base44.entities.Proposta.update(vendaId, {
+            const upd = {
               comissao_banco_recebida: true,
               valor_comissao: info.valor,
               comissao_recebida: (p.comissao_recebida || 0) + info.valor,
               data_comissao_recebida: info.data,
               percentual_comissao_vendedor: info.pct || p.percentual_comissao_vendedor,
-            });
+            };
+            if (info.valor_base_comissao) upd.valor_credito = info.valor_base_comissao;
+            await base44.entities.Proposta.update(vendaId, upd);
           }
         }
       }
