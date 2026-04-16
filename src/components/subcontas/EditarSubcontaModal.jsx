@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -32,6 +32,39 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
     valor_mensal: empresa?.valor_mensal || '',
     observacoes: empresa?.observacoes || '',
   });
+
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [showSenha, setShowSenha] = useState(false);
+  const [definindoSenha, setDefinindoSenha] = useState(false);
+
+  const handleDefinirSenha = async () => {
+    const emailLogin = formData.email || empresa?.email;
+    if (!emailLogin) { toast.error('Email da empresa não encontrado'); return; }
+    if (!novaSenha || novaSenha.length < 6) { toast.error('A senha deve ter pelo menos 6 caracteres'); return; }
+    if (novaSenha !== confirmarSenha) { toast.error('As senhas não coincidem'); return; }
+
+    setDefinindoSenha(true);
+    try {
+      const resp = await base44.functions.invoke('definirSenhaAdmin', {
+        email: emailLogin,
+        senha: novaSenha,
+        empresa_id: empresa.id,
+        nome: formData.email_admin || formData.nome,
+      });
+      if (resp.data?.success) {
+        toast.success(`✅ Senha definida com sucesso para ${emailLogin}`);
+        setNovaSenha('');
+        setConfirmarSenha('');
+      } else {
+        toast.error(resp.data?.error || 'Erro ao definir senha');
+      }
+    } catch (e) {
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setDefinindoSenha(false);
+    }
+  };
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.asServiceRole.entities.Empresa.update(empresa.id, data),
@@ -84,12 +117,11 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
               />
             </div>
             <div>
-              <Label>Email do Admin</Label>
+              <Label>Nome do Admin</Label>
               <Input
-                type="email"
                 value={formData.email_admin}
                 onChange={(e) => setFormData({ ...formData, email_admin: e.target.value })}
-                placeholder="admin@empresa.com"
+                placeholder="Ex: João Silva"
               />
             </div>
           </div>
@@ -133,6 +165,57 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
                 />
               </div>
             </div>
+          </div>
+
+          {/* Definir Senha do Admin */}
+          <div className="border-t pt-4">
+            <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-slate-500" />
+              Definir Senha de Acesso
+            </h3>
+            <p className="text-xs text-slate-400 mb-3">
+              Login: <span className="font-medium text-slate-600">{formData.email || empresa?.email || '—'}</span>
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Nova Senha</Label>
+                <div className="relative">
+                  <Input
+                    type={showSenha ? 'text' : 'password'}
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  <button type="button" className="absolute right-3 top-2 text-slate-400 hover:text-slate-600" onClick={() => setShowSenha(!showSenha)}>
+                    {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <Label>Confirmar Senha</Label>
+                <Input
+                  type={showSenha ? 'text' : 'password'}
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  placeholder="Repita a senha"
+                />
+                {confirmarSenha && novaSenha !== confirmarSenha && (
+                  <p className="text-xs text-red-500 mt-1">As senhas não coincidem</p>
+                )}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={definindoSenha || !novaSenha || novaSenha !== confirmarSenha}
+              onClick={handleDefinirSenha}
+            >
+              {definindoSenha
+                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Definindo...</>
+                : <><KeyRound className="w-4 h-4 mr-2" />Definir Senha</>}
+            </Button>
           </div>
 
           {/* Observações */}

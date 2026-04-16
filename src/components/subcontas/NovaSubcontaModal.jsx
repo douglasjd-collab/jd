@@ -170,14 +170,13 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
               <h3 className="font-semibold text-sm mb-4">Configurações de Licença</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label>Email do Admin *</Label>
+                  <Label>Nome do Admin</Label>
                   <Input
-                    type="email"
                     value={formData.email_admin}
                     onChange={(e) => setFormData({ ...formData, email_admin: e.target.value })}
-                    placeholder="admin@empresa.com"
+                    placeholder="Ex: João Silva"
                   />
-                  <p className="text-xs text-slate-400 mt-1">Este email será usado para acessar a subconta</p>
+                  <p className="text-xs text-slate-400 mt-1">O email de acesso será o email da empresa</p>
                 </div>
                 <div>
                   <Label>Tipo de Licença</Label>
