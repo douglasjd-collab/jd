@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -33,41 +33,10 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
     observacoes: empresa?.observacoes || '',
   });
 
-  // Buscar empresas JD (para trazer para subconta)
-  const { data: empresasJD = [], isLoading: loadingEmpresas } = useQuery({
-    queryKey: ['empresas-jd'],
-    queryFn: async () => {
-      const all = await base44.asServiceRole.entities.Empresa.list('-created_date');
-      return all.filter(e => e.nome && e.nome.toLowerCase().includes('jd'));
-    },
-    enabled: open,
-  });
-
-  // Mutation para vincular empresa JD à subconta
-  const vinculaMutation = useMutation({
-    mutationFn: async (empresaJdId) => {
-      const empresaJd = empresasJD.find(e => e.id === empresaJdId);
-      if (!empresaJd) throw new Error('Empresa JD não encontrada');
-      
-      // Copiar dados relevantes da empresa JD para a subconta
-      const dadosVinculacao = {
-        cpf_cnpj: empresaJd.cpf_cnpj,
-        endereco_rua: empresaJd.endereco_rua,
-        endereco_numero: empresaJd.endereco_numero,
-        endereco_complemento: empresaJd.endereco_complemento,
-        endereco_cep: empresaJd.endereco_cep,
-        endereco_cidade: empresaJd.endereco_cidade,
-        endereco_estado: empresaJd.endereco_estado,
-      };
-      
-      return base44.asServiceRole.entities.Empresa.update(empresa.id, dadosVinculacao);
-    },
-    onSuccess: () => {
-      toast.success('Empresa vinculada à subconta com sucesso!');
-      onSuccess();
-    },
-    onError: (error) => toast.error('Erro ao vincular empresa: ' + error.message),
-  });
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [showSenha, setShowSenha] = useState(false);
+  const [definindoSenha, setDefinindoSenha] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.asServiceRole.entities.Empresa.update(empresa.id, data),
@@ -81,6 +50,61 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
   const handleSubmit = (e) => {
     e.preventDefault();
     updateMutation.mutate(formData);
+  };
+
+  const handleDefinirSenha = async () => {
+    const emailAdmin = formData.email_admin || formData.email;
+    if (!emailAdmin) {
+      toast.error('Informe o email do admin antes de definir a senha');
+      return;
+    }
+    if (!novaSenha || novaSenha.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    if (novaSenha !== confirmarSenha) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    setDefinindoSenha(true);
+    try {
+      // Registrar/criar usuário com email + senha
+      await base44.auth.register({ email: emailAdmin, password: novaSenha });
+
+      // Vincular como admin na subconta
+      await base44.functions.invoke('inviteUser', {
+        email: emailAdmin,
+        perfil: 'admin',
+        nome: formData.nome,
+        empresa_id: empresa.id,
+      });
+
+      toast.success(`✅ Acesso definido para ${emailAdmin}`);
+      setNovaSenha('');
+      setConfirmarSenha('');
+    } catch (e) {
+      // Se usuário já existe, apenas vincula
+      if (e.message?.includes('already') || e.message?.includes('existe') || e.message?.includes('registered')) {
+        try {
+          await base44.functions.invoke('inviteUser', {
+            email: emailAdmin,
+            perfil: 'admin',
+            nome: formData.nome,
+            empresa_id: empresa.id,
+          });
+          toast.success(`✅ Admin vinculado: ${emailAdmin}`);
+          setNovaSenha('');
+          setConfirmarSenha('');
+        } catch (e2) {
+          toast.error('Erro ao vincular admin: ' + e2.message);
+        }
+      } else {
+        toast.error('Erro ao definir acesso: ' + e.message);
+      }
+    } finally {
+      setDefinindoSenha(false);
+    }
   };
 
   return (
@@ -140,9 +164,7 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
                   value={formData.tipo_licenca}
                   onValueChange={(value) => setFormData({ ...formData, tipo_licenca: value })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="gratuita">Gratuita</SelectItem>
                     <SelectItem value="basica">Básica</SelectItem>
@@ -173,30 +195,53 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
             </div>
           </div>
 
-          {/* Vinculação de Empresa JD */}
+          {/* Definir Senha do Admin */}
           <div className="border-t pt-4">
-            <h3 className="font-semibold text-sm mb-4">Trazer Empresa JD para Subconta</h3>
-            <div>
-              <Label>Selecionar Empresa JDPromotora</Label>
-              <div className="flex gap-2">
-                <Select onValueChange={(value) => vinculaMutation.mutate(value)}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder={loadingEmpresas ? "Carregando..." : "Selecione uma empresa JD"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {empresasJD.map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {vinculaMutation.isPending && <Loader2 className="w-5 h-5 animate-spin text-blue-600" />}
+            <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-slate-500" />
+              Definir Senha do Admin
+            </h3>
+            <p className="text-xs text-slate-400 mb-3">
+              Define ou redefine a senha de acesso para o email do admin acima.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Nova Senha</Label>
+                <div className="relative">
+                  <Input
+                    type={showSenha ? 'text' : 'password'}
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  <button type="button" className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600" onClick={() => setShowSenha(!showSenha)}>
+                    {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                Isso irá copiar os dados de CPF/CNPJ e endereço da empresa JD para esta subconta.
-              </p>
+              <div>
+                <Label>Confirmar Senha</Label>
+                <Input
+                  type={showSenha ? 'text' : 'password'}
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  placeholder="Repita a senha"
+                />
+                {confirmarSenha && novaSenha !== confirmarSenha && (
+                  <p className="text-xs text-red-500 mt-1">As senhas não coincidem</p>
+                )}
+              </div>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={definindoSenha || !novaSenha || novaSenha !== confirmarSenha}
+              onClick={handleDefinirSenha}
+            >
+              {definindoSenha ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Definindo...</> : <><KeyRound className="w-4 h-4 mr-2" />Definir Senha</>}
+            </Button>
           </div>
 
           {/* Observações */}
@@ -207,23 +252,16 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
               onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
               placeholder="Notas adicionais sobre a subconta..."
               rows="3"
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full px-3 py-2 border rounded-md text-sm"
             />
           </div>
 
           {/* Botões */}
           <div className="flex justify-end gap-2 border-t pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={updateMutation.isPending}
-            >
+            <Button type="submit" disabled={updateMutation.isPending}>
               {updateMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </div>
