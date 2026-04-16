@@ -318,7 +318,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Configuração API', icon: Plug, page: 'ConfiguracaoApi', roles: ['master', 'super_admin', 'admin'] },
     { name: 'FinantoBank INSS', icon: FileText, page: 'IntegracaoFinantoBank', roles: ALL_ROLES },
-    { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ALL_ROLES },
     { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
   ];
 
