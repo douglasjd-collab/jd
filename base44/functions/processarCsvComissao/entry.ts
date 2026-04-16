@@ -260,12 +260,16 @@ Deno.serve(async (req) => {
     if (isExcel) {
       // ── Ler Excel com XLSX (lê TODAS as linhas) ───────────────────────────
       const workbook = XLSX.read(uint8, { type: 'array', cellDates: false, raw: true });
+      console.log(`Abas disponíveis no Excel: ${JSON.stringify(workbook.SheetNames)}`);
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       // sheet_to_json com header: 1 retorna array de arrays — nunca perde linhas
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
       console.log(`Excel: ${rows.length} linhas brutas na aba "${sheetName}"`);
+      console.log(`Iniciando leitura a partir do índice: ${layoutMapeamento ? layoutLinhaInicio - 1 : 1} (linha_inicio_dados=${layoutLinhaInicio})`);
+      if (rows.length > 1) console.log(`Amostra linha 2 (índice 1): ${JSON.stringify(rows[1])}`);
       processarLinhas(rows, layoutMapeamento ? layoutLinhaInicio - 1 : 1);
+      console.log(`Total de itens extraídos: ${items.length}`);
 
     } else {
       // ── Ler CSV — tenta UTF-8 primeiro, fallback ISO-8859-1 ──────────────
