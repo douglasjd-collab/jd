@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     }
 
     // Usuário não existe — convidar via SDK
-    await base44.asServiceRole.users.inviteUser(email, 'user');
+    await base44.users.inviteUser(email, 'user');
 
     // Aguardar o usuário aparecer no sistema
     let userRecord = null;
