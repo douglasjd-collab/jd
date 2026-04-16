@@ -200,11 +200,28 @@ async function processarWebhook(req, rawBody) {
     return;
   }
 
-  // Empresa padrão — usar a empresa JD
-  let empresaId = '699696c2c9f5bffc2e67402b';
+  // Determinar empresa pela instância Evolution (cada empresa tem sua instância)
+  let empresaId = '699696c2c9f5bffc2e67402b'; // fallback para JD Promotora
   let clienteId = null;
   let colaboradorId = null;
   let tipoConexao = 'empresa';
+
+  if (instanceFinal) {
+    // Buscar empresa que possui esta instância configurada
+    try {
+      const empresasPorInstancia = await base44.asServiceRole.entities.Empresa.filter(
+        { evolution_instance_name: instanceFinal }, null, 5
+      );
+      if (empresasPorInstancia.length > 0) {
+        empresaId = empresasPorInstancia[0].id;
+        console.log(`✅ Empresa identificada pela instância "${instanceFinal}": ${empresaId}`);
+      } else {
+        console.warn(`⚠️ Nenhuma empresa encontrada para instância "${instanceFinal}" — usando fallback`);
+      }
+    } catch (e) {
+      console.warn(`⚠️ Erro ao buscar empresa por instância: ${e.message}`);
+    }
+  }
 
   // Tentar extrair telefone diretamente (quando não é @lid)
   let telefoneLimpo = extrairTelefoneValido(remoteJidOriginal);

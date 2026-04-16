@@ -306,22 +306,14 @@ export default function BatePapo() {
       console.log(`👤 Usuário carregado:`, me);
       setUser(me);
 
-      // 1. Super admin
-      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
-        const empId = '699696c2c9f5bffc2e67402b';
-        console.log(`✅ Super admin detectado, empresa: ${empId}`);
-        setEmpresaId(empId);
-        return;
-      }
-
-      // 2. Tentar empresa_id do usuário autenticado
+      // 1. Tentar empresa_id do usuário autenticado (funciona para todas as subcontas)
       if (me.empresa_id) {
         console.log(`✅ Empresa encontrada no User: ${me.empresa_id}`);
         setEmpresaId(me.empresa_id);
         return;
       }
 
-      // 3. Buscar Colaborador ativo
+      // 2. Buscar Colaborador ativo
       const colabs = await base44.entities.Colaborador.filter({ 
         user_id: me.id, 
         status: 'ativo' 
@@ -333,7 +325,7 @@ export default function BatePapo() {
         return;
       }
 
-      // 4. Buscar Colaborador inativo como fallback
+      // 3. Buscar Colaborador inativo como fallback
       const colabsInativos = await base44.entities.Colaborador.filter({ 
         user_id: me.id 
       }, '-created_date', 1);
@@ -341,6 +333,14 @@ export default function BatePapo() {
       if (colabsInativos && colabsInativos.length > 0 && colabsInativos[0].empresa_id) {
         console.log(`⚠️ Colaborador inativo, mas usando empresa: ${colabsInativos[0].empresa_id}`);
         setEmpresaId(colabsInativos[0].empresa_id);
+        return;
+      }
+
+      // 4. Super admin sem colaborador — usar empresa padrão JD Promotora
+      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        const empId = '699696c2c9f5bffc2e67402b';
+        console.log(`✅ Super admin sem empresa definida, usando fallback: ${empId}`);
+        setEmpresaId(empId);
         return;
       }
 
