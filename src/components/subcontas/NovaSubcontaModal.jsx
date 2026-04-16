@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const formatCNPJ = (value) => {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -61,16 +61,14 @@ const INITIAL_FORM = {
 
 export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
   const [formData, setFormData] = useState(INITIAL_FORM);
-  const [step, setStep] = useState(1); // 1 = dados empresa, 2 = senha admin
-  const [empresaCriada, setEmpresaCriada] = useState(null);
-  const [enviandoConvite, setEnviandoConvite] = useState(false);
+
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('createEmpresa', { empresaData: data }),
-    onSuccess: (resp) => {
-      const empresa = resp?.data?.empresa;
-      setEmpresaCriada(empresa);
-      setStep(2);
+    onSuccess: () => {
+      toast.success('Subconta criada com sucesso!');
+      resetModal();
+      onSuccess();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -93,67 +91,19 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
     });
   };
 
-  const handleEnviarConvite = async () => {
-    const emailAdmin = formData.email_admin || formData.email;
-    if (!emailAdmin) {
-      toast.error('Informe o email do admin');
-      return;
-    }
-
-    setEnviandoConvite(true);
-    try {
-      await base44.functions.invoke('inviteUser', {
-        email: emailAdmin,
-        perfil: 'admin',
-        nome: formData.nome,
-        empresa_id: empresaCriada?.id,
-      });
-      toast.success(`✅ Convite enviado para ${emailAdmin}! O usuário receberá um link de acesso.`);
-      resetModal();
-      onSuccess();
-    } catch (e) {
-      toast.error('Erro ao enviar convite: ' + e.message);
-    } finally {
-      setEnviandoConvite(false);
-    }
-  };
-
-  const handlePularSenha = () => {
-    // Apenas cria a empresa sem definir senha (admin pode ser convidado depois)
-    toast.success('Subconta criada! Configure o acesso depois em Usuários.');
-    resetModal();
-    onSuccess();
-  };
-
   const resetModal = () => {
     setFormData(INITIAL_FORM);
-    setStep(1);
-    setEmpresaCriada(null);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetModal(); onOpenChange(v); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {step === 1 ? 'Nova Subconta' : '🔐 Definir Acesso do Admin'}
-          </DialogTitle>
-          <DialogDescription>
-            {step === 1
-              ? `Passo 1 de 2 — Dados da empresa`
-              : `Passo 2 de 2 — Subconta "${empresaCriada?.nome}" criada! Defina agora a senha de acesso.`}
-          </DialogDescription>
+          <DialogTitle>Nova Subconta</DialogTitle>
+          <DialogDescription>Preencha os dados da nova empresa</DialogDescription>
         </DialogHeader>
 
-        {/* Indicador de progresso */}
-        <div className="flex gap-2 mb-2">
-          <div className={`h-1.5 flex-1 rounded-full ${step >= 1 ? 'bg-[#23BE84]' : 'bg-slate-200'}`} />
-          <div className={`h-1.5 flex-1 rounded-full ${step >= 2 ? 'bg-[#23BE84]' : 'bg-slate-200'}`} />
-        </div>
-
-        {/* PASSO 1: Dados da empresa */}
-        {step === 1 && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Nome da Empresa *</Label>
@@ -255,42 +205,6 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
               </Button>
             </div>
           </form>
-        )}
-
-        {/* PASSO 2: Enviar convite ao admin */}
-        {step === 2 && (
-          <div className="space-y-5">
-            <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg p-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-green-800">Subconta criada com sucesso!</p>
-                <p className="text-xs text-green-600">Envie um convite de acesso para o administrador desta subconta.</p>
-              </div>
-            </div>
-
-            <div>
-              <Label>Email do Admin</Label>
-              <Input
-                type="email"
-                value={formData.email_admin || formData.email}
-                readOnly
-                className="bg-slate-50 text-slate-600"
-              />
-              <p className="text-xs text-slate-400 mt-1">O usuário receberá um email com o link para definir a senha e acessar o sistema.</p>
-            </div>
-
-            <div className="flex justify-between gap-2 border-t pt-4">
-              <Button type="button" variant="ghost" className="text-slate-500 text-sm" onClick={handlePularSenha}>
-                Pular (enviar depois)
-              </Button>
-              <Button onClick={handleEnviarConvite} disabled={enviandoConvite} className="bg-[#23BE84] hover:bg-[#1da570]">
-                {enviandoConvite
-                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando...</>
-                  : <><CheckCircle2 className="w-4 h-4 mr-2" />Enviar Convite de Acesso</>}
-              </Button>
-            </div>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );

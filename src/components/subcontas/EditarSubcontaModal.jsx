@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, KeyRound, Send } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -33,8 +33,6 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
     observacoes: empresa?.observacoes || '',
   });
 
-  const [enviandoConvite, setEnviandoConvite] = useState(false);
-
   const updateMutation = useMutation({
     mutationFn: (data) => base44.asServiceRole.entities.Empresa.update(empresa.id, data),
     onSuccess: () => {
@@ -47,34 +45,6 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
   const handleSubmit = (e) => {
     e.preventDefault();
     updateMutation.mutate(formData);
-  };
-
-  const handleEnviarConvite = async () => {
-    const emailAdmin = formData.email_admin || formData.email;
-    if (!emailAdmin) {
-      toast.error('Informe o email do admin antes de enviar o convite');
-      return;
-    }
-
-    setEnviandoConvite(true);
-    try {
-      const resp = await base44.functions.invoke('inviteUser', {
-        email: emailAdmin,
-        perfil: 'admin',
-        nome: formData.nome,
-        empresa_id: empresa.id,
-      });
-
-      if (resp.data?.success || resp.data?.invited) {
-        toast.success(`✅ Convite enviado para ${emailAdmin}! O usuário receberá um link para definir a senha.`);
-      } else {
-        toast.error(resp.data?.error || 'Erro ao enviar convite');
-      }
-    } catch (e) {
-      toast.error('Erro ao enviar convite: ' + e.message);
-    } finally {
-      setEnviandoConvite(false);
-    }
   };
 
   return (
@@ -163,28 +133,6 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
                 />
               </div>
             </div>
-          </div>
-
-          {/* Acesso do Admin */}
-          <div className="border-t pt-4">
-            <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-slate-500" />
-              Acesso do Admin
-            </h3>
-            <p className="text-xs text-slate-400 mb-3">
-              Envia um convite por email para o admin definir a própria senha de acesso.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={enviandoConvite || !(formData.email_admin || formData.email)}
-              onClick={handleEnviarConvite}
-            >
-              {enviandoConvite
-                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando...</>
-                : <><Send className="w-4 h-4 mr-2" />Enviar Convite de Acesso</>}
-            </Button>
           </div>
 
           {/* Observações */}
