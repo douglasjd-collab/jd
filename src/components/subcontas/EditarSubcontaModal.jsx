@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, KeyRound, Send } from 'lucide-react';
+import { Loader2, KeyRound, Send, RefreshCw } from 'lucide-react';
 
 export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuccess }) {
   const [formData, setFormData] = useState({
