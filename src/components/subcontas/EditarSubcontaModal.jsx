@@ -34,6 +34,29 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
   });
 
   const [enviandoAcesso, setEnviandoAcesso] = useState(false);
+  const [enviandoReset, setEnviandoReset] = useState(false);
+
+  const handleReenviarAcesso = async () => {
+    const emailLogin = formData.email || empresa?.email;
+    if (!emailLogin) { toast.error('Email da empresa não encontrado'); return; }
+    setEnviandoReset(true);
+    try {
+      const resp = await base44.functions.invoke('enviarResetSenha', {
+        email: emailLogin,
+        empresa_id: empresa.id,
+        nome: formData.nome_admin || formData.nome,
+      });
+      if (resp.data?.success) {
+        toast.success(`✅ Email de acesso reenviado para ${emailLogin}! O usuário poderá definir uma nova senha pelo link.`);
+      } else {
+        toast.error(resp.data?.error || 'Erro ao reenviar email');
+      }
+    } catch (e) {
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setEnviandoReset(false);
+    }
+  };
 
   const handleEnviarAcesso = async () => {
     const emailLogin = formData.email || empresa?.email;
@@ -176,17 +199,34 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
             <p className="text-xs text-slate-400 mb-3">
               Se o usuário ainda não existe no sistema, um convite será enviado para o email acima para que ele defina sua senha. Se já existe, o acesso à subconta será configurado automaticamente.
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={enviandoAcesso}
-              onClick={handleEnviarAcesso}
-            >
-              {enviandoAcesso
-                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Aguarde...</>
-                : <><Send className="w-4 h-4 mr-2" />Enviar Convite / Configurar Acesso</>}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={enviandoAcesso}
+                onClick={handleEnviarAcesso}
+              >
+                {enviandoAcesso
+                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Aguarde...</>
+                  : <><Send className="w-4 h-4 mr-2" />Enviar Convite / Configurar Acesso</>}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={enviandoReset}
+                onClick={handleReenviarAcesso}
+                className="text-amber-600 border-amber-300 hover:bg-amber-50"
+              >
+                {enviandoReset
+                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando...</>
+                  : <><RefreshCw className="w-4 h-4 mr-2" />Reenviar Email de Acesso</>}
+              </Button>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              💡 Use "Reenviar Email de Acesso" para que o usuário receba um novo link e possa definir/redefinir sua senha.
+            </p>
           </div>
 
           {/* Observações */}
