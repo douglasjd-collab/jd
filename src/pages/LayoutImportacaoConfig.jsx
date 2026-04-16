@@ -74,6 +74,7 @@ const CAMPOS_COMISSAO = [
   { key: 'data_pagamento_cliente', label: 'Data de Pagamento ao Cliente', obrigatorio: false },
   { key: 'data_cadastro_proposta', label: 'Data de Cadastro da Proposta', obrigatorio: false },
   { key: 'valor_bruto', label: 'Valor Bruto', obrigatorio: false },
+  { key: 'valor_base_comissao', label: 'Valor Base Comissão', obrigatorio: false },
   { key: 'valor_liquido', label: 'Valor Líquido', obrigatorio: false },
   { key: 'valor_parcela', label: 'Valor da Parcela', obrigatorio: false },
   { key: 'valor_comissao', label: 'Valor da Comissão', obrigatorio: true },
