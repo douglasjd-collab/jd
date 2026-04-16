@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 
 const formatCNPJ = (value) => {
   const digits = value.replace(/\D/g, '').slice(0, 14);
@@ -63,10 +63,7 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [step, setStep] = useState(1); // 1 = dados empresa, 2 = senha admin
   const [empresaCriada, setEmpresaCriada] = useState(null);
-  const [senhaAdmin, setSenhaAdmin] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [showSenha, setShowSenha] = useState(false);
-  const [criandoAdmin, setCriandoAdmin] = useState(false);
+  const [enviandoConvite, setEnviandoConvite] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('createEmpresa', { empresaData: data }),
@@ -96,58 +93,28 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
     });
   };
 
-  const handleCriarAdmin = async () => {
+  const handleEnviarConvite = async () => {
     const emailAdmin = formData.email_admin || formData.email;
     if (!emailAdmin) {
       toast.error('Informe o email do admin');
       return;
     }
-    if (!senhaAdmin || senhaAdmin.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
-      return;
-    }
-    if (senhaAdmin !== confirmarSenha) {
-      toast.error('As senhas não coincidem');
-      return;
-    }
 
-    setCriandoAdmin(true);
+    setEnviandoConvite(true);
     try {
-      // 1. Criar usuário com email + senha
-      await base44.auth.register({ email: emailAdmin, password: senhaAdmin });
-
-      // 2. Convidar como admin na subconta para criar o Colaborador
       await base44.functions.invoke('inviteUser', {
         email: emailAdmin,
         perfil: 'admin',
         nome: formData.nome,
         empresa_id: empresaCriada?.id,
       });
-
-      toast.success(`✅ Subconta criada! Admin: ${emailAdmin}`);
+      toast.success(`✅ Convite enviado para ${emailAdmin}! O usuário receberá um link de acesso.`);
       resetModal();
       onSuccess();
     } catch (e) {
-      // Se usuário já existe, apenas vincula como admin
-      if (e.message?.includes('already') || e.message?.includes('existe') || e.message?.includes('registered')) {
-        try {
-          await base44.functions.invoke('inviteUser', {
-            email: emailAdmin,
-            perfil: 'admin',
-            nome: formData.nome,
-            empresa_id: empresaCriada?.id,
-          });
-          toast.success(`✅ Subconta criada! Admin vinculado: ${emailAdmin}`);
-          resetModal();
-          onSuccess();
-        } catch (e2) {
-          toast.error('Erro ao vincular admin: ' + e2.message);
-        }
-      } else {
-        toast.error('Erro ao criar acesso: ' + e.message);
-      }
+      toast.error('Erro ao enviar convite: ' + e.message);
     } finally {
-      setCriandoAdmin(false);
+      setEnviandoConvite(false);
     }
   };
 
@@ -162,8 +129,6 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
     setFormData(INITIAL_FORM);
     setStep(1);
     setEmpresaCriada(null);
-    setSenhaAdmin('');
-    setConfirmarSenha('');
   };
 
   return (
@@ -292,65 +257,36 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
           </form>
         )}
 
-        {/* PASSO 2: Definir senha do admin */}
+        {/* PASSO 2: Enviar convite ao admin */}
         {step === 2 && (
           <div className="space-y-5">
             <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg p-3">
               <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-green-800">Subconta criada com sucesso!</p>
-                <p className="text-xs text-green-600">Agora defina a senha para o administrador desta subconta.</p>
+                <p className="text-xs text-green-600">Envie um convite de acesso para o administrador desta subconta.</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <Label>Email do Admin</Label>
-                <Input
-                  type="email"
-                  value={formData.email_admin || formData.email}
-                  readOnly
-                  className="bg-slate-50 text-slate-600"
-                />
-              </div>
-              <div>
-                <Label>Senha de Acesso *</Label>
-                <div className="relative">
-                  <Input
-                    type={showSenha ? 'text' : 'password'}
-                    value={senhaAdmin}
-                    onChange={(e) => setSenhaAdmin(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                    autoFocus
-                  />
-                  <button type="button" className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600" onClick={() => setShowSenha(!showSenha)}>
-                    {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <Label>Confirmar Senha *</Label>
-                <div className="relative">
-                  <Input
-                    type={showSenha ? 'text' : 'password'}
-                    value={confirmarSenha}
-                    onChange={(e) => setConfirmarSenha(e.target.value)}
-                    placeholder="Repita a senha"
-                    onKeyDown={(e) => e.key === 'Enter' && handleCriarAdmin()}
-                  />
-                </div>
-                {confirmarSenha && senhaAdmin !== confirmarSenha && (
-                  <p className="text-xs text-red-500 mt-1">As senhas não coincidem</p>
-                )}
-              </div>
+            <div>
+              <Label>Email do Admin</Label>
+              <Input
+                type="email"
+                value={formData.email_admin || formData.email}
+                readOnly
+                className="bg-slate-50 text-slate-600"
+              />
+              <p className="text-xs text-slate-400 mt-1">O usuário receberá um email com o link para definir a senha e acessar o sistema.</p>
             </div>
 
             <div className="flex justify-between gap-2 border-t pt-4">
               <Button type="button" variant="ghost" className="text-slate-500 text-sm" onClick={handlePularSenha}>
-                Pular (configurar depois)
+                Pular (enviar depois)
               </Button>
-              <Button onClick={handleCriarAdmin} disabled={criandoAdmin || !senhaAdmin || senhaAdmin !== confirmarSenha} className="bg-[#23BE84] hover:bg-[#1da570]">
-                {criandoAdmin ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Criando acesso...</> : <><CheckCircle2 className="w-4 h-4 mr-2" />Finalizar</>}
+              <Button onClick={handleEnviarConvite} disabled={enviandoConvite} className="bg-[#23BE84] hover:bg-[#1da570]">
+                {enviandoConvite
+                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando...</>
+                  : <><CheckCircle2 className="w-4 h-4 mr-2" />Enviar Convite de Acesso</>}
               </Button>
             </div>
           </div>

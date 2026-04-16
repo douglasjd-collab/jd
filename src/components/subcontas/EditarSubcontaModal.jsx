@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Loader2, KeyRound, Send } from 'lucide-react';
 
 export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -33,10 +33,7 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
     observacoes: empresa?.observacoes || '',
   });
 
-  const [novaSenha, setNovaSenha] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [showSenha, setShowSenha] = useState(false);
-  const [definindoSenha, setDefinindoSenha] = useState(false);
+  const [enviandoConvite, setEnviandoConvite] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.asServiceRole.entities.Empresa.update(empresa.id, data),
@@ -52,58 +49,31 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
     updateMutation.mutate(formData);
   };
 
-  const handleDefinirSenha = async () => {
+  const handleEnviarConvite = async () => {
     const emailAdmin = formData.email_admin || formData.email;
     if (!emailAdmin) {
-      toast.error('Informe o email do admin antes de definir a senha');
-      return;
-    }
-    if (!novaSenha || novaSenha.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
-      return;
-    }
-    if (novaSenha !== confirmarSenha) {
-      toast.error('As senhas não coincidem');
+      toast.error('Informe o email do admin antes de enviar o convite');
       return;
     }
 
-    setDefinindoSenha(true);
+    setEnviandoConvite(true);
     try {
-      // Registrar/criar usuário com email + senha
-      await base44.auth.register({ email: emailAdmin, password: novaSenha });
-
-      // Vincular como admin na subconta
-      await base44.functions.invoke('inviteUser', {
+      const resp = await base44.functions.invoke('inviteUser', {
         email: emailAdmin,
         perfil: 'admin',
         nome: formData.nome,
         empresa_id: empresa.id,
       });
 
-      toast.success(`✅ Acesso definido para ${emailAdmin}`);
-      setNovaSenha('');
-      setConfirmarSenha('');
-    } catch (e) {
-      // Se usuário já existe, apenas vincula
-      if (e.message?.includes('already') || e.message?.includes('existe') || e.message?.includes('registered')) {
-        try {
-          await base44.functions.invoke('inviteUser', {
-            email: emailAdmin,
-            perfil: 'admin',
-            nome: formData.nome,
-            empresa_id: empresa.id,
-          });
-          toast.success(`✅ Admin vinculado: ${emailAdmin}`);
-          setNovaSenha('');
-          setConfirmarSenha('');
-        } catch (e2) {
-          toast.error('Erro ao vincular admin: ' + e2.message);
-        }
+      if (resp.data?.success || resp.data?.invited) {
+        toast.success(`✅ Convite enviado para ${emailAdmin}! O usuário receberá um link para definir a senha.`);
       } else {
-        toast.error('Erro ao definir acesso: ' + e.message);
+        toast.error(resp.data?.error || 'Erro ao enviar convite');
       }
+    } catch (e) {
+      toast.error('Erro ao enviar convite: ' + e.message);
     } finally {
-      setDefinindoSenha(false);
+      setEnviandoConvite(false);
     }
   };
 
@@ -195,52 +165,25 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
             </div>
           </div>
 
-          {/* Definir Senha do Admin */}
+          {/* Acesso do Admin */}
           <div className="border-t pt-4">
             <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-slate-500" />
-              Definir Senha do Admin
+              Acesso do Admin
             </h3>
             <p className="text-xs text-slate-400 mb-3">
-              Define ou redefine a senha de acesso para o email do admin acima.
+              Envia um convite por email para o admin definir a própria senha de acesso.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>Nova Senha</Label>
-                <div className="relative">
-                  <Input
-                    type={showSenha ? 'text' : 'password'}
-                    value={novaSenha}
-                    onChange={(e) => setNovaSenha(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                  />
-                  <button type="button" className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600" onClick={() => setShowSenha(!showSenha)}>
-                    {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <Label>Confirmar Senha</Label>
-                <Input
-                  type={showSenha ? 'text' : 'password'}
-                  value={confirmarSenha}
-                  onChange={(e) => setConfirmarSenha(e.target.value)}
-                  placeholder="Repita a senha"
-                />
-                {confirmarSenha && novaSenha !== confirmarSenha && (
-                  <p className="text-xs text-red-500 mt-1">As senhas não coincidem</p>
-                )}
-              </div>
-            </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="mt-3"
-              disabled={definindoSenha || !novaSenha || novaSenha !== confirmarSenha}
-              onClick={handleDefinirSenha}
+              disabled={enviandoConvite || !(formData.email_admin || formData.email)}
+              onClick={handleEnviarConvite}
             >
-              {definindoSenha ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Definindo...</> : <><KeyRound className="w-4 h-4 mr-2" />Definir Senha</>}
+              {enviandoConvite
+                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando...</>
+                : <><Send className="w-4 h-4 mr-2" />Enviar Convite de Acesso</>}
             </Button>
           </div>
 
