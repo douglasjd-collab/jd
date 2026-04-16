@@ -221,7 +221,13 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const handleLogout = async () => {
-    await base44.auth.logout();
+    try {
+      await base44.auth.logout('/');
+    } catch (e) {
+      console.error('Erro ao fazer logout:', e);
+      // Força reload mesmo em caso de erro
+      window.location.href = '/';
+    }
   };
 
   const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
