@@ -19,54 +19,25 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
-
-const formatCNPJ = (value) => {
-  const digits = value.replace(/\D/g, '').slice(0, 14);
-  if (digits.length <= 11) {
-    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-      .replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3')
-      .replace(/(\d{3})(\d{1,3})/, '$1.$2');
-  }
-  return digits
-    .replace(/(\d{2})(\d)/, '$1.$2')
-    .replace(/(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1/$2')
-    .replace(/(\d{4})(\d)/, '$1-$2');
-};
-
-const formatTelefone = (value) => {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 10) {
-    return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').replace(/\($/, '').replace(/\(\d{0,2}$/, (m) => m);
-  }
-  return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-};
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 const INITIAL_FORM = {
-  codigo: '',
   nome: '',
   email: '',
-  cpf_cnpj: '',
-  telefone: '',
-  endereco_rua: '',
-  endereco_numero: '',
-  endereco_cep: '',
-  endereco_cidade: '',
-  endereco_estado: '',
+  nome_admin: '',
+  senha: '',
   tipo_licenca: 'basica',
   limite_usuarios: 5,
-  nome_admin: '',
 };
 
 export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
   const [formData, setFormData] = useState(INITIAL_FORM);
-
+  const [showSenha, setShowSenha] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('createEmpresa', { empresaData: data }),
     onSuccess: () => {
-      toast.success('Subconta criada com sucesso!');
+      toast.success('Subconta criada com sucesso! O admin receberá um convite por email.');
       resetModal();
       onSuccess();
     },
@@ -75,12 +46,19 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.nome || !formData.email || !formData.telefone) {
-      toast.error('Preencha os campos obrigatórios');
+    if (!formData.nome || !formData.email || !formData.nome_admin) {
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
     createMutation.mutate({
       ...formData,
+      telefone: '-',
+      endereco_rua: '-',
+      endereco_numero: '-',
+      endereco_cep: '-',
+      endereco_cidade: '-',
+      endereco_estado: '-',
+      cpf_cnpj: '',
       status: 'ativa',
       status_licenca: 'trial',
       usuarios_ativos: 0,
@@ -93,117 +71,104 @@ export default function NovaSubcontaModal({ open, onOpenChange, onSuccess }) {
 
   const resetModal = () => {
     setFormData(INITIAL_FORM);
+    setShowSenha(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetModal(); onOpenChange(v); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Nova Subconta</DialogTitle>
-          <DialogDescription>Preencha os dados da nova empresa</DialogDescription>
+          <DialogDescription>Preencha os dados essenciais para criar a subconta</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Nome da Empresa *</Label>
-                <Input
-                  value={formData.nome}
-                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                  placeholder="Ex: Empresa LTDA"
-                />
-              </div>
-              <div>
-                <Label>Email *</Label>
-                <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="contato@empresa.com"
-                />
-              </div>
-              <div>
-                <Label>CPF/CNPJ</Label>
-                <Input
-                  value={formData.cpf_cnpj}
-                  onChange={(e) => setFormData({ ...formData, cpf_cnpj: formatCNPJ(e.target.value) })}
-                  placeholder="00.000.000/0000-00"
-                />
-              </div>
-              <div>
-                <Label>Telefone *</Label>
-                <Input
-                  value={formData.telefone}
-                  onChange={(e) => setFormData({ ...formData, telefone: formatTelefone(e.target.value) })}
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div>
+            <Label>Nome da Empresa *</Label>
+            <Input
+              value={formData.nome}
+              onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              placeholder="Ex: Empresa LTDA"
+              autoFocus
+            />
+          </div>
 
-            <div className="border-t pt-4">
-              <h3 className="font-semibold text-sm mb-4">Endereço</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Rua</Label>
-                  <Input value={formData.endereco_rua} onChange={(e) => setFormData({ ...formData, endereco_rua: e.target.value })} placeholder="Av. Principal" />
-                </div>
-                <div>
-                  <Label>Número</Label>
-                  <Input value={formData.endereco_numero} onChange={(e) => setFormData({ ...formData, endereco_numero: e.target.value })} placeholder="123" />
-                </div>
-                <div>
-                  <Label>CEP</Label>
-                  <Input value={formData.endereco_cep} onChange={(e) => setFormData({ ...formData, endereco_cep: e.target.value })} placeholder="00000-000" />
-                </div>
-                <div>
-                  <Label>Cidade</Label>
-                  <Input value={formData.endereco_cidade} onChange={(e) => setFormData({ ...formData, endereco_cidade: e.target.value })} placeholder="São Paulo" />
-                </div>
-                <div>
-                  <Label>Estado</Label>
-                  <Input value={formData.endereco_estado} onChange={(e) => setFormData({ ...formData, endereco_estado: e.target.value })} placeholder="SP" maxLength="2" />
-                </div>
-              </div>
-            </div>
+          <div>
+            <Label>Email do Admin *</Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="admin@empresa.com"
+            />
+            <p className="text-xs text-slate-400 mt-1">Será usado como login de acesso</p>
+          </div>
 
-            <div className="border-t pt-4">
-              <h3 className="font-semibold text-sm mb-4">Configurações de Licença</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Nome do Admin</Label>
-                  <Input
-                    value={formData.nome_admin}
-                    onChange={(e) => setFormData({ ...formData, nome_admin: e.target.value })}
-                    placeholder="Ex: João Silva"
-                  />
-                  <p className="text-xs text-slate-400 mt-1">Login de acesso: {formData.email || 'email da empresa'}</p>
-                </div>
-                <div>
-                  <Label>Tipo de Licença</Label>
-                  <Select value={formData.tipo_licenca} onValueChange={(value) => setFormData({ ...formData, tipo_licenca: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gratuita">Gratuita</SelectItem>
-                      <SelectItem value="basica">Básica</SelectItem>
-                      <SelectItem value="profissional">Profissional</SelectItem>
-                      <SelectItem value="empresa">Empresa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Limite de Usuários</Label>
-                  <Input type="number" value={formData.limite_usuarios} onChange={(e) => setFormData({ ...formData, limite_usuarios: parseInt(e.target.value) })} min="1" />
-                </div>
-              </div>
-            </div>
+          <div>
+            <Label>Nome do Usuário Admin *</Label>
+            <Input
+              value={formData.nome_admin}
+              onChange={(e) => setFormData({ ...formData, nome_admin: e.target.value })}
+              placeholder="Ex: João Silva"
+            />
+          </div>
 
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <Button type="button" variant="outline" onClick={() => { resetModal(); onOpenChange(false); }}>Cancelar</Button>
-              <Button type="submit" disabled={createMutation.isPending} className="bg-[#23BE84] hover:bg-[#1da570]">
-                {createMutation.isPending ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Criando...</> : 'Criar Subconta →'}
-              </Button>
+          <div>
+            <Label>Senha para Login</Label>
+            <div className="relative">
+              <Input
+                type={showSenha ? 'text' : 'password'}
+                value={formData.senha}
+                onChange={(e) => setFormData({ ...formData, senha: e.target.value })}
+                placeholder="Senha de acesso (opcional)"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSenha(!showSenha)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-          </form>
+            <p className="text-xs text-slate-400 mt-1">Se não informada, o admin define via email de convite</p>
+          </div>
+
+          <div className="border-t pt-4 grid grid-cols-2 gap-4">
+            <div>
+              <Label>Tipo de Licença</Label>
+              <Select value={formData.tipo_licenca} onValueChange={(value) => setFormData({ ...formData, tipo_licenca: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gratuita">Gratuita</SelectItem>
+                  <SelectItem value="basica">Básica</SelectItem>
+                  <SelectItem value="profissional">Profissional</SelectItem>
+                  <SelectItem value="empresa">Empresa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Limite de Usuários</Label>
+              <Input
+                type="number"
+                value={formData.limite_usuarios}
+                onChange={(e) => setFormData({ ...formData, limite_usuarios: parseInt(e.target.value) })}
+                min="1"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t pt-4">
+            <Button type="button" variant="outline" onClick={() => { resetModal(); onOpenChange(false); }}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={createMutation.isPending} className="bg-[#23BE84] hover:bg-[#1da570]">
+              {createMutation.isPending
+                ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Criando...</>
+                : 'Criar Subconta →'}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
