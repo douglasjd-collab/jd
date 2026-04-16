@@ -1,8 +1,7 @@
-import { createClientFromRequest, createClient } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
-    // Ler o body primeiro, antes de qualquer outra coisa
     const body = await req.json();
     const { email, senha, empresa_id, nome } = body;
 
@@ -17,42 +16,49 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (!email || !senha || !empresa_id) {
-      return Response.json({ error: 'email, senha e empresa_id são obrigatórios' }, { status: 400 });
+    if (!email || !empresa_id) {
+      return Response.json({ error: 'email e empresa_id são obrigatórios' }, { status: 400 });
     }
 
-    if (senha.length < 6) {
-      return Response.json({ error: 'A senha deve ter pelo menos 6 caracteres' }, { status: 400 });
-    }
+    // Verificar se o usuário já existe
+    const existingUsers = await base44.asServiceRole.entities.User.filter({ email });
 
-    // Criar cliente anônimo para usar auth.register()
-    const APP_ID = Deno.env.get('BASE44_APP_ID');
-    const anonClient = createClient({ appId: APP_ID });
+    if (existingUsers && existingUsers.length > 0) {
+      // Usuário já existe — só garantir o Colaborador vinculado
+      const userRecord = existingUsers[0];
+      const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);
 
-    // Tentar registrar o usuário com senha
-    let registroOk = false;
-    try {
-      await anonClient.auth.register({ email, password: senha });
-      registroOk = true;
-    } catch (regErr) {
-      const msg = regErr.message || '';
-      // Se já existe, tudo bem — vamos só vincular
-      if (msg.includes('already') || msg.includes('existe') || msg.includes('registered') || msg.includes('409')) {
-        registroOk = true;
+      const colaboradorData = {
+        user_id: userRecord.id,
+        nome: nome || userRecord.full_name || email,
+        email: email,
+        perfil: 'admin',
+        empresa_id: empresa_id,
+        empresa_nome: empresa?.nome || '',
+        status: 'ativo',
+      };
+
+      const existingColab = await base44.asServiceRole.entities.Colaborador.filter({ user_id: userRecord.id });
+      if (existingColab.length > 0) {
+        await base44.asServiceRole.entities.Colaborador.update(existingColab[0].id, colaboradorData);
       } else {
-        console.error('Erro no register:', msg);
-        return Response.json({ error: 'Erro ao criar usuário: ' + msg }, { status: 400 });
+        await base44.asServiceRole.entities.Colaborador.create(colaboradorData);
       }
+
+      return Response.json({
+        success: true,
+        message: `Usuário ${email} já existe no sistema. Acesso à subconta configurado com sucesso.`,
+        ja_existia: true,
+      });
     }
 
-    if (!registroOk) {
-      return Response.json({ error: 'Não foi possível criar o usuário' }, { status: 400 });
-    }
+    // Usuário não existe — convidar via SDK
+    await base44.asServiceRole.users.inviteUser(email, 'user');
 
     // Aguardar o usuário aparecer no sistema
     let userRecord = null;
-    for (let i = 0; i < 5; i++) {
-      await new Promise(r => setTimeout(r, 800));
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 1000));
       const found = await base44.asServiceRole.entities.User.filter({ email });
       if (found?.length) {
         userRecord = found[0];
@@ -60,33 +66,35 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!userRecord) {
-      return Response.json({ success: true, message: 'Usuário registrado. Vincule o admin manualmente se necessário.' });
-    }
-
-    // Vincular como admin na subconta
     const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);
-    const colaboradorData = {
-      user_id: userRecord.id,
-      nome: nome || userRecord.full_name || email,
-      email: email,
-      perfil: 'admin',
-      empresa_id: empresa_id,
-      empresa_nome: empresa?.nome || '',
-      status: 'ativo',
-    };
 
-    const existingColab = await base44.asServiceRole.entities.Colaborador.filter({ user_id: userRecord.id });
-    if (existingColab.length > 0) {
-      await base44.asServiceRole.entities.Colaborador.update(existingColab[0].id, colaboradorData);
-    } else {
-      await base44.asServiceRole.entities.Colaborador.create(colaboradorData);
+    if (userRecord) {
+      const colaboradorData = {
+        user_id: userRecord.id,
+        nome: nome || userRecord.full_name || email,
+        email: email,
+        perfil: 'admin',
+        empresa_id: empresa_id,
+        empresa_nome: empresa?.nome || '',
+        status: 'ativo',
+      };
+
+      const existingColab = await base44.asServiceRole.entities.Colaborador.filter({ user_id: userRecord.id });
+      if (existingColab.length > 0) {
+        await base44.asServiceRole.entities.Colaborador.update(existingColab[0].id, colaboradorData);
+      } else {
+        await base44.asServiceRole.entities.Colaborador.create(colaboradorData);
+      }
     }
 
-    return Response.json({ success: true, message: `Acesso definido para ${email}` });
+    return Response.json({
+      success: true,
+      message: `Convite enviado para ${email}. O usuário receberá um email para definir sua senha de acesso.`,
+      ja_existia: false,
+    });
 
   } catch (error) {
-    console.error('Erro ao definir senha:', error);
+    console.error('Erro ao definir acesso:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
