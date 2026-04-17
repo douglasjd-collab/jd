@@ -30,15 +30,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Criar layout: Cred Franco segue o padrão
+    // Criar layout: Cred Franco
     // A=COD. PROPOSTA (contrato - coluna A=0)
     // D=DATA (coluna D=3)
     // F=CPF (coluna F=5)
     // H=BANCO (coluna H=7)
     // I=CONVENIO (coluna I=8)
     // J=TIPO DE PRODUTO (coluna J=9)
-    // S=PERC COMISSAO (coluna S=18)
-    // T=VL COMISSAO (coluna T=19)
+    // R=PERC COMISSAO (coluna R=17)
+    // S=VL COMISSAO (coluna S=18)
     const layout = await base44.entities.LayoutImportacao.create({
       empresa_parceira_id,
       tipo: 'comissao',
@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
         banco: 'H',
         convenio: 'I',
         tipo_consignado: 'J',
-        percentual_comissao: 'S',
-        valor_comissao: 'T'
+        percentual_comissao: 'R',
+        valor_comissao: 'S'
       }
     });
 
