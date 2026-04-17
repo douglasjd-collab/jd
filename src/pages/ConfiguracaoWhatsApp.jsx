@@ -63,12 +63,22 @@ export default function ConfiguracaoWhatsApp() {
         // Super admin: carregar TODAS as empresas para poder configurar cada uma
         const todasEmpresas = await base44.entities.Empresa.filter({}, '-created_date', 50);
         setEmpresas(todasEmpresas || []);
-        
-        // Selecionar a primeira empresa por padrão
-        if (todasEmpresas && todasEmpresas.length > 0) {
-          const primeira = todasEmpresas[0];
-          setSelectedEmpresaId(primeira.id);
-          carregarEmpresa(primeira);
+
+        // Tentar identificar a empresa do colaborador logado
+        let empresaInicial = null;
+        const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+        if (colabs && colabs.length > 0) {
+          // Pegar o colaborador com empresa_id definido (diferente da empresa principal)
+          const colabComEmpresa = colabs.find(c => c.empresa_id) || colabs[0];
+          if (colabComEmpresa?.empresa_id) {
+            empresaInicial = todasEmpresas.find(e => e.id === colabComEmpresa.empresa_id);
+          }
+        }
+        // Se não achou pelo colaborador, usar a primeira
+        const empParaCarregar = empresaInicial || (todasEmpresas && todasEmpresas[0]);
+        if (empParaCarregar) {
+          setSelectedEmpresaId(empParaCarregar.id);
+          carregarEmpresa(empParaCarregar);
         }
       } else {
         // Usuário normal - buscar empresa pelo Colaborador
