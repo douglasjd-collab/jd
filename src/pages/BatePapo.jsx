@@ -199,21 +199,21 @@ export default function BatePapo() {
     try {
       toast.message('🗑️ Limpando histórico...', { duration: 30000 });
       
-      // 1. Apagar todas as mensagens
-      const msgsFiltro = await base44.entities.MensagemWhatsapp.filter({}, '-created_date', 10000);
-      for (const msg of msgsFiltro) {
-        await base44.entities.MensagemWhatsapp.delete(msg.id).catch(() => {});
-      }
-      console.log(`✅ ${msgsFiltro.length} mensagens deletadas`);
-      
-      // 2. Apagar todas as conversas
+      // 1. Apagar todas as conversas da empresa
       const convsFiltro = await base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, '-created_date', 10000);
       for (const conv of convsFiltro) {
         await base44.entities.ConversaWhatsapp.delete(conv.id).catch(() => {});
       }
       console.log(`✅ ${convsFiltro.length} conversas deletadas`);
+
+      // 2. Apagar todas as mensagens da empresa
+      const msgsFiltro = await base44.entities.MensagemWhatsapp.filter({ empresa_id: empresaId }, '-created_date', 10000);
+      for (const msg of msgsFiltro) {
+        await base44.entities.MensagemWhatsapp.delete(msg.id).catch(() => {});
+      }
+      console.log(`✅ ${convsFiltro.length} conversas deletadas`);
       
-      toast.success(`✅ Histórico limpo! ${convsFiltro.length} conversas + ${msgsFiltro.length} mensagens deletadas`);
+      toast.success(`✅ Histórico limpo! ${convsFiltro.length} conversas + ${msgsFiltro.length} msgs deletadas`);
       refetchConversas();
       setConversaSelecionada(null);
     } catch (e) {
