@@ -7,8 +7,14 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Apenas admin/super_admin pode salvar
-    if (!['admin', 'super_admin'].includes(user.perfil) && user.role !== 'super_admin') {
+    // Verificar perfil: super_admin tem role direto, outros precisam checar Colaborador
+    let perfilEfetivo = user.role;
+    if (user.role !== 'super_admin') {
+      const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: 'ativo' }, null, 1);
+      perfilEfetivo = colabs?.[0]?.perfil || user.role;
+    }
+
+    if (!['admin', 'super_admin', 'master'].includes(perfilEfetivo)) {
       return Response.json({ error: 'Sem permissão' }, { status: 403 });
     }
 
