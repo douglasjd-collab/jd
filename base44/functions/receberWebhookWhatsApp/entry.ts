@@ -150,7 +150,15 @@ async function processarWebhook(req, rawBody) {
   const instancePayload = payload.instance || '';
   const instanceFinal = instanceFromQuery || instancePayload || '';
 
-  console.log(`📋 Event: "${event}" | Instance: "${instanceFinal}"`);
+  console.log(`📋 Event: "${event}" | Instance query: "${instanceFromQuery}" | Instance payload: "${instancePayload}" | Final: "${instanceFinal}"`);
+
+  // 🔒 SEGURANÇA: Se há instância na query string E no payload, elas DEVEM bater
+  // Isso evita que o webhook da LOTUS processe mensagens da JDPROMOTORA e vice-versa
+  if (instanceFromQuery && instancePayload && 
+      instanceFromQuery.toUpperCase() !== instancePayload.toUpperCase()) {
+    console.warn(`🚫 BLOQUEADO: Instância da URL "${instanceFromQuery}" ≠ instância do payload "${instancePayload}" — descartando mensagem`);
+    return;
+  }
 
   const data = payload.data || {};
   const base44 = createClientFromRequest(req);
