@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -21,6 +21,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { 
   Settings, 
   Percent, 
@@ -28,7 +35,9 @@ import {
   Trash2,
   Loader2,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Pencil,
+  Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SincronizacaoCanopus from '@/components/configuracoes/SincronizacaoCanopus';
@@ -42,7 +51,61 @@ export default function Configuracoes() {
   });
   const [backendStatus, setBackendStatus] = useState(null);
   const [verificando, setVerificando] = useState(false);
+  const [user, setUser] = useState(null);
+  const [empresa, setEmpresa] = useState(null);
+  const [editarNomeOpen, setEditarNomeOpen] = useState(false);
+  const [novoNome, setNovoNome] = useState('');
+  const [salvandoNome, setSalvandoNome] = useState(false);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  const carregarDados = async () => {
+    try {
+      const me = await base44.auth.me();
+      setUser(me);
+
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+      const empId = colabs?.[0]?.empresa_id || me.empresa_id;
+
+      if (empId) {
+        const emps = await base44.entities.Empresa.filter({ id: empId });
+        if (emps && emps.length > 0) {
+          setEmpresa(emps[0]);
+          setNovoNome(emps[0].nome);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    }
+  };
+
+  const handleSalvarNome = async () => {
+    if (!novoNome.trim() || !empresa) {
+      toast.error('Nome não pode estar vazio');
+      return;
+    }
+
+    if (novoNome === empresa.nome) {
+      setEditarNomeOpen(false);
+      return;
+    }
+
+    setSalvandoNome(true);
+    try {
+      await base44.entities.Empresa.update(empresa.id, { nome: novoNome });
+      setEmpresa(prev => ({ ...prev, nome: novoNome }));
+      setEditarNomeOpen(false);
+      toast.success('Nome da empresa alterado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao alterar nome: ' + error.message);
+      setNovoNome(empresa.nome);
+    } finally {
+      setSalvandoNome(false);
+    }
+  };
 
   const verificarBackend = async () => {
     setVerificando(true);
@@ -100,10 +163,75 @@ export default function Configuracoes() {
 
   return (
     <div className="space-y-6">
+      {/* Modal Editar Nome */}
+      <Dialog open={editarNomeOpen} onOpenChange={setEditarNomeOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-4 h-4" />
+              Alterar Nome da Empresa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Nome da empresa</Label>
+              <Input
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                placeholder="Digite o novo nome"
+                className="mt-2"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleSalvarNome()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditarNomeOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSalvarNome}
+              disabled={salvandoNome}
+              className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+            >
+              {salvandoNome ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Salvar'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PageHeader
         title="Configurações"
         subtitle="Configure as regras do sistema"
       />
+
+      {/* Informações da Empresa */}
+      <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-white">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-blue-600">
+              <Building2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <CardTitle>{empresa?.nome || 'Empresa'}</CardTitle>
+              <CardDescription>Informações da empresa</CardDescription>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditarNomeOpen(true)}
+            className="gap-2"
+          >
+            <Pencil className="w-4 h-4" />
+            Alterar Nome
+          </Button>
+        </CardHeader>
+      </Card>
 
       {/* Backend Functions */}
       <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50">
