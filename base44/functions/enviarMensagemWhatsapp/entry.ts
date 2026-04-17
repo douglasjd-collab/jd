@@ -223,11 +223,17 @@ Deno.serve(async (req) => {
         let mensagemErro = 'Erro ao enviar via WhatsApp';
         try {
           const errorData = JSON.parse(responseText);
-          if (errorData.response?.message) {
-            const msg = errorData.response.message[0];
+          if (response.status === 401) {
+            mensagemErro = `API Key inválida ou expirada para a instância "${instanceName}". Verifique a chave API na Configuração WhatsApp.`;
+          } else if (errorData.response?.message) {
+            const msg = Array.isArray(errorData.response.message) ? errorData.response.message[0] : errorData.response.message;
             if (msg && msg.exists === false) mensagemErro = `Número ${msg.number} não possui WhatsApp ativo`;
+            else if (typeof msg === 'string') mensagemErro = msg;
+          } else if (errorData.message) {
+            mensagemErro = errorData.message;
           }
         } catch (_) {}
+        console.error(`❌ Evolution ${response.status}: ${mensagemErro}`);
         return Response.json({ error: mensagemErro, details: responseText, status: response.status, success: false }, { status: 400 });
       }
 
