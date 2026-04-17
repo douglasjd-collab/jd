@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
     // H=BANCO (coluna H=7)
     // I=CONVENIO (coluna I=8)
     // J=TIPO DE PRODUTO (coluna J=9)
-    // R=PERC COMISSAO (coluna R=17)
-    // S=VL COMISSAO (coluna S=18)
+    // S=PERC COMISSAO (coluna S=18)
+    // T=VL COMISSAO (coluna T=19)
     const layout = await base44.entities.LayoutImportacao.create({
       empresa_parceira_id,
       tipo: 'comissao',
@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
         banco: 'H',
         convenio: 'I',
         tipo_consignado: 'J',
-        percentual_comissao: 'R',
-        valor_comissao: 'S'
+        percentual_comissao: 'S',
+        valor_comissao: 'T'
       }
     });
 
