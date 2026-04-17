@@ -70,14 +70,16 @@ export default function ConfiguracaoWhatsApp() {
           setSelectedEmpresaId(primeira.id);
           carregarEmpresa(primeira);
         }
-      } else if (me?.empresa_id) {
-        // Usuário normal - carregar apenas sua empresa
+      } else {
+        // Usuário normal - buscar empresa pelo Colaborador
         const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
         const empId = colabs?.[0]?.empresa_id || me.empresa_id;
-        const emp = await base44.entities.Empresa.filter({ id: empId });
-        if (emp && emp.length > 0) {
-          setSelectedEmpresaId(emp[0].id);
-          carregarEmpresa(emp[0]);
+        if (empId) {
+          const emps = await base44.entities.Empresa.filter({ id: empId });
+          if (emps && emps.length > 0) {
+            setSelectedEmpresaId(emps[0].id);
+            carregarEmpresa(emps[0]);
+          }
         }
       }
     } catch (error) {
