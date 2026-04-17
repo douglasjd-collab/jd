@@ -480,7 +480,7 @@ export default function ImportacaoComissaoEmprestimo() {
       // Criar ImportacaoItem para todos os registros (processados + divergências)
       const recPorIdx = {};
       recebimentosParaCriar.forEach(r => { recPorIdx[r._itemIdx] = r; });
-      const itensParaCriar = items.map((item, idx) => {
+      const itensParaCriar = previewData.items.map((item, idx) => {
         const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
         const rec = recPorIdx[idx];
         return {
