@@ -2,18 +2,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
-    // O SDK lê o token do header Authorization, não do body
-    // Por isso podemos ler o body normalmente antes de usar o SDK
-    const body = await req.json();
-    
-    const base44 = createClientFromRequest(req);
+    // Clonar ANTES de usar qualquer coisa — SDK lê o body original para auth
+    const reqParaSDK = req.clone();
+    const reqParaBody = req.clone();
+
+    const base44 = createClientFromRequest(reqParaSDK);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Verificar perfil: super_admin tem role direto, outros precisam checar Colaborador
+    // Verificar perfil
     let perfilEfetivo = user.role;
     if (user.role !== 'super_admin') {
-      const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: 'ativo' }, null, 1);
+      const colabs = await base44.asServiceRole.entities.Colaborador.filter(
+        { user_id: user.id, status: 'ativo' }, null, 1
+      );
       perfilEfetivo = colabs?.[0]?.perfil || user.role;
     }
 
@@ -22,6 +24,9 @@ Deno.serve(async (req) => {
     if (!['admin', 'super_admin', 'master'].includes(perfilEfetivo)) {
       return Response.json({ error: 'Sem permissão' }, { status: 403 });
     }
+
+    // Ler body da cópia
+    const body = await reqParaBody.json();
 
     const {
       empresa_id,
@@ -41,13 +46,6 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'empresa_id é obrigatório' }, { status: 400 });
     }
 
-    // Verificar se a empresa existe
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresa_id }, null, 1);
-    if (!empresas || empresas.length === 0) {
-      return Response.json({ success: false, error: 'Empresa não encontrada' }, { status: 404 });
-    }
-
-    // Salvar usando service role
     await base44.asServiceRole.entities.Empresa.update(empresa_id, {
       evolution_url: evolution_url || '',
       evolution_instance_name: evolution_instance_name || '',
@@ -62,12 +60,11 @@ Deno.serve(async (req) => {
       whatsapp_conectado: !!(evolution_instance_name || (whatsapp_access_token && whatsapp_phone_number_id)),
     });
 
-    console.log(`✅ Config WhatsApp salva para empresa ${empresa_id} | instancia: ${evolution_instance_name || 'vazia'}`);
-
+    console.log(`✅ Config WhatsApp salva para empresa ${empresa_id}`);
     return Response.json({ success: true });
 
   } catch (error) {
-    console.error('❌ Erro ao salvar config WhatsApp:', error.message);
+    console.error('❌ Erro:', error.message);
     return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 });
