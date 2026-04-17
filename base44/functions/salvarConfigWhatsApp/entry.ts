@@ -2,15 +2,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
-    // Clonar ANTES de usar qualquer coisa — SDK lê o body original para auth
-    const reqParaSDK = req.clone();
-    const reqParaBody = req.clone();
+    // O SDK usa o header Authorization — ler body depois não conflita
+    const base44 = createClientFromRequest(req);
 
-    const base44 = createClientFromRequest(reqParaSDK);
+    // me() lê o header Authorization (não o body)
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Verificar perfil
+    // Verificar perfil via Colaborador (para usuários não super_admin)
     let perfilEfetivo = user.role;
     if (user.role !== 'super_admin') {
       const colabs = await base44.asServiceRole.entities.Colaborador.filter(
@@ -25,8 +24,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Sem permissão' }, { status: 403 });
     }
 
-    // Ler body da cópia
-    const body = await reqParaBody.json();
+    // Ler o body APÓS autenticação (o SDK não consome o body)
+    const body = await req.json();
 
     const {
       empresa_id,
@@ -60,7 +59,7 @@ Deno.serve(async (req) => {
       whatsapp_conectado: !!(evolution_instance_name || (whatsapp_access_token && whatsapp_phone_number_id)),
     });
 
-    console.log(`✅ Config WhatsApp salva para empresa ${empresa_id}`);
+    console.log(`✅ Config salva para empresa ${empresa_id} | instancia: ${evolution_instance_name}`);
     return Response.json({ success: true });
 
   } catch (error) {
