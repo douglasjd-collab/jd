@@ -44,8 +44,6 @@ export default function ConfiguracaoWhatsApp() {
   const [statusMeta, setStatusMeta] = useState(null); // null | {success, phone_number, verified_name, quality_rating, error}
   const [user, setUser] = useState(null);
   const [empresa, setEmpresa] = useState(null);
-  const [empresas, setEmpresas] = useState([]);
-  const [selectedEmpresaId, setSelectedEmpresaId] = useState(null);
   const [apiTab, setApiTab] = useState('evolution');
   const [apiPreferida, setApiPreferida] = useState('auto');
   const [tempApiPreferida, setTempApiPreferida] = useState('auto');
@@ -59,37 +57,14 @@ export default function ConfiguracaoWhatsApp() {
       const me = await base44.auth.me();
       setUser(me);
 
-      if (me?.role === 'super_admin' || me?.perfil === 'super_admin') {
-        // Super admin: carregar TODAS as empresas para poder configurar cada uma
-        const todasEmpresas = await base44.entities.Empresa.filter({}, '-created_date', 50);
-        setEmpresas(todasEmpresas || []);
+      // Buscar empresa do usuário logado
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+      const empId = colabs?.[0]?.empresa_id || me.empresa_id;
 
-        // Tentar identificar a empresa do colaborador logado
-        let empresaInicial = null;
-        const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-        if (colabs && colabs.length > 0) {
-          // Pegar o colaborador com empresa_id definido (diferente da empresa principal)
-          const colabComEmpresa = colabs.find(c => c.empresa_id) || colabs[0];
-          if (colabComEmpresa?.empresa_id) {
-            empresaInicial = todasEmpresas.find(e => e.id === colabComEmpresa.empresa_id);
-          }
-        }
-        // Se não achou pelo colaborador, usar a primeira
-        const empParaCarregar = empresaInicial || (todasEmpresas && todasEmpresas[0]);
-        if (empParaCarregar) {
-          setSelectedEmpresaId(empParaCarregar.id);
-          carregarEmpresa(empParaCarregar);
-        }
-      } else {
-        // Usuário normal - buscar empresa pelo Colaborador
-        const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-        const empId = colabs?.[0]?.empresa_id || me.empresa_id;
-        if (empId) {
-          const emps = await base44.entities.Empresa.filter({ id: empId });
-          if (emps && emps.length > 0) {
-            setSelectedEmpresaId(emps[0].id);
-            carregarEmpresa(emps[0]);
-          }
+      if (empId) {
+        const emps = await base44.entities.Empresa.filter({ id: empId });
+        if (emps && emps.length > 0) {
+          carregarEmpresa(emps[0]);
         }
       }
     } catch (error) {
@@ -163,7 +138,7 @@ export default function ConfiguracaoWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const empresaId = selectedEmpresaId || empresa?.id;
+      const empresaId = empresa?.id;
 
       if (!empresaId) {
         toast.error('Erro: Empresa não definida');
@@ -257,14 +232,6 @@ export default function ConfiguracaoWhatsApp() {
     setTestandoMeta(false);
   };
 
-  const handleMudarEmpresa = (empId) => {
-    setSelectedEmpresaId(empId);
-    const emp = empresas.find(e => e.id === empId);
-    if (emp) carregarEmpresa(emp);
-  };
-
-  const isSuperAdmin = user?.role === 'super_admin' || user?.perfil === 'super_admin';
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -273,34 +240,6 @@ export default function ConfiguracaoWhatsApp() {
       />
 
       <div className="grid grid-cols-1 gap-6">
-
-        {/* Seletor de Empresa — apenas para super admin */}
-        {isSuperAdmin && empresas.length > 0 && (
-          <Card className="border-l-4 border-l-blue-500">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <span>🏢</span> Selecionar Empresa / Subconta
-              </CardTitle>
-              <CardDescription>
-                Como super admin, você pode configurar o WhatsApp de cada empresa separadamente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedEmpresaId || ''} onValueChange={handleMudarEmpresa}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma empresa..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {empresas.map(e => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.nome} {e.evolution_instance_name ? `— ${e.evolution_instance_name}` : '— sem instância'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Status da Conexão */}
         <Card className="border-l-4 border-l-green-500">
