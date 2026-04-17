@@ -336,8 +336,17 @@ export default function BatePapo() {
         return;
       }
 
-      // 4. Super admin sem colaborador — usar empresa padrão JD Promotora
+      // 4. Super admin sem colaborador — buscar primeiro Colaborador com empresa_id
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        // Tentar qualquer Colaborador associado ao usuário (mesmo sem status ativo)
+        const todosColabs = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date', 10);
+        const colabComEmpresa = todosColabs.find(c => c.empresa_id);
+        if (colabComEmpresa?.empresa_id) {
+          console.log(`✅ Super admin: empresa via colaborador: ${colabComEmpresa.empresa_id}`);
+          setEmpresaId(colabComEmpresa.empresa_id);
+          return;
+        }
+        // Último fallback: JD Promotora
         const empId = '699696c2c9f5bffc2e67402b';
         console.log(`✅ Super admin sem empresa definida, usando fallback: ${empId}`);
         setEmpresaId(empId);

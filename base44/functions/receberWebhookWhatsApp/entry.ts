@@ -205,6 +205,8 @@ async function processarWebhook(req, rawBody) {
   let clienteId = null;
   let colaboradorId = null;
   let tipoConexao = 'empresa';
+  let empresaEvolutionUrl = null;
+  let empresaEvolutionKey = null;
 
   if (instanceFinal) {
     // Buscar empresa que possui esta instância configurada
@@ -213,14 +215,24 @@ async function processarWebhook(req, rawBody) {
         { evolution_instance_name: instanceFinal }, null, 5
       );
       if (empresasPorInstancia.length > 0) {
-        empresaId = empresasPorInstancia[0].id;
-        console.log(`✅ Empresa identificada pela instância "${instanceFinal}": ${empresaId}`);
+        const emp = empresasPorInstancia[0];
+        empresaId = emp.id;
+        empresaEvolutionUrl = emp.evolution_url || Deno.env.get('EVOLUTION_API_URL');
+        empresaEvolutionKey = emp.evolution_api_key || Deno.env.get('EVOLUTION_API_KEY');
+        console.log(`✅ Empresa identificada pela instância "${instanceFinal}": ${empresaId} | URL: ${empresaEvolutionUrl}`);
       } else {
         console.warn(`⚠️ Nenhuma empresa encontrada para instância "${instanceFinal}" — usando fallback`);
+        empresaEvolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+        empresaEvolutionKey = Deno.env.get('EVOLUTION_API_KEY');
       }
     } catch (e) {
       console.warn(`⚠️ Erro ao buscar empresa por instância: ${e.message}`);
+      empresaEvolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+      empresaEvolutionKey = Deno.env.get('EVOLUTION_API_KEY');
     }
+  } else {
+    empresaEvolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+    empresaEvolutionKey = Deno.env.get('EVOLUTION_API_KEY');
   }
 
   // Tentar extrair telefone diretamente (quando não é @lid)
@@ -252,9 +264,9 @@ async function processarWebhook(req, rawBody) {
 
       // 3. Tentar via Evolution API (fetchProfile + histórico de mensagens)
       if (!telefoneLimpo) {
-        const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-        const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-        const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || instanceFinal;
+        const evolutionUrl = empresaEvolutionUrl;
+        const evolutionKey = empresaEvolutionKey;
+        const evolutionInstance = instanceFinal || Deno.env.get('EVOLUTION_INSTANCE_NAME');
         if (evolutionUrl && evolutionKey && evolutionInstance) {
           telefoneLimpo = await resolverLidParaTelefone(
             remoteJidOriginal,
@@ -409,9 +421,9 @@ async function processarWebhook(req, rawBody) {
   // Tentar buscar foto de perfil da Evolution
   let fotoUrl = contatoExistente?.foto_url || null;
   try {
-    const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-    const evolutionInstance = Deno.env.get('EVOLUTION_INSTANCE_NAME') || instanceFinal;
+    const evolutionUrl = empresaEvolutionUrl;
+    const evolutionKey = empresaEvolutionKey;
+    const evolutionInstance = instanceFinal || Deno.env.get('EVOLUTION_INSTANCE_NAME');
     if (evolutionUrl && evolutionKey && evolutionInstance) {
       const resProfile = await fetch(`${evolutionUrl.replace(/\/$/, '')}/contact/fetchProfile/${evolutionInstance}`, {
         method: 'POST',
