@@ -55,6 +55,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
@@ -188,6 +195,8 @@ export default function BatePapo() {
 
   const [corrigindo, setCorrigindo] = useState(false);
   const [limpandoTudo, setLimpandoTudo] = useState(false);
+  const [empresas, setEmpresas] = useState([]); // apenas para super_admin
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const limparHistoricoCompleto = async () => {
     const confirmacao = window.confirm(
@@ -306,7 +315,33 @@ export default function BatePapo() {
       console.log(`👤 Usuário carregado:`, me);
       setUser(me);
 
-      // 1. Tentar empresa_id do usuário autenticado (funciona para todas as subcontas)
+      const isSuper = me.role === 'super_admin' || me.perfil === 'super_admin';
+
+      if (isSuper) {
+        setIsSuperAdmin(true);
+        // Carregar todas as empresas com WhatsApp configurado para o seletor
+        const todasEmpresas = await base44.entities.Empresa.filter({}, '-created_date', 50);
+        const empComWhatsapp = todasEmpresas.filter(e => e.evolution_instance_name || e.whatsapp_phone_number_id);
+        setEmpresas(empComWhatsapp.length > 0 ? empComWhatsapp : todasEmpresas);
+
+        // Tentar identificar empresa pelo email do super_admin (ex: admin de uma subconta)
+        const empDoAdmin = todasEmpresas.find(e => e.email === me.email || e.email_admin === me.email);
+        if (empDoAdmin) {
+          console.log(`✅ Super admin: empresa pelo email: ${empDoAdmin.id} (${empDoAdmin.nome})`);
+          setEmpresaId(empDoAdmin.id);
+          return;
+        }
+
+        // Fallback: primeira empresa com WhatsApp configurado
+        const primeiraComWpp = empComWhatsapp[0] || todasEmpresas[0];
+        if (primeiraComWpp) {
+          console.log(`✅ Super admin fallback: ${primeiraComWpp.id} (${primeiraComWpp.nome})`);
+          setEmpresaId(primeiraComWpp.id);
+        }
+        return;
+      }
+
+      // 1. Tentar empresa_id do usuário autenticado
       if (me.empresa_id) {
         console.log(`✅ Empresa encontrada no User: ${me.empresa_id}`);
         setEmpresaId(me.empresa_id);
@@ -326,30 +361,10 @@ export default function BatePapo() {
       }
 
       // 3. Buscar Colaborador inativo como fallback
-      const colabsInativos = await base44.entities.Colaborador.filter({ 
-        user_id: me.id 
-      }, '-created_date', 1);
-      
+      const colabsInativos = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date', 1);
       if (colabsInativos && colabsInativos.length > 0 && colabsInativos[0].empresa_id) {
-        console.log(`⚠️ Colaborador inativo, mas usando empresa: ${colabsInativos[0].empresa_id}`);
+        console.log(`⚠️ Colaborador inativo, empresa: ${colabsInativos[0].empresa_id}`);
         setEmpresaId(colabsInativos[0].empresa_id);
-        return;
-      }
-
-      // 4. Super admin sem colaborador — buscar primeiro Colaborador com empresa_id
-      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
-        // Tentar qualquer Colaborador associado ao usuário (mesmo sem status ativo)
-        const todosColabs = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date', 10);
-        const colabComEmpresa = todosColabs.find(c => c.empresa_id);
-        if (colabComEmpresa?.empresa_id) {
-          console.log(`✅ Super admin: empresa via colaborador: ${colabComEmpresa.empresa_id}`);
-          setEmpresaId(colabComEmpresa.empresa_id);
-          return;
-        }
-        // Último fallback: JD Promotora
-        const empId = '699696c2c9f5bffc2e67402b';
-        console.log(`✅ Super admin sem empresa definida, usando fallback: ${empId}`);
-        setEmpresaId(empId);
         return;
       }
 
@@ -934,6 +949,24 @@ export default function BatePapo() {
             </CardHeader>
 
             <CardContent className="flex flex-1 flex-col gap-3 pt-0 overflow-hidden">
+              {/* Seletor de empresa — apenas super_admin */}
+              {isSuperAdmin && empresas.length > 0 && (
+                <Select value={empresaId || ''} onValueChange={(val) => {
+                  setEmpresaId(val);
+                  setConversaSelecionada(null);
+                }}>
+                  <SelectTrigger className="h-8 text-xs rounded-lg border-slate-200 bg-slate-50">
+                    <SelectValue placeholder="Selecionar empresa..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empresas.map(e => (
+                      <SelectItem key={e.id} value={e.id} className="text-xs">
+                        {e.nome} {e.evolution_instance_name ? `(${e.evolution_instance_name})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
