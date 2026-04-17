@@ -1,17 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
-  // Ler o body ANTES de criar o cliente (evita conflito de stream)
-  let body = {};
   try {
-    body = await req.json();
-  } catch (_) {
-    return Response.json({ success: false, error: 'Body inválido' }, { status: 400 });
-  }
+    // Clonar request para poder ler body E usar o SDK ao mesmo tempo
+    const reqClone = req.clone();
+    const base44 = createClientFromRequest(req);
 
-  const base44 = createClientFromRequest(req);
-
-  try {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -26,6 +20,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Sem permissão' }, { status: 403 });
     }
 
+    // Ler body do clone
+    const body = await reqClone.json();
     const {
       empresa_id,
       evolution_url,
