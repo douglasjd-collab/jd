@@ -7,15 +7,30 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function EditarNomeEmpresaModal({ open, onOpenChange, empresa, onSuccess }) {
+export default function EditarNomeEmpresaModal({ open, onOpenChange, empresaId, onSuccess }) {
   const [novoNome, setNovoNome] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
-    if (empresa) {
-      setNovoNome(empresa.nome || '');
+    if (open && empresaId) {
+      carregarEmpresa();
     }
-  }, [empresa, open]);
+  }, [open, empresaId]);
+
+  const carregarEmpresa = async () => {
+    setCarregando(true);
+    try {
+      const emps = await base44.entities.Empresa.filter({ id: empresaId });
+      if (emps && emps.length > 0) {
+        setNovoNome(emps[0].nome || '');
+      }
+    } catch (error) {
+      console.error('Erro ao carregar empresa:', error);
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   const handleSalvar = async () => {
     if (!novoNome.trim()) {
@@ -23,14 +38,9 @@ export default function EditarNomeEmpresaModal({ open, onOpenChange, empresa, on
       return;
     }
 
-    if (novoNome === empresa.nome) {
-      onOpenChange(false);
-      return;
-    }
-
     setSalvando(true);
     try {
-      await base44.entities.Empresa.update(empresa.id, { nome: novoNome });
+      await base44.entities.Empresa.update(empresaId, { nome: novoNome });
       toast.success('Nome da empresa alterado com sucesso!');
       onOpenChange(false);
       onSuccess?.();
@@ -53,14 +63,21 @@ export default function EditarNomeEmpresaModal({ open, onOpenChange, empresa, on
         <div className="space-y-4 py-4">
           <div>
             <Label>Nome da empresa</Label>
-            <Input
-              value={novoNome}
-              onChange={(e) => setNovoNome(e.target.value)}
-              placeholder="Digite o novo nome"
-              className="mt-2"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleSalvar()}
-            />
+            {carregando ? (
+              <div className="flex items-center gap-2 p-2 text-sm text-slate-500 mt-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Carregando...
+              </div>
+            ) : (
+              <Input
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                placeholder="Digite o novo nome"
+                className="mt-2"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleSalvar()}
+              />
+            )}
           </div>
         </div>
         <DialogFooter>

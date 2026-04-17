@@ -687,7 +687,7 @@ export default function Layout({ children, currentPageName }) {
       <EditarNomeEmpresaModal
         open={editarNomeEmpresaOpen}
         onOpenChange={setEditarNomeEmpresaOpen}
-        empresa={user?.empresa_id ? { id: user.empresa_id, nome: user.nome_perfil } : null}
+        empresaId={user?.empresa_id}
         onSuccess={loadUser}
       />
 
