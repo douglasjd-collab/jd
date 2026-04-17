@@ -28,7 +28,8 @@ import {
         Loader2,
         CheckSquare,
         Plug,
-        Send
+        Send,
+        Edit3
       } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import LogoUploader from '@/components/ui/LogoUploader';
 import EditarPerfilModal from '@/components/ui/EditarPerfilModal';
+import EditarNomeEmpresaModal from '@/components/ui/EditarNomeEmpresaModal';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import AntiTranslateGuard from '@/components/AntiTranslateGuard';
 import { Toaster, toast } from 'sonner';
@@ -53,6 +55,7 @@ export default function Layout({ children, currentPageName }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [logoUploaderOpen, setLogoUploaderOpen] = useState(false);
   const [editarPerfilOpen, setEditarPerfilOpen] = useState(false);
+  const [editarNomeEmpresaOpen, setEditarNomeEmpresaOpen] = useState(false);
   const [novaVendaConsorcioOpen, setNovaVendaConsorcioOpen] = useState(false);
   const [tarefasVencidas, setTarefasVencidas] = useState(0);
   const [tarefasNovas, setTarefasNovas] = useState(0);
@@ -534,13 +537,23 @@ export default function Layout({ children, currentPageName }) {
                   )}
 
                   <DropdownMenuItem 
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      toggleDarkMode();
-                    }}
+                   onSelect={(e) => {
+                     e.preventDefault();
+                     setEditarNomeEmpresaOpen(true);
+                   }}
                   >
-                    {darkMode ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-                    {darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                   <Edit3 className="w-4 h-4 mr-2" />
+                   Alterar Nome da Empresa
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem 
+                   onSelect={(e) => {
+                     e.preventDefault();
+                     toggleDarkMode();
+                   }}
+                  >
+                   {darkMode ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+                   {darkMode ? 'Modo Claro' : 'Modo Escuro'}
                   </DropdownMenuItem>
                   </div>
                   </DropdownMenuContent>
@@ -667,6 +680,14 @@ export default function Layout({ children, currentPageName }) {
         open={editarPerfilOpen}
         onOpenChange={setEditarPerfilOpen}
         user={user}
+        onSuccess={loadUser}
+      />
+
+      {/* Editar Nome Empresa Modal */}
+      <EditarNomeEmpresaModal
+        open={editarNomeEmpresaOpen}
+        onOpenChange={setEditarNomeEmpresaOpen}
+        empresa={user?.empresa_id ? { id: user.empresa_id, nome: user.nome_perfil } : null}
         onSuccess={loadUser}
       />
 
