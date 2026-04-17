@@ -214,8 +214,10 @@ export default function ImportacaoComissaoEmprestimo() {
 
     let processados = 0, divergencias = 0, valorTotal = 0;
     const recebimentosParaCriar = [];
+    const itemMotivos = {};
 
-    for (const item of items) {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
       const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
       const cpfRaw = String(item.cpf || '').trim();
       const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
@@ -260,37 +262,41 @@ export default function ImportacaoComissaoEmprestimo() {
         if (recExistentes.length > 0) {
           motivoDivergencia = 'Recebimento duplicado';
           propostaEncontrada = null;
+          itemMotivos[idx] = motivoDivergencia;
+          divergencias++;
         } else {
-          recebimentosParaCriar.push({
+          const recObj = {
+            _itemIdx: idx,
             empresa_id: propostaEncontrada.empresa_id,
             venda_id: propostaEncontrada.id,
-            cliente_id: propostaEncontrada.cliente_id,
-            cliente_nome: propostaEncontrada.cliente_nome,
-            vendedor_id: propostaEncontrada.vendedor_id,
-            vendedor_nome: propostaEncontrada.vendedor_nome,
+            cliente_id: propostaEncontrada.cliente_id || undefined,
+            cliente_nome: propostaEncontrada.cliente_nome || undefined,
+            vendedor_id: propostaEncontrada.vendedor_id || undefined,
+            vendedor_nome: propostaEncontrada.vendedor_nome || undefined,
             administradora_id: propostaEncontrada.administradora_id || selectedEmpresaParceira,
-            administradora_nome: item.banco || propostaEncontrada.administradora_nome || empresasParceiras.find(e => e.id === selectedEmpresaParceira)?.nome,
-            contrato: propostaEncontrada.contrato || propostaEncontrada.emprestimo_numero_ade,
+            administradora_nome: item.banco || propostaEncontrada.administradora_nome || empresasParceiras.find(e => e.id === selectedEmpresaParceira)?.nome || undefined,
+            contrato: propostaEncontrada.contrato || propostaEncontrada.emprestimo_numero_ade || undefined,
             data_recebimento: dataRecebimento,
             valor_recebido: valorRecebido,
             origem_importacao_id: importacao.id,
-            linha_importacao: items.indexOf(item) + 1,
+            linha_importacao: idx + 1,
             hash_duplicidade: hashDuplicidade,
             percentual_comissao: pctComissao,
             valor_a_pagar: valorRecebido,
             status_recebimento: 'recebida',
             status_pagamento: 'a_pagar',
-            observacoes: [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ') || undefined,
-          });
+          };
+          const obs = [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ');
+          if (obs) recObj.observacoes = obs;
+          recebimentosParaCriar.push(recObj);
           processados++;
           valorTotal += valorRecebido;
-          }
-          }
-
-          if (motivoDivergencia) {
-          divergencias++;
-          }
-          }
+        }
+      } else {
+        itemMotivos[idx] = motivoDivergencia;
+        divergencias++;
+      }
+    }
 
           if (recebimentosParaCriar.length > 0) {
           const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(
@@ -474,7 +480,7 @@ export default function ImportacaoComissaoEmprestimo() {
       // Criar ImportacaoItem para todos os registros (processados + divergências)
       const recPorIdx = {};
       recebimentosParaCriar.forEach(r => { recPorIdx[r._itemIdx] = r; });
-      const itensParaCriar = previewData.items.map((item, idx) => {
+      const itensParaCriar = items.map((item, idx) => {
         const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
         const rec = recPorIdx[idx];
         return {
