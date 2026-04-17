@@ -2,10 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
-    // Clonar request para poder ler body E usar o SDK ao mesmo tempo
-    const reqClone = req.clone();
+    // O SDK lê o token do header Authorization, não do body
+    // Por isso podemos ler o body normalmente antes de usar o SDK
+    const body = await req.json();
+    
     const base44 = createClientFromRequest(req);
-
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -16,12 +17,12 @@ Deno.serve(async (req) => {
       perfilEfetivo = colabs?.[0]?.perfil || user.role;
     }
 
+    console.log(`👤 User: ${user.email} | role: ${user.role} | perfilEfetivo: ${perfilEfetivo}`);
+
     if (!['admin', 'super_admin', 'master'].includes(perfilEfetivo)) {
       return Response.json({ error: 'Sem permissão' }, { status: 403 });
     }
 
-    // Ler body do clone
-    const body = await reqClone.json();
     const {
       empresa_id,
       evolution_url,
