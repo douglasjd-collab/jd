@@ -1,6 +1,14 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
+  // Ler o body ANTES de criar o cliente (evita conflito de stream)
+  let body = {};
+  try {
+    body = await req.json();
+  } catch (_) {
+    return Response.json({ success: false, error: 'Body inválido' }, { status: 400 });
+  }
+
   const base44 = createClientFromRequest(req);
 
   try {
@@ -18,7 +26,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Sem permissão' }, { status: 403 });
     }
 
-    const body = await req.json();
     const {
       empresa_id,
       evolution_url,
@@ -43,7 +50,7 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'Empresa não encontrada' }, { status: 404 });
     }
 
-    // Salvar usando service role para garantir que passa pelas regras de segurança
+    // Salvar usando service role
     await base44.asServiceRole.entities.Empresa.update(empresa_id, {
       evolution_url: evolution_url || '',
       evolution_instance_name: evolution_instance_name || '',
@@ -58,7 +65,7 @@ Deno.serve(async (req) => {
       whatsapp_conectado: !!(evolution_instance_name || (whatsapp_access_token && whatsapp_phone_number_id)),
     });
 
-    console.log(`✅ Config WhatsApp salva para empresa ${empresa_id} | token: ${whatsapp_access_token ? 'preenchido' : 'vazio'} | phone_id: ${whatsapp_phone_number_id || 'vazio'}`);
+    console.log(`✅ Config WhatsApp salva para empresa ${empresa_id} | instancia: ${evolution_instance_name || 'vazia'}`);
 
     return Response.json({ success: true });
 
