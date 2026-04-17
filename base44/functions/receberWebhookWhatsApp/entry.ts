@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 async function registrarLog(base44, empresaId, tipoEvento, dados) {
   try {
@@ -136,7 +136,7 @@ function normalizarParaBR(num) {
 }
 
 // Processamento principal em background (não bloqueia resposta HTTP)
-async function processarWebhook(req, rawBody) {
+async function processarWebhook(req, rawBody, base44) {
   const url = new URL(req.url);
   const instanceFromQuery = url.searchParams.get('instance') || '';
 
@@ -153,7 +153,6 @@ async function processarWebhook(req, rawBody) {
   console.log(`📋 Event: "${event}" | Instance query: "${instanceFromQuery}" | Instance payload: "${instancePayload}" | Final: "${instanceFinal}"`);
 
   // 🔒 SEGURANÇA: Se há instância na query string E no payload, elas DEVEM bater
-  // Isso evita que o webhook da LOTUS processe mensagens da JDPROMOTORA e vice-versa
   if (instanceFromQuery && instancePayload && 
       instanceFromQuery.toUpperCase() !== instancePayload.toUpperCase()) {
     console.warn(`🚫 BLOQUEADO: Instância da URL "${instanceFromQuery}" ≠ instância do payload "${instancePayload}" — descartando mensagem`);
@@ -161,7 +160,6 @@ async function processarWebhook(req, rawBody) {
   }
 
   const data = payload.data || {};
-  const base44 = createClientFromRequest(req);
 
   // ─── ACK / status update ──────────────────────────────────────────────────
   if (['messages_update', 'message_ack', 'messages_ack'].includes(event)) {
@@ -507,8 +505,11 @@ Deno.serve(async (req) => {
   const rawBody = await req.text();
   console.log(`📦 Body: ${rawBody.length} bytes`);
 
+  // Criar client com service role para webhooks externos (sem token de usuário)
+  const base44 = createClientFromRequest(req);
+
   // Processar IMEDIATAMENTE (não em background)
-  await processarWebhook(req, rawBody).catch((error) => {
+  await processarWebhook(req, rawBody, base44).catch((error) => {
     console.error('❌ Erro ao processar:', error.message);
     console.error('❌ STACK:', error.stack);
   });
