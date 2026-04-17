@@ -415,29 +415,24 @@ export default function BatePapo() {
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
       if (!conversaSelecionadaId) return [];
-      try {
-        const msgs = await base44.entities.MensagemWhatsapp.filter(
-          { conversa_id: conversaSelecionadaId },
-          '-data_envio',
-          5000
-        );
-        console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
-        const ordenadas = [...msgs].reverse();
-        const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
-        if (naoLidas.length > 0) {
-          await Promise.all(naoLidas.map(msg => 
-            base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
-          ));
-        }
-        return ordenadas;
-      } catch (e) {
-        console.error('Erro ao carregar mensagens:', e);
-        return [];
+      const msgs = await base44.entities.MensagemWhatsapp.filter(
+        { conversa_id: conversaSelecionadaId },
+        '-data_envio',
+        5000
+      );
+      console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
+      const ordenadas = [...msgs].reverse();
+      const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
+      if (naoLidas.length > 0) {
+        await Promise.all(naoLidas.map(msg => 
+          base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
+        ));
       }
+      return ordenadas;
     },
-    staleTime: 0,
-    refetchInterval: 1000,
-    gcTime: 0
+    staleTime: 5000,
+    refetchInterval: 5000,
+    placeholderData: (prev) => prev,
   });
 
   // Selecionar conversa inicial quando a lista carrega
@@ -476,14 +471,7 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Polling de mensagens — cada 2s para evitar rate limit
-  useEffect(() => {
-    if (!empresaId || !conversaSelecionadaId || !refetchMensagens) return;
-    const interval = setInterval(() => {
-      if (!document.hidden) refetchMensagens().catch(() => {});
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [empresaId, conversaSelecionadaId, refetchMensagens]);
+  // Polling de mensagens removido — o refetchInterval do useQuery já cuida disso
 
 
 
