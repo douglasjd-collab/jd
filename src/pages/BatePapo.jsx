@@ -388,6 +388,7 @@ export default function BatePapo() {
     enabled: !!empresaId,
     staleTime: 30000,
     queryFn: async () => {
+      if (!empresaId) return [];
       console.log(`📞 Buscando conversas para empresa: ${empresaId}`);
       const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId, limit: 10000 });
       const data = resp?.data?.conversas || [];

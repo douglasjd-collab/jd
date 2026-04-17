@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.26';
 
 async function registrarLog(base44, empresaId, tipoEvento, dados) {
   try {
