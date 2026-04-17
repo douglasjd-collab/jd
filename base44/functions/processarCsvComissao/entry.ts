@@ -211,7 +211,8 @@ Deno.serve(async (req) => {
 
           // Campos extras disponíveis no layout de comissão
           const pctCol = m.percentual_comissao || m.comissao_empresa;
-          const percentualComissaoRaw = pctCol ? row[colLetraParaIdx(pctCol)] : '';
+          const pctColIdx = colLetraParaIdx(pctCol);
+          const percentualComissaoRaw = pctColIdx >= 0 ? row[pctColIdx] : '';
           const numeroAde = String(row[colLetraParaIdx(m.numero_ade)] ?? '').trim();
           const banco = String(row[colLetraParaIdx(m.banco)] ?? '').trim();
           const convenio = String(row[colLetraParaIdx(m.convenio)] ?? '').trim();
@@ -219,6 +220,8 @@ Deno.serve(async (req) => {
           const vendedor = String(row[colLetraParaIdx(m.vendedor)] ?? '').trim();
 
           let pct = null;
+          if (i === 1) console.log(`DEBUG linha 2: pctCol=${pctCol}, pctColIdx=${pctColIdx}, raw=${percentualComissaoRaw}, row.length=${row.length}`);
+          
           if (percentualComissaoRaw !== undefined && percentualComissaoRaw !== null && percentualComissaoRaw !== '') {
             // Se é número direto (Excel)
             if (typeof percentualComissaoRaw === 'number') {
@@ -228,6 +231,7 @@ Deno.serve(async (req) => {
               pct = !isNaN(parseFloat(pctStr)) ? parseFloat(pctStr) : null;
             }
           }
+          if (i === 1) console.log(`DEBUG linha 2: pct final=${pct}`);
           const contratoFinal = contratoRaw === '-' ? '' : contratoRaw;
 
           // Campos Valor Bruto, Valor Base Comissão, Valor Líquido, Valor Parcela
