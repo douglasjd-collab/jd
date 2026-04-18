@@ -23,6 +23,7 @@ export default function ComissoesPagas() {
   const [user, setUser] = useState(null);
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const [filtroMes, setFiltroMes] = useState('todos');
+  const [filtroCliente, setFiltroCliente] = useState('');
   const [expandedLotes, setExpandedLotes] = useState({});
 
   useEffect(() => { loadUser(); }, []);
@@ -62,6 +63,12 @@ export default function ComissoesPagas() {
     if (filtroVendedor && !c.vendedor_nome?.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
     if (filtroMes !== 'todos' && c.data_pagamento) {
       if (moment(c.data_pagamento).format('YYYY-MM') !== filtroMes) return false;
+    }
+    if (filtroCliente) {
+      const termo = filtroCliente.toLowerCase().replace(/\D/g, '') || filtroCliente.toLowerCase();
+      const nomeMatch = c.cliente_nome?.toLowerCase().includes(filtroCliente.toLowerCase());
+      const cpfMatch = c.cliente_cpf?.replace(/\D/g, '').includes(filtroCliente.replace(/\D/g, ''));
+      if (!nomeMatch && !cpfMatch) return false;
     }
     return true;
   });
@@ -180,10 +187,14 @@ export default function ComissoesPagas() {
 
       {/* Filtros */}
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Vendedor</Label>
             <Input placeholder="Filtrar por vendedor" value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)} />
+          </div>
+          <div>
+            <Label>Cliente (Nome ou CPF)</Label>
+            <Input placeholder="Buscar por nome ou CPF do cliente" value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} />
           </div>
           <div>
             <Label>Mês</Label>
