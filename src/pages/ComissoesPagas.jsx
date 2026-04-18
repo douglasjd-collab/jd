@@ -89,6 +89,10 @@ export default function ComissoesPagas() {
     try { ids = JSON.parse(lote.comissoes_ids || '[]'); } catch { ids = []; }
     const comissoesDoLote = dadosFiltrados.filter(c => ids.includes(c.id));
     return { ...lote, comissoes: comissoesDoLote };
+  }).filter(lote => {
+    // Se há filtro de cliente, exibir apenas lotes que contenham ao menos uma comissão do cliente buscado
+    if (filtroCliente) return lote.comissoes.length > 0;
+    return true;
   });
 
   // Comissões sem lote (pagas mas sem protocolo)
