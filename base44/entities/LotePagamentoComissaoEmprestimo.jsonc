@@ -62,6 +62,10 @@
       ],
       "default": "programado",
       "description": "Status do lote: programado (pendente) ou quitado (pago)"
+    },
+    "comprovante_url": {
+      "type": "string",
+      "description": "URL do comprovante de pagamento anexado"
     }
   },
   "required": [

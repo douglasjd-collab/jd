@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -334,6 +334,17 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                       <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
                         <FileText className="w-3.5 h-3.5" />
                       </button>
+                      {l.comprovante_url ? (
+                        <a
+                          href={l.comprovante_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Ver comprovante de pagamento"
+                          className="p-1 rounded hover:bg-blue-100 text-blue-600 transition-colors"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                        </a>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
