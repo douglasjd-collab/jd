@@ -79,6 +79,10 @@
       "type": "string",
       "description": "E-mail do vendedor para onde foi enviado"
     },
+    "comprovante_url": {
+      "type": "string",
+      "description": "URL do comprovante de pagamento anexado"
+    },
     "status": {
       "type": "string",
       "enum": [

@@ -265,7 +265,70 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster }) {
+function ModalAnexarComprovante({ lote, onClose, onConfirm, loading }) {
+  const [comprovante, setComprovante] = useState(null);
+  const [nomeArquivo, setNomeArquivo] = useState('');
+  const [uploadando, setUploadando] = useState(false);
+
+  useEffect(() => {
+    if (!lote) { setComprovante(null); setNomeArquivo(''); }
+  }, [lote]);
+
+  const handleArquivo = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadando(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setComprovante(file_url);
+      setNomeArquivo(file.name);
+    } catch {
+      toast.error('Erro ao fazer upload do comprovante');
+    } finally {
+      setUploadando(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!lote} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Anexar Comprovante</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <p className="text-sm text-slate-600">Protocolo: <span className="font-semibold">{lote?._protocolo}</span></p>
+            <p className="text-sm text-slate-600">Valor: <span className="font-semibold">{lote ? fmt(lote._total) : ''}</span></p>
+          </div>
+          <div className="space-y-1">
+            <Label>Comprovante</Label>
+            <label className="flex items-center gap-2 cursor-pointer border border-dashed border-slate-300 rounded-md px-3 py-2 hover:bg-slate-50 transition-colors">
+              {uploadando ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <Paperclip className="w-4 h-4 text-slate-400" />}
+              <span className="text-xs text-slate-500 truncate">{nomeArquivo || 'Clique para anexar comprovante'}</span>
+              <input type="file" className="hidden" accept="image/*,application/pdf" onChange={handleArquivo} />
+            </label>
+            {comprovante && (
+              <a href={comprovante} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline">Ver anexo</a>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose} disabled={loading || uploadando}>Cancelar</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => onConfirm(lote, comprovante)}
+              disabled={loading || uploadando || !comprovante}
+            >
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Salvar Comprovante
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster, onAnexarComprovante }) {
   const total = lotes.reduce((acc, l) => ({
     valor: acc.valor + (l._valor || 0),
     acrescimos: acc.acrescimos + (l.acrescimos || 0),
@@ -328,16 +391,26 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                       >
                         {l.status === 'quitado' ? 'Quitado' : 'Programado'}
                       </Badge>
-                      {l.comprovante_url && (
-                        <a
-                          href={l.comprovante_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Ver comprovante de pagamento"
-                          className="p-1 rounded hover:bg-blue-100 text-blue-600 transition-colors"
-                        >
-                          <Paperclip className="w-3.5 h-3.5" />
-                        </a>
+                      {l.status === 'quitado' && (
+                        l.comprovante_url ? (
+                          <a
+                            href={l.comprovante_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Ver comprovante de pagamento"
+                            className="p-1 rounded hover:bg-blue-100 text-blue-600 transition-colors"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                          </a>
+                        ) : onAnexarComprovante ? (
+                          <button
+                            title="Anexar comprovante"
+                            className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                            onClick={() => onAnexarComprovante(l)}
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                          </button>
+                        ) : null
                       )}
                       <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
                         <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -363,8 +436,10 @@ export default function Saques() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [loteParaQuitar, setLoteParaQuitar] = useState(null);
   const [loteParaReprogramar, setLoteParaReprogramar] = useState(null);
+  const [loteParaComprovante, setLoteParaComprovante] = useState(null);
   const [quitando, setQuitando] = useState(false);
   const [reprogramando, setReprogramando] = useState(false);
+  const [anexandoComprovante, setAnexandoComprovante] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -468,6 +543,25 @@ export default function Saques() {
       setReprogramando(false);
     },
   });
+
+  const handleAnexarComprovante = async (lote, comprovanteUrl) => {
+    setAnexandoComprovante(true);
+    try {
+      if (lote._tipo === 'emp') {
+        await base44.entities.LotePagamentoComissaoEmprestimo.update(lote.id, { comprovante_url: comprovanteUrl });
+      } else {
+        await base44.entities.PagamentoComissaoLote.update(lote.id, { comprovante_url: comprovanteUrl });
+      }
+      queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
+      queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
+      toast.success('Comprovante anexado com sucesso!');
+      setLoteParaComprovante(null);
+    } catch {
+      toast.error('Erro ao anexar comprovante');
+    } finally {
+      setAnexandoComprovante(false);
+    }
+  };
 
   const handleConfirmarReprogramacao = () => {
     if (!loteParaReprogramar) return;
@@ -645,6 +739,7 @@ export default function Saques() {
             onReprogramar={isMaster ? setLoteParaReprogramar : undefined}
             mostrarQuitacao={true}
             isMaster={isMaster}
+            onAnexarComprovante={setLoteParaComprovante}
           />
         </div>
       )}
@@ -660,6 +755,12 @@ export default function Saques() {
         onClose={() => setLoteParaReprogramar(null)}
         onConfirm={handleConfirmarReprogramacao}
         loading={reprogramando}
+      />
+      <ModalAnexarComprovante
+        lote={loteParaComprovante}
+        onClose={() => setLoteParaComprovante(null)}
+        onConfirm={handleAnexarComprovante}
+        loading={anexandoComprovante}
       />
     </div>
   );
