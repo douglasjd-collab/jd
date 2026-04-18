@@ -328,13 +328,7 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                       >
                         {l.status === 'quitado' ? 'Quitado' : 'Programado'}
                       </Badge>
-                      <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
-                        <FileSpreadsheet className="w-3.5 h-3.5" />
-                      </button>
-                      <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
-                        <FileText className="w-3.5 h-3.5" />
-                      </button>
-                      {l.comprovante_url ? (
+                      {l.comprovante_url && (
                         <a
                           href={l.comprovante_url}
                           target="_blank"
@@ -344,7 +338,13 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                         >
                           <Paperclip className="w-3.5 h-3.5" />
                         </a>
-                      ) : null}
+                      )}
+                      <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                      </button>
+                      <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
+                        <FileText className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
