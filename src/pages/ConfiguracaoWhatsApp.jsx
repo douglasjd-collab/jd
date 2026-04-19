@@ -51,6 +51,7 @@ export default function ConfiguracaoWhatsApp() {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrStatus, setQrStatus] = useState(null); // null | 'connected' | 'waiting'
   const [qrPolling, setQrPolling] = useState(null);
+  const [criandoInstancia, setCriandoInstancia] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -301,6 +302,45 @@ export default function ConfiguracaoWhatsApp() {
     setQrPolling(interval);
   };
 
+  const criarInstancia = async () => {
+    const url = evolutionUrl || tempUrl;
+    const chaveApi = apiKey || tempApiKey;
+    const nomeInstancia = instanceName || tempInstance || empresa?.nome?.replace(/\s+/g, '').toUpperCase();
+
+    if (!url) { toast.error('Preencha a URL da API antes de criar a instância'); return; }
+    if (!chaveApi) { toast.error('Preencha a Chave de API antes de criar a instância'); return; }
+    if (!nomeInstancia) { toast.error('Preencha o Nome da Instância ou salve as configurações primeiro'); return; }
+
+    setCriandoInstancia(true);
+    try {
+      const base = url.replace(/\/$/, '');
+      const resp = await fetch(`${base}/instance/create`, {
+        method: 'POST',
+        headers: { 'apikey': chaveApi, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instanceName: nomeInstancia,
+          qrcode: true,
+          integration: 'WHATSAPP-BAILEYS',
+        }),
+      });
+      const data = await resp.json();
+      if (data?.instance?.instanceName || data?.hash || data?.instanceName) {
+        toast.success(`✅ Instância "${nomeInstancia}" criada com sucesso! Agora gere o QR Code para conectar.`);
+        // Se retornou QR Code já, exibir
+        const qr = data?.qrcode?.base64 || data?.base64;
+        if (qr) { setQrCode(qr); setQrStatus('waiting'); iniciarPolling(url, nomeInstancia); }
+      } else if (resp.status === 409 || data?.error?.includes?.('already')) {
+        toast.info('Instância já existe. Tente gerar o QR Code diretamente.');
+      } else {
+        toast.error('Erro ao criar instância: ' + JSON.stringify(data).slice(0, 200));
+      }
+    } catch (e) {
+      toast.error('Erro ao criar instância: ' + e.message);
+    } finally {
+      setCriandoInstancia(false);
+    }
+  };
+
   const testarConexaoMeta = async () => {
     if (!whatsappPhoneNumberId || !whatsappAccessToken) {
       toast.error('Preencha o Phone Number ID e o Access Token antes de testar');
@@ -534,6 +574,20 @@ export default function ConfiguracaoWhatsApp() {
                 )}
               </div>
             </div>
+
+                {/* Criar Instância */}
+                <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-xl">
+                  <p className="text-sm font-semibold text-blue-800 mb-1 flex items-center gap-2">🆕 Criar Instância na Evolution API</p>
+                  <p className="text-xs text-blue-700 mb-3">Se ainda não criou a instância no painel da Evolution, clique abaixo para criá-la automaticamente com o nome <strong>{instanceName || empresa?.nome || '(configure o nome)'}</strong>.</p>
+                  <Button
+                    onClick={criarInstancia}
+                    disabled={criandoInstancia}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
+                    {criandoInstancia ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Criando...</> : '🆕 Criar Instância'}
+                  </Button>
+                </div>
 
                 {/* Conectar via QR Code */}
                 <div className="mt-6 border-t pt-6">
