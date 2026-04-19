@@ -222,7 +222,12 @@ export default function ConfiguracaoWhatsApp() {
   const VERIFY_TOKEN_FIXO = 'WAZE_CRM_WEBHOOK_2024';
 
   // QR Code: buscar/atualizar
-  const EVOLUTION_KEY = '29683C4C977415CAAFCCE10F7D57E11';
+  // Usa a chave salva na empresa, ou fallback para a chave padrão
+  const getEvolutionKey = () => apiKey || tempApiKey || '29683C4C977415CAAFCCE10F7D57E11';
+  const getEvolutionHeaders = () => ({
+    'apikey': getEvolutionKey(),
+    'Content-Type': 'application/json',
+  });
 
   const buscarQrCode = async () => {
     const url = evolutionUrl || tempUrl;
@@ -237,10 +242,10 @@ export default function ConfiguracaoWhatsApp() {
     try {
       const base = url.replace(/\/$/, '');
 
+      const headers = getEvolutionHeaders();
+
       // Primeiro verifica se já está conectada
-      const statusResp = await fetch(`${base}/instance/connectionState/${instance}`, {
-        headers: { apikey: EVOLUTION_KEY },
-      });
+      const statusResp = await fetch(`${base}/instance/connectionState/${instance}`, { headers });
       const statusData = await statusResp.json();
       const state = statusData?.instance?.state || statusData?.state;
       if (state === 'open') {
@@ -250,9 +255,7 @@ export default function ConfiguracaoWhatsApp() {
       }
 
       // Busca QR Code via /instance/connect/{instance}
-      const resp = await fetch(`${base}/instance/connect/${instance}`, {
-        headers: { apikey: EVOLUTION_KEY },
-      });
+      const resp = await fetch(`${base}/instance/connect/${instance}`, { headers });
       const data = await resp.json();
 
       // Suporta diferentes formatos da Evolution API v1 e v2
@@ -277,7 +280,7 @@ export default function ConfiguracaoWhatsApp() {
   const verificarStatus = async (url, instance) => {
     try {
       const resp = await fetch(`${url.replace(/\/$/, '')}/instance/connectionState/${instance}`, {
-        headers: { apikey: EVOLUTION_KEY },
+        headers: getEvolutionHeaders(),
       });
       const data = await resp.json();
       if (data?.instance?.state === 'open' || data?.state === 'open') {
