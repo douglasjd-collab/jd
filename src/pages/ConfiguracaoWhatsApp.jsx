@@ -235,19 +235,37 @@ export default function ConfiguracaoWhatsApp() {
     setQrCode(null);
     setQrStatus(null);
     try {
-      // Tenta buscar o QR code da instância
-      const resp = await fetch(`${url.replace(/\/$/, '')}/instance/connect/${instance}`, {
+      const base = url.replace(/\/$/, '');
+
+      // Primeiro verifica se já está conectada
+      const statusResp = await fetch(`${base}/instance/connectionState/${instance}`, {
+        headers: { apikey: EVOLUTION_KEY },
+      });
+      const statusData = await statusResp.json();
+      const state = statusData?.instance?.state || statusData?.state;
+      if (state === 'open') {
+        setQrStatus('connected');
+        setQrLoading(false);
+        return;
+      }
+
+      // Busca QR Code via /instance/connect/{instance}
+      const resp = await fetch(`${base}/instance/connect/${instance}`, {
         headers: { apikey: EVOLUTION_KEY },
       });
       const data = await resp.json();
-      if (data?.base64) {
-        setQrCode(data.base64);
+
+      // Suporta diferentes formatos da Evolution API v1 e v2
+      const qr = data?.base64 || data?.qrcode?.base64 || data?.qr?.base64 || data?.code;
+
+      if (qr) {
+        setQrCode(qr);
         setQrStatus('waiting');
         iniciarPolling(url, instance);
-      } else if (data?.instance?.state === 'open') {
-        setQrStatus('connected');
       } else {
-        toast.error('Não foi possível obter o QR Code. Verifique a URL e o nome da instância.');
+        // Log para debug
+        console.error('Resposta Evolution API:', JSON.stringify(data));
+        toast.error('QR Code não encontrado. Resposta: ' + JSON.stringify(data).slice(0, 200));
       }
     } catch (e) {
       toast.error('Erro ao conectar à Evolution API: ' + e.message);
