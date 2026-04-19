@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi } from 'lucide-react';
+import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi, QrCode, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -47,6 +47,10 @@ export default function ConfiguracaoWhatsApp() {
   const [apiTab, setApiTab] = useState('evolution');
   const [apiPreferida, setApiPreferida] = useState('auto');
   const [tempApiPreferida, setTempApiPreferida] = useState('auto');
+  const [qrCode, setQrCode] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrStatus, setQrStatus] = useState(null); // null | 'connected' | 'waiting'
+  const [qrPolling, setQrPolling] = useState(null);
 
   useEffect(() => {
     carregarDados();
@@ -216,6 +220,65 @@ export default function ConfiguracaoWhatsApp() {
 
   const WEBHOOK_URL_OFICIAL = 'https://app--waze-crm.base44.app/api/apps/6950a9860c8af0e2ff10fc9e/functions/webhookMetaPublico';
   const VERIFY_TOKEN_FIXO = 'WAZE_CRM_WEBHOOK_2024';
+
+  // QR Code: buscar/atualizar
+  const EVOLUTION_KEY = '29683C4C977415CAAFCCE10F7D57E11';
+
+  const buscarQrCode = async () => {
+    const url = evolutionUrl || tempUrl;
+    const instance = instanceName || tempInstance;
+    if (!url || !instance) {
+      toast.error('Preencha a URL da API e o Nome da Instância primeiro');
+      return;
+    }
+    setQrLoading(true);
+    setQrCode(null);
+    setQrStatus(null);
+    try {
+      // Tenta buscar o QR code da instância
+      const resp = await fetch(`${url.replace(/\/$/, '')}/instance/connect/${instance}`, {
+        headers: { apikey: EVOLUTION_KEY },
+      });
+      const data = await resp.json();
+      if (data?.base64) {
+        setQrCode(data.base64);
+        setQrStatus('waiting');
+        iniciarPolling(url, instance);
+      } else if (data?.instance?.state === 'open') {
+        setQrStatus('connected');
+      } else {
+        toast.error('Não foi possível obter o QR Code. Verifique a URL e o nome da instância.');
+      }
+    } catch (e) {
+      toast.error('Erro ao conectar à Evolution API: ' + e.message);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const verificarStatus = async (url, instance) => {
+    try {
+      const resp = await fetch(`${url.replace(/\/$/, '')}/instance/connectionState/${instance}`, {
+        headers: { apikey: EVOLUTION_KEY },
+      });
+      const data = await resp.json();
+      if (data?.instance?.state === 'open' || data?.state === 'open') {
+        setQrStatus('connected');
+        setQrCode(null);
+        return true;
+      }
+    } catch {}
+    return false;
+  };
+
+  const iniciarPolling = (url, instance) => {
+    if (qrPolling) clearInterval(qrPolling);
+    const interval = setInterval(async () => {
+      const conectado = await verificarStatus(url, instance);
+      if (conectado) clearInterval(interval);
+    }, 4000);
+    setQrPolling(interval);
+  };
 
   const testarConexaoMeta = async () => {
     if (!whatsappPhoneNumberId || !whatsappAccessToken) {
@@ -450,6 +513,42 @@ export default function ConfiguracaoWhatsApp() {
                 )}
               </div>
             </div>
+
+                {/* Conectar via QR Code */}
+                <div className="mt-6 border-t pt-6">
+                  <p className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <QrCode className="w-4 h-4" /> Conectar WhatsApp via QR Code
+                  </p>
+                  {qrStatus === 'connected' ? (
+                    <div className="flex items-center gap-3 p-4 bg-green-50 border-2 border-green-400 rounded-xl">
+                      <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-bold text-green-800">✅ WhatsApp Conectado!</p>
+                        <p className="text-sm text-green-700">A instância está ativa e pronta para uso.</p>
+                      </div>
+                    </div>
+                  ) : qrCode ? (
+                    <div className="flex flex-col items-center gap-4 p-4 bg-slate-50 border rounded-xl">
+                      <p className="text-sm text-slate-600 text-center">Abra o WhatsApp no celular → <strong>Aparelhos Conectados</strong> → <strong>Conectar aparelho</strong> e escaneie:</p>
+                      <img
+                        src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+                        alt="QR Code WhatsApp"
+                        className="w-56 h-56 border-4 border-slate-300 rounded-xl"
+                      />
+                      <p className="text-xs text-slate-400 animate-pulse">Aguardando leitura do QR Code...</p>
+                      <Button variant="outline" size="sm" onClick={buscarQrCode} disabled={qrLoading}>
+                        <RefreshCw className="w-4 h-4 mr-2" /> Atualizar QR Code
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 p-4 bg-slate-50 border rounded-xl">
+                      <p className="text-sm text-slate-500 text-center">Clique no botão abaixo para gerar o QR Code e conectar seu WhatsApp.</p>
+                      <Button onClick={buscarQrCode} disabled={qrLoading} className="bg-green-600 hover:bg-green-700">
+                        {qrLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando QR...</> : <><QrCode className="w-4 h-4 mr-2" /> Gerar QR Code</>}
+                      </Button>
+                    </div>
+                  )}
+                </div>
 
               </TabsContent>
 
