@@ -224,11 +224,13 @@ export default function ConfiguracaoWhatsApp() {
 
   // QR Code: buscar/atualizar
   // Usa a chave salva na empresa, ou fallback para a chave padrão
-  const getEvolutionKey = () => apiKey || tempApiKey || '29683C4C977415CAAFCCE10F7D57E11';
+  const getEvolutionKey = () => apiKey || tempApiKey;
   const getEvolutionHeaders = () => ({
     'apikey': getEvolutionKey(),
     'Content-Type': 'application/json',
   });
+  // Remove /manager/ e trailing slash da URL da Evolution API
+  const limparUrlEvolution = (url) => url?.replace(/\/manager\/?$/, '').replace(/\/manager\//, '/').replace(/\/$/, '') || '';
 
   const buscarQrCode = async () => {
     const url = evolutionUrl || tempUrl;
@@ -241,7 +243,7 @@ export default function ConfiguracaoWhatsApp() {
     setQrCode(null);
     setQrStatus(null);
     try {
-      const base = url.replace(/\/$/, '');
+      const base = limparUrlEvolution(url);
 
       const headers = getEvolutionHeaders();
 
@@ -280,7 +282,7 @@ export default function ConfiguracaoWhatsApp() {
 
   const verificarStatus = async (url, instance) => {
     try {
-      const resp = await fetch(`${url.replace(/\/$/, '')}/instance/connectionState/${instance}`, {
+      const resp = await fetch(`${limparUrlEvolution(url)}/instance/connectionState/${instance}`, {
         headers: getEvolutionHeaders(),
       });
       const data = await resp.json();
@@ -313,7 +315,7 @@ export default function ConfiguracaoWhatsApp() {
 
     setCriandoInstancia(true);
     try {
-      const base = url.replace(/\/$/, '');
+      const base = limparUrlEvolution(url);
       const resp = await fetch(`${base}/instance/create`, {
         method: 'POST',
         headers: { 'apikey': chaveApi, 'Content-Type': 'application/json' },
@@ -527,7 +529,7 @@ export default function ConfiguracaoWhatsApp() {
                   value={editMode ? tempUrl : evolutionUrl}
                   onChange={(e) => editMode && setTempUrl(e.target.value)}
                   readOnly={!editMode}
-                  placeholder="https://sua-evolution-api.com/"
+                  placeholder="https://jdpromotora.0ntuaf.easypanel.host"
                   className={editMode ? '' : 'bg-slate-50'}
                 />
                 {!editMode && evolutionUrl && (
@@ -536,6 +538,10 @@ export default function ConfiguracaoWhatsApp() {
                   </Button>
                 )}
               </div>
+              {(editMode ? tempUrl : evolutionUrl)?.includes('/manager') && (
+                <p className="text-xs text-amber-600 mt-1 font-semibold">⚠️ Remova o <code>/manager/</code> — use só a URL base: <code>https://jdpromotora.0ntuaf.easypanel.host</code></p>
+              )}
+              <p className="text-xs text-slate-500 mt-1">Apenas a URL base, sem <code>/manager/</code>. Ex: <code>https://jdpromotora.0ntuaf.easypanel.host</code></p>
             </div>
 
             <div>
