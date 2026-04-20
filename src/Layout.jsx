@@ -193,16 +193,19 @@ export default function Layout({ children, currentPageName }) {
       const byEmpresa = colabs.find(c => c.empresa_id && c.empresa_id === me.empresa_id && c.status === 'ativo');
       const colab = byEmpresa || colabs.find(c => c.status === 'ativo') || colabs[0];
 
+      // Se o colaborador tem perfil super_admin ou master, tratar sem empresa vinculada
+      const isSuperPerfil = ['super_admin', 'master'].includes(colab.perfil);
+
       setUser({
           ...me,
           auth_id: me.id,
-          colaborador_id: colab.id,
-          empresa_id: colab.empresa_id || null,
+          colaborador_id: isSuperPerfil ? null : colab.id,
+          empresa_id: isSuperPerfil ? null : (colab.empresa_id || null),
           perfil: colab.perfil || 'vendedor',
           nome_perfil: colab.nome || me.full_name || '',
           foto_perfil: colab.foto_perfil || null,
           email: colab.email || me.email || '',
-          menus_permitidos: colab.menus_permitidos || [],
+          menus_permitidos: isSuperPerfil ? [] : (colab.menus_permitidos || []),
         });
     } catch (e) {
       console.error('Erro ao carregar usuário:', e);
