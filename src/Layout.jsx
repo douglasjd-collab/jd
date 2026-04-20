@@ -536,15 +536,17 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuItem>
                   )}
 
-                  <DropdownMenuItem 
-                   onSelect={(e) => {
-                     e.preventDefault();
-                     setEditarNomeEmpresaOpen(true);
-                   }}
-                  >
-                   <Edit3 className="w-4 h-4 mr-2" />
-                   Alterar Nome da Empresa
-                  </DropdownMenuItem>
+                  {user?.empresa_id && (
+                    <DropdownMenuItem 
+                     onSelect={(e) => {
+                       e.preventDefault();
+                       setEditarNomeEmpresaOpen(true);
+                     }}
+                    >
+                     <Edit3 className="w-4 h-4 mr-2" />
+                     Alterar Nome da Empresa
+                    </DropdownMenuItem>
+                  )}
 
                   <DropdownMenuItem 
                    onSelect={(e) => {
