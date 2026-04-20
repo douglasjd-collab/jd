@@ -787,7 +787,7 @@ export default function BatePapo() {
 
   return (
     <TooltipProvider>
-      <div className="h-[calc(100vh-2rem)] bg-slate-100 -m-4 lg:-m-8 p-3 flex flex-col overflow-hidden">
+      <div className="h-[calc(100vh-2rem)] bg-[#F0EBE0] -m-4 lg:-m-8 p-3 flex flex-col overflow-hidden">
         <NovaConversaModal
           open={novaConversaOpen}
           onOpenChange={setNovaConversaOpen}
@@ -1256,7 +1256,7 @@ export default function BatePapo() {
                 <div className="flex flex-1 overflow-hidden">
                   {/* Mensagens */}
                   <div className="flex flex-1 flex-col overflow-hidden">
-                    <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 pt-4">
+                    <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 pt-4 bg-[#F5F0E8]">
                       {loadingMensagens ? (
                         <div className="flex items-center justify-center h-full">
                           <div className="text-center">
