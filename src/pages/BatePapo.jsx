@@ -787,7 +787,7 @@ export default function BatePapo() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-slate-100 px-4 py-4">
+      <div className="h-[calc(100vh-2rem)] bg-slate-100 -m-4 lg:-m-8 p-3 flex flex-col overflow-hidden">
         <NovaConversaModal
           open={novaConversaOpen}
           onOpenChange={setNovaConversaOpen}
@@ -831,7 +831,7 @@ export default function BatePapo() {
           </DialogContent>
         </Dialog>
 
-        <div className="mx-auto flex h-[calc(100vh-2rem)] max-w-7xl gap-3">
+        <div className="flex flex-1 gap-3 overflow-hidden">
           {/* Coluna esquerda - Conversas */}
           <Card className="flex w-[320px] flex-col overflow-hidden [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
