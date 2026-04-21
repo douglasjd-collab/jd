@@ -897,9 +897,6 @@ export default function BatePapo() {
           <Card className="flex w-[320px] shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-600 text-xs font-semibold text-white shadow-sm">
-                  JD
-                </div>
                 <div>
                   <p className="text-sm font-semibold leading-tight">JD Messenger</p>
                   <p className="text-[11px] text-slate-500">Central de conversas</p>
