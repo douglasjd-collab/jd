@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
@@ -495,16 +495,25 @@ export default function BatePapo() {
   const refetchConversasRef = React.useRef(refetchConversas);
   React.useEffect(() => { refetchConversasRef.current = refetchConversas; }, [refetchConversas]);
 
+  // Debounce para evitar múltiplos refetches simultâneos (causa 429)
+  const refetchConversasDebounced = React.useRef(null);
+  const refetchConversasComDebounce = React.useCallback(() => {
+    if (refetchConversasDebounced.current) clearTimeout(refetchConversasDebounced.current);
+    refetchConversasDebounced.current = setTimeout(() => {
+      refetchConversasRef.current?.().catch(e => console.error('Erro ao refetch:', e));
+    }, 2000);
+  }, []);
+
   useEffect(() => {
     if (!empresaId) return;
     const unsub = base44.entities.ConversaWhatsapp.subscribe((event) => {
       console.log(`🔔 ConversaWhatsapp ${event.type}:`, event.id);
       if (['create', 'update'].includes(event.type)) {
-        refetchConversasRef.current?.().catch(e => console.error('Erro ao refetch:', e));
+        refetchConversasComDebounce();
       }
     });
     return unsub;
-  }, [empresaId]);
+  }, [empresaId, refetchConversasComDebounce]);
 
   // Polling de mensagens removido — o refetchInterval do useQuery já cuida disso
 
@@ -537,8 +546,8 @@ export default function BatePapo() {
 
       console.log(`🔄 Nova mensagem: ${msgData?.id} para conversa ${msgData?.conversa_id}, conversa aberta: ${conversaAtualId}`);
 
-      // Sempre refetch conversas para atualizar última mensagem
-      refetchConversas();
+      // Sempre refetch conversas para atualizar última mensagem (com debounce para evitar 429)
+      refetchConversasComDebounce();
 
       // SEMPRE refetch mensagens da conversa aberta — não depender do conversa_id no payload
       if (conversaAtualId) {
