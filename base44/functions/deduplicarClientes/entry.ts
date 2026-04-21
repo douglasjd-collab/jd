@@ -48,21 +48,25 @@ Deno.serve(async (req) => {
       tarefasPorCliente[t.cliente_id].push(t);
     }
 
-    // Helper: tem telefone?
+    // Helpers
     const temTelefone = (c) => !!(c.celular || c.telefone_fixo || c.telefone);
-
-    // Helper: normalizar CPF
     const normCpf = (v) => (v || '').replace(/\D/g, '');
+    const normNome = (v) =>
+      (v || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ');
 
-    // Helper: normalizar nome para chave de agrupamento
-    const normNome = (v) => (v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+    // IDs já excluídos nesta rodada (para não tentar excluir duas vezes)
+    const idsExcluidos = new Set();
 
-    // Função para mesclar dados do principal com duplicados e reatribuir registros
+    // Processar um grupo: mantém o melhor registro, exclui os demais
     const processarGrupo = async (grupo) => {
-      if (grupo.length <= 1) return 0;
+      // Filtrar IDs que já foram excluídos em passos anteriores
+      const ativos = grupo.filter(c => !idsExcluidos.has(c.id));
+      if (ativos.length <= 1) return 0;
 
-      // Principal: prefere quem tem telefone, depois mais antigo (created_date)
-      grupo.sort((a, b) => {
+      // Principal: prefere quem tem telefone, depois mais antigo
+      ativos.sort((a, b) => {
         const aT = temTelefone(a);
         const bT = temTelefone(b);
         if (aT && !bT) return -1;
@@ -70,15 +74,16 @@ Deno.serve(async (req) => {
         return new Date(a.created_date || 0) - new Date(b.created_date || 0);
       });
 
-      const principal = grupo[0];
-      const duplicados = grupo.slice(1);
+      const principal = ativos[0];
+      const duplicados = ativos.slice(1);
 
-      // Mesclar campos faltantes do principal
+      // Mesclar campos faltantes no principal
       const atualizar = {};
       for (const dup of duplicados) {
         if (!principal.celular && !atualizar.celular && dup.celular) atualizar.celular = dup.celular;
         if (!principal.telefone_fixo && !atualizar.telefone_fixo && dup.telefone_fixo) atualizar.telefone_fixo = dup.telefone_fixo;
         if (!principal.email && !atualizar.email && dup.email) atualizar.email = dup.email;
+        if (!principal.cpf && !atualizar.cpf && dup.cpf) atualizar.cpf = normCpf(dup.cpf);
         if (!principal.data_nascimento && !atualizar.data_nascimento && dup.data_nascimento) atualizar.data_nascimento = dup.data_nascimento;
         if (!principal.nome_mae && !atualizar.nome_mae && dup.nome_mae) atualizar.nome_mae = dup.nome_mae;
         if (!principal.rg && !atualizar.rg && dup.rg) atualizar.rg = dup.rg;
@@ -92,9 +97,9 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.Cliente.update(principal.id, atualizar);
       }
 
-      // Reatribuir registros e excluir duplicados
       let excluidos = 0;
       for (const dup of duplicados) {
+        if (idsExcluidos.has(dup.id)) continue;
         const nomeP = principal.nome_completo || principal.pj_razao_social || principal.nome;
 
         for (const p of propostasPorCliente[dup.id] || []) {
@@ -108,6 +113,7 @@ Deno.serve(async (req) => {
         }
 
         await base44.asServiceRole.entities.Cliente.delete(dup.id);
+        idsExcluidos.add(dup.id);
         excluidos++;
       }
 
@@ -116,63 +122,41 @@ Deno.serve(async (req) => {
 
     let excluidos = 0;
 
-    // ── 1. Deduplicar por CPF (PF com CPF válido) ──
+    // ── PASSO 1: Deduplicar por CPF válido ──
     const grupoPorCpf = {};
     for (const c of clientes) {
       if (c.tipo_pessoa === 'Jurídica') continue;
       const cpf = normCpf(c.cpf);
       if (!cpf || cpf.length < 11) continue;
-      if (!grupoPorCpf[cpf]) grupoPorCpf[cpf] = [];
-      grupoPorCpf[cpf].push(c);
+      const chave = `${c.empresa_id || ''}::${cpf}`;
+      if (!grupoPorCpf[chave]) grupoPorCpf[chave] = [];
+      grupoPorCpf[chave].push(c);
     }
     for (const grupo of Object.values(grupoPorCpf)) {
       excluidos += await processarGrupo(grupo);
     }
 
-    // ── 2. Deduplicar por CNPJ (PJ) ──
+    // ── PASSO 2: Deduplicar por CNPJ válido ──
     const grupoPorCnpj = {};
     for (const c of clientes) {
       if (c.tipo_pessoa !== 'Jurídica') continue;
       const cnpj = normCpf(c.pj_cnpj);
       if (!cnpj || cnpj.length < 14) continue;
-      if (!grupoPorCnpj[cnpj]) grupoPorCnpj[cnpj] = [];
-      grupoPorCnpj[cnpj].push(c);
+      const chave = `${c.empresa_id || ''}::${cnpj}`;
+      if (!grupoPorCnpj[chave]) grupoPorCnpj[chave] = [];
+      grupoPorCnpj[chave].push(c);
     }
     for (const grupo of Object.values(grupoPorCnpj)) {
       excluidos += await processarGrupo(grupo);
     }
 
-    // ── 3. Buscar IDs já excluídos para não processar de novo ──
-    const idsExcluidos = new Set();
-    // Reconstruir lista atual após exclusões acima buscando os que sobraram
-    // (usamos a lista original mas pulamos os que foram excluídos)
-    // Para isso, precisamos rastrear: como processarGrupo deleta os duplicados (índice 1+),
-    // vamos refazer o mapeamento com base nos grupos processados.
-
-    // Coletar IDs que foram mantidos (principal) e excluídos nos grupos por CPF/CNPJ
-    const idsMantidosCpf = new Set(Object.values(grupoPorCpf).map(g => g[0].id));
-    const idsMantidosCnpj = new Set(Object.values(grupoPorCnpj).map(g => g[0].id));
-    // IDs que participaram de grupos por CPF/CNPJ (excluídos = todos exceto o principal)
-    for (const grupo of Object.values(grupoPorCpf)) {
-      for (const c of grupo.slice(1)) idsExcluidos.add(c.id);
-    }
-    for (const grupo of Object.values(grupoPorCnpj)) {
-      for (const c of grupo.slice(1)) idsExcluidos.add(c.id);
-    }
-
-    // ── 4. Deduplicar por Nome normalizado (clientes sem CPF/CNPJ válido) ──
-    // Considera apenas clientes que NÃO participaram da deduplicação por CPF/CNPJ
-    const processadosPorCpfOuCnpj = new Set([
-      ...Object.values(grupoPorCpf).flat().map(c => c.id),
-      ...Object.values(grupoPorCnpj).flat().map(c => c.id),
-    ]);
-
+    // ── PASSO 3: Deduplicar por Nome normalizado (TODOS os clientes, inclusive os com CPF) ──
+    // Agrupa por empresa + nome exato normalizado
     const grupoPorNome = {};
     for (const c of clientes) {
-      if (processadosPorCpfOuCnpj.has(c.id)) continue; // já tratado acima
+      if (idsExcluidos.has(c.id)) continue; // já foi excluído no passo anterior
       const nome = normNome(c.nome_completo || c.pj_razao_social || c.nome || '');
       if (!nome || nome.length < 3) continue;
-      // chave: empresa_id + nome para não misturar empresas
       const chave = `${c.empresa_id || ''}::${nome}`;
       if (!grupoPorNome[chave]) grupoPorNome[chave] = [];
       grupoPorNome[chave].push(c);
@@ -180,9 +164,6 @@ Deno.serve(async (req) => {
     for (const grupo of Object.values(grupoPorNome)) {
       excluidos += await processarGrupo(grupo);
     }
-
-    // ── 5. Excluir clientes sem telefone quando já há outro com mesmo CPF que tem telefone ──
-    // (já coberto pelo processarGrupo acima — o principal sempre é quem tem telefone)
 
     return Response.json({
       success: true,
