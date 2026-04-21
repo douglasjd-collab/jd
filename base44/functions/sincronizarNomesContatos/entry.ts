@@ -7,7 +7,14 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const empresaId = body.empresa_id || user.empresa_id;
+    let empresaId = body.empresa_id || user.empresa_id;
+
+    // Se user for super_admin, pegar da primeira empresa com Evolution configurada
+    if (!empresaId && user.perfil === 'super_admin') {
+      const todasEmps = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 50).catch(() => []);
+      const empComEvo = todasEmps.find(e => e.evolution_url && e.evolution_api_key && e.evolution_instance_name);
+      if (empComEvo) empresaId = empComEvo.id;
+    }
 
     if (!empresaId) return Response.json({ error: 'empresa_id required' }, { status: 400 });
 
@@ -15,7 +22,7 @@ Deno.serve(async (req) => {
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId }).catch(() => []);
     const emp = empresas?.[0];
     if (!emp?.evolution_url || !emp?.evolution_api_key || !emp?.evolution_instance_name) {
-      return Response.json({ error: 'Evolution não configurada' }, { status: 400 });
+      return Response.json({ error: `Evolution não configurada para empresa ${empresaId}` }, { status: 400 });
     }
 
     const evolutionUrl = emp.evolution_url.replace(/\/$/, '');
@@ -42,26 +49,26 @@ Deno.serve(async (req) => {
 
     // Helper: buscar com retry
     const buscarMensagensComRetry = async (jid, tentativa = 0) => {
-      try {
-        const msgRes = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
-          method: 'POST',
-          headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ remoteJid: jid, limit: 100 })
-        });
-        
-        if (msgRes.status === 429) {
-          if (tentativa < 2) {
-            const delay = 1000 * (tentativa + 1);
-            await new Promise(r => setTimeout(r, delay));
-            return buscarMensagensComRetry(jid, tentativa + 1);
-          }
-          throw new Error('Rate limit exceeded após retries');
+      const msgRes = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
+        method: 'POST',
+        headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remoteJid: jid, limit: 100 })
+      });
+      
+      if (msgRes.status === 429) {
+        if (tentativa < 2) {
+          const delay = 1000 * (tentativa + 1);
+          await new Promise(r => setTimeout(r, delay));
+          return buscarMensagensComRetry(jid, tentativa + 1);
         }
-
-        return await msgRes.json();
-      } catch (e) {
-        throw e;
+        return { error: 'Rate limit exceeded' };
       }
+
+      if (!msgRes.ok) {
+        return { error: `HTTP ${msgRes.status}` };
+      }
+
+      return await msgRes.json();
     };
 
     // Processar sequencialmente com delay entre batches (para evitar rate limit)
@@ -71,10 +78,20 @@ Deno.serve(async (req) => {
       const promises = batch.map(async (conversa) => {
         try {
           const jid = `${conversa.cliente_telefone}@s.whatsapp.net`;
+          const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
 
           // Buscar mensagens na Evolution com retry
           const msgData = await buscarMensagensComRetry(jid);
+          
+          // Checar se houve erro
+          if (msgData.error) {
+            return { conversa: conversa.id, sucesso: false, motivo: msgData.error };
+          }
+
           const msgs = msgData?.messages?.records || [];
+          if (!msgs.length) {
+            return { conversa: conversa.id, sucesso: false, motivo: 'Sem mensagens' };
+          }
 
           // Extrair pushName da primeira mensagem recebida (fromMe: false)
           const msgRecebida = msgs.find(m => !m.key?.fromMe && m.pushName);
@@ -83,7 +100,9 @@ Deno.serve(async (req) => {
           }
 
           const novoNome = msgRecebida.pushName.trim();
-          if (!novoNome || novoNome === '0' || novoNome.match(/^\d+$/)) {
+          
+          // Validações: não pode ser vazio, número puro, ou igual ao telefone
+          if (!novoNome || novoNome === '0' || novoNome.match(/^\d+$/) || novoNome === telefoneLimpo) {
             return { conversa: conversa.id, sucesso: false, motivo: `pushName inválido: "${novoNome}"` };
           }
 
