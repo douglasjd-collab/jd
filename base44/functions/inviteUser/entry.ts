@@ -73,8 +73,9 @@ Deno.serve(async (req) => {
             } catch (e) {}
         }
 
-        // Adicionar empresa (exceto para super_admin e master)
-        if (!['super_admin', 'master'].includes(perfil) && empresa_id) {
+        // Adicionar empresa 
+        // IMPORTANTE: admin de subconta (admin role) DEVE estar vinculado à sua empresa isolada
+        if (empresa_id) {
             colaboradorData.empresa_id = empresa_id;
             try {
                 const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);

@@ -23,19 +23,52 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Buscar empresa padrão (primeira empresa super_admin)
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({
-      status: 'ativa'
-    });
-
-    if (empresas.length === 0) {
-      return Response.json({
-        error: 'Nenhuma empresa disponível para vinculação'
-      }, { status: 400 });
+    // Em um SaaS:
+    // - super_admin: vinculado a empresa SUPER_ADMIN (a que cria subcontas)
+    // - admin/vendedor em subconta: vinculado à sua própria empresa
+    
+    let empresa;
+    
+    if (user.perfil === 'super_admin') {
+      // Super admin: buscar empresa super_admin (Empresa da super conta)
+      const empresasSuper = await base44.asServiceRole.entities.Empresa.filter({
+        status: 'ativa'
+      }, '-created_date', 1);
+      
+      if (empresasSuper.length === 0) {
+        return Response.json({
+          error: 'Nenhuma empresa super_admin disponível'
+        }, { status: 400 });
+      }
+      empresa = empresasSuper[0];
+    } else {
+      // Admin/vendedor normal: buscar empresa do Colaborador existente OU empresa vinculada ao user
+      let empresaId = user.empresa_id;
+      
+      if (!empresaId) {
+        // Se não tiver empresa_id, não pode criar colaborador (deve ser vinculado na subconta)
+        return Response.json({
+          error: 'Usuário não vinculado a nenhuma subconta. Configure a empresa primeiro.',
+          code: 'NO_COMPANY_LINKED'
+        }, { status: 400 });
+      }
+      
+      const empresasBusca = await base44.asServiceRole.entities.Empresa.filter({
+        id: empresaId
+      });
+      
+      if (empresasBusca.length === 0) {
+        return Response.json({
+          error: 'Empresa não encontrada'
+        }, { status: 400 });
+      }
+      
+      empresa = empresasBusca[0];
     }
 
-    const empresa = empresas[0]; // Primeira empresa disponível
-
+    // Determinar perfil: super_admin OU usar perfil do user
+    const perfilFinal = user.perfil === 'super_admin' ? 'super_admin' : (user.perfil || 'vendedor');
+    
     // Criar Colaborador automaticamente
     const novoColaborador = await base44.entities.Colaborador.create({
       user_id: user.id,
@@ -43,7 +76,7 @@ Deno.serve(async (req) => {
       empresa_nome: empresa.nome,
       nome: user.full_name,
       email: user.email,
-      perfil: 'vendedor',
+      perfil: perfilFinal,
       status: 'ativo',
       tipo_agente: 'agente_loja',
       saldo_disponivel: 0
