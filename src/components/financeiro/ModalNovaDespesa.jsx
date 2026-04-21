@@ -23,7 +23,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
   const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
   const [formData, setFormData] = useState({
     descricao: '',
-    categoria: 'Almoço',
+    categoria: '',
+    subcategoria: '',
     valor: '',
     data: moment().format('YYYY-MM-DD'),
     responsavel_id: '',
@@ -43,7 +44,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     enabled: !!user,
   });
 
-  const { data: categoriasPersonalizadas = [] } = useQuery({
+  const { data: todasCategorias = [] } = useQuery({
     queryKey: ['categorias-despesa', user?.empresa_id],
     queryFn: async () => {
       if (!user?.empresa_id) return [];
@@ -51,6 +52,12 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
       return cats.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     },
     enabled: !!user?.empresa_id,
+  });
+
+  const categoriasPai = todasCategorias.filter(c => !c.categoria_pai_id);
+  const subcategoriasDaCat = todasCategorias.filter(c => {
+    const pai = categoriasPai.find(p => p.nome === formData.categoria);
+    return pai && c.categoria_pai_id === pai.id;
   });
 
   const createMutation = useMutation({
@@ -68,7 +75,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
   const resetForm = () => {
     setFormData({
       descricao: '',
-      categoria: 'Almoço',
+      categoria: '',
+      subcategoria: '',
       valor: '',
       data: moment().format('YYYY-MM-DD'),
       responsavel_id: '',
@@ -114,7 +122,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     createMutation.mutate({
       empresa_id: user.empresa_id,
       descricao: formData.descricao,
-      categoria: formData.categoria,
+      categoria: formData.subcategoria || formData.categoria,
       valor,
       data: formData.data,
       status: formData.foiPaga ? 'pago' : 'pendente',
@@ -201,29 +209,22 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
                 </div>
               </div>
 
+              {/* Categoria Principal */}
               <div className="border-b border-slate-700 pb-4">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">🏷️</span>
                   <Select value={formData.categoria} onValueChange={(v) => {
                     if (v === '__gerenciar__') { setGerenciarCategoriasOpen(true); }
-                    else { setFormData({ ...formData, categoria: v }); }
+                    else { setFormData({ ...formData, categoria: v, subcategoria: '' }); }
                   }}>
-                    <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
+                      <SelectValue placeholder="Categoria" />
+                    </SelectTrigger>
                     <SelectContent className="bg-slate-800 border-slate-700">
-                      {categoriasPersonalizadas.map((cat) => (
+                      {categoriasPai.map((cat) => (
                         <SelectItem key={cat.id} value={cat.nome}>{cat.icone} {cat.nome}</SelectItem>
                       ))}
-                      {categoriasPersonalizadas.length > 0 && <div className="h-px bg-slate-600 my-1" />}
-                      <SelectItem value="Almoço">🍽️ Almoço</SelectItem>
-                      <SelectItem value="Reunião">👥 Reunião</SelectItem>
-                      <SelectItem value="Visita externa">🚗 Visita externa</SelectItem>
-                      <SelectItem value="Adiantamento">💵 Adiantamento</SelectItem>
-                      <SelectItem value="Pagamento de salários">💰 Pagamento de salários</SelectItem>
-                      <SelectItem value="Combustível">⛽ Combustível</SelectItem>
-                      <SelectItem value="Escritório">🏢 Escritório</SelectItem>
-                      <SelectItem value="Marketing">📢 Marketing</SelectItem>
-                      <SelectItem value="Outros">📦 Outros</SelectItem>
-                      <div className="h-px bg-slate-600 my-1" />
+                      {categoriasPai.length > 0 && <div className="h-px bg-slate-600 my-1" />}
                       <SelectItem value="__gerenciar__" className="text-blue-400 font-semibold">
                         <div className="flex items-center gap-2"><Settings className="w-4 h-4" />Gerenciar categorias</div>
                       </SelectItem>
@@ -231,6 +232,25 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
                   </Select>
                 </div>
               </div>
+
+              {/* Subcategoria (só aparece se a categoria tiver subcategorias) */}
+              {formData.categoria && subcategoriasDaCat.length > 0 && (
+                <div className="border-b border-slate-700 pb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-sm pl-4">↳</span>
+                    <Select value={formData.subcategoria} onValueChange={(v) => setFormData({ ...formData, subcategoria: v })}>
+                      <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
+                        <SelectValue placeholder="Subcategoria (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {subcategoriasDaCat.map((sub) => (
+                          <SelectItem key={sub.id} value={sub.nome}>{sub.icone} {sub.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
               <div className="border-b border-slate-700 pb-4">
                 <div className="flex items-center gap-2">
