@@ -62,9 +62,17 @@ export default function ConfiguracaoWhatsApp() {
       const me = await base44.auth.me();
       setUser(me);
 
-      // Buscar empresa do usuário logado
-      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-      const empId = colabs?.[0]?.empresa_id || me.empresa_id;
+      let empId = null;
+      
+      // Super admin: sempre usar a empresa principal (primeira/super conta)
+      if (me.perfil === 'super_admin' || me.role === 'admin') {
+        const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 1);
+        empId = todasEmpresas?.[0]?.id;
+      } else {
+        // Usuários normais: buscar empresa vinculada
+        const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+        empId = colabs?.[0]?.empresa_id || me.empresa_id;
+      }
 
       if (empId) {
         const emps = await base44.entities.Empresa.filter({ id: empId });
@@ -82,6 +90,8 @@ export default function ConfiguracaoWhatsApp() {
 
   const carregarEmpresa = (empresaData) => {
     setEmpresa(empresaData);
+    // Carregar APENAS as credenciais específicas desta empresa
+    // Não herdar da super conta
     setEvolutionUrl(empresaData.evolution_url || '');
     setInstanceName(empresaData.evolution_instance_name || '');
     setApiKey(empresaData.evolution_api_key || '');
@@ -91,7 +101,8 @@ export default function ConfiguracaoWhatsApp() {
     setWhatsappVerifyToken(empresaData.whatsapp_verify_token || '');
     setApiPreferida(empresaData.whatsapp_api_preferida || 'auto');
     
-    // Gerar URL webhook com nome da instância
+    // Gerar URL webhook com nome da instância DESTA EMPRESA
+    // Cada empresa tem sua própria URL com sua instância
     const webhookGerada = gerarUrlWebhook(empresaData.evolution_instance_name);
     setWebhookUrl(webhookGerada);
   };
@@ -150,7 +161,8 @@ export default function ConfiguracaoWhatsApp() {
         return;
       }
 
-      // Salvar via função backend para garantir que passa pela regra de segurança
+      // IMPORTANTE: Cada empresa tem suas próprias credenciais isoladas
+      // Super conta e subcontas NÃO compartilham Evolution
       const resp = await base44.functions.invoke('salvarConfigWhatsApp', {
         empresa_id: empresaId,
         evolution_url: tempUrl,
@@ -184,6 +196,9 @@ export default function ConfiguracaoWhatsApp() {
       // Atualizar objeto empresa no estado
       setEmpresa(prev => ({
         ...prev,
+        evolution_url: tempUrl,
+        evolution_instance_name: tempInstance,
+        evolution_api_key: tempApiKey,
         whatsapp_access_token: tempWhatsappAccessToken,
         whatsapp_phone_number_id: tempWhatsappPhoneNumberId,
         whatsapp_business_account_id: tempWhatsappBusinessAccountId,
@@ -194,7 +209,7 @@ export default function ConfiguracaoWhatsApp() {
       setWebhookUrl(novaUrl);
       
       setEditMode(false);
-      toast.success('✅ Configurações salvas com sucesso no banco de dados!');
+      toast.success('✅ Configurações salvas com sucesso! Cada empresa tem suas credenciais isoladas.');
     } catch (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } finally {

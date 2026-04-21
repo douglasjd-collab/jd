@@ -15,9 +15,19 @@ Deno.serve(async (req) => {
     }
 
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
 
-    // Usar asServiceRole diretamente para salvar — sem auth.me() que causa rate limit
-    // A segurança é garantida pelo fato de que só usuários autenticados conseguem o token
+    if (!user) {
+      return Response.json({ success: false, error: 'Não autenticado' }, { status: 401 });
+    }
+
+    // Validação: super_admin pode configurar qualquer empresa
+    // Admin só pode configurar sua própria empresa
+    if (user.perfil !== 'super_admin' && user.empresa_id !== empresa_id) {
+      return Response.json({ success: false, error: 'Sem permissão para configurar esta empresa' }, { status: 403 });
+    }
+
+    // Usar asServiceRole para salvar
     await base44.asServiceRole.entities.Empresa.update(empresa_id, {
       evolution_url: evolution_url || '',
       evolution_instance_name: evolution_instance_name || '',
