@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// Verificar whatsapp_id das conversas vs chats da Evolution
+// Buscar 1 mensagem real de um cliente e ver o pushName no payload
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -16,69 +16,63 @@ Deno.serve(async (req) => {
     const evolutionKey = emp.evolution_api_key;
     const instanceName = emp.evolution_instance_name;
 
-    // Buscar TODOS os chats para criar mapa de JID → pushName
-    const chatsRes = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
-      method: 'POST',
-      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ limit: 1000 })
-    });
-    const chatsData = await chatsRes.json();
-    const chats = Array.isArray(chatsData) ? chatsData : [];
-
-    // Mapa por JID completo (com @) → pushName
-    const chatJidMap = {};
-    for (const chat of chats) {
-      if (chat.pushName && chat.remoteJid) {
-        chatJidMap[chat.remoteJid] = chat.pushName;
-      }
-    }
-
-    // Buscar conversas do banco
+    // Pegar uma conversa com mensagens
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-      { empresa_id: empresaId }, '-created_date', 10000
+      { empresa_id: empresaId }, '-data_ultima_mensagem', 1
+    ).catch(() => []);
+    const conversa = conversas[0];
+
+    if (!conversa) return Response.json({ erro: 'Nenhuma conversa encontrada' });
+
+    // Pegar mensagens dela do banco
+    const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+      { conversa_id: conversa.id, remetente: 'cliente' },
+      '-data_envio',
+      1
     ).catch(() => []);
 
-    const semNome = conversas.filter(c => {
-      const nomeAtual = (c.cliente_nome || '').trim();
-      const tel = (c.cliente_telefone || '').replace(/\D/g, '');
-      return !nomeAtual || nomeAtual === tel || nomeAtual.startsWith('Cliente ');
+    const msg = mensagens[0];
+    if (!msg) return Response.json({ erro: 'Nenhuma mensagem de cliente encontrada' });
+
+    // Buscar a mesma mensagem na Evolution
+    const jid = `${conversa.cliente_telefone}@s.whatsapp.net`;
+    const evolutionRes = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
+      method: 'POST',
+      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ remoteJid: jid, limit: 50 })
     });
+    const evolutionData = await evolutionRes.json();
+    const msgs = evolutionData?.messages?.records || [];
 
-    // Tentar match pelo whatsapp_id
-    let matchPorWid = 0;
-    const exemplos = [];
-    for (const c of semNome.slice(0, 20)) {
-      const wid = c.whatsapp_id || '';
-      const nome = chatJidMap[wid];
-      if (nome) {
-        matchPorWid++;
-        exemplos.push({ tel: c.cliente_telefone, wid, nome });
-      }
-    }
-
-    // Ver os whatsapp_id das conversas sem nome
-    const exemplosWid = semNome.slice(0, 5).map(c => ({
-      tel: c.cliente_telefone,
-      wid: c.whatsapp_id,
-      widNoMapa: !!chatJidMap[c.whatsapp_id || '']
-    }));
-
-    // Ver chats com pushName não nulo
-    const chatsComNome = chats.filter(c => c.pushName);
-    const chatsComNomeAmostra = chatsComNome.slice(0, 5).map(c => ({
-      jid: c.remoteJid,
-      nome: c.pushName
-    }));
+    // Procurar a mensagem pelo whatsapp_message_id
+    const msgEvolution = msgs.find(m => m.id === msg.whatsapp_message_id);
 
     return Response.json({
       ok: true,
-      totalChats: chats.length,
-      chatsComNome: chatsComNome.length,
-      totalSemNome: semNome.length,
-      matchPorWidAmostra: matchPorWid,
-      exemplosWid,
-      exemplosMatch: exemplos,
-      chatsComNomeAmostra
+      conversa: {
+        id: conversa.id,
+        telefone: conversa.cliente_telefone,
+        nomeLocal: conversa.cliente_nome
+      },
+      mensagemBanco: {
+        id: msg.id,
+        whatsappMessageId: msg.whatsapp_message_id,
+        usuarioNome: msg.usuario_nome,
+        texto: msg.texto
+      },
+      mensagemEvolution: msgEvolution ? {
+        id: msgEvolution.id,
+        pushName: msgEvolution.pushName,
+        messageType: msgEvolution.messageType,
+        fromMe: msgEvolution.key?.fromMe,
+        remoteJid: msgEvolution.key?.remoteJid,
+        remoteJidAlt: msgEvolution.key?.remoteJidAlt
+      } : null,
+      primeirasMsgEvolution: msgs.slice(0, 3).map(m => ({
+        id: m.id,
+        pushName: m.pushName,
+        fromMe: m.key?.fromMe
+      }))
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
