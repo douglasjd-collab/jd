@@ -440,7 +440,7 @@ export default function Clientes() {
           <AlertDialogHeader>
             <AlertDialogTitle>Deduplicar Clientes por CPF?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação irá localizar clientes com o mesmo CPF e mantê-los como um único registro. Será mantido o cliente que possui telefone (ou o mais antigo). Dados complementares serão mesclados. Propostas, oportunidades e tarefas serão reatribuídas ao cliente mantido. Esta ação não pode ser desfeita.
+              Esta ação irá localizar clientes duplicados por CPF, CNPJ ou nome e manter apenas um registro por cliente. Será sempre mantido o cliente que possui telefone cadastrado. Clientes sem telefone são removidos quando já existe outro com o mesmo dado. Dados complementares serão mesclados. Propostas, oportunidades e tarefas serão reatribuídas ao cliente mantido. Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
