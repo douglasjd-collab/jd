@@ -1041,7 +1041,7 @@ export default function BatePapo() {
               </div>
 
               <Tabs value={filtroStatus} onValueChange={setFiltroStatus} className="w-full">
-                <TabsList className="grid grid-cols-3 w-full rounded-xl bg-slate-100 p-0.5 h-auto gap-0.5">
+                <TabsList className="flex flex-wrap w-full rounded-xl bg-slate-100 p-0.5 h-auto gap-0.5">
                   {[
                     { value: 'todas', label: 'Todos' },
                     { value: 'ativa', label: 'Atendimento' },
