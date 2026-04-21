@@ -1052,7 +1052,7 @@ export default function BatePapo() {
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="rounded-lg text-xs px-2 py-1.5 gap-1 data-[state=active]:bg-white data-[state=active]:text-slate-900 whitespace-nowrap"
+                      className="rounded-lg text-sm px-2 py-1.5 gap-1 data-[state=active]:bg-white data-[state=active]:text-slate-900 whitespace-nowrap"
                     >
                       {tab.label}
                       {contadores[tab.value] > 0 && (
