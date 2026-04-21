@@ -19,7 +19,7 @@ export default function EmojiPicker({ value, onChange }) {
     const handler = (e) => {
       if (
         btnRef.current && !btnRef.current.contains(e.target) &&
-        popupRef.current && !popupRef.current.contains(e.target)
+        (!popupRef.current || !popupRef.current.contains(e.target))
       ) {
         setOpen(false);
       }
@@ -47,7 +47,12 @@ export default function EmojiPicker({ value, onChange }) {
           <button
             key={emoji}
             type="button"
-            onClick={() => { onChange(emoji); setOpen(false); }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onChange(emoji);
+              setOpen(false);
+            }}
             className={`w-7 h-7 flex items-center justify-center text-lg rounded hover:bg-slate-100 transition-colors ${value === emoji ? 'bg-slate-200' : ''}`}
           >
             {emoji}
