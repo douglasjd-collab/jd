@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Verificar whatsapp_id das conversas vs chats da Evolution
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -15,33 +16,70 @@ Deno.serve(async (req) => {
     const evolutionKey = emp.evolution_api_key;
     const instanceName = emp.evolution_instance_name;
 
-    // Buscar os chats com @lid que têm nome
-    const res = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
+    // Buscar TODOS os chats para criar mapa de JID → pushName
+    const chatsRes = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
       method: 'POST',
       headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ limit: 500 })
+      body: JSON.stringify({ limit: 1000 })
+    });
+    const chatsData = await chatsRes.json();
+    const chats = Array.isArray(chatsData) ? chatsData : [];
+
+    // Mapa por JID completo (com @) → pushName
+    const chatJidMap = {};
+    for (const chat of chats) {
+      if (chat.pushName && chat.remoteJid) {
+        chatJidMap[chat.remoteJid] = chat.pushName;
+      }
+    }
+
+    // Buscar conversas do banco
+    const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+      { empresa_id: empresaId }, '-created_date', 10000
+    ).catch(() => []);
+
+    const semNome = conversas.filter(c => {
+      const nomeAtual = (c.cliente_nome || '').trim();
+      const tel = (c.cliente_telefone || '').replace(/\D/g, '');
+      return !nomeAtual || nomeAtual === tel || nomeAtual.startsWith('Cliente ');
     });
 
-    const data = await res.json();
-    const chats = Array.isArray(data) ? data : (data.chats?.records || data.chats || []);
-    
-    // Listar chats @lid com pushName
-    const comNome = chats.filter(c => c.pushName && c.remoteJid?.includes('@lid')).slice(0, 10);
-    // Listar chats @s.whatsapp.net com e sem nome
-    const whatsappChats = chats.filter(c => c.remoteJid?.includes('@s.whatsapp.net')).slice(0, 5);
-    // Estatísticas
-    const stats = {
-      total: chats.length,
-      comLid: chats.filter(c => c.remoteJid?.includes('@lid')).length,
-      lidComNome: chats.filter(c => c.pushName && c.remoteJid?.includes('@lid')).length,
-      whatsappComNome: chats.filter(c => c.pushName && c.remoteJid?.includes('@s.whatsapp.net')).length,
-      whatsappSemNome: chats.filter(c => !c.pushName && c.remoteJid?.includes('@s.whatsapp.net')).length,
-    };
+    // Tentar match pelo whatsapp_id
+    let matchPorWid = 0;
+    const exemplos = [];
+    for (const c of semNome.slice(0, 20)) {
+      const wid = c.whatsapp_id || '';
+      const nome = chatJidMap[wid];
+      if (nome) {
+        matchPorWid++;
+        exemplos.push({ tel: c.cliente_telefone, wid, nome });
+      }
+    }
 
-    // Ver estrutura completa de um chat @lid com nome
-    const exemploDouglas = chats.find(c => c.pushName === 'Douglas');
+    // Ver os whatsapp_id das conversas sem nome
+    const exemplosWid = semNome.slice(0, 5).map(c => ({
+      tel: c.cliente_telefone,
+      wid: c.whatsapp_id,
+      widNoMapa: !!chatJidMap[c.whatsapp_id || '']
+    }));
 
-    return Response.json({ ok: true, stats, comNome, whatsappChats, exemploDouglas });
+    // Ver chats com pushName não nulo
+    const chatsComNome = chats.filter(c => c.pushName);
+    const chatsComNomeAmostra = chatsComNome.slice(0, 5).map(c => ({
+      jid: c.remoteJid,
+      nome: c.pushName
+    }));
+
+    return Response.json({
+      ok: true,
+      totalChats: chats.length,
+      chatsComNome: chatsComNome.length,
+      totalSemNome: semNome.length,
+      matchPorWidAmostra: matchPorWid,
+      exemplosWid,
+      exemplosMatch: exemplos,
+      chatsComNomeAmostra
+    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

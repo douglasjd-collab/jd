@@ -2,8 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 /**
  * Sincroniza os nomes (pushName) dos contatos da Evolution API.
- * Fonte: /chat/findChats — que traz remoteJid (número real) + pushName.
- * Match EXATO de telefone — sem normalização que causa colisão de nomes.
+ * 
+ * Usa /chat/findContacts que retorna todos contatos com nome salvo.
+ * Match por sufixo dos últimos 8 dígitos para cobrir variações com/sem 9.
  */
 
 Deno.serve(async (req) => {
@@ -27,74 +28,60 @@ Deno.serve(async (req) => {
     const evolutionKey = emp.evolution_api_key;
     const instanceName = emp.evolution_instance_name;
 
-    console.log(`🔄 Buscando chats da Evolution (${instanceName})...`);
+    console.log(`🔄 Buscando contatos da Evolution (${instanceName})...`);
 
-    // Buscar TODOS os chats — que têm remoteJid (número real) + pushName
-    let paginaAtual = 0;
-    const LIMITE = 500;
-    const nomeMapExato = {}; // telefone exato (dígitos) → nome
+    // Buscar TODOS os contatos de uma vez via /chat/findContacts
+    const res = await fetch(`${evolutionUrl}/chat/findContacts/${instanceName}`, {
+      method: 'POST',
+      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
 
-    while (true) {
-      const res = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
-        method: 'POST',
-        headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: LIMITE, offset: paginaAtual * LIMITE })
-      });
-
-      if (!res.ok) break;
-      const data = await res.json();
-      const chats = Array.isArray(data) ? data : (data.chats?.records || data.chats || []);
-      if (chats.length === 0) break;
-
-      for (const chat of chats) {
-        const jid = chat.remoteJid || '';
-        const pushName = (chat.pushName || '').trim();
-
-        // Ignorar grupos, broadcasts e sem nome
-        if (!jid || jid.includes('@g.us') || jid.includes('@broadcast') || jid.includes('@lid')) continue;
-        if (!pushName || /^\d+$/.test(pushName)) continue; // ignorar nomes que são só números
-
-        const tel = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
-        if (!tel || tel.length < 8) continue;
-
-        // Primeiro nome vence — não sobrescrever
-        if (!nomeMapExato[tel]) {
-          nomeMapExato[tel] = pushName;
-        }
-      }
-
-      console.log(`📄 Página ${paginaAtual + 1}: ${chats.length} chats processados | total nomes: ${Object.keys(nomeMapExato).length}`);
-
-      if (chats.length < LIMITE) break; // última página
-      paginaAtual++;
-      if (paginaAtual > 10) break; // segurança
+    if (!res.ok) {
+      return Response.json({ erro: `Evolution retornou ${res.status}` }, { status: 500 });
     }
 
-    console.log(`👥 ${Object.keys(nomeMapExato).length} números com nome mapeados`);
+    const listaContatos = await res.json();
+    console.log(`📋 ${listaContatos.length} contatos retornados`);
 
-    // Lookup com match exato + variação com/sem 9 como fallback
-    // A variação só é usada quando NÃO há conflito (o número exato não existe no mapa)
-    const buscarNome = (telInput) => {
-      const t = (telInput || '').replace(/\D/g, '');
-      if (!t) return null;
+    // Mapa exato: telefone (dígitos) → nome
+    const nomeMapExato = {};
+    // Mapa por sufixo dos últimos 8 dígitos → nome (para cobrir variações com/sem 9)
+    // Só aplica se não houver colisão (múltiplos números com mesmo sufixo)
+    const nomeMapSufixo = {}; // sufixo8 → nome
+    const sufixoColisao = new Set(); // sufixos que aparecem mais de uma vez
 
-      if (nomeMapExato[t]) return nomeMapExato[t];
+    for (const contato of listaContatos) {
+      const pushName = (contato.pushName || '').trim();
+      if (!pushName || /^\d+$/.test(pushName)) continue;
 
-      // Fallback sem 9: 5587981234567 → 558781234567
-      if (t.length === 13 && t.startsWith('55')) {
-        const sem9 = t.slice(0, 4) + t.slice(5);
-        // Só usa se o número com 9 NÃO existe no mapa (evita colisão)
-        if (nomeMapExato[sem9] && !nomeMapExato[t]) return nomeMapExato[sem9];
+      const jid = contato.remoteJid || '';
+      // Ignorar grupos, broadcasts e @lid (IDs internos, não números de telefone)
+      if (jid.includes('@g.us') || jid.includes('@broadcast') || jid.includes('@lid')) continue;
+
+      const tel = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+      if (!tel || tel.length < 8) continue;
+
+      // Match exato
+      if (!nomeMapExato[tel]) {
+        nomeMapExato[tel] = pushName;
       }
 
-      // Fallback com 9: 558781234567 → 5587981234567
-      if (t.length === 12 && t.startsWith('55')) {
-        const com9 = t.slice(0, 4) + '9' + t.slice(4);
-        if (nomeMapExato[com9] && !nomeMapExato[t]) return nomeMapExato[com9];
+      // Match por sufixo (últimos 8 dígitos)
+      const sufixo8 = tel.slice(-8);
+      if (nomeMapSufixo[sufixo8] && nomeMapSufixo[sufixo8] !== pushName) {
+        sufixoColisao.add(sufixo8); // marca colisão — não usar esse sufixo
+      } else if (!nomeMapSufixo[sufixo8]) {
+        nomeMapSufixo[sufixo8] = pushName;
       }
+    }
 
-      return null;
-    };
+    // Remover sufixos com colisão (ambíguos)
+    for (const s of sufixoColisao) {
+      delete nomeMapSufixo[s];
+    }
+
+    console.log(`👥 ${Object.keys(nomeMapExato).length} exatos | ${Object.keys(nomeMapSufixo).length} sufixos únicos | ${sufixoColisao.size} colisões removidas`);
 
     // Buscar conversas e contatos CRM do banco
     const [conversas, contatosCRM] = await Promise.all([
@@ -103,6 +90,31 @@ Deno.serve(async (req) => {
     ]);
 
     console.log(`📊 ${conversas.length} conversas | ${contatosCRM.length} contatos CRM`);
+
+    // Busca: exato → variação 9 → sufixo 8 dígitos
+    const buscarNome = (telInput) => {
+      const t = (telInput || '').replace(/\D/g, '');
+      if (!t) return null;
+
+      // 1. Match exato
+      if (nomeMapExato[t]) return nomeMapExato[t];
+
+      // 2. Variação +9 / -9 (apenas para números BR)
+      if (t.length === 13 && t.startsWith('55')) {
+        const sem9 = t.slice(0, 4) + t.slice(5);
+        if (nomeMapExato[sem9]) return nomeMapExato[sem9];
+      }
+      if (t.length === 12 && t.startsWith('55')) {
+        const com9 = t.slice(0, 4) + '9' + t.slice(4);
+        if (nomeMapExato[com9]) return nomeMapExato[com9];
+      }
+
+      // 3. Match por sufixo (8 últimos dígitos — sem colisão)
+      const sufixo8 = t.slice(-8);
+      if (sufixo8.length === 8 && nomeMapSufixo[sufixo8]) return nomeMapSufixo[sufixo8];
+
+      return null;
+    };
 
     let conversasAtualizadas = 0;
     let contatosAtualizados = 0;
@@ -114,7 +126,7 @@ Deno.serve(async (req) => {
       const tel = (conversa.cliente_telefone || '').replace(/\D/g, '');
       const ehGenerico = !nomeAtual || nomeAtual === tel || nomeAtual.startsWith('Cliente ');
 
-      if (!ehGenerico) continue; // preservar nomes editados manualmente
+      if (!ehGenerico) continue;
 
       const nome = buscarNome(conversa.cliente_telefone);
       if (!nome) { semMatch++; continue; }
@@ -123,7 +135,7 @@ Deno.serve(async (req) => {
         cliente_nome: nome
       }).catch(() => {});
 
-      console.log(`✏️ Conversa ${tel} → "${nome}"`);
+      console.log(`✅ Conversa ${tel} → "${nome}"`);
       conversasAtualizadas++;
     }
 
@@ -139,8 +151,7 @@ Deno.serve(async (req) => {
       if (!nome) continue;
 
       await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
-        nome,
-        ultima_atualizacao: new Date().toISOString()
+        nome
       }).catch(() => {});
 
       contatosAtualizados++;
