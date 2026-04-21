@@ -67,6 +67,7 @@ import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
 import AvatarContato from '@/components/chat/AvatarContato';
+import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -197,6 +198,7 @@ export default function BatePapo() {
   const [limpandoTudo, setLimpandoTudo] = useState(false);
   const [empresas, setEmpresas] = useState([]); // apenas para super_admin
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
 
   const limparHistoricoCompleto = async () => {
     const confirmacao = window.confirm(
@@ -379,6 +381,34 @@ export default function BatePapo() {
     enabled: !!empresaId,
     queryFn: async () => {
       try { return await base44.entities.ContatoTag.filter({ empresa_id: empresaId }); }
+      catch { return []; }
+    },
+  });
+
+  // Dados para o modal de criar tarefa
+  const { data: colaboradoresTarefa = [] } = useQuery({
+    queryKey: ['colaboradores-tarefa', empresaId],
+    enabled: !!empresaId && criarTarefaOpen,
+    queryFn: () => base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 200),
+  });
+  const { data: clientesTarefa = [] } = useQuery({
+    queryKey: ['clientes-tarefa', empresaId],
+    enabled: !!empresaId && criarTarefaOpen,
+    queryFn: () => base44.entities.Cliente.filter({ empresa_id: empresaId }, 'nome_completo', 500),
+  });
+  const { data: statusListTarefa = [] } = useQuery({
+    queryKey: ['status-tarefa'],
+    enabled: criarTarefaOpen,
+    queryFn: async () => {
+      try { return await base44.entities.StatusTarefa.list('ordem', 100); }
+      catch { return [{ slug: 'a_fazer', nome: 'A Fazer' }, { slug: 'em_andamento', nome: 'Em Andamento' }, { slug: 'concluido', nome: 'Concluído' }]; }
+    },
+  });
+  const { data: tiposListTarefa = [] } = useQuery({
+    queryKey: ['tipos-tarefa', empresaId],
+    enabled: !!empresaId && criarTarefaOpen,
+    queryFn: async () => {
+      try { return await base44.entities.TipoTarefa.filter({ empresa_id: empresaId }); }
       catch { return []; }
     },
   });
@@ -795,6 +825,31 @@ export default function BatePapo() {
           isLoading={criarConversaMutation.isPending}
         />
 
+        {/* Modal Criar Tarefa */}
+        <TarefaFormModal
+          open={criarTarefaOpen}
+          onOpenChange={setCriarTarefaOpen}
+          tarefa={{
+            cliente_telefone: conversaSelecionada?.cliente_telefone || '',
+            cliente_nome: conversaSelecionada?.cliente_nome || '',
+          }}
+          onSave={async (data) => {
+            try {
+              await base44.entities.Tarefa.create({ ...data, empresa_id: empresaId });
+              toast.success('Tarefa criada com sucesso!');
+              setCriarTarefaOpen(false);
+            } catch (e) {
+              toast.error('Erro ao criar tarefa: ' + e.message);
+            }
+          }}
+          colaboradores={colaboradoresTarefa}
+          clientes={clientesTarefa}
+          statusList={statusListTarefa}
+          templates={[]}
+          tiposList={tiposListTarefa}
+          currentUser={user}
+        />
+
         {/* Modal Salvar/Editar Contato CRM */}
         <Dialog open={!!salvarCrmModal} onOpenChange={(v) => !v && setSalvarCrmModal(null)}>
           <DialogContent className="max-w-sm">
@@ -1161,7 +1216,7 @@ export default function BatePapo() {
                       <Tag className="h-3.5 w-3.5" />
                       Criar Proposta
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium">
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium" onClick={() => setCriarTarefaOpen(true)}>
                       <Clock className="h-3.5 w-3.5" />
                       Criar Tarefa
                     </Button>
