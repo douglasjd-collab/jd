@@ -54,33 +54,33 @@ export default function NovaConversaModal({ open, onOpenChange, onCriar, isLoadi
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label className="mb-2 block">País</Label>
+          <div className="flex gap-3">
+            <div className="w-20 flex-shrink-0">
+              <Label className="mb-2 block text-xs text-slate-500">País</Label>
               <Input
                 value="+55"
                 readOnly
                 className="bg-slate-100 font-semibold text-center"
               />
             </div>
-            <div>
-              <Label className="mb-2 block">DDD</Label>
+            <div className="w-24 flex-shrink-0">
+              <Label className="mb-2 block text-xs text-slate-500">DDD</Label>
               <Input
                 value={ddd}
                 onChange={(e) => setDdd(e.target.value.replace(/\D/g, '').substring(0, 2))}
-                placeholder="81"
+                placeholder="87"
                 maxLength={2}
                 required
                 disabled={isLoading}
                 className="text-center"
               />
             </div>
-            <div className="col-span-1">
-              <Label className="mb-2 block">Número</Label>
+            <div className="flex-1">
+              <Label className="mb-2 block text-xs text-slate-500">Telefone</Label>
               <Input
                 value={numero}
                 onChange={(e) => setNumero(e.target.value.replace(/\D/g, '').substring(0, 9))}
-                placeholder="999999999"
+                placeholder="98127-5628"
                 maxLength={9}
                 required
                 disabled={isLoading}
