@@ -359,6 +359,21 @@ export default function ImportacaoComissaoEmprestimo() {
       valor_total: valorTotal
     });
 
+    // Registrar receita no financeiro se houver valor processado
+    if (valorTotal > 0) {
+      await base44.functions.invoke('registrarReceitaImportacao', {
+        acao: 'criar',
+        importacao_id: importacao.id,
+        empresa_id: empresaIdFinal,
+        produto: 'emprestimos',
+        valor_total: valorTotal,
+        data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+        arquivo_nome: file_name,
+        usuario_id: currentUser?.id,
+        usuario_nome: currentUser?.full_name,
+      });
+    }
+
     if (onResult) onResult(processados, divergencias, valorTotal);
   };
 
@@ -568,6 +583,21 @@ export default function ImportacaoComissaoEmprestimo() {
         valor_total: valorTotal
       });
 
+      // Registrar receita no financeiro se houver valor processado
+      if (valorTotal > 0) {
+        await base44.functions.invoke('registrarReceitaImportacao', {
+          acao: 'criar',
+          importacao_id: importacao.id,
+          empresa_id: empresaIdFinal,
+          produto: 'emprestimos',
+          valor_total: valorTotal,
+          data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+          arquivo_nome: files[0]?.name,
+          usuario_id: currentUser?.id,
+          usuario_nome: currentUser?.full_name,
+        });
+      }
+
       queryClient.invalidateQueries();
       setPreviewData(null);
       setFiles([]);
@@ -615,6 +645,8 @@ export default function ImportacaoComissaoEmprestimo() {
         }
       }
 
+      // Excluir receita financeira vinculada
+      await base44.functions.invoke('registrarReceitaImportacao', { acao: 'excluir', importacao_id: impId });
       await base44.entities.Importacao.delete(impId);
       toast.success('Importação excluída completamente.');
 

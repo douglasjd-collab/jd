@@ -1,0 +1,94 @@
+{
+  "name": "Receita",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o da receita"
+    },
+    "categoria_id": {
+      "type": "string",
+      "description": "ID da categoria (obrigat\u00f3rio)"
+    },
+    "categoria_nome": {
+      "type": "string",
+      "description": "Nome da categoria (denormalizado)"
+    },
+    "subcategoria_id": {
+      "type": "string",
+      "description": "ID da subcategoria (opcional)"
+    },
+    "subcategoria_nome": {
+      "type": "string",
+      "description": "Nome da subcategoria (denormalizado)"
+    },
+    "valor": {
+      "type": "number",
+      "description": "Valor da receita"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da receita"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "recebida"
+      ],
+      "default": "recebida",
+      "description": "Status da receita"
+    },
+    "data_recebimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de recebimento efetivo"
+    },
+    "origem": {
+      "type": "string",
+      "description": "Origem da receita"
+    },
+    "observacao": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que lan\u00e7ou"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que lan\u00e7ou"
+    },
+    "importacao_id": {
+      "type": "string",
+      "description": "ID da importa\u00e7\u00e3o que originou esta receita (para rastreabilidade e exclus\u00e3o autom\u00e1tica)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "descricao",
+    "categoria_id",
+    "valor",
+    "data"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
