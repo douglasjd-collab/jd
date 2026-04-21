@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Edit2, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import EmojiPicker from './EmojiPicker';
 
 export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId }) {
   const [editingId, setEditingId] = useState(null);
@@ -107,12 +108,9 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
         <div className="space-y-4">
           {/* Nova Categoria Principal */}
           <div className="flex gap-2 p-3 bg-slate-50 rounded-lg border">
-            <Input
-              placeholder="🏷️"
+            <EmojiPicker
               value={novaCategoria.icone}
-              onChange={(e) => setNovaCategoria({ ...novaCategoria, icone: e.target.value })}
-              className="w-14 text-center"
-              maxLength={2}
+              onChange={(v) => setNovaCategoria({ ...novaCategoria, icone: v })}
             />
             <Input
               placeholder="Nova categoria principal"
@@ -142,7 +140,7 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
                     </button>
                     {editingId === cat.id ? (
                       <>
-                        <Input value={editForm.icone} onChange={(e) => setEditForm({ ...editForm, icone: e.target.value })} className="w-14 text-center" maxLength={2} />
+                        <EmojiPicker value={editForm.icone} onChange={(v) => setEditForm({ ...editForm, icone: v })} />
                         <Input value={editForm.nome} onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })} className="flex-1" />
                         <Button size="sm" variant="ghost" onClick={() => handleSalvar(cat.id)}><Check className="w-4 h-4 text-green-600" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="w-4 h-4 text-red-500" /></Button>
@@ -166,7 +164,7 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
                           <span className="w-5" />
                           {editingId === sub.id ? (
                             <>
-                              <Input value={editForm.icone} onChange={(e) => setEditForm({ ...editForm, icone: e.target.value })} className="w-14 text-center" maxLength={2} />
+                              <EmojiPicker value={editForm.icone} onChange={(v) => setEditForm({ ...editForm, icone: v })} />
                               <Input value={editForm.nome} onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })} className="flex-1" />
                               <Button size="sm" variant="ghost" onClick={() => handleSalvar(sub.id)}><Check className="w-4 h-4 text-green-600" /></Button>
                               <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="w-4 h-4 text-red-500" /></Button>
@@ -185,13 +183,9 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
                       {/* Adicionar Subcategoria */}
                       <div className="flex gap-2 p-3">
                         <span className="w-5" />
-                        <Input
-                          placeholder="🏷️"
+                        <EmojiPicker
                           value={novaSubcategoria.pai_id === cat.id ? novaSubcategoria.icone : '🏷️'}
-                          onChange={(e) => setNovaSubcategoria({ ...novaSubcategoria, icone: e.target.value, pai_id: cat.id })}
-                          onFocus={() => setNovaSubcategoria(prev => ({ ...prev, pai_id: cat.id }))}
-                          className="w-14 text-center text-sm"
-                          maxLength={2}
+                          onChange={(v) => setNovaSubcategoria({ ...novaSubcategoria, icone: v, pai_id: cat.id })}
                         />
                         <Input
                           placeholder="Nova subcategoria"
