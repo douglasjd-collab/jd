@@ -1355,7 +1355,7 @@ export default function BatePapo() {
 
                   {/* Painel Informações do Lead - dentro do mesmo Card */}
                   {infoLeadAberto && (
-                    <div className="flex w-[260px] shrink-0 flex-col border-l overflow-hidden">
+                    <div className="flex w-[300px] shrink-0 flex-col border-l overflow-hidden">
                       <div className="border-b bg-white px-4 py-3 shrink-0">
                         <p className="text-sm font-semibold">Informações do Lead</p>
                         <p className="text-[11px] text-slate-500">Detalhes e histórico</p>
