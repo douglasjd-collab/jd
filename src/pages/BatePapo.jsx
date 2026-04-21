@@ -388,17 +388,20 @@ export default function BatePapo() {
   // Dados para o modal de criar tarefa
   const { data: colaboradoresTarefa = [] } = useQuery({
     queryKey: ['colaboradores-tarefa', empresaId],
-    enabled: !!empresaId && criarTarefaOpen,
+    enabled: !!empresaId,
+    staleTime: 60000,
     queryFn: () => base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 200),
   });
   const { data: clientesTarefa = [] } = useQuery({
     queryKey: ['clientes-tarefa', empresaId],
-    enabled: !!empresaId && criarTarefaOpen,
+    enabled: !!empresaId,
+    staleTime: 60000,
     queryFn: () => base44.entities.Cliente.filter({ empresa_id: empresaId }, 'nome_completo', 500),
   });
   const { data: statusListTarefa = [] } = useQuery({
     queryKey: ['status-tarefa'],
-    enabled: criarTarefaOpen,
+    enabled: !!empresaId,
+    staleTime: 60000,
     queryFn: async () => {
       try { return await base44.entities.StatusTarefa.list('ordem', 100); }
       catch { return [{ slug: 'a_fazer', nome: 'A Fazer' }, { slug: 'em_andamento', nome: 'Em Andamento' }, { slug: 'concluido', nome: 'Concluído' }]; }
@@ -406,7 +409,8 @@ export default function BatePapo() {
   });
   const { data: tiposListTarefa = [] } = useQuery({
     queryKey: ['tipos-tarefa', empresaId],
-    enabled: !!empresaId && criarTarefaOpen,
+    enabled: !!empresaId,
+    staleTime: 60000,
     queryFn: async () => {
       try { return await base44.entities.TipoTarefa.filter({ empresa_id: empresaId }); }
       catch { return []; }
@@ -829,13 +833,15 @@ export default function BatePapo() {
         <TarefaFormModal
           open={criarTarefaOpen}
           onOpenChange={setCriarTarefaOpen}
-          tarefa={{
-            cliente_telefone: conversaSelecionada?.cliente_telefone || '',
-            cliente_nome: conversaSelecionada?.cliente_nome || '',
-          }}
+          tarefa={null}
           onSave={async (data) => {
             try {
-              await base44.entities.Tarefa.create({ ...data, empresa_id: empresaId });
+              await base44.entities.Tarefa.create({
+                ...data,
+                empresa_id: empresaId,
+                cliente_telefone: data.cliente_telefone || conversaSelecionada?.cliente_telefone || '',
+                cliente_nome: data.cliente_nome || conversaSelecionada?.cliente_nome || '',
+              });
               toast.success('Tarefa criada com sucesso!');
               setCriarTarefaOpen(false);
             } catch (e) {
