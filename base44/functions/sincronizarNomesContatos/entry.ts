@@ -93,13 +93,33 @@ Deno.serve(async (req) => {
             return { conversa: conversa.id, sucesso: false, motivo: 'Sem mensagens' };
           }
 
-          // Extrair pushName da primeira mensagem recebida (fromMe: false)
-          const msgRecebida = msgs.find(m => !m.key?.fromMe && m.pushName);
-          if (!msgRecebida) {
-            return { conversa: conversa.id, sucesso: false, motivo: 'Sem pushName nas mensagens' };
+          // Extrair pushName da mensagem recebida (fromMe: false) - DEVE SER DO CONTATO, não do usuário
+          // A mensagem precisa ter fromMe: false E pushName (que é o nome do remetente)
+          const msgsRecebidas = msgs.filter(m => !m.key?.fromMe);
+          if (!msgsRecebidas.length) {
+            return { conversa: conversa.id, sucesso: false, motivo: 'Sem mensagens recebidas' };
           }
 
-          const novoNome = msgRecebida.pushName.trim();
+          // Pegar o pushName mais frequente entre as mensagens recebidas (geralmente consistente)
+          const pushNames = msgsRecebidas
+            .filter(m => m.pushName && m.pushName.trim())
+            .map(m => m.pushName.trim());
+          
+          if (!pushNames.length) {
+            return { conversa: conversa.id, sucesso: false, motivo: 'Sem pushName válido nas mensagens recebidas' };
+          }
+
+          // Usar o mais comum
+          const nameFreq = {};
+          let novoNome = pushNames[0];
+          let maxCount = 0;
+          for (const name of pushNames) {
+            nameFreq[name] = (nameFreq[name] || 0) + 1;
+            if (nameFreq[name] > maxCount) {
+              maxCount = nameFreq[name];
+              novoNome = name;
+            }
+          }
           
           // Validações: não pode ser vazio, número puro, ou igual ao telefone
           if (!novoNome || novoNome === '0' || novoNome.match(/^\d+$/) || novoNome === telefoneLimpo) {
