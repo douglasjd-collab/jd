@@ -60,6 +60,7 @@ export default function Layout({ children, currentPageName }) {
   const [tarefasVencidas, setTarefasVencidas] = useState(0);
   const [tarefasNovas, setTarefasNovas] = useState(0);
   const [comissoesPendentes, setComissoesPendentes] = useState(0);
+  const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -97,6 +98,18 @@ export default function Layout({ children, currentPageName }) {
         const vendedoresUnicos = new Set(comPendencia.map(p => p.vendedor_id || 'sem-vendedor'));
         setComissoesPendentes(vendedoresUnicos.size);
       }).catch(() => {});
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const filtroEmpresa = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+    if (user.empresa_id) {
+      base44.entities.MensagemWhatsapp.filter({ ...filtroEmpresa, remetente: 'cliente' }, '-data_envio', 500)
+        .then(msgs => {
+          const naoLidas = msgs.filter(m => m.status !== 'lida').length;
+          setMensagensNaoLidas(naoLidas);
+        }).catch(() => {});
     }
   }, [user]);
 
@@ -272,7 +285,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
-    { name: 'JD Messenger', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
+    { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
     { name: 'Empresas Parceiras', icon: Building2, page: 'EmpresasParceiras', roles: ['master', 'super_admin', 'admin'] },
     { 
@@ -633,6 +646,11 @@ export default function Layout({ children, currentPageName }) {
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="flex-1">{item.name}</span>
+                  {item.name === 'Bate - Papo' && mensagensNaoLidas > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight">
+                      {mensagensNaoLidas}
+                    </span>
+                  )}
                   {item.name === 'Tarefas' && tarefasNovas > 0 && (
                     <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight mr-1" title="Novas tarefas atribuídas a você">
                       {tarefasNovas} nova{tarefasNovas > 1 ? 's' : ''}
