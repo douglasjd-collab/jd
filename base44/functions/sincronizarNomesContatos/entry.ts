@@ -1,8 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 /**
- * Sincroniza os nomes (pushName) dos contatos da Evolution API
- * para as conversas e contatos CRM já existentes no banco.
+ * Sincroniza os nomes (pushName) dos contatos da Evolution API.
+ * Fonte: /chat/findChats — que traz remoteJid (número real) + pushName.
+ * Match EXATO de telefone — sem normalização que causa colisão de nomes.
  */
 
 Deno.serve(async (req) => {
@@ -26,108 +27,134 @@ Deno.serve(async (req) => {
     const evolutionKey = emp.evolution_api_key;
     const instanceName = emp.evolution_instance_name;
 
-    console.log(`🔄 Buscando contatos da Evolution (${instanceName})...`);
+    console.log(`🔄 Buscando chats da Evolution (${instanceName})...`);
 
-    // Buscar todos os contatos da Evolution
-    let todosContatos = [];
-    const resContatos = await fetch(`${evolutionUrl}/contact/findContacts/${instanceName}`, {
-      method: 'POST',
-      headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ limit: 10000, where: {} })
-    });
+    // Buscar TODOS os chats — que têm remoteJid (número real) + pushName
+    let paginaAtual = 0;
+    const LIMITE = 500;
+    const nomeMapExato = {}; // telefone exato (dígitos) → nome
 
-    if (resContatos.ok) {
-      const dataContatos = await resContatos.json();
-      const rawContatos = Array.isArray(dataContatos)
-        ? dataContatos
-        : (dataContatos.contacts?.records || dataContatos.contacts || []);
+    while (true) {
+      const res = await fetch(`${evolutionUrl}/chat/findChats/${instanceName}`, {
+        method: 'POST',
+        headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: LIMITE, offset: paginaAtual * LIMITE })
+      });
 
-      for (const c of rawContatos) {
-        const jid = c.jid || c.id || '';
+      if (!res.ok) break;
+      const data = await res.json();
+      const chats = Array.isArray(data) ? data : (data.chats?.records || data.chats || []);
+      if (chats.length === 0) break;
+
+      for (const chat of chats) {
+        const jid = chat.remoteJid || '';
+        const pushName = (chat.pushName || '').trim();
+
+        // Ignorar grupos, broadcasts e sem nome
         if (!jid || jid.includes('@g.us') || jid.includes('@broadcast') || jid.includes('@lid')) continue;
-
-        const pushName = c.pushName || c.name || c.senderName || '';
-        if (!pushName) continue; // só atualizar se tiver nome
+        if (!pushName || /^\d+$/.test(pushName)) continue; // ignorar nomes que são só números
 
         const tel = jid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
-        if (!tel.startsWith('55') || (tel.length !== 12 && tel.length !== 13)) continue;
+        if (!tel || tel.length < 8) continue;
 
-        // Normalizar: remover o 9 extra para padronizar em 12 dígitos
-        const telNorm = tel.length === 13 ? tel.slice(0, 4) + tel.slice(5) : tel;
-        const telCom9 = tel.length === 12 ? tel.slice(0, 4) + '9' + tel.slice(4) : tel;
-
-        todosContatos.push({ tel: telNorm, telCom9, pushName });
+        // Primeiro nome vence — não sobrescrever
+        if (!nomeMapExato[tel]) {
+          nomeMapExato[tel] = pushName;
+        }
       }
-    } else {
-      console.warn(`⚠️ Erro ao buscar contatos: ${resContatos.status}`);
-      return Response.json({ erro: `Erro Evolution: ${resContatos.status}` }, { status: 400 });
+
+      console.log(`📄 Página ${paginaAtual + 1}: ${chats.length} chats processados | total nomes: ${Object.keys(nomeMapExato).length}`);
+
+      if (chats.length < LIMITE) break; // última página
+      paginaAtual++;
+      if (paginaAtual > 10) break; // segurança
     }
 
-    console.log(`👥 ${todosContatos.length} contatos com nome encontrados`);
+    console.log(`👥 ${Object.keys(nomeMapExato).length} números com nome mapeados`);
 
-    // Buscar todas as conversas e contatos CRM do banco
+    // Lookup com match exato + variação com/sem 9 como fallback
+    // A variação só é usada quando NÃO há conflito (o número exato não existe no mapa)
+    const buscarNome = (telInput) => {
+      const t = (telInput || '').replace(/\D/g, '');
+      if (!t) return null;
+
+      if (nomeMapExato[t]) return nomeMapExato[t];
+
+      // Fallback sem 9: 5587981234567 → 558781234567
+      if (t.length === 13 && t.startsWith('55')) {
+        const sem9 = t.slice(0, 4) + t.slice(5);
+        // Só usa se o número com 9 NÃO existe no mapa (evita colisão)
+        if (nomeMapExato[sem9] && !nomeMapExato[t]) return nomeMapExato[sem9];
+      }
+
+      // Fallback com 9: 558781234567 → 5587981234567
+      if (t.length === 12 && t.startsWith('55')) {
+        const com9 = t.slice(0, 4) + '9' + t.slice(4);
+        if (nomeMapExato[com9] && !nomeMapExato[t]) return nomeMapExato[com9];
+      }
+
+      return null;
+    };
+
+    // Buscar conversas e contatos CRM do banco
     const [conversas, contatosCRM] = await Promise.all([
       base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, '-created_date', 10000).catch(() => []),
       base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, '-created_date', 10000).catch(() => [])
     ]);
 
-    console.log(`📊 ${conversas.length} conversas | ${contatosCRM.length} contatos CRM no banco`);
-
-    // Criar mapa de telefone → nome (por todas as variações)
-    const nomeMap = {};
-    for (const c of todosContatos) {
-      if (!nomeMap[c.tel]) nomeMap[c.tel] = c.pushName;
-      if (!nomeMap[c.telCom9]) nomeMap[c.telCom9] = c.pushName;
-    }
+    console.log(`📊 ${conversas.length} conversas | ${contatosCRM.length} contatos CRM`);
 
     let conversasAtualizadas = 0;
     let contatosAtualizados = 0;
+    let semMatch = 0;
 
-    // Atualizar conversas que não têm nome ou têm nome genérico
+    // Atualizar conversas com nome genérico/vazio
     for (const conversa of conversas) {
+      const nomeAtual = (conversa.cliente_nome || '').trim();
       const tel = (conversa.cliente_telefone || '').replace(/\D/g, '');
-      const nomeWpp = nomeMap[tel];
-      if (!nomeWpp) continue;
-
-      const nomeAtual = conversa.cliente_nome || '';
       const ehGenerico = !nomeAtual || nomeAtual === tel || nomeAtual.startsWith('Cliente ');
-      const diferente = nomeAtual !== nomeWpp;
 
-      if (ehGenerico || diferente) {
-        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-          cliente_nome: nomeWpp
-        }).catch(e => console.warn(`Erro ao atualizar conversa ${conversa.id}: ${e.message}`));
-        conversasAtualizadas++;
-      }
+      if (!ehGenerico) continue; // preservar nomes editados manualmente
+
+      const nome = buscarNome(conversa.cliente_telefone);
+      if (!nome) { semMatch++; continue; }
+
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+        cliente_nome: nome
+      }).catch(() => {});
+
+      console.log(`✏️ Conversa ${tel} → "${nome}"`);
+      conversasAtualizadas++;
     }
 
-    // Atualizar contatos CRM que não têm nome ou têm nome genérico
+    // Atualizar contatos CRM com nome genérico/vazio
     for (const contato of contatosCRM) {
+      const nomeAtual = (contato.nome || '').trim();
       const tel = (contato.telefone || '').replace(/\D/g, '');
-      const nomeWpp = nomeMap[tel];
-      if (!nomeWpp) continue;
-
-      const nomeAtual = contato.nome || '';
       const ehGenerico = !nomeAtual || nomeAtual === tel || nomeAtual.startsWith('Cliente ');
-      const diferente = nomeAtual !== nomeWpp;
 
-      if (ehGenerico || diferente) {
-        await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
-          nome: nomeWpp,
-          ultima_atualizacao: new Date().toISOString()
-        }).catch(e => console.warn(`Erro ao atualizar contato ${contato.id}: ${e.message}`));
-        contatosAtualizados++;
-      }
+      if (!ehGenerico) continue;
+
+      const nome = buscarNome(contato.telefone);
+      if (!nome) continue;
+
+      await base44.asServiceRole.entities.ContatoWhatsapp.update(contato.id, {
+        nome,
+        ultima_atualizacao: new Date().toISOString()
+      }).catch(() => {});
+
+      contatosAtualizados++;
     }
 
-    console.log(`✅ Nomes sincronizados: ${conversasAtualizadas} conversas | ${contatosAtualizados} contatos CRM`);
+    console.log(`✅ Conversas: ${conversasAtualizadas} | Contatos CRM: ${contatosAtualizados} | Sem match: ${semMatch}`);
 
     return Response.json({
       ok: true,
-      contatosComNome: todosContatos.length,
+      nomesMapeados: Object.keys(nomeMapExato).length,
       conversasAtualizadas,
       contatosAtualizados,
-      mensagem: `${conversasAtualizadas} conversas e ${contatosAtualizados} contatos atualizados com nome do WhatsApp`
+      semMatch,
+      mensagem: `${conversasAtualizadas} conversas e ${contatosAtualizados} contatos atualizados`
     });
   } catch (error) {
     console.error('❌ Erro:', error.message);
