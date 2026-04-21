@@ -272,7 +272,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
-    { name: 'Bate-papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
+    { name: 'JD Messenger (Central de conversas)', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
     { name: 'Empresas Parceiras', icon: Building2, page: 'EmpresasParceiras', roles: ['master', 'super_admin', 'admin'] },
     { 
@@ -344,7 +344,7 @@ export default function Layout({ children, currentPageName }) {
     'Clientes': 'clientes',
     'Cartas Contempladas': 'cartas_contempladas',
     'Agenda': 'agenda',
-    'Bate-papo': 'bate_papo',
+    'JD Messenger (Central de conversas)': 'bate_papo',
     'Financeiro': 'financeiro',
     'Cadastros': 'cadastros',
     'Importação': 'importacao',
