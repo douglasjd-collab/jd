@@ -100,7 +100,7 @@ export default function GerenciarCategoriasModal({ open, onOpenChange, empresaId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-visible" style={{ overflowX: 'visible' }}>
         <DialogHeader>
           <DialogTitle>Gerenciar Categorias de Despesas</DialogTitle>
         </DialogHeader>
