@@ -77,8 +77,14 @@ Deno.serve(async (req) => {
       const batch = semNome.slice(i, i + BATCH_SIZE);
       const promises = batch.map(async (conversa) => {
         try {
-          const jid = `${conversa.cliente_telefone}@s.whatsapp.net`;
+          // Tentar primeiro com .net, depois com .c.us se não encontrar nada útil
+          let jid = `${conversa.cliente_telefone}@s.whatsapp.net`;
           const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
+          
+          // Se a conversa já tem whatsapp_id, usar como preferência
+          if (conversa.whatsapp_id && conversa.whatsapp_id.includes('@')) {
+            jid = conversa.whatsapp_id;
+          }
 
           // Buscar mensagens na Evolution com retry
           const msgData = await buscarMensagensComRetry(jid);
