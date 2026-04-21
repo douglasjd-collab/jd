@@ -256,11 +256,20 @@ export default function SimuladorConsorcio() {
         toast.warning('Lance próprio ajustado para o valor máximo do plano');
       }
 
+      // Calcular primeira parcela reduzida (soma de todas as cartas com parcela reduzida)
+      const primeira_parcela_reduzida_total = cartas.reduce(
+        (acc, c) => acc + Number(c.parcelaReduzida || 0), 
+        0
+      );
+
       // Calcular saldo devedor:
       // Se plano tem 50% ou 70%, NÃO descontar lance embutido (já foi descontado no plano)
-      // Total a pagar - 1ª parcela no ato - Lance embutido (se aplicável) - Lance próprio
-      const lanceTotalCompleto = lanceEmbutidoAplicado + lanceProprioValor;
-      saldoDevedorTotal = totalPlano - parcelaTotal - lanceTotalCompleto;
+      // SE houver parcela reduzida, TAMBÉM NÃO descontar lance embutido (já foi reduzido)
+      // Total a pagar - 1ª parcela no ato - Lance próprio (apenas se não tiver parcela reduzida)
+      const haParcelaReduzida = primeira_parcela_reduzida_total > 0;
+      const lanceTotalADescontar = lanceEmbutidoAplicado && !haParcelaReduzida ? lanceEmbutidoAplicado : 0;
+      const primeira_parcela_final = haParcelaReduzida ? primeira_parcela_reduzida_total : parcelaTotal;
+      saldoDevedorTotal = totalPlano - primeira_parcela_final - lanceTotalADescontar - lanceProprioValor;
 
       // Calcular meses cobrados
       if (aplicarRegraCanopus && administradora === 'canopus') {
