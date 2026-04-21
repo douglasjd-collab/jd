@@ -36,6 +36,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     repetir: false,
     repeticoes: 2,
     unidadeRepeticao: 'meses',
+    parcelaInicial: 1,
+    totalParcelas: 0,
   });
 
   const { data: colaboradores = [] } = useQuery({
@@ -88,8 +90,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
       repetir: false,
       repeticoes: 2,
       unidadeRepeticao: 'meses',
-    });
-    setMostrarDetalhes(true);
+      parcelaInicial: 1,
+      totalParcelas: 0,
+      });
+      setMostrarDetalhes(true);
   };
 
   const formatarValor = (val) => {
@@ -109,7 +113,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     setUploading(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.descricao || !formData.valor || !formData.responsavel_id) {
       toast.error('Preencha os campos obrigatórios');
       return;
@@ -119,21 +123,89 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
       toast.error('Valor inválido');
       return;
     }
-    createMutation.mutate({
+
+    const base = {
       empresa_id: user.empresa_id,
       descricao: formData.descricao,
       categoria: formData.subcategoria || formData.categoria,
       valor,
-      data: formData.data,
-      status: formData.foiPaga ? 'pago' : 'pendente',
-      data_pagamento: formData.foiPaga ? formData.data : undefined,
       responsavel_id: formData.responsavel_id,
       responsavel_nome: formData.responsavel_nome,
       comprovante_url: formData.comprovante_url,
       observacao: formData.observacao,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
-    });
+    };
+
+    if (!formData.repetir) {
+      // Lançamento simples
+      createMutation.mutate({
+        ...base,
+        data: formData.data,
+        status: formData.foiPaga ? 'pago' : 'pendente',
+        data_pagamento: formData.foiPaga ? formData.data : undefined,
+      });
+      return;
+    }
+
+    // Lançamento com repetição / parcelas em andamento
+    const parcelaInicial = parseInt(formData.parcelaInicial) || 1;
+    const totalParcelas = parseInt(formData.totalParcelas) || 0;
+    const qtdRepetir = parseInt(formData.repeticoes) || 2;
+    const unidade = formData.unidadeRepeticao === 'meses' ? 'months' : 'weeks';
+
+    // Total de parcelas do contrato (se informado)
+    const totalContrato = totalParcelas > 0 ? totalParcelas : (parcelaInicial - 1 + qtdRepetir);
+
+    // Gerar as parcelas a partir da parcelaInicial, contando da data selecionada
+    const despesasParaCriar = [];
+    for (let i = 0; i < qtdRepetir; i++) {
+      const numeroParcela = parcelaInicial + i;
+      const dataVencimento = moment(formData.data).add(i, unidade).format('YYYY-MM-DD');
+      // Parcelas anteriores à atual (já pagas retroativamente)
+      const jaDeveriaTerSidoPaga = numeroParcela < parcelaInicial + (qtdRepetir - qtdRepetir); // sempre false - só as já informadas antes da inicial
+
+      despesasParaCriar.push({
+        ...base,
+        descricao: totalContrato > 0
+          ? `${formData.descricao} (${numeroParcela}/${totalContrato})`
+          : `${formData.descricao} (${numeroParcela}/${qtdRepetir + parcelaInicial - 1})`,
+        data: dataVencimento,
+        status: i === 0 && formData.foiPaga ? 'pago' : 'pendente',
+        data_pagamento: i === 0 && formData.foiPaga ? dataVencimento : undefined,
+      });
+    }
+
+    // Criar despesas retroativas (parcelas anteriores à inicial, já pagas)
+    const despesasRetroativas = [];
+    for (let i = 1; i < parcelaInicial; i++) {
+      const dataRetroativa = moment(formData.data).subtract(parcelaInicial - i, unidade).format('YYYY-MM-DD');
+      despesasRetroativas.push({
+        ...base,
+        descricao: totalContrato > 0
+          ? `${formData.descricao} (${i}/${totalContrato})`
+          : `${formData.descricao} (${i}/${qtdRepetir + parcelaInicial - 1})`,
+        data: dataRetroativa,
+        status: 'pago',
+        data_pagamento: dataRetroativa,
+      });
+    }
+
+    const todas = [...despesasRetroativas, ...despesasParaCriar];
+
+    try {
+      for (const d of todas) {
+        await base44.entities.Despesa.create(d);
+      }
+      queryClient.invalidateQueries(['despesas']);
+      queryClient.invalidateQueries(['despesas-transacoes']);
+      toast.success(`${todas.length} despesa(s) lançadas com sucesso!`);
+      onOpenChange(false);
+      resetForm();
+      onSuccess?.();
+    } catch (err) {
+      toast.error('Erro ao lançar despesas: ' + err.message);
+    }
   };
 
   return (
@@ -300,17 +372,51 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
                       <Switch checked={formData.repetir} onCheckedChange={(v) => setFormData({ ...formData, repetir: v })} />
                     </div>
                     {formData.repetir && (
-                      <div className="flex gap-2">
-                        <Input type="number" value={formData.repeticoes}
-                          onChange={(e) => setFormData({ ...formData, repeticoes: parseInt(e.target.value) || 2 })}
-                          className="w-20 bg-slate-700 border-slate-600 text-white" />
-                        <Select value={formData.unidadeRepeticao} onValueChange={(v) => setFormData({ ...formData, unidadeRepeticao: v })}>
-                          <SelectTrigger className="bg-slate-700 border-slate-600 text-white"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-slate-800 border-slate-700">
-                            <SelectItem value="vezes">vezes</SelectItem>
-                            <SelectItem value="meses">Meses</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div className="space-y-3 mt-2">
+                        {/* Quantidade e unidade */}
+                        <div className="flex gap-2">
+                          <Input type="number" min={1} value={formData.repeticoes}
+                            onChange={(e) => setFormData({ ...formData, repeticoes: parseInt(e.target.value) || 2 })}
+                            className="w-20 bg-slate-700 border-slate-600 text-white" />
+                          <Select value={formData.unidadeRepeticao} onValueChange={(v) => setFormData({ ...formData, unidadeRepeticao: v })}>
+                            <SelectTrigger className="bg-slate-700 border-slate-600 text-white flex-1"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-700">
+                              <SelectItem value="meses">Meses</SelectItem>
+                              <SelectItem value="semanas">Semanas</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Parcelas em andamento */}
+                        <div className="bg-slate-800 rounded-lg p-3 space-y-3 border border-slate-600">
+                          <p className="text-xs text-slate-400 font-medium">Parcelas em andamento?</p>
+                          <div className="flex gap-3 items-center">
+                            <div className="flex-1">
+                              <label className="text-xs text-slate-500 mb-1 block">Começar na parcela</label>
+                              <Input type="number" min={1} value={formData.parcelaInicial}
+                                onChange={(e) => setFormData({ ...formData, parcelaInicial: parseInt(e.target.value) || 1 })}
+                                className="bg-slate-700 border-slate-600 text-white h-8 text-sm" />
+                            </div>
+                            <div className="text-slate-500 mt-5">de</div>
+                            <div className="flex-1">
+                              <label className="text-xs text-slate-500 mb-1 block">Total de parcelas</label>
+                              <Input type="number" min={0} value={formData.totalParcelas || ''}
+                                placeholder="auto"
+                                onChange={(e) => setFormData({ ...formData, totalParcelas: parseInt(e.target.value) || 0 })}
+                                className="bg-slate-700 border-slate-600 text-white h-8 text-sm placeholder:text-slate-600" />
+                            </div>
+                          </div>
+                          {formData.parcelaInicial > 1 && (
+                            <p className="text-xs text-amber-400">
+                              ⚠️ {formData.parcelaInicial - 1} parcela(s) anterior(es) serão lançadas como <strong>já pagas</strong> retroativamente.
+                            </p>
+                          )}
+                          {formData.parcelaInicial === 1 && (
+                            <p className="text-xs text-slate-500">
+                              Deixe em 1 se está cadastrando desde o início.
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
