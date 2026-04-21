@@ -953,6 +953,27 @@ export default function BatePapo() {
                   <TooltipContent side="bottom"><p>🔄 Sincronizar histórico TODAS conversas</p></TooltipContent>
                 </Tooltip>
 
+                {/* Sincronizar nomes do WhatsApp */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
+                      onClick={async () => {
+                        setSincronizando(true);
+                        try {
+                          const resp = await base44.functions.invoke('sincronizarNomesContatos', { empresa_id: empresaId });
+                          if (resp?.data?.ok) {
+                            toast.success(`✅ ${resp.data.mensagem}`);
+                            refetchConversas();
+                          } else toast.error('Erro ao sincronizar nomes');
+                        } catch (e) { toast.error('Erro: ' + e.message); } finally { setSincronizando(false); }
+                      }}
+                      disabled={sincronizando}>
+                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Contact className="h-3.5 w-3.5 text-indigo-600" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom"><p>Sincronizar nomes do WhatsApp</p></TooltipContent>
+                </Tooltip>
+
                 {/* Sincronizar fotos */}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1101,7 +1122,7 @@ export default function BatePapo() {
                           <div className="flex items-center justify-between gap-1">
                             <p className="truncate text-sm font-semibold text-slate-900 flex items-center gap-1">
                               {isGrupo(c) && <Users className="w-3 h-3 text-sky-500 flex-shrink-0" />}
-                              {c.cliente_telefone}
+                              {contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone}
                             </p>
                             {c.data_ultima_mensagem && (
                               <p className="whitespace-nowrap text-[11px] text-slate-400 flex-shrink-0">
@@ -1189,7 +1210,9 @@ export default function BatePapo() {
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_telefone || conversaSelecionada.cliente_nome}</p>
+                      <p className="text-sm font-semibold leading-tight">
+                        {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone}
+                      </p>
                       <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
                     </div>
                   </div>
