@@ -21,9 +21,10 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    // Validação: super_admin pode configurar qualquer empresa
-    // Admin só pode configurar sua própria empresa
-    if (user.perfil !== 'super_admin' && user.empresa_id !== empresa_id) {
+    // super_admin (role do sistema) ou admin podem configurar qualquer empresa
+    // Usuários comuns só podem configurar sua própria empresa
+    const isSuperAdmin = user.role === 'admin' || user.perfil === 'super_admin';
+    if (!isSuperAdmin && user.empresa_id !== empresa_id) {
       return Response.json({ success: false, error: 'Sem permissão para configurar esta empresa' }, { status: 403 });
     }
 
