@@ -63,15 +63,26 @@ export default function ConfiguracaoWhatsApp() {
       setUser(me);
 
       let empId = null;
-      
-      // Usuários normais: buscar empresa vinculada ao colaborador
-      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-      empId = colabs?.[0]?.empresa_id || me.empresa_id;
 
-      // Se não achou empresa pelo colaborador e é super_admin, usar a função backend
-      if (!empId && (me.perfil === 'super_admin' || me.role === 'admin')) {
-        const resp = await base44.functions.invoke('listarEmpresas', { limit: 1 });
-        empId = resp?.data?.empresas?.[0]?.id;
+      // Buscar colaborador ativo deste usuário
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+      const colab = colabs?.[0];
+      empId = colab?.empresa_id || null;
+
+      // Se não achou empresa pelo colaborador, tentar pelo campo empresa_id do usuário
+      if (!empId) {
+        empId = me.empresa_id || null;
+      }
+
+      // Se ainda não achou (super_admin sem empresa vinculada), buscar empresa pelo email do usuário
+      if (!empId && me.email) {
+        const resp = await base44.functions.invoke('listarEmpresas', {});
+        const todasEmpresas = resp?.data?.empresas || [];
+        // Empresa do super_admin: aquela cujo email_admin bate com o email do usuário
+        const empresaDoAdmin = todasEmpresas.find(e =>
+          e.email_admin === me.email || e.email === me.email
+        );
+        empId = empresaDoAdmin?.id || null;
       }
 
       if (empId) {
@@ -79,6 +90,8 @@ export default function ConfiguracaoWhatsApp() {
         if (emps && emps.length > 0) {
           carregarEmpresa(emps[0]);
         }
+      } else {
+        toast.error('Não foi possível identificar a empresa. Verifique seu cadastro.');
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
