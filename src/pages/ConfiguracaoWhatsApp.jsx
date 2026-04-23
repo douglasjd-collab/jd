@@ -64,14 +64,14 @@ export default function ConfiguracaoWhatsApp() {
 
       let empId = null;
       
-      // Super admin: sempre usar a empresa principal (primeira/super conta)
-      if (me.perfil === 'super_admin' || me.role === 'admin') {
-        const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 1);
-        empId = todasEmpresas?.[0]?.id;
-      } else {
-        // Usuários normais: buscar empresa vinculada
-        const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-        empId = colabs?.[0]?.empresa_id || me.empresa_id;
+      // Usuários normais: buscar empresa vinculada ao colaborador
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+      empId = colabs?.[0]?.empresa_id || me.empresa_id;
+
+      // Se não achou empresa pelo colaborador e é super_admin, usar a função backend
+      if (!empId && (me.perfil === 'super_admin' || me.role === 'admin')) {
+        const resp = await base44.functions.invoke('listarEmpresas', { limit: 1 });
+        empId = resp?.data?.empresas?.[0]?.id;
       }
 
       if (empId) {

@@ -148,16 +148,10 @@ async function processarWebhook(req, rawBody, base44) {
 
   const event = (payload.event || '').toLowerCase().replace(/\./g, '_');
   const instancePayload = payload.instance || '';
-  const instanceFinal = instanceFromQuery || instancePayload || '';
+  // Prioridade: payload > query string (o payload é mais confiável)
+  const instanceFinal = instancePayload || instanceFromQuery || '';
 
   console.log(`📋 Event: "${event}" | Instance query: "${instanceFromQuery}" | Instance payload: "${instancePayload}" | Final: "${instanceFinal}"`);
-
-  // 🔒 SEGURANÇA: Se há instância na query string E no payload, elas DEVEM bater
-  if (instanceFromQuery && instancePayload && 
-      instanceFromQuery.toUpperCase() !== instancePayload.toUpperCase()) {
-    console.warn(`🚫 BLOQUEADO: Instância da URL "${instanceFromQuery}" ≠ instância do payload "${instancePayload}" — descartando mensagem`);
-    return;
-  }
 
   const data = payload.data || {};
 
