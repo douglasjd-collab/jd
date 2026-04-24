@@ -106,13 +106,45 @@ export default function ComissoesPagas() {
 
   const toggleLote = (id) => setExpandedLotes(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const gerarPDF = (lote) => {
+  const gerarPDF = async (lote) => {
     const comissoesLote = lote.comissoes;
     if (!comissoesLote.length) { toast.error('Sem comissões para gerar PDF'); return; }
 
     const doc = new jsPDF({ orientation: 'landscape' });
     const totalPago = comissoesLote.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
-    const totalRecebido = comissoesLote.reduce((acc, c) => acc + (c.valor_recebido || 0), 0);
+
+    // Buscar nome real e PIX do vendedor via Colaborador
+    let nomeVendedorReal = lote.vendedor_nome || '-';
+    let pixVendedor = '';
+    if (lote.vendedor_id) {
+      try {
+        let colabs = await base44.entities.Colaborador.filter({ id: lote.vendedor_id });
+        if (!colabs || colabs.length === 0) {
+          colabs = await base44.entities.Colaborador.filter({ user_id: lote.vendedor_id });
+        }
+        if (colabs && colabs.length > 0) {
+          nomeVendedorReal = colabs[0].nome || nomeVendedorReal;
+          pixVendedor = colabs[0].pix_chave || colabs[0].chave_pix || '';
+        }
+      } catch {}
+    }
+
+    // Buscar valor do crédito de cada venda pelo venda_id
+    const vendasMap = {};
+    const vendaIds = [...new Set(comissoesLote.map(c => c.venda_id).filter(Boolean))];
+    for (const vid of vendaIds) {
+      try {
+        const vendas = await base44.entities.Venda.filter({ id: vid });
+        if (vendas && vendas.length > 0) vendasMap[vid] = vendas[0];
+      } catch {}
+    }
+
+    const getCredito = (c) => vendasMap[c.venda_id]?.valorCredito || 0;
+    const getPercSobreCredito = (c) => {
+      const credito = getCredito(c);
+      if (!credito || !c.valor_a_pagar) return 0;
+      return (c.valor_a_pagar / credito) * 100;
+    };
 
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, 297, 22, 'F');
@@ -124,48 +156,59 @@ export default function ComissoesPagas() {
 
     doc.setTextColor(0, 0, 0);
     doc.setFillColor(245, 247, 250);
-    doc.roundedRect(10, 26, 277, 28, 2, 2, 'F');
+    const boxHeight = pixVendedor ? 28 : 22;
+    doc.roundedRect(10, 26, 277, boxHeight, 2, 2, 'F');
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
     doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
     doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
     doc.setFont('helvetica', 'normal');
-    doc.text(lote.vendedor_nome || '-', 14, 39);
+    doc.text(nomeVendedorReal, 14, 39);
     doc.text(moment(lote.data_pagamento, 'YYYY-MM-DD').format('DD/MM/YYYY'), 90, 39);
     doc.text(lote.forma_pagamento || '-', 160, 39);
     doc.text(String(comissoesLote.length), 230, 39);
-    if (lote.observacao) {
-      doc.setFont('helvetica', 'bold'); doc.text('Observação:', 14, 46);
-      doc.setFont('helvetica', 'normal'); doc.text(lote.observacao, 45, 46);
+    if (pixVendedor) {
+      doc.setFont('helvetica', 'bold'); doc.text('PIX:', 14, 47);
+      doc.setFont('helvetica', 'normal'); doc.text(pixVendedor, 26, 47);
     }
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total Recebido (Adm):', 14, 54); doc.text('Total Pago ao Vendedor:', 120, 54);
-    doc.setTextColor(0, 120, 80); doc.text(fmt(totalRecebido), 70, 54);
-    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 200, 54);
+
+    const infoY = 26 + boxHeight + 8;
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text('Total Pago ao Corretor:', 14, infoY);
+    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 80, infoY);
     doc.setTextColor(0, 0, 0);
+    if (lote.observacao) {
+      doc.setFont('helvetica', 'normal'); doc.text(`Obs: ${lote.observacao}`, 160, infoY);
+    }
 
     doc.autoTable({
-      startY: 64,
-      head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Recebido', '% Com.', 'Vl. Pago', 'Administradora']],
-      body: comissoesLote.map(c => [
-        c.cliente_nome || '-',
-        c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-',
-        c.parcela_numero ? `${c.parcela_numero}º` : '-',
-        c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : '-',
-        fmt(c.valor_recebido), `${c.percentual_comissao || 0}%`, fmt(c.valor_a_pagar),
-        c.administradora_nome || '-',
-      ]),
-      foot: [['', '', '', '', fmt(totalRecebido), '', fmt(totalPago), '']],
+      startY: infoY + 8,
+      head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Crédito', '% s/ Crédito', 'Vl. a Pagar', 'Administradora']],
+      body: comissoesLote.map(c => {
+        const credito = getCredito(c);
+        const percCredito = getPercSobreCredito(c);
+        return [
+          c.cliente_nome || '-',
+          c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-',
+          c.parcela_numero ? `${c.parcela_numero}º` : '-',
+          c.data_recebimento ? moment(c.data_recebimento, 'YYYY-MM-DD', true).format('DD/MM/YYYY') : '-',
+          credito ? fmt(credito) : '-',
+          credito ? `${percCredito.toFixed(2)}%` : '-',
+          fmt(c.valor_a_pagar),
+          c.administradora_nome || '-',
+        ];
+      }),
+      foot: [['', '', '', '', '', 'Total:', fmt(totalPago), '']],
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
-      footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold' },
+      footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [30, 30, 30] },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 4: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right', textColor: [0, 80, 180] } },
     });
 
     const ph = doc.internal.pageSize.height;
     doc.setFontSize(7); doc.setTextColor(150);
-    doc.text(`Protocolo: ${lote.lote_code} | Gerado em ${moment().format('DD/MM/YYYY HH:mm')}`, 148, ph - 5, { align: 'center' });
-    doc.save(`comissao_${lote.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${lote.lote_code}.pdf`);
+    doc.text(`Gerado por ${user?.full_name || 'Sistema'} em ${moment().format('DD/MM/YYYY HH:mm')}`, 148, ph - 5, { align: 'center' });
+    doc.save(`comissao_${nomeVendedorReal.replace(/\s+/g, '_') || 'vendedor'}_${lote.lote_code}.pdf`);
     toast.success('PDF gerado!');
   };
 
