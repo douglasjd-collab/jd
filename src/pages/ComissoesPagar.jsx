@@ -169,12 +169,28 @@ export default function ComissoesPagar() {
     const doc = new jsPDF({ orientation: 'landscape' });
     const totalPago = comissoesLista.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
+    // Buscar nome real e PIX do vendedor via Colaborador
+    let nomeVendedorReal = vendedorInfo?.vendedor_nome || '-';
+    let pixVendedor = '';
+    if (vendedorInfo?.vendedor_id) {
+      try {
+        // vendedor_id pode ser o id do Colaborador ou o user_id
+        let colabs = await base44.entities.Colaborador.filter({ id: vendedorInfo.vendedor_id });
+        if (!colabs || colabs.length === 0) {
+          colabs = await base44.entities.Colaborador.filter({ user_id: vendedorInfo.vendedor_id });
+        }
+        if (colabs && colabs.length > 0) {
+          nomeVendedorReal = colabs[0].nome || nomeVendedorReal;
+          pixVendedor = colabs[0].pix_chave || colabs[0].chave_pix || '';
+        }
+      } catch {}
+    }
+
     // Buscar valor do crédito de cada venda pelo venda_id
     const vendasMap = {};
     const vendaIds = [...new Set(comissoesLista.map(c => c.venda_id).filter(Boolean))];
     for (const vid of vendaIds) {
       try {
-        // Tenta buscar da entidade Venda
         const vendas = await base44.entities.Venda.filter({ id: vid });
         if (vendas && vendas.length > 0) vendasMap[vid] = vendas[0];
       } catch {}
@@ -199,26 +215,34 @@ export default function ComissoesPagar() {
 
     doc.setTextColor(0, 0, 0);
     doc.setFillColor(245, 247, 250);
-    doc.roundedRect(10, 26, 277, 22, 2, 2, 'F');
+    // Caixa maior se tiver PIX
+    const boxHeight = pixVendedor ? 28 : 22;
+    doc.roundedRect(10, 26, 277, boxHeight, 2, 2, 'F');
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
     doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
     doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
     doc.setFont('helvetica', 'normal');
-    doc.text(vendedorInfo?.vendedor_nome || '-', 14, 39);
+    doc.text(nomeVendedorReal, 14, 39);
     doc.text(moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY'), 90, 39);
     doc.text(formaPagto || '-', 160, 39);
     doc.text(String(comissoesLista.length), 230, 39);
+    // PIX na linha seguinte se disponível
+    if (pixVendedor) {
+      doc.setFont('helvetica', 'bold'); doc.text('PIX:', 14, 47);
+      doc.setFont('helvetica', 'normal'); doc.text(pixVendedor, 26, 47);
+    }
 
+    const infoY = 26 + boxHeight + 8;
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.text('Total Pago ao Corretor:', 14, 52);
-    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 80, 52);
+    doc.text('Total Pago ao Corretor:', 14, infoY);
+    doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 80, infoY);
     doc.setTextColor(0, 0, 0);
     if (observacao) {
-      doc.setFont('helvetica', 'normal'); doc.text(`Obs: ${observacao}`, 160, 52);
+      doc.setFont('helvetica', 'normal'); doc.text(`Obs: ${observacao}`, 160, infoY);
     }
 
     doc.autoTable({
-      startY: 60,
+      startY: infoY + 8,
       head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Crédito', '% s/ Crédito', 'Vl. a Pagar', 'Administradora']],
       body: comissoesLista.map(c => {
         const credito = getCredito(c);
