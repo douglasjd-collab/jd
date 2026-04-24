@@ -25,6 +25,7 @@ export default function ComissoesPagas() {
   const [filtroMes, setFiltroMes] = useState('todos');
   const [filtroCliente, setFiltroCliente] = useState('');
   const [expandedLotes, setExpandedLotes] = useState({});
+  const [nomesReais, setNomesReais] = useState({}); // vendedor_id -> nome real
 
   useEffect(() => { loadUser(); }, []);
 
@@ -55,6 +56,21 @@ export default function ComissoesPagas() {
     queryKey: ['lotes-pagamento'],
     queryFn: () => base44.entities.PagamentoComissaoLote.filter({}),
     enabled: !!user,
+    onSuccess: async (data) => {
+      // Resolver nomes reais via Colaborador para cada vendedor_id único
+      const ids = [...new Set(data.map(l => l.vendedor_id).filter(Boolean))];
+      const mapa = {};
+      await Promise.all(ids.map(async (vid) => {
+        try {
+          let colabs = await base44.entities.Colaborador.filter({ id: vid });
+          if (!colabs || colabs.length === 0) {
+            colabs = await base44.entities.Colaborador.filter({ user_id: vid });
+          }
+          if (colabs && colabs.length > 0) mapa[vid] = colabs[0].nome;
+        } catch {}
+      }));
+      setNomesReais(mapa);
+    },
   });
 
   // Filtrar comissões
@@ -76,7 +92,8 @@ export default function ComissoesPagas() {
   // Agrupar por lote (lote_code = protocolo único por pagamento)
   // Cada lote do PagamentoComissaoLote é um relatório individual
   const lotesFiltrados = lotes.filter(l => {
-    if (filtroVendedor && !l.vendedor_nome?.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
+    const nomeReal = (l.vendedor_id && nomesReais[l.vendedor_id]) || l.vendedor_nome || '';
+    if (filtroVendedor && !nomeReal.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
     if (filtroMes !== 'todos' && l.data_pagamento) {
       if (moment(l.data_pagamento).format('YYYY-MM') !== filtroMes) return false;
     }
@@ -114,7 +131,7 @@ export default function ComissoesPagas() {
     const totalPago = comissoesLote.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
     // Buscar nome real e PIX do vendedor via Colaborador
-    let nomeVendedorReal = lote.vendedor_nome || '-';
+    let nomeVendedorReal = (lote.vendedor_id && nomesReais[lote.vendedor_id]) || lote.vendedor_nome || '-';
     let pixVendedor = '';
     if (lote.vendedor_id) {
       try {
@@ -269,6 +286,7 @@ export default function ComissoesPagas() {
           {lotesComComissoes.map(lote => {
             const totalLote = lote.comissoes.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
             const isExp = expandedLotes[lote.id];
+            const nomeExibido = (lote.vendedor_id && nomesReais[lote.vendedor_id]) || lote.vendedor_nome || '-';
             return (
               <Card key={lote.id} className="overflow-hidden shadow-sm">
                 <div
@@ -276,11 +294,11 @@ export default function ComissoesPagas() {
                   onClick={() => toggleLote(lote.id)}
                 >
                   <div className="w-11 h-11 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {lote.vendedor_nome?.charAt(0).toUpperCase()}
+                    {nomeExibido?.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-base uppercase tracking-wide truncate">{lote.vendedor_nome}</h3>
+                      <h3 className="font-bold text-base uppercase tracking-wide truncate">{nomeExibido}</h3>
                       <Badge className="bg-white/20 text-white text-xs border-white/30">
                         <Hash className="w-3 h-3 mr-1" />{lote.lote_code}
                       </Badge>
