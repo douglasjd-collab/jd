@@ -255,7 +255,7 @@ Deno.serve(async (req) => {
       console.log('⚠️ Conversa não encontrada, criando nova...');
       
       // Se não existir, criar a conversa
-      const empresaIdFinal = empresaId || payload.empresa_id || '699696c2c9f5bffc2e67402b';
+      const empresaIdFinal = empresaId || payload.empresa_id;
       const telefoneLimpo = numeroFormatado.replace(/\D/g, '');
       
       conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
     // Criar registro de mensagem no banco
     console.log('💾 Salvando mensagem no banco...');
     
-    const empresaIdFinal = empresaId || payload.empresa_id || '699696c2c9f5bffc2e67402b';
+    const empresaIdFinal = empresaId || payload.empresa_id;
 
     // Determinar tipo de conteúdo
     let tipo_conteudo = 'texto';

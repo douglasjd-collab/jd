@@ -321,25 +321,25 @@ export default function BatePapo() {
 
       if (isSuper) {
         setIsSuperAdmin(true);
-        // Carregar todas as empresas com WhatsApp configurado para o seletor
+        // Carregar todas as empresas para o seletor
         const todasEmpresas = await base44.entities.Empresa.filter({}, '-created_date', 50);
-        const empComWhatsapp = todasEmpresas.filter(e => e.evolution_instance_name || e.whatsapp_phone_number_id);
-        setEmpresas(empComWhatsapp.length > 0 ? empComWhatsapp : todasEmpresas);
+        setEmpresas(todasEmpresas);
 
-        // Tentar identificar empresa pelo email do super_admin (ex: admin de uma subconta)
-        const empDoAdmin = todasEmpresas.find(e => e.email === me.email || e.email_admin === me.email);
+        // Identificar a empresa própria do super_admin pelo email
+        const empDoAdmin = todasEmpresas.find(e => 
+          e.email === me.email || 
+          e.email_admin === me.email ||
+          e.nome?.toLowerCase().includes('super') ||
+          e.nome?.toLowerCase().includes('waze')
+        );
         if (empDoAdmin) {
-          console.log(`✅ Super admin: empresa pelo email: ${empDoAdmin.id} (${empDoAdmin.nome})`);
+          console.log(`✅ Super admin: empresa própria: ${empDoAdmin.id} (${empDoAdmin.nome})`);
           setEmpresaId(empDoAdmin.id);
           return;
         }
 
-        // Fallback: primeira empresa com WhatsApp configurado
-        const primeiraComWpp = empComWhatsapp[0] || todasEmpresas[0];
-        if (primeiraComWpp) {
-          console.log(`✅ Super admin fallback: ${primeiraComWpp.id} (${primeiraComWpp.nome})`);
-          setEmpresaId(primeiraComWpp.id);
-        }
+        // Não faz fallback automático — super_admin deve selecionar manualmente
+        console.log(`ℹ️ Super admin: nenhuma empresa vinculada ao email. Selecione no dropdown.`);
         return;
       }
 
