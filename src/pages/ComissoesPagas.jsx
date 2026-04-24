@@ -56,9 +56,13 @@ export default function ComissoesPagas() {
     queryKey: ['lotes-pagamento'],
     queryFn: () => base44.entities.PagamentoComissaoLote.filter({}),
     enabled: !!user,
-    onSuccess: async (data) => {
-      // Resolver nomes reais via Colaborador para cada vendedor_id único
-      const ids = [...new Set(data.map(l => l.vendedor_id).filter(Boolean))];
+  });
+
+  useEffect(() => {
+    if (!lotes.length) return;
+    const ids = [...new Set(lotes.map(l => l.vendedor_id).filter(Boolean))];
+    if (!ids.length) return;
+    const resolver = async () => {
       const mapa = {};
       await Promise.all(ids.map(async (vid) => {
         try {
@@ -70,8 +74,9 @@ export default function ComissoesPagas() {
         } catch {}
       }));
       setNomesReais(mapa);
-    },
-  });
+    };
+    resolver();
+  }, [lotes]);
 
   // Filtrar comissões
   const dadosFiltrados = comissoesPagas.filter((c) => {
