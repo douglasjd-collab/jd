@@ -345,6 +345,17 @@ export default function Layout({ children, currentPageName }) {
     { name: 'FinantoBank INSS', icon: FileText, page: 'IntegracaoFinantoBank', roles: ALL_ROLES },
     { name: 'Configuração WhatsApp', icon: MessageSquare, page: 'ConfiguracaoWhatsApp', roles: ALL_ROLES },
     { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
+    {
+      name: 'Funcionários',
+      icon: Users,
+      roles: ['master', 'super_admin', 'admin'],
+      submenu: [
+        { name: 'Colaboradores', page: 'FuncionariosColaboradores' },
+        { name: 'Folha Salarial', page: 'FolhaSalarial' },
+        { name: 'Adiantamentos', page: 'AdiantamentosFuncionarios' },
+        { name: 'Relatórios', page: 'RelatorioFuncionarios' },
+      ]
+    },
   ];
 
   // Mapa de chave de permissão por nome do menu

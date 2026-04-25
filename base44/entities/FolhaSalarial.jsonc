@@ -1,0 +1,91 @@
+{
+  "name": "FolhaSalarial",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "colaborador_id": {
+      "type": "string",
+      "description": "ID do colaborador"
+    },
+    "colaborador_nome": {
+      "type": "string",
+      "description": "Nome do colaborador (denormalizado)"
+    },
+    "mes_referencia": {
+      "type": "string",
+      "description": "M\u00eas de refer\u00eancia (ex: 04/2026)"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de pagamento"
+    },
+    "salario_base": {
+      "type": "number",
+      "description": "Sal\u00e1rio base",
+      "default": 0
+    },
+    "dias_trabalhados": {
+      "type": "number",
+      "description": "Dias trabalhados",
+      "default": 30
+    },
+    "valor_comissao": {
+      "type": "number",
+      "description": "Valor de comiss\u00f5es",
+      "default": 0
+    },
+    "bonificacoes": {
+      "type": "number",
+      "description": "Bonifica\u00e7\u00f5es",
+      "default": 0
+    },
+    "adiantamentos": {
+      "type": "number",
+      "description": "Total de adiantamentos descontados",
+      "default": 0
+    },
+    "descontos": {
+      "type": "number",
+      "description": "Outros descontos",
+      "default": 0
+    },
+    "valor_liquido": {
+      "type": "number",
+      "description": "Valor l\u00edquido a pagar",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Rascunho",
+        "Gerada",
+        "Paga",
+        "Assinada",
+        "Arquivada"
+      ],
+      "default": "Rascunho",
+      "description": "Status da folha"
+    },
+    "arquivo_recibo": {
+      "type": "string",
+      "description": "URL do arquivo de recibo assinado"
+    },
+    "transacao_id": {
+      "type": "string",
+      "description": "ID da transa\u00e7\u00e3o gerada automaticamente"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "colaborador_id",
+    "mes_referencia"
+  ]
+}

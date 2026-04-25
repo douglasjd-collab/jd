@@ -26,6 +26,10 @@ import TabelasComissaoVendedor from './pages/TabelasComissaoVendedor';
 import IntegracaoFinantoBank from './pages/IntegracaoFinantoBank';
 import DebugFinanto from './pages/DebugFinanto';
 import ReconectarWhatsApp from './pages/ReconectarWhatsApp';
+import FuncionariosColaboradores from './pages/FuncionariosColaboradores';
+import FolhaSalarialPage from './pages/FolhaSalarial';
+import AdiantamentosFuncionarios from './pages/AdiantamentosFuncionarios';
+import RelatorioFuncionarios from './pages/RelatorioFuncionarios';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -96,6 +100,10 @@ const AuthenticatedApp = () => {
       <Route path="/IntegracaoFinantoBank" element={<LayoutWrapper currentPageName="IntegracaoFinantoBank"><IntegracaoFinantoBank /></LayoutWrapper>} />
       <Route path="/DebugFinanto" element={<LayoutWrapper currentPageName="DebugFinanto"><DebugFinanto /></LayoutWrapper>} />
       <Route path="/ReconectarWhatsApp" element={<LayoutWrapper currentPageName="ReconectarWhatsApp"><ReconectarWhatsApp /></LayoutWrapper>} />
+      <Route path="/FuncionariosColaboradores" element={<LayoutWrapper currentPageName="FuncionariosColaboradores"><FuncionariosColaboradores /></LayoutWrapper>} />
+      <Route path="/FolhaSalarial" element={<LayoutWrapper currentPageName="FolhaSalarial"><FolhaSalarialPage /></LayoutWrapper>} />
+      <Route path="/AdiantamentosFuncionarios" element={<LayoutWrapper currentPageName="AdiantamentosFuncionarios"><AdiantamentosFuncionarios /></LayoutWrapper>} />
+      <Route path="/RelatorioFuncionarios" element={<LayoutWrapper currentPageName="RelatorioFuncionarios"><RelatorioFuncionarios /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

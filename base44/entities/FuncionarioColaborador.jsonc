@@ -1,0 +1,90 @@
+{
+  "name": "FuncionarioColaborador",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome completo"
+    },
+    "cpf": {
+      "type": "string",
+      "description": "CPF do colaborador"
+    },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email"
+    },
+    "cargo": {
+      "type": "string",
+      "description": "Cargo / Fun\u00e7\u00e3o"
+    },
+    "tipo_contrato": {
+      "type": "string",
+      "enum": [
+        "CLT",
+        "Aut\u00f4nomo",
+        "PJ",
+        "Est\u00e1gio"
+      ],
+      "description": "Tipo de contrato"
+    },
+    "salario_base": {
+      "type": "number",
+      "description": "Sal\u00e1rio base"
+    },
+    "data_admissao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de admiss\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Ativo",
+        "Inativo"
+      ],
+      "default": "Ativo",
+      "description": "Status do colaborador"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio vinculado"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor vinculado (opcional)"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Banco"
+    },
+    "agencia": {
+      "type": "string",
+      "description": "Ag\u00eancia"
+    },
+    "conta": {
+      "type": "string",
+      "description": "Conta"
+    },
+    "pix": {
+      "type": "string",
+      "description": "Chave PIX"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "nome",
+    "empresa_id"
+  ]
+}

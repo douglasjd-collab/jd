@@ -1,0 +1,54 @@
+{
+  "name": "AdiantamentoFuncionario",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "colaborador_id": {
+      "type": "string",
+      "description": "ID do colaborador"
+    },
+    "colaborador_nome": {
+      "type": "string",
+      "description": "Nome do colaborador (denormalizado)"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do adiantamento"
+    },
+    "valor": {
+      "type": "number",
+      "description": "Valor do adiantamento"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pendente",
+        "Descontado"
+      ],
+      "default": "Pendente",
+      "description": "Status do adiantamento"
+    },
+    "folha_id": {
+      "type": "string",
+      "description": "ID da folha onde foi descontado"
+    },
+    "transacao_id": {
+      "type": "string",
+      "description": "ID da transa\u00e7\u00e3o gerada"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "colaborador_id",
+    "valor",
+    "data"
+  ]
+}
