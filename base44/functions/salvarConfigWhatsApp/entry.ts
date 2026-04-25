@@ -21,10 +21,17 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    // super_admin (role do sistema) ou admin podem configurar qualquer empresa
-    // Usuários comuns só podem configurar sua própria empresa
-    const isSuperAdmin = user.role === 'admin' || user.perfil === 'super_admin';
-    if (!isSuperAdmin && user.empresa_id !== empresa_id) {
+    // Buscar perfil do colaborador para verificar permissão
+    const colabs = await base44.asServiceRole.entities.Colaborador.filter(
+      { user_id: user.id, status: 'ativo' }, '-created_date', 1
+    );
+    const perfil = colabs?.[0]?.perfil || user.perfil || '';
+    const empresaDoColab = colabs?.[0]?.empresa_id || user.empresa_id || '';
+
+    const isSuper = user.role === 'admin' || ['super_admin', 'master'].includes(perfil);
+    const isAdminDaEmpresa = ['admin'].includes(perfil) && empresaDoColab === empresa_id;
+
+    if (!isSuper && !isAdminDaEmpresa) {
       return Response.json({ success: false, error: 'Sem permissão para configurar esta empresa' }, { status: 403 });
     }
 
