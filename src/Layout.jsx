@@ -372,7 +372,7 @@ export default function Layout({ children, currentPageName }) {
     'Financeiro': 'financeiro',
     'Cadastros': 'cadastros',
     'Importação': 'importacao',
-    'Saques': 'saques',
+    'Minhas Comissões': 'saques',
     'Relatórios': 'relatorios',
     'Configurações': 'configuracoes',
     'Configuração WhatsApp': 'configuracao_whatsapp',
