@@ -224,94 +224,125 @@ export default function FuncionariosColaboradores() {
 
       {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editando ? 'Editar Colaborador' : 'Novo Colaborador'}</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+          {/* Header com cor do CRM */}
+          <div className="bg-[#10353C] text-white px-6 py-4 rounded-t-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">{editando ? 'Editar Colaborador' : 'Novo Colaborador'}</h2>
+                <p className="text-white/60 text-xs">Preencha os dados do colaborador</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Seção: Dados Pessoais */}
+            <div className="md:col-span-2 flex items-center gap-2 mb-1">
+              <div className="w-1 h-4 bg-[#23BE84] rounded-full" />
+              <p className="text-sm font-semibold text-[#10353C]">Dados Pessoais</p>
+            </div>
+
             <div className="md:col-span-2">
-              <Label>Nome Completo *</Label>
-              <Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Nome completo" />
+              <Label className="text-slate-600 font-medium">Nome Completo *</Label>
+              <Input
+                value={form.nome}
+                onChange={e => setForm({...form, nome: e.target.value})}
+                placeholder="Nome completo"
+                className="border-slate-300 focus:border-[#23BE84] focus:ring-[#23BE84]/20"
+              />
             </div>
             <div>
-              <Label>CPF</Label>
-              <Input value={form.cpf} onChange={e => setForm({...form, cpf: e.target.value})} placeholder="000.000.000-00" />
+              <Label className="text-slate-600 font-medium">CPF</Label>
+              <Input value={form.cpf} onChange={e => setForm({...form, cpf: e.target.value})} placeholder="000.000.000-00" className="border-slate-300 focus:border-[#23BE84]" />
             </div>
             <div>
-              <Label>Telefone</Label>
-              <Input value={form.telefone} onChange={e => setForm({...form, telefone: e.target.value})} placeholder="(00) 00000-0000" />
+              <Label className="text-slate-600 font-medium">Telefone</Label>
+              <Input value={form.telefone} onChange={e => setForm({...form, telefone: e.target.value})} placeholder="(00) 00000-0000" className="border-slate-300 focus:border-[#23BE84]" />
             </div>
             <div>
-              <Label>Email</Label>
-              <Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="email@exemplo.com" />
+              <Label className="text-slate-600 font-medium">Email</Label>
+              <Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="email@exemplo.com" className="border-slate-300 focus:border-[#23BE84]" />
             </div>
             <div>
-              <Label>Cargo</Label>
-              <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Vendedor, Gerente..." />
+              <Label className="text-slate-600 font-medium">Cargo</Label>
+              <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Vendedor, Gerente..." className="border-slate-300 focus:border-[#23BE84]" />
             </div>
+
+            {/* Seção: Contrato */}
+            <div className="md:col-span-2 flex items-center gap-2 mt-2 mb-1">
+              <div className="w-1 h-4 bg-[#23BE84] rounded-full" />
+              <p className="text-sm font-semibold text-[#10353C]">Dados Contratuais</p>
+            </div>
+
             <div>
-              <Label>Tipo de Contrato</Label>
+              <Label className="text-slate-600 font-medium">Tipo de Contrato</Label>
               <Select value={form.tipo_contrato} onValueChange={v => setForm({...form, tipo_contrato: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="border-slate-300"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {TIPO_CONTRATO.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Salário Base</Label>
-              <Input type="number" value={form.salario_base} onChange={e => setForm({...form, salario_base: e.target.value})} placeholder="0,00" />
+              <Label className="text-slate-600 font-medium">Salário Base</Label>
+              <Input type="number" value={form.salario_base} onChange={e => setForm({...form, salario_base: e.target.value})} placeholder="0,00" className="border-slate-300 focus:border-[#23BE84]" />
             </div>
             <div>
-              <Label>Data de Admissão</Label>
-              <Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} />
+              <Label className="text-slate-600 font-medium">Data de Admissão</Label>
+              <Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} className="border-slate-300 focus:border-[#23BE84]" />
             </div>
             <div>
-              <Label>Status</Label>
+              <Label className="text-slate-600 font-medium">Status</Label>
               <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="border-slate-300"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {STATUS_LIST.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="md:col-span-2 border-t pt-4 mt-2">
-              <p className="text-sm font-medium text-slate-600 mb-3">Dados Bancários</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Banco</Label>
-                  <Input value={form.banco} onChange={e => setForm({...form, banco: e.target.value})} placeholder="Nome do banco" />
-                </div>
-                <div>
-                  <Label>Agência</Label>
-                  <Input value={form.agencia} onChange={e => setForm({...form, agencia: e.target.value})} placeholder="0000" />
-                </div>
-                <div>
-                  <Label>Conta</Label>
-                  <Input value={form.conta} onChange={e => setForm({...form, conta: e.target.value})} placeholder="00000-0" />
-                </div>
-                <div>
-                  <Label>PIX</Label>
-                  <Input value={form.pix} onChange={e => setForm({...form, pix: e.target.value})} placeholder="Chave PIX" />
-                </div>
-              </div>
+            {/* Seção: Dados Bancários */}
+            <div className="md:col-span-2 flex items-center gap-2 mt-2 mb-1">
+              <div className="w-1 h-4 bg-[#23BE84] rounded-full" />
+              <p className="text-sm font-semibold text-[#10353C]">Dados Bancários</p>
+            </div>
+
+            <div>
+              <Label className="text-slate-600 font-medium">Banco</Label>
+              <Input value={form.banco} onChange={e => setForm({...form, banco: e.target.value})} placeholder="Nome do banco" className="border-slate-300 focus:border-[#23BE84]" />
+            </div>
+            <div>
+              <Label className="text-slate-600 font-medium">Agência</Label>
+              <Input value={form.agencia} onChange={e => setForm({...form, agencia: e.target.value})} placeholder="0000" className="border-slate-300 focus:border-[#23BE84]" />
+            </div>
+            <div>
+              <Label className="text-slate-600 font-medium">Conta</Label>
+              <Input value={form.conta} onChange={e => setForm({...form, conta: e.target.value})} placeholder="00000-0" className="border-slate-300 focus:border-[#23BE84]" />
+            </div>
+            <div>
+              <Label className="text-slate-600 font-medium">PIX</Label>
+              <Input value={form.pix} onChange={e => setForm({...form, pix: e.target.value})} placeholder="Chave PIX" className="border-slate-300 focus:border-[#23BE84]" />
             </div>
 
             <div className="md:col-span-2">
-              <Label>Observações</Label>
+              <Label className="text-slate-600 font-medium">Observações</Label>
               <textarea
-                className="w-full border rounded-md p-2 text-sm min-h-[80px] focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className="w-full border border-slate-300 rounded-md p-2 text-sm min-h-[80px] focus:outline-none focus:ring-1 focus:ring-[#23BE84] focus:border-[#23BE84]"
                 value={form.observacoes}
                 onChange={e => setForm({...form, observacoes: e.target.value})}
                 placeholder="Observações gerais..."
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button onClick={salvar} disabled={saving} className="bg-[#10353C] hover:bg-[#10353C]/90">
-              {saving ? 'Salvando...' : 'Salvar'}
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 px-6 py-4 bg-slate-50 rounded-b-xl border-t">
+            <Button variant="outline" onClick={() => setModalOpen(false)} className="border-slate-300 text-slate-600">Cancelar</Button>
+            <Button onClick={salvar} disabled={saving} className="bg-[#10353C] hover:bg-[#10353C]/90 text-white px-6">
+              {saving ? 'Salvando...' : 'Salvar Colaborador'}
             </Button>
           </div>
         </DialogContent>
