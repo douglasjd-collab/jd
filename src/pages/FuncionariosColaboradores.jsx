@@ -18,12 +18,13 @@ const emptyForm = {
   nome: '', cpf: '', telefone: '', email: '', cargo: '',
   tipo_contrato: 'CLT', salario_base: '', data_admissao: '',
   status: 'Ativo', banco: '', agencia: '', conta: '', pix: '',
-  vale_transporte: '', vale_refeicao: '', observacoes: ''
+  vale_transporte: '', vale_refeicao: '', usuario_id: '', observacoes: ''
 };
 
 export default function FuncionariosColaboradores() {
   const [user, setUser] = useState(null);
   const [colaboradores, setColaboradores] = useState([]);
+  const [usuariosList, setUsuariosList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('todos');
@@ -36,8 +37,19 @@ export default function FuncionariosColaboradores() {
     base44.auth.me().then(me => {
       setUser(me);
       carregar(me);
+      carregarUsuarios(me);
     });
   }, []);
+
+  const carregarUsuarios = async (me) => {
+    try {
+      const filtro = me?.empresa_id ? { empresa_id: me.empresa_id } : {};
+      const data = await base44.entities.Colaborador.filter(filtro, 'nome', 500);
+      setUsuariosList(data);
+    } catch (e) {
+      console.error('Erro ao carregar usuários:', e);
+    }
+  };
 
   const carregar = async (me) => {
     setLoading(true);
@@ -62,6 +74,7 @@ export default function FuncionariosColaboradores() {
       status: c.status || 'Ativo', banco: c.banco || '', agencia: c.agencia || '',
       conta: c.conta || '', pix: c.pix || '',
       vale_transporte: c.vale_transporte || '', vale_refeicao: c.vale_refeicao || '',
+      usuario_id: c.usuario_id || '',
       observacoes: c.observacoes || ''
     });
     setModalOpen(true);
@@ -184,6 +197,7 @@ export default function FuncionariosColaboradores() {
                     <th className="text-left p-3 font-medium text-slate-600">Salário Base</th>
                     <th className="text-left p-3 font-medium text-slate-600">Admissão</th>
                     <th className="text-left p-3 font-medium text-slate-600">Status</th>
+                    <th className="text-left p-3 font-medium text-slate-600">Usuário</th>
                     <th className="text-left p-3 font-medium text-slate-600">Ações</th>
                   </tr>
                 </thead>
@@ -211,6 +225,15 @@ export default function FuncionariosColaboradores() {
                         <Badge className={c.status === 'Ativo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
                           {c.status}
                         </Badge>
+                      </td>
+                      <td className="p-3">
+                        {c.usuario_id ? (
+                          <Badge className="bg-blue-100 text-blue-700 text-xs">
+                            {usuariosList.find(u => u.id === c.usuario_id)?.nome || 'Vinculado'}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex gap-2">
@@ -282,6 +305,24 @@ export default function FuncionariosColaboradores() {
             <div>
               <Label className="text-slate-600 font-medium">Cargo</Label>
               <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Vendedor, Gerente..." className="border-slate-300 focus:border-[#23BE84]" />
+            </div>
+
+            <div className="md:col-span-2">
+              <Label className="text-slate-600 font-medium">Usuário Vinculado (sistema)</Label>
+              <Select value={form.usuario_id || '__none__'} onValueChange={v => setForm({...form, usuario_id: v === '__none__' ? '' : v})}>
+                <SelectTrigger className="border-slate-300">
+                  <SelectValue placeholder="Selecione um usuário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Nenhum —</SelectItem>
+                  {usuariosList.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nome} {u.email ? `(${u.email})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400 mt-1">Vincula este cadastro a um usuário ativo no sistema</p>
             </div>
 
             {/* Seção: Contrato */}
