@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Users, Edit2, Trash2, User } from 'lucide-react';
+import { Plus, Search, Users, Edit2, Trash2, User, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -229,17 +229,25 @@ export default function FuncionariosColaboradores() {
 
       {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0 [&>button]:hidden">
           {/* Header com cor do CRM */}
           <div className="bg-[#10353C] text-white px-6 py-4 rounded-t-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-lg">{editando ? 'Editar Colaborador' : 'Novo Colaborador'}</h2>
+                  <p className="text-white/60 text-xs">Preencha os dados do colaborador</p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-bold text-lg">{editando ? 'Editar Colaborador' : 'Novo Colaborador'}</h2>
-                <p className="text-white/60 text-xs">Preencha os dados do colaborador</p>
-              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
             </div>
           </div>
 
