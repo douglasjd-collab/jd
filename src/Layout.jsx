@@ -376,6 +376,7 @@ export default function Layout({ children, currentPageName }) {
     'Relatórios': 'relatorios',
     'Configurações': 'configuracoes',
     'Configuração WhatsApp': 'configuracao_whatsapp',
+    'FinantoBank INSS': 'finanto_bank',
   };
 
   const menus_permitidos = user?.menus_permitidos || [];

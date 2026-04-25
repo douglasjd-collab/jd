@@ -47,6 +47,7 @@ const MENU_ESTRUTURA = [
   { key: 'bate_papo',          label: 'Bate-papo',             descricao: 'Chat via WhatsApp com clientes' },
   { key: 'saques',              label: 'Saques',                descricao: 'Solicitação e gerenciamento de saques' },
   { key: 'relatorios',          label: 'Relatórios',            descricao: 'Relatórios de vendas e comissões' },
+  { key: 'finanto_bank',        label: 'FinantoBank INSS',      descricao: 'Integração com FinantoBank para propostas INSS' },
 ];
 
 // Todas as chaves "folha" (menus simples + submenus)
