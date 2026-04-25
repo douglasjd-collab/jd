@@ -325,12 +325,10 @@ export default function BatePapo() {
         const todasEmpresas = await base44.entities.Empresa.filter({}, '-created_date', 50);
         setEmpresas(todasEmpresas);
 
-        // Identificar a empresa própria do super_admin pelo email
+        // Identificar a empresa própria do super_admin estritamente pelo email
         const empDoAdmin = todasEmpresas.find(e => 
           e.email === me.email || 
-          e.email_admin === me.email ||
-          e.nome?.toLowerCase().includes('super') ||
-          e.nome?.toLowerCase().includes('waze')
+          e.email_admin === me.email
         );
         if (empDoAdmin) {
           console.log(`✅ Super admin: empresa própria: ${empDoAdmin.id} (${empDoAdmin.nome})`);
@@ -338,8 +336,8 @@ export default function BatePapo() {
           return;
         }
 
-        // Não faz fallback automático — super_admin deve selecionar manualmente
-        console.log(`ℹ️ Super admin: nenhuma empresa vinculada ao email. Selecione no dropdown.`);
+        // Sem empresa vinculada — super_admin seleciona manualmente no dropdown
+        console.log(`ℹ️ Super admin: nenhuma empresa vinculada ao email ${me.email}. Selecione no dropdown.`);
         return;
       }
 
@@ -820,7 +818,7 @@ export default function BatePapo() {
   
   console.log(`✅ Exibindo ${conversasFiltradas.length} conversas (filtro: ${filtroStatus})`);
 
-  if (!user || !empresaId) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
