@@ -17,7 +17,8 @@ const STATUS_LIST = ['Ativo', 'Inativo'];
 const emptyForm = {
   nome: '', cpf: '', telefone: '', email: '', cargo: '',
   tipo_contrato: 'CLT', salario_base: '', data_admissao: '',
-  status: 'Ativo', banco: '', agencia: '', conta: '', pix: '', observacoes: ''
+  status: 'Ativo', banco: '', agencia: '', conta: '', pix: '',
+  vale_transporte: '', vale_refeicao: '', observacoes: ''
 };
 
 export default function FuncionariosColaboradores() {
@@ -59,7 +60,9 @@ export default function FuncionariosColaboradores() {
       email: c.email || '', cargo: c.cargo || '', tipo_contrato: c.tipo_contrato || 'CLT',
       salario_base: c.salario_base || '', data_admissao: c.data_admissao || '',
       status: c.status || 'Ativo', banco: c.banco || '', agencia: c.agencia || '',
-      conta: c.conta || '', pix: c.pix || '', observacoes: c.observacoes || ''
+      conta: c.conta || '', pix: c.pix || '',
+      vale_transporte: c.vale_transporte || '', vale_refeicao: c.vale_refeicao || '',
+      observacoes: c.observacoes || ''
     });
     setModalOpen(true);
   };
@@ -70,7 +73,9 @@ export default function FuncionariosColaboradores() {
     const payload = {
       ...form,
       empresa_id: user?.empresa_id,
-      salario_base: parseFloat(form.salario_base) || 0
+      salario_base: parseFloat(form.salario_base) || 0,
+      vale_transporte: parseFloat(form.vale_transporte) || 0,
+      vale_refeicao: parseFloat(form.vale_refeicao) || 0
     };
     if (editando) {
       await base44.entities.FuncionarioColaborador.update(editando.id, payload);
@@ -302,6 +307,21 @@ export default function FuncionariosColaboradores() {
                   {STATUS_LIST.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Seção: Benefícios */}
+            <div className="md:col-span-2 flex items-center gap-2 mt-2 mb-1">
+              <div className="w-1 h-4 bg-[#23BE84] rounded-full" />
+              <p className="text-sm font-semibold text-[#10353C]">Benefícios Mensais</p>
+            </div>
+
+            <div>
+              <Label className="text-slate-600 font-medium">Vale Transporte (R$/mês)</Label>
+              <Input type="number" value={form.vale_transporte} onChange={e => setForm({...form, vale_transporte: e.target.value})} placeholder="0,00" className="border-slate-300 focus:border-[#23BE84]" />
+            </div>
+            <div>
+              <Label className="text-slate-600 font-medium">Vale Refeição (R$/mês)</Label>
+              <Input type="number" value={form.vale_refeicao} onChange={e => setForm({...form, vale_refeicao: e.target.value})} placeholder="0,00" className="border-slate-300 focus:border-[#23BE84]" />
             </div>
 
             {/* Seção: Dados Bancários */}

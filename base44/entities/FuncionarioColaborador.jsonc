@@ -40,6 +40,16 @@
       "type": "number",
       "description": "Sal\u00e1rio base"
     },
+    "vale_transporte": {
+      "type": "number",
+      "description": "Vale transporte mensal",
+      "default": 0
+    },
+    "vale_refeicao": {
+      "type": "number",
+      "description": "Vale refei\u00e7\u00e3o mensal",
+      "default": 0
+    },
     "data_admissao": {
       "type": "string",
       "format": "date",
