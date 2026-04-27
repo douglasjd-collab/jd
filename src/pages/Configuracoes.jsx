@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -37,10 +38,14 @@ import {
   Zap,
   ExternalLink,
   Pencil,
-  Building2
+  Building2,
+  MessageSquare,
+  Plug
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SincronizacaoCanopus from '@/components/configuracoes/SincronizacaoCanopus';
+import ConfiguracaoWhatsApp from '@/pages/ConfiguracaoWhatsApp';
+import ConfiguracaoApi from '@/pages/ConfiguracaoApi';
 
 
 export default function Configuracoes() {
@@ -163,6 +168,24 @@ export default function Configuracoes() {
 
   return (
     <div className="space-y-6">
+      <PageHeader title="Configurações" subtitle="Configure as regras do sistema" />
+
+      <Tabs defaultValue="geral">
+        <TabsList className="mb-2">
+          <TabsTrigger value="geral"><Settings className="w-4 h-4 mr-1.5" />Geral</TabsTrigger>
+          <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
+          <TabsTrigger value="api"><Plug className="w-4 h-4 mr-1.5" />API</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="whatsapp">
+          <ConfiguracaoWhatsApp />
+        </TabsContent>
+
+        <TabsContent value="api">
+          <ConfiguracaoApi />
+        </TabsContent>
+
+        <TabsContent value="geral" className="space-y-6">
       {/* Modal Editar Nome */}
       <Dialog open={editarNomeOpen} onOpenChange={setEditarNomeOpen}>
         <DialogContent className="max-w-sm">
@@ -203,11 +226,6 @@ export default function Configuracoes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <PageHeader
-        title="Configurações"
-        subtitle="Configure as regras do sistema"
-      />
 
       {/* Informações da Empresa */}
       <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-white">
@@ -457,6 +475,8 @@ export default function Configuracoes() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
