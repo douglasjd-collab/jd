@@ -60,6 +60,7 @@ export default function Layout({ children, currentPageName }) {
   const [tarefasVencidas, setTarefasVencidas] = useState(0);
   const [tarefasNovas, setTarefasNovas] = useState(0);
   const [comissoesPendentes, setComissoesPendentes] = useState(0);
+  const [comissoesConsorcioPendentes, setComissoesConsorcioPendentes] = useState(0);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
@@ -97,6 +98,17 @@ export default function Layout({ children, currentPageName }) {
         // Contar vendedores únicos com pendência
         const vendedoresUnicos = new Set(comPendencia.map(p => p.vendedor_id || 'sem-vendedor'));
         setComissoesPendentes(vendedoresUnicos.size);
+      }).catch(() => {});
+
+      // Consórcio: ComissaoAPagar pendentes com grupo/cota
+      const filtroConsorcio = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+      base44.entities.ComissaoAPagar.filter(filtroConsorcio, null, 2000).then(comissoes => {
+        const pendentesConsorcio = comissoes.filter(c =>
+          c.grupo && c.cota &&
+          ['a_pagar', 'a_apagar', 'pendente'].includes(c.status_pagamento)
+        );
+        const vendedoresUnicos = new Set(pendentesConsorcio.map(c => c.vendedor_id || 'sem-vendedor'));
+        setComissoesConsorcioPendentes(vendedoresUnicos.size);
       }).catch(() => {});
     }
   }, [user]);
@@ -638,6 +650,11 @@ export default function Layout({ children, currentPageName }) {
                                   {sub.page === 'ComissoesEmprestimos' && comissoesPendentes > 0 && (
                                     <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight">
                                       {comissoesPendentes}
+                                    </span>
+                                  )}
+                                  {sub.page === 'ComissoesPagar' && comissoesConsorcioPendentes > 0 && (
+                                    <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight">
+                                      {comissoesConsorcioPendentes}
                                     </span>
                                   )}
                                 </button>
