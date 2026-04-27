@@ -563,43 +563,82 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
           {selectedDashboard === 'consorcio' && (
-            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 mb-2">📅 Período de Produção</p>
+            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm w-full sm:w-auto">
+              <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">📅 Período de Produção</p>
               {/* Atalhos rápidos */}
-              <div className="flex gap-1.5 flex-wrap mb-2">
+              <div className="flex gap-1.5 flex-wrap mb-3">
                 {[
                   { label: 'Hoje', inicio: format(new Date(), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
                   { label: '7 dias', inicio: format(subDays(new Date(), 6), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
                   { label: '15 dias', inicio: format(subDays(new Date(), 14), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
                   { label: '30 dias', inicio: format(subDays(new Date(), 29), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
                   { label: 'Este mês', inicio: format(startOfMonth(new Date()), 'yyyy-MM-dd'), fim: format(endOfMonth(new Date()), 'yyyy-MM-dd') },
-                ].map(({ label, inicio, fim }) => (
-                  <button key={label} onClick={() => {
-                    setDataInicio(inicio);
-                    setDataFim(fim);
-                    setFiltroAplicado({ inicio: new Date(inicio + 'T00:00:00'), fim: new Date(fim + 'T23:59:59') });
-                  }}
-                    className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-[#23BE84] hover:text-white text-slate-600 rounded-lg transition-colors font-medium">
-                    {label}
-                  </button>
-                ))}
+                  { label: 'Personalizado', inicio: null, fim: null },
+                ].map(({ label, inicio, fim }) => {
+                  const ativo = inicio !== null &&
+                    dataInicio === inicio && dataFim === fim;
+                  const isPersonalizado = label === 'Personalizado' && !([
+                    format(new Date(), 'yyyy-MM-dd'),
+                    format(subDays(new Date(), 6), 'yyyy-MM-dd'),
+                    format(subDays(new Date(), 14), 'yyyy-MM-dd'),
+                    format(subDays(new Date(), 29), 'yyyy-MM-dd'),
+                    format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+                  ].includes(dataInicio));
+                  const isAtivo = ativo || (label === 'Personalizado' && isPersonalizado);
+                  return (
+                    <button key={label} onClick={() => {
+                      if (inicio !== null) {
+                        setDataInicio(inicio);
+                        setDataFim(fim);
+                        setFiltroAplicado({ inicio: new Date(inicio + 'T00:00:00'), fim: new Date(fim + 'T23:59:59') });
+                      }
+                    }}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-colors font-medium border ${
+                        isAtivo
+                          ? 'bg-[#23BE84] text-white border-[#23BE84]'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-[#23BE84] hover:text-[#23BE84]'
+                      }`}>
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
               {/* Input de datas + botão aplicar */}
-              <div className="flex items-center gap-2">
-                <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
-                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
-                <span className="text-slate-400 text-sm">até</span>
-                <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
-                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
-                <Button size="sm" onClick={() => {
-                  setFiltroAplicado({ inicio: new Date(dataInicio + 'T00:00:00'), fim: new Date(dataFim + 'T23:59:59') });
-                }} className="bg-[#23BE84] hover:bg-[#1da570] text-white px-3">
-                  🔍 Aplicar
-                </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400 mb-1">Data inicial</span>
+                  <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
+                </div>
+                <span className="text-slate-400 text-sm mt-4">até</span>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400 mb-1">&nbsp;</span>
+                  <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400 mb-1">&nbsp;</span>
+                  <Button onClick={() => {
+                    setFiltroAplicado({ inicio: new Date(dataInicio + 'T00:00:00'), fim: new Date(dataFim + 'T23:59:59') });
+                  }} className="bg-[#23BE84] hover:bg-[#1da570] text-white px-5">
+                    🔍 Aplicar
+                  </Button>
+                </div>
               </div>
-              <p className="text-xs text-slate-400 mt-1.5">
-                📊 Exibindo: {format(filtroAplicado.inicio, 'dd/MM/yyyy')} até {format(filtroAplicado.fim, 'dd/MM/yyyy')}
-              </p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-slate-400">
+                  📊 Exibindo: {format(filtroAplicado.inicio, 'dd/MM/yyyy')} até {format(filtroAplicado.fim, 'dd/MM/yyyy')}
+                </p>
+                <button onClick={() => {
+                  const ini = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+                  const fim = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+                  setDataInicio(ini);
+                  setDataFim(fim);
+                  setFiltroAplicado({ inicio: new Date(ini + 'T00:00:00'), fim: new Date(fim + 'T23:59:59') });
+                }} className="text-xs text-[#23BE84] hover:underline flex items-center gap-1">
+                  ↺ Limpar filtro
+                </button>
+              </div>
             </div>
           )}
           {selectedDashboard === 'emprestimo' && (
@@ -616,12 +655,6 @@ export default function Dashboard() {
               </select>
             </div>
           )}
-          <Link to="/NovaVenda">
-            <Button className="bg-[#23BE84] hover:bg-[#1da570] h-[38px]">
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Proposta
-            </Button>
-          </Link>
         </div>
       </div>
 
