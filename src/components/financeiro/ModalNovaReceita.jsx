@@ -117,7 +117,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
     let origemFinal = formData.origem;
     if (formData.origem) {
       const conta = contas.find(c => c.id === formData.origem);
-      if (conta) origemFinal = `${conta.codigo_banco} - ${conta.nome_banco}`;
+      if (conta) origemFinal = `${conta.nome_conta} — ${conta.banco}`;
     }
 
     createMutation.mutate({
@@ -280,7 +280,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
                         </SelectTrigger>
                         <SelectContent>
                           {contas.map(conta => (
-                            <SelectItem key={conta.id} value={conta.id}>{conta.codigo_banco} - {conta.nome_banco}</SelectItem>
+                            <SelectItem key={conta.id} value={conta.id}>{conta.nome_conta} — {conta.banco}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
