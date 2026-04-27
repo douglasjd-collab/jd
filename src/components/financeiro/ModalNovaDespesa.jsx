@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import GerenciarCategoriasModal from '@/components/forms/GerenciarCategoriasModal';
-import { TrendingDown, Upload, Calendar as CalendarIcon, ChevronDown, CheckCircle, Repeat, Settings } from 'lucide-react';
+import { TrendingDown, Upload, Calendar as CalendarIcon, ChevronDown, CheckCircle, Repeat, Settings, Landmark } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
 import { format } from 'date-fns';
@@ -38,11 +38,20 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     unidadeRepeticao: 'meses',
     parcelaInicial: 1,
     totalParcelas: 0,
+    conta_bancaria_id: '',
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores-despesas'],
     queryFn: () => base44.entities.Colaborador.filter({ status: 'ativo' }),
+    enabled: !!user,
+  });
+
+  const { data: contasBancarias = [] } = useQuery({
+    queryKey: ['contas-bancarias-despesa', user?.empresa_id],
+    queryFn: () => base44.entities.ContaBancaria.filter(
+      user?.empresa_id ? { empresa_id: user.empresa_id, status: 'ativa' } : { status: 'ativa' }
+    ),
     enabled: !!user,
   });
 
@@ -92,9 +101,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
       unidadeRepeticao: 'meses',
       parcelaInicial: 1,
       totalParcelas: 0,
+      conta_bancaria_id: '',
       });
       setMostrarDetalhes(true);
-  };
+      };
 
   const formatarValor = (val) => {
     const num = val.replace(/\D/g, '');
@@ -114,8 +124,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
   };
 
   const handleSubmit = async () => {
-    if (!formData.descricao || !formData.valor || !formData.responsavel_id) {
-      toast.error('Preencha os campos obrigatórios');
+    if (!formData.descricao || !formData.valor || !formData.responsavel_id || !formData.conta_bancaria_id) {
+      toast.error('Preencha os campos obrigatórios (incluindo Conta Bancária)');
       return;
     }
     const valor = parseFloat(formData.valor.replace(/[^\d,.-]/g, '').replace(',', '.'));
@@ -135,6 +145,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
       observacao: formData.observacao,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
+      conta_bancaria_id: formData.conta_bancaria_id || null,
     };
 
     if (!formData.repetir) {
@@ -339,6 +350,23 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-2">
+                  <Landmark className="w-4 h-4 text-slate-400" />
+                  <Select value={formData.conta_bancaria_id} onValueChange={(v) => setFormData({ ...formData, conta_bancaria_id: v })}>
+                    <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
+                      <SelectValue placeholder="Conta Bancária (obrigatório)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {contasBancarias.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome_conta} — {c.banco}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {!formData.conta_bancaria_id && <p className="text-xs text-orange-400 mt-1 pl-6">Campo obrigatório</p>}
               </div>
 
               {mostrarDetalhes && (

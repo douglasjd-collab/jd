@@ -1,5 +1,5 @@
 {
-  "name": "Receita",
+  "name": "Despesa",
   "type": "object",
   "properties": {
     "empresa_id": {
@@ -8,50 +8,52 @@
     },
     "descricao": {
       "type": "string",
-      "description": "Descri\u00e7\u00e3o da receita"
+      "description": "Descri\u00e7\u00e3o da despesa"
     },
-    "categoria_id": {
+    "categoria": {
       "type": "string",
-      "description": "ID da categoria (obrigat\u00f3rio)"
-    },
-    "categoria_nome": {
-      "type": "string",
-      "description": "Nome da categoria (denormalizado)"
-    },
-    "subcategoria_id": {
-      "type": "string",
-      "description": "ID da subcategoria (opcional)"
-    },
-    "subcategoria_nome": {
-      "type": "string",
-      "description": "Nome da subcategoria (denormalizado)"
+      "description": "Categoria da despesa"
     },
     "valor": {
       "type": "number",
-      "description": "Valor da receita"
+      "description": "Valor da despesa (sempre positivo)"
     },
     "data": {
       "type": "string",
       "format": "date",
-      "description": "Data da receita"
+      "description": "Data da despesa"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de vencimento da despesa"
     },
     "status": {
       "type": "string",
       "enum": [
         "pendente",
-        "recebida"
+        "pago",
+        "paga"
       ],
-      "default": "recebida",
-      "description": "Status da receita"
+      "default": "pendente",
+      "description": "Status da despesa"
     },
-    "data_recebimento": {
+    "data_pagamento": {
       "type": "string",
       "format": "date",
-      "description": "Data de recebimento efetivo"
+      "description": "Data em que a despesa foi paga"
     },
-    "origem": {
+    "responsavel_id": {
       "type": "string",
-      "description": "Origem da receita"
+      "description": "ID do respons\u00e1vel"
+    },
+    "responsavel_nome": {
+      "type": "string",
+      "description": "Nome do respons\u00e1vel"
+    },
+    "comprovante_url": {
+      "type": "string",
+      "description": "URL do comprovante (upload opcional)"
     },
     "observacao": {
       "type": "string",
@@ -65,10 +67,6 @@
       "type": "string",
       "description": "Nome do usu\u00e1rio que lan\u00e7ou"
     },
-    "importacao_id": {
-      "type": "string",
-      "description": "ID da importa\u00e7\u00e3o que originou esta receita"
-    },
     "conta_bancaria_id": {
       "type": "string",
       "description": "ID da conta banc\u00e1ria vinculada"
@@ -77,9 +75,10 @@
   "required": [
     "empresa_id",
     "descricao",
-    "categoria_id",
+    "categoria",
     "valor",
-    "data"
+    "data",
+    "responsavel_id"
   ],
   "security": {
     "read": {

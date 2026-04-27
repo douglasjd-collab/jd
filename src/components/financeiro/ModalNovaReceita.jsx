@@ -49,8 +49,10 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
   });
 
   const { data: contas = [] } = useQuery({
-    queryKey: ['contas-bancarias'],
-    queryFn: () => base44.entities.ContaBancaria.filter({ ativo: true }, 'ordem'),
+    queryKey: ['contas-bancarias', user?.empresa_id],
+    queryFn: () => base44.entities.ContaBancaria.filter(
+      user?.empresa_id ? { empresa_id: user.empresa_id, status: 'ativa' } : { status: 'ativa' }
+    ),
     enabled: !!user,
   });
 
@@ -130,6 +132,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
       status: formData.foiRecebida ? 'recebida' : 'pendente',
       data_recebimento: formData.foiRecebida ? dataFinal : null,
       origem: origemFinal,
+      conta_bancaria_id: formData.origem || null,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
     });

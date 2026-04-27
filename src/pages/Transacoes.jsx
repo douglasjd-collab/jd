@@ -68,6 +68,14 @@ export default function Transacoes() {
     enabled: !!user,
   });
 
+  const { data: contasBancarias = [] } = useQuery({
+    queryKey: ['contas-bancarias-transacoes', user?.empresa_id],
+    queryFn: () => base44.entities.ContaBancaria.filter(
+      user?.empresa_id ? { empresa_id: user.empresa_id, status: 'ativa' } : { status: 'ativa' }
+    ),
+    enabled: !!user,
+  });
+
   const updateDespesaMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Despesa.update(id, data),
     onSuccess: () => {
@@ -496,6 +504,7 @@ export default function Transacoes() {
             <EditDespesaForm
               despesa={editingDespesa}
               categorias={categoriasDespesa}
+              contas={contasBancarias}
               onSave={(data) => updateDespesaMutation.mutate({ id: editingDespesa.id, data })}
               onCancel={() => setEditingDespesa(null)}
             />
@@ -513,6 +522,7 @@ export default function Transacoes() {
             <EditReceitaForm
               receita={editingReceita}
               categorias={categoriasReceita}
+              contas={contasBancarias}
               onSave={(data) => updateReceitaMutation.mutate({ id: editingReceita.id, data })}
               onCancel={() => setEditingReceita(null)}
             />
@@ -539,7 +549,7 @@ export default function Transacoes() {
   );
 }
 
-function EditDespesaForm({ despesa, categorias, onSave, onCancel }) {
+function EditDespesaForm({ despesa, categorias, contas = [], onSave, onCancel }) {
   const [form, setForm] = useState({
     descricao: despesa.descricao || '',
     categoria: despesa.categoria || '',
@@ -549,6 +559,7 @@ function EditDespesaForm({ despesa, categorias, onSave, onCancel }) {
     observacao: despesa.observacao || '',
     status: despesa.status || 'pendente',
     data_pagamento: despesa.data_pagamento || '',
+    conta_bancaria_id: despesa.conta_bancaria_id || '',
   });
 
   const handleSave = () => {
@@ -562,6 +573,7 @@ function EditDespesaForm({ despesa, categorias, onSave, onCancel }) {
       observacao: form.observacao,
       status: form.status,
       data_pagamento: form.status === 'pago' ? (form.data_pagamento || moment().format('YYYY-MM-DD')) : undefined,
+      conta_bancaria_id: form.conta_bancaria_id || null,
     });
   };
 
@@ -604,6 +616,15 @@ function EditDespesaForm({ despesa, categorias, onSave, onCancel }) {
         </div>
       )}
       <div>
+        <Label>Conta Bancária</Label>
+        <Select value={form.conta_bancaria_id} onValueChange={v => setForm(f => ({ ...f, conta_bancaria_id: v }))}>
+          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione a conta" /></SelectTrigger>
+          <SelectContent>
+            {contas.map(c => <SelectItem key={c.id} value={c.id}>{c.nome_conta} — {c.banco}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
         <Label>Observação</Label>
         <Textarea value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} rows={2} className="mt-1" />
       </div>
@@ -615,7 +636,7 @@ function EditDespesaForm({ despesa, categorias, onSave, onCancel }) {
   );
 }
 
-function EditReceitaForm({ receita, categorias, onSave, onCancel }) {
+function EditReceitaForm({ receita, categorias, contas = [], onSave, onCancel }) {
   const [form, setForm] = useState({
     descricao: receita.descricao || '',
     valor: (receita.valor || 0).toFixed(2).replace('.', ','),
@@ -624,6 +645,7 @@ function EditReceitaForm({ receita, categorias, onSave, onCancel }) {
     data_recebimento: receita.data_recebimento || '',
     observacao: receita.observacao || '',
     origem: receita.origem || '',
+    conta_bancaria_id: receita.conta_bancaria_id || '',
   });
 
   const handleSave = () => {
@@ -636,6 +658,7 @@ function EditReceitaForm({ receita, categorias, onSave, onCancel }) {
       data_recebimento: form.status === 'recebida' ? (form.data_recebimento || moment().format('YYYY-MM-DD')) : undefined,
       observacao: form.observacao,
       origem: form.origem,
+      conta_bancaria_id: form.conta_bancaria_id || null,
     });
   };
 
@@ -672,6 +695,15 @@ function EditReceitaForm({ receita, categorias, onSave, onCancel }) {
             <Input type="date" value={form.data_recebimento} onChange={e => setForm(f => ({ ...f, data_recebimento: e.target.value }))} className="mt-1" />
           </div>
         )}
+      </div>
+      <div>
+        <Label>Conta Bancária</Label>
+        <Select value={form.conta_bancaria_id} onValueChange={v => setForm(f => ({ ...f, conta_bancaria_id: v }))}>
+          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione a conta" /></SelectTrigger>
+          <SelectContent>
+            {contas.map(c => <SelectItem key={c.id} value={c.id}>{c.nome_conta} — {c.banco}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <Label>Origem</Label>
