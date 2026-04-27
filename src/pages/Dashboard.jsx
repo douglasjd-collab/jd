@@ -299,8 +299,9 @@ export default function Dashboard() {
 
   const vendasMes = filteredVendas.filter(v => {
     if (v.status === 'cancelada') return false;
-    const dataVenda = new Date(v.data_venda + 'T12:00:00');
-    return dataVenda >= filtroAplicado.inicio && dataVenda <= filtroAplicado.fim;
+    if (!v.data_venda) return false;
+    // Comparar apenas as strings de data para evitar problemas de timezone
+    return v.data_venda >= format(filtroAplicado.inicio, 'yyyy-MM-dd') && v.data_venda <= format(filtroAplicado.fim, 'yyyy-MM-dd');
   });
 
   // Calcular métricas
@@ -567,13 +568,17 @@ export default function Dashboard() {
               {/* Atalhos rápidos */}
               <div className="flex gap-1.5 flex-wrap mb-2">
                 {[
-                  { label: 'Hoje', fn: () => { const h = new Date(); setDataInicio(format(h, 'yyyy-MM-dd')); setDataFim(format(h, 'yyyy-MM-dd')); } },
-                  { label: '7 dias', fn: () => { setDataInicio(format(subDays(new Date(), 6), 'yyyy-MM-dd')); setDataFim(format(new Date(), 'yyyy-MM-dd')); } },
-                  { label: '15 dias', fn: () => { setDataInicio(format(subDays(new Date(), 14), 'yyyy-MM-dd')); setDataFim(format(new Date(), 'yyyy-MM-dd')); } },
-                  { label: '30 dias', fn: () => { setDataInicio(format(subDays(new Date(), 29), 'yyyy-MM-dd')); setDataFim(format(new Date(), 'yyyy-MM-dd')); } },
-                  { label: 'Este mês', fn: () => { setDataInicio(format(startOfMonth(new Date()), 'yyyy-MM-dd')); setDataFim(format(endOfMonth(new Date()), 'yyyy-MM-dd')); } },
-                ].map(({ label, fn }) => (
-                  <button key={label} onClick={fn}
+                  { label: 'Hoje', inicio: format(new Date(), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: '7 dias', inicio: format(subDays(new Date(), 6), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: '15 dias', inicio: format(subDays(new Date(), 14), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: '30 dias', inicio: format(subDays(new Date(), 29), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: 'Este mês', inicio: format(startOfMonth(new Date()), 'yyyy-MM-dd'), fim: format(endOfMonth(new Date()), 'yyyy-MM-dd') },
+                ].map(({ label, inicio, fim }) => (
+                  <button key={label} onClick={() => {
+                    setDataInicio(inicio);
+                    setDataFim(fim);
+                    setFiltroAplicado({ inicio: new Date(inicio + 'T00:00:00'), fim: new Date(fim + 'T23:59:59') });
+                  }}
                     className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-[#23BE84] hover:text-white text-slate-600 rounded-lg transition-colors font-medium">
                     {label}
                   </button>
@@ -587,9 +592,7 @@ export default function Dashboard() {
                 <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
                   className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
                 <Button size="sm" onClick={() => {
-                  const ini = new Date(dataInicio + 'T00:00:00');
-                  const fim = new Date(dataFim + 'T23:59:59');
-                  setFiltroAplicado({ inicio: ini, fim: fim });
+                  setFiltroAplicado({ inicio: new Date(dataInicio + 'T00:00:00'), fim: new Date(dataFim + 'T23:59:59') });
                 }} className="bg-[#23BE84] hover:bg-[#1da570] text-white px-3">
                   🔍 Aplicar
                 </Button>
