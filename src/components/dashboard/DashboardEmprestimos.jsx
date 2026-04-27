@@ -9,7 +9,7 @@ import { CheckCircle2, TrendingUp, Calculator } from 'lucide-react';
 
 const COLORS = ['#1e3a5f', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-export default function DashboardEmprestimos({ propostasEmprestimo, statusPropostaList, mesSelecionado, isVendedor, user, formatCurrency }) {
+export default function DashboardEmprestimos({ propostasEmprestimo, statusPropostaList, filtroInicio, filtroFim, isVendedor, user, formatCurrency }) {
   const normStr = s => String(s || '').toLowerCase().trim();
   const statusPagoIds = statusPropostaList
     .filter(s => s.funcao_fluxo === 'finalizado' || ['pago', 'paga'].includes(normStr(s.nome)))
@@ -25,27 +25,25 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
     (p.status_id && statusCanceladoIds.includes(p.status_id)) ||
     normStr(p.status) === 'cancelado';
 
-  // Propostas pagas no mês
-  // Considera qualquer data relevante: liberação, recebimento comissão, data_venda, ou updated_date
+  // Propostas pagas no período selecionado
   const propostasPagasMes = React.useMemo(() => {
     const base = propostasEmprestimo.filter(p => {
       if (isCanceladaProposta(p)) return false;
       if (!isPagaProposta(p)) return false;
-      // Verificar qualquer data que indique que o pagamento ocorreu no mês selecionado
       const datas = [
         p.emprestimo_data_liberacao,
         p.data_comissao_recebida,
         p.data_status_atual,
         p.data_venda,
         p.updated_date,
-      ].filter(Boolean);
-      return datas.some(d => String(d).startsWith(mesSelecionado));
+      ].filter(Boolean).map(d => String(d).slice(0, 10));
+      return datas.some(d => d >= filtroInicio && d <= filtroFim);
     });
     if (isVendedor && user?.colaborador_id) {
       return base.filter(p => p.vendedor_id === user.colaborador_id);
     }
     return base;
-  }, [propostasEmprestimo, mesSelecionado, isVendedor, user, statusPagoIds, statusCanceladoIds]);
+  }, [propostasEmprestimo, filtroInicio, filtroFim, isVendedor, user, statusPagoIds, statusCanceladoIds]);
 
   // Propostas em andamento
   const propostasEmAndamento = React.useMemo(() => {
@@ -122,7 +120,7 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Empréstimos Pagos no Mês</p>
+              <p className="text-sm text-slate-500">Empréstimos Pagos no Período</p>
               <p className="text-2xl font-bold text-emerald-700">{formatCurrency(valorLiquidoPagoMes)}</p>
               <p className="text-xs text-slate-400 mt-0.5">Valor Liberado</p>
             </div>
@@ -139,7 +137,7 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
               <Calculator className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Base Comissão (Mês)</p>
+              <p className="text-sm text-slate-500">Base Comissão (Período)</p>
               <p className="text-2xl font-bold text-blue-700">{formatCurrency(baseComissaoPagoMes)}</p>
               <p className="text-xs text-slate-400 mt-0.5">Valor base p/ cálculo da comissão</p>
             </div>
@@ -198,7 +196,7 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
       {/* Ranking Empréstimos */}
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Ranking do Mês (Empréstimos)</CardTitle>
+          <CardTitle className="text-lg font-semibold">Ranking do Período (Empréstimos)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

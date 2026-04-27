@@ -62,6 +62,9 @@ export default function Dashboard() {
   const [filtroAplicado, setFiltroAplicado] = useState({ inicio: startOfMonth(new Date()), fim: endOfMonth(new Date()) });
   const [error, setError] = useState(null);
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'));
+  const [empDataInicio, setEmpDataInicio] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [empDataFim, setEmpDataFim] = useState(() => format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [empFiltroAplicado, setEmpFiltroAplicado] = useState({ inicio: format(startOfMonth(new Date()), 'yyyy-MM-dd'), fim: format(endOfMonth(new Date()), 'yyyy-MM-dd') });
   const [selectedDashboard, setSelectedDashboard] = useState('consorcio'); // padrão: consórcio
 
   useEffect(() => {
@@ -561,20 +564,7 @@ export default function Dashboard() {
             {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
           </p>
         </div>
-        {selectedDashboard === 'emprestimo' && (
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Período</label>
-            <select
-              value={mesSelecionado}
-              onChange={(e) => setMesSelecionado(e.target.value)}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#23BE84]"
-            >
-              {mesesDisponiveis.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-        )}
+
       </div>
 
       {/* Dashboard Selector */}
@@ -589,14 +579,91 @@ export default function Dashboard() {
 
       {/* Renderizar Dashboard apropriado */}
       {selectedDashboard === 'emprestimo' ? (
-        <DashboardEmprestimos 
-          propostasEmprestimo={propostasEmprestimo}
-          statusPropostaList={statusPropostaList}
-          mesSelecionado={mesSelecionado}
-          isVendedor={isVendedor}
-          user={user}
-          formatCurrency={formatCurrency}
-        />
+        <>
+          {/* Filtro Período Empréstimos - full width */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-full">
+            <p className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">📅 Período de Produção</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex gap-1.5 flex-wrap">
+                {[
+                  { label: 'Hoje', inicio: format(new Date(), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: '7 dias', inicio: format(subDays(new Date(), 6), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: '15 dias', inicio: format(subDays(new Date(), 14), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: '30 dias', inicio: format(subDays(new Date(), 29), 'yyyy-MM-dd'), fim: format(new Date(), 'yyyy-MM-dd') },
+                  { label: 'Este mês', inicio: format(startOfMonth(new Date()), 'yyyy-MM-dd'), fim: format(endOfMonth(new Date()), 'yyyy-MM-dd') },
+                  { label: 'Personalizado', inicio: null, fim: null },
+                ].map(({ label, inicio, fim }) => {
+                  const ativo = inicio !== null && empDataInicio === inicio && empDataFim === fim;
+                  const isPersonalizado = label === 'Personalizado' && !([
+                    format(new Date(), 'yyyy-MM-dd'),
+                    format(subDays(new Date(), 6), 'yyyy-MM-dd'),
+                    format(subDays(new Date(), 14), 'yyyy-MM-dd'),
+                    format(subDays(new Date(), 29), 'yyyy-MM-dd'),
+                    format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+                  ].includes(empDataInicio));
+                  const isAtivo = ativo || (label === 'Personalizado' && isPersonalizado);
+                  return (
+                    <button key={label} onClick={() => {
+                      if (inicio !== null) {
+                        setEmpDataInicio(inicio);
+                        setEmpDataFim(fim);
+                        setEmpFiltroAplicado({ inicio, fim });
+                      }
+                    }}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-colors font-medium border ${
+                        isAtivo ? 'bg-[#23BE84] text-white border-[#23BE84]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#23BE84] hover:text-[#23BE84]'
+                      }`}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap sm:ml-auto">
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400 mb-1">Data inicial</span>
+                  <input type="date" value={empDataInicio} onChange={e => setEmpDataInicio(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
+                </div>
+                <span className="text-slate-400 text-sm mt-4">até</span>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400 mb-1">&nbsp;</span>
+                  <input type="date" value={empDataFim} onChange={e => setEmpDataFim(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400 mb-1">&nbsp;</span>
+                  <Button onClick={() => setEmpFiltroAplicado({ inicio: empDataInicio, fim: empDataFim })}
+                    className="bg-[#23BE84] hover:bg-[#1da570] text-white px-5">
+                    🔍 Aplicar
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-slate-400">
+                📊 Exibindo: {empFiltroAplicado.inicio.slice(0,10).split('-').reverse().join('/')} até {empFiltroAplicado.fim.slice(0,10).split('-').reverse().join('/')}
+              </p>
+              <button onClick={() => {
+                const ini = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+                const fim = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+                setEmpDataInicio(ini); setEmpDataFim(fim);
+                setEmpFiltroAplicado({ inicio: ini, fim });
+              }} className="text-xs text-[#23BE84] hover:underline flex items-center gap-1">
+                ↺ Limpar filtro
+              </button>
+            </div>
+          </div>
+
+          <DashboardEmprestimos 
+            propostasEmprestimo={propostasEmprestimo}
+            statusPropostaList={statusPropostaList}
+            filtroInicio={empFiltroAplicado.inicio}
+            filtroFim={empFiltroAplicado.fim}
+            isVendedor={isVendedor}
+            user={user}
+            formatCurrency={formatCurrency}
+          />
+        </>
       ) : (
         <>
           {/* Alerta Aniversariantes do Dia */}
