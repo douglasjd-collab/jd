@@ -91,6 +91,10 @@
       ],
       "default": "programado",
       "description": "Status do lote: programado (pendente) ou quitado (pago)"
+    },
+    "conta_bancaria_id": {
+      "type": "string",
+      "description": "ID da conta banc\u00e1ria utilizada para retirada no pagamento"
     }
   },
   "required": [

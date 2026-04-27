@@ -205,11 +205,21 @@ function ModalReprogramar({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function ModalQuitar({ lote, onClose, onConfirm, loading }) {
+function ModalQuitar({ lote, onClose, onConfirm, loading, contas = [] }) {
   const [dataQuitacao, setDataQuitacao] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [comprovante, setComprovante] = useState(null);
   const [nomeArquivo, setNomeArquivo] = useState('');
   const [uploadando, setUploadando] = useState(false);
+  const [contaBancariaId, setContaBancariaId] = useState('');
+
+  useEffect(() => {
+    if (lote) {
+      setDataQuitacao(format(new Date(), 'yyyy-MM-dd'));
+      setComprovante(null);
+      setNomeArquivo('');
+      setContaBancariaId('');
+    }
+  }, [lote]);
 
   const handleArquivo = async (e) => {
     const file = e.target.files[0];
@@ -242,6 +252,19 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
             <Input id="data_quitacao" type="date" value={dataQuitacao} onChange={e => setDataQuitacao(e.target.value)} />
           </div>
           <div className="space-y-1">
+            <Label>Conta Bancária para Retirada <span className="text-red-500">*</span></Label>
+            <select
+              value={contaBancariaId}
+              onChange={e => setContaBancariaId(e.target.value)}
+              className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950"
+            >
+              <option value="">Selecione a conta...</option>
+              {contas.map(c => (
+                <option key={c.id} value={c.id}>{c.nome_conta} — {c.banco}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
             <Label>Comprovante (opcional)</Label>
             <label className="flex items-center gap-2 cursor-pointer border border-dashed border-slate-300 rounded-md px-3 py-2 hover:bg-slate-50 transition-colors">
               {uploadando ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <Paperclip className="w-4 h-4 text-slate-400" />}
@@ -254,7 +277,11 @@ function ModalQuitar({ lote, onClose, onConfirm, loading }) {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={onClose} disabled={loading || uploadando}>Cancelar</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => onConfirm(dataQuitacao, comprovante)} disabled={loading || uploadando || !dataQuitacao}>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => onConfirm(dataQuitacao, comprovante, contaBancariaId)}
+              disabled={loading || uploadando || !dataQuitacao || !contaBancariaId}
+            >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar Quitação
             </Button>
@@ -484,6 +511,12 @@ export default function Saques() {
     },
   });
 
+  const { data: contasBancarias = [] } = useQuery({
+    queryKey: ['contas-bancarias-saques', empresaId],
+    enabled: userLoaded && !!empresaId,
+    queryFn: () => base44.entities.ContaBancaria.filter({ empresa_id: empresaId, status: 'ativa' }),
+  });
+
   const { data: lotesConsorcio = [], isLoading: l2 } = useQuery({
     queryKey: ['lotes-consorcio', empresaId, colab?.id],
     enabled: userLoaded,
@@ -495,8 +528,13 @@ export default function Saques() {
   });
 
   const quitarMutation = useMutation({
-    mutationFn: async ({ id, tipo, dataQuitacao, comprovante_url }) => {
-      const payload = { status: 'quitado', data_quitacao: dataQuitacao, ...(comprovante_url ? { comprovante_url } : {}) };
+    mutationFn: async ({ id, tipo, dataQuitacao, comprovante_url, conta_bancaria_id }) => {
+      const payload = {
+        status: 'quitado',
+        data_quitacao: dataQuitacao,
+        ...(comprovante_url ? { comprovante_url } : {}),
+        ...(conta_bancaria_id ? { conta_bancaria_id } : {}),
+      };
       if (tipo === 'emp') {
         await base44.entities.LotePagamentoComissaoEmprestimo.update(id, payload);
       } else {
@@ -516,10 +554,10 @@ export default function Saques() {
     },
   });
 
-  const handleConfirmarQuitacao = (dataQuitacao, comprovante_url) => {
+  const handleConfirmarQuitacao = (dataQuitacao, comprovante_url, conta_bancaria_id) => {
     if (!loteParaQuitar) return;
     setQuitando(true);
-    quitarMutation.mutate({ id: loteParaQuitar.id, tipo: loteParaQuitar._tipo, dataQuitacao, comprovante_url });
+    quitarMutation.mutate({ id: loteParaQuitar.id, tipo: loteParaQuitar._tipo, dataQuitacao, comprovante_url, conta_bancaria_id });
   };
 
   const reprogramarMutation = useMutation({
@@ -749,6 +787,7 @@ export default function Saques() {
         onClose={() => setLoteParaQuitar(null)}
         onConfirm={handleConfirmarQuitacao}
         loading={quitando}
+        contas={contasBancarias}
       />
       <ModalReprogramar
         lote={loteParaReprogramar}
