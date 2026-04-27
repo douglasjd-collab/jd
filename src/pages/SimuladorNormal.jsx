@@ -293,11 +293,17 @@ export default function SimuladorNormal() {
       }
       saldoDevedorTotal = totalPlano - lanceProprioValor;
     }
+
+    // saldoDevedorTotal após lance (antes de descontar a 1ª parcela)
+    const saldoAposLance = saldoDevedorTotal;
     
     let mesesCobrados = prazoNum;
     let novoPrazo = prazoNum - 1;
     
-    let novaParcelaCalculada = (saldoDevedorTotal - primeiraParcelaNoAto) / novoPrazo;
+    // Saldo devedor real = saldo após lance - 1ª parcela (reduzida ou normal)
+    const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
+
+    let novaParcelaCalculada = saldoDevedorReal / novoPrazo;
 
     // Aplicar regra Canopus se ativado
     if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
@@ -306,7 +312,7 @@ export default function SimuladorNormal() {
       if (mesesCobrados < 1) mesesCobrados = 1;
       
       novoPrazo = mesesCobrados;
-      novaParcelaCalculada = (saldoDevedorTotal - primeiraParcelaNoAto) / mesesCobrados;
+      novaParcelaCalculada = saldoDevedorReal / mesesCobrados;
     }
 
     setResultado({
@@ -320,7 +326,8 @@ export default function SimuladorNormal() {
       aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel'),
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
-      saldoDevedor: saldoDevedorTotal,
+      saldoAposLance,          // total - lance (sem descontar 1ª parcela)
+      saldoDevedor: saldoDevedorReal, // total - lance - 1ª parcela
       parcelaReduzida: parcelaReduzidaTotal > 0,
       valorParcelaReduzida: primeiraParcelaNoAto
     });
@@ -853,14 +860,20 @@ export default function SimuladorNormal() {
                      </div>
                      {resultado.usarLanceProprio && (
                        <div className="flex justify-between">
-                         <span className="text-slate-600">Saldo Devedor após Lance:</span>
-                         <span className="font-semibold">{formatCurrency(resultado.saldoDevedor)}</span>
+                         <span className="text-slate-600">Saldo após Lance:</span>
+                         <span className="font-semibold">{formatCurrency(resultado.saldoAposLance)}</span>
                        </div>
                      )}
                      {resultado.parcelaReduzida && (
                        <div className="flex justify-between">
                          <span className="text-slate-600">1ª Parcela Reduzida:</span>
-                         <span className="font-semibold">{formatCurrency(resultado.valorParcelaReduzida)}</span>
+                         <span className="font-semibold text-orange-700">- {formatCurrency(resultado.valorParcelaReduzida)}</span>
+                       </div>
+                     )}
+                     {resultado.usarLanceProprio && (
+                       <div className="flex justify-between border-t pt-2 mt-1">
+                         <span className="text-slate-700 font-semibold">Saldo Devedor Final:</span>
+                         <span className="font-bold text-slate-900">{formatCurrency(resultado.saldoDevedor)}</span>
                        </div>
                      )}
                      {resultado.aplicarRegraCanopus && (
