@@ -29,7 +29,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, isWeekend, addDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, isSameDay, isWeekend, addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import CipRetornoModal from '@/components/emprestimos/CipRetornoModal';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -57,6 +57,9 @@ export default function Dashboard() {
     start: startOfMonth(new Date()),
     end: endOfMonth(new Date())
   });
+  const [dataInicio, setDataInicio] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [dataFim, setDataFim] = useState(() => format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [filtroAplicado, setFiltroAplicado] = useState({ inicio: startOfMonth(new Date()), fim: endOfMonth(new Date()) });
   const [error, setError] = useState(null);
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'));
   const [selectedDashboard, setSelectedDashboard] = useState('consorcio'); // padrão: consórcio
@@ -295,10 +298,9 @@ export default function Dashboard() {
   });
 
   const vendasMes = filteredVendas.filter(v => {
-    // Não contar vendas canceladas no mês
     if (v.status === 'cancelada') return false;
     const dataVenda = new Date(v.data_venda + 'T12:00:00');
-    return dataVenda >= dateRange.start && dataVenda <= dateRange.end;
+    return dataVenda >= filtroAplicado.inicio && dataVenda <= filtroAplicado.fim;
   });
 
   // Calcular métricas
@@ -559,18 +561,58 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Período</label>
-            <select
-              value={mesSelecionado}
-              onChange={(e) => setMesSelecionado(e.target.value)}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#23BE84]"
-            >
-              {mesesDisponiveis.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
+          {selectedDashboard === 'consorcio' && (
+            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+              <p className="text-xs font-semibold text-slate-500 mb-2">📅 Período de Produção</p>
+              {/* Atalhos rápidos */}
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {[
+                  { label: 'Hoje', fn: () => { const h = new Date(); setDataInicio(format(h, 'yyyy-MM-dd')); setDataFim(format(h, 'yyyy-MM-dd')); } },
+                  { label: '7 dias', fn: () => { setDataInicio(format(subDays(new Date(), 6), 'yyyy-MM-dd')); setDataFim(format(new Date(), 'yyyy-MM-dd')); } },
+                  { label: '15 dias', fn: () => { setDataInicio(format(subDays(new Date(), 14), 'yyyy-MM-dd')); setDataFim(format(new Date(), 'yyyy-MM-dd')); } },
+                  { label: '30 dias', fn: () => { setDataInicio(format(subDays(new Date(), 29), 'yyyy-MM-dd')); setDataFim(format(new Date(), 'yyyy-MM-dd')); } },
+                  { label: 'Este mês', fn: () => { setDataInicio(format(startOfMonth(new Date()), 'yyyy-MM-dd')); setDataFim(format(endOfMonth(new Date()), 'yyyy-MM-dd')); } },
+                ].map(({ label, fn }) => (
+                  <button key={label} onClick={fn}
+                    className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-[#23BE84] hover:text-white text-slate-600 rounded-lg transition-colors font-medium">
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Input de datas + botão aplicar */}
+              <div className="flex items-center gap-2">
+                <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
+                <span className="text-slate-400 text-sm">até</span>
+                <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#23BE84]" />
+                <Button size="sm" onClick={() => {
+                  const ini = new Date(dataInicio + 'T00:00:00');
+                  const fim = new Date(dataFim + 'T23:59:59');
+                  setFiltroAplicado({ inicio: ini, fim: fim });
+                }} className="bg-[#23BE84] hover:bg-[#1da570] text-white px-3">
+                  🔍 Aplicar
+                </Button>
+              </div>
+              <p className="text-xs text-slate-400 mt-1.5">
+                📊 Exibindo: {format(filtroAplicado.inicio, 'dd/MM/yyyy')} até {format(filtroAplicado.fim, 'dd/MM/yyyy')}
+              </p>
+            </div>
+          )}
+          {selectedDashboard === 'emprestimo' && (
+            <div>
+              <label className="text-xs font-semibold text-slate-600 block mb-1.5">Período</label>
+              <select
+                value={mesSelecionado}
+                onChange={(e) => setMesSelecionado(e.target.value)}
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#23BE84]"
+              >
+                {mesesDisponiveis.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Link to="/NovaVenda">
             <Button className="bg-[#23BE84] hover:bg-[#1da570] h-[38px]">
               <Plus className="w-4 h-4 mr-2" />
@@ -631,7 +673,7 @@ export default function Dashboard() {
                   <DollarSign className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Total de Vendas (Mês)</p>
+                  <p className="text-sm text-slate-500">Total de Vendas (Período)</p>
                   <p className="text-2xl font-bold text-green-700">{formatCurrency(valorTotalVendas)}</p>
                   {totalVendasMes > 0 && (
                     <p className="text-xs text-slate-400 mt-1">{totalVendasMes} vendas</p>
