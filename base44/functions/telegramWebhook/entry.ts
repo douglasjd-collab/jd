@@ -29,6 +29,22 @@ async function sendTelegram(chat_id, text) {
   });
 }
 
+// Encontra conta bancária pelo nome (fuzzy matching)
+function matchConta(nomeBuscado, contas) {
+  if (!nomeBuscado || !contas?.length) return null;
+  const needle = stripAccents(nomeBuscado).toLowerCase();
+  // Correspondência exata primeiro
+  let found = contas.find(c => stripAccents(c.banco || '').toLowerCase() === needle || stripAccents(c.nome_conta || '').toLowerCase() === needle);
+  if (found) return found;
+  // Correspondência parcial
+  found = contas.find(c =>
+    stripAccents(c.banco || '').toLowerCase().includes(needle) ||
+    stripAccents(c.nome_conta || '').toLowerCase().includes(needle) ||
+    needle.includes(stripAccents(c.banco || '').toLowerCase())
+  );
+  return found || null;
+}
+
 async function callOpenAI(message, context) {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurado");
@@ -46,6 +62,7 @@ async function callOpenAI(message, context) {
             "create_opportunity",
             "create_expense",
             "create_revenue",
+            "create_financial_transaction",
             "create_agenda",
             "reschedule_agenda",
             "cancel_agenda",
@@ -88,6 +105,19 @@ async function callOpenAI(message, context) {
           },
           required: ["valor", "descricao", "categoria", "data"],
         },
+        financial_transaction: {
+          type: ["object", "null"],
+          additionalProperties: false,
+          properties: {
+            tipo: { type: ["string", "null"], enum: ["entrada", "saida", null] },
+            valor: { type: ["number", "null"] },
+            descricao: { type: ["string", "null"] },
+            conta_nome: { type: ["string", "null"] },
+            categoria: { type: ["string", "null"] },
+            data: { type: ["string", "null"] },
+          },
+          required: ["tipo", "valor", "descricao", "conta_nome", "categoria", "data"],
+        },
         agenda: {
           type: ["object", "null"],
           additionalProperties: false,
@@ -119,20 +149,30 @@ async function callOpenAI(message, context) {
         },
         reply: { type: "string" },
       },
-      required: ["action", "opportunity", "expense", "revenue", "agenda", "list", "clarify", "reply"],
+      required: ["action", "opportunity", "expense", "revenue", "financial_transaction", "agenda", "list", "clarify", "reply"],
     },
   };
 
   const system = `
 Você é um assistente para um CRM/Financeiro via Telegram.
 Transforme a mensagem do usuário em UMA ação do sistema.
-Regras:
+Regras gerais:
 - Se faltar dado essencial, use action="clarify" e pergunte objetivamente.
-- Datas: use fuso -03:00 (Brasil). Se o usuário disser "hoje/amanhã", converta para ISO.
-- Valores: "35,90" -> 35.90
+- Datas: use fuso -03:00 (Brasil). Se o usuário disser "hoje/amanhã", converta para ISO (apenas data YYYY-MM-DD).
+- Valores: "35,90" -> 35.90, "1.500" -> 1500, "R$ 1.500,00" -> 1500
 - Telefone: normalize apenas números quando possível.
 - Categorias de despesa: Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros
-- Categorias de receita: Bônus, Repasse, Ajuste, Outros
+- Categorias de receita: Bônus, Repasse, Comissão, Ajuste, Outros
+
+Regras para transações financeiras com conta bancária (action=create_financial_transaction):
+Use esta action quando o usuário mencionar conta bancária (itau, nubank, caixa, bb, santander, bradesco, inter, sicoob, sicredi, safra, c6, pagbank, mercado pago, carteira, etc) junto com uma movimentação de dinheiro.
+- Palavras de ENTRADA (tipo=entrada): recebi, entrou, crédito, recebimento, depósito, transferência recebida, pix recebido, comissão, ganho, faturamento
+- Palavras de SAÍDA (tipo=saida): paguei, saiu, pix enviado, transferi, debito, despesa, gasto, retirei
+- Palavras-chave "pix" sem contexto claro → tipo=saida se houver valor e conta
+- conta_nome: extraia o nome do banco mencionado (ex: "itau", "nubank", "caixa")
+- Categorias automáticas: comissão→Comissão, aluguel→Despesa Fixa, funcionário→Folha, gasolina→Combustível, cliente→Receita, fornecedor→Fornecedor, Outros
+- data: hoje se não especificado (formato YYYY-MM-DD)
+
 - Responda sempre com JSON compatível com o schema.
 `;
 
@@ -204,13 +244,18 @@ Deno.serve(async (req) => {
     if (clean === "/start" || clean === "ajuda" || clean === "help" || clean === "/help") {
       await sendTelegram(chatId,
         "🤖 <b>Me diga o que você quer em texto normal</b>\n\n" +
-        "Exemplos:\n" +
-        "• <code>criar oportunidade Maria 81999998888</code>\n" +
+        "💳 <b>Transações com conta bancária:</b>\n" +
+        "• <code>recebi 1500 comissão conta itaú</code>\n" +
+        "• <code>paguei 800 aluguel conta caixa</code>\n" +
+        "• <code>pix 350 cliente João nubank</code>\n\n" +
+        "📊 <b>Financeiro simples:</b>\n" +
         "• <code>despesa 35,90 almoço hoje</code>\n" +
-        "• <code>receita 1200 comissão hoje</code>\n" +
+        "• <code>receita 1200 comissão hoje</code>\n\n" +
+        "👤 <b>CRM:</b>\n" +
+        "• <code>criar oportunidade Maria 81999998888</code>\n\n" +
+        "📅 <b>Agenda:</b>\n" +
         "• <code>marca reunião amanhã 10h com João</code>\n" +
-        "• <code>lista agenda hoje</code>\n" +
-        "• <code>cancelar reunião 123</code>"
+        "• <code>lista agenda hoje</code>"
       );
       return Response.json({ ok: true });
     }
@@ -306,6 +351,114 @@ Deno.serve(async (req) => {
       });
 
       await sendTelegram(chatId, `✅ RECEITA criada: <b>R$ ${Number(r.valor).toFixed(2)}</b>\n🧾 ${r.descricao}\n📅 ${r.data}\n<code>ID ${created.id}</code>`);
+      return Response.json({ ok: true });
+    }
+
+    if (intent.action === "create_financial_transaction") {
+      const ft = intent.financial_transaction || {};
+      if (!ft.valor || !ft.tipo) {
+        await sendTelegram(chatId, "❓ Não identifiquei o <b>valor</b> ou o <b>tipo</b> (entrada/saída). Tente novamente.");
+        return Response.json({ ok: true });
+      }
+
+      // Buscar contas bancárias da empresa
+      const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
+        empresaId !== 'TELEGRAM_BOT' ? { empresa_id: empresaId, status: 'ativa' } : { status: 'ativa' },
+        'nome_conta', 100
+      );
+
+      // Tentar identificar a conta
+      let contaEncontrada = matchConta(ft.conta_nome, contas);
+
+      // Se não encontrou a conta, perguntar ao usuário
+      if (!contaEncontrada && contas.length > 0) {
+        const lista = contas.slice(0, 8).map((c, i) => `${i + 1} - ${c.nome_conta} (${c.banco})`).join('\n');
+        await sendTelegram(chatId,
+          `❓ Não identifiquei a conta bancária.\n\nEscolha:\n${lista}\n\n` +
+          `Responda com o número ou envie novamente mencionando o banco. Ex: <code>conta itaú</code>`
+        );
+        return Response.json({ ok: true });
+      }
+
+      const hoje = new Date().toLocaleDateString('fr-CA'); // YYYY-MM-DD
+      const data = ft.data || hoje;
+      const descricao = ft.descricao || (ft.tipo === 'entrada' ? 'Receita via Telegram' : 'Despesa via Telegram');
+      const categoria = ft.categoria || (ft.tipo === 'entrada' ? 'Outros' : 'Outros');
+      const valorNum = Number(ft.valor);
+
+      if (ft.tipo === 'entrada') {
+        // Buscar categoria de receita
+        let categoriaId = null;
+        let categoriaNome = categoria;
+        try {
+          const cats = await base44.asServiceRole.entities.CategoriaReceita.filter({ empresa_id: empresaId }, null, 50);
+          const cat = cats.find(c => stripAccents(c.nome || '').toLowerCase().includes(stripAccents(categoria).toLowerCase())) || cats[0];
+          if (cat) { categoriaId = cat.id; categoriaNome = cat.nome; }
+        } catch (_) {}
+
+        await base44.asServiceRole.entities.Receita.create({
+          empresa_id: empresaId,
+          descricao,
+          categoria_id: categoriaId || 'telegram',
+          categoria_nome: categoriaNome,
+          valor: valorNum,
+          data,
+          status: 'recebida',
+          data_recebimento: data,
+          origem: 'Telegram',
+          conta_bancaria_id: contaEncontrada?.id || null,
+          usuario_id: usuarioId,
+        });
+      } else {
+        // Buscar categoria de despesa
+        let categoriaId = null;
+        let categoriaNome = categoria;
+        try {
+          const cats = await base44.asServiceRole.entities.CategoriaDespesa.filter({ empresa_id: empresaId }, null, 50);
+          const cat = cats.find(c => stripAccents(c.nome || '').toLowerCase().includes(stripAccents(categoria).toLowerCase())) || cats[0];
+          if (cat) { categoriaId = cat.id; categoriaNome = cat.nome; }
+        } catch (_) {}
+
+        await base44.asServiceRole.entities.Despesa.create({
+          empresa_id: empresaId,
+          descricao,
+          categoria: categoriaNome || 'Outros',
+          valor: valorNum,
+          data,
+          status: 'pago',
+          data_pagamento: data,
+          observacao: 'Lançado via Telegram',
+          conta_bancaria_id: contaEncontrada?.id || null,
+          responsavel_id: usuarioId || 'telegram',
+          usuario_id: usuarioId,
+        });
+      }
+
+      // Atualizar saldo da conta bancária
+      let novoSaldo = contaEncontrada?.saldo_atual || 0;
+      if (ft.tipo === 'entrada') {
+        novoSaldo += valorNum;
+      } else {
+        novoSaldo -= valorNum;
+      }
+      if (contaEncontrada) {
+        await base44.asServiceRole.entities.ContaBancaria.update(contaEncontrada.id, { saldo_atual: novoSaldo });
+      }
+
+      const tipoEmoji = ft.tipo === 'entrada' ? '📈 Entrada' : '📉 Saída';
+      const contaInfo = contaEncontrada ? `${contaEncontrada.nome_conta} (${contaEncontrada.banco})` : 'Sem conta';
+      const valorFmt = valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+      await sendTelegram(chatId,
+        `✅ <b>Transação registrada!</b>\n\n` +
+        `${tipoEmoji}\n` +
+        `💰 Valor: <b>${valorFmt}</b>\n` +
+        `🏦 Conta: <b>${contaInfo}</b>\n` +
+        `📝 Descrição: ${descricao}\n` +
+        `📅 Data: ${data}\n` +
+        (contaEncontrada ? `\n💳 Saldo atual: <b>${saldoFmt}</b>` : '')
+      );
       return Response.json({ ok: true });
     }
 
