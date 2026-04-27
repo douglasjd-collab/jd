@@ -50,8 +50,8 @@ function BancoAvatar({ banco, logoUrl = '', size = 'md' }) {
   const sz = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-12 h-12 text-base' : 'w-10 h-10 text-sm';
   if (logoUrl) {
     return (
-      <div className={`${sz} rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 p-1`}>
-        <img src={logoUrl} alt={banco} className="max-w-full max-h-full object-contain" style={{ width: '100%', height: '100%' }} />
+      <div className={`${sz} rounded-xl border border-slate-200 bg-white flex-shrink-0 overflow-hidden`}>
+        <img src={logoUrl} alt={banco} className="w-full h-full object-cover" />
       </div>
     );
   }
@@ -551,8 +551,8 @@ function ContaModal({ open, onOpenChange, form, setForm, editingConta, onSalvar,
             <Label>Logo do Banco (opcional)</Label>
             <div className="mt-1 flex items-center gap-3">
               {form.logo_url ? (
-                <div className="w-16 h-16 rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 p-2">
-                  <img src={form.logo_url} alt="logo" className="max-w-full max-h-full object-contain rounded-lg" />
+                <div className="w-16 h-16 rounded-xl border border-slate-200 bg-white flex-shrink-0 overflow-hidden">
+                  <img src={form.logo_url} alt="logo" className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 flex-shrink-0">
