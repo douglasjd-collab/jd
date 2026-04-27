@@ -107,26 +107,20 @@ export default function FolhaSalarialPage() {
   };
 
   const atualizarStatus = async (folha, novoStatus) => {
-    await base44.entities.FolhaSalarial.update(folha.id, { status: novoStatus });
+    const hoje = new Date().toISOString().split('T')[0];
 
-    // Se Paga → criar transação automática
+    // Se Paga → criar despesa de pagamento de salário
     if (novoStatus === 'Paga' && !folha.transacao_id) {
-      try {
-        const colab = colaboradores.find(c => c.id === folha.colaborador_id);
-        const transacao = await base44.entities.Receita ? null : null; // usar Despesa/Transacao
-        // Tentar criar em Despesa (adapta ao modelo existente do app)
-        await base44.entities.Despesa.create({
-          empresa_id: folha.empresa_id,
-          descricao: `Pagamento salário - ${folha.colaborador_nome} - ${folha.mes_referencia}`,
-          valor: folha.valor_liquido,
-          data: folha.data_pagamento || new Date().toISOString().split('T')[0],
-          categoria: 'Folha Salarial',
-          subcategoria: 'Salário',
-          origem: 'Folha Salarial',
-          origem_id: folha.id,
-        }).catch(() => null);
-        await base44.entities.FolhaSalarial.update(folha.id, { status: novoStatus, transacao_id: 'gerada' });
-      } catch {}
+      const despesa = await base44.entities.Despesa.create({
+        empresa_id: folha.empresa_id,
+        descricao: `Pagamento de Salário - ${folha.colaborador_nome} - ${folha.mes_referencia}`,
+        valor: folha.valor_liquido,
+        data: folha.data_pagamento || hoje,
+        data_pagamento: folha.data_pagamento || hoje,
+        categoria: 'Folha Salarial',
+        status: 'pago',
+      });
+      await base44.entities.FolhaSalarial.update(folha.id, { status: novoStatus, transacao_id: despesa.id });
     } else {
       await base44.entities.FolhaSalarial.update(folha.id, { status: novoStatus });
     }
