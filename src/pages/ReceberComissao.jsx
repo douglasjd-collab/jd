@@ -1,345 +1,380 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Loader2, Search, CheckCircle2 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Loader2, Search, CheckCircle2, Building2, User, FileText, DollarSign, Landmark } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtDate = (d) => {
+  if (!d) return '-';
+  try {
+    const s = String(d).length <= 10 ? d + 'T12:00:00' : d;
+    return format(new Date(s), 'dd/MM/yyyy');
+  } catch { return '-'; }
+};
 
-export default function ReceberComissao() {
-  const [busca, setBusca] = useState('');
-  const [isBuscando, setIsBuscando] = useState(false);
-  const [contratos, setContratos] = useState([]);
-  const [contratoSelecionado, setContratoSelecionado] = useState(null);
-  const [formaRecebimento, setFormaRecebimento] = useState('percentual');
-  const [percentual, setPercentual] = useState('60');
-  const [valor, setValor] = useState('');
-  const [dataRecebimento, setDataRecebimento] = useState('');
-  const [numeroParcela, setNumeroParcela] = useState('');
-  const [observacao, setObservacao] = useState('');
-  const [isSalvando, setIsSalvando] = useState(false);
+function ModalReceberComissao({ proposta, contas, onClose, onConfirm, loading }) {
+  const [form, setForm] = useState({
+    data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+    valor_base: '',
+    percentual: '',
+    valor_recebido: '',
+    conta_bancaria_id: '',
+    observacoes: '',
+  });
 
-  const valorCalculado =
-    contratoSelecionado && percentual
-      ? (contratoSelecionado.valor_base_comissao * Number(percentual || 0)) / 100
-      : 0;
-
-  const handleBuscarContrato = async () => {
-    if (!busca.trim()) {
-      toast.error('Digite algo para buscar');
-      return;
+  useEffect(() => {
+    if (proposta) {
+      const base = proposta.valor_comissao || proposta.valor_credito || 0;
+      setForm({
+        data_recebimento: format(new Date(), 'yyyy-MM-dd'),
+        valor_base: base ? base.toFixed(2) : '',
+        percentual: '',
+        valor_recebido: proposta.valor_comissao ? proposta.valor_comissao.toFixed(2) : '',
+        conta_bancaria_id: '',
+        observacoes: '',
+      });
     }
+  }, [proposta]);
 
-    try {
-      setIsBuscando(true);
-      const { data } = await base44.functions.invoke('buscarContratosComissao', { termo: busca });
-      setContratos(data || []);
-      if (!data || data.length === 0) toast.info('Nenhum contrato encontrado');
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao buscar contratos');
-    } finally {
-      setIsBuscando(false);
-    }
-  };
-
-  const handleSelecionarContrato = (id) => {
-    const contrato = contratos.find((c) => c.id === id) || null;
-    setContratoSelecionado(contrato);
-    setPercentual('60');
-    setValor('');
-    setNumeroParcela('');
-    setDataRecebimento('');
-    setObservacao('');
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!contratoSelecionado) {
-      toast.error('Selecione um contrato');
-      return;
-    }
-    if (!dataRecebimento) {
-      toast.error('Informe a data de recebimento');
-      return;
-    }
-    if (!numeroParcela) {
-      toast.error('Informe o número da parcela');
-      return;
-    }
-
-    let valorComissaoFinal = 0;
-    if (formaRecebimento === 'percentual') {
-      valorComissaoFinal = valorCalculado;
-      if (!percentual) {
-        toast.error('Informe o percentual');
-        return;
-      }
-    } else {
-      if (!valor) {
-        toast.error('Informe o valor');
-        return;
-      }
-      valorComissaoFinal = Number(String(valor).replace('.', '').replace(',', '.'));
-    }
-
-    if (valorComissaoFinal <= 0) {
-      toast.error('Valor deve ser maior que zero');
-      return;
-    }
-
-    try {
-      setIsSalvando(true);
-      const payload = {
-        venda_id: contratoSelecionado.venda_id,
-        cliente_id: contratoSelecionado.cliente_id,
-        vendedor_id: contratoSelecionado.vendedor_id,
-        administradora_id: contratoSelecionado.administradora_id,
-        empresa_id: contratoSelecionado.empresa_id,
-        numero_contrato: contratoSelecionado.numero_contrato,
-        grupo: contratoSelecionado.grupo,
-        cota: contratoSelecionado.cota,
-        cliente_nome: contratoSelecionado.cliente_nome,
-        administradora_nome: contratoSelecionado.administradora_nome,
-        vendedor_nome: contratoSelecionado.vendedor_nome,
-        forma_recebimento: formaRecebimento,
-        percentual: formaRecebimento === 'percentual' ? Number(percentual) : null,
-        valor_comissao: valorComissaoFinal,
-        data_recebimento: dataRecebimento,
-        numero_parcela: Number(numeroParcela),
-        observacao,
-        origem: 'manual',
-      };
-
-      await base44.functions.invoke('receberComissaoManual', payload);
-      toast.success('Comissão registrada com sucesso!');
-      
-      setContratoSelecionado(null);
-      setBusca('');
-      setContratos([]);
-      setValor('');
-      setObservacao('');
-    } catch (err) {
-      console.error(err);
-      toast.error('Erro ao registrar comissão');
-    } finally {
-      setIsSalvando(false);
+  const calcularPeloPercentual = (perc, base) => {
+    const b = parseFloat(String(base).replace(',', '.')) || 0;
+    const p = parseFloat(String(perc).replace(',', '.')) || 0;
+    if (b > 0 && p > 0) {
+      setForm(f => ({ ...f, valor_recebido: ((b * p) / 100).toFixed(2) }));
     }
   };
+
+  const handlePercentualChange = (v) => {
+    setForm(f => ({ ...f, percentual: v }));
+    calcularPeloPercentual(v, form.valor_base);
+  };
+
+  const handleBaseChange = (v) => {
+    setForm(f => ({ ...f, valor_base: v }));
+    if (form.percentual) calcularPeloPercentual(form.percentual, v);
+  };
+
+  const valorRecebido = parseFloat(String(form.valor_recebido).replace(',', '.')) || 0;
+  const canConfirm = form.data_recebimento && form.conta_bancaria_id && valorRecebido > 0;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Receber Comissão</h1>
-        <p className="text-slate-500 text-sm mt-1">Registre manualmente o recebimento de comissões de consórcio.</p>
-      </div>
+    <Dialog open={!!proposta} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Receber Comissão</DialogTitle>
+        </DialogHeader>
+        {proposta && (
+          <div className="space-y-4 py-1">
+            {/* Info da proposta */}
+            <div className="bg-slate-50 rounded-lg p-3 space-y-1.5 text-sm">
+              <div className="flex gap-2 items-center">
+                <User className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-600">Cliente:</span>
+                <span className="font-semibold">{proposta.cliente_nome || '-'}</span>
+              </div>
+              {proposta.cliente_cpf && (
+                <div className="flex gap-2 items-center">
+                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-slate-600">CPF:</span>
+                  <span className="font-semibold">{proposta.cliente_cpf}</span>
+                </div>
+              )}
+              <div className="flex gap-2 items-center">
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-600">Banco:</span>
+                <span className="font-semibold">{proposta.administradora_nome || '-'}</span>
+              </div>
+              <div className="flex gap-2 items-center">
+                <FileText className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-600">Contrato:</span>
+                <span className="font-semibold">{proposta.contrato || '-'}</span>
+              </div>
+              <div className="flex gap-2 items-center">
+                <DollarSign className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-600">Valor crédito:</span>
+                <span className="font-semibold">{fmt(proposta.valor_credito)}</span>
+              </div>
+            </div>
 
-      {/* Buscar contrato */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Localizar contrato</CardTitle>
-          <CardDescription>Busque pelo contrato, cliente ou grupo/cota</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 md:flex-row md:items-end">
-          <div className="flex-1 space-y-2">
-            <Label>Buscar</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Ex.: 004400, 8310/693 ou nome do cliente"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleBuscarContrato()}
-              />
-              <Button onClick={handleBuscarContrato} disabled={isBuscando} className="bg-[#10353C] hover:bg-[#1a5060]">
-                {isBuscando ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Buscando...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Buscar
-                  </>
-                )}
+            {/* Campos do recebimento */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1 col-span-2">
+                <Label>Data de Recebimento <span className="text-red-500">*</span></Label>
+                <Input type="date" value={form.data_recebimento} onChange={e => setForm(f => ({ ...f, data_recebimento: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>Valor Base da Comissão (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={form.valor_base}
+                  onChange={e => handleBaseChange(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Percentual da Comissão (%)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Ex: 2.5"
+                  value={form.percentual}
+                  onChange={e => handlePercentualChange(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label>Valor Recebido (R$) <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={form.valor_recebido}
+                  onChange={e => setForm(f => ({ ...f, valor_recebido: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label>Conta Bancária que Recebeu <span className="text-red-500">*</span></Label>
+                <select
+                  value={form.conta_bancaria_id}
+                  onChange={e => setForm(f => ({ ...f, conta_bancaria_id: e.target.value }))}
+                  className="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-950"
+                >
+                  <option value="">Selecione a conta...</option>
+                  {contas.map(c => (
+                    <option key={c.id} value={c.id}>{c.nome_conta} — {c.banco}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label>Observações (opcional)</Label>
+                <Input placeholder="Ex: comissão de empréstimo consignado" value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => onConfirm(proposta, form)}
+                disabled={loading || !canConfirm}
+              >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Confirmar Recebimento
               </Button>
             </div>
           </div>
-          {contratos.length > 0 && (
-            <div className="w-full md:w-72 space-y-2">
-              <Label>Contratos encontrados</Label>
-              <Select value={contratoSelecionado?.id ?? ''} onValueChange={handleSelecionarContrato}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um contrato" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contratos.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.numero_contrato} • {c.cliente_nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-      {/* Dados do contrato */}
-      {contratoSelecionado && (
+export default function ReceberComissao() {
+  const [user, setUser] = useState(null);
+  const [colab, setColab] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [busca, setBusca] = useState('');
+  const [propostaSelecionada, setPropostaSelecionada] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    base44.auth.me().then(async (me) => {
+      setUser(me);
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date', 5);
+      if (colabs?.length > 0) setColab(colabs[0]);
+    }).finally(() => setLoadingUser(false));
+  }, []);
+
+  const empresaId = colab?.empresa_id || user?.empresa_id;
+
+  const { data: propostas = [], isLoading } = useQuery({
+    queryKey: ['propostas-receber-comissao', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      // Buscar propostas de empréstimo com status PAGO e comissao_banco_recebida false/null
+      const todas = await base44.entities.Proposta.filter(
+        { empresa_id: empresaId, produto: 'emprestimo' },
+        '-data_venda',
+        2000
+      );
+      return todas.filter(p => {
+        const statusPago = (p.status || '').toUpperCase() === 'PAGO' ||
+          (p.status || '').toUpperCase() === 'PAGA' ||
+          (p.status_atual || '').toUpperCase() === 'PAGO';
+        const naoRecebida = !p.comissao_banco_recebida;
+        return statusPago && naoRecebida;
+      });
+    },
+  });
+
+  const { data: contas = [] } = useQuery({
+    queryKey: ['contas-bancarias-receber', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.ContaBancaria.filter({ empresa_id: empresaId, status: 'ativa' }),
+  });
+
+  const propostasFiltradas = useMemo(() => {
+    if (!busca.trim()) return propostas;
+    const t = busca.toLowerCase();
+    return propostas.filter(p =>
+      (p.cliente_nome || '').toLowerCase().includes(t) ||
+      (p.cliente_cpf || '').replace(/\D/g, '').includes(t.replace(/\D/g, '')) ||
+      (p.contrato || '').toLowerCase().includes(t) ||
+      (p.administradora_nome || '').toLowerCase().includes(t)
+    );
+  }, [propostas, busca]);
+
+  const handleConfirmar = async (proposta, form) => {
+    setSalvando(true);
+    try {
+      const valorRecebido = parseFloat(String(form.valor_recebido).replace(',', '.')) || 0;
+      const hoje = form.data_recebimento;
+
+      // 1. Criar receita financeira
+      await base44.entities.Receita.create({
+        empresa_id: proposta.empresa_id,
+        descricao: `Comissão de empréstimo — ${proposta.cliente_nome} — Contrato: ${proposta.contrato || 'N/A'}`,
+        categoria_id: 'comissao_emprestimo',
+        categoria_nome: 'Comissão Empréstimo',
+        valor: valorRecebido,
+        data: hoje,
+        data_recebimento: hoje,
+        status: 'recebida',
+        origem: proposta.administradora_nome || 'Banco',
+        conta_bancaria_id: form.conta_bancaria_id,
+        observacao: form.observacoes || undefined,
+      });
+
+      // 2. Atualizar saldo da conta bancária
+      await base44.functions.invoke('atualizarSaldoConta', { conta_bancaria_id: form.conta_bancaria_id });
+
+      // 3. Marcar proposta como comissao_banco_recebida = true
+      await base44.entities.Proposta.update(proposta.id, {
+        comissao_banco_recebida: true,
+        data_comissao_recebida: hoje,
+        comissao_recebida: valorRecebido,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['propostas-receber-comissao'] });
+      toast.success('Comissão registrada com sucesso!');
+      setPropostaSelecionada(null);
+    } catch (e) {
+      toast.error('Erro ao registrar comissão: ' + (e.message || ''));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  if (loadingUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Receber Comissão</h1>
+        <p className="text-slate-500 text-sm mt-1">Propostas de empréstimo com status PAGO aguardando recebimento de comissão.</p>
+      </div>
+
+      {/* Barra de busca + contador */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            className="pl-9"
+            placeholder="Buscar por nome, CPF ou contrato..."
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+          />
+        </div>
+        <Badge variant="outline" className="text-slate-600 border-slate-300 whitespace-nowrap">
+          {propostasFiltradas.length} proposta{propostasFiltradas.length !== 1 ? 's' : ''} aguardando
+        </Badge>
+      </div>
+
+      {/* Tabela */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="w-7 h-7 animate-spin text-slate-400" />
+        </div>
+      ) : propostasFiltradas.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Contrato selecionado</CardTitle>
-            <CardDescription>Confira os dados antes de registrar</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            <div>
-              <Label className="text-xs text-slate-500">Cliente</Label>
-              <p className="font-semibold text-slate-900">{contratoSelecionado.cliente_nome}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-slate-500">Administradora</Label>
-              <p className="font-semibold text-slate-900">{contratoSelecionado.administradora_nome}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-slate-500">Vendedor</Label>
-              <p className="font-semibold text-slate-900">{contratoSelecionado.vendedor_nome}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-slate-500">Contrato</Label>
-              <p className="font-semibold text-slate-900">{contratoSelecionado.numero_contrato}</p>
-            </div>
-            <div>
-              <Label className="text-xs text-slate-500">Grupo / Cota</Label>
-              <p className="font-semibold text-slate-900">
-                {contratoSelecionado.grupo} / {contratoSelecionado.cota}
-              </p>
-            </div>
-            <div>
-              <Label className="text-xs text-slate-500">Base de comissão</Label>
-              <p className="font-semibold text-slate-900">{fmt(contratoSelecionado.valor_base_comissao)}</p>
-            </div>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center gap-3">
+            <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+            <p className="text-slate-600 font-medium">Nenhuma proposta aguardando recebimento</p>
+            <p className="text-slate-400 text-sm">Todas as comissões de empréstimos pagos já foram recebidas.</p>
           </CardContent>
         </Card>
+      ) : (
+        <div className="rounded-lg border overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-700 text-white">
+              <tr>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Cliente</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">CPF</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Contrato</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Banco</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Tipo</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Valor Crédito</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Comissão Est.</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Data Venda</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide">Ação</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {propostasFiltradas.map(p => (
+                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-3 py-2.5 font-medium text-slate-800 whitespace-nowrap">{p.cliente_nome || '-'}</td>
+                  <td className="px-3 py-2.5 text-slate-500 text-xs whitespace-nowrap">{p.cliente_cpf || '-'}</td>
+                  <td className="px-3 py-2.5 font-mono text-xs text-slate-700 whitespace-nowrap">{p.contrato || '-'}</td>
+                  <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">{p.administradora_nome || '-'}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <Badge variant="outline" className="text-xs border-blue-200 text-blue-700 bg-blue-50">
+                      {p.emprestimo_tipo || p.tipo_importacao_original || 'Empréstimo'}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2.5 font-medium text-slate-800 whitespace-nowrap">{fmt(p.valor_credito)}</td>
+                  <td className="px-3 py-2.5 text-emerald-700 font-medium whitespace-nowrap">
+                    {p.valor_comissao ? fmt(p.valor_comissao) : '-'}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-slate-500 whitespace-nowrap">{fmtDate(p.data_venda)}</td>
+                  <td className="px-3 py-2.5">
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white h-7 text-xs"
+                      onClick={() => setPropostaSelecionada(p)}
+                    >
+                      <Landmark className="w-3.5 h-3.5 mr-1" />
+                      Receber
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {/* Formulário */}
-      {contratoSelecionado && (
-        <form onSubmit={handleSubmit}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Registrar recebimento</CardTitle>
-              <CardDescription>Informe os dados da comissão recebida</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Forma de recebimento */}
-              <div className="space-y-3">
-                <Label>Forma de recebimento</Label>
-                <div className="flex gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="percentual"
-                      checked={formaRecebimento === 'percentual'}
-                      onChange={(e) => setFormaRecebimento(e.target.value)}
-                      className="w-4 h-4"
-                    />
-                    <span>Comissão em %</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      value="valor"
-                      checked={formaRecebimento === 'valor'}
-                      onChange={(e) => setFormaRecebimento(e.target.value)}
-                      className="w-4 h-4"
-                    />
-                    <span>Comissão em valor (R$)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                {formaRecebimento === 'percentual' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Percentual (%)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.01}
-                        value={percentual}
-                        onChange={(e) => setPercentual(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label>Valor calculado</Label>
-                      <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                        <span className="text-sm text-slate-500">Comissão estimada:</span>
-                        <span className="font-bold text-slate-900">{fmt(valorCalculado)}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {formaRecebimento === 'valor' && (
-                  <div className="space-y-2">
-                    <Label>Valor da comissão (R$)</Label>
-                    <Input placeholder="Ex.: 606,00" value={valor} onChange={(e) => setValor(e.target.value)} />
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Data de recebimento</Label>
-                  <Input type="date" value={dataRecebimento} onChange={(e) => setDataRecebimento(e.target.value)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Número da parcela</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={numeroParcela}
-                    onChange={(e) => setNumeroParcela(e.target.value)}
-                    placeholder="Ex.: 3"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Observações (opcional)</Label>
-                <Input
-                  placeholder="Ex.: ajuste manual, diferença de rateio"
-                  value={observacao}
-                  onChange={(e) => setObservacao(e.target.value)}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between gap-4">
-              <div className="flex items-start gap-2 text-sm text-slate-600">
-                <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
-                <span>Ao confirmar, a proposta e financeiro serão atualizados automaticamente.</span>
-              </div>
-              <Button type="submit" disabled={isSalvando} className="bg-[#10353C] hover:bg-[#1a5060] text-white">
-                {isSalvando ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Registrando...
-                  </>
-                ) : (
-                  'Receber comissão'
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </form>
-      )}
+      <ModalReceberComissao
+        proposta={propostaSelecionada}
+        contas={contas}
+        onClose={() => setPropostaSelecionada(null)}
+        onConfirm={handleConfirmar}
+        loading={salvando}
+      />
     </div>
   );
 }
