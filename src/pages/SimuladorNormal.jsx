@@ -877,12 +877,16 @@ export default function SimuladorNormal() {
                        </div>
                      )}
                      {resultado.aplicarRegraCanopus && (
-                       <div className="flex justify-between">
-                         <span className="text-slate-600">Meses Cobrados:</span>
-                         <span className="font-semibold">
-                           {resultado.mesesCobrados} (prazo - 1 no ato - 3 carência)
-                         </span>
-                       </div>
+                       <>
+                         <div className="flex justify-between">
+                           <span className="text-slate-600">Carência:</span>
+                           <span className="font-semibold">{parcelasCarencia} meses</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-slate-600">Parcelas Restantes:</span>
+                           <span className="font-semibold">{resultado.mesesCobrados} meses</span>
+                         </div>
+                       </>
                      )}
                    </div>
                   )}
