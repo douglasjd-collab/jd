@@ -38,6 +38,10 @@
       "type": "string",
       "description": "Chave PIX associada"
     },
+    "logo_url": {
+      "type": "string",
+      "description": "URL da logo do banco (imagem)"
+    },
     "saldo_inicial": {
       "type": "number",
       "default": 0,

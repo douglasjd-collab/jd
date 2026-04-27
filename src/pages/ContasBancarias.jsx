@@ -45,9 +45,16 @@ const BANCO_TAG_COR = {
 
 const BANCOS_COMUNS = Object.keys(BANCOS_CONFIG);
 
-function BancoAvatar({ banco, size = 'md' }) {
+function BancoAvatar({ banco, logoUrl = '', size = 'md' }) {
   const cfg = BANCOS_CONFIG[banco] || { bg: 'bg-slate-400', text: 'text-white', abbr: (banco || '?').substring(0, 2).toUpperCase() };
   const sz = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-12 h-12 text-base' : 'w-10 h-10 text-sm';
+  if (logoUrl) {
+    return (
+      <div className={`${sz} rounded-xl border border-slate-200 bg-white flex items-center justify-center flex-shrink-0 overflow-hidden p-0.5`}>
+        <img src={logoUrl} alt={banco} className="w-full h-full object-contain" />
+      </div>
+    );
+  }
   return (
     <div className={`${cfg.bg} ${cfg.text} ${sz} rounded-xl flex items-center justify-center font-bold flex-shrink-0`}>
       {cfg.abbr}
@@ -74,7 +81,7 @@ function SparkLine({ data, color = '#22c55e' }) {
 const emptyForm = {
   nome_conta: '', banco: '', tipo_conta: 'Conta Corrente',
   agencia: '', conta: '', chave_pix: '', saldo_inicial: '0',
-  status: 'ativa', observacoes: '',
+  status: 'ativa', observacoes: '', logo_url: '',
 };
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -141,6 +148,7 @@ export default function ContasBancarias() {
       conta: conta.conta || '', chave_pix: conta.chave_pix || '',
       saldo_inicial: String(conta.saldo_inicial ?? 0),
       status: conta.status || 'ativa', observacoes: conta.observacoes || '',
+      logo_url: conta.logo_url || '',
     });
     setModalOpen(true);
     setMenuAberto(null);
@@ -157,6 +165,7 @@ export default function ContasBancarias() {
       saldo_inicial: saldoInicial,
       saldo_atual: editingConta ? editingConta.saldo_atual : saldoInicial,
       status: form.status, observacoes: form.observacoes,
+      logo_url: form.logo_url || '',
     };
     if (editingConta) {
       await base44.entities.ContaBancaria.update(editingConta.id, payload);
@@ -373,7 +382,7 @@ function ContaCard({ conta, isAdmin, menuAberto, setMenuAberto, onEditar, onTogg
         {/* Topo */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            <BancoAvatar banco={conta.banco} size="md" />
+            <BancoAvatar banco={conta.banco} logoUrl={conta.logo_url} size="md" />
             <div className="min-w-0">
               <p className="font-bold text-slate-800 text-sm leading-tight truncate">{conta.nome_conta}</p>
               <p className="text-xs text-slate-400 truncate">{nomeEmpresa || conta.banco}</p>
@@ -492,7 +501,7 @@ function ContaRow({ conta, isAdmin, onEditar, onToggleStatus }) {
     <Card className="border border-slate-200">
       <CardContent className="p-3">
         <div className="flex items-center gap-4">
-          <BancoAvatar banco={conta.banco} size="sm" />
+          <BancoAvatar banco={conta.banco} logoUrl={conta.logo_url} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-slate-800 truncate">{conta.nome_conta}</p>
             <p className="text-xs text-slate-400">{conta.banco} · {conta.tipo_conta}</p>
@@ -518,6 +527,18 @@ function ContaRow({ conta, isAdmin, onEditar, onToggleStatus }) {
 
 // ─── ContaModal ───────────────────────────────────────────────────────────────
 function ContaModal({ open, onOpenChange, form, setForm, editingConta, onSalvar, saving }) {
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(f => ({ ...f, logo_url: file_url }));
+    setUploadingLogo(false);
+    e.target.value = '';
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -525,6 +546,36 @@ function ContaModal({ open, onOpenChange, form, setForm, editingConta, onSalvar,
           <DialogTitle>{editingConta ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {/* Logo do banco */}
+          <div>
+            <Label>Logo do Banco (opcional)</Label>
+            <div className="mt-1 flex items-center gap-3">
+              {form.logo_url ? (
+                <div className="w-14 h-14 rounded-xl border border-slate-200 bg-white p-1 flex-shrink-0 overflow-hidden">
+                  <img src={form.logo_url} alt="logo" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-14 h-14 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 flex-shrink-0">
+                  <Building2 className="w-6 h-6" />
+                </div>
+              )}
+              <div>
+                <label className="cursor-pointer">
+                  <span className="inline-block text-xs px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 text-slate-600">
+                    {uploadingLogo ? 'Enviando...' : 'Escolher imagem'}
+                  </span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                </label>
+                {form.logo_url && (
+                  <button className="ml-2 text-xs text-red-500 hover:underline" onClick={() => setForm(f => ({ ...f, logo_url: '' }))}>
+                    Remover
+                  </button>
+                )}
+                <p className="text-xs text-slate-400 mt-1">Aparece no card da conta. PNG, JPG ou SVG.</p>
+              </div>
+            </div>
+          </div>
+
           <div>
             <Label>Nome da Conta *</Label>
             <Input className="mt-1" placeholder="Ex: Conta Principal JD Promotora" value={form.nome_conta} onChange={e => setForm(f => ({ ...f, nome_conta: e.target.value }))} />
