@@ -40,12 +40,14 @@ import {
   Pencil,
   Building2,
   MessageSquare,
-  Plug
+  Plug,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SincronizacaoCanopus from '@/components/configuracoes/SincronizacaoCanopus';
 import ConfiguracaoWhatsApp from '@/pages/ConfiguracaoWhatsApp';
 import ConfiguracaoApi from '@/pages/ConfiguracaoApi';
+import IntegracaoFinantoBank from '@/pages/IntegracaoFinantoBank';
 
 
 export default function Configuracoes() {
@@ -175,6 +177,7 @@ export default function Configuracoes() {
           <TabsTrigger value="geral"><Settings className="w-4 h-4 mr-1.5" />Geral</TabsTrigger>
           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
           <TabsTrigger value="api"><Plug className="w-4 h-4 mr-1.5" />API</TabsTrigger>
+          <TabsTrigger value="finanto"><FileText className="w-4 h-4 mr-1.5" />FinantoBank INSS</TabsTrigger>
         </TabsList>
 
         <TabsContent value="whatsapp">
@@ -183,6 +186,10 @@ export default function Configuracoes() {
 
         <TabsContent value="api">
           <ConfiguracaoApi />
+        </TabsContent>
+
+        <TabsContent value="finanto">
+          <IntegracaoFinantoBank />
         </TabsContent>
 
         <TabsContent value="geral" className="space-y-6">

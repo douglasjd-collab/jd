@@ -353,7 +353,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Minhas Comissões', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
-    { name: 'FinantoBank INSS', icon: FileText, page: 'IntegracaoFinantoBank', roles: ALL_ROLES },
     { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     {
       name: 'Funcionários',
