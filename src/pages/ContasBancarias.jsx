@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Eye, TrendingUp, Search, LayoutGrid, List, MoreVertical, Building2, Hash, Key, CreditCard } from 'lucide-react';
+import { Plus, Pencil, Eye, TrendingUp, Search, LayoutGrid, List, MoreVertical, Building2, Hash, Key, CreditCard, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -91,6 +91,8 @@ function gerarSparkline(saldo) {
 export default function ContasBancarias() {
   const [user, setUser] = useState(null);
   const [contas, setContas] = useState([]);
+  const [despesas, setDespesas] = useState([]);
+  const [receitas, setReceitas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingConta, setEditingConta] = useState(null);
@@ -118,8 +120,14 @@ export default function ContasBancarias() {
   const carregar = async (u) => {
     setLoading(true);
     const filtro = u?.empresa_id ? { empresa_id: u.empresa_id } : {};
-    const data = await base44.entities.ContaBancaria.filter(filtro, 'nome_conta', 200);
+    const [data, desp, rec] = await Promise.all([
+      base44.entities.ContaBancaria.filter(filtro, 'nome_conta', 200),
+      base44.entities.Despesa.filter(filtro, null, 2000),
+      base44.entities.Receita.filter(filtro, null, 2000),
+    ]);
     setContas(data);
+    setDespesas(desp);
+    setReceitas(rec);
     setLoading(false);
   };
 
@@ -308,6 +316,8 @@ export default function ContasBancarias() {
               setMenuAberto={setMenuAberto}
               onEditar={abrirEditar}
               onToggleStatus={toggleStatus}
+              despesas={despesas}
+              receitas={receitas}
             />
           ))}
         </div>
@@ -340,10 +350,19 @@ export default function ContasBancarias() {
 }
 
 // ─── ContaCard ────────────────────────────────────────────────────────────────
-function ContaCard({ conta, isAdmin, menuAberto, setMenuAberto, onEditar, onToggleStatus }) {
+function ContaCard({ conta, isAdmin, menuAberto, setMenuAberto, onEditar, onToggleStatus, despesas = [], receitas = [] }) {
   const spark = gerarSparkline(conta.saldo_atual);
   const tagCor = BANCO_TAG_COR[conta.banco] || 'bg-slate-100 text-slate-600';
   const nomeEmpresa = conta.nome_conta?.split(' ').slice(-2).join(' ') || '';
+
+  // Entradas e saídas do mês atual para esta conta
+  const mesAtual = new Date().toISOString().slice(0, 7); // "2026-04"
+  const entradasMes = receitas
+    .filter(r => r.conta_bancaria_id === conta.id && r.status === 'recebida' && (r.data || '').startsWith(mesAtual))
+    .reduce((s, r) => s + (r.valor || 0), 0);
+  const saidasMes = despesas
+    .filter(d => d.conta_bancaria_id === conta.id && ['pago','paga'].includes(d.status) && (d.data || '').startsWith(mesAtual))
+    .reduce((s, d) => s + (d.valor || 0), 0);
 
   return (
     <Card className={`relative overflow-visible border border-slate-200 hover:shadow-md transition-shadow ${conta.status === 'inativa' ? 'opacity-60' : ''}`}>
@@ -429,6 +448,18 @@ function ContaCard({ conta, isAdmin, menuAberto, setMenuAberto, onEditar, onTogg
           </p>
         </div>
 
+        {/* Entradas / Saídas do mês */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <p className="text-xs text-slate-400 mb-0.5">Entradas (mês)</p>
+            <p className="text-sm font-semibold text-green-600">{fmt(entradasMes)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-0.5">Saídas (mês)</p>
+            <p className="text-sm font-semibold text-red-500">{fmt(saidasMes)}</p>
+          </div>
+        </div>
+
         {/* Sparkline */}
         <div>
           <p className="text-xs text-slate-400 mb-1">Últimos 7 dias</p>
@@ -436,13 +467,20 @@ function ContaCard({ conta, isAdmin, menuAberto, setMenuAberto, onEditar, onTogg
         </div>
 
         {/* Botões */}
-        {isAdmin && (
-          <div className="flex gap-2 mt-3">
-            <Button size="sm" variant="outline" className="flex-1 text-xs h-8 gap-1" onClick={() => onEditar(conta)}>
+        <div className="flex gap-2 mt-3">
+          <Button
+            size="sm" variant="outline"
+            className="flex-1 text-xs h-8 gap-1"
+            onClick={() => window.location.href = `/Transacoes?conta_id=${conta.id}`}
+          >
+            <Eye className="w-3 h-3" /> Ver Movimentações
+          </Button>
+          {isAdmin && (
+            <Button size="sm" variant="outline" className="text-xs h-8 gap-1 px-3" onClick={() => onEditar(conta)}>
               <Pencil className="w-3 h-3" /> Editar
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
