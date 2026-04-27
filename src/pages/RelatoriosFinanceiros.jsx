@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -73,6 +73,15 @@ export default function RelatoriosFinanceiros() {
     queryKey: ['pagamentos-comissao-lote-relatorio'],
     queryFn: async () => {
       return await base44.entities.PagamentoComissaoLote.filter({});
+    },
+    enabled: !!user,
+  });
+
+  const { data: contasBancarias = [] } = useQuery({
+    queryKey: ['contas-bancarias-relatorio', user?.empresa_id],
+    queryFn: async () => {
+      const filtro = user?.empresa_id ? { empresa_id: user.empresa_id, status: 'ativa' } : { status: 'ativa' };
+      return await base44.entities.ContaBancaria.filter(filtro);
     },
     enabled: !!user,
   });
@@ -264,6 +273,34 @@ export default function RelatoriosFinanceiros() {
         <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Dashboard Financeiro</h1>
         <p className={`mb-6 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Visão consolidada de todas as movimentações financeiras</p>
       </div>
+
+      {/* Saldo Total em Contas Bancárias */}
+      {contasBancarias.length > 0 && (() => {
+        const saldoTotal = contasBancarias.reduce((s, c) => s + (c.saldo_atual || 0), 0);
+        return (
+          <Card className={`mb-6 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-gradient-to-r from-[#10353C] to-[#1a4f5a] border-0'}`}>
+            <CardContent className="p-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-white/70 text-sm mb-1">Saldo Total em Contas Ativas</p>
+                  <p className="text-4xl font-bold text-white">{saldoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {contasBancarias.map(c => (
+                    <div key={c.id} className="bg-white/10 rounded-lg px-4 py-2 min-w-[130px]">
+                      <p className="text-white/60 text-xs truncate">{c.banco}</p>
+                      <p className="text-white/80 text-xs truncate">{c.nome_conta}</p>
+                      <p className={`text-sm font-bold mt-1 ${(c.saldo_atual || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                        {(c.saldo_atual || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Botões de Acesso Rápido */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">

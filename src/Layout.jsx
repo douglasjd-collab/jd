@@ -294,6 +294,7 @@ export default function Layout({ children, currentPageName }) {
       roles: ['master', 'super_admin', 'admin'],
       submenu: [
         { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
+        { name: 'Contas Bancárias', page: 'ContasBancarias' },
         { name: 'Transações', page: 'Transacoes' },
         { name: 'Receber Comissão', page: 'ReceberComissao' },
         { name: 'Comissões a Pagar (Consórcio)', page: 'ComissoesPagar' },
