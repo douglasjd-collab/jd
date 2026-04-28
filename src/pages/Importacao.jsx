@@ -174,7 +174,7 @@ export default function Importacao() {
 
       {/* Ações de Importação */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link to={createPageUrl('ImportacaoComissao')}>
+        <Link to={createPageUrl('ImportacaoComissaoEmprestimo')}>
           <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
@@ -183,7 +183,7 @@ export default function Importacao() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg text-slate-900 mb-1">Importar Comissões</h3>
-                  <p className="text-sm text-slate-600">Importe arquivos CSV de comissões recebidas</p>
+                  <p className="text-sm text-slate-600">Importe arquivos CSV comissões de Empréstimos</p>
                 </div>
               </div>
             </CardContent>
