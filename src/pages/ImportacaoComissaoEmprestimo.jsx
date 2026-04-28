@@ -323,17 +323,34 @@ export default function ImportacaoComissaoEmprestimo() {
       }));
       await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-      // Atualizar proposta: comissao_banco_recebida + percentual + valor_comissao + data_recebimento + valor_credito
+      // Atualizar proposta: comissao_banco_recebida + percentual + valor_comissao + data_recebimento + valores financeiros
       const atualizacoesPorVenda = {};
       for (let ri = 0; ri < recebimentosCriados.length; ri++) {
         const rec = recebimentosCriados[ri];
         const itemOriginal = items[ri] || {};
         if (!atualizacoesPorVenda[rec.venda_id]) {
-          atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_base_comissao: itemOriginal.valor_base_comissao || null };
+          atualizacoesPorVenda[rec.venda_id] = {
+            valor: 0,
+            pct: rec.percentual_comissao,
+            data: rec.data_recebimento,
+            valor_base_comissao: itemOriginal.valor_base_comissao || null,
+            valor_bruto: itemOriginal.valor_bruto || null,
+            valor_liquido: itemOriginal.valor_liquido || null,
+            valor_parcela: itemOriginal.valor_parcela || null,
+          };
         }
         atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
         if (!atualizacoesPorVenda[rec.venda_id].valor_base_comissao && itemOriginal.valor_base_comissao) {
           atualizacoesPorVenda[rec.venda_id].valor_base_comissao = itemOriginal.valor_base_comissao;
+        }
+        if (!atualizacoesPorVenda[rec.venda_id].valor_bruto && itemOriginal.valor_bruto) {
+          atualizacoesPorVenda[rec.venda_id].valor_bruto = itemOriginal.valor_bruto;
+        }
+        if (!atualizacoesPorVenda[rec.venda_id].valor_liquido && itemOriginal.valor_liquido) {
+          atualizacoesPorVenda[rec.venda_id].valor_liquido = itemOriginal.valor_liquido;
+        }
+        if (!atualizacoesPorVenda[rec.venda_id].valor_parcela && itemOriginal.valor_parcela) {
+          atualizacoesPorVenda[rec.venda_id].valor_parcela = itemOriginal.valor_parcela;
         }
       }
       for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
@@ -346,7 +363,10 @@ export default function ImportacaoComissaoEmprestimo() {
             data_comissao_recebida: info.data,
             percentual_comissao_vendedor: info.pct || p.percentual_comissao_vendedor,
           };
-          if (info.valor_base_comissao) upd.valor_credito = info.valor_base_comissao;
+          if (info.valor_bruto) upd.valor_credito = info.valor_bruto;
+          if (info.valor_liquido) upd.valor_liquido = info.valor_liquido;
+          if (info.valor_base_comissao) upd.comissao_banco_base_comissao = info.valor_base_comissao;
+          if (info.valor_parcela) upd.emprestimo_valor_parcela = info.valor_parcela;
           await base44.entities.Proposta.update(vendaId, upd);
         }
       }
@@ -547,17 +567,34 @@ export default function ImportacaoComissaoEmprestimo() {
         });
         await base44.entities.ComissaoAPagar.bulkCreate(comissoesAPagar);
 
-        // Atualizar proposta: comissao_banco_recebida + percentual + valor_comissao + data_recebimento + valor_credito
+        // Atualizar proposta: comissao_banco_recebida + percentual + valor_comissao + data_recebimento + valores financeiros
         const atualizacoesPorVenda = {};
         for (let ri = 0; ri < recebimentosCriados.length; ri++) {
           const rec = recebimentosCriados[ri];
           const itemOriginal = previewData.items[rec._itemIdx ?? ri] || {};
           if (!atualizacoesPorVenda[rec.venda_id]) {
-            atualizacoesPorVenda[rec.venda_id] = { valor: 0, pct: rec.percentual_comissao, data: rec.data_recebimento, valor_base_comissao: itemOriginal.valor_base_comissao || null };
+            atualizacoesPorVenda[rec.venda_id] = {
+              valor: 0,
+              pct: rec.percentual_comissao,
+              data: rec.data_recebimento,
+              valor_base_comissao: itemOriginal.valor_base_comissao || null,
+              valor_bruto: itemOriginal.valor_bruto || null,
+              valor_liquido: itemOriginal.valor_liquido || null,
+              valor_parcela: itemOriginal.valor_parcela || null,
+            };
           }
           atualizacoesPorVenda[rec.venda_id].valor += rec.valor_recebido;
           if (!atualizacoesPorVenda[rec.venda_id].valor_base_comissao && itemOriginal.valor_base_comissao) {
             atualizacoesPorVenda[rec.venda_id].valor_base_comissao = itemOriginal.valor_base_comissao;
+          }
+          if (!atualizacoesPorVenda[rec.venda_id].valor_bruto && itemOriginal.valor_bruto) {
+            atualizacoesPorVenda[rec.venda_id].valor_bruto = itemOriginal.valor_bruto;
+          }
+          if (!atualizacoesPorVenda[rec.venda_id].valor_liquido && itemOriginal.valor_liquido) {
+            atualizacoesPorVenda[rec.venda_id].valor_liquido = itemOriginal.valor_liquido;
+          }
+          if (!atualizacoesPorVenda[rec.venda_id].valor_parcela && itemOriginal.valor_parcela) {
+            atualizacoesPorVenda[rec.venda_id].valor_parcela = itemOriginal.valor_parcela;
           }
         }
         for (const [vendaId, info] of Object.entries(atualizacoesPorVenda)) {
@@ -570,7 +607,10 @@ export default function ImportacaoComissaoEmprestimo() {
               data_comissao_recebida: info.data,
               percentual_comissao_vendedor: info.pct || p.percentual_comissao_vendedor,
             };
-            if (info.valor_base_comissao) upd.valor_credito = info.valor_base_comissao;
+            if (info.valor_bruto) upd.valor_credito = info.valor_bruto;
+            if (info.valor_liquido) upd.valor_liquido = info.valor_liquido;
+            if (info.valor_base_comissao) upd.comissao_banco_base_comissao = info.valor_base_comissao;
+            if (info.valor_parcela) upd.emprestimo_valor_parcela = info.valor_parcela;
             await base44.entities.Proposta.update(vendaId, upd);
           }
         }
