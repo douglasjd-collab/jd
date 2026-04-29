@@ -282,18 +282,36 @@ Deno.serve(async (req) => {
           } catch (_) {}
         }
 
-        // Criar adiantamento
-        const adiantamento = await base44.asServiceRole.entities.Adiantamento.create({
-          empresa_id: jdEmpresaId,
-          colaborador_id: colaboradorId,
-          colaborador_nome: colaboradorNome,
-          valor: session.valor,
-          data: session.data,
-          descricao: session.descricao || `Adiantamento ${colaboradorNome}`,
-          status: 'solicitado',
-        });
+        // Criar adiantamento na entidade correta conforme tipo
+        let adiantamentoId = null;
+        let adiantamentoData = null;
 
-        // Lançar como despesa na empresa
+        if (data === "adv_funcionario") {
+          adiantamentoData = await base44.asServiceRole.entities.AdiantamentoFuncionario.create({
+            empresa_id: jdEmpresaId,
+            colaborador_id: colaboradorId,
+            colaborador_nome: colaboradorNome,
+            valor: session.valor,
+            data: session.data,
+            descricao: session.descricao || `Adiantamento ${colaboradorNome}`,
+            status: 'Pendente',
+          });
+          adiantamentoId = adiantamentoData.id;
+        } else {
+          // Vendedor/Parceiro
+          adiantamentoData = await base44.asServiceRole.entities.Adiantamento.create({
+            empresa_id: jdEmpresaId,
+            colaborador_id: colaboradorId,
+            colaborador_nome: colaboradorNome,
+            valor: session.valor,
+            data: session.data,
+            descricao: session.descricao || `Adiantamento ${colaboradorNome}`,
+            status: 'solicitado',
+          });
+          adiantamentoId = adiantamentoData.id;
+        }
+
+        // Lançar como despesa/transação
         const created = await base44.asServiceRole.entities.Despesa.create({
           empresa_id: jdEmpresaId,
           valor: session.valor,
@@ -307,7 +325,7 @@ Deno.serve(async (req) => {
           responsavel_nome: colaboradorNome,
           usuario_id: usuarioId,
           usuario_nome: 'Telegram Bot',
-          observacao: `Adiantamento ${tipoLabel} lançado via Telegram - ID Adiantamento: ${adiantamento.id}`,
+          observacao: `Adiantamento ${tipoLabel} lançado via Telegram - ID: ${adiantamentoId}`,
         });
 
         const valorFmt = session.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -317,8 +335,8 @@ Deno.serve(async (req) => {
           `🏷️ Tipo: <b>${tipoLabel}</b>\n` +
           `💰 Valor: <b>${valorFmt}</b>\n` +
           `📅 Data: ${session.data}\n` +
-          `<code>ID Adiantamento: ${adiantamento.id}</code>\n` +
-          `<code>ID Despesa: ${created.id}</code>`
+          `<code>ID ${tipoLabel}: ${adiantamentoId}</code>\n` +
+          `<code>ID Transação: ${created.id}</code>`
         );
         return Response.json({ ok: true });
       }
