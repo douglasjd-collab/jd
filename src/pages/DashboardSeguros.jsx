@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Shield, TrendingUp, DollarSign, Clock, AlertTriangle, XCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Shield, TrendingUp, DollarSign, Clock, AlertTriangle, XCircle, CheckCircle, RefreshCw, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, parseISO, startOfMonth, endOfMonth, differenceInDays, subMonths, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -340,6 +341,37 @@ export default function DashboardSeguros() {
                 onChange={e => setFiltroComissaoMes(e.target.value)}
                 className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+              <button
+                onClick={() => {
+                  const [anoFiltro, mesFiltro] = filtroComissaoMes.split('-').map(Number);
+                  const dados = propostas
+                    .filter(p => {
+                      const dataRef = p.data_inicio || p.created_date;
+                      if (!dataRef) return false;
+                      const d = new Date(dataRef);
+                      return d.getFullYear() === anoFiltro && d.getMonth() + 1 === mesFiltro;
+                    })
+                    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
+                    .slice(0, 10)
+                    .map(p => ({
+                      Vendedor: p.vendedor_nome || '',
+                      Cliente: p.cliente_nome || '',
+                      Seguradora: p.seguradora_nome || '',
+                      Tipo: p.tipo_plano || '',
+                      Vencimento: p.data_vencimento ? format(parseISO(p.data_vencimento), 'dd/MM/yyyy') : '',
+                      'Parcela (R$)': p.valor_parcela || 0,
+                      'Adesão (R$)': p.valor_adesao || 0,
+                      Status: p.status || '',
+                    }));
+                  const ws = XLSX.utils.json_to_sheet(dados);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'Comissões');
+                  XLSX.writeFile(wb, `comissoes_${filtroComissaoMes}.xlsx`);
+                }}
+                className="flex items-center gap-1.5 text-xs text-emerald-700 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-1.5 font-medium transition whitespace-nowrap"
+              >
+                <Download className="w-3.5 h-3.5" /> Exportar Excel
+              </button>
               <Link to="/CobrancaSeguro" className="text-xs text-amber-600 hover:underline font-medium whitespace-nowrap">Ver todas →</Link>
             </div>
           </div>
