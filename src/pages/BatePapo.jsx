@@ -444,17 +444,23 @@ export default function BatePapo() {
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
       console.log(`🔍 Após filtro: ${filtradas.length} conversas válidas`);
 
-      // Carregar contadores de não lidas iniciais — busca única de todas não lidas da empresa
+      // Carregar contadores de não lidas iniciais — busca todas as conversas com mensagens não lidas
       const conversaAtualId = conversaSelecionadaIdRef.current;
       try {
+        // Buscar IDs das conversas filtradas para filtrar corretamente
+        const conversaIds = filtradas.map(c => c.id);
+        
+        // Buscar mensagens não lidas de cliente (sem filtrar por empresa_id pois pode não estar preenchido)
         const msgsNaoLidas = await base44.entities.MensagemWhatsapp.filter(
-          { empresa_id: empresaId, remetente: 'cliente', status: { $ne: 'lida' } },
+          { remetente: 'cliente', status: { $ne: 'lida' } },
           '-data_envio',
-          2000
+          3000
         );
+        
         const contadoresIniciais = {};
         msgsNaoLidas.forEach(m => {
-          if (m.conversa_id && m.conversa_id !== conversaAtualId) {
+          // Só contar se a conversa pertence a esta empresa e não está aberta
+          if (m.conversa_id && m.conversa_id !== conversaAtualId && conversaIds.includes(m.conversa_id)) {
             contadoresIniciais[m.conversa_id] = (contadoresIniciais[m.conversa_id] || 0) + 1;
           }
         });
