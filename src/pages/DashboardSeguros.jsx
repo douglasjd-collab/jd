@@ -272,6 +272,78 @@ export default function DashboardSeguros() {
           </Link>
         ))}
       </div>
+
+      {/* Tabela: 10 comissões pendentes mais recentes */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-amber-500" />
+              Comissões Pendentes de Seguros (mais recentes)
+            </CardTitle>
+            <Link to="/CobrancaSeguro" className="text-xs text-amber-600 hover:underline font-medium">Ver todas →</Link>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {(() => {
+            const pendentes = propostas
+              .filter(p => ['atrasado', 'em_renovacao', 'pendente'].includes(p.status))
+              .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
+              .slice(0, 10);
+
+            if (pendentes.length === 0) {
+              return <p className="text-sm text-slate-400 text-center py-8">Nenhuma comissão pendente encontrada</p>;
+            }
+
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Vendedor</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Cliente</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Seguradora</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Vencimento</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Parcela</th>
+                      <th className="text-center px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {pendentes.map((p, i) => {
+                      const statusColor = p.status === 'atrasado'
+                        ? 'bg-red-100 text-red-700'
+                        : p.status === 'em_renovacao'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-slate-100 text-slate-600';
+                      const statusLabel = p.status === 'atrasado' ? 'Atrasado'
+                        : p.status === 'em_renovacao' ? 'Em Renovação'
+                        : 'Pendente';
+                      return (
+                        <tr key={p.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                          <td className="px-4 py-3 font-medium text-slate-800">{p.vendedor_nome || '—'}</td>
+                          <td className="px-4 py-3 text-slate-600 max-w-[160px] truncate">{p.cliente_nome || '—'}</td>
+                          <td className="px-4 py-3 text-slate-500">{p.seguradora_nome || '—'}</td>
+                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                            {p.data_vencimento ? format(parseISO(p.data_vencimento), 'dd/MM/yyyy') : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">
+                            R$ {(p.valor_parcela || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                              {statusLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
     </div>
   );
 }
