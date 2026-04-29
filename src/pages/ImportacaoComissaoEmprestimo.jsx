@@ -220,7 +220,7 @@ export default function ImportacaoComissaoEmprestimo() {
       const item = items[idx];
       const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
       const cpfRaw = String(item.cpf || '').trim();
-      const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
+      const dataRecebimento = item.data_recebimento || '';
       let propostaEncontrada = null;
       let motivoDivergencia = '';
 
@@ -439,7 +439,7 @@ export default function ImportacaoComissaoEmprestimo() {
         const item = previewData.items[idx];
         const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
         const cpfRaw = String(item.cpf || '').trim();
-        const dataRecebimento = item.data_recebimento || format(new Date(), 'yyyy-MM-dd');
+        const dataRecebimento = item.data_recebimento || '';
         let propostaEncontrada = null;
         let motivoDivergencia = '';
 
