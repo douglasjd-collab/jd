@@ -625,20 +625,36 @@ Deno.serve(async (req) => {
     if (intent.action === "create_opportunity") {
       const op = intent.opportunity || {};
       if (!op.nome) {
-        await sendTelegram(chatId, "❓ Para criar a oportunidade, preciso pelo menos do <b>nome/título</b>.");
+        await sendTelegram(chatId, "❓ Para criar a oportunidade, preciso do <b>nome/título</b>.");
         return Response.json({ ok: true });
       }
+
+      // Guardar sessão e solicitar telefone
+      pendingSessions.set(`oportunidade_${chatId}`, {
+        nome: op.nome,
+        produto: op.produto || 'consorcio',
+        observacao: op.observacao || null,
+        valor: op.valor || 0,
+      });
+
+      await sendTelegram(chatId, `📞 Qual é o <b>telefone</b> do lead?\n\n(ou digite "skip" para pular)`);
+      return Response.json({ ok: true });
+    }
+
+    // ── Fluxo de oportunidade - recebendo telefone ────────────────────────
+    const sessaoOp = pendingSessions.get(`oportunidade_${chatId}`);
+    if (sessaoOp) {
+      const telefone = original === "skip" ? null : original;
+      pendingSessions.delete(`oportunidade_${chatId}`);
 
       // Buscar primeira etapa ativa do funil
       let etapaId = null;
       let etapaNome = '';
-      let produto = op.produto || 'consorcio';
       try {
         const etapas = await base44.asServiceRole.entities.EtapaFunil.filter(
           empresaId !== 'TELEGRAM_BOT' ? { empresa_id: empresaId, status: 'ativa' } : { status: 'ativa' },
           'ordem', 50
         );
-        // Pegar a primeira etapa de tipo aberta
         const primeiraEtapa = etapas.find(e => e.tipo === 'aberta') || etapas[0];
         if (primeiraEtapa) {
           etapaId = primeiraEtapa.id;
@@ -647,7 +663,7 @@ Deno.serve(async (req) => {
       } catch (_) {}
 
       if (!etapaId) {
-        await sendTelegram(chatId, "⚠️ Não encontrei etapas configuradas no funil. Configure as etapas primeiro no sistema.");
+        await sendTelegram(chatId, "⚠️ Não encontrei etapas configuradas no funil. Configure as etapas primeiro.");
         return Response.json({ ok: true });
       }
 
@@ -655,22 +671,21 @@ Deno.serve(async (req) => {
 
       const created = await base44.asServiceRole.entities.Oportunidade.create({
         empresa_id: empresaId,
-        titulo: op.nome,
-        cliente_nome: op.nome,
-        telefone_lead: op.telefone || null,
+        titulo: sessaoOp.nome,
+        cliente_nome: sessaoOp.nome,
+        telefone_lead: telefone || null,
         etapa_id: etapaId,
         etapa_nome: etapaNome,
-        produto: produto,
+        produto: sessaoOp.produto,
         origem: 'Telegram',
-        observacoes: op.observacao || null,
+        observacoes: sessaoOp.observacao,
         vendedor_id: usuarioId,
         data_cadastro_lead: hoje,
         data_ultima_movimentacao: new Date().toISOString(),
         status: 'aberta',
-        valor_estimado: op.valor || 0,
+        valor_estimado: sessaoOp.valor,
       });
 
-      // Registrar movimentação inicial
       try {
         await base44.asServiceRole.entities.MovimentacaoFunil.create({
           oportunidade_id: created.id,
@@ -685,9 +700,9 @@ Deno.serve(async (req) => {
       await sendTelegram(chatId,
         `✅ <b>Oportunidade criada no Funil!</b>\n\n` +
         `👤 <b>${created.titulo}</b>\n` +
-        (op.telefone ? `📞 ${op.telefone}\n` : '') +
+        (telefone ? `📞 ${telefone}\n` : '') +
         `🏷️ Etapa: <b>${etapaNome}</b>\n` +
-        `📦 Funil: <b>${produto === 'consorcio' ? 'Consórcio' : 'Empréstimo'}</b>\n` +
+        `📦 Funil: <b>${sessaoOp.produto === 'consorcio' ? 'Consórcio' : 'Empréstimo'}</b>\n` +
         `<code>ID ${created.id}</code>`
       );
       return Response.json({ ok: true });
