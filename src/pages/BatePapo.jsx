@@ -1158,6 +1158,9 @@ export default function BatePapo() {
                   ) : (
                     conversasFiltradas.map((c) => {
                     const naoLidas = naoLidasPorConversa[c.id] ?? 0;
+                      // Badge verde: mostra quando há msgs não lidas OU quando está em espera (ultimo_remetente = cliente)
+                      const mostrarBadge = naoLidas > 0 || estaEmEspera(c);
+                      const contadorBadge = naoLidas > 0 ? naoLidas : '!';
                       const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
                       const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
                       const hora = c.data_ultima_mensagem
@@ -1197,7 +1200,7 @@ export default function BatePapo() {
                               <div className="flex items-center gap-1 min-w-0">
                                 <MessageCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                                 <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${statusColor}`} />
-                                <p className={`truncate text-sm text-slate-900 ${naoLidas > 0 ? 'font-bold' : 'font-semibold'}`}>
+                                <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
                                   {nome}
                                 </p>
                               </div>
@@ -1252,18 +1255,18 @@ export default function BatePapo() {
                             </div>
 
                             {/* Linha 2: última mensagem */}
-                            <p className={`line-clamp-1 text-xs ${naoLidas > 0 ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                            <p className={`line-clamp-1 text-xs ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
                               {ultimaMsg}
                             </p>
 
                             {/* Linha 3: hora + badge não lidas estilo WhatsApp */}
                             <div className="flex items-center justify-between gap-1 mt-0.5">
-                              <p className={`text-[11px] ${naoLidas > 0 ? 'text-[#25D366] font-semibold' : 'text-slate-400'}`}>{hora}</p>
-                              {naoLidas > 0 ? (
+                              <p className={`text-[11px] ${mostrarBadge ? 'text-[#25D366] font-semibold' : 'text-slate-400'}`}>{hora}</p>
+                              {mostrarBadge && (
                                 <span style={{ backgroundColor: '#25D366', minWidth: '22px', height: '22px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none px-1.5">
-                                  {naoLidas}
+                                  {contadorBadge}
                                 </span>
-                              ) : null}
+                              )}
                             </div>
                           </div>
                         </div>
