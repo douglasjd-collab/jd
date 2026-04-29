@@ -443,6 +443,24 @@ export default function BatePapo() {
       
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
       console.log(`🔍 Após filtro: ${filtradas.length} conversas válidas`);
+
+      // Carregar contadores de não lidas iniciais — busca única de todas não lidas da empresa
+      const conversaAtualId = conversaSelecionadaIdRef.current;
+      try {
+        const msgsNaoLidas = await base44.entities.MensagemWhatsapp.filter(
+          { empresa_id: empresaId, remetente: 'cliente', status: { $ne: 'lida' } },
+          '-data_envio',
+          2000
+        );
+        const contadoresIniciais = {};
+        msgsNaoLidas.forEach(m => {
+          if (m.conversa_id && m.conversa_id !== conversaAtualId) {
+            contadoresIniciais[m.conversa_id] = (contadoresIniciais[m.conversa_id] || 0) + 1;
+          }
+        });
+        setNaoLidasPorConversa(prev => ({ ...prev, ...contadoresIniciais }));
+      } catch (_) {}
+
       return filtradas;
     },
     refetchInterval: false,
