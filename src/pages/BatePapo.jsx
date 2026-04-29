@@ -1142,31 +1142,35 @@ export default function BatePapo() {
                 </Tooltip>
               </div>
 
-              <Tabs value={filtroStatus} onValueChange={setFiltroStatus} className="w-full">
-                <TabsList className="flex flex-wrap w-full rounded-xl bg-slate-100 p-0.5 h-auto gap-0.5">
-                  {[
-                    { value: 'todas', label: 'Todos', cor: 'bg-sky-500' },
-                    { value: 'espera', label: 'Em Espera', cor: 'bg-amber-500' },
-                    { value: 'ativa', label: 'Atendimento', cor: 'bg-emerald-500' },
-                    { value: 'arquivada', label: 'Finalizados', cor: 'bg-slate-500' },
-                    { value: 'transferida', label: 'Transferidos', cor: 'bg-purple-500' },
-                    { value: 'meu', label: 'Meu Atend.', cor: 'bg-blue-500' },
-                  ].map(tab => (
-                    <TabsTrigger
+              {/* Abas estilo da imagem: contador em cima, label embaixo */}
+              <div className="flex flex-wrap gap-x-1 gap-y-2">
+                {[
+                  { value: 'todas', label: 'Todos', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
+                  { value: 'espera', label: 'Esperando', cor: 'bg-red-500', corAtiva: 'bg-red-600' },
+                  { value: 'ativa', label: 'Em Atend.', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
+                  { value: 'arquivada', label: 'Finalizados', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
+                  { value: 'grupos', label: 'Grupos', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
+                  { value: 'meu', label: 'Responsável', cor: 'bg-emerald-500', corAtiva: 'bg-emerald-600' },
+                  { value: 'transferida', label: 'Transferidos', cor: 'bg-purple-500', corAtiva: 'bg-purple-600' },
+                ].map(tab => {
+                  const count = contadores[tab.value] || 0;
+                  const ativa = filtroStatus === tab.value;
+                  return (
+                    <button
                       key={tab.value}
-                      value={tab.value}
-                      className="rounded-lg text-[11px] px-2 py-1.5 gap-1 data-[state=active]:bg-[#23BE84] data-[state=active]:text-white data-[state=active]:shadow-sm whitespace-nowrap"
+                      onClick={() => setFiltroStatus(tab.value)}
+                      className="flex flex-col items-center gap-0.5 min-w-[46px]"
                     >
-                      {tab.label}
-                      {contadores[tab.value] > 0 && (
-                        <span className={`inline-flex items-center justify-center rounded-full ${tab.cor} text-white text-[9px] font-bold leading-none px-1 py-0.5 min-w-[14px]`}>
-                          {contadores[tab.value]}
-                        </span>
-                      )}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+                      <span className={`inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold px-2 py-0.5 min-w-[26px] ${ativa ? tab.corAtiva : tab.cor} ${ativa ? 'ring-2 ring-offset-1 ring-current' : 'opacity-80'}`}>
+                        {count}
+                      </span>
+                      <span className={`text-[10px] font-medium whitespace-nowrap ${ativa ? 'text-slate-900' : 'text-slate-500'}`}>
+                        {tab.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
               <ScrollArea className="mt-1 flex-1 w-full">
                 <div className="space-y-1 pb-4 pr-4">
@@ -1175,117 +1179,119 @@ export default function BatePapo() {
                       <MessageCircle className="w-8 h-8 opacity-40" />
                     </div>
                   ) : (
-                    conversasFiltradas.map((c) => (
-                      <div
-                        key={c.id}
-                        className={classNames(
-                          "flex w-full items-center gap-2 rounded-2xl px-2.5 py-2 text-left text-xs transition cursor-pointer",
-                          conversaSelecionada?.id === c.id
-                            ? "bg-sky-50 ring-1 ring-sky-100"
-                            : estaEmEspera(c)
-                            ? "bg-amber-50/60 hover:bg-amber-50"
-                            : "hover:bg-slate-50"
-                        )}
-                        onClick={() => selecionarConversa(c)}
-                      >
-                        <div className="relative flex-shrink-0">
-                          <AvatarContato 
-                             contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
-                             className="h-10 w-10"
-                           />
-                          {estaEmEspera(c) && (
-                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-amber-400" title="Em espera" />
-                          )}
-                          {estaEmAtendimento(c) && (
-                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" title="Em atendimento" />
-                          )}
-                        </div>
+                    conversasFiltradas.map((c) => {
+                      const naoLidas = naoLidasPorConversa[c.id] || 0;
+                      const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
+                      const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
+                      const hora = c.data_ultima_mensagem
+                        ? format(new Date(c.data_ultima_mensagem), "dd/MM 'às' HH:mm", { locale: ptBR })
+                        : '';
+                      const statusColor = estaEmEspera(c)
+                        ? 'bg-amber-400'
+                        : estaEmAtendimento(c)
+                        ? 'bg-emerald-500'
+                        : 'bg-slate-300';
 
-                        <div className="flex flex-1 flex-col min-w-0">
-                          <div className="flex items-center justify-between gap-1">
-                            <p className="truncate text-sm font-semibold text-slate-900 flex items-center gap-1">
-                              {isGrupo(c) && <Users className="w-3 h-3 text-sky-500 flex-shrink-0" />}
-                              {contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone}
-                            </p>
-                            {c.data_ultima_mensagem && (
-                              <p className="whitespace-nowrap text-[11px] text-slate-400 flex-shrink-0">
-                                {new Date(c.data_ultima_mensagem).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            )}
+                      return (
+                        <div
+                          key={c.id}
+                          className={classNames(
+                            "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition cursor-pointer border-b border-slate-100 last:border-0",
+                            conversaSelecionada?.id === c.id
+                              ? "bg-blue-50"
+                              : "bg-white hover:bg-slate-50"
+                          )}
+                          onClick={() => selecionarConversa(c)}
+                        >
+                          {/* Avatar */}
+                          <div className="relative flex-shrink-0">
+                            <AvatarContato
+                              contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
+                              className="h-11 w-11"
+                            />
                           </div>
-                          <div className="flex items-center justify-between mt-0.5">
-                            <p className="line-clamp-1 text-xs text-slate-500 flex-1 min-w-0">
-                              {c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : ''}
+
+                          {/* Conteúdo */}
+                          <div className="flex flex-1 flex-col min-w-0 gap-0.5">
+                            {/* Linha 1: ícone chat + ponto status + nome + hora */}
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="flex items-center gap-1 min-w-0">
+                                <MessageCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                                <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${statusColor}`} />
+                                <p className="truncate text-sm font-semibold text-slate-900">
+                                  {nome}
+                                </p>
+                              </div>
+                              <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                                      <MoreVertical className="h-3.5 w-3.5" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                      <Contact className="mr-2 h-3.5 w-3.5" />
+                                      {contatosWhatsapp[c.id]?.id ? 'Editar nome no CRM' : 'Salvar no CRM'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                      <Pencil className="mr-2 h-3.5 w-3.5" />
+                                      Alterar nome do contato
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
+                                      <Tag className="mr-2 h-3.5 w-3.5" />
+                                      Adicionar tag
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
+                                      <Clock className="mr-2 h-3.5 w-3.5" />
+                                      Criar tarefa
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
+                                      <Star className="mr-2 h-3.5 w-3.5" />
+                                      Marcar como favorito
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-red-600 focus:text-red-600"
+                                      onClick={async () => {
+                                        if (confirm('Excluir esta conversa e todas as mensagens?')) {
+                                          const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
+                                          for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
+                                          await base44.entities.ConversaWhatsapp.delete(c.id);
+                                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                          queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
+                                          if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
+                                          toast.success('Conversa excluída');
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                      Excluir conversa
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+
+                            {/* Linha 2: última mensagem */}
+                            <p className="line-clamp-1 text-xs text-slate-500">
+                              {ultimaMsg}
                             </p>
-                            <div className="flex items-center gap-1 ml-1 flex-shrink-0">
-                              {estaEmEspera(c) && (
-                                <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1 py-0.5 rounded-full">
-                                  ESPERA
-                                </span>
-                              )}
-                              {(naoLidasPorConversa[c.id] || 0) > 0 && (
-                                <span className="inline-flex items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 min-w-[18px]">
-                                  {naoLidasPorConversa[c.id]}
-                                </span>
-                              )}
+
+                            {/* Linha 3: hora + badge não lidas */}
+                            <div className="flex items-center justify-between gap-1 mt-0.5">
+                              <p className="text-[11px] text-slate-400">{hora}</p>
+                              <div className="flex items-center gap-1">
+                                {naoLidas > 0 && (
+                                  <span className="inline-flex items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 min-w-[18px]">
+                                    {naoLidas}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-
-                        <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button 
-                                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                              >
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                <Contact className="mr-2 h-3.5 w-3.5" />
-                                {contatosWhatsapp[c.id]?.id ? 'Editar nome no CRM' : 'Salvar no CRM'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                <Pencil className="mr-2 h-3.5 w-3.5" />
-                                Alterar nome do contato
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
-                                <Tag className="mr-2 h-3.5 w-3.5" />
-                                Adicionar tag
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
-                                <Clock className="mr-2 h-3.5 w-3.5" />
-                                Criar tarefa
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
-                                <Star className="mr-2 h-3.5 w-3.5" />
-                                Marcar como favorito
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600"
-                                onClick={async () => {
-                                  if (confirm('Excluir esta conversa e todas as mensagens?')) {
-                                    const mensagensParaExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
-                                    for (const msg of mensagensParaExcluir) {
-                                      await base44.entities.MensagemWhatsapp.delete(msg.id);
-                                    }
-                                    await base44.entities.ConversaWhatsapp.delete(c.id);
-                                    queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                                    queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
-                                    if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
-                                    toast.success('Conversa excluída');
-                                  }
-                                }}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                Excluir conversa
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </ScrollArea>
