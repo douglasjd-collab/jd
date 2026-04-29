@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, FileText, Download, CheckCircle, DollarSign, Eye, Pencil, Trash2, BarChart2 } from 'lucide-react';
+import { Plus, FileText, Download, CheckCircle, DollarSign, Eye, Pencil, Trash2, BarChart2, UserX } from 'lucide-react';
 import PreRelatorioModal from '@/components/folha/PreRelatorioModal';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -54,6 +54,9 @@ export default function FolhaSalarialPage() {
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [faltaModal, setFaltaModal] = useState(null); // folha selecionada
+  const [faltaQtd, setFaltaQtd] = useState('1');
+  const [savingFalta, setSavingFalta] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(me => {
@@ -261,6 +264,36 @@ export default function FolhaSalarialPage() {
     carregar(user);
   };
 
+  const lancarFalta = async () => {
+    if (!faltaModal) return;
+    const qtd = parseFloat(faltaQtd) || 0;
+    if (qtd <= 0) return toast.error('Informe um número de faltas válido');
+    setSavingFalta(true);
+    const salarioBase = faltaModal.salario_base || 0;
+    const diasTrabalhados = faltaModal.dias_trabalhados || 30;
+    const valorDiario = salarioBase / 30;
+    const descontoFalta = valorDiario * qtd;
+    const novoDiasTrabalhados = Math.max(0, diasTrabalhados - qtd);
+    const novosDescontos = (faltaModal.descontos || 0) + descontoFalta;
+    const novoLiquido = (faltaModal.valor_liquido || 0) - descontoFalta;
+    const obsAtual = faltaModal.observacoes || '';
+    const novaObs = obsAtual
+      ? `${obsAtual}\nFalta(s): ${qtd} dia(s) — desconto de ${fmt(descontoFalta)}`
+      : `Falta(s): ${qtd} dia(s) — desconto de ${fmt(descontoFalta)}`;
+
+    await base44.entities.FolhaSalarial.update(faltaModal.id, {
+      dias_trabalhados: novoDiasTrabalhados,
+      descontos: novosDescontos,
+      valor_liquido: novoLiquido,
+      observacoes: novaObs,
+    });
+    toast.success(`${qtd} falta(s) lançada(s) — desconto de ${fmt(descontoFalta)}`);
+    setSavingFalta(false);
+    setFaltaModal(null);
+    setFaltaQtd('1');
+    carregar(user);
+  };
+
   const excluirFolha = async (folha) => {
     await base44.entities.FolhaSalarial.delete(folha.id);
     toast.success('Folha excluída!');
@@ -392,6 +425,9 @@ export default function FolhaSalarialPage() {
                           {f.status === 'Paga' && (
                             <Button size="sm" variant="outline" className="text-xs" onClick={() => atualizarStatus(f, 'Assinada')}>Assinar</Button>
                           )}
+                          <Button size="sm" variant="ghost" onClick={() => { setFaltaModal(f); setFaltaQtd('1'); }} title="Lançar Falta" className="text-orange-500 hover:text-orange-700">
+                            <UserX className="w-4 h-4" />
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => abrirEditar(f)} title="Editar">
                             <Pencil className="w-4 h-4 text-slate-500" />
                           </Button>
@@ -580,6 +616,53 @@ export default function FolhaSalarialPage() {
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
               <Button variant="destructive" onClick={() => excluirFolha(confirmDelete)}>Excluir</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Modal Lançar Falta */}
+      {faltaModal && (
+        <Dialog open={!!faltaModal} onOpenChange={() => setFaltaModal(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserX className="w-5 h-5 text-orange-500" /> Lançar Falta
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
+                <p><span className="text-slate-500">Colaborador:</span> <strong>{faltaModal.colaborador_nome}</strong></p>
+                <p><span className="text-slate-500">Mês:</span> {faltaModal.mes_referencia}</p>
+                <p><span className="text-slate-500">Salário base:</span> {fmt(faltaModal.salario_base)}</p>
+                <p><span className="text-slate-500">Valor por dia:</span> <span className="text-orange-600 font-medium">{fmt((faltaModal.salario_base || 0) / 30)}</span></p>
+                <p><span className="text-slate-500">Dias trabalhados atual:</span> {faltaModal.dias_trabalhados ?? 30}</p>
+              </div>
+              <div>
+                <Label>Número de faltas (dias) *</Label>
+                <Input
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  value={faltaQtd}
+                  onChange={e => setFaltaQtd(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              {faltaQtd > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                  <p className="text-xs text-orange-600">Desconto a aplicar</p>
+                  <p className="text-xl font-bold text-orange-700">
+                    - {fmt(((faltaModal.salario_base || 0) / 30) * (parseFloat(faltaQtd) || 0))}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setFaltaModal(null)}>Cancelar</Button>
+              <Button onClick={lancarFalta} disabled={savingFalta} className="bg-orange-600 hover:bg-orange-700">
+                {savingFalta ? 'Salvando...' : 'Confirmar Falta'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
