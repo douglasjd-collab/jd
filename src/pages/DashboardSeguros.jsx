@@ -101,6 +101,16 @@ export default function DashboardSeguros() {
     })
     .reduce((s, p) => s + (p.valor_parcela || 0), 0);
 
+  // Seguros próximos da renovação (até 30 dias) ainda ativos
+  const proximosAlerta = propostas
+    .filter(p => p.status !== 'cancelado' && p.status !== 'vencido')
+    .filter(p => {
+      if (!p.data_vencimento) return false;
+      const d = differenceInDays(parseISO(p.data_vencimento), hoje);
+      return d >= 0 && d <= 30;
+    })
+    .sort((a, b) => differenceInDays(parseISO(a.data_vencimento), hoje) - differenceInDays(parseISO(b.data_vencimento), hoje));
+
   if (!user) return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>;
 
   return (
@@ -127,6 +137,44 @@ export default function DashboardSeguros() {
           </Button>
         </div>
       </div>
+
+      {/* Alerta de Renovações Próximas */}
+      {proximosAlerta.length > 0 && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-amber-800 mb-2">
+                ⚠️ {proximosAlerta.length} seguro{proximosAlerta.length > 1 ? 's' : ''} próximo{proximosAlerta.length > 1 ? 's' : ''} do vencimento
+              </p>
+              <div className="space-y-1.5">
+                {proximosAlerta.slice(0, 5).map(p => {
+                  const dias = differenceInDays(parseISO(p.data_vencimento), hoje);
+                  const urgente = dias <= 7;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-amber-900 font-medium truncate">{p.cliente_nome || '—'}</span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-amber-700 text-xs">{p.vendedor_nome || '—'}</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                          urgente ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {dias === 0 ? 'Vence hoje' : `${dias} dia${dias > 1 ? 's' : ''}`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {proximosAlerta.length > 5 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    + {proximosAlerta.length - 5} outros. <Link to="/RenovacoesSeguro" className="underline font-medium">Ver todos →</Link>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
