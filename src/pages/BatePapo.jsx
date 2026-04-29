@@ -813,21 +813,19 @@ export default function BatePapo() {
     return new Date(c.responsavel_expira_em) > new Date();
   };
 
-  // Verificar se está em espera: última mensagem é explicitamente do cliente E sem atendente ativo
+  // Em espera: última mensagem foi do CLIENTE (ainda aguardando resposta do atendente)
+  // Independente do responsavel_expira_em — o que importa é quem enviou por último
   const estaEmEspera = (c) => {
     if (!c || !c.id) return false;
     if (c.status === 'arquivada' || c.status === 'encerrada') return false;
-    // Se tem atendente ativo → não está em espera
-    if (temAtendente(c)) return false;
-    // Em espera: status ativa E ultimo_remetente explicitamente 'cliente' (nunca assume default)
     return c.status === 'ativa' && c.ultimo_remetente === 'cliente';
   };
 
-  // Verificar se está em atendimento ativo (atendente respondeu e não expirou)
+  // Em atendimento: atendente respondeu recentemente (dentro dos 10 min) E última msg foi do atendente
   const estaEmAtendimento = (c) => {
     if (!c || !c.id) return false;
     if (c.status === 'arquivada' || c.status === 'encerrada') return false;
-    return temAtendente(c) && c.status === 'ativa';
+    return temAtendente(c) && c.status === 'ativa' && c.ultimo_remetente !== 'cliente';
   };
 
   // Ao enviar mensagem, marcar responsabilidade por 10min
