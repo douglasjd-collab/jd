@@ -54,8 +54,10 @@ export default function FolhaSalarialPage() {
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [faltaModal, setFaltaModal] = useState(null); // folha selecionada
-  const [faltaQtd, setFaltaQtd] = useState('1');
+  const [faltaModal, setFaltaModal] = useState(null);
+  const [faltaData, setFaltaData] = useState('');
+  const [faltaDSR, setFaltaDSR] = useState(false);
+  const [faltaFeriado, setFaltaFeriado] = useState(false);
   const [savingFalta, setSavingFalta] = useState(false);
 
   useEffect(() => {
@@ -264,33 +266,45 @@ export default function FolhaSalarialPage() {
     carregar(user);
   };
 
+  const calcDescontoFalta = () => {
+    if (!faltaModal) return { itens: [], total: 0 };
+    const valorDia = (faltaModal.salario_base || 0) / 30;
+    const itens = [];
+    if (faltaData) {
+      const dataFormatada = format(new Date(faltaData + 'T00:00:00'), 'dd/MM/yyyy');
+      itens.push({ label: `Falta injustificada (${dataFormatada})`, valor: valorDia });
+    } else {
+      itens.push({ label: 'Falta injustificada', valor: valorDia });
+    }
+    if (faltaDSR) itens.push({ label: 'Perda do DSR (domingo)', valor: valorDia });
+    if (faltaFeriado) itens.push({ label: 'Perda do feriado', valor: valorDia });
+    const total = itens.reduce((s, i) => s + i.valor, 0);
+    return { itens, total };
+  };
+
   const lancarFalta = async () => {
     if (!faltaModal) return;
-    const qtd = parseFloat(faltaQtd) || 0;
-    if (qtd <= 0) return toast.error('Informe um número de faltas válido');
+    if (!faltaData) return toast.error('Informe a data da falta');
     setSavingFalta(true);
-    const salarioBase = faltaModal.salario_base || 0;
-    const diasTrabalhados = faltaModal.dias_trabalhados || 30;
-    const valorDiario = salarioBase / 30;
-    const descontoFalta = valorDiario * qtd;
-    const novoDiasTrabalhados = Math.max(0, diasTrabalhados - qtd);
-    const novosDescontos = (faltaModal.descontos || 0) + descontoFalta;
-    const novoLiquido = (faltaModal.valor_liquido || 0) - descontoFalta;
+    const { itens, total } = calcDescontoFalta();
+    const dataFormatada = format(new Date(faltaData + 'T00:00:00'), 'dd/MM/yyyy');
+    const linhasObs = itens.map(i => `• ${i.label}: -${fmt(i.valor)}`).join('\n');
+    const novaLinhaObs = `Falta em ${dataFormatada}:\n${linhasObs}\nTotal descontado: -${fmt(total)}`;
     const obsAtual = faltaModal.observacoes || '';
-    const novaObs = obsAtual
-      ? `${obsAtual}\nFalta(s): ${qtd} dia(s) — desconto de ${fmt(descontoFalta)}`
-      : `Falta(s): ${qtd} dia(s) — desconto de ${fmt(descontoFalta)}`;
+    const novaObs = obsAtual ? `${obsAtual}\n\n${novaLinhaObs}` : novaLinhaObs;
 
     await base44.entities.FolhaSalarial.update(faltaModal.id, {
-      dias_trabalhados: novoDiasTrabalhados,
-      descontos: novosDescontos,
-      valor_liquido: novoLiquido,
+      dias_trabalhados: Math.max(0, (faltaModal.dias_trabalhados || 30) - 1),
+      descontos: (faltaModal.descontos || 0) + total,
+      valor_liquido: (faltaModal.valor_liquido || 0) - total,
       observacoes: novaObs,
     });
-    toast.success(`${qtd} falta(s) lançada(s) — desconto de ${fmt(descontoFalta)}`);
+    toast.success(`Falta lançada — desconto total de ${fmt(total)}`);
     setSavingFalta(false);
     setFaltaModal(null);
-    setFaltaQtd('1');
+    setFaltaData('');
+    setFaltaDSR(false);
+    setFaltaFeriado(false);
     carregar(user);
   };
 
@@ -425,7 +439,7 @@ export default function FolhaSalarialPage() {
                           {f.status === 'Paga' && (
                             <Button size="sm" variant="outline" className="text-xs" onClick={() => atualizarStatus(f, 'Assinada')}>Assinar</Button>
                           )}
-                          <Button size="sm" variant="ghost" onClick={() => { setFaltaModal(f); setFaltaQtd('1'); }} title="Lançar Falta" className="text-orange-500 hover:text-orange-700">
+                          <Button size="sm" variant="ghost" onClick={() => { setFaltaModal(f); setFaltaData(''); setFaltaDSR(false); setFaltaFeriado(false); }} title="Lançar Falta" className="text-orange-500 hover:text-orange-700">
                             <UserX className="w-4 h-4" />
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => abrirEditar(f)} title="Editar">
@@ -622,51 +636,101 @@ export default function FolhaSalarialPage() {
       )}
 
       {/* Modal Lançar Falta */}
-      {faltaModal && (
-        <Dialog open={!!faltaModal} onOpenChange={() => setFaltaModal(null)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <UserX className="w-5 h-5 text-orange-500" /> Lançar Falta
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
-                <p><span className="text-slate-500">Colaborador:</span> <strong>{faltaModal.colaborador_nome}</strong></p>
-                <p><span className="text-slate-500">Mês:</span> {faltaModal.mes_referencia}</p>
-                <p><span className="text-slate-500">Salário base:</span> {fmt(faltaModal.salario_base)}</p>
-                <p><span className="text-slate-500">Valor por dia:</span> <span className="text-orange-600 font-medium">{fmt((faltaModal.salario_base || 0) / 30)}</span></p>
-                <p><span className="text-slate-500">Dias trabalhados atual:</span> {faltaModal.dias_trabalhados ?? 30}</p>
-              </div>
-              <div>
-                <Label>Número de faltas (dias) *</Label>
-                <Input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
-                  value={faltaQtd}
-                  onChange={e => setFaltaQtd(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              {faltaQtd > 0 && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
-                  <p className="text-xs text-orange-600">Desconto a aplicar</p>
-                  <p className="text-xl font-bold text-orange-700">
-                    - {fmt(((faltaModal.salario_base || 0) / 30) * (parseFloat(faltaQtd) || 0))}
+      {faltaModal && (() => {
+        const { itens, total } = calcDescontoFalta();
+        const valorDia = (faltaModal.salario_base || 0) / 30;
+        return (
+          <Dialog open={!!faltaModal} onOpenChange={() => { setFaltaModal(null); setFaltaData(''); setFaltaDSR(false); setFaltaFeriado(false); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <UserX className="w-5 h-5 text-orange-500" /> Lançar Falta
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+
+                {/* Info colaborador */}
+                <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
+                  <p><span className="text-slate-500">Colaborador:</span> <strong>{faltaModal.colaborador_nome}</strong></p>
+                  <p><span className="text-slate-500">Mês de referência:</span> {faltaModal.mes_referencia}</p>
+                  <p><span className="text-slate-500">Salário base:</span> {fmt(faltaModal.salario_base)}</p>
+                  <p>
+                    <span className="text-slate-500">Valor por dia (÷30):</span>{' '}
+                    <span className="font-semibold text-orange-600">{fmt(valorDia)}</span>
                   </p>
                 </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setFaltaModal(null)}>Cancelar</Button>
-              <Button onClick={lancarFalta} disabled={savingFalta} className="bg-orange-600 hover:bg-orange-700">
-                {savingFalta ? 'Salvando...' : 'Confirmar Falta'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
+                {/* Data da falta */}
+                <div>
+                  <Label>Data da falta *</Label>
+                  <Input
+                    type="date"
+                    value={faltaData}
+                    onChange={e => setFaltaData(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Checkboxes DSR / Feriado */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-700">Perdas adicionais na semana da falta:</p>
+                  <label className="flex items-center gap-3 p-2 rounded-lg border cursor-pointer hover:bg-orange-50">
+                    <input
+                      type="checkbox"
+                      checked={faltaDSR}
+                      onChange={e => setFaltaDSR(e.target.checked)}
+                      className="w-4 h-4 accent-orange-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">Perda do DSR (Domingo)</p>
+                      <p className="text-xs text-slate-500">A falta injustificada cancela o descanso semanal remunerado</p>
+                    </div>
+                    <span className="ml-auto text-sm font-semibold text-red-500">-{fmt(valorDia)}</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-2 rounded-lg border cursor-pointer hover:bg-orange-50">
+                    <input
+                      type="checkbox"
+                      checked={faltaFeriado}
+                      onChange={e => setFaltaFeriado(e.target.checked)}
+                      className="w-4 h-4 accent-orange-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">Perda do Feriado</p>
+                      <p className="text-xs text-slate-500">Feriado na mesma semana da falta também é descontado</p>
+                    </div>
+                    <span className="ml-auto text-sm font-semibold text-red-500">-{fmt(valorDia)}</span>
+                  </label>
+                </div>
+
+                {/* Resumo do desconto */}
+                {faltaData && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-1">
+                    <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-2">Resumo do desconto</p>
+                    {itens.map((it, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className="text-slate-600">{it.label}</span>
+                        <span className="font-medium text-red-600">-{fmt(it.valor)}</span>
+                      </div>
+                    ))}
+                    <div className="border-t border-orange-200 pt-2 mt-2 flex justify-between font-bold">
+                      <span className="text-orange-800">Total a descontar</span>
+                      <span className="text-orange-800 text-lg">-{fmt(total)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => { setFaltaModal(null); setFaltaData(''); setFaltaDSR(false); setFaltaFeriado(false); }}>
+                  Cancelar
+                </Button>
+                <Button onClick={lancarFalta} disabled={savingFalta || !faltaData} className="bg-orange-600 hover:bg-orange-700">
+                  {savingFalta ? 'Salvando...' : 'Confirmar Falta'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Modal Detalhes */}
       {viewModal && (
