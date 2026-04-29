@@ -202,7 +202,7 @@ export default function LancamentoFaltas() {
 
       {/* Modal Lançar Falta */}
       <Dialog open={modalOpen} onOpenChange={(v) => { if (!v) resetForm(); setModalOpen(v); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserX className="w-5 h-5 text-orange-500" /> Lançar Falta
