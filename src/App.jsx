@@ -32,6 +32,11 @@ import AdiantamentosFuncionarios from './pages/AdiantamentosFuncionarios';
 import RelatorioFuncionarios from './pages/RelatorioFuncionarios';
 import ContasBancarias from './pages/ContasBancarias';
 import LancamentoFaltas from './pages/LancamentoFaltas';
+import DashboardSeguros from './pages/DashboardSeguros';
+import Seguros from './pages/Seguros';
+import RenovacoesSeguro from './pages/RenovacoesSeguro';
+import CobrancaSeguro from './pages/CobrancaSeguro';
+import ConfiguracaoSeguros from './pages/ConfiguracaoSeguros';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -108,6 +113,11 @@ const AuthenticatedApp = () => {
       <Route path="/RelatorioFuncionarios" element={<LayoutWrapper currentPageName="RelatorioFuncionarios"><RelatorioFuncionarios /></LayoutWrapper>} />
       <Route path="/ContasBancarias" element={<LayoutWrapper currentPageName="ContasBancarias"><ContasBancarias /></LayoutWrapper>} />
       <Route path="/LancamentoFaltas" element={<LayoutWrapper currentPageName="LancamentoFaltas"><LancamentoFaltas /></LayoutWrapper>} />
+      <Route path="/DashboardSeguros" element={<LayoutWrapper currentPageName="DashboardSeguros"><DashboardSeguros /></LayoutWrapper>} />
+      <Route path="/Seguros" element={<LayoutWrapper currentPageName="Seguros"><Seguros /></LayoutWrapper>} />
+      <Route path="/RenovacoesSeguro" element={<LayoutWrapper currentPageName="RenovacoesSeguro"><RenovacoesSeguro /></LayoutWrapper>} />
+      <Route path="/CobrancaSeguro" element={<LayoutWrapper currentPageName="CobrancaSeguro"><CobrancaSeguro /></LayoutWrapper>} />
+      <Route path="/ConfiguracaoSeguros" element={<LayoutWrapper currentPageName="ConfiguracaoSeguros"><ConfiguracaoSeguros /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

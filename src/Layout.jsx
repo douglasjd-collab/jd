@@ -29,7 +29,8 @@ import {
         CheckSquare,
         Plug,
         Send,
-        Edit3
+        Edit3,
+        Shield
       } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -354,6 +355,18 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
+    {
+      name: 'Seguros',
+      icon: Shield,
+      roles: ALL_ROLES,
+      submenu: [
+        { name: 'Dashboard', page: 'DashboardSeguros' },
+        { name: 'Propostas', page: 'Seguros' },
+        { name: 'Renovações', page: 'RenovacoesSeguro' },
+        { name: 'Cobrança', page: 'CobrancaSeguro' },
+        { name: 'Configurações', page: 'ConfiguracaoSeguros' },
+      ]
+    },
     {
       name: 'Funcionários',
       icon: Users,

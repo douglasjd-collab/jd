@@ -1,0 +1,177 @@
+{
+  "name": "PropostaSeguro",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "numero_proposta": {
+      "type": "string",
+      "description": "N\u00famero da proposta (SEG001, SEG002...)"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente (denormalizado)"
+    },
+    "cliente_cpf": {
+      "type": "string",
+      "description": "CPF do cliente"
+    },
+    "cliente_telefone": {
+      "type": "string",
+      "description": "Telefone do cliente"
+    },
+    "seguradora_id": {
+      "type": "string",
+      "description": "ID da seguradora"
+    },
+    "seguradora_nome": {
+      "type": "string",
+      "description": "Nome da seguradora (denormalizado)"
+    },
+    "tipo_seguro": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "vida",
+        "residencial",
+        "empresarial",
+        "saude",
+        "outros"
+      ],
+      "default": "auto",
+      "description": "Tipo do seguro"
+    },
+    "tipo_plano": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "anual"
+      ],
+      "default": "anual",
+      "description": "Plano mensal ou anual"
+    },
+    "veiculo_marca": {
+      "type": "string",
+      "description": "Marca do ve\u00edculo (se auto)"
+    },
+    "veiculo_modelo": {
+      "type": "string",
+      "description": "Modelo do ve\u00edculo"
+    },
+    "veiculo_ano": {
+      "type": "string",
+      "description": "Ano do ve\u00edculo"
+    },
+    "veiculo_placa": {
+      "type": "string",
+      "description": "Placa do ve\u00edculo"
+    },
+    "valor_fipe": {
+      "type": "number",
+      "description": "Valor FIPE do ve\u00edculo"
+    },
+    "valor_parcela": {
+      "type": "number",
+      "description": "Valor da parcela mensal"
+    },
+    "valor_adesao": {
+      "type": "number",
+      "description": "Valor da ades\u00e3o / comiss\u00e3o prevista"
+    },
+    "percentual_comissao": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "enum": [
+        "boleto",
+        "cartao_credito",
+        "cartao_debito",
+        "pix",
+        "debito_automatico"
+      ],
+      "default": "boleto"
+    },
+    "data_inicio": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de in\u00edcio da vig\u00eancia"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de vencimento/fim da vig\u00eancia"
+    },
+    "data_renovacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data prevista de renova\u00e7\u00e3o (in\u00edcio - 30 dias)"
+    },
+    "data_cancelamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de cancelamento"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_dia",
+        "atrasado",
+        "em_renovacao",
+        "vencido",
+        "cancelado",
+        "pendente"
+      ],
+      "default": "em_dia",
+      "description": "Status atual do seguro"
+    },
+    "score_renovacao": {
+      "type": "string",
+      "enum": [
+        "alto",
+        "medio",
+        "baixo"
+      ],
+      "default": "medio",
+      "description": "Probabilidade de renova\u00e7\u00e3o"
+    },
+    "motivo_cancelamento": {
+      "type": "string"
+    },
+    "observacoes": {
+      "type": "string"
+    },
+    "renovacao_origem_id": {
+      "type": "string",
+      "description": "ID da proposta original (se for renova\u00e7\u00e3o)"
+    },
+    "numero_renovacao": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantas vezes foi renovado"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "cliente_id",
+    "seguradora_id",
+    "tipo_plano",
+    "data_inicio",
+    "valor_parcela"
+  ]
+}

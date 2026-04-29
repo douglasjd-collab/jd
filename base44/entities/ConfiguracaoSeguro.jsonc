@@ -1,0 +1,54 @@
+{
+  "name": "ConfiguracaoSeguro",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "dias_para_renovacao": {
+      "type": "number",
+      "default": 30,
+      "description": "Dias antes do vencimento para entrar em renova\u00e7\u00e3o"
+    },
+    "dias_para_atraso": {
+      "type": "number",
+      "default": 3,
+      "description": "Dias ap\u00f3s vencimento para considerar atrasado"
+    },
+    "template_renovacao_whatsapp": {
+      "type": "string",
+      "description": "Template de mensagem de renova\u00e7\u00e3o"
+    },
+    "template_cobranca_whatsapp": {
+      "type": "string",
+      "description": "Template de mensagem de cobran\u00e7a"
+    },
+    "template_boas_vindas_whatsapp": {
+      "type": "string",
+      "description": "Template de boas-vindas"
+    },
+    "template_confirmacao_pagamento": {
+      "type": "string",
+      "description": "Template de confirma\u00e7\u00e3o de pagamento"
+    },
+    "alertas_ativos": {
+      "type": "boolean",
+      "default": true
+    },
+    "alertas_whatsapp_cliente": {
+      "type": "boolean",
+      "default": true
+    },
+    "alertas_whatsapp_vendedor": {
+      "type": "boolean",
+      "default": true
+    },
+    "alertas_email_vendedor": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "empresa_id"
+  ]
+}
