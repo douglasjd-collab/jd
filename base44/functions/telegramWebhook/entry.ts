@@ -64,6 +64,8 @@ Regras gerais:
 - Telefone: normalize apenas números quando possível.
 - Categorias de despesa: Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros
 - Categorias de receita: Bônus, Repasse, Comissão, Ajuste, Outros
+- Para oportunidades no funil: produto pode ser "consorcio" (padrão) ou "emprestimo". nome = título da oportunidade (ex: "João Silva" ou "Venda consórcio João"). Telefone opcional.
+- Use action=create_opportunity quando o usuário mencionar: criar lead, novo cliente, nova oportunidade, funil, consórcio (nome de pessoa), empréstimo (nome de pessoa)
 
 Regras para transações financeiras com conta bancária (action=create_financial_transaction):
 Use esta action quando o usuário mencionar conta bancária (itau, nubank, caixa, bb, santander, bradesco, inter, sicoob, sicredi, safra, c6, pagbank, mercado pago, carteira, etc) junto com uma movimentação de dinheiro.
@@ -75,7 +77,7 @@ Use esta action quando o usuário mencionar conta bancária (itau, nubank, caixa
 Retorne APENAS um JSON com esta estrutura exata (sem texto adicional):
 {
   "action": "create_opportunity" | "create_expense" | "create_revenue" | "create_financial_transaction" | "create_agenda" | "reschedule_agenda" | "cancel_agenda" | "confirm_agenda" | "complete_agenda" | "list_agenda" | "clarify",
-  "opportunity": { "nome": string|null, "telefone": string|null, "etapa": string|null, "observacao": string|null } | null,
+  "opportunity": { "nome": string|null, "telefone": string|null, "produto": "consorcio"|"emprestimo"|null, "valor": number|null, "observacao": string|null } | null,
   "expense": { "valor": number|null, "descricao": string|null, "categoria": string|null, "data": string|null } | null,
   "revenue": { "valor": number|null, "descricao": string|null, "categoria": string|null, "data": string|null } | null,
   "financial_transaction": { "tipo": "entrada"|"saida"|null, "valor": number|null, "descricao": string|null, "conta_nome": string|null, "categoria": string|null, "data": string|null } | null,
@@ -148,8 +150,10 @@ Deno.serve(async (req) => {
         "📊 <b>Financeiro simples:</b>\n" +
         "• <code>despesa 35,90 almoço hoje</code>\n" +
         "• <code>receita 1200 comissão hoje</code>\n\n" +
-        "👤 <b>CRM:</b>\n" +
-        "• <code>criar oportunidade Maria 81999998888</code>\n\n" +
+        "👤 <b>Funil de Vendas:</b>\n" +
+        "• <code>nova oportunidade João Silva 81999998888</code>\n" +
+        "• <code>lead consórcio Maria 81999997777</code>\n" +
+        "• <code>novo lead empréstimo Pedro 71988887777</code>\n\n" +
         "📅 <b>Agenda:</b>\n" +
         "• <code>marca reunião amanhã 10h com João</code>\n" +
         "• <code>lista agenda hoje</code>"
@@ -191,22 +195,72 @@ Deno.serve(async (req) => {
 
     if (intent.action === "create_opportunity") {
       const op = intent.opportunity || {};
-      if (!op.nome || !op.telefone) {
-        await sendTelegram(chatId, "❓ Para criar a oportunidade, preciso de <b>nome</b> e <b>telefone</b>.");
+      if (!op.nome) {
+        await sendTelegram(chatId, "❓ Para criar a oportunidade, preciso pelo menos do <b>nome/título</b>.");
         return Response.json({ ok: true });
       }
 
+      // Buscar primeira etapa ativa do funil
+      let etapaId = null;
+      let etapaNome = '';
+      let produto = op.produto || 'consorcio';
+      try {
+        const etapas = await base44.asServiceRole.entities.EtapaFunil.filter(
+          empresaId !== 'TELEGRAM_BOT' ? { empresa_id: empresaId, status: 'ativa' } : { status: 'ativa' },
+          'ordem', 50
+        );
+        // Pegar a primeira etapa de tipo aberta
+        const primeiraEtapa = etapas.find(e => e.tipo === 'aberta') || etapas[0];
+        if (primeiraEtapa) {
+          etapaId = primeiraEtapa.id;
+          etapaNome = primeiraEtapa.nome;
+        }
+      } catch (_) {}
+
+      if (!etapaId) {
+        await sendTelegram(chatId, "⚠️ Não encontrei etapas configuradas no funil. Configure as etapas primeiro no sistema.");
+        return Response.json({ ok: true });
+      }
+
+      const hoje = new Date().toLocaleDateString('fr-CA');
+
       const created = await base44.asServiceRole.entities.Oportunidade.create({
         empresa_id: empresaId,
+        titulo: op.nome,
         cliente_nome: op.nome,
-        telefone: op.telefone,
-        etapa: op.etapa || "Lead",
-        observacao: op.observacao || null,
-        usuario_id: usuarioId,
-        status: 'ativo',
+        telefone_lead: op.telefone || null,
+        etapa_id: etapaId,
+        etapa_nome: etapaNome,
+        produto: produto,
+        origem: 'Telegram',
+        observacoes: op.observacao || null,
+        vendedor_id: usuarioId,
+        data_cadastro_lead: hoje,
+        data_ultima_movimentacao: new Date().toISOString(),
+        status: 'aberta',
+        valor_estimado: op.valor || 0,
       });
 
-      await sendTelegram(chatId, `✅ Oportunidade criada: <b>${created.cliente_nome}</b>\n📞 ${created.telefone}\n🏷️ Etapa: <b>${created.etapa}</b>\n<code>ID ${created.id}</code>`);
+      // Registrar movimentação inicial
+      try {
+        await base44.asServiceRole.entities.MovimentacaoFunil.create({
+          oportunidade_id: created.id,
+          etapa_destino_id: etapaId,
+          etapa_destino_nome: etapaNome,
+          usuario_id: usuarioId || 'telegram',
+          usuario_nome: 'Telegram Bot',
+          observacao: 'Oportunidade criada via Telegram'
+        });
+      } catch (_) {}
+
+      await sendTelegram(chatId,
+        `✅ <b>Oportunidade criada no Funil!</b>\n\n` +
+        `👤 <b>${created.titulo}</b>\n` +
+        (op.telefone ? `📞 ${op.telefone}\n` : '') +
+        `🏷️ Etapa: <b>${etapaNome}</b>\n` +
+        `📦 Funil: <b>${produto === 'consorcio' ? 'Consórcio' : 'Empréstimo'}</b>\n` +
+        `<code>ID ${created.id}</code>`
+      );
       return Response.json({ ok: true });
     }
 
