@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, FileText, Download, CheckCircle, DollarSign, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Plus, FileText, Download, CheckCircle, DollarSign, Eye, Pencil, Trash2, BarChart2 } from 'lucide-react';
+import PreRelatorioModal from '@/components/folha/PreRelatorioModal';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -48,6 +49,7 @@ export default function FolhaSalarialPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(null);
+  const [preRelatorio, setPreRelatorio] = useState(false);
   const [editModal, setEditModal] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [savingEdit, setSavingEdit] = useState(false);
@@ -281,9 +283,14 @@ export default function FolhaSalarialPage() {
           <h1 className="text-2xl font-bold text-slate-800">Folha Salarial</h1>
           <p className="text-slate-500 text-sm">Controle de pagamentos e recibos</p>
         </div>
-        <Button onClick={abrirNova} className="bg-[#10353C] hover:bg-[#10353C]/90 gap-2">
-          <Plus className="w-4 h-4" /> Nova Folha
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setPreRelatorio(true)} className="gap-2">
+            <BarChart2 className="w-4 h-4" /> Pré-Relatório
+          </Button>
+          <Button onClick={abrirNova} className="bg-[#10353C] hover:bg-[#10353C]/90 gap-2">
+            <Plus className="w-4 h-4" /> Nova Folha
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -479,6 +486,13 @@ export default function FolhaSalarialPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Pré-Relatório */}
+      <PreRelatorioModal
+        open={preRelatorio}
+        onClose={() => setPreRelatorio(false)}
+        empresaId={user?.empresa_id}
+      />
 
       {/* Modal Editar Folha */}
       {editModal && (
