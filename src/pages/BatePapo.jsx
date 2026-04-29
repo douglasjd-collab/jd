@@ -567,7 +567,7 @@ export default function BatePapo() {
         }, 600);
       }
 
-      // Atualizar contador de não lidas se a mensagem é do cliente e não é a conversa aberta
+      // Atualizar contador de não lidas e marcar último remetente como cliente
       if (msgData?.remetente === 'cliente' && msgData?.conversa_id) {
         const conversaAtualId = conversaSelecionadaIdRef.current;
         if (msgData.conversa_id !== conversaAtualId) {
@@ -576,6 +576,10 @@ export default function BatePapo() {
             [msgData.conversa_id]: (prev[msgData.conversa_id] || 0) + 1
           }));
         }
+        // Marcar último remetente como cliente (conversa volta para "em espera" se responsável expirou)
+        base44.entities.ConversaWhatsapp.update(msgData.conversa_id, {
+          ultimo_remetente: 'cliente',
+        }).catch(() => {});
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
@@ -705,9 +709,13 @@ export default function BatePapo() {
     onSuccess: async (data, variables) => {
       if (conversaSelecionada) {
         const msgExibicao = variables.texto || (variables.arquivo ? variables.arquivo.nome : '');
+        const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
         await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
           ultima_mensagem: msgExibicao,
-          data_ultima_mensagem: new Date().toISOString()
+          data_ultima_mensagem: new Date().toISOString(),
+          ultimo_remetente: 'vendedor',
+          responsavel_id: user?.colaborador_id || user?.id || 'atendente',
+          responsavel_expira_em: expira,
         });
       }
       // Invalidar mensagens imediatamente para refetch da mensagem confirmada
@@ -768,43 +776,77 @@ export default function BatePapo() {
     return wid.includes('@g.us') || tel.includes('@g.us') || wid.endsWith('-') || tel.length > 13;
   };
 
+  // ── Lógica de responsabilidade por 10 minutos ────────────────────────────
+  // Quando atendente responde → marcar conversa com responsavel_id + responsavel_expira_em
+  // Se expirar → conversa volta para "em_espera"
+
+  const TEMPO_ATENDIMENTO_MS = 10 * 60 * 1000; // 10 minutos
+
+  // Verificar se a conversa tem atendente ativo (responsável não expirado)
+  const temAtendente = (c) => {
+    if (!c.responsavel_id || !c.responsavel_expira_em) return false;
+    return new Date(c.responsavel_expira_em) > new Date();
+  };
+
+  // Verificar se está em espera: última mensagem é do cliente e não tem atendente ativo
+  const estaEmEspera = (c) => {
+    if (!c || !c.id) return false;
+    if (c.status === 'arquivada' || c.status === 'encerrada') return false;
+    // Se tem atendente ativo → não está em espera
+    if (temAtendente(c)) return false;
+    // Em espera: status ativa E última msg é do cliente (sem resposta recente do atendente)
+    const ultimoRemetente = c.ultimo_remetente || 'cliente';
+    return c.status === 'ativa' && ultimoRemetente === 'cliente';
+  };
+
+  // Verificar se está em atendimento ativo (atendente respondeu e não expirou)
+  const estaEmAtendimento = (c) => {
+    if (!c || !c.id) return false;
+    if (c.status === 'arquivada' || c.status === 'encerrada') return false;
+    return temAtendente(c) && c.status === 'ativa';
+  };
+
+  // Ao enviar mensagem, marcar responsabilidade por 10min
+  const marcarResponsabilidade = async (conversaId) => {
+    const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
+    try {
+      await base44.entities.ConversaWhatsapp.update(conversaId, {
+        responsavel_id: user?.colaborador_id || user?.id || 'atendente',
+        responsavel_expira_em: expira,
+        ultimo_remetente: 'vendedor',
+      });
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+    } catch (_) {}
+  };
+
   // Conversas válidas — filtra apenas grupos e LID
   const conversasValidas = conversas.filter(c => {
     if (!c || !c.id || !c.cliente_telefone) return false;
     
     const tel = (c.cliente_telefone || '').replace(/\D/g, '');
     
-    // ❌ Excluir APENAS números com ID de grupo/broadcast (terminam em @ ou contêm @g.us)
     const isGrupoOuBroadcast = c.cliente_telefone?.includes('@g.us') || 
                                c.cliente_telefone?.includes('@broadcast') ||
                                c.cliente_telefone?.includes('@lid');
     
     if (isGrupoOuBroadcast) return false;
-    
-    // ❌ Excluir LID formato texto
     if (tel.startsWith('lid_')) return false;
-    
-    // ✅ Incluir tudo com telefone válido (8+ dígitos)
     return tel.length >= 8;
   });
-  
-  console.log(`✅ CONVERSAS VÁLIDAS: ${conversasValidas.length} de ${conversas.length}`);
 
   // Contadores por aba
-  const conversasSemHistorico = conversasValidas.filter(c => !c.ultima_mensagem || !c.ultima_mensagem.trim());
-  
   const contadores = {
     todas: conversasValidas.filter(c => !isGrupo(c)).length,
-    ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length,
+    ativa: conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimento(c)).length,
+    espera: conversasValidas.filter(c => !isGrupo(c) && estaEmEspera(c)).length,
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
-    meu: conversasValidas.filter(c => !isGrupo(c) && c.usuario_responsavel_id === user?.colaborador_id).length,
+    meu: conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimento(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
     grupos: conversasValidas.filter(c => isGrupo(c)).length,
   };
 
   const conversasFiltradas = conversasValidas
     .filter(c => {
-      // 1️⃣ Filtro por busca
       if (searchConversas) {
         const match = 
           (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
@@ -812,28 +854,19 @@ export default function BatePapo() {
         if (!match) return false;
       }
       
-      // 2️⃣ Filtro por status
-      if (filtroStatus === 'grupos') {
-        return isGrupo(c);
-      } else if (filtroStatus === 'todas') {
-        return !isGrupo(c);
-      } else if (filtroStatus === 'ativa') {
-        return !isGrupo(c) && c.status === 'ativa';
-      } else if (filtroStatus === 'arquivada') {
-        return !isGrupo(c) && c.status === 'arquivada';
-      } else if (filtroStatus === 'transferida') {
-        return !isGrupo(c) && c.status === 'encerrada';
-      } else if (filtroStatus === 'meu') {
-        return !isGrupo(c) && c.usuario_responsavel_id === user?.colaborador_id;
-      }
+      if (filtroStatus === 'grupos') return isGrupo(c);
+      if (filtroStatus === 'todas') return !isGrupo(c);
+      if (filtroStatus === 'ativa') return !isGrupo(c) && estaEmAtendimento(c);
+      if (filtroStatus === 'espera') return !isGrupo(c) && estaEmEspera(c);
+      if (filtroStatus === 'arquivada') return !isGrupo(c) && c.status === 'arquivada';
+      if (filtroStatus === 'transferida') return !isGrupo(c) && c.status === 'encerrada';
+      if (filtroStatus === 'meu') return !isGrupo(c) && estaEmAtendimento(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       
       return true;
     })
     .sort((a, b) => 
       new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0)
     );
-  
-  console.log(`✅ Exibindo ${conversasFiltradas.length} conversas (filtro: ${filtroStatus})`);
 
   if (!user) {
     return (
@@ -1088,20 +1121,21 @@ export default function BatePapo() {
               <Tabs value={filtroStatus} onValueChange={setFiltroStatus} className="w-full">
                 <TabsList className="flex flex-wrap w-full rounded-xl bg-slate-100 p-0.5 h-auto gap-0.5">
                   {[
-                    { value: 'todas', label: 'Todos' },
-                    { value: 'ativa', label: 'Atendimento' },
-                    { value: 'arquivada', label: 'Finalizados' },
-                    { value: 'transferida', label: 'Transferidos' },
-                    { value: 'meu', label: 'Meu Atend.' },
+                    { value: 'todas', label: 'Todos', cor: 'bg-sky-500' },
+                    { value: 'espera', label: 'Em Espera', cor: 'bg-amber-500' },
+                    { value: 'ativa', label: 'Atendimento', cor: 'bg-emerald-500' },
+                    { value: 'arquivada', label: 'Finalizados', cor: 'bg-slate-500' },
+                    { value: 'transferida', label: 'Transferidos', cor: 'bg-purple-500' },
+                    { value: 'meu', label: 'Meu Atend.', cor: 'bg-blue-500' },
                   ].map(tab => (
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="rounded-lg text-sm px-2 py-1.5 gap-1 data-[state=active]:bg-[#23BE84] data-[state=active]:text-white data-[state=active]:shadow-sm whitespace-nowrap"
+                      className="rounded-lg text-[11px] px-2 py-1.5 gap-1 data-[state=active]:bg-[#23BE84] data-[state=active]:text-white data-[state=active]:shadow-sm whitespace-nowrap"
                     >
                       {tab.label}
                       {contadores[tab.value] > 0 && (
-                        <span className="inline-flex items-center justify-center rounded-full bg-sky-500 text-white text-[9px] font-bold leading-none px-1 py-0.5 min-w-[14px]">
+                        <span className={`inline-flex items-center justify-center rounded-full ${tab.cor} text-white text-[9px] font-bold leading-none px-1 py-0.5 min-w-[14px]`}>
                           {contadores[tab.value]}
                         </span>
                       )}
@@ -1124,14 +1158,24 @@ export default function BatePapo() {
                           "flex w-full items-center gap-2 rounded-2xl px-2.5 py-2 text-left text-xs transition cursor-pointer",
                           conversaSelecionada?.id === c.id
                             ? "bg-sky-50 ring-1 ring-sky-100"
+                            : estaEmEspera(c)
+                            ? "bg-amber-50/60 hover:bg-amber-50"
                             : "hover:bg-slate-50"
                         )}
                         onClick={() => selecionarConversa(c)}
                       >
-                        <AvatarContato 
-                           contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
-                           className="h-10 w-10 flex-shrink-0"
-                         />
+                        <div className="relative flex-shrink-0">
+                          <AvatarContato 
+                             contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
+                             className="h-10 w-10"
+                           />
+                          {estaEmEspera(c) && (
+                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-amber-400" title="Em espera" />
+                          )}
+                          {estaEmAtendimento(c) && (
+                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400" title="Em atendimento" />
+                          )}
+                        </div>
 
                         <div className="flex flex-1 flex-col min-w-0">
                           <div className="flex items-center justify-between gap-1">
@@ -1149,11 +1193,18 @@ export default function BatePapo() {
                             <p className="line-clamp-1 text-xs text-slate-500 flex-1 min-w-0">
                               {c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : ''}
                             </p>
-                            {(naoLidasPorConversa[c.id] || 0) > 0 && (
-                              <span className="ml-1.5 flex-shrink-0 inline-flex items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 min-w-[18px]">
-                                {naoLidasPorConversa[c.id]}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1 ml-1 flex-shrink-0">
+                              {estaEmEspera(c) && (
+                                <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1 py-0.5 rounded-full">
+                                  ESPERA
+                                </span>
+                              )}
+                              {(naoLidasPorConversa[c.id] || 0) > 0 && (
+                                <span className="inline-flex items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 min-w-[18px]">
+                                  {naoLidasPorConversa[c.id]}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
