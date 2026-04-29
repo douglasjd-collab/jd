@@ -265,23 +265,46 @@ Deno.serve(async (req) => {
     }
 
     if (intent.action === "create_expense") {
-      const e = intent.expense || {};
-      if (!e.valor || !e.descricao || !e.data) {
-        await sendTelegram(chatId, "❓ Para lançar despesa, preciso de: <b>valor</b>, <b>descrição</b> e <b>data</b>.");
+      const ex = intent.expense || {};
+      if (!ex.valor || !ex.descricao) {
+        await sendTelegram(chatId, "❓ Para lançar despesa, preciso de: <b>valor</b> e <b>descrição</b>.");
         return Response.json({ ok: true });
       }
 
+      const hoje = new Date().toLocaleDateString('fr-CA');
+      const dataEx = ex.data || hoje;
+
+      // Buscar nome do responsável
+      let responsavelNome = 'Telegram Bot';
+      try {
+        const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: usuarioId }, null, 1);
+        if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
+      } catch (_) {}
+
       const created = await base44.asServiceRole.entities.Despesa.create({
         empresa_id: empresaId,
-        valor: e.valor,
-        descricao: e.descricao,
-        categoria: e.categoria || "Outros",
-        data: e.data,
-        responsavel_id: usuarioId,
+        valor: Number(ex.valor),
+        descricao: ex.descricao,
+        categoria: ex.categoria || 'Outros',
+        data: dataEx,
+        data_vencimento: dataEx,
+        status: 'pendente',
+        responsavel_id: usuarioId || 'telegram',
+        responsavel_nome: responsavelNome,
         usuario_id: usuarioId,
+        usuario_nome: responsavelNome,
+        observacao: 'Lançado via Telegram',
       });
 
-      await sendTelegram(chatId, `✅ DESPESA criada: <b>R$ ${Number(e.valor).toFixed(2)}</b>\n🧾 ${e.descricao}\n📅 ${e.data}\n<code>ID ${created.id}</code>`);
+      const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      await sendTelegram(chatId,
+        `✅ <b>Despesa lançada!</b>\n\n` +
+        `📉 ${ex.descricao}\n` +
+        `💰 Valor: <b>${valorFmt}</b>\n` +
+        `📅 Data: ${dataEx}\n` +
+        `🏷️ Categoria: ${ex.categoria || 'Outros'}\n` +
+        `<code>ID ${created.id}</code>`
+      );
       return Response.json({ ok: true });
     }
 
