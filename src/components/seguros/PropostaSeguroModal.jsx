@@ -273,19 +273,6 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
               <Input type="number" step="0.01" value={form.valor_parcela || ''} onChange={e => set('valor_parcela', parseFloat(e.target.value))} className="mt-1 h-8" />
             </div>
             <div>
-              <Label className="text-xs font-semibold">Valor FIPE (R$)</Label>
-              <Input
-                type="text"
-                value={form.valor_fipe ? Number(form.valor_fipe).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
-                onChange={e => {
-                  const raw = e.target.value.replace(/\D/g, '');
-                  set('valor_fipe', raw ? parseFloat(raw) / 100 : '');
-                }}
-                placeholder="0,00"
-                className="mt-1 h-8"
-              />
-            </div>
-            <div>
               <Label className="text-xs font-semibold">Comissão (%)</Label>
               <Input type="number" step="0.01" value={form.percentual_comissao || ''} onChange={e => set('percentual_comissao', parseFloat(e.target.value))} className="mt-1 h-8" />
             </div>
@@ -321,10 +308,20 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
                 </Button>
               </div>
               <p className="text-[10px] text-slate-400 mb-2">Digite a placa e clique em "Consultar Placa" para preencher marca, modelo, ano e FIPE automaticamente.</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <Input placeholder="Marca" value={form.veiculo_marca || ''} onChange={e => set('veiculo_marca', e.target.value)} className="h-8 text-xs" />
                 <Input placeholder="Modelo" value={form.veiculo_modelo || ''} onChange={e => set('veiculo_modelo', e.target.value)} className="h-8 text-xs" />
                 <Input placeholder="Ano" value={form.veiculo_ano || ''} onChange={e => set('veiculo_ano', e.target.value)} className="h-8 text-xs" />
+                <Input
+                  type="text"
+                  placeholder="FIPE (R$)"
+                  value={form.valor_fipe ? Number(form.valor_fipe).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    set('valor_fipe', raw ? parseFloat(raw) / 100 : '');
+                  }}
+                  className="h-8 text-xs"
+                />
               </div>
             </div>
           )}
