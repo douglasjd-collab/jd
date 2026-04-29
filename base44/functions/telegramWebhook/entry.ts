@@ -229,8 +229,39 @@ Deno.serve(async (req) => {
           return Response.json({ ok: true });
         }
 
-        await answerCallback(cq.id, "✅ Processando adiantamento...");
+        await answerCallback(cq.id, "✅ Qual é a data do adiantamento?");
+        
+        // Guardar tipo e solicitar data
+        session.tipo = data === "adv_funcionario" ? "funcionario" : "vendedor";
+        pendingSessions.set(`adiantamento_data_${chatId}`, session);
         pendingSessions.delete(`adiantamento_tipo_${chatId}`);
+        
+        await sendTelegram(chatId, `📅 Em que data foi o adiantamento?\n\n(formato: DD/MM/YYYY ou ex: hoje, amanhã, segunda)`);
+        return Response.json({ ok: true });
+      }
+
+      // ── Fluxo de data de adiantamento ───────────────────────────────────
+      const sessaoAdvData = pendingSessions.get(`adiantamento_data_${chatId}`);
+      if (sessaoAdvData) {
+        // Tentar parsear a data
+        let dataAdv = sessaoAdvData.data;
+        const clean = stripAccents(original).toLowerCase();
+        
+        if (clean === "hoje") {
+          dataAdv = new Date().toLocaleDateString('fr-CA');
+        } else if (clean === "amanhã" || clean === "amanha") {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          dataAdv = tomorrow.toLocaleDateString('fr-CA');
+        } else if (original.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+          const parts = original.split('/');
+          dataAdv = `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+        } else {
+          dataAdv = new Date().toLocaleDateString('fr-CA');
+        }
+
+        sessaoAdvData.data = dataAdv;
+        pendingSessions.delete(`adiantamento_data_${chatId}`);
 
         // Buscar empresa JD Promotora
         let jdEmpresaId = null;
@@ -251,14 +282,14 @@ Deno.serve(async (req) => {
         }
 
         let colaboradorId = null;
-        let colaboradorNome = session.colaborador_nome;
-        let tipoLabel = data === "adv_funcionario" ? "Funcionário" : "Vendedor";
+        let colaboradorNome = sessaoAdvData.colaborador_nome;
+        let tipoLabel = sessaoAdvData.tipo === "funcionario" ? "Funcionário" : "Vendedor";
 
         // Buscar Colaborador (funcionário) ou FuncionarioColaborador (parceiro/vendedor)
-        if (data === "adv_funcionario") {
+        if (sessaoAdvData.tipo === "funcionario") {
           try {
             const colabs = await base44.asServiceRole.entities.Colaborador.filter(
-              { empresa_id: jdEmpresaId, nome: { $regex: session.colaborador_nome, $options: "i" } },
+              { empresa_id: jdEmpresaId, nome: { $regex: sessaoAdvData.colaborador_nome, $options: "i" } },
               '-created_date',
               1
             );
@@ -271,7 +302,7 @@ Deno.serve(async (req) => {
           // Buscar como FuncionarioColaborador (vendedor/parceiro)
           try {
             const funcs = await base44.asServiceRole.entities.FuncionarioColaborador.filter(
-              { empresa_id: jdEmpresaId, nome: { $regex: session.colaborador_nome, $options: "i" } },
+              { empresa_id: jdEmpresaId, nome: { $regex: sessaoAdvData.colaborador_nome, $options: "i" } },
               '-created_date',
               1
             );
@@ -286,14 +317,14 @@ Deno.serve(async (req) => {
         let adiantamentoId = null;
         let adiantamentoData = null;
 
-        if (data === "adv_funcionario") {
+        if (sessaoAdvData.tipo === "funcionario") {
           adiantamentoData = await base44.asServiceRole.entities.AdiantamentoFuncionario.create({
             empresa_id: jdEmpresaId,
             colaborador_id: colaboradorId,
             colaborador_nome: colaboradorNome,
-            valor: session.valor,
-            data: session.data,
-            descricao: session.descricao || `Adiantamento ${colaboradorNome}`,
+            valor: sessaoAdvData.valor,
+            data: sessaoAdvData.data,
+            descricao: sessaoAdvData.descricao || `Adiantamento ${colaboradorNome}`,
             status: 'Pendente',
           });
           adiantamentoId = adiantamentoData.id;
@@ -303,9 +334,9 @@ Deno.serve(async (req) => {
             empresa_id: jdEmpresaId,
             colaborador_id: colaboradorId,
             colaborador_nome: colaboradorNome,
-            valor: session.valor,
-            data: session.data,
-            descricao: session.descricao || `Adiantamento ${colaboradorNome}`,
+            valor: sessaoAdvData.valor,
+            data: sessaoAdvData.data,
+            descricao: sessaoAdvData.descricao || `Adiantamento ${colaboradorNome}`,
             status: 'solicitado',
           });
           adiantamentoId = adiantamentoData.id;
@@ -314,13 +345,13 @@ Deno.serve(async (req) => {
         // Lançar como despesa/transação
         const created = await base44.asServiceRole.entities.Despesa.create({
           empresa_id: jdEmpresaId,
-          valor: session.valor,
+          valor: sessaoAdvData.valor,
           descricao: `Adiantamento ${tipoLabel} - ${colaboradorNome}`,
           categoria: 'Adiantamento',
-          data: session.data,
-          data_vencimento: session.data,
+          data: sessaoAdvData.data,
+          data_vencimento: sessaoAdvData.data,
           status: 'pago',
-          data_pagamento: session.data,
+          data_pagamento: sessaoAdvData.data,
           responsavel_id: colaboradorId || 'telegram',
           responsavel_nome: colaboradorNome,
           usuario_id: usuarioId,
@@ -328,13 +359,13 @@ Deno.serve(async (req) => {
           observacao: `Adiantamento ${tipoLabel} lançado via Telegram - ID: ${adiantamentoId}`,
         });
 
-        const valorFmt = session.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const valorFmt = sessaoAdvData.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         await sendTelegram(chatId,
           `✅ <b>Adiantamento lançado!</b>\n\n` +
           `👤 ${colaboradorNome}\n` +
           `🏷️ Tipo: <b>${tipoLabel}</b>\n` +
           `💰 Valor: <b>${valorFmt}</b>\n` +
-          `📅 Data: ${session.data}\n` +
+          `📅 Data: ${sessaoAdvData.data}\n` +
           `<code>ID ${tipoLabel}: ${adiantamentoId}</code>\n` +
           `<code>ID Transação: ${created.id}</code>`
         );
@@ -602,7 +633,6 @@ Deno.serve(async (req) => {
       pendingSessions.set(`adiantamento_tipo_${chatId}`, {
         colaborador_nome: adv.colaborador_nome,
         valor: Number(adv.valor),
-        data: dataAdv,
         descricao: adv.descricao,
       });
 
