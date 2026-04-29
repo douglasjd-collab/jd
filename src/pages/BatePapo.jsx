@@ -475,30 +475,23 @@ export default function BatePapo() {
     placeholderData: (prev) => prev,
   });
 
-  // Carregar contadores de não lidas quando conversas carregam
+  // Calcular contadores de não lidas direto das conversas carregadas
+  // Uma conversa tem mensagem não lida quando ultimo_remetente === 'cliente' e não está aberta
   useEffect(() => {
-    if (!empresaId || conversas.length === 0) return;
-
-    const conversaIds = conversas.filter(c => c.id).map(c => c.id);
+    if (conversas.length === 0) return;
     const abertaId = conversaSelecionadaId;
-
-    // Buscar todas as mensagens recentes de cliente e filtrar as não lidas localmente
-    base44.entities.MensagemWhatsapp.filter(
-      { remetente: 'cliente' },
-      '-data_envio',
-      5000
-    ).then(msgs => {
-      const contadores = {};
-      msgs.forEach(m => {
-        if (!m.conversa_id || m.conversa_id === abertaId) return;
-        if (!conversaIds.includes(m.conversa_id)) return;
-        // Considerar não lida qualquer status diferente de 'lida'
-        if (m.status === 'lida') return;
-        contadores[m.conversa_id] = (contadores[m.conversa_id] || 0) + 1;
-      });
-      setNaoLidasPorConversa(contadores);
-    }).catch(() => {});
-  }, [empresaId, conversas.length]);
+    const contadores = {};
+    conversas.forEach(c => {
+      if (!c.id || c.id === abertaId) return;
+      const ultimoRemetente = c.ultimo_remetente || 'cliente';
+      // Considera não lida se o último remetente é o cliente (ainda não respondemos)
+      if (ultimoRemetente === 'cliente' && c.status !== 'arquivada' && c.status !== 'encerrada') {
+        // Usar contagem real se disponível no objeto, senão marcar como 1
+        contadores[c.id] = c.nao_lidas || 1;
+      }
+    });
+    setNaoLidasPorConversa(contadores);
+  }, [conversas, conversaSelecionadaId]);
 
   // Selecionar conversa inicial quando a lista carrega
   useEffect(() => {
@@ -1220,7 +1213,7 @@ export default function BatePapo() {
                               <div className="flex items-center gap-1 min-w-0">
                                 <MessageCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                                 <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${statusColor}`} />
-                                <p className="truncate text-sm font-semibold text-slate-900">
+                                <p className={`truncate text-sm text-slate-900 ${naoLidas > 0 ? 'font-bold' : 'font-semibold'}`}>
                                   {nome}
                                 </p>
                               </div>
@@ -1275,20 +1268,18 @@ export default function BatePapo() {
                             </div>
 
                             {/* Linha 2: última mensagem */}
-                            <p className="line-clamp-1 text-xs text-slate-500">
+                            <p className={`line-clamp-1 text-xs ${naoLidas > 0 ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
                               {ultimaMsg}
                             </p>
 
                             {/* Linha 3: hora + badge não lidas */}
                             <div className="flex items-center justify-between gap-1 mt-0.5">
-                              <p className="text-[11px] text-slate-400">{hora}</p>
-                              <div className="flex items-center gap-1">
-                                {naoLidas > 0 && (
-                                  <span className="inline-flex items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 min-w-[18px]">
-                                    {naoLidas}
-                                  </span>
-                                )}
-                              </div>
+                              <p className={`text-[11px] ${naoLidas > 0 ? 'text-slate-600 font-semibold' : 'text-slate-400'}`}>{hora}</p>
+                              {naoLidas > 0 && (
+                                <span className="inline-flex items-center justify-center rounded-full bg-[#25D366] text-white text-[11px] font-bold leading-none h-5 min-w-[20px] px-1.5 shadow-sm">
+                                  {naoLidas}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
