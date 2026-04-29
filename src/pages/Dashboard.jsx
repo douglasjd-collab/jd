@@ -567,6 +567,41 @@ export default function Dashboard() {
 
       </div>
 
+      {/* Painel de Resumo Geral */}
+      {user && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Total de Vendas */}
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <ShoppingCart className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-500 font-medium">Total de Vendas Realizadas</p>
+              <p className="text-2xl font-bold text-slate-900">{filteredVendas.length}</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {formatCurrency(filteredVendas.reduce((acc, v) => acc + (v.valorCredito || 0), 0))} em crédito
+              </p>
+            </div>
+            <Link to="/Vendas" className="text-xs text-emerald-600 hover:underline font-medium whitespace-nowrap">Ver todas →</Link>
+          </div>
+
+          {/* Comissões Pendentes de Pagamento */}
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Wallet className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-slate-500 font-medium">Comissões Pendentes de Pagamento</p>
+              <p className="text-2xl font-bold text-amber-600">{formatCurrency(comissoesPagar)}</p>
+              <p className="text-xs text-slate-400 mt-0.5">a pagar aos vendedores</p>
+            </div>
+            {isAdmin && (
+              <Link to="/ComissoesPagar" className="text-xs text-amber-600 hover:underline font-medium whitespace-nowrap">Ver detalhes →</Link>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Dashboard Selector */}
       <DashboardSelector 
         selectedDashboard={selectedDashboard}
