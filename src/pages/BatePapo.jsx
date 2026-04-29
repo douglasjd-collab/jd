@@ -1260,7 +1260,7 @@ export default function BatePapo() {
                             <div className="flex items-center justify-between gap-1 mt-0.5">
                               <p className={`text-[11px] ${naoLidas > 0 ? 'text-[#25D366] font-semibold' : 'text-slate-400'}`}>{hora}</p>
                               {naoLidas > 0 ? (
-                                <span style={{ backgroundColor: '#25D366' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none h-[20px] min-w-[20px] px-1.5">
+                                <span style={{ backgroundColor: '#25D366', minWidth: '22px', height: '22px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none px-1.5">
                                   {naoLidas}
                                 </span>
                               ) : null}
