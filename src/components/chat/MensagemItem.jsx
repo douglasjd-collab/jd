@@ -322,8 +322,8 @@ export default function MensagemItem({ mensagem, conversaId }) {
         )}
         <div className="mb-1">{renderConteudo()}</div>
         <div className="flex items-center justify-end gap-1 mt-1">
-          <p className={`text-xs ${isVendedor ? 'text-white/80' : 'text-slate-500'}`}>
-            {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm', { locale: ptBR })}
+          <p className={`text-xs ${isVendedor ? 'text-white/80' : 'text-slate-500'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
+            {format(new Date(mensagem.data_envio || mensagem.created_date), 'dd/MM HH:mm', { locale: ptBR })}
           </p>
           {isVendedor && (
             <span className="flex items-center">

@@ -46,7 +46,10 @@ import {
   Pencil,
   Users,
   Image as ImageIcon,
+  Bell,
 } from "lucide-react";
+import { format, isToday, isYesterday, isSameDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   Dialog,
   DialogContent,
@@ -88,6 +91,8 @@ export default function BatePapo() {
   const selecionarConversa = async (conversa, forcarSync = true) => {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
+    // Zerar contador de não lidas ao abrir a conversa
+    setNaoLidasPorConversa(prev => ({ ...prev, [conversa.id]: 0 }));
     
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
@@ -199,6 +204,7 @@ export default function BatePapo() {
   const [empresas, setEmpresas] = useState([]); // apenas para super_admin
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
+  const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
 
   const limparHistoricoCompleto = async () => {
     const confirmacao = window.confirm(
@@ -559,6 +565,17 @@ export default function BatePapo() {
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
         }, 600);
+      }
+
+      // Atualizar contador de não lidas se a mensagem é do cliente e não é a conversa aberta
+      if (msgData?.remetente === 'cliente' && msgData?.conversa_id) {
+        const conversaAtualId = conversaSelecionadaIdRef.current;
+        if (msgData.conversa_id !== conversaAtualId) {
+          setNaoLidasPorConversa(prev => ({
+            ...prev,
+            [msgData.conversa_id]: (prev[msgData.conversa_id] || 0) + 1
+          }));
+        }
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
@@ -1128,9 +1145,16 @@ export default function BatePapo() {
                               </p>
                             )}
                           </div>
-                          <p className="line-clamp-1 text-xs text-slate-500 mt-0.5">
-                            {c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : ''}
-                          </p>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <p className="line-clamp-1 text-xs text-slate-500 flex-1 min-w-0">
+                              {c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : ''}
+                            </p>
+                            {(naoLidasPorConversa[c.id] || 0) > 0 && (
+                              <span className="ml-1.5 flex-shrink-0 inline-flex items-center justify-center rounded-full bg-emerald-500 text-white text-[10px] font-bold leading-none px-1.5 py-0.5 min-w-[18px]">
+                                {naoLidasPorConversa[c.id]}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
@@ -1365,9 +1389,31 @@ export default function BatePapo() {
                         </div>
                       ) : (
                         <div className="space-y-3 pb-4">
-                          {mensagens.map((msg) => (
-                            <MensagemItem key={msg.id} mensagem={msg} conversaId={conversaSelecionada?.id} />
-                          ))}
+                          {mensagens.map((msg, idx) => {
+                            const dataMsg = new Date(msg.data_envio || msg.created_date);
+                            const dataMsgAnterior = idx > 0 ? new Date(mensagens[idx - 1].data_envio || mensagens[idx - 1].created_date) : null;
+                            const mostrarSeparador = !dataMsgAnterior || !isSameDay(dataMsg, dataMsgAnterior);
+                            let labelData = '';
+                            if (mostrarSeparador) {
+                              if (isToday(dataMsg)) labelData = 'Hoje';
+                              else if (isYesterday(dataMsg)) labelData = 'Ontem';
+                              else labelData = format(dataMsg, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+                            }
+                            return (
+                              <React.Fragment key={msg.id}>
+                                {mostrarSeparador && (
+                                  <div className="flex items-center gap-2 my-3">
+                                    <div className="flex-1 h-px bg-slate-300/50" />
+                                    <span className="text-[11px] text-slate-500 bg-white/70 backdrop-blur-sm px-2.5 py-0.5 rounded-full shadow-sm font-medium">
+                                      {labelData}
+                                    </span>
+                                    <div className="flex-1 h-px bg-slate-300/50" />
+                                  </div>
+                                )}
+                                <MensagemItem mensagem={msg} conversaId={conversaSelecionada?.id} />
+                              </React.Fragment>
+                            );
+                          })}
                           <div ref={mensagensEndRef} />
                         </div>
                       )}
