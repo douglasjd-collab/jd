@@ -241,223 +241,6 @@ Deno.serve(async (req) => {
         return Response.json({ ok: true });
       }
 
-      // ── Fluxo de nome de adiantamento ────────────────────────────────────
-      const sessaoAdvNome = pendingSessions.get(`adiantamento_nome_${chatId}`);
-      if (sessaoAdvNome) {
-        const nomeInformado = original.trim();
-        
-        // Buscar empresa JD Promotora
-        let jdEmpresaId = null;
-        try {
-          const empresas = await base44.asServiceRole.entities.Empresa.filter(
-            { nome: { $regex: "JD Promotora", $options: "i" } },
-            '-created_date',
-            1
-          );
-          if (empresas && empresas.length > 0) {
-            jdEmpresaId = empresas[0].id;
-          }
-        } catch (_) {}
-
-        if (!jdEmpresaId) {
-          await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
-          pendingSessions.delete(`adiantamento_nome_${chatId}`);
-          return Response.json({ ok: true });
-        }
-
-        let colaboradorId = null;
-        let colaboradorNome = null;
-        const tipoLabel = sessaoAdvNome.tipo === "funcionario" ? "Funcionário" : "Vendedor";
-
-        // Buscar por primeiro nome (case-insensitive)
-        if (sessaoAdvNome.tipo === "funcionario") {
-          try {
-            const colabs = await base44.asServiceRole.entities.Colaborador.filter(
-              { empresa_id: jdEmpresaId },
-              '-created_date',
-              100
-            );
-            const encontrado = colabs.find(c => 
-              stripAccents((c.nome || '').split(' ')[0]).toLowerCase() === 
-              stripAccents(nomeInformado.split(' ')[0]).toLowerCase()
-            );
-            if (encontrado) {
-              colaboradorId = encontrado.id;
-              colaboradorNome = encontrado.nome;
-            }
-          } catch (_) {}
-        } else {
-          // Buscar como FuncionarioColaborador (vendedor/parceiro)
-          try {
-            const funcs = await base44.asServiceRole.entities.FuncionarioColaborador.filter(
-              { empresa_id: jdEmpresaId },
-              '-created_date',
-              100
-            );
-            const encontrado = funcs.find(c => 
-              stripAccents((c.nome || '').split(' ')[0]).toLowerCase() === 
-              stripAccents(nomeInformado.split(' ')[0]).toLowerCase()
-            );
-            if (encontrado) {
-              colaboradorId = encontrado.id;
-              colaboradorNome = encontrado.nome;
-            }
-          } catch (_) {}
-        }
-
-        if (!colaboradorNome) {
-          await sendTelegram(chatId, `❓ ${tipoLabel} "${nomeInformado}" não encontrado. Tente novamente.`);
-          return Response.json({ ok: true });
-        }
-
-        // Guardar nome e solicitar valor
-        sessaoAdvNome.colaborador_id = colaboradorId;
-        sessaoAdvNome.colaborador_nome = colaboradorNome;
-        pendingSessions.set(`adiantamento_valor_${chatId}`, sessaoAdvNome);
-        pendingSessions.delete(`adiantamento_nome_${chatId}`);
-
-        await sendTelegram(chatId, `✅ ${colaboradorNome}\n\n💰 Qual é o <b>valor</b> do adiantamento?\n\n(exemplo: 100,00 ou 500)`);
-        return Response.json({ ok: true });
-      }
-
-      // ── Fluxo de valor de adiantamento ──────────────────────────────────
-      const sessaoAdvValor = pendingSessions.get(`adiantamento_valor_${chatId}`);
-      if (sessaoAdvValor) {
-        // Parsear valor
-        const valorMatch = original.match(/[\d.,]+/);
-        if (!valorMatch) {
-          await sendTelegram(chatId, "❓ Valor inválido. Digite um número (ex: 100 ou 100,50)");
-          return Response.json({ ok: true });
-        }
-
-        let valor = parseFloat(valorMatch[0].replace(',', '.'));
-        if (isNaN(valor) || valor <= 0) {
-          await sendTelegram(chatId, "❓ Valor deve ser maior que zero.");
-          return Response.json({ ok: true });
-        }
-
-        // Guardar valor e solicitar descrição
-        sessaoAdvValor.valor = valor;
-        pendingSessions.set(`adiantamento_descricao_${chatId}`, sessaoAdvValor);
-        pendingSessions.delete(`adiantamento_valor_${chatId}`);
-
-        const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        await sendTelegram(chatId, `✅ Valor: ${valorFmt}\n\n📝 Qual é o <b>motivo</b> do adiantamento?\n\n(exemplo: Adiantamento salarial, Emergência, etc)`);
-        return Response.json({ ok: true });
-      }
-
-      // ── Fluxo de descrição de adiantamento ──────────────────────────────
-      const sessaoAdvDesc = pendingSessions.get(`adiantamento_descricao_${chatId}`);
-      if (sessaoAdvDesc) {
-        const descricao = original.trim();
-        
-        // Guardar descrição e solicitar data
-        sessaoAdvDesc.descricao = descricao;
-        pendingSessions.set(`adiantamento_data_${chatId}`, sessaoAdvDesc);
-        pendingSessions.delete(`adiantamento_descricao_${chatId}`);
-
-        await sendTelegram(chatId, `✅ Motivo: ${descricao}\n\n📅 Em que <b>data</b> foi o adiantamento?\n\n(formato: DD/MM/YYYY ou: hoje, amanhã)`);
-        return Response.json({ ok: true });
-      }
-
-      // ── Fluxo de data de adiantamento ───────────────────────────────────
-      const sessaoAdvData = pendingSessions.get(`adiantamento_data_${chatId}`);
-      if (sessaoAdvData) {
-        // Parsear data
-        let dataAdv = new Date().toLocaleDateString('fr-CA');
-        const clean = stripAccents(original).toLowerCase();
-        
-        if (clean === "hoje") {
-          dataAdv = new Date().toLocaleDateString('fr-CA');
-        } else if (clean === "amanhã" || clean === "amanha") {
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          dataAdv = tomorrow.toLocaleDateString('fr-CA');
-        } else if (original.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-          const parts = original.split('/');
-          dataAdv = `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
-        }
-
-        sessaoAdvData.data = dataAdv;
-        pendingSessions.delete(`adiantamento_data_${chatId}`);
-
-        // Buscar empresa JD Promotora (novamente por segurança)
-        let jdEmpresaId = null;
-        try {
-          const empresas = await base44.asServiceRole.entities.Empresa.filter(
-            { nome: { $regex: "JD Promotora", $options: "i" } },
-            '-created_date',
-            1
-          );
-          if (empresas && empresas.length > 0) {
-            jdEmpresaId = empresas[0].id;
-          }
-        } catch (_) {}
-
-        if (!jdEmpresaId) {
-          await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
-          return Response.json({ ok: true });
-        }
-
-        const tipoLabel = sessaoAdvData.tipo === "funcionario" ? "Funcionário" : "Vendedor";
-
-        // Criar adiantamento
-        let adiantamentoId = null;
-        if (sessaoAdvData.tipo === "funcionario") {
-          const adData = await base44.asServiceRole.entities.AdiantamentoFuncionario.create({
-            empresa_id: jdEmpresaId,
-            colaborador_id: sessaoAdvData.colaborador_id,
-            colaborador_nome: sessaoAdvData.colaborador_nome,
-            valor: sessaoAdvData.valor,
-            data: sessaoAdvData.data,
-            descricao: sessaoAdvData.descricao,
-            status: 'Pendente',
-          });
-          adiantamentoId = adData.id;
-        } else {
-          const adData = await base44.asServiceRole.entities.Adiantamento.create({
-            empresa_id: jdEmpresaId,
-            colaborador_id: sessaoAdvData.colaborador_id,
-            colaborador_nome: sessaoAdvData.colaborador_nome,
-            valor: sessaoAdvData.valor,
-            data: sessaoAdvData.data,
-            descricao: sessaoAdvData.descricao,
-            status: 'solicitado',
-          });
-          adiantamentoId = adData.id;
-        }
-
-        // Lançar como Despesa
-        const created = await base44.asServiceRole.entities.Despesa.create({
-          empresa_id: jdEmpresaId,
-          valor: sessaoAdvData.valor,
-          descricao: `Adiantamento ${tipoLabel} - ${sessaoAdvData.colaborador_nome}`,
-          categoria: 'Adiantamento',
-          data: sessaoAdvData.data,
-          data_vencimento: sessaoAdvData.data,
-          status: 'pago',
-          data_pagamento: sessaoAdvData.data,
-          responsavel_id: sessaoAdvData.colaborador_id || 'telegram',
-          responsavel_nome: sessaoAdvData.colaborador_nome,
-          usuario_id: usuarioId,
-          usuario_nome: 'Telegram Bot',
-          observacao: `Adiantamento ${tipoLabel} lançado via Telegram - ID: ${adiantamentoId}`,
-        });
-
-        const valorFmt = sessaoAdvData.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        await sendTelegram(chatId,
-          `✅ <b>Adiantamento Lançado!</b>\n\n` +
-          `👤 ${sessaoAdvData.colaborador_nome}\n` +
-          `🏷️ Tipo: <b>${tipoLabel}</b>\n` +
-          `💰 Valor: <b>${valorFmt}</b>\n` +
-          `📝 Motivo: ${sessaoAdvData.descricao}\n` +
-          `📅 Data: ${sessaoAdvData.data}\n` +
-          `<code>ID Adiantamento: ${adiantamentoId}</code>\n` +
-          `<code>ID Transação: ${created.id}</code>`
-        );
-        return Response.json({ ok: true });
-      }
-
       // ── Fluxo de status de receita (recebida/agendada) ───────────────────
       if (data === "receita_recebida" || data === "receita_agendada") {
         const session = pendingSessions.get(`receita_status_${chatId}`);
@@ -622,6 +405,227 @@ Deno.serve(async (req) => {
     if (!original) return Response.json({ ok: true });
 
     const clean = stripAccents(original).toLowerCase();
+
+    // ──────────────────────────────────────────────────────────────────────
+    // VERIFICAR SESSÕES DE ADIANTAMENTO PENDENTES (ANTES DO LLM)
+    // ──────────────────────────────────────────────────────────────────────
+    
+    // ── Fluxo de nome de adiantamento
+    const sessaoAdvNome = pendingSessions.get(`adiantamento_nome_${chatId}`);
+    if (sessaoAdvNome) {
+      const nomeInformado = original.trim();
+      
+      // Buscar empresa JD Promotora
+      let jdEmpresaId = null;
+      try {
+        const empresas = await base44.asServiceRole.entities.Empresa.filter(
+          { nome: { $regex: "JD Promotora", $options: "i" } },
+          '-created_date',
+          1
+        );
+        if (empresas && empresas.length > 0) {
+          jdEmpresaId = empresas[0].id;
+        }
+      } catch (_) {}
+
+      if (!jdEmpresaId) {
+        await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
+        pendingSessions.delete(`adiantamento_nome_${chatId}`);
+        return Response.json({ ok: true });
+      }
+
+      let colaboradorId = null;
+      let colaboradorNome = null;
+      const tipoLabel = sessaoAdvNome.tipo === "funcionario" ? "Funcionário" : "Vendedor";
+
+      // Buscar por primeiro nome (case-insensitive)
+      if (sessaoAdvNome.tipo === "funcionario") {
+        try {
+          const colabs = await base44.asServiceRole.entities.Colaborador.filter(
+            { empresa_id: jdEmpresaId },
+            '-created_date',
+            100
+          );
+          const encontrado = colabs.find(c => 
+            stripAccents((c.nome || '').split(' ')[0]).toLowerCase() === 
+            stripAccents(nomeInformado.split(' ')[0]).toLowerCase()
+          );
+          if (encontrado) {
+            colaboradorId = encontrado.id;
+            colaboradorNome = encontrado.nome;
+          }
+        } catch (_) {}
+      } else {
+        // Buscar como FuncionarioColaborador (vendedor/parceiro)
+        try {
+          const funcs = await base44.asServiceRole.entities.FuncionarioColaborador.filter(
+            { empresa_id: jdEmpresaId },
+            '-created_date',
+            100
+          );
+          const encontrado = funcs.find(c => 
+            stripAccents((c.nome || '').split(' ')[0]).toLowerCase() === 
+            stripAccents(nomeInformado.split(' ')[0]).toLowerCase()
+          );
+          if (encontrado) {
+            colaboradorId = encontrado.id;
+            colaboradorNome = encontrado.nome;
+          }
+        } catch (_) {}
+      }
+
+      if (!colaboradorNome) {
+        await sendTelegram(chatId, `❓ ${tipoLabel} "${nomeInformado}" não encontrado. Tente novamente.`);
+        return Response.json({ ok: true });
+      }
+
+      // Guardar nome e solicitar valor
+      sessaoAdvNome.colaborador_id = colaboradorId;
+      sessaoAdvNome.colaborador_nome = colaboradorNome;
+      pendingSessions.set(`adiantamento_valor_${chatId}`, sessaoAdvNome);
+      pendingSessions.delete(`adiantamento_nome_${chatId}`);
+
+      await sendTelegram(chatId, `✅ ${colaboradorNome}\n\n💰 Qual é o <b>valor</b> do adiantamento?\n\n(exemplo: 100,00 ou 500)`);
+      return Response.json({ ok: true });
+    }
+
+    // ── Fluxo de valor de adiantamento
+    const sessaoAdvValor = pendingSessions.get(`adiantamento_valor_${chatId}`);
+    if (sessaoAdvValor) {
+      // Parsear valor
+      const valorMatch = original.match(/[\d.,]+/);
+      if (!valorMatch) {
+        await sendTelegram(chatId, "❓ Valor inválido. Digite um número (ex: 100 ou 100,50)");
+        return Response.json({ ok: true });
+      }
+
+      let valor = parseFloat(valorMatch[0].replace(',', '.'));
+      if (isNaN(valor) || valor <= 0) {
+        await sendTelegram(chatId, "❓ Valor deve ser maior que zero.");
+        return Response.json({ ok: true });
+      }
+
+      // Guardar valor e solicitar data
+      sessaoAdvValor.valor = valor;
+      pendingSessions.set(`adiantamento_data_${chatId}`, sessaoAdvValor);
+      pendingSessions.delete(`adiantamento_valor_${chatId}`);
+
+      const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      await sendTelegram(chatId, `✅ Valor: ${valorFmt}\n\n📅 Qual é a <b>data</b> da solicitação?\n\n(formato: DD/MM/YYYY ou: hoje, amanhã)`);
+      return Response.json({ ok: true });
+    }
+
+    // ── Fluxo de data de adiantamento
+    const sessaoAdvData = pendingSessions.get(`adiantamento_data_${chatId}`);
+    if (sessaoAdvData) {
+      // Parsear data
+      let dataAdv = new Date().toLocaleDateString('fr-CA');
+      const clean = stripAccents(original).toLowerCase();
+      
+      if (clean === "hoje") {
+        dataAdv = new Date().toLocaleDateString('fr-CA');
+      } else if (clean === "amanhã" || clean === "amanha") {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        dataAdv = tomorrow.toLocaleDateString('fr-CA');
+      } else if (original.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        const parts = original.split('/');
+        dataAdv = `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+      }
+
+      sessaoAdvData.data = dataAdv;
+      pendingSessions.set(`adiantamento_motivo_${chatId}`, sessaoAdvData);
+      pendingSessions.delete(`adiantamento_data_${chatId}`);
+
+      await sendTelegram(chatId, `✅ Data: ${dataAdv}\n\n📝 Qual é o <b>motivo</b> do adiantamento?\n\n(exemplo: Adiantamento salarial, Emergência, etc)`);
+      return Response.json({ ok: true });
+    }
+
+    // ── Fluxo de motivo de adiantamento
+    const sessaoAdvMotivo = pendingSessions.get(`adiantamento_motivo_${chatId}`);
+    if (sessaoAdvMotivo) {
+      const motivo = original.trim();
+      sessaoAdvMotivo.descricao = motivo;
+      pendingSessions.delete(`adiantamento_motivo_${chatId}`);
+
+      // Buscar empresa JD Promotora
+      let jdEmpresaId = null;
+      try {
+        const empresas = await base44.asServiceRole.entities.Empresa.filter(
+          { nome: { $regex: "JD Promotora", $options: "i" } },
+          '-created_date',
+          1
+        );
+        if (empresas && empresas.length > 0) {
+          jdEmpresaId = empresas[0].id;
+        }
+      } catch (_) {}
+
+      if (!jdEmpresaId) {
+        await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
+        return Response.json({ ok: true });
+      }
+
+      const tipoLabel = sessaoAdvMotivo.tipo === "funcionario" ? "Funcionário" : "Vendedor";
+
+      // Criar adiantamento
+      let adiantamentoId = null;
+      if (sessaoAdvMotivo.tipo === "funcionario") {
+        const adData = await base44.asServiceRole.entities.AdiantamentoFuncionario.create({
+          empresa_id: jdEmpresaId,
+          colaborador_id: sessaoAdvMotivo.colaborador_id,
+          colaborador_nome: sessaoAdvMotivo.colaborador_nome,
+          valor: sessaoAdvMotivo.valor,
+          data: sessaoAdvMotivo.data,
+          descricao: sessaoAdvMotivo.descricao,
+          status: 'Pendente',
+        });
+        adiantamentoId = adData.id;
+      } else {
+        const adData = await base44.asServiceRole.entities.Adiantamento.create({
+          empresa_id: jdEmpresaId,
+          colaborador_id: sessaoAdvMotivo.colaborador_id,
+          colaborador_nome: sessaoAdvMotivo.colaborador_nome,
+          valor: sessaoAdvMotivo.valor,
+          data: sessaoAdvMotivo.data,
+          descricao: sessaoAdvMotivo.descricao,
+          status: 'solicitado',
+        });
+        adiantamentoId = adData.id;
+      }
+
+      // Lançar como Despesa
+      const created = await base44.asServiceRole.entities.Despesa.create({
+        empresa_id: jdEmpresaId,
+        valor: sessaoAdvMotivo.valor,
+        descricao: `Adiantamento ${tipoLabel} - ${sessaoAdvMotivo.colaborador_nome}`,
+        categoria: 'Adiantamento',
+        data: sessaoAdvMotivo.data,
+        data_vencimento: sessaoAdvMotivo.data,
+        status: 'pago',
+        data_pagamento: sessaoAdvMotivo.data,
+        responsavel_id: sessaoAdvMotivo.colaborador_id || 'telegram',
+        responsavel_nome: sessaoAdvMotivo.colaborador_nome,
+        usuario_id: usuarioId,
+        usuario_nome: 'Telegram Bot',
+        observacao: `Adiantamento ${tipoLabel} lançado via Telegram - ID: ${adiantamentoId}`,
+      });
+
+      const valorFmt = sessaoAdvMotivo.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      await sendTelegram(chatId,
+        `✅ <b>Adiantamento Cadastrado com Sucesso!</b>\n\n` +
+        `👤 ${sessaoAdvMotivo.colaborador_nome}\n` +
+        `🏷️ Tipo: <b>${tipoLabel}</b>\n` +
+        `💰 Valor: <b>${valorFmt}</b>\n` +
+        `📝 Motivo: ${sessaoAdvMotivo.descricao}\n` +
+        `📅 Data: ${sessaoAdvMotivo.data}\n` +
+        `<code>ID Adiantamento: ${adiantamentoId}</code>\n` +
+        `<code>ID Transação: ${created.id}</code>`
+      );
+      return Response.json({ ok: true });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
 
     if (clean === "/start" || clean === "ajuda" || clean === "help" || clean === "/help") {
       await sendTelegram(chatId,
