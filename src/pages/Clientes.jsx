@@ -302,14 +302,18 @@ export default function Clientes() {
     }
   };
 
-  const filteredClientes = clientes.filter(c => 
-    c.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    c.nome_completo?.toLowerCase().includes(search.toLowerCase()) ||
-    c.cpf?.includes(search) ||
-    c.email?.toLowerCase().includes(search.toLowerCase()) ||
-    c.pj_razao_social?.toLowerCase().includes(search.toLowerCase()) ||
-    c.pj_cnpj?.includes(search)
-  );
+  const searchNorm = search.replace(/\D/g, '');
+  const filteredClientes = clientes.filter(c => {
+    const s = search.toLowerCase();
+    if (c.nome?.toLowerCase().includes(s)) return true;
+    if (c.nome_completo?.toLowerCase().includes(s)) return true;
+    if (c.email?.toLowerCase().includes(s)) return true;
+    if (c.pj_razao_social?.toLowerCase().includes(s)) return true;
+    // CPF/CNPJ: comparar sem pontuação
+    if (searchNorm && normCpf(c.cpf).includes(searchNorm)) return true;
+    if (searchNorm && normCpf(c.pj_cnpj).includes(searchNorm)) return true;
+    return false;
+  });
 
   const columns = [
     {
