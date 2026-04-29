@@ -69,76 +69,8 @@ Deno.serve(async (req) => {
       valorFipe = !isNaN(precoNum) ? precoNum : null;
     }
 
-    // Se não tiver FIPE, tenta consultar pela BrasilAPI (gratuita)
-    if (!valorFipe && marca && modelo && ano) {
-      try {
-        // Buscar marcas de veículos na BrasilAPI
-        const tipoFipe = tipo.toLowerCase().includes('moto') ? 'motos' : 'carros';
-        
-        try {
-          const marcasResp = await fetch(`https://brasilapi.com.br/api/fipe/marcas/v1/${tipoFipe}`);
-          
-          if (marcasResp.ok) {
-            const marcas = await marcasResp.json();
-            const marcaNorm = marca.toLowerCase().trim();
-            const marcaEncontrada = marcas.find(m => {
-              const nomeMarca = m.nome.toLowerCase().trim();
-              return nomeMarca === marcaNorm || 
-                     nomeMarca.includes(marcaNorm) || 
-                     marcaNorm.includes(nomeMarca);
-            });
-
-            if (marcaEncontrada) {
-              // Buscar modelos da marca
-              const modelosResp = await fetch(
-                `https://brasilapi.com.br/api/fipe/veiculos/v1/${tipoFipe}/${marcaEncontrada.valor}`
-              );
-              if (modelosResp.ok) {
-                const modelosData = await modelosResp.json();
-                const modeloNorm = modelo.toLowerCase().trim();
-                const modeloEncontrado = (modelosData.modelos || []).find(m => {
-                  const nomeMod = m.nome.toLowerCase().trim();
-                  return nomeMod.includes(modeloNorm) || modeloNorm.includes(nomeMod);
-                });
-
-                if (modeloEncontrado && ano) {
-                  // Buscar anos disponíveis
-                  const anosResp = await fetch(
-                    `https://brasilapi.com.br/api/fipe/veiculos/v1/${tipoFipe}/${marcaEncontrada.valor}/${modeloEncontrado.valor}`
-                  );
-                  if (anosResp.ok) {
-                    const anos = await anosResp.json();
-                    const anoStr = String(ano).trim();
-                    const anoEncontrado = anos.find(a => String(a.nome).includes(anoStr));
-
-                    if (anoEncontrado) {
-                      const fipeResp = await fetch(
-                        `https://brasilapi.com.br/api/fipe/veiculos/v1/${tipoFipe}/${marcaEncontrada.valor}/${modeloEncontrado.valor}/${anoEncontrado.valor}`
-                      );
-                      if (fipeResp.ok) {
-                        const fipeData = await fipeResp.json();
-                        const precoStr = fipeData.preco || '';
-                        const precoNum = parseFloat(
-                          precoStr.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()
-                        );
-                        if (!isNaN(precoNum) && precoNum > 0) {
-                          valorFipe = precoNum;
-                          codigoFipe = fipeData.codigoFipe || null;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        } catch (_brasilErr) {
-          // BrasilAPI falhou, continua
-        }
-      } catch (_fipeErr) {
-        // FIPE não encontrada, retorna sem valor FIPE — usuário preenche manualmente
-      }
-    }
+    // FIPE deve vir da API de placa ou ser preenchida manualmente
+    // Não tentamos buscar na BrasilAPI pois tem limitações de cobertura
 
     return Response.json({
       sucesso: true,
