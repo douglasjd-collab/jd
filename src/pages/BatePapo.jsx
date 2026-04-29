@@ -97,31 +97,8 @@ export default function BatePapo() {
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
     
-    // Sincronizar histórico — IMEDIATO se forcarSync
-    if (conversa?.id && conversa?.cliente_telefone && empresaId && forcarSync) {
-      console.log(`🔄 Sincronizando mensagens para ${conversa.cliente_telefone}...`);
-      
-      // Tentar importação direta ANTES de refetch
-      base44.functions.invoke('importarMensagensConversa', {
-        empresa_id: empresaId,
-        telefone: conversa.cliente_telefone,
-        conversa_id: conversa.id
-      }).then(() => {
-        console.log(`✅ Importação concluída`);
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
-        setTimeout(() => refetchMensagens?.(), 100);
-      }).catch(e => {
-        console.warn('Falha importar:', e);
-        // Fallback: sincronizar histórico completo
-        base44.functions.invoke('sincronizarHistoricoAgressivo', {
-          empresa_id: empresaId,
-          conversa_id_especifico: conversa.id
-        }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
-          setTimeout(() => refetchMensagens?.(), 100);
-        }).catch(() => {});
-      });
-    }
+    // Apenas invalida o cache para forçar refetch das mensagens do banco local
+    // NÃO dispara sincronização/download automático ao abrir conversa
     
     // Carregar foto do contato
     if (!conversa?.cliente_telefone || !empresaId) return;
@@ -813,16 +790,12 @@ export default function BatePapo() {
     return new Date(c.responsavel_expira_em) > new Date();
   };
 
-  // Em espera: última mensagem foi do CLIENTE (aguardando resposta do atendente)
-  // Usa naoLidasPorConversa como fonte primária — se tem msgs não lidas do cliente, está em espera
-  // Fallback: ultimo_remetente === 'cliente' para conversas já lidas mas sem resposta
+  // Em espera: último remetente foi o CLIENTE (aguardando resposta do atendente)
+  // Baseado SOMENTE em ultimo_remetente — não some ao abrir/ler a conversa
   const estaEmEspera = (c) => {
     if (!c || !c.id) return false;
     if (c.status === 'arquivada' || c.status === 'encerrada') return false;
     if (c.status !== 'ativa') return false;
-    // Tem mensagens não lidas do cliente → definitivamente em espera
-    if ((naoLidasPorConversa[c.id] || 0) > 0) return true;
-    // Último remetente explicitamente marcado como cliente
     return c.ultimo_remetente === 'cliente';
   };
 
