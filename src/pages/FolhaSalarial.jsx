@@ -84,9 +84,23 @@ export default function FolhaSalarialPage() {
     setModalOpen(true);
   };
 
-  const preencherSalario = (colabId) => {
+  const preencherSalario = async (colabId) => {
     const c = colaboradores.find(x => x.id === colabId);
-    if (c) setForm(f => ({ ...f, colaborador_id: colabId, salario_base: String(c.salario_base || '') }));
+    if (!c) return;
+    // Buscar adiantamentos pendentes do colaborador
+    let totalAdiantamentos = 0;
+    try {
+      const adiantamentos = await base44.entities.AdiantamentoFuncionario.filter(
+        { colaborador_id: colabId, status: 'Pendente' }
+      );
+      totalAdiantamentos = adiantamentos.reduce((s, a) => s + (a.valor || 0), 0);
+    } catch {}
+    setForm(f => ({
+      ...f,
+      colaborador_id: colabId,
+      salario_base: String(c.salario_base || ''),
+      adiantamentos: String(totalAdiantamentos)
+    }));
   };
 
   const salvar = async () => {
