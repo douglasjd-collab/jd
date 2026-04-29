@@ -362,6 +362,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Colaboradores', page: 'FuncionariosColaboradores' },
         { name: 'Folha Salarial', page: 'FolhaSalarial' },
         { name: 'Adiantamentos', page: 'AdiantamentosFuncionarios' },
+        { name: 'Lançamento de Faltas', page: 'LancamentoFaltas' },
         { name: 'Relatórios', page: 'RelatorioFuncionarios' },
       ]
     },

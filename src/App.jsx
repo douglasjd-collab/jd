@@ -31,6 +31,7 @@ import FolhaSalarialPage from './pages/FolhaSalarial';
 import AdiantamentosFuncionarios from './pages/AdiantamentosFuncionarios';
 import RelatorioFuncionarios from './pages/RelatorioFuncionarios';
 import ContasBancarias from './pages/ContasBancarias';
+import LancamentoFaltas from './pages/LancamentoFaltas';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
       <Route path="/AdiantamentosFuncionarios" element={<LayoutWrapper currentPageName="AdiantamentosFuncionarios"><AdiantamentosFuncionarios /></LayoutWrapper>} />
       <Route path="/RelatorioFuncionarios" element={<LayoutWrapper currentPageName="RelatorioFuncionarios"><RelatorioFuncionarios /></LayoutWrapper>} />
       <Route path="/ContasBancarias" element={<LayoutWrapper currentPageName="ContasBancarias"><ContasBancarias /></LayoutWrapper>} />
+      <Route path="/LancamentoFaltas" element={<LayoutWrapper currentPageName="LancamentoFaltas"><LancamentoFaltas /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
