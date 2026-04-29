@@ -221,6 +221,108 @@ Deno.serve(async (req) => {
         return Response.json({ ok: true });
       }
 
+      // ── Fluxo de tipo de adiantamento (funcionário/vendedor) ──────────────
+      if (data === "adv_funcionario" || data === "adv_vendedor") {
+        const session = pendingSessions.get(`adiantamento_tipo_${chatId}`);
+        if (!session) {
+          await answerCallback(cq.id, "⚠️ Sessão expirada");
+          return Response.json({ ok: true });
+        }
+
+        await answerCallback(cq.id, "✅ Processando adiantamento...");
+        pendingSessions.delete(`adiantamento_tipo_${chatId}`);
+
+        // Buscar empresa JD Promotora
+        let jdEmpresaId = null;
+        try {
+          const empresas = await base44.asServiceRole.entities.Empresa.filter(
+            { nome: { $regex: "JD Promotora", $options: "i" } },
+            '-created_date',
+            1
+          );
+          if (empresas && empresas.length > 0) {
+            jdEmpresaId = empresas[0].id;
+          }
+        } catch (_) {}
+
+        if (!jdEmpresaId) {
+          await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
+          return Response.json({ ok: true });
+        }
+
+        let colaboradorId = null;
+        let colaboradorNome = session.colaborador_nome;
+        let tipoLabel = data === "adv_funcionario" ? "Funcionário" : "Vendedor";
+
+        // Buscar Colaborador (funcionário) ou FuncionarioColaborador (parceiro/vendedor)
+        if (data === "adv_funcionario") {
+          try {
+            const colabs = await base44.asServiceRole.entities.Colaborador.filter(
+              { empresa_id: jdEmpresaId, nome: { $regex: session.colaborador_nome, $options: "i" } },
+              '-created_date',
+              1
+            );
+            if (colabs && colabs.length > 0) {
+              colaboradorId = colabs[0].id;
+              colaboradorNome = colabs[0].nome;
+            }
+          } catch (_) {}
+        } else {
+          // Buscar como FuncionarioColaborador (vendedor/parceiro)
+          try {
+            const funcs = await base44.asServiceRole.entities.FuncionarioColaborador.filter(
+              { empresa_id: jdEmpresaId, nome: { $regex: session.colaborador_nome, $options: "i" } },
+              '-created_date',
+              1
+            );
+            if (funcs && funcs.length > 0) {
+              colaboradorId = funcs[0].id;
+              colaboradorNome = funcs[0].nome;
+            }
+          } catch (_) {}
+        }
+
+        // Criar adiantamento
+        const adiantamento = await base44.asServiceRole.entities.Adiantamento.create({
+          empresa_id: jdEmpresaId,
+          colaborador_id: colaboradorId,
+          colaborador_nome: colaboradorNome,
+          valor: session.valor,
+          data: session.data,
+          descricao: session.descricao || `Adiantamento ${colaboradorNome}`,
+          status: 'solicitado',
+        });
+
+        // Lançar como despesa na empresa
+        const created = await base44.asServiceRole.entities.Despesa.create({
+          empresa_id: jdEmpresaId,
+          valor: session.valor,
+          descricao: `Adiantamento ${tipoLabel} - ${colaboradorNome}`,
+          categoria: 'Adiantamento',
+          data: session.data,
+          data_vencimento: session.data,
+          status: 'pago',
+          data_pagamento: session.data,
+          responsavel_id: colaboradorId || 'telegram',
+          responsavel_nome: colaboradorNome,
+          usuario_id: usuarioId,
+          usuario_nome: 'Telegram Bot',
+          observacao: `Adiantamento ${tipoLabel} lançado via Telegram - ID Adiantamento: ${adiantamento.id}`,
+        });
+
+        const valorFmt = session.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        await sendTelegram(chatId,
+          `✅ <b>Adiantamento lançado!</b>\n\n` +
+          `👤 ${colaboradorNome}\n` +
+          `🏷️ Tipo: <b>${tipoLabel}</b>\n` +
+          `💰 Valor: <b>${valorFmt}</b>\n` +
+          `📅 Data: ${session.data}\n` +
+          `<code>ID Adiantamento: ${adiantamento.id}</code>\n` +
+          `<code>ID Despesa: ${created.id}</code>`
+        );
+        return Response.json({ ok: true });
+      }
+
       // ── Fluxo de status de receita (recebida/agendada) ───────────────────
       if (data === "receita_recebida" || data === "receita_agendada") {
         const session = pendingSessions.get(`receita_status_${chatId}`);
@@ -471,82 +573,33 @@ Deno.serve(async (req) => {
     if (intent.action === "create_advance") {
       const adv = intent.advance || {};
       if (!adv.valor || !adv.colaborador_nome) {
-        await sendTelegram(chatId, "❓ Para lançar adiantamento, preciso de: <b>nome do vendedor/colaborador</b> e <b>valor</b>.");
+        await sendTelegram(chatId, "❓ Para lançar adiantamento, preciso de: <b>nome</b> e <b>valor</b>.");
         return Response.json({ ok: true });
       }
 
       const hoje = new Date().toLocaleDateString('fr-CA');
       const dataAdv = adv.data || hoje;
 
-      // Buscar empresa JD Promotora
-      let jdEmpresaId = null;
-      try {
-        const empresas = await base44.asServiceRole.entities.Empresa.filter(
-          { nome: { $regex: "JD Promotora", $options: "i" } },
-          '-created_date',
-          1
-        );
-        if (empresas && empresas.length > 0) {
-          jdEmpresaId = empresas[0].id;
-        }
-      } catch (_) {}
-
-      if (!jdEmpresaId) {
-        await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
-        return Response.json({ ok: true });
-      }
-
-      // Buscar colaborador/vendedor por nome
-      let colaboradorId = null;
-      let colaboradorNome = adv.colaborador_nome;
-      try {
-        const colabs = await base44.asServiceRole.entities.Colaborador.filter(
-          { empresa_id: jdEmpresaId, nome: { $regex: adv.colaborador_nome, $options: "i" } },
-          '-created_date',
-          1
-        );
-        if (colabs && colabs.length > 0) {
-          colaboradorId = colabs[0].id;
-          colaboradorNome = colabs[0].nome;
-        }
-      } catch (_) {}
-
-      // Criar adiantamento
-      const adiantamento = await base44.asServiceRole.entities.Adiantamento.create({
-        empresa_id: jdEmpresaId,
-        colaborador_id: colaboradorId,
-        colaborador_nome: colaboradorNome,
+      // Guardar sessão pendente e perguntar tipo
+      pendingSessions.set(`adiantamento_tipo_${chatId}`, {
+        colaborador_nome: adv.colaborador_nome,
         valor: Number(adv.valor),
         data: dataAdv,
-        descricao: adv.descricao || `Adiantamento ${colaboradorNome}`,
-        status: 'solicitado',
-      });
-
-      // Lançar como despesa na empresa
-      const created = await base44.asServiceRole.entities.Despesa.create({
-        empresa_id: jdEmpresaId,
-        valor: Number(adv.valor),
-        descricao: `Adiantamento - ${colaboradorNome}`,
-        categoria: 'Adiantamento',
-        data: dataAdv,
-        data_vencimento: dataAdv,
-        status: 'pago',
-        data_pagamento: dataAdv,
-        responsavel_id: colaboradorId || 'telegram',
-        responsavel_nome: colaboradorNome,
-        usuario_id: usuarioId,
-        usuario_nome: 'Telegram Bot',
-        observacao: `Adiantamento lançado via Telegram - ID Adiantamento: ${adiantamento.id}`,
+        descricao: adv.descricao,
       });
 
       const valorFmt = Number(adv.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       await sendTelegram(chatId,
-        `✅ <b>Adiantamento lançado!</b>\n\n` +
-        `👤 ${colaboradorNome}\n` +
-        `💰 Valor: <b>${valorFmt}</b>\n` +
-        `📅 Data: ${dataAdv}\n` +
-        `<code>ID Adiantamento: ${adiantamento.id}</code>\n` +
-        `<code>ID Despesa: ${created.id}</code>`
+        `💰 <b>Adiantamento: ${adv.colaborador_nome} — ${valorFmt}</b>\n\n` +
+        `É um <b>Funcionário/Colaborador</b> ou <b>Vendedor/Parceiro</b>?`,
+        {
+          inline_keyboard: [
+            [
+              { text: "👤 Funcionário", callback_data: "adv_funcionario" },
+              { text: "💼 Vendedor", callback_data: "adv_vendedor" }
+            ]
+          ]
+        }
       );
       return Response.json({ ok: true });
     }
