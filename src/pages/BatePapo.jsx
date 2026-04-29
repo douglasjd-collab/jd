@@ -475,23 +475,29 @@ export default function BatePapo() {
     placeholderData: (prev) => prev,
   });
 
-  // Calcular contadores de não lidas direto das conversas carregadas
-  // Uma conversa tem mensagem não lida quando ultimo_remetente === 'cliente' e não está aberta
+  // Buscar mensagens não lidas do banco e montar contadores por conversa
   useEffect(() => {
-    if (conversas.length === 0) return;
+    if (!empresaId || conversas.length === 0) return;
+
+    const conversaIds = conversas.filter(c => c.id).map(c => c.id);
     const abertaId = conversaSelecionadaId;
-    const contadores = {};
-    conversas.forEach(c => {
-      if (!c.id || c.id === abertaId) return;
-      const ultimoRemetente = c.ultimo_remetente || 'cliente';
-      // Considera não lida se o último remetente é o cliente (ainda não respondemos)
-      if (ultimoRemetente === 'cliente' && c.status !== 'arquivada' && c.status !== 'encerrada') {
-        // Usar contagem real se disponível no objeto, senão marcar como 1
-        contadores[c.id] = c.nao_lidas || 1;
-      }
-    });
-    setNaoLidasPorConversa(contadores);
-  }, [conversas, conversaSelecionadaId]);
+
+    base44.entities.MensagemWhatsapp.filter(
+      { remetente: 'cliente' },
+      '-data_envio',
+      5000
+    ).then(msgs => {
+      const contadores = {};
+      msgs.forEach(m => {
+        if (!m.conversa_id) return;
+        if (m.conversa_id === abertaId) return; // conversa aberta não conta
+        if (!conversaIds.includes(m.conversa_id)) return; // só desta empresa
+        if (m.status === 'lida') return; // já lida, não conta
+        contadores[m.conversa_id] = (contadores[m.conversa_id] || 0) + 1;
+      });
+      setNaoLidasPorConversa(contadores);
+    }).catch(() => {});
+  }, [empresaId, conversas, conversaSelecionadaId]);
 
   // Selecionar conversa inicial quando a lista carrega
   useEffect(() => {
@@ -1175,7 +1181,7 @@ export default function BatePapo() {
                     </div>
                   ) : (
                     conversasFiltradas.map((c) => {
-                      const naoLidas = naoLidasPorConversa[c.id] || 0;
+                    const naoLidas = naoLidasPorConversa[c.id] ?? 0;
                       const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
                       const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
                       const hora = c.data_ultima_mensagem
@@ -1194,6 +1200,8 @@ export default function BatePapo() {
                             "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition cursor-pointer border-b border-slate-100 last:border-0",
                             conversaSelecionada?.id === c.id
                               ? "bg-blue-50"
+                              : naoLidas > 0
+                              ? "bg-white hover:bg-slate-50"
                               : "bg-white hover:bg-slate-50"
                           )}
                           onClick={() => selecionarConversa(c)}
@@ -1272,14 +1280,14 @@ export default function BatePapo() {
                               {ultimaMsg}
                             </p>
 
-                            {/* Linha 3: hora + badge não lidas */}
+                            {/* Linha 3: hora + badge não lidas estilo WhatsApp */}
                             <div className="flex items-center justify-between gap-1 mt-0.5">
-                              <p className={`text-[11px] ${naoLidas > 0 ? 'text-slate-600 font-semibold' : 'text-slate-400'}`}>{hora}</p>
-                              {naoLidas > 0 && (
-                                <span className="inline-flex items-center justify-center rounded-full bg-[#25D366] text-white text-[11px] font-bold leading-none h-5 min-w-[20px] px-1.5 shadow-sm">
+                              <p className={`text-[11px] ${naoLidas > 0 ? 'text-[#25D366] font-semibold' : 'text-slate-400'}`}>{hora}</p>
+                              {naoLidas > 0 ? (
+                                <span style={{ backgroundColor: '#25D366' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none h-[20px] min-w-[20px] px-1.5">
                                   {naoLidas}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         </div>
