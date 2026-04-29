@@ -78,17 +78,15 @@ export default function ImportacaoDetalhes() {
             <div>
               <p className="text-sm text-slate-500">Data</p>
               <p className="font-semibold">
-                {(() => {
-                  const d = new Date(importacao.created_date);
-                  // Ajusta para Brasília (UTC-3)
-                  const brDate = new Date(d.getTime() - 3 * 60 * 60 * 1000);
-                  const dd = String(brDate.getUTCDate()).padStart(2, '0');
-                  const mm = String(brDate.getUTCMonth() + 1).padStart(2, '0');
-                  const yyyy = brDate.getUTCFullYear();
-                  const hh = String(brDate.getUTCHours()).padStart(2, '0');
-                  const min = String(brDate.getUTCMinutes()).padStart(2, '0');
-                  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
-                })()}
+                {new Intl.DateTimeFormat('pt-BR', {
+                  timeZone: 'America/Sao_Paulo',
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                }).format(new Date(importacao.created_date))}
               </p>
             </div>
           </CardContent>

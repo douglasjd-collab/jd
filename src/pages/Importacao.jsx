@@ -107,15 +107,15 @@ export default function Importacao() {
   const columns = [
     {
       header: 'Data',
-      cell: (row) => {
-        const d = new Date(new Date(row.created_date).getTime() - 3 * 60 * 60 * 1000);
-        const dd = String(d.getUTCDate()).padStart(2, '0');
-        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const yyyy = d.getUTCFullYear();
-        const hh = String(d.getUTCHours()).padStart(2, '0');
-        const min = String(d.getUTCMinutes()).padStart(2, '0');
-        return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
-      }
+      cell: (row) => new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(new Date(row.created_date))
     },
     {
       header: 'Administradora',
