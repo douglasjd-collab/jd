@@ -216,7 +216,7 @@ export default function Seguros() {
                 <div className="col-span-1">Tipo</div>
                 <div className="col-span-2">Vigência</div>
                 <div className="col-span-1 text-right">Parcela</div>
-                <div className="col-span-1 text-right">Adesão</div>
+                <div className="col-span-1 text-right">Recorrência (%)</div>
                 <div className="col-span-1">Status</div>
                 <div className="col-span-1"></div>
               </div>
