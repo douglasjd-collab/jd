@@ -141,9 +141,9 @@ Deno.serve(async (req) => {
 
     // ── Função auxiliar: normalizar valor monetário ──────────────────────────
     const parseValor = (raw) => {
-      let s = String(raw ?? '').trim().replace(/R\$/g, '').replace(/\s/g, '');
-      // Se já é número (Excel numérico)
       if (typeof raw === 'number') return raw > 0 ? raw : 0;
+      let s = String(raw ?? '').trim().replace(/R\$/g, '').replace(/\s/g, '');
+      // Formato BR: 1.234,56 → remover pontos e trocar vírgula
       s = s.replace(/\./g, '').replace(',', '.');
       const n = parseFloat(s);
       return isNaN(n) || n <= 0 ? 0 : n;
@@ -151,20 +151,37 @@ Deno.serve(async (req) => {
 
     // ── Função auxiliar: normalizar data ─────────────────────────────────────
     const parseData = (raw) => {
-      if (!raw) return '';
-      // Excel date serial
-      if (typeof raw === 'number') {
-        const date = XLSX.SSF.parse_date_code(raw);
-        if (date) {
-          const mm = String(date.m).padStart(2, '0');
-          const dd = String(date.d).padStart(2, '0');
-          return `${date.y}-${mm}-${dd}`;
+      if (raw === null || raw === undefined || raw === '') return '';
+      // Objeto Date (quando cellDates: true)
+      if (raw instanceof Date && !isNaN(raw)) {
+        const mm = String(raw.getMonth() + 1).padStart(2, '0');
+        const dd = String(raw.getDate()).padStart(2, '0');
+        return `${raw.getFullYear()}-${mm}-${dd}`;
+      }
+      // Excel date serial (número inteiro ou decimal)
+      if (typeof raw === 'number' && raw > 1000) {
+        try {
+          const date = XLSX.SSF.parse_date_code(raw);
+          if (date && date.y > 1900) {
+            const mm = String(date.m).padStart(2, '0');
+            const dd = String(date.d).padStart(2, '0');
+            return `${date.y}-${mm}-${dd}`;
+          }
+        } catch {}
+        // Fallback manual: Excel conta dias desde 1900-01-01 (com bug do 1900 como bissexto)
+        const excelEpoch = new Date(1900, 0, 1);
+        const msPerDay = 86400000;
+        const d = new Date(excelEpoch.getTime() + (raw - 2) * msPerDay);
+        if (!isNaN(d)) {
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          return `${d.getFullYear()}-${mm}-${dd}`;
         }
       }
       const s = String(raw).trim();
       // dd/mm/yyyy
-      const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+      const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m1) return `${m1[3]}-${String(m1[2]).padStart(2,'0')}-${String(m1[1]).padStart(2,'0')}`;
       // yyyy-mm-dd
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
       return s;
@@ -271,7 +288,7 @@ Deno.serve(async (req) => {
 
     if (isExcel) {
       // ── Ler Excel com XLSX (lê TODAS as linhas) ───────────────────────────
-      const workbook = XLSX.read(uint8, { type: 'array', cellDates: false, raw: true });
+      const workbook = XLSX.read(uint8, { type: 'array', cellDates: true, raw: false });
       console.log(`Abas disponíveis no Excel: ${JSON.stringify(workbook.SheetNames)}`);
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
