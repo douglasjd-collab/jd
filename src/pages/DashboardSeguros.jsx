@@ -17,6 +17,9 @@ export default function DashboardSeguros() {
   const [empresaId, setEmpresaId] = useState(null);
   const [periodoMeses, setPeriodoMeses] = useState('6');
 
+  // Filtro da tabela de comissões: mês/ano no formato 'YYYY-MM'
+  const [filtroComissaoMes, setFiltroComissaoMes] = useState(format(new Date(), 'yyyy-MM'));
+
   useEffect(() => { loadUser(); }, []);
   const loadUser = async () => {
     const me = await base44.auth.me();
@@ -321,26 +324,42 @@ export default function DashboardSeguros() {
         ))}
       </div>
 
-      {/* Tabela: 10 comissões pendentes mais recentes */}
+      {/* Tabela: comissões com filtro de período */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-amber-500" />
-              Comissões Pendentes de Seguros (mais recentes)
+              Comissões de Seguros por Período
             </CardTitle>
-            <Link to="/CobrancaSeguro" className="text-xs text-amber-600 hover:underline font-medium">Ver todas →</Link>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-500 font-medium whitespace-nowrap">Filtrar por mês:</label>
+              <input
+                type="month"
+                value={filtroComissaoMes}
+                onChange={e => setFiltroComissaoMes(e.target.value)}
+                className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              <Link to="/CobrancaSeguro" className="text-xs text-amber-600 hover:underline font-medium whitespace-nowrap">Ver todas →</Link>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {(() => {
+            const [anoFiltro, mesFiltro] = filtroComissaoMes.split('-').map(Number);
             const pendentes = propostas
-              .filter(p => ['atrasado', 'em_renovacao', 'pendente'].includes(p.status))
+              .filter(p => {
+                // filtra pelo mês/ano da data de início ou criação
+                const dataRef = p.data_inicio || p.created_date;
+                if (!dataRef) return false;
+                const d = new Date(dataRef);
+                return d.getFullYear() === anoFiltro && d.getMonth() + 1 === mesFiltro;
+              })
               .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
               .slice(0, 10);
 
             if (pendentes.length === 0) {
-              return <p className="text-sm text-slate-400 text-center py-8">Nenhuma comissão pendente encontrada</p>;
+              return <p className="text-sm text-slate-400 text-center py-8">Nenhum registro encontrado para {format(new Date(anoFiltro, mesFiltro - 1), 'MMMM/yyyy', { locale: ptBR })}</p>;
             }
 
             return (
@@ -358,14 +377,15 @@ export default function DashboardSeguros() {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {pendentes.map((p, i) => {
-                      const statusColor = p.status === 'atrasado'
-                        ? 'bg-red-100 text-red-700'
-                        : p.status === 'em_renovacao'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-slate-100 text-slate-600';
-                      const statusLabel = p.status === 'atrasado' ? 'Atrasado'
-                        : p.status === 'em_renovacao' ? 'Em Renovação'
-                        : 'Pendente';
+                      const statusMap = {
+                        em_dia: { color: 'bg-emerald-100 text-emerald-700', label: 'Em Dia' },
+                        atrasado: { color: 'bg-red-100 text-red-700', label: 'Atrasado' },
+                        em_renovacao: { color: 'bg-amber-100 text-amber-700', label: 'Em Renovação' },
+                        vencido: { color: 'bg-slate-100 text-slate-500', label: 'Vencido' },
+                        cancelado: { color: 'bg-slate-100 text-slate-400', label: 'Cancelado' },
+                        pendente: { color: 'bg-blue-100 text-blue-700', label: 'Pendente' },
+                      };
+                      const { color: statusColor, label: statusLabel } = statusMap[p.status] || { color: 'bg-slate-100 text-slate-600', label: p.status || '—' };
                       return (
                         <tr key={p.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
                           <td className="px-4 py-3 font-medium text-slate-800">{p.vendedor_nome || '—'}</td>
