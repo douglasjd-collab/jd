@@ -215,9 +215,9 @@ export default function Seguros() {
                 <div className="col-span-2">Seguradora</div>
                 <div className="col-span-1">Tipo</div>
                 <div className="col-span-2">Vigência</div>
-                <div className="col-span-1 text-right">Parcela</div>
-                <div className="col-span-1 text-right">Recorrência (%)</div>
-                <div className="col-span-1">Status</div>
+                <div className="col-span-1 text-center">Parcela</div>
+                <div className="col-span-1 text-center">Recorrência<br />(%)</div>
+                <div className="col-span-1 text-center">Status</div>
                 <div className="col-span-1"></div>
               </div>
               {propostasFiltradas.map((p) => {
@@ -244,17 +244,17 @@ export default function Seguros() {
                         </p>
                       )}
                     </div>
-                    <div className="col-span-1 text-right">
+                    <div className="col-span-1 text-center">
                       <p className="text-sm font-semibold text-slate-900">
                         {p.valor_parcela ? `R$ ${p.valor_parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
                       </p>
                     </div>
-                    <div className="col-span-1 text-right">
+                    <div className="col-span-1 text-center">
                       <p className="text-sm text-emerald-600 font-medium">
-                        {p.valor_adesao ? `R$ ${p.valor_adesao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
+                        {p.valor_adesao ? `${p.valor_adesao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%` : '—'}
                       </p>
                     </div>
-                    <div className="col-span-1">
+                    <div className="col-span-1 flex justify-center">
                       <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${sc.color}`}>{sc.label}</span>
                     </div>
                     <div className="col-span-1 flex justify-end">
