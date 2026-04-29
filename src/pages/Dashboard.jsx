@@ -602,6 +602,74 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Tabela: 10 comissões pendentes mais recentes */}
+      {user && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Banknote className="w-5 h-5 text-amber-500" />
+                Comissões Pendentes de Pagamento (mais recentes)
+              </CardTitle>
+              {isAdmin && (
+                <Link to="/ComissoesPagar" className="text-xs text-amber-600 hover:underline font-medium">Ver todas →</Link>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loadingComissoes ? (
+              <p className="text-sm text-slate-400 text-center py-6">Carregando...</p>
+            ) : (() => {
+              const pendentes = comissoes
+                .filter(c => c.tipo === 'pagar' && c.status !== 'paga')
+                .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
+                .slice(0, 10);
+              if (pendentes.length === 0) {
+                return <p className="text-sm text-slate-400 text-center py-6">Nenhuma comissão pendente</p>;
+              }
+              return (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50">
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Vendedor</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Descrição</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Data</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Valor</th>
+                        <th className="text-center px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {pendentes.map((c, i) => (
+                        <tr key={c.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                          <td className="px-4 py-3 font-medium text-slate-800">
+                            {c.vendedor_nome || c.colaborador_nome || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">
+                            {c.descricao || c.tipo || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                            {c.created_date ? format(new Date(c.created_date), 'dd/MM/yyyy') : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-amber-600 whitespace-nowrap">
+                            {formatCurrency(c.valor || 0)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                              Pendente
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Dashboard Selector */}
       <DashboardSelector 
         selectedDashboard={selectedDashboard}
