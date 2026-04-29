@@ -184,7 +184,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Data</TableHead>
+              <TableHead>Data Rec. Comissão</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Contrato</TableHead>
               <TableHead>Valor Base Comissão</TableHead>
@@ -197,7 +197,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
           <TableBody>
             {itens.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.data_recebimento ? format(new Date(item.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy') : '-'}</TableCell>
+                <TableCell>{item.data_recebimento ? (() => { try { return format(new Date(item.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy'); } catch { return item.data_recebimento; } })() : '-'}</TableCell>
                 <TableCell className="max-w-[160px] truncate">{item.nome_completo || '-'}</TableCell>
                 <TableCell>{item.contrato || '-'}</TableCell>
                 <TableCell>{item.valor_base_comissao ? formatCurrency(item.valor_base_comissao) : '-'}</TableCell>
