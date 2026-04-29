@@ -51,15 +51,23 @@ Deno.serve(async (req) => {
       veiculo = {};
     }
 
-    const marca = veiculo.marca || veiculo.MARCA || '';
-    const modelo = veiculo.modelo || veiculo.MODELO || '';
-    const ano = String(veiculo.ano || veiculo.ANO || veiculo.anoModelo || '');
-    const versao = veiculo.versao || veiculo.VERSAO || '';
+    const marca = veiculo.marca || veiculo.MARCA || veiculo.montadora || '';
+    const modelo = veiculo.modelo || veiculo.MODELO || veiculo.descricao || '';
+    const ano = String(veiculo.ano || veiculo.ANO || veiculo.anoModelo || veiculo.ano_modelo || '');
+    const versao = veiculo.versao || veiculo.VERSAO || veiculo.nome || '';
     const tipo = veiculo.tipo || veiculo.TIPO || 'automovel';
 
-    // Se a API já retornar FIPE, usa direto
-    let valorFipe = veiculo.valor_fipe || veiculo.fipe_preco || null;
-    let codigoFipe = veiculo.codigo_fipe || veiculo.fipe_codigo || null;
+    // Extrai FIPE de vários formatos possíveis
+    let valorFipe = veiculo.valor_fipe || veiculo.fipe_preco || veiculo.preco || veiculo.valor || null;
+    let codigoFipe = veiculo.codigo_fipe || veiculo.fipe_codigo || veiculo.codigoFipe || null;
+
+    // Se valorFipe vem como string (ex: "R$ 82.036,00"), converte
+    if (valorFipe && typeof valorFipe === 'string') {
+      const precoNum = parseFloat(
+        valorFipe.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()
+      );
+      valorFipe = !isNaN(precoNum) ? precoNum : null;
+    }
 
     // Se não tiver FIPE, tenta consultar pela BrasilAPI (gratuita)
     if (!valorFipe && marca && modelo && ano) {
