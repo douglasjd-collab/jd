@@ -18,31 +18,40 @@ Deno.serve(async (req) => {
       return Response.json({ sucesso: false, mensagem: 'Placa inválida. Deve ter 7 caracteres.' });
     }
 
+    // Tenta API configurada primeiro, senão usa BrasilAPI
+    let veiculo = null;
     const apiUrl = Deno.env.get('PLACA_API_URL');
     const apiToken = Deno.env.get('PLACA_API_TOKEN');
 
-    if (!apiUrl || !apiToken) {
-      return Response.json({ sucesso: false, mensagem: 'API de placa não configurada. Configure PLACA_API_URL e PLACA_API_TOKEN nas configurações.' });
-    }
+    if (apiUrl && apiToken) {
+      const response = await fetch(`${apiUrl}/${placaLimpa}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    // Consulta API de placa
-    const response = await fetch(`${apiUrl}/${placaLimpa}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 404) {
-        return Response.json({ sucesso: false, mensagem: 'Veículo não encontrado para esta placa.' });
+      if (response.ok) {
+        veiculo = await response.json();
       }
-      return Response.json({ sucesso: false, mensagem: `Erro ao consultar placa (HTTP ${status}).` });
     }
 
-    const veiculo = await response.json();
+    // Se não conseguiu pela API configurada, usa BrasilAPI como fallback
+    if (!veiculo) {
+      try {
+        const brasilApiResp = await fetch(`https://brasilapi.com.br/api/placa/v1/${placaLimpa}`);
+        if (brasilApiResp.ok) {
+          veiculo = await brasilApiResp.json();
+        }
+      } catch (_err) {
+        // Continua sem dados iniciais
+      }
+    }
+
+    if (!veiculo) {
+      veiculo = {};
+    }
 
     const marca = veiculo.marca || veiculo.MARCA || '';
     const modelo = veiculo.modelo || veiculo.MODELO || '';
