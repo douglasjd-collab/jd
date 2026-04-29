@@ -444,29 +444,6 @@ export default function BatePapo() {
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
       console.log(`🔍 Após filtro: ${filtradas.length} conversas válidas`);
 
-      // Carregar contadores de não lidas iniciais — busca todas as conversas com mensagens não lidas
-      const conversaAtualId = conversaSelecionadaIdRef.current;
-      try {
-        // Buscar IDs das conversas filtradas para filtrar corretamente
-        const conversaIds = filtradas.map(c => c.id);
-        
-        // Buscar mensagens não lidas de cliente (sem filtrar por empresa_id pois pode não estar preenchido)
-        const msgsNaoLidas = await base44.entities.MensagemWhatsapp.filter(
-          { remetente: 'cliente', status: { $ne: 'lida' } },
-          '-data_envio',
-          3000
-        );
-        
-        const contadoresIniciais = {};
-        msgsNaoLidas.forEach(m => {
-          // Só contar se a conversa pertence a esta empresa e não está aberta
-          if (m.conversa_id && m.conversa_id !== conversaAtualId && conversaIds.includes(m.conversa_id)) {
-            contadoresIniciais[m.conversa_id] = (contadoresIniciais[m.conversa_id] || 0) + 1;
-          }
-        });
-        setNaoLidasPorConversa(prev => ({ ...prev, ...contadoresIniciais }));
-      } catch (_) {}
-
       return filtradas;
     },
     refetchInterval: false,
@@ -497,6 +474,28 @@ export default function BatePapo() {
     refetchInterval: 5000,
     placeholderData: (prev) => prev,
   });
+
+  // Carregar contadores de não lidas quando conversas carregam
+  useEffect(() => {
+    if (!empresaId || conversas.length === 0) return;
+    const conversaIds = conversas.filter(c => c.id).map(c => c.id);
+    const abertaId = conversaSelecionadaId;
+
+    base44.entities.MensagemWhatsapp.filter(
+      { remetente: 'cliente' },
+      '-data_envio',
+      3000
+    ).then(msgs => {
+      const contadores = {};
+      msgs.forEach(m => {
+        if (!m.conversa_id || m.conversa_id === abertaId) return;
+        if (!conversaIds.includes(m.conversa_id)) return;
+        if (m.status === 'lida') return;
+        contadores[m.conversa_id] = (contadores[m.conversa_id] || 0) + 1;
+      });
+      setNaoLidasPorConversa(contadores);
+    }).catch(() => {});
+  }, [empresaId, conversas.length]);
 
   // Selecionar conversa inicial quando a lista carrega
   useEffect(() => {
