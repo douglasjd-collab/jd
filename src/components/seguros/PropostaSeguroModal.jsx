@@ -83,11 +83,18 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
     if (q.length < 2) { setClientesFiltrados([]); return; }
     setBuscandoCliente(true);
     try {
-      const res = await base44.entities.Cliente.filter({ empresa_id: empresaId }, 'nome_completo', 200);
-      const filtrado = res.filter(c =>
-        (c.nome_completo || '').toLowerCase().includes(q.toLowerCase()) ||
-        (c.cpf || '').includes(q) || (c.celular || '').includes(q)
-      ).slice(0, 8);
+      const qLower = q.toLowerCase().trim();
+      // Busca ampla: traz todos os clientes da empresa e filtra localmente
+      // Para evitar limite de 200, busca em lotes maiores
+      const res = await base44.entities.Cliente.filter({ empresa_id: empresaId }, 'nome_completo', 2000);
+      const filtrado = res.filter(c => {
+        const nome = (c.nome_completo || '').toLowerCase();
+        const cpf = (c.cpf || '').replace(/\D/g, '');
+        const qDigits = q.replace(/\D/g, '');
+        return nome.includes(qLower) ||
+          (qDigits.length >= 3 && cpf.includes(qDigits)) ||
+          (c.celular || '').includes(q);
+      }).slice(0, 10);
       setClientesFiltrados(filtrado);
     } catch { } finally { setBuscandoCliente(false); }
   };
