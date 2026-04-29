@@ -33,6 +33,19 @@ export default function RenovacoesSeguro() {
     },
   });
 
+  const { data: vencendo30 = [] } = useQuery({
+    queryKey: ['vencendo-30-seguro', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const all = await base44.entities.PropostaSeguro.filter({ empresa_id: empresaId }, 'data_vencimento', 2000);
+      return all.filter(p => {
+        if (!p.data_vencimento || p.status === 'cancelado') return false;
+        const d = differenceInDays(parseISO(p.data_vencimento), new Date());
+        return d >= 0 && d <= 30;
+      });
+    },
+  });
+
   const hoje = new Date();
 
   const filtradas = renovacoes.filter(p => {
@@ -88,6 +101,60 @@ export default function RenovacoesSeguro() {
           <RefreshCw className="w-4 h-4" /> Atualizar
         </Button>
       </div>
+
+      {/* Relatório: Vencimentos nos próximos 30 dias */}
+      <Card className="border-0 shadow-sm bg-amber-50 border border-amber-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2 text-amber-800">
+            <Clock className="w-5 h-5 text-amber-600" />
+            Seguros com vencimento nos próximos 30 dias — {vencendo30.length} encontrado{vencendo30.length !== 1 ? 's' : ''}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {vencendo30.length === 0 ? (
+            <p className="text-sm text-amber-700 text-center py-5">Nenhum seguro vencendo nos próximos 30 dias.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-amber-200">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-700 uppercase tracking-wide">Cliente</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-700 uppercase tracking-wide">Vendedor</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-700 uppercase tracking-wide">Seguradora</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-700 uppercase tracking-wide">Tipo</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-700 uppercase tracking-wide">Vencimento</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-amber-700 uppercase tracking-wide">Dias</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-amber-700 uppercase tracking-wide">Parcela</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100">
+                  {vencendo30.map((p) => {
+                    const dias = differenceInDays(parseISO(p.data_vencimento), hoje);
+                    const urgente = dias <= 7;
+                    return (
+                      <tr key={p.id} className="bg-white/60 hover:bg-white transition-colors">
+                        <td className="px-4 py-3 font-medium text-slate-800">{p.cliente_nome || '—'}</td>
+                        <td className="px-4 py-3 text-slate-600">{p.vendedor_nome || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500">{p.seguradora_nome || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 capitalize">{p.tipo_plano || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{format(parseISO(p.data_vencimento), 'dd/MM/yyyy')}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${urgente ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {dias === 0 ? 'Hoje' : `${dias}d`}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">
+                          R$ {(p.valor_parcela || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="relative">
         <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
