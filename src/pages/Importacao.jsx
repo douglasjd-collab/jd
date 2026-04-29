@@ -107,7 +107,15 @@ export default function Importacao() {
   const columns = [
     {
       header: 'Data',
-      cell: (row) => format(new Date(row.created_date), 'dd/MM/yyyy HH:mm')
+      cell: (row) => {
+        const d = new Date(new Date(row.created_date).getTime() - 3 * 60 * 60 * 1000);
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const yyyy = d.getUTCFullYear();
+        const hh = String(d.getUTCHours()).padStart(2, '0');
+        const min = String(d.getUTCMinutes()).padStart(2, '0');
+        return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+      }
     },
     {
       header: 'Administradora',
