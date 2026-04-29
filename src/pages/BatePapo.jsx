@@ -478,18 +478,21 @@ export default function BatePapo() {
   // Carregar contadores de não lidas quando conversas carregam
   useEffect(() => {
     if (!empresaId || conversas.length === 0) return;
+
     const conversaIds = conversas.filter(c => c.id).map(c => c.id);
     const abertaId = conversaSelecionadaId;
 
+    // Buscar todas as mensagens recentes de cliente e filtrar as não lidas localmente
     base44.entities.MensagemWhatsapp.filter(
       { remetente: 'cliente' },
       '-data_envio',
-      3000
+      5000
     ).then(msgs => {
       const contadores = {};
       msgs.forEach(m => {
         if (!m.conversa_id || m.conversa_id === abertaId) return;
         if (!conversaIds.includes(m.conversa_id)) return;
+        // Considerar não lida qualquer status diferente de 'lida'
         if (m.status === 'lida') return;
         contadores[m.conversa_id] = (contadores[m.conversa_id] || 0) + 1;
       });
