@@ -229,16 +229,14 @@ export default function PropostaEmprestimoDetalhes() {
             <InfoItem label="Valor da Parcela" value={proposta.emprestimo_valor_parcela ? fmt(proposta.emprestimo_valor_parcela) : null} always />
             <InfoItem label="Valor Liberado (Líquido)" value={proposta.valor_liquido ? fmt(proposta.valor_liquido) : fmt(proposta.valor_credito)} highlight always />
             <InfoItem label="Valor Bruto (Crédito)" value={fmt(proposta.valor_credito)} always />
-            {proposta.comissao_banco_base_comissao != null && (
-              <InfoItem label="Valor Base Comissão" value={fmt(proposta.comissao_banco_base_comissao)} always />
-            )}
+            <InfoItem label="Valor Base Comissão" value={proposta.comissao_banco_base_comissao ? fmt(proposta.comissao_banco_base_comissao) : null} always />
+            <InfoItem label="Tabela de Comissão" value={proposta.tabela_comissao_nome} always />
             <InfoItem label="Nº ADE" value={proposta.emprestimo_numero_ade} always />
             <InfoItem label="Banco Anterior" value={proposta.emprestimo_banco_anterior} always />
             <InfoItem label="Saldo Devedor" value={proposta.emprestimo_saldo_devedor ? fmt(proposta.emprestimo_saldo_devedor) : null} always />
             <InfoItem label="Data da Venda" value={fmtDate(proposta.data_venda)} always />
             <InfoItem label="Data de Liberação" value={fmtDate(proposta.emprestimo_data_liberacao)} always />
             <InfoItem label="Vendedor" value={proposta.vendedor_nome} always />
-            {proposta.tabela_comissao_nome && <InfoItem label="Tabela de Comissão" value={proposta.tabela_comissao_nome} />}
           </div>
         </CardContent>
       </Card>
