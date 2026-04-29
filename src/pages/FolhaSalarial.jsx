@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, FileText, Download, CheckCircle, DollarSign, Eye } from 'lucide-react';
+import { Plus, FileText, Download, CheckCircle, DollarSign, Eye, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -48,6 +48,10 @@ export default function FolhaSalarialPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(null);
+  const [editModal, setEditModal] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
     base44.auth.me().then(me => {
@@ -214,6 +218,50 @@ export default function FolhaSalarialPage() {
     toast.success('PDF gerado!');
   };
 
+  const abrirEditar = (folha) => {
+    setEditForm({
+      colaborador_id: folha.colaborador_id,
+      mes_referencia: folha.mes_referencia,
+      data_pagamento: folha.data_pagamento || '',
+      salario_base: String(folha.salario_base || ''),
+      dias_trabalhados: String(folha.dias_trabalhados || '30'),
+      valor_comissao: String(folha.valor_comissao || '0'),
+      bonificacoes: String(folha.bonificacoes || '0'),
+      adiantamentos: String(folha.adiantamentos || '0'),
+      descontos: String(folha.descontos || '0'),
+      observacoes: folha.observacoes || ''
+    });
+    setEditModal(folha);
+  };
+
+  const salvarEdicao = async () => {
+    setSavingEdit(true);
+    const liquido = calcLiquido(editForm);
+    await base44.entities.FolhaSalarial.update(editModal.id, {
+      mes_referencia: editForm.mes_referencia,
+      data_pagamento: editForm.data_pagamento || null,
+      salario_base: parseFloat(editForm.salario_base) || 0,
+      dias_trabalhados: parseFloat(editForm.dias_trabalhados) || 30,
+      valor_comissao: parseFloat(editForm.valor_comissao) || 0,
+      bonificacoes: parseFloat(editForm.bonificacoes) || 0,
+      adiantamentos: parseFloat(editForm.adiantamentos) || 0,
+      descontos: parseFloat(editForm.descontos) || 0,
+      valor_liquido: liquido,
+      observacoes: editForm.observacoes
+    });
+    toast.success('Folha atualizada!');
+    setSavingEdit(false);
+    setEditModal(null);
+    carregar(user);
+  };
+
+  const excluirFolha = async (folha) => {
+    await base44.entities.FolhaSalarial.delete(folha.id);
+    toast.success('Folha excluída!');
+    setConfirmDelete(null);
+    carregar(user);
+  };
+
   const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const filtradas = folhas.filter(f => {
@@ -333,6 +381,12 @@ export default function FolhaSalarialPage() {
                           {f.status === 'Paga' && (
                             <Button size="sm" variant="outline" className="text-xs" onClick={() => atualizarStatus(f, 'Assinada')}>Assinar</Button>
                           )}
+                          <Button size="sm" variant="ghost" onClick={() => abrirEditar(f)} title="Editar">
+                            <Pencil className="w-4 h-4 text-slate-500" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(f)} title="Excluir">
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -425,6 +479,93 @@ export default function FolhaSalarialPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Editar Folha */}
+      {editModal && (
+        <Dialog open={!!editModal} onOpenChange={() => setEditModal(null)}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar Folha — {editModal.colaborador_nome}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Mês de Referência</Label>
+                  <Input value={editForm.mes_referencia} onChange={e => setEditForm({...editForm, mes_referencia: e.target.value})} placeholder="04/2026" />
+                </div>
+                <div>
+                  <Label>Data de Pagamento</Label>
+                  <Input type="date" value={editForm.data_pagamento} onChange={e => setEditForm({...editForm, data_pagamento: e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Salário Base</Label>
+                  <Input type="number" value={editForm.salario_base} onChange={e => setEditForm({...editForm, salario_base: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Dias Trabalhados</Label>
+                  <Input type="number" value={editForm.dias_trabalhados} onChange={e => setEditForm({...editForm, dias_trabalhados: e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Comissões (+)</Label>
+                  <Input type="number" value={editForm.valor_comissao} onChange={e => setEditForm({...editForm, valor_comissao: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Bonificações (+)</Label>
+                  <Input type="number" value={editForm.bonificacoes} onChange={e => setEditForm({...editForm, bonificacoes: e.target.value})} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Adiantamentos (-)</Label>
+                  <Input type="number" value={editForm.adiantamentos} onChange={e => setEditForm({...editForm, adiantamentos: e.target.value})} />
+                </div>
+                <div>
+                  <Label>Descontos (-)</Label>
+                  <Input type="number" value={editForm.descontos} onChange={e => setEditForm({...editForm, descontos: e.target.value})} />
+                </div>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                <p className="text-sm text-slate-500">Valor Líquido</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {Number(calcLiquido(editForm)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <textarea className="w-full border rounded-md p-2 text-sm min-h-[60px]" value={editForm.observacoes} onChange={e => setEditForm({...editForm, observacoes: e.target.value})} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditModal(null)}>Cancelar</Button>
+              <Button onClick={salvarEdicao} disabled={savingEdit} className="bg-[#10353C] hover:bg-[#10353C]/90">
+                {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Modal Confirmar Exclusão */}
+      {confirmDelete && (
+        <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Confirmar Exclusão</DialogTitle>
+            </DialogHeader>
+            <p className="text-slate-600 py-2">
+              Deseja excluir a folha de <strong>{confirmDelete.colaborador_nome}</strong> referente a <strong>{confirmDelete.mes_referencia}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancelar</Button>
+              <Button variant="destructive" onClick={() => excluirFolha(confirmDelete)}>Excluir</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Modal Detalhes */}
       {viewModal && (
