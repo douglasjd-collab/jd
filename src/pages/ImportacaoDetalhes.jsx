@@ -187,7 +187,6 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
               <TableHead>Data</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Contrato</TableHead>
-              <TableHead>Valor Base Comissão</TableHead>
               <TableHead>% Comissão</TableHead>
               <TableHead>Valor Lançamento</TableHead>
               <TableHead>Status</TableHead>
@@ -197,10 +196,9 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
           <TableBody>
             {itens.map((item) => (
               <TableRow key={item.id}>
-                <TableCell>{item.data_recebimento ? format(new Date(item.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy') : (item.created_date ? format(new Date(item.created_date), 'dd/MM/yyyy') : '-')}</TableCell>
+                <TableCell>{item.data_recebimento ? format(new Date(item.data_recebimento + 'T12:00:00'), 'dd/MM/yyyy') : '-'}</TableCell>
                 <TableCell className="max-w-[160px] truncate">{item.nome_completo || '-'}</TableCell>
                 <TableCell>{item.contrato || '-'}</TableCell>
-                <TableCell>{item.valor_base_comissao ? formatCurrency(item.valor_base_comissao) : '-'}</TableCell>
                 <TableCell>{item.percentual_comissao ? `${item.percentual_comissao}%` : '-'}</TableCell>
                 <TableCell className="font-medium">{formatCurrency(item.valor_recebido)}</TableCell>
                 <TableCell><StatusBadge status={item.status} /></TableCell>
