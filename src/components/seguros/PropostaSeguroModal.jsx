@@ -240,7 +240,16 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
             </div>
             <div>
               <Label className="text-xs font-semibold">Valor FIPE (R$)</Label>
-              <Input type="number" step="0.01" value={form.valor_fipe || ''} onChange={e => set('valor_fipe', parseFloat(e.target.value))} className="mt-1 h-8" />
+              <Input
+                type="text"
+                value={form.valor_fipe ? Number(form.valor_fipe).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                onChange={e => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  set('valor_fipe', raw ? parseFloat(raw) / 100 : '');
+                }}
+                placeholder="0,00"
+                className="mt-1 h-8"
+              />
             </div>
             <div>
               <Label className="text-xs font-semibold">Comissão (%)</Label>
