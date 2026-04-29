@@ -164,16 +164,113 @@ Deno.serve(async (req) => {
       }
 
       const data = cq.data || "";
-      // formato: "despesa:<contaId>" ou "receita:<contaId>"
+
+      // ── Fluxo de status de despesa (quitada/agendada) ─────────────────────
+      if (data === "despesa_quitada" || data === "despesa_agendada") {
+        const session = pendingSessions.get(`despesa_status_${chatId}`);
+        if (!session) {
+          await answerCallback(cq.id, "⚠️ Sessão expirada");
+          return Response.json({ ok: true });
+        }
+
+        if (data === "despesa_quitada") {
+          await answerCallback(cq.id, "✅ Agora selecione a conta...");
+          
+          // Buscar contas da empresa JD Promotora
+          const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
+            { empresa_id: session.empresaId, status: 'ativa' },
+            'nome_conta', 20
+          );
+
+          if (!contas || contas.length === 0) {
+            await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada para a empresa.");
+            pendingSessions.delete(`despesa_status_${chatId}`);
+            return Response.json({ ok: true });
+          }
+
+          // Guardar para próximo step de seleção de conta
+          pendingSessions.set(`conta_${chatId}`, {
+            tipo: 'despesa_quitada',
+            empresaId: session.empresaId,
+            usuarioId: session.usuarioId,
+            contas,
+            data: session.data,
+          });
+          pendingSessions.delete(`despesa_status_${chatId}`);
+
+          await sendTelegram(chatId,
+            `🏦 Em qual conta foi pago?`,
+            buildContasKeyboard(contas, 'despesa_quitada')
+          );
+        } else {
+          // Despesa agendada: pedir data de vencimento
+          await answerCallback(cq.id, "📅 Informe a data de vencimento");
+          pendingSessions.set(`despesa_vencimento_${chatId}`, session);
+          pendingSessions.delete(`despesa_status_${chatId}`);
+          
+          await sendTelegram(chatId, "📅 Em que data vence? (formato: DD/MM/YYYY ou ex: amanhã, próxima segunda)");
+        }
+        return Response.json({ ok: true });
+      }
+
+      // ── Fluxo de status de receita (recebida/agendada) ───────────────────
+      if (data === "receita_recebida" || data === "receita_agendada") {
+        const session = pendingSessions.get(`receita_status_${chatId}`);
+        if (!session) {
+          await answerCallback(cq.id, "⚠️ Sessão expirada");
+          return Response.json({ ok: true });
+        }
+
+        if (data === "receita_recebida") {
+          await answerCallback(cq.id, "✅ Agora selecione a conta...");
+          
+          // Buscar contas da empresa JD Promotora
+          const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
+            { empresa_id: session.empresaId, status: 'ativa' },
+            'nome_conta', 20
+          );
+
+          if (!contas || contas.length === 0) {
+            await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada para a empresa.");
+            pendingSessions.delete(`receita_status_${chatId}`);
+            return Response.json({ ok: true });
+          }
+
+          // Guardar para próximo step de seleção de conta
+          pendingSessions.set(`conta_${chatId}`, {
+            tipo: 'receita_recebida',
+            empresaId: session.empresaId,
+            usuarioId: session.usuarioId,
+            contas,
+            data: session.data,
+          });
+          pendingSessions.delete(`receita_status_${chatId}`);
+
+          await sendTelegram(chatId,
+            `🏦 Em qual conta foi recebido?`,
+            buildContasKeyboard(contas, 'receita_recebida')
+          );
+        } else {
+          // Receita agendada: pedir data de recebimento
+          await answerCallback(cq.id, "📅 Informe a data prevista");
+          pendingSessions.set(`receita_vencimento_${chatId}`, session);
+          pendingSessions.delete(`receita_status_${chatId}`);
+          
+          await sendTelegram(chatId, "📅 Em que data será recebida? (formato: DD/MM/YYYY ou ex: amanhã, próxima segunda)");
+        }
+        return Response.json({ ok: true });
+      }
+
+      // ── Seleção de conta (quitada/recebida) ──────────────────────────────
+      // formato: "despesa_quitada:<contaId>" ou "receita_recebida:<contaId>" ou "despesa:<contaId>" ou "receita:<contaId>"
       const [tipo, contaId] = data.split(":");
       const sessionKey = `conta_${chatId}`;
       const session = pendingSessions.get(sessionKey);
 
       await answerCallback(cq.id, "✅ Conta selecionada!");
 
-      if (!session || (session.tipo !== tipo)) {
-        await sendTelegram(chatId, "⚠️ Sessão expirada. Lance novamente a despesa ou receita.");
-        pendingSessions.delete(sessionKey);
+      if (!session) {
+        await sendTelegram(chatId, "⚠️ Sessão expirada. Lance novamente a transação.");
         return Response.json({ ok: true });
       }
 
@@ -185,7 +282,7 @@ Deno.serve(async (req) => {
         return Response.json({ ok: true });
       }
 
-      if (tipo === 'despesa') {
+      if (tipo === 'despesa_quitada') {
         const ex = session.data;
         let responsavelNome = 'Telegram Bot';
         try {
@@ -200,7 +297,8 @@ Deno.serve(async (req) => {
           categoria: ex.categoria || 'Outros',
           data: ex.data,
           data_vencimento: ex.data,
-          status: 'pendente',
+          status: 'pago',
+          data_pagamento: ex.data,
           responsavel_id: session.usuarioId || 'telegram',
           responsavel_nome: responsavelNome,
           usuario_id: session.usuarioId,
@@ -209,20 +307,27 @@ Deno.serve(async (req) => {
           conta_bancaria_id: contaSelecionada.id,
         });
 
+        // Atualizar saldo da conta
+        let novoSaldo = contaSelecionada.saldo_atual || 0;
+        novoSaldo -= Number(ex.valor);
+        await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
+
         const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         await sendTelegram(chatId,
           `✅ <b>Despesa lançada!</b>\n\n` +
           `📉 ${ex.descricao}\n` +
           `💰 Valor: <b>${valorFmt}</b>\n` +
           `📅 Data: ${ex.data}\n` +
           `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
+          `💳 Saldo: <b>${saldoFmt}</b>\n` +
           `🏷️ Categoria: ${ex.categoria || 'Outros'}\n` +
           `<code>ID ${created.id}</code>`
         );
         return Response.json({ ok: true });
       }
 
-      if (tipo === 'receita') {
+      if (tipo === 'receita_recebida') {
         const r = session.data;
         const created = await base44.asServiceRole.entities.Receita.create({
           empresa_id: session.empresaId,
@@ -238,13 +343,20 @@ Deno.serve(async (req) => {
           conta_bancaria_id: contaSelecionada.id,
         });
 
+        // Atualizar saldo da conta
+        let novoSaldo = contaSelecionada.saldo_atual || 0;
+        novoSaldo += Number(r.valor);
+        await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
+
         const valorFmt = Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         await sendTelegram(chatId,
           `✅ <b>Receita lançada!</b>\n\n` +
           `📈 ${r.descricao}\n` +
           `💰 Valor: <b>${valorFmt}</b>\n` +
           `📅 Data: ${r.data}\n` +
           `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
+          `💳 Saldo: <b>${saldoFmt}</b>\n` +
           `🏷️ Categoria: ${r.categoria || 'Outros'}\n` +
           `<code>ID ${created.id}</code>`
         );
@@ -429,30 +541,43 @@ Deno.serve(async (req) => {
       const hoje = new Date().toLocaleDateString('fr-CA');
       const dataEx = ex.data || hoje;
 
-      // Buscar contas bancárias ativas
-      const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
-        empresaId !== 'TELEGRAM_BOT' ? { empresa_id: empresaId, status: 'ativa' } : { status: 'ativa' },
-        'nome_conta', 20
-      );
+      // Buscar empresa JD Promotora
+      let jdEmpresaId = null;
+      try {
+        const empresas = await base44.asServiceRole.entities.Empresa.filter(
+          { nome: { $regex: "JD Promotora", $options: "i" } },
+          '-created_date',
+          1
+        );
+        if (empresas && empresas.length > 0) {
+          jdEmpresaId = empresas[0].id;
+        }
+      } catch (_) {}
 
-      if (!contas || contas.length === 0) {
-        await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada. Cadastre uma conta no sistema primeiro.");
+      if (!jdEmpresaId) {
+        await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
         return Response.json({ ok: true });
       }
 
-      // Guardar sessão pendente e enviar botões de seleção
-      pendingSessions.set(`conta_${chatId}`, {
+      // Guardar sessão e perguntar status
+      pendingSessions.set(`despesa_status_${chatId}`, {
         tipo: 'despesa',
-        empresaId,
+        empresaId: jdEmpresaId,
         usuarioId,
-        contas,
         data: { ...ex, data: dataEx },
       });
 
       const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       await sendTelegram(chatId,
-        `📉 <b>Despesa: ${ex.descricao} — ${valorFmt}</b>\n\n🏦 Em qual conta foi pago? Toque no botão:`,
-        buildContasKeyboard(contas, 'despesa')
+        `📉 <b>Despesa: ${ex.descricao} — ${valorFmt}</b>\n\nJá foi <b>quitada</b> ou vai ser <b>agendada</b>?`,
+        {
+          inline_keyboard: [
+            [
+              { text: "✅ Quitada", callback_data: "despesa_quitada" },
+              { text: "📅 Agendada", callback_data: "despesa_agendada" }
+            ]
+          ]
+        }
       );
       return Response.json({ ok: true });
     }
@@ -467,30 +592,43 @@ Deno.serve(async (req) => {
       const hoje = new Date().toLocaleDateString('fr-CA');
       const dataRec = r.data || hoje;
 
-      // Buscar contas bancárias ativas
-      const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
-        empresaId !== 'TELEGRAM_BOT' ? { empresa_id: empresaId, status: 'ativa' } : { status: 'ativa' },
-        'nome_conta', 20
-      );
+      // Buscar empresa JD Promotora
+      let jdEmpresaId = null;
+      try {
+        const empresas = await base44.asServiceRole.entities.Empresa.filter(
+          { nome: { $regex: "JD Promotora", $options: "i" } },
+          '-created_date',
+          1
+        );
+        if (empresas && empresas.length > 0) {
+          jdEmpresaId = empresas[0].id;
+        }
+      } catch (_) {}
 
-      if (!contas || contas.length === 0) {
-        await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada. Cadastre uma conta no sistema primeiro.");
+      if (!jdEmpresaId) {
+        await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
         return Response.json({ ok: true });
       }
 
-      // Guardar sessão pendente e enviar botões de seleção
-      pendingSessions.set(`conta_${chatId}`, {
+      // Guardar sessão e perguntar status
+      pendingSessions.set(`receita_status_${chatId}`, {
         tipo: 'receita',
-        empresaId,
+        empresaId: jdEmpresaId,
         usuarioId,
-        contas,
         data: { ...r, data: dataRec },
       });
 
       const valorFmt = Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       await sendTelegram(chatId,
-        `📈 <b>Receita: ${r.descricao} — ${valorFmt}</b>\n\n🏦 Em qual conta foi recebido? Toque no botão:`,
-        buildContasKeyboard(contas, 'receita')
+        `📈 <b>Receita: ${r.descricao} — ${valorFmt}</b>\n\nJá foi <b>recebida</b> ou vai ser <b>agendada</b>?`,
+        {
+          inline_keyboard: [
+            [
+              { text: "✅ Recebida", callback_data: "receita_recebida" },
+              { text: "📅 Agendada", callback_data: "receita_agendada" }
+            ]
+          ]
+        }
       );
       return Response.json({ ok: true });
     }
