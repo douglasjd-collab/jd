@@ -80,9 +80,13 @@
       "type": "number",
       "description": "Valor da parcela mensal"
     },
+    "valor_adesao_inicial": {
+      "type": "number",
+      "description": "Valor de ades\u00e3o cobrado na contrata\u00e7\u00e3o"
+    },
     "valor_adesao": {
       "type": "number",
-      "description": "Valor da ades\u00e3o / comiss\u00e3o prevista"
+      "description": "Recorr\u00eancia mensal (%) / comiss\u00e3o prevista"
     },
     "percentual_comissao": {
       "type": "number",

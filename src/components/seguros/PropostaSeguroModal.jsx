@@ -273,6 +273,10 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
               <Input type="number" step="0.01" value={form.valor_parcela || ''} onChange={e => set('valor_parcela', parseFloat(e.target.value))} className="mt-1 h-8" />
             </div>
             <div>
+              <Label className="text-xs font-semibold">Valor de Adesão (R$)</Label>
+              <Input type="number" step="0.01" value={form.valor_adesao_inicial || ''} onChange={e => set('valor_adesao_inicial', parseFloat(e.target.value))} placeholder="0,00" className="mt-1 h-8" />
+            </div>
+            <div>
               <Label className="text-xs font-semibold">Comissão (%)</Label>
               <Input type="number" step="0.01" value={form.percentual_comissao || ''} onChange={e => set('percentual_comissao', parseFloat(e.target.value))} className="mt-1 h-8" />
             </div>
