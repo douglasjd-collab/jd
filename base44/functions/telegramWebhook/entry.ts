@@ -1,4 +1,4 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
 
 const ENTITY_AGENDA = "Agenda";
 const ENTITY_OPORTUNIDADES = "Oportunidade";
@@ -45,120 +45,21 @@ function matchConta(nomeBuscado, contas) {
   return found || null;
 }
 
-async function callOpenAI(message, context) {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY não configurado");
+async function callLLM(base44, message, context) {
+  const hoje = new Date().toLocaleDateString('fr-CA'); // YYYY-MM-DD
 
-  const schema = {
-    name: "telegram_crm_action",
-    strict: true,
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        action: {
-          type: "string",
-          enum: [
-            "create_opportunity",
-            "create_expense",
-            "create_revenue",
-            "create_financial_transaction",
-            "create_agenda",
-            "reschedule_agenda",
-            "cancel_agenda",
-            "confirm_agenda",
-            "complete_agenda",
-            "list_agenda",
-            "clarify",
-          ],
-        },
-        opportunity: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          properties: {
-            nome: { type: ["string", "null"] },
-            telefone: { type: ["string", "null"] },
-            etapa: { type: ["string", "null"] },
-            observacao: { type: ["string", "null"] },
-          },
-          required: ["nome", "telefone", "etapa", "observacao"],
-        },
-        expense: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          properties: {
-            valor: { type: ["number", "null"] },
-            descricao: { type: ["string", "null"] },
-            categoria: { type: ["string", "null"] },
-            data: { type: ["string", "null"] },
-          },
-          required: ["valor", "descricao", "categoria", "data"],
-        },
-        revenue: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          properties: {
-            valor: { type: ["number", "null"] },
-            descricao: { type: ["string", "null"] },
-            categoria: { type: ["string", "null"] },
-            data: { type: ["string", "null"] },
-          },
-          required: ["valor", "descricao", "categoria", "data"],
-        },
-        financial_transaction: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          properties: {
-            tipo: { type: ["string", "null"], enum: ["entrada", "saida", null] },
-            valor: { type: ["number", "null"] },
-            descricao: { type: ["string", "null"] },
-            conta_nome: { type: ["string", "null"] },
-            categoria: { type: ["string", "null"] },
-            data: { type: ["string", "null"] },
-          },
-          required: ["tipo", "valor", "descricao", "conta_nome", "categoria", "data"],
-        },
-        agenda: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          properties: {
-            id: { type: ["string", "null"] },
-            tipo: { type: ["string", "null"], enum: ["reuniao", "tarefa", null] },
-            titulo: { type: ["string", "null"] },
-            inicio: { type: ["string", "null"] },
-            local: { type: ["string", "null"] },
-            descricao: { type: ["string", "null"] },
-          },
-          required: ["id", "tipo", "titulo", "inicio", "local", "descricao"],
-        },
-        list: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          properties: {
-            when: { type: ["string", "null"], enum: ["hoje", "amanha", "semana", null] },
-          },
-          required: ["when"],
-        },
-        clarify: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          properties: {
-            question: { type: ["string", "null"] },
-          },
-          required: ["question"],
-        },
-        reply: { type: "string" },
-      },
-      required: ["action", "opportunity", "expense", "revenue", "financial_transaction", "agenda", "list", "clarify", "reply"],
-    },
-  };
-
-  const system = `
+  const prompt = `
 Você é um assistente para um CRM/Financeiro via Telegram.
 Transforme a mensagem do usuário em UMA ação do sistema.
+
+Contexto: ${JSON.stringify(context)}
+Data de hoje (Brasil): ${hoje}
+
+Mensagem do usuário: "${message}"
+
 Regras gerais:
 - Se faltar dado essencial, use action="clarify" e pergunte objetivamente.
-- Datas: use fuso -03:00 (Brasil). Se o usuário disser "hoje/amanhã", converta para ISO (apenas data YYYY-MM-DD).
+- Datas: se o usuário disser "hoje" use ${hoje}, "amanhã" use o dia seguinte. Formato YYYY-MM-DD.
 - Valores: "35,90" -> 35.90, "1.500" -> 1500, "R$ 1.500,00" -> 1500
 - Telefone: normalize apenas números quando possível.
 - Categorias de despesa: Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros
@@ -168,46 +69,42 @@ Regras para transações financeiras com conta bancária (action=create_financia
 Use esta action quando o usuário mencionar conta bancária (itau, nubank, caixa, bb, santander, bradesco, inter, sicoob, sicredi, safra, c6, pagbank, mercado pago, carteira, etc) junto com uma movimentação de dinheiro.
 - Palavras de ENTRADA (tipo=entrada): recebi, entrou, crédito, recebimento, depósito, transferência recebida, pix recebido, comissão, ganho, faturamento
 - Palavras de SAÍDA (tipo=saida): paguei, saiu, pix enviado, transferi, debito, despesa, gasto, retirei
-- Palavras-chave "pix" sem contexto claro → tipo=saida se houver valor e conta
 - conta_nome: extraia o nome do banco mencionado (ex: "itau", "nubank", "caixa")
-- Categorias automáticas: comissão→Comissão, aluguel→Despesa Fixa, funcionário→Folha, gasolina→Combustível, cliente→Receita, fornecedor→Fornecedor, Outros
 - data: hoje se não especificado (formato YYYY-MM-DD)
 
-- Responda sempre com JSON compatível com o schema.
+Retorne APENAS um JSON com esta estrutura exata (sem texto adicional):
+{
+  "action": "create_opportunity" | "create_expense" | "create_revenue" | "create_financial_transaction" | "create_agenda" | "reschedule_agenda" | "cancel_agenda" | "confirm_agenda" | "complete_agenda" | "list_agenda" | "clarify",
+  "opportunity": { "nome": string|null, "telefone": string|null, "etapa": string|null, "observacao": string|null } | null,
+  "expense": { "valor": number|null, "descricao": string|null, "categoria": string|null, "data": string|null } | null,
+  "revenue": { "valor": number|null, "descricao": string|null, "categoria": string|null, "data": string|null } | null,
+  "financial_transaction": { "tipo": "entrada"|"saida"|null, "valor": number|null, "descricao": string|null, "conta_nome": string|null, "categoria": string|null, "data": string|null } | null,
+  "agenda": { "id": string|null, "tipo": "reuniao"|"tarefa"|null, "titulo": string|null, "inicio": string|null, "local": string|null, "descricao": string|null } | null,
+  "list": { "when": "hoje"|"amanha"|"semana"|null } | null,
+  "clarify": { "question": string|null } | null,
+  "reply": string
+}
 `;
 
-  const body = {
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: `Contexto:\n${JSON.stringify(context)}\n\nMensagem:\n${message}` },
-    ],
-    response_format: { 
-      type: "json_schema",
-      json_schema: schema
-    },
-  };
-
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+  const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    prompt,
+    response_json_schema: {
+      type: "object",
+      properties: {
+        action: { type: "string" },
+        opportunity: { type: "object" },
+        expense: { type: "object" },
+        revenue: { type: "object" },
+        financial_transaction: { type: "object" },
+        agenda: { type: "object" },
+        list: { type: "object" },
+        clarify: { type: "object" },
+        reply: { type: "string" }
+      }
+    }
   });
 
-  if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`OpenAI error: ${resp.status} ${err}`);
-  }
-
-  const data = await resp.json();
-  const content = data?.choices?.[0]?.message?.content;
-  
-  if (!content) throw new Error("OpenAI não retornou conteúdo");
-
-  return JSON.parse(content);
+  return result;
 }
 
 function startEndOfToday() {
@@ -266,7 +163,7 @@ Deno.serve(async (req) => {
       chat_id: chatId,
     };
 
-    const intent = await callOpenAI(original, context);
+    const intent = await callLLM(base44, original, context);
 
     // Buscar colaborador
     let empresaId = 'TELEGRAM_BOT';
