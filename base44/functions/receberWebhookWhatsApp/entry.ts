@@ -377,28 +377,32 @@ async function processarWebhook(req, rawBody, base44) {
     }
   }
 
+  const ultimoRemetente = fromMe ? 'vendedor' : 'cliente';
+
   if (conversa) {
     // Atualizar conversa existente — SEMPRE com número correto
     await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       status: 'ativa',
+      ultimo_remetente: ultimoRemetente,
       tipo_conexao: tipoConexao,
       colaborador_id: colaboradorId || conversa.colaborador_id || '',
       cliente_id: clienteId || conversa.cliente_id || '',
       instancia: instanceFinal,
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
-      cliente_telefone: telefoneLimpo, // Garantir número correto (nunca @lid)
-      whatsapp_id: `${telefoneLimpo}@s.whatsapp.net` // Sempre número correto
+      cliente_telefone: telefoneLimpo,
+      whatsapp_id: `${telefoneLimpo}@s.whatsapp.net`
     });
   } else {
     // Criar conversa APENAS com número correto (NUNCA @lid)
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId, cliente_id: clienteId,
       cliente_nome: pushName || telefoneLimpo, 
-      cliente_telefone: telefoneLimpo, // GARANTIDO correto (validado acima)
-      whatsapp_id: `${telefoneLimpo}@s.whatsapp.net`, // Padrão WhatsApp
+      cliente_telefone: telefoneLimpo,
+      whatsapp_id: `${telefoneLimpo}@s.whatsapp.net`,
       status: 'ativa',
+      ultimo_remetente: ultimoRemetente,
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       tipo_conexao: tipoConexao, 
