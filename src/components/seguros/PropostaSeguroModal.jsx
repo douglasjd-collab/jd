@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, Shield } from 'lucide-react';
+import { Loader2, Save, Shield, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { addYears, addMonths, subDays, format } from 'date-fns';
 
@@ -23,6 +23,7 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [colaboradores, setColaboradores] = useState([]);
+  const [buscandoPlaca, setBuscandoPlaca] = useState(false);
 
   const { data: seguradoras = [] } = useQuery({
     queryKey: ['seguradoras', empresaId],
@@ -140,6 +141,39 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
   };
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+  const consultarPlaca = async () => {
+    const placa = form.veiculo_placa;
+    if (!placa || placa.replace(/[^A-Za-z0-9]/g, '').length !== 7) {
+      toast.error('Informe uma placa válida com 7 caracteres.');
+      return;
+    }
+    setBuscandoPlaca(true);
+    try {
+      const res = await base44.functions.invoke('buscarVeiculoPorPlaca', { placa });
+      const data = res.data;
+      if (!data.sucesso) {
+        toast.error(data.mensagem || 'Erro ao consultar placa.');
+        return;
+      }
+      setForm(f => ({
+        ...f,
+        veiculo_marca: data.marca || f.veiculo_marca,
+        veiculo_modelo: data.modelo || f.veiculo_modelo,
+        veiculo_ano: data.ano || f.veiculo_ano,
+        valor_fipe: data.valor_fipe || f.valor_fipe,
+      }));
+      if (data.valor_fipe) {
+        toast.success('Dados do veículo e FIPE preenchidos automaticamente!');
+      } else {
+        toast.success('Dados do veículo preenchidos. FIPE não localizada — preencha manualmente.');
+      }
+    } catch (e) {
+      toast.error('Erro ao consultar placa: ' + e.message);
+    } finally {
+      setBuscandoPlaca(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -265,11 +299,32 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
           {form.tipo_seguro === 'auto' && (
             <div>
               <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Dados do Veículo</Label>
-              <div className="grid grid-cols-4 gap-2 mt-1">
+              {/* Placa com botão de consulta automática */}
+              <div className="flex gap-2 mt-1 mb-2">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Placa (ex: ABC1234)"
+                    value={form.veiculo_placa || ''}
+                    onChange={e => set('veiculo_placa', e.target.value.toUpperCase())}
+                    className="h-9 text-sm font-mono tracking-widest uppercase"
+                    maxLength={8}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={consultarPlaca}
+                  disabled={buscandoPlaca}
+                  className="h-9 bg-blue-600 hover:bg-blue-700 text-white gap-1.5 px-4 text-xs whitespace-nowrap"
+                >
+                  {buscandoPlaca ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  {buscandoPlaca ? 'Consultando...' : 'Consultar Placa'}
+                </Button>
+              </div>
+              <p className="text-[10px] text-slate-400 mb-2">Digite a placa e clique em "Consultar Placa" para preencher marca, modelo, ano e FIPE automaticamente.</p>
+              <div className="grid grid-cols-3 gap-2">
                 <Input placeholder="Marca" value={form.veiculo_marca || ''} onChange={e => set('veiculo_marca', e.target.value)} className="h-8 text-xs" />
                 <Input placeholder="Modelo" value={form.veiculo_modelo || ''} onChange={e => set('veiculo_modelo', e.target.value)} className="h-8 text-xs" />
                 <Input placeholder="Ano" value={form.veiculo_ano || ''} onChange={e => set('veiculo_ano', e.target.value)} className="h-8 text-xs" />
-                <Input placeholder="Placa" value={form.veiculo_placa || ''} onChange={e => set('veiculo_placa', e.target.value)} className="h-8 text-xs" />
               </div>
             </div>
           )}
