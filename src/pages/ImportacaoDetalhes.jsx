@@ -26,7 +26,7 @@ import { format } from 'date-fns';
 export default function ImportacaoDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
   const importacaoId = urlParams.get('id');
-  const produto = urlParams.get('produto') || 'consorcio';
+  const produtoParam = urlParams.get('produto') || 'consorcio';
 
   const { data: importacao, isLoading: loadingImportacao } = useQuery({
     queryKey: ['importacao', importacaoId],
@@ -58,6 +58,7 @@ export default function ImportacaoDetalhes() {
     );
   }
 
+  const produto = importacao?.produto || produtoParam;
   const itensProcessados = itens.filter(i => i.status === 'processado');
   const itensDivergencia = itens.filter(i => i.status === 'divergencia');
 
