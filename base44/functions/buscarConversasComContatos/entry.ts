@@ -114,6 +114,9 @@ Deno.serve(async (req) => {
         ultima_mensagem: conversa.ultima_mensagem || '',
         data_ultima_mensagem: conversa.data_ultima_mensagem || new Date().toISOString(),
         status: conversa.status || 'ativa',
+        ultimo_remetente: conversa.ultimo_remetente || null,
+        responsavel_id: conversa.responsavel_id || null,
+        responsavel_expira_em: conversa.responsavel_expira_em || null,
         usuario_responsavel_id: conversa.usuario_responsavel_id || null,
         usuario_responsavel_nome: conversa.usuario_responsavel_nome || null,
         contato: contato ? {
