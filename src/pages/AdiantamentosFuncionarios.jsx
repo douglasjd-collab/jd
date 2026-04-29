@@ -58,15 +58,19 @@ export default function AdiantamentosFuncionarios() {
     };
     await base44.entities.AdiantamentoFuncionario.create(payload);
 
-    // Criar despesa automática
+    // Criar despesa automática como PAGA (saída real de caixa)
     await base44.entities.Despesa.create({
       empresa_id: user?.empresa_id,
       descricao: `Adiantamento salarial - ${colab?.nome}`,
       valor: payload.valor,
       data: payload.data,
+      data_vencimento: payload.data,
+      data_pagamento: payload.data,
+      status: 'pago',
       categoria: 'Funcionários',
-      subcategoria: 'Adiantamento',
-      origem: 'Adiantamento',
+      responsavel_id: form.colaborador_id,
+      responsavel_nome: colab?.nome || '',
+      observacao: payload.descricao || 'Adiantamento salarial',
     }).catch(() => null);
 
     toast.success('Adiantamento registrado!');

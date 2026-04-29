@@ -122,9 +122,13 @@ export default function FolhaSalarialPage() {
         descricao: `Pagamento de Salário - ${folha.colaborador_nome} - ${folha.mes_referencia}`,
         valor: folha.valor_liquido,
         data: folha.data_pagamento || hoje,
+        data_vencimento: folha.data_pagamento || hoje,
         data_pagamento: folha.data_pagamento || hoje,
         categoria: 'Folha Salarial',
         status: 'pago',
+        responsavel_id: folha.colaborador_id,
+        responsavel_nome: folha.colaborador_nome || '',
+        observacao: `Ref: ${folha.mes_referencia}`,
       });
       await base44.entities.FolhaSalarial.update(folha.id, { status: novoStatus, transacao_id: despesa.id });
     } else {
