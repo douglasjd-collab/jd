@@ -1,5 +1,8 @@
 import { createClient } from "npm:@base44/sdk@0.8.25";
 
+// Sessões pendentes de seleção de conta (em memória, por chat_id)
+const pendingSessions = new Map();
+
 const ENTITY_AGENDA = "Agenda";
 const ENTITY_OPORTUNIDADES = "Oportunidade";
 const ENTITY_DESPESAS = "Despesa";
@@ -167,6 +170,94 @@ Deno.serve(async (req) => {
       chat_id: chatId,
     };
 
+    // Verificar se há sessão pendente de seleção de conta
+    const sessionKey = `conta_${chatId}`;
+    if (pendingSessions.has(sessionKey)) {
+      const session = pendingSessions.get(sessionKey);
+      const escolha = original.trim();
+      const num = parseInt(escolha, 10);
+      
+      // Verificar se o usuário digitou um número válido
+      if (!isNaN(num) && num >= 1 && num <= session.contas.length) {
+        const contaSelecionada = session.contas[num - 1];
+        pendingSessions.delete(sessionKey);
+        
+        // Salvar a transação pendente com a conta selecionada
+        if (session.tipo === 'despesa') {
+          const ex = session.data;
+          let responsavelNome = 'Telegram Bot';
+          try {
+            const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: session.usuarioId }, null, 1);
+            if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
+          } catch (_) {}
+
+          const created = await base44.asServiceRole.entities.Despesa.create({
+            empresa_id: session.empresaId,
+            valor: Number(ex.valor),
+            descricao: ex.descricao,
+            categoria: ex.categoria || 'Outros',
+            data: ex.data,
+            data_vencimento: ex.data,
+            status: 'pendente',
+            responsavel_id: session.usuarioId || 'telegram',
+            responsavel_nome: responsavelNome,
+            usuario_id: session.usuarioId,
+            usuario_nome: responsavelNome,
+            observacao: 'Lançado via Telegram',
+            conta_bancaria_id: contaSelecionada.id,
+          });
+
+          const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          await sendTelegram(chatId,
+            `✅ <b>Despesa lançada!</b>\n\n` +
+            `📉 ${ex.descricao}\n` +
+            `💰 Valor: <b>${valorFmt}</b>\n` +
+            `📅 Data: ${ex.data}\n` +
+            `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
+            `🏷️ Categoria: ${ex.categoria || 'Outros'}\n` +
+            `<code>ID ${created.id}</code>`
+          );
+          return Response.json({ ok: true });
+        }
+
+        if (session.tipo === 'receita') {
+          const r = session.data;
+          const created = await base44.asServiceRole.entities.Receita.create({
+            empresa_id: session.empresaId,
+            valor: Number(r.valor),
+            descricao: r.descricao,
+            categoria_id: r.categoria_id || 'telegram',
+            categoria_nome: r.categoria || 'Outros',
+            data: r.data,
+            status: 'recebida',
+            data_recebimento: r.data,
+            origem: 'Telegram',
+            usuario_id: session.usuarioId,
+            conta_bancaria_id: contaSelecionada.id,
+          });
+
+          const valorFmt = Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          await sendTelegram(chatId,
+            `✅ <b>Receita lançada!</b>\n\n` +
+            `📈 ${r.descricao}\n` +
+            `💰 Valor: <b>${valorFmt}</b>\n` +
+            `📅 Data: ${r.data}\n` +
+            `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
+            `🏷️ Categoria: ${r.categoria || 'Outros'}\n` +
+            `<code>ID ${created.id}</code>`
+          );
+          return Response.json({ ok: true });
+        }
+      } else {
+        // Tentativa inválida, repetir a pergunta
+        const lista = session.contas.map((c, i) => `${i + 1} - ${c.nome_conta} (${c.banco})`).join('\n');
+        await sendTelegram(chatId,
+          `❓ Opção inválida. Digite o <b>número</b> da conta:\n\n${lista}`
+        );
+        return Response.json({ ok: true });
+      }
+    }
+
     const intent = await callLLM(base44, original, context);
 
     // Buscar colaborador
@@ -274,57 +365,73 @@ Deno.serve(async (req) => {
       const hoje = new Date().toLocaleDateString('fr-CA');
       const dataEx = ex.data || hoje;
 
-      // Buscar nome do responsável
-      let responsavelNome = 'Telegram Bot';
-      try {
-        const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: usuarioId }, null, 1);
-        if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
-      } catch (_) {}
+      // Buscar contas bancárias ativas
+      const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
+        empresaId !== 'TELEGRAM_BOT' ? { empresa_id: empresaId, status: 'ativa' } : { status: 'ativa' },
+        'nome_conta', 20
+      );
 
-      const created = await base44.asServiceRole.entities.Despesa.create({
-        empresa_id: empresaId,
-        valor: Number(ex.valor),
-        descricao: ex.descricao,
-        categoria: ex.categoria || 'Outros',
-        data: dataEx,
-        data_vencimento: dataEx,
-        status: 'pendente',
-        responsavel_id: usuarioId || 'telegram',
-        responsavel_nome: responsavelNome,
-        usuario_id: usuarioId,
-        usuario_nome: responsavelNome,
-        observacao: 'Lançado via Telegram',
+      if (!contas || contas.length === 0) {
+        await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada. Cadastre uma conta no sistema primeiro.");
+        return Response.json({ ok: true });
+      }
+
+      // Guardar sessão pendente e perguntar a conta
+      pendingSessions.set(`conta_${chatId}`, {
+        tipo: 'despesa',
+        empresaId,
+        usuarioId,
+        contas,
+        data: { ...ex, data: dataEx },
       });
 
+      const lista = contas.map((c, i) => `${i + 1} - ${c.nome_conta} (${c.banco})`).join('\n');
       const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       await sendTelegram(chatId,
-        `✅ <b>Despesa lançada!</b>\n\n` +
-        `📉 ${ex.descricao}\n` +
-        `💰 Valor: <b>${valorFmt}</b>\n` +
-        `📅 Data: ${dataEx}\n` +
-        `🏷️ Categoria: ${ex.categoria || 'Outros'}\n` +
-        `<code>ID ${created.id}</code>`
+        `📉 <b>Despesa: ${ex.descricao} — ${valorFmt}</b>\n\n` +
+        `🏦 Em qual conta foi pago?\n\n${lista}\n\n` +
+        `Digite o <b>número</b> da conta:`
       );
       return Response.json({ ok: true });
     }
 
     if (intent.action === "create_revenue") {
       const r = intent.revenue || {};
-      if (!r.valor || !r.descricao || !r.data) {
-        await sendTelegram(chatId, "❓ Para lançar receita, preciso de: <b>valor</b>, <b>descrição</b> e <b>data</b>.");
+      if (!r.valor || !r.descricao) {
+        await sendTelegram(chatId, "❓ Para lançar receita, preciso de: <b>valor</b> e <b>descrição</b>.");
         return Response.json({ ok: true });
       }
 
-      const created = await base44.asServiceRole.entities.Receita.create({
-        empresa_id: empresaId,
-        valor: r.valor,
-        descricao: r.descricao,
-        categoria: r.categoria || "Outros",
-        data: r.data,
-        usuario_id: usuarioId,
+      const hoje = new Date().toLocaleDateString('fr-CA');
+      const dataRec = r.data || hoje;
+
+      // Buscar contas bancárias ativas
+      const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
+        empresaId !== 'TELEGRAM_BOT' ? { empresa_id: empresaId, status: 'ativa' } : { status: 'ativa' },
+        'nome_conta', 20
+      );
+
+      if (!contas || contas.length === 0) {
+        await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada. Cadastre uma conta no sistema primeiro.");
+        return Response.json({ ok: true });
+      }
+
+      // Guardar sessão pendente e perguntar a conta
+      pendingSessions.set(`conta_${chatId}`, {
+        tipo: 'receita',
+        empresaId,
+        usuarioId,
+        contas,
+        data: { ...r, data: dataRec },
       });
 
-      await sendTelegram(chatId, `✅ RECEITA criada: <b>R$ ${Number(r.valor).toFixed(2)}</b>\n🧾 ${r.descricao}\n📅 ${r.data}\n<code>ID ${created.id}</code>`);
+      const lista = contas.map((c, i) => `${i + 1} - ${c.nome_conta} (${c.banco})`).join('\n');
+      const valorFmt = Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      await sendTelegram(chatId,
+        `📈 <b>Receita: ${r.descricao} — ${valorFmt}</b>\n\n` +
+        `🏦 Em qual conta foi recebido?\n\n${lista}\n\n` +
+        `Digite o <b>número</b> da conta:`
+      );
       return Response.json({ ok: true });
     }
 
