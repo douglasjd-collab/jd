@@ -221,8 +221,18 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
               <Input type="date" value={form.data_inicio || ''} onChange={e => set('data_inicio', e.target.value)} className="mt-1 h-8" />
             </div>
             <div>
-              <Label className="text-xs font-semibold">Data de Vencimento</Label>
-              <Input type="date" value={form.data_vencimento || ''} onChange={e => set('data_vencimento', e.target.value)} className="mt-1 h-8" />
+              <Label className="text-xs font-semibold">Data de Renovação</Label>
+              <Input type="date" value={form.data_renovacao || ''} onChange={e => {
+                const novaRenovacao = e.target.value;
+                // Vencimento = renovação + 30 dias
+                const venc = new Date(novaRenovacao);
+                venc.setDate(venc.getDate() + 30);
+                set('data_renovacao', novaRenovacao);
+                setForm(f => ({ ...f, data_renovacao: novaRenovacao, data_vencimento: format(venc, 'yyyy-MM-dd') }));
+              }} className="mt-1 h-8" />
+              {form.data_vencimento && (
+                <p className="text-[10px] text-slate-400 mt-0.5">Vencimento: {format(new Date(form.data_vencimento), 'dd/MM/yyyy')}</p>
+              )}
             </div>
             <div>
               <Label className="text-xs font-semibold">Valor da Parcela (R$) *</Label>
