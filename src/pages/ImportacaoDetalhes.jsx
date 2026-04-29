@@ -78,7 +78,10 @@ export default function ImportacaoDetalhes() {
             <div>
               <p className="text-sm text-slate-500">Data</p>
               <p className="font-semibold">
-                {format(new Date(importacao.created_date), 'dd/MM/yyyy HH:mm')}
+                {(() => {
+                  const d = new Date(importacao.created_date);
+                  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                })()}
               </p>
             </div>
           </CardContent>
