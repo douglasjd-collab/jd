@@ -80,7 +80,10 @@ export default function ImportacaoDetalhes() {
               <p className="font-semibold">
                 {(() => {
                   const d = new Date(importacao.created_date);
-                  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  const opts = { timeZone: 'America/Sao_Paulo' };
+                  const data = d.toLocaleDateString('pt-BR', opts);
+                  const hora = d.toLocaleTimeString('pt-BR', { ...opts, hour: '2-digit', minute: '2-digit' });
+                  return `${data} ${hora}`;
                 })()}
               </p>
             </div>
