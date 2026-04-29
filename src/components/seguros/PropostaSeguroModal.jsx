@@ -277,7 +277,7 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
               <Input type="number" step="0.01" value={form.percentual_comissao || ''} onChange={e => set('percentual_comissao', parseFloat(e.target.value))} className="mt-1 h-8" />
             </div>
             <div>
-              <Label className="text-xs font-semibold">Valor Adesão / Comissão (R$)</Label>
+              <Label className="text-xs font-semibold">Recorrência Mensal (%)</Label>
               <Input type="number" step="0.01" value={form.valor_adesao || ''} onChange={e => set('valor_adesao', parseFloat(e.target.value))} className="mt-1 h-8 bg-emerald-50" />
             </div>
           </div>
