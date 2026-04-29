@@ -18,26 +18,24 @@ Deno.serve(async (req) => {
       return Response.json({ sucesso: false, mensagem: 'Placa inválida. Deve ter 7 caracteres.' });
     }
 
-    // Tenta API configurada primeiro, senão usa BrasilAPI
+    // Tenta API placa-fipe.apibrasil.com.br primeiro
     let veiculo = null;
-    const apiUrl = Deno.env.get('PLACA_API_URL');
-    const apiToken = Deno.env.get('PLACA_API_TOKEN');
 
-    if (apiUrl && apiToken) {
-      const response = await fetch(`${apiUrl}/${placaLimpa}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
+    try {
+      const response = await fetch('https://placa-fipe.apibrasil.com.br/placa/consulta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placa: placaLimpa }),
       });
 
       if (response.ok) {
         veiculo = await response.json();
       }
+    } catch (_err) {
+      // Continua para fallback
     }
 
-    // Se não conseguiu pela API configurada, usa BrasilAPI como fallback
+    // Se não conseguiu, usa BrasilAPI como fallback
     if (!veiculo) {
       try {
         const brasilApiResp = await fetch(`https://brasilapi.com.br/api/placa/v1/${placaLimpa}`);
