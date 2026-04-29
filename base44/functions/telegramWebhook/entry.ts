@@ -98,13 +98,20 @@ Use esta action quando o usuário mencionar conta bancária (itau, nubank, caixa
 - conta_nome: extraia o nome do banco mencionado (ex: "itau", "nubank", "caixa")
 - data: hoje se não especificado (formato YYYY-MM-DD)
 
+Regras para adiantamento (action=create_advance):
+Use quando o usuário mencionar: adiantamento, adianta, adiantar <nome>, com palavras-chave "vendedor", "colaborador", "funcionário"
+- colaborador_nome: nome do vendedor/colaborador/funcionário
+- valor: valor do adiantamento
+- data: data do adiantamento (hoje se não especificado, formato YYYY-MM-DD)
+
 Retorne APENAS um JSON com esta estrutura exata (sem texto adicional):
 {
-  "action": "create_opportunity" | "create_expense" | "create_revenue" | "create_financial_transaction" | "create_agenda" | "reschedule_agenda" | "cancel_agenda" | "confirm_agenda" | "complete_agenda" | "list_agenda" | "clarify",
+  "action": "create_opportunity" | "create_expense" | "create_revenue" | "create_financial_transaction" | "create_advance" | "create_agenda" | "reschedule_agenda" | "cancel_agenda" | "confirm_agenda" | "complete_agenda" | "list_agenda" | "clarify",
   "opportunity": { "nome": string|null, "telefone": string|null, "produto": "consorcio"|"emprestimo"|null, "valor": number|null, "observacao": string|null } | null,
   "expense": { "valor": number|null, "descricao": string|null, "categoria": string|null, "data": string|null } | null,
   "revenue": { "valor": number|null, "descricao": string|null, "categoria": string|null, "data": string|null } | null,
   "financial_transaction": { "tipo": "entrada"|"saida"|null, "valor": number|null, "descricao": string|null, "conta_nome": string|null, "categoria": string|null, "data": string|null } | null,
+  "advance": { "colaborador_nome": string|null, "valor": number|null, "data": string|null, "descricao": string|null } | null,
   "agenda": { "id": string|null, "tipo": "reuniao"|"tarefa"|null, "titulo": string|null, "inicio": string|null, "local": string|null, "descricao": string|null } | null,
   "list": { "when": "hoje"|"amanha"|"semana"|null } | null,
   "clarify": { "question": string|null } | null,
@@ -122,6 +129,7 @@ Retorne APENAS um JSON com esta estrutura exata (sem texto adicional):
         expense: { type: "object" },
         revenue: { type: "object" },
         financial_transaction: { type: "object" },
+        advance: { type: "object" },
         agenda: { type: "object" },
         list: { type: "object" },
         clarify: { type: "object" },
@@ -457,6 +465,89 @@ Deno.serve(async (req) => {
 
     if (intent.action === "clarify") {
       await sendTelegram(chatId, `❓ ${intent.clarify?.question || "Me diga mais detalhes, por favor."}`);
+      return Response.json({ ok: true });
+    }
+
+    if (intent.action === "create_advance") {
+      const adv = intent.advance || {};
+      if (!adv.valor || !adv.colaborador_nome) {
+        await sendTelegram(chatId, "❓ Para lançar adiantamento, preciso de: <b>nome do vendedor/colaborador</b> e <b>valor</b>.");
+        return Response.json({ ok: true });
+      }
+
+      const hoje = new Date().toLocaleDateString('fr-CA');
+      const dataAdv = adv.data || hoje;
+
+      // Buscar empresa JD Promotora
+      let jdEmpresaId = null;
+      try {
+        const empresas = await base44.asServiceRole.entities.Empresa.filter(
+          { nome: { $regex: "JD Promotora", $options: "i" } },
+          '-created_date',
+          1
+        );
+        if (empresas && empresas.length > 0) {
+          jdEmpresaId = empresas[0].id;
+        }
+      } catch (_) {}
+
+      if (!jdEmpresaId) {
+        await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
+        return Response.json({ ok: true });
+      }
+
+      // Buscar colaborador/vendedor por nome
+      let colaboradorId = null;
+      let colaboradorNome = adv.colaborador_nome;
+      try {
+        const colabs = await base44.asServiceRole.entities.Colaborador.filter(
+          { empresa_id: jdEmpresaId, nome: { $regex: adv.colaborador_nome, $options: "i" } },
+          '-created_date',
+          1
+        );
+        if (colabs && colabs.length > 0) {
+          colaboradorId = colabs[0].id;
+          colaboradorNome = colabs[0].nome;
+        }
+      } catch (_) {}
+
+      // Criar adiantamento
+      const adiantamento = await base44.asServiceRole.entities.Adiantamento.create({
+        empresa_id: jdEmpresaId,
+        colaborador_id: colaboradorId,
+        colaborador_nome: colaboradorNome,
+        valor: Number(adv.valor),
+        data: dataAdv,
+        descricao: adv.descricao || `Adiantamento ${colaboradorNome}`,
+        status: 'solicitado',
+      });
+
+      // Lançar como despesa na empresa
+      const created = await base44.asServiceRole.entities.Despesa.create({
+        empresa_id: jdEmpresaId,
+        valor: Number(adv.valor),
+        descricao: `Adiantamento - ${colaboradorNome}`,
+        categoria: 'Adiantamento',
+        data: dataAdv,
+        data_vencimento: dataAdv,
+        status: 'pago',
+        data_pagamento: dataAdv,
+        responsavel_id: colaboradorId || 'telegram',
+        responsavel_nome: colaboradorNome,
+        usuario_id: usuarioId,
+        usuario_nome: 'Telegram Bot',
+        observacao: `Adiantamento lançado via Telegram - ID Adiantamento: ${adiantamento.id}`,
+      });
+
+      const valorFmt = Number(adv.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      await sendTelegram(chatId,
+        `✅ <b>Adiantamento lançado!</b>\n\n` +
+        `👤 ${colaboradorNome}\n` +
+        `💰 Valor: <b>${valorFmt}</b>\n` +
+        `📅 Data: ${dataAdv}\n` +
+        `<code>ID Adiantamento: ${adiantamento.id}</code>\n` +
+        `<code>ID Despesa: ${created.id}</code>`
+      );
       return Response.json({ ok: true });
     }
 
