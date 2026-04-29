@@ -18,32 +18,23 @@ Deno.serve(async (req) => {
       return Response.json({ sucesso: false, mensagem: 'Placa inválida. Deve ter 7 caracteres.' });
     }
 
-    // Tenta API placa-fipe.apibrasil.com.br primeiro
+    // Tenta API WebXcar
     let veiculo = null;
+    const webxcarApiKey = Deno.env.get('WEBXCAR_API_KEY');
 
-    try {
-      const response = await fetch('https://placa-fipe.apibrasil.com.br/placa/consulta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ placa: placaLimpa }),
-      });
-
-      if (response.ok) {
-        veiculo = await response.json();
-      }
-    } catch (_err) {
-      // Continua para fallback
-    }
-
-    // Se não conseguiu, usa BrasilAPI como fallback
-    if (!veiculo) {
+    if (webxcarApiKey) {
       try {
-        const brasilApiResp = await fetch(`https://brasilapi.com.br/api/placa/v1/${placaLimpa}`);
-        if (brasilApiResp.ok) {
-          veiculo = await brasilApiResp.json();
+        const response = await fetch(`https://api.webxcar.com.br/fipe/${placaLimpa}`, {
+          method: 'GET',
+          headers: { 'Authorization': webxcarApiKey },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          veiculo = data.data || data;
         }
       } catch (_err) {
-        // Continua sem dados iniciais
+        // Continua
       }
     }
 
