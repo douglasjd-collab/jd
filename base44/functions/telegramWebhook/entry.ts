@@ -295,23 +295,52 @@ Deno.serve(async (req) => {
 
     const intent = await callLLM(base44, original, context);
 
-    // Buscar colaborador
-    let empresaId = 'TELEGRAM_BOT';
+    // Buscar primeira empresa com contas cadastradas
+    let empresaId = null;
     let usuarioId = null;
     
     try {
-      const colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
-        { status: 'ativo' },
+      // Buscar primeira empresa que tem contas ativas
+      const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
+        { status: 'ativa' },
         '-created_date',
         1
       );
       
-      if (colaboradores && colaboradores.length > 0) {
-        empresaId = colaboradores[0].empresa_id || 'TELEGRAM_BOT';
-        usuarioId = colaboradores[0].user_id;
+      if (contas && contas.length > 0) {
+        empresaId = contas[0].empresa_id;
+      }
+      
+      // Se encontrou empresa, buscar colaborador dessa empresa
+      if (empresaId) {
+        const colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
+          { empresa_id: empresaId, status: 'ativo' },
+          '-created_date',
+          1
+        );
+        if (colaboradores && colaboradores.length > 0) {
+          usuarioId = colaboradores[0].user_id;
+        }
       }
     } catch (err) {
-      console.error('Erro ao buscar colaborador:', err);
+      console.error('Erro ao buscar empresa/colaborador:', err);
+    }
+    
+    // Se ainda não achou empresa, tenta buscar qualquer colaborador ativo
+    if (!empresaId) {
+      try {
+        const colaboradores = await base44.asServiceRole.entities.Colaborador.filter(
+          { status: 'ativo' },
+          '-created_date',
+          1
+        );
+        if (colaboradores && colaboradores.length > 0) {
+          empresaId = colaboradores[0].empresa_id;
+          usuarioId = colaboradores[0].user_id;
+        }
+      } catch (err) {
+        console.error('Erro ao buscar colaborador fallback:', err);
+      }
     }
 
     if (intent.action === "clarify") {
