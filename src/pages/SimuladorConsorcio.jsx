@@ -281,17 +281,31 @@ export default function SimuladorConsorcio() {
           const parcela1a10 = parseFloat(cartaDec.parcela) || 0;
           const parcelaMeio = parseFloat(cartaDec.parcelaMeio) || 0;
           const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
-          const carenciaAplicada = (aplicarRegraCanopus && administradora === 'canopus') ? parcelasCarencia : 0;
-          const primeiraParcRestante = 1 + carenciaAplicada + 1;
-          mesesCobrados = prazo - 1 - carenciaAplicada;
+          
+          // Regra de carência: parcela 1 no ato + 3 meses carência (R$ 0,00)
+          const parcelaNoAto = 1;
+          const carenciaAplicada = (aplicarRegraCanopus && administradora === 'canopus') ? 3 : 0;
+          const parcelasPagasOuCarencia = parcelaNoAto + carenciaAplicada; // 4 (parcelas 1-4)
+          
+          // Faixa 1: parcelas 5 a 10 (após carência)
+          const inicioFaixa1 = parcelasPagasOuCarencia + 1; // 5
+          const fimFaixa1 = 10;
+          const qtdFaixa1 = Math.max(0, fimFaixa1 - inicioFaixa1 + 1); // 6 parcelas (5-10)
+          
+          // Faixa 2: parcelas 11 a (prazo-1)
+          const qtdFaixa2 = Math.max(0, (prazo - 1) - 10); // ex: 149 (11-159)
+          
+          // Faixa 3: última parcela
+          const qtdFaixa3 = 1;
+          
+          // Meses cobrados: prazo total - (1 no ato + 3 carência)
+          mesesCobrados = prazo - parcelasPagasOuCarencia;
 
           const saldoAposParcela = totalPlano - parcela1a10;
           const totalLance = lanceEmbutidoAplicado + lanceProprioValor;
           const saldoAposLance = saldoAposParcela - totalLance;
 
-          const qtdFaixa1Restante = Math.max(0, 10 - primeiraParcRestante + 1);
-          const qtdFaixa2 = Math.max(0, (prazo - 1) - 10);
-          const totalRestanteOriginal = qtdFaixa1Restante * parcela1a10 + qtdFaixa2 * parcelaMeio + ultimaParc;
+          const totalRestanteOriginal = qtdFaixa1 * parcela1a10 + qtdFaixa2 * parcelaMeio + qtdFaixa3 * ultimaParc;
           const fatorReducao = saldoAposLance / totalRestanteOriginal;
 
           novaParcelaCalculada = parcela1a10 * fatorReducao;
@@ -1171,8 +1185,11 @@ export default function SimuladorConsorcio() {
                                 <span className="text-purple-700 text-xs">Parc. 1 (no ato):</span>
                                 <span className="text-slate-400 text-xs line-through">Já paga</span>
                               </div>
+                              <div className="flex justify-between items-center px-3 py-1.5 bg-yellow-50">
+                                <span className="text-yellow-700 text-xs font-medium">Parcelas 2 a 4 (Carência — R$ 0,00)</span>
+                              </div>
                               <div className="flex justify-between items-center px-3 py-1.5">
-                                <span className="text-purple-700 text-xs">Parcelas 2 a 10:</span>
+                                <span className="text-purple-700 text-xs">Parcelas 5 a 10:</span>
                                 <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
                               </div>
                               {resultado.novaParcelaMeio !== null && (
