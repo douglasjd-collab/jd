@@ -936,6 +936,12 @@ export default function SimuladorConsorcio() {
                       <p className="font-semibold">Opções rápidas de lance embutido:</p>
                       <div className="flex gap-1">
                         <button
+                          onClick={() => setLanceEmbutidoPercentual(0)}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${lanceEmbutidoPercentual === 0 ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        >
+                          Nenhum
+                        </button>
+                        <button
                           onClick={() => setLanceEmbutidoPercentual(30)}
                           className={`px-2 py-1 rounded text-xs font-medium transition-all ${lanceEmbutidoPercentual === 30 ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                         >
