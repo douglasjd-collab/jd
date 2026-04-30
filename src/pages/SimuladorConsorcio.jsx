@@ -47,6 +47,7 @@ export default function SimuladorConsorcio() {
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
   const [cartaIndex, setCartaIndex] = useState(null);
   const [planoSelecionadoInfo, setPlanoSelecionadoInfo] = useState('');
+  const [parcelaJaReduzida, setParcelaJaReduzida] = useState(null); // null = não respondido, true/false
 
   useEffect(() => {
     loadUser();
@@ -241,6 +242,11 @@ export default function SimuladorConsorcio() {
       return;
     }
 
+    if (parcelaJaReduzida === null) {
+      toast.error('Responda se a parcela já foi reduzida pelo lance embutido');
+      return;
+    }
+
     if (usarLanceProprio && (!lanceProprio || parseFloat(lanceProprio) <= 0)) {
       toast.error('Informe o valor do lance próprio');
       return;
@@ -249,9 +255,10 @@ export default function SimuladorConsorcio() {
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
 
-    // Verificar se o plano tem desconto embutido (50% ou 70%)
-    const planoTemDescontoEmbutido = planoSelecionadoInfo && 
-      (planoSelecionadoInfo.includes('50%') || planoSelecionadoInfo.includes('70%'));
+    // parcelaJaReduzida = true → parcela informada já está com desconto, NÃO descontar lance embutido novamente
+    // parcelaJaReduzida = false → calcular desconto do lance embutido normalmente
+    const lanceEmbutidoAplicado = parcelaJaReduzida ? 0 : lanceEmbutidoValor;
+    const planoTemDescontoEmbutido = parcelaJaReduzida;
 
     let novaParcelaCalculada = parcelaTotal;
     let novaParcelaMeio = null;
@@ -259,7 +266,6 @@ export default function SimuladorConsorcio() {
     let mesesCobrados = prazoNum;
     let saldoDevedorTotal = totalPlano;
     let lanceProprioValor = 0;
-    let lanceEmbutidoAplicado = planoTemDescontoEmbutido ? 0 : lanceEmbutidoValor;
 
     if (usarLanceProprio) {
       lanceProprioValor = parseFloat(lanceProprio);
@@ -882,6 +888,41 @@ export default function SimuladorConsorcio() {
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                   <p className="text-xs text-emerald-700">🏆 Valor do Lance Embutido</p>
                   <p className="text-2xl font-bold text-emerald-900">{formatCurrency(lanceEmbutidoValor)}</p>
+                </div>
+              )}
+
+              {administradora && lanceEmbutidoPercentual > 0 && (
+                <div className="border-2 border-amber-300 rounded-lg p-4 bg-amber-50 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">❓ A parcela informada já foi reduzida pelo lance embutido?</p>
+                    <p className="text-xs text-amber-600 mt-1">Esta resposta define como o sistema vai calcular o saldo devedor.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setParcelaJaReduzida(true)}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${parcelaJaReduzida === true ? 'border-green-500 bg-green-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                    >
+                      <p className={`text-xs font-semibold ${parcelaJaReduzida === true ? 'text-green-700' : 'text-slate-700'}`}>✅ Sim, já reduzida</p>
+                      <p className="text-xs text-slate-500 mt-0.5">NÃO desconta lance embutido novamente</p>
+                    </button>
+                    <button
+                      onClick={() => setParcelaJaReduzida(false)}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${parcelaJaReduzida === false ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                    >
+                      <p className={`text-xs font-semibold ${parcelaJaReduzida === false ? 'text-blue-700' : 'text-slate-700'}`}>🔢 Não, calcular agora</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Desconta o lance embutido do saldo</p>
+                    </button>
+                  </div>
+                  {parcelaJaReduzida === null && (
+                    <p className="text-xs text-red-500 font-medium">⚠️ Resposta obrigatória para calcular</p>
+                  )}
+                  {parcelaJaReduzida !== null && (
+                    <p className={`text-xs font-medium ${parcelaJaReduzida ? 'text-green-700' : 'text-blue-700'}`}>
+                      {parcelaJaReduzida
+                        ? '✅ Lance embutido NÃO será descontado do saldo (parcela já ajustada)'
+                        : '🔢 Lance embutido SERÁ descontado do saldo para calcular a nova parcela'}
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
