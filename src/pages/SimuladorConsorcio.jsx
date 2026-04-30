@@ -314,7 +314,7 @@ export default function SimuladorConsorcio() {
            saldoDevedorTotal = round2(saldoAntesSeguro - reducaoSeguroTotal);
 
            // Calcular parcelas mantendo a proporção original
-           const totalPlanoOriginal = qtdFaixa1 * parcela1a10 + qtdFaixa2 * parcelaMeio + ultimaParc;
+           const totalPlanoOriginal = 6 * parcela1a10 + ((prazo - 1) - 10) * parcelaMeio + ultimaParc;
            novaParcelaCalculada = round2(saldoDevedorTotal * (parcela1a10 / totalPlanoOriginal));
            novaParcelaMeio = round2(saldoDevedorTotal * (parcelaMeio / totalPlanoOriginal));
            novaUltimaParcela = round2(saldoDevedorTotal * (ultimaParc / totalPlanoOriginal));
