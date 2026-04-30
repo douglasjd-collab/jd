@@ -34,6 +34,7 @@ export default function SimuladorNormal() {
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
+  const [modoReducao, setModoReducao] = useState('parcela'); // 'parcela' | '5050'
   const [resultado, setResultado] = useState(null);
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
   const [cartaIndex, setCartaIndex] = useState(null);
@@ -389,7 +390,6 @@ export default function SimuladorNormal() {
       }
     } else {
       const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
-      novaParcelaCalculada = saldoDevedorReal / (prazoNum - 1);
       novoPrazo = prazoNum - 1;
 
       // Aplicar regra Canopus se ativado (apenas plano normal)
@@ -397,6 +397,27 @@ export default function SimuladorNormal() {
         const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
         const mesesCobrados = prazoNum - mesesNaoCobrados;
         novoPrazo = mesesCobrados < 1 ? 1 : mesesCobrados;
+      }
+
+      if (modoReducao === '5050' && lanceProprioValor > 0) {
+        // Metade do lance reduz o prazo, metade reduz a parcela
+        const lancePrazo = lanceProprioValor / 2;
+        const lanceParcela = lanceProprioValor / 2;
+
+        // Saldo real = total - 1ª parcela no ato - metade do lance que vai pro prazo
+        // Prazo reduzido: quantas parcelas a metade do lance "quita"
+        const parcelasQuitadas = Math.floor(lancePrazo / parcelaTotal);
+        const novoPrazo5050 = Math.max(1, novoPrazo - parcelasQuitadas);
+
+        // Saldo restante após a metade do lance na parcela
+        const saldoAposLanceParcela = saldoDevedorReal - lanceParcela;
+        novaParcelaCalculada = saldoAposLanceParcela / novoPrazo5050;
+        novoPrazo = novoPrazo5050;
+
+        // Guardar info para exibição
+        descontoPorParcela = lanceParcela;
+        parcelasJaPagas = parcelasQuitadas;
+      } else {
         novaParcelaCalculada = saldoDevedorReal / novoPrazo;
       }
     }
@@ -430,6 +451,7 @@ export default function SimuladorNormal() {
       parcelaCarenciaValor,
       numParcelasCarencia: numParcelasCarenciaLocal,
       carenciaDecrescente: aplicarRegraCanopus ? parcelasCarencia : 0,
+      modoReducao,
     });
   };
 
@@ -829,6 +851,40 @@ export default function SimuladorNormal() {
 
               {usarLanceProprio && (
                 <div className="space-y-3">
+                  {/* Modo de redução */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setModoReducao('parcela')}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${modoReducao === 'parcela' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                    >
+                      <p className={`text-xs font-semibold ${modoReducao === 'parcela' ? 'text-blue-700' : 'text-slate-700'}`}>📉 Reduzir Parcela</p>
+                      <p className="text-xs text-slate-500 mt-0.5">100% do lance reduz o valor da parcela</p>
+                    </button>
+                    <button
+                      onClick={() => setModoReducao('5050')}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${modoReducao === '5050' ? 'border-green-500 bg-green-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                    >
+                      <p className={`text-xs font-semibold ${modoReducao === '5050' ? 'text-green-700' : 'text-slate-700'}`}>⚖️ 50% Prazo / 50% Parcela</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Metade reduz prazo, metade reduz parcela</p>
+                    </button>
+                  </div>
+
+                  {/* Preview 50/50 */}
+                  {modoReducao === '5050' && lanceProprio && parseFloat(lanceProprio) > 0 && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-green-700 font-semibold">⏱ Redução de Prazo</p>
+                        <p className="text-lg font-bold text-green-900">{formatCurrency(parseFloat(lanceProprio) / 2)}</p>
+                        <p className="text-xs text-green-600">≈ {Math.floor((parseFloat(lanceProprio) / 2) / (parcelaTotal || 1))} meses a menos</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-700 font-semibold">💵 Redução de Parcela</p>
+                        <p className="text-lg font-bold text-green-900">{formatCurrency(parseFloat(lanceProprio) / 2)}</p>
+                        <p className="text-xs text-green-600">aplicado no saldo restante</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
                       <Label className="text-xs">Valor do Lance Próprio (R$) *</Label>
@@ -1009,11 +1065,27 @@ export default function SimuladorNormal() {
                         </div>
                       </>
                     )}
-                    {resultado.usarLanceProprio && !resultado.temPlanoDecrescente && (
+                    {resultado.usarLanceProprio && !resultado.temPlanoDecrescente && resultado.modoReducao !== '5050' && (
                       <div className="flex justify-between">
                         <span className="text-slate-600">(-) Lance Próprio:</span>
                         <span className="font-semibold text-purple-700">- {formatCurrency(resultado.lanceProprio)}</span>
                       </div>
+                    )}
+                    {resultado.usarLanceProprio && !resultado.temPlanoDecrescente && resultado.modoReducao === '5050' && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">(-) 50% no Prazo:</span>
+                          <span className="font-semibold text-green-700">- {formatCurrency(resultado.lanceProprio / 2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">(-) 50% na Parcela:</span>
+                          <span className="font-semibold text-green-700">- {formatCurrency(resultado.lanceProprio / 2)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-slate-500">
+                          <span>Meses quitados:</span>
+                          <span>{resultado.parcelasJaPagas} meses</span>
+                        </div>
+                      </>
                     )}
                     {!resultado.temPlanoDecrescente && (
                       <div className="flex justify-between">
