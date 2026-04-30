@@ -666,7 +666,13 @@ export default function SimuladorConsorcio() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
                   <Label className="mb-2 block">Tipo do Consórcio *</Label>
-                  <Select value={tipoGrupo} onValueChange={setTipoGrupo}>
+                  <Select value={tipoGrupo} onValueChange={(tipo) => {
+                    setTipoGrupo(tipo);
+                    // Desativar plano decrescente se não for imóvel
+                    if (tipo !== 'imovel') {
+                      setCartas(cartas.map(c => ({ ...c, planoDecrescente: false })));
+                    }
+                  }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -747,14 +753,16 @@ export default function SimuladorConsorcio() {
                    )}
                  </div>
 
-                 {/* Switch Plano Decrescente */}
-                 <div className="flex items-center gap-2 mb-3">
-                   <Switch
-                     checked={carta.planoDecrescente || false}
-                     onCheckedChange={(v) => atualizarCarta(index, 'planoDecrescente', v)}
-                   />
-                   <Label className="text-xs font-medium text-purple-700 cursor-pointer">📉 Plano Decrescente</Label>
-                 </div>
+                 {/* Switch Plano Decrescente - Apenas para Imóvel */}
+                 {tipoGrupo === 'imovel' && (
+                   <div className="flex items-center gap-2 mb-3">
+                     <Switch
+                       checked={carta.planoDecrescente || false}
+                       onCheckedChange={(v) => atualizarCarta(index, 'planoDecrescente', v)}
+                     />
+                     <Label className="text-xs font-medium text-purple-700 cursor-pointer">📉 Plano Decrescente</Label>
+                   </div>
+                 )}
 
                  {!carta.planoDecrescente ? (
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
