@@ -352,16 +352,16 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
                   <div key={idx} className="border rounded-lg overflow-hidden">
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50">
                       <div className="flex-1">
-                        <Select value={linha.administradora_id || ''} onValueChange={v => setAdmSeguro(idx, v)}>
-                          <SelectTrigger className="h-8 text-sm bg-white border border-slate-200 text-slate-900">
-                            <SelectValue placeholder="Selecionar Administradora..." />
-                          </SelectTrigger>
-                          <SelectContent position="popper" className="bg-white border-slate-200 text-slate-900 z-[9999]">
-                            {administradoras.map(a => (
-                              <SelectItem key={a.id} value={a.id} className="text-slate-900 focus:bg-slate-100 focus:text-slate-900">{a.razao_social || a.nome_fantasia}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <select
+                          value={linha.administradora_id || ''}
+                          onChange={e => setAdmSeguro(idx, e.target.value)}
+                          className="w-full h-8 px-2 text-sm bg-white border border-slate-200 rounded-md text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                        >
+                          <option value="">Selecionar Administradora...</option>
+                          {administradoras.map(a => (
+                            <option key={a.id} value={a.id}>{a.razao_social || a.nome_fantasia}</option>
+                          ))}
+                        </select>
                       </div>
                       <button onClick={() => removerLinhaSeguro(idx)} className="text-red-400 hover:text-red-600 p-0.5">
                         <Trash2 className="w-3.5 h-3.5" />
