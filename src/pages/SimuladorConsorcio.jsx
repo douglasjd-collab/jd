@@ -267,6 +267,7 @@ export default function SimuladorConsorcio() {
     let mesesCobrados = prazoNum;
     let saldoDevedorTotal = totalPlano;
     let lanceProprioValor = 0;
+    let reducaoSeguroTotal = 0;
 
     if (usarLanceProprio) {
       lanceProprioValor = parseFloat(lanceProprio);
@@ -306,7 +307,7 @@ export default function SimuladorConsorcio() {
           const saldoAntesSeguro = round2(totalPlano - lanceProprioValor - parcela1a10);
 
           // Redução total = redução mensal × meses cobrados
-          const reducaoSeguroTotal = round2(reducaoSeguroMensal * mesesCobrados);
+          reducaoSeguroTotal = round2(reducaoSeguroMensal * mesesCobrados);
 
           // Saldo devedor final = saldo antes do seguro - redução seguro
           saldoDevedorTotal = round2(saldoAntesSeguro - reducaoSeguroTotal);
@@ -355,6 +356,7 @@ export default function SimuladorConsorcio() {
       aplicarRegraCanopus: aplicarRegraCanopus && administradora === 'canopus',
       planoTemDescontoEmbutido,
       temPlanoDecrescente,
+      reducaoSeguroTotal,
     });
   };
 
@@ -1170,6 +1172,12 @@ export default function SimuladorConsorcio() {
                           <span>(-)1ª parcela na contratação:</span>
                           <span className="font-semibold">-{formatCurrency(resultado.parcelaTotal)}</span>
                         </div>
+                        {resultado.aplicarRegraCanopus && resultado.reducaoSeguroTotal > 0 && (
+                          <div className="flex justify-between text-orange-600">
+                            <span>(-)Seguro reduzido:</span>
+                            <span className="font-semibold">-{formatCurrency(resultado.reducaoSeguroTotal)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between border-t pt-1">
                           <span className="text-slate-900 font-semibold">Saldo devedor:</span>
                           <span className="font-bold">{formatCurrency(resultado.saldoDevedor)}</span>
