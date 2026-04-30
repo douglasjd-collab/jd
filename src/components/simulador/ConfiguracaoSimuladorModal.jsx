@@ -44,10 +44,19 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
 
     setCarregandoSeguro(true);
     try {
-      const [admList, configs] = await Promise.all([
-        base44.entities.Administradora.filter({ empresa_id: resolvedEid }, 'razao_social', 200),
+      const [admListEmpresa, admListGeral, configs] = await Promise.all([
+        base44.entities.Administradora.filter({ empresa_id: resolvedEid, status: 'ativa' }, 'razao_social', 200),
+        base44.entities.Administradora.filter({ status: 'ativa' }, 'razao_social', 200),
         base44.entities.ConfiguracaoSistema.filter({ chave: CHAVE_CONFIG_SEGURO }),
       ]);
+
+      // Combinar sem duplicatas
+      const todasAdms = [...admListEmpresa];
+      admListGeral.forEach(a => {
+        if (!todasAdms.find(x => x.id === a.id)) todasAdms.push(a);
+      });
+      todasAdms.sort((a, b) => (a.razao_social || '').localeCompare(b.razao_social || ''));
+      const admList = todasAdms;
 
       setAdministradoras(admList);
 
