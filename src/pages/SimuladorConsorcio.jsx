@@ -301,16 +301,32 @@ export default function SimuladorConsorcio() {
           // Meses cobrados: prazo total - (1 no ato + 3 carência)
           mesesCobrados = prazo - parcelasPagasOuCarencia;
 
-          const saldoAposParcela = totalPlano - parcela1a10;
+          // Cálculo de redução de seguro
+          // Seguro original sobre crédito total
+          const creditoTotal_valor = creditoTotal; // crédito total da simulação
+          const saldoAposParcela1 = creditoTotal_valor - parcela1a10;
+          
+          // Depois do lance, o saldo reduz
           const totalLance = lanceEmbutidoAplicado + lanceProprioValor;
-          const saldoAposLance = saldoAposParcela - totalLance;
-
+          const saldoAposLance = saldoAposParcela1 - totalLance;
+          
+          // Redução de seguro = diferença entre o que seria cobrado no saldo original vs. novo
+          // A parcela 1 não recalcula seguro (mantém valor original)
+          // As parcelas futuras recebem o desconto de seguro
+          
+          // Total do plano original = parcela1 + (parcelas restantes em valores originais)
           const totalRestanteOriginal = qtdFaixa1 * parcela1a10 + qtdFaixa2 * parcelaMeio + qtdFaixa3 * ultimaParc;
-          const fatorReducao = saldoAposLance / totalRestanteOriginal;
-
-          novaParcelaCalculada = parcela1a10 * fatorReducao;
-          novaParcelaMeio = parcelaMeio * fatorReducao;
-          novaUltimaParcela = ultimaParc * fatorReducao;
+          
+          // Novo total = total original - (diferença de seguro que deixa de ser cobrada)
+          // Como o saldo reduziu, menos seguro deve ser cobrado nas parcelas futuras
+          // Diferença de seguro por mês ≈ proporção de redução do saldo
+          const fatorReducaoParcelamento = saldoAposLance / saldoAposParcela1;
+          
+          // As parcelas futuras são reduzidas pelo fator de redução do saldo
+          novaParcelaCalculada = parcela1a10 * fatorReducaoParcelamento;
+          novaParcelaMeio = parcelaMeio * fatorReducaoParcelamento;
+          novaUltimaParcela = ultimaParc * fatorReducaoParcelamento;
+          
           saldoDevedorTotal = saldoAposLance;
         }
       } else {
