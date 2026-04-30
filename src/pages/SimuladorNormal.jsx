@@ -335,35 +335,56 @@ export default function SimuladorNormal() {
         const parcelaMeio = parseFloat(cartaDec.parcelaMeio) || 0;
         const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
 
+        const carenciaAplicada = aplicarRegraCanopus ? parcelasCarencia : 0;
+        const parcelasJaPagasNum = 1; // 1 paga no ato (parcela 1)
+
+        // Primeira parcela restante após ato + carência
+        const primeiraParcRestante = parcelasJaPagasNum + carenciaAplicada + 1; // ex: 1+3+1 = 5
+
+        // Parcelas restantes (não inclui ato nem carência)
+        novoPrazo = prazo - parcelasJaPagasNum - carenciaAplicada; // ex: 160-1-3 = 156
+        numParcelasCarenciaLocal = carenciaAplicada;
+        parcelasJaPagas = parcelasJaPagasNum;
+
+        // Parcelas na carência: valor original sem desconto
+        parcelaCarenciaValor = parcela1a10;
+
         if (lanceProprioValor > 0) {
-          // Prazo restante = prazo - 1 (ato) - carência Canopus
-          const carenciaDecrescenteTemp = aplicarRegraCanopus ? parcelasCarencia : 0;
-          const prazoRestanteParaDesconto = prazo - 1 - carenciaDecrescenteTemp;
-          // Desconto por parcela = lance ÷ prazo restante (156 meses)
-          const desconto = lanceProprioValor / prazoRestanteParaDesconto;
-          descontoPorParcela = desconto;
-          parcelasJaPagas = 1; // 1 paga no ato
-          parcelaCarenciaValor = parcelaCarencia;
-          numParcelasCarenciaLocal = carenciaDecrescenteTemp;
+          // Saldo após parcela paga no ato
+          const saldoAposParcela = totalPlano - parcela1a10;
+          // Saldo após lance
+          const saldoAposLanceDecrescente = saldoAposParcela - lanceProprioValor;
 
-          // Parcelas dentro da carência (2 a 4) não têm desconto aplicado
-          // Parcelas após a carência (5 em diante) têm o desconto
-          novaParcelaCalculada = parcela1a10 - desconto; // parcelas 5 a 10 (após carência)
-          novaParcelaMeio = parcelaMeio - desconto;
-          novaUltimaParcela = ultimaParc - desconto;
-          // Parcelas na carência = valor original sem desconto
-          const parcelaCarencia = parcela1a10;
+          // Calcular total original apenas das parcelas RESTANTES (após ato + carência)
+          // Faixa 1 restante: parcelas primeiraParcRestante a 10
+          const qtdFaixa1Restante = Math.max(0, 10 - primeiraParcRestante + 1); // ex: 10-5+1=6
+          const totalFaixa1Restante = qtdFaixa1Restante * parcela1a10;
 
-          // Prazo restante: prazo - 1 (paga no ato) - carência Canopus
-          // Ex: 160 - 1 - 3 = 156
-          const carenciaDecrescente = aplicarRegraCanopus ? parcelasCarencia : 0;
-          novoPrazo = prazo - 1 - carenciaDecrescente;
+          // Faixa 2: parcelas 11 a (prazo-1)
+          const qtdFaixa2 = Math.max(0, (prazo - 1) - 10); // ex: 159-10=149
+          const totalFaixa2Restante = qtdFaixa2 * parcelaMeio;
+
+          // Faixa 3: última parcela
+          const totalFaixa3Restante = ultimaParc;
+
+          const totalRestanteOriginal = totalFaixa1Restante + totalFaixa2Restante + totalFaixa3Restante;
+
+          // Fator de redução
+          const fatorReducao = saldoAposLanceDecrescente / totalRestanteOriginal;
+          descontoPorParcela = fatorReducao; // reutilizando campo para exibir o fator
+
+          // Aplicar fator em cada faixa restante
+          novaParcelaCalculada = parcela1a10 * fatorReducao; // parcelas 5 a 10
+          novaParcelaMeio = parcelaMeio * fatorReducao;      // parcelas 11 a 159
+          novaUltimaParcela = ultimaParc * fatorReducao;     // parcela 160
+
+          // Para exibição do saldo devedor
+          saldoDevedorTotal = saldoAposLanceDecrescente;
         } else {
           // Sem lance: mantém faixas originais, apenas 1 paga no ato
           novaParcelaCalculada = parcela1a10;
           novaParcelaMeio = parcelaMeio;
           novaUltimaParcela = ultimaParc;
-          novoPrazo = prazo - 1;
         }
       }
     } else {
@@ -381,10 +402,10 @@ export default function SimuladorNormal() {
     }
 
     // Saldo devedor para exibição:
-    // No plano decrescente: total - 1ª parcela no ato (lance já foi distribuído como desconto por parcela, não abate direto)
+    // No plano decrescente: já calculado como saldoDevedorTotal (saldo após parcela paga e lance)
     // No plano normal: totalPlano - lance - 1ª parcela no ato
     const saldoDevedorExibicao = temPlanoDecrescente
-      ? totalPlano - primeiraParcelaNoAto
+      ? saldoDevedorTotal
       : saldoDevedorTotal - primeiraParcelaNoAto;
 
     setResultado({
@@ -978,9 +999,13 @@ export default function SimuladorNormal() {
                     </div>
                     {resultado.usarLanceProprio && resultado.temPlanoDecrescente && (
                       <>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">(-) Lance Próprio:</span>
+                          <span className="font-semibold text-purple-700">- {formatCurrency(resultado.lanceProprio)}</span>
+                        </div>
                         <div className="flex justify-between text-xs text-slate-500">
-                          <span>Lance (distribuído como desconto por parcela):</span>
-                            <span>{formatCurrency(resultado.lanceProprio)} ÷ {resultado.novoPrazo} = - {formatCurrency(resultado.descontoPorParcela)}/parc</span>
+                          <span>Fator de redução aplicado:</span>
+                          <span>{resultado.descontoPorParcela?.toFixed(6)}</span>
                         </div>
                       </>
                     )}
@@ -990,12 +1015,14 @@ export default function SimuladorNormal() {
                         <span className="font-semibold text-purple-700">- {formatCurrency(resultado.lanceProprio)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">(-) 1ª Parcela (no ato):</span>
-                      <span className="font-semibold text-orange-700">- {formatCurrency(resultado.valorParcelaReduzida)}</span>
-                    </div>
+                    {!resultado.temPlanoDecrescente && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">(-) 1ª Parcela (no ato):</span>
+                        <span className="font-semibold text-orange-700">- {formatCurrency(resultado.valorParcelaReduzida)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-t pt-2 mt-1">
-                      <span className="text-slate-700 font-semibold">Saldo Devedor:</span>
+                      <span className="text-slate-700 font-semibold">Saldo Restante:</span>
                       <span className="font-bold text-slate-900">{formatCurrency(resultado.saldoDevedor)}</span>
                     </div>
                     {resultado.temPlanoDecrescente && resultado.carenciaDecrescente > 0 && (
@@ -1037,14 +1064,14 @@ export default function SimuladorNormal() {
                                  <span className="text-slate-500 text-xs">Parcela 1 (no ato):</span>
                                  <span className="text-slate-400 text-xs line-through">Já paga</span>
                                </div>
-                               {/* Parcelas na carência (2 a 1+carência): sem desconto */}
+                               {/* Parcelas na carência: não cobradas */}
                                {resultado.numParcelasCarencia > 0 && (
-                                 <div className="flex justify-between items-center px-3 py-2">
-                                   <span className="text-slate-500 text-xs">Parcelas 2 a {1 + resultado.numParcelasCarencia} (carência):</span>
-                                   <span className="font-bold text-slate-600">{formatCurrency(resultado.parcelaCarenciaValor)}</span>
+                                 <div className="flex justify-between items-center px-3 py-2 bg-yellow-50">
+                                   <span className="text-yellow-700 text-xs">Parcelas 2 a {1 + resultado.numParcelasCarencia} (carência):</span>
+                                   <span className="text-yellow-600 text-xs font-semibold">Não cobradas</span>
                                  </div>
                                )}
-                               {/* Parcelas após carência até 10 */}
+                               {/* Parcelas após carência até 10 com novo valor */}
                                <div className="flex justify-between items-center px-3 py-2">
                                  <span className="text-purple-700">Parcelas {1 + resultado.numParcelasCarencia + 1} a 10:</span>
                                  <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
