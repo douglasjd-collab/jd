@@ -353,7 +353,7 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50">
                       <div className="flex-1">
                         <Select value={linha.administradora_id || ''} onValueChange={v => setAdmSeguro(idx, v)}>
-                          <SelectTrigger className="h-7 text-sm border-0 bg-transparent shadow-none p-0 focus:ring-0">
+                          <SelectTrigger className="h-8 text-sm bg-white border border-slate-200">
                             <SelectValue placeholder="Selecionar Administradora..." />
                           </SelectTrigger>
                           <SelectContent>
