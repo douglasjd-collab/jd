@@ -838,11 +838,11 @@ export default function BatePapo() {
   // Contadores por aba
   const contadores = {
     todas: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length,
-    espera: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && estaEmEspera(c)).length,
-    ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && estaEmAtendimento(c)).length,
+    espera: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.ultimo_remetente === 'cliente').length,
+    ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.ultimo_remetente === 'vendedor').length,
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
-    meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && estaEmAtendimento(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
+    meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
     grupos: conversasValidas.filter(c => isGrupo(c)).length,
   };
 
