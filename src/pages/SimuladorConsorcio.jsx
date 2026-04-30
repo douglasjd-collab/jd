@@ -305,18 +305,19 @@ export default function SimuladorConsorcio() {
           const reducaoSeguroMensal = round2((lanceEmbutidoValor + lanceProprioValor) * taxaSeguro);
           
           // Saldo antes do seguro = total a pagar - lance próprio - 1ª parcela
-          const saldoAntesSeguro = round2(totalPlano - lanceProprioValor - parcela1a10);
+           const saldoAntesSeguro = round2(totalPlano - lanceProprioValor - parcela1a10);
 
-          // Redução total = redução mensal × meses cobrados
-          reducaoSeguroTotal = round2(reducaoSeguroMensal * mesesCobrados);
+           // Redução total = redução mensal × meses cobrados
+           reducaoSeguroTotal = round2(reducaoSeguroMensal * mesesCobrados);
 
-          // Saldo devedor final = saldo antes do seguro - redução seguro
-          saldoDevedorTotal = round2(saldoAntesSeguro - reducaoSeguroTotal);
-          
-          // Aplicar redução linear (mesmo valor em cada parcela)
-          novaParcelaCalculada = round2(parcela1a10 - reducaoSeguroMensal);
-          novaParcelaMeio = round2(parcelaMeio - reducaoSeguroMensal);
-          novaUltimaParcela = round2(ultimaParc - reducaoSeguroMensal);
+           // Saldo devedor final = saldo antes do seguro - redução seguro
+           saldoDevedorTotal = round2(saldoAntesSeguro - reducaoSeguroTotal);
+
+           // Calcular parcelas mantendo a proporção original
+           const totalPlanoOriginal = qtdFaixa1 * parcela1a10 + qtdFaixa2 * parcelaMeio + ultimaParc;
+           novaParcelaCalculada = round2(saldoDevedorTotal * (parcela1a10 / totalPlanoOriginal));
+           novaParcelaMeio = round2(saldoDevedorTotal * (parcelaMeio / totalPlanoOriginal));
+           novaUltimaParcela = round2(saldoDevedorTotal * (ultimaParc / totalPlanoOriginal));
         }
       } else {
         const primeira_parcela_reduzida_total = cartas.reduce(
