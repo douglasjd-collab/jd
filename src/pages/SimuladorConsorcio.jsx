@@ -299,9 +299,10 @@ export default function SimuladorConsorcio() {
 
           // Cálculo com redução linear de seguro (Canopus)
           const taxaSeguro = 0.00038;
-          
+
           // Redução mensal do seguro = (lance embutido + lance próprio) * taxa seguro
-          const reducaoSeguroMensal = round2((lanceEmbutidoAplicado + lanceProprioValor) * taxaSeguro);
+          // Usa o valor do lance embutido (não aplicado), pois a redução de seguro é sempre baseada no valor total dos lances
+          const reducaoSeguroMensal = round2((lanceEmbutidoValor + lanceProprioValor) * taxaSeguro);
           
           // Saldo antes do seguro = total a pagar - lance próprio - 1ª parcela
           const saldoAntesSeguro = round2(totalPlano - lanceProprioValor - parcela1a10);
