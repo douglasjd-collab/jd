@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
@@ -821,7 +822,7 @@ export default function BatePapo() {
   };
 
   // Conversas válidas — filtra apenas grupos e LID
-  const conversasValidas = conversas.filter(c => {
+  const conversasValidas = React.useMemo(() => conversas.filter(c => {
     if (!c || !c.id || !c.cliente_telefone) return false;
     
     const tel = (c.cliente_telefone || '').replace(/\D/g, '');
@@ -833,7 +834,7 @@ export default function BatePapo() {
     if (isGrupoOuBroadcast) return false;
     if (tel.startsWith('lid_')) return false;
     return tel.length >= 8;
-  });
+  }), [conversas]);
 
   // Contadores por aba
   const contadores = {
@@ -859,8 +860,8 @@ export default function BatePapo() {
       // Filtrar por status
       if (isGrupo(c)) return filtroStatus === 'grupos'; // Grupos ficam apenas na aba grupos
       
-      if (filtroStatus === 'todas') return true; // TODAS as conversas válidas
-      if (filtroStatus === 'espera') return naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente'; // Mensagens não lidas do cliente
+      if (filtroStatus === 'todas') return c.status === 'ativa'; // TODAS as conversas ATIVAS
+      if (filtroStatus === 'espera') return c.ultimo_remetente === 'cliente'; // Último remetente = cliente (aguardando resposta)
       if (filtroStatus === 'ativa') return c.ultimo_remetente === 'vendedor' && naoLidasPorConversa[c.id] === 0; // Vendedor respondeu e nenhuma não lida
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada';
