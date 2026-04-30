@@ -341,8 +341,8 @@ export default function SimuladorNormal() {
         const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
 
         if (lanceProprioValor > 0) {
-          // Desconto do lance dividido pelo prazo total restante
-          const desconto = lanceProprioValor / prazo;
+          // Desconto do lance dividido pelo prazo restante (prazo - 1 pois 1 parcela já foi paga no ato)
+          const desconto = lanceProprioValor / (prazo - 1);
           descontoPorParcela = desconto;
           parcelasJaPagas = parcelasPagas; // 1 ato + 3 antecipadas
 
