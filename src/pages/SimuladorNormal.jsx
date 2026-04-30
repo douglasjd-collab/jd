@@ -317,12 +317,8 @@ export default function SimuladorNormal() {
 
     const saldoAposLance = saldoDevedorTotal;
 
-    // Prazo restante após contemplação:
-    // - Parcela 1: paga no ato da contratação
-    // - Parcelas 2, 3, 4: antecipadas na contemplação (3 parcelas)
-    // Total já pagas = 4. Restam prazo - 4 parcelas.
-    const parcelasPagas = 4; // 1 ato + 3 antecipadas
-    const prazoRestante = prazoNum - parcelasPagas;
+    // 1 parcela paga no ato de contratação
+    // A carência Canopus desconta apenas do prazo exibido, não do saldo
 
     let novaParcelaCalculada = saldoDevedorTotal / prazoNum; // padrão não-decrescente
     let novaParcelaMeio = null;
@@ -345,7 +341,7 @@ export default function SimuladorNormal() {
           // prazo - 1 pois 1 parcela foi paga no ato de contratação
           const desconto = lanceProprioValor / (prazo - 1);
           descontoPorParcela = desconto;
-          parcelasJaPagas = parcelasPagas; // 1 ato + 3 antecipadas
+          parcelasJaPagas = 1; // 1 paga no ato
 
           novaParcelaCalculada = parcela1a10 - desconto;
           novaParcelaMeio = parcelaMeio - desconto;
@@ -1020,47 +1016,26 @@ export default function SimuladorNormal() {
                              <p className="text-xs text-purple-600 font-semibold">📉 Plano Decrescente — Parcelas Restantes</p>
                            </div>
                            <div className="bg-white rounded-lg border border-purple-200 divide-y divide-purple-100 text-sm">
-                             {resultado.descontoPorParcela > 0 ? (
-                               // Com lance: parcelas 1-4 já pagas, restam 5-10, 11-(prazo-1), última
-                               <>
+                             <>
+                               <div className="flex justify-between items-center px-3 py-2">
+                                 <span className="text-slate-500 text-xs">Parcela 1 (no ato):</span>
+                                 <span className="text-slate-400 text-xs line-through">Já paga</span>
+                               </div>
+                               <div className="flex justify-between items-center px-3 py-2">
+                                 <span className="text-purple-700">Parcelas 2 a 10:</span>
+                                 <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
+                               </div>
+                               {resultado.novaParcelaMeio !== null && (
                                  <div className="flex justify-between items-center px-3 py-2">
-                                   <span className="text-slate-500 text-xs">Parcelas 1 a 4:</span>
-                                   <span className="text-slate-400 text-xs line-through">Já pagas</span>
+                                   <span className="text-purple-700">Parcelas 11 a {resultado.prazoOriginal - 1}:</span>
+                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcelaMeio)}</span>
                                  </div>
-                                 <div className="flex justify-between items-center px-3 py-2">
-                                   <span className="text-purple-700">Parcelas 5 a 10:</span>
-                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
-                                 </div>
-                                 {resultado.novaParcelaMeio !== null && (
-                                   <div className="flex justify-between items-center px-3 py-2">
-                                     <span className="text-purple-700">Parcelas 11 a {resultado.prazoOriginal - 1}:</span>
-                                     <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcelaMeio)}</span>
-                                   </div>
-                                 )}
-                                 <div className="flex justify-between items-center px-3 py-2">
-                                   <span className="text-purple-700">Parcela {resultado.prazoOriginal} (última):</span>
-                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaUltimaParcela)}</span>
-                                 </div>
-                               </>
-                             ) : (
-                               // Sem lance: apenas 1 paga no ato, restam 2-10, 11-(prazo-1), última
-                               <>
-                                 <div className="flex justify-between items-center px-3 py-2">
-                                   <span className="text-purple-700">Parcelas 2 a 10:</span>
-                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
-                                 </div>
-                                 {resultado.novaParcelaMeio !== null && (
-                                   <div className="flex justify-between items-center px-3 py-2">
-                                     <span className="text-purple-700">Parcelas 11 a {resultado.prazoOriginal - 1}:</span>
-                                     <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcelaMeio)}</span>
-                                   </div>
-                                 )}
-                                 <div className="flex justify-between items-center px-3 py-2">
-                                   <span className="text-purple-700">Parcela {resultado.prazoOriginal} (última):</span>
-                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaUltimaParcela)}</span>
-                                 </div>
-                               </>
-                             )}
+                               )}
+                               <div className="flex justify-between items-center px-3 py-2">
+                                 <span className="text-purple-700">Parcela {resultado.prazoOriginal} (última):</span>
+                                 <span className="font-bold text-purple-900">{formatCurrency(resultado.novaUltimaParcela)}</span>
+                               </div>
+                             </>
                            </div>
                          </>
                        ) : (
