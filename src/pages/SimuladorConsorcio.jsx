@@ -341,9 +341,9 @@ export default function SimuladorConsorcio() {
           (acc, c) => acc + Number(c.parcelaReduzida || 0), 0
         );
         const haParcelaReduzida = primeira_parcela_reduzida_total > 0;
-        const lanceTotalADescontar = lanceEmbutidoAplicado && !haParcelaReduzida ? lanceEmbutidoAplicado : 0;
         const primeira_parcela_final = haParcelaReduzida ? primeira_parcela_reduzida_total : parcelaTotal;
-        saldoDevedorTotal = totalPlano - primeira_parcela_final - lanceTotalADescontar - lanceProprioValor;
+        // Saldo devedor = total a pagar - lance próprio - 1ª parcela
+        saldoDevedorTotal = round2(totalPlano - lanceProprioValor - primeira_parcela_final);
 
         if (aplicarRegraCanopus && administradora === 'canopus') {
           const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
