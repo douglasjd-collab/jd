@@ -334,9 +334,11 @@ export default function SimuladorNormal() {
         const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
 
         if (lanceProprioValor > 0) {
-          // Desconto por parcela = lance ÷ (prazo - 1)
-          // prazo - 1 pois 1 parcela foi paga no ato de contratação
-          const desconto = lanceProprioValor / (prazo - 1);
+          // Prazo restante = prazo - 1 (ato) - carência Canopus
+          const carenciaDecrescenteTemp = aplicarRegraCanopus ? parcelasCarencia : 0;
+          const prazoRestanteParaDesconto = prazo - 1 - carenciaDecrescenteTemp;
+          // Desconto por parcela = lance ÷ prazo restante (156 meses)
+          const desconto = lanceProprioValor / prazoRestanteParaDesconto;
           descontoPorParcela = desconto;
           parcelasJaPagas = 1; // 1 paga no ato
 
@@ -968,7 +970,7 @@ export default function SimuladorNormal() {
                       <>
                         <div className="flex justify-between text-xs text-slate-500">
                           <span>Lance (distribuído como desconto por parcela):</span>
-                          <span>{formatCurrency(resultado.lanceProprio)} ÷ {resultado.prazoOriginal - 1} = - {formatCurrency(resultado.descontoPorParcela)}/parc</span>
+                            <span>{formatCurrency(resultado.lanceProprio)} ÷ {resultado.novoPrazo} = - {formatCurrency(resultado.descontoPorParcela)}/parc</span>
                         </div>
                       </>
                     )}
