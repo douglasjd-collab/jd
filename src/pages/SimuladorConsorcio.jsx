@@ -880,24 +880,24 @@ export default function SimuladorConsorcio() {
 
           {/* Escolher usar Lance Embutido */}
           <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                🎯 Deseja utilizar lance embutido?
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                🎯 Lance embutido?
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setUsarLanceEmbutido(false)}
-                  className={`p-4 rounded-lg border-2 text-center transition-all font-semibold ${usarLanceEmbutido === false ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  className={`p-2 rounded-lg border text-xs transition-all font-medium ${usarLanceEmbutido === false ? 'border-red-500 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
                 >
-                  <p className={usarLanceEmbutido === false ? 'text-red-700' : 'text-slate-700'}>( ) Não</p>
+                  ( ) Não
                 </button>
                 <button
                   onClick={() => setUsarLanceEmbutido(true)}
-                  className={`p-4 rounded-lg border-2 text-center transition-all font-semibold ${usarLanceEmbutido === true ? 'border-green-500 bg-green-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  className={`p-2 rounded-lg border text-xs transition-all font-medium ${usarLanceEmbutido === true ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
                 >
-                  <p className={usarLanceEmbutido === true ? 'text-green-700' : 'text-slate-700'}>( ) Sim</p>
+                  ( ) Sim
                 </button>
               </div>
             </CardContent>
