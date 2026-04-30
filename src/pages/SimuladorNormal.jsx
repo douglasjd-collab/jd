@@ -400,19 +400,22 @@ export default function SimuladorNormal() {
       }
 
       if (modoReducao === '5050' && lanceProprioValor > 0) {
-        // Metade do lance reduz o prazo, metade reduz a parcela
+        // Metade do lance reduz o prazo (quita parcelas do final)
+        // Metade do lance abate do saldo (reduz valor da parcela)
         const lancePrazo = lanceProprioValor / 2;
         const lanceParcela = lanceProprioValor / 2;
 
-        // Saldo real = total - 1ª parcela no ato - metade do lance que vai pro prazo
-        // Prazo reduzido: quantas parcelas a metade do lance "quita"
+        // Quantas parcelas a metade do lance consegue quitar
         const parcelasQuitadas = Math.floor(lancePrazo / parcelaTotal);
         const novoPrazo5050 = Math.max(1, novoPrazo - parcelasQuitadas);
 
-        // Saldo restante após a metade do lance na parcela
+        // Saldo após 1ª parcela no ato e após a metade que reduz parcela
         const saldoAposLanceParcela = saldoDevedorReal - lanceParcela;
         novaParcelaCalculada = saldoAposLanceParcela / novoPrazo5050;
         novoPrazo = novoPrazo5050;
+
+        // Ajustar saldoDevedorTotal para exibição (já inclui ambas as deduções do lance)
+        saldoDevedorTotal = saldoDevedorReal - lanceParcela;
 
         // Guardar info para exibição
         descontoPorParcela = lanceParcela;
@@ -424,10 +427,13 @@ export default function SimuladorNormal() {
 
     // Saldo devedor para exibição:
     // No plano decrescente: já calculado como saldoDevedorTotal (saldo após parcela paga e lance)
+    // No modo 5050: saldoDevedorTotal já foi ajustado para (saldoReal - lanceParcela)
     // No plano normal: totalPlano - lance - 1ª parcela no ato
     const saldoDevedorExibicao = temPlanoDecrescente
       ? saldoDevedorTotal
-      : saldoDevedorTotal - primeiraParcelaNoAto;
+      : (modoReducao === '5050' && lanceProprioValor > 0)
+        ? saldoDevedorTotal
+        : saldoDevedorTotal - primeiraParcelaNoAto;
 
     setResultado({
       creditoTotal,
