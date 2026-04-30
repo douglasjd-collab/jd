@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings, Save, Loader2, Car, Home, Bike, Package, Plus, Trash2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -150,16 +151,21 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
                 <div key={idx} className="border rounded-lg overflow-hidden">
                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50">
                     <div className="flex-1">
-                      <select
+                      <Select
                         value={linha.administradora_id || ''}
-                        onChange={e => setAdmSeguro(idx, e.target.value)}
-                        className="w-full h-8 px-2 text-sm bg-white border border-slate-200 rounded-md text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                        onValueChange={v => setAdmSeguro(idx, v)}
                       >
-                        <option value="">Selecionar Administradora...</option>
-                        {administradoras.map(a => (
-                          <option key={a.id} value={a.id}>{a.razao_social || a.nome_fantasia}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="h-8 text-sm bg-white text-slate-900">
+                          <SelectValue placeholder="Selecionar Administradora..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {administradoras.map(a => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.razao_social || a.nome_fantasia}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <button onClick={() => removerLinhaSeguro(idx)} className="text-red-400 hover:text-red-600 p-0.5">
                       <Trash2 className="w-3.5 h-3.5" />
