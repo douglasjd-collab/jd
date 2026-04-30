@@ -302,18 +302,14 @@ export default function SimuladorConsorcio() {
           // Redução mensal do seguro = (lance embutido + lance próprio) * taxa seguro
           const reducaoSeguroMensal = round2((lanceEmbutidoAplicado + lanceProprioValor) * taxaSeguro);
           
-          // Total base de parcelas futuras (sem redução de seguro)
-          const somaParcelasFuturas = round2(
-            round2(qtdFaixa1 * parcela1a10) +
-            round2(qtdFaixa2 * parcelaMeio) +
-            ultimaParc
-          );
-          
+          // Saldo antes do seguro = total a pagar - lance próprio - 1ª parcela
+          const saldoAntesSeguro = round2(totalPlano - lanceProprioValor - parcela1a10);
+
           // Redução total = redução mensal × meses cobrados
           const reducaoSeguroTotal = round2(reducaoSeguroMensal * mesesCobrados);
-          
-          // Saldo devedor final: soma parcelas futuras - redução total
-          saldoDevedorTotal = round2(somaParcelasFuturas - reducaoSeguroTotal);
+
+          // Saldo devedor final = saldo antes do seguro - redução seguro
+          saldoDevedorTotal = round2(saldoAntesSeguro - reducaoSeguroTotal);
           
           // Aplicar redução linear (mesmo valor em cada parcela)
           novaParcelaCalculada = round2(parcela1a10 - reducaoSeguroMensal);
