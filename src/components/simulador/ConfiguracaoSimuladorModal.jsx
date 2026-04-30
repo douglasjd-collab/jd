@@ -69,24 +69,37 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
   const [expandidos, setExpandidos] = useState({});
 
   useEffect(() => {
-    if (!open || !empresaId) return;
-    carregarDados();
+    if (!open) return;
+    carregarDados(empresaId);
   }, [open, empresaId]);
 
-  const carregarDados = async () => {
+  const carregarDados = async (eid) => {
+    // Se não tiver empresa_id, buscar via auth
+    let resolvedEid = eid;
+    if (!resolvedEid) {
+      try {
+        const user = await base44.auth.me();
+        if (!user) return;
+        const cols = await base44.entities.Colaborador.filter({ user_id: user.id, status: 'ativo' }, '-created_date', 1);
+        resolvedEid = cols?.[0]?.empresa_id;
+        if (!resolvedEid) return;
+      } catch {
+        return;
+      }
+    }
+
     setCarregandoPlanos(true);
     setCarregandoSeguro(true);
     try {
       const [admList, planosList, configs] = await Promise.all([
-        base44.entities.Administradora.filter({ empresa_id: empresaId, status: 'ativa' }, 'razao_social', 200),
-        base44.entities.PlanoSimulador.filter({ empresa_id: empresaId }, 'nome_plano', 500),
+        base44.entities.Administradora.filter({ empresa_id: resolvedEid }, 'razao_social', 200),
+        base44.entities.PlanoSimulador.filter({ empresa_id: resolvedEid }, 'nome_plano', 500),
         base44.entities.ConfiguracaoSistema.filter({ chave: CHAVE_CONFIG_SEGURO }),
       ]);
 
       setAdministradoras(admList);
       setPlanos(planosList);
 
-      // Seguro prestamista
       if (configs.length > 0 && configs[0].valor) {
         const dados = JSON.parse(configs[0].valor);
         if (Array.isArray(dados)) {
