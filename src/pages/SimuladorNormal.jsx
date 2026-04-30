@@ -317,9 +317,6 @@ export default function SimuladorNormal() {
 
     const saldoAposLance = saldoDevedorTotal;
 
-    // 1 parcela paga no ato de contratação
-    // A carência Canopus desconta apenas do prazo exibido, não do saldo
-
     let novaParcelaCalculada = saldoDevedorTotal / prazoNum; // padrão não-decrescente
     let novaParcelaMeio = null;
     let novaUltimaParcela = null;
@@ -373,6 +370,13 @@ export default function SimuladorNormal() {
       }
     }
 
+    // Saldo devedor para exibição:
+    // No plano decrescente: total - 1ª parcela no ato (lance já foi distribuído como desconto por parcela, não abate direto)
+    // No plano normal: totalPlano - lance - 1ª parcela no ato
+    const saldoDevedorExibicao = temPlanoDecrescente
+      ? totalPlano - primeiraParcelaNoAto
+      : saldoDevedorTotal - primeiraParcelaNoAto;
+
     setResultado({
       creditoTotal,
       parcelaTotal,
@@ -386,7 +390,7 @@ export default function SimuladorNormal() {
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
       saldoAposLance,
-      saldoDevedor: saldoDevedorTotal,
+      saldoDevedor: saldoDevedorExibicao,
       parcelaReduzida: parcelaReduzidaTotal > 0,
       valorParcelaReduzida: primeiraParcelaNoAto,
       temPlanoDecrescente,
@@ -954,53 +958,53 @@ export default function SimuladorNormal() {
                     </div>
                   )}
 
-                  {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio) && (
-                   <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
-                     <div className="flex justify-between">
-                       <span className="text-slate-600">Total do Plano:</span>
-                       <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
-                     </div>
-                     {resultado.usarLanceProprio && (
-                       <div className="flex justify-between">
-                         <span className="text-slate-600">(-) Lance Próprio:</span>
-                         <span className="font-semibold text-purple-700">- {formatCurrency(resultado.lanceProprio)}</span>
-                       </div>
-                     )}
-                     {resultado.usarLanceProprio && (
-                       <div className="flex justify-between border-t pt-2 mt-1">
-                         <span className="text-slate-700 font-semibold">Saldo Restante:</span>
-                         <span className="font-bold text-slate-900">{formatCurrency(resultado.saldoDevedor)}</span>
-                       </div>
-                     )}
-                     {resultado.temPlanoDecrescente && resultado.descontoPorParcela > 0 && (
-                       <>
-                         <div className="flex justify-between border-t pt-2 mt-1">
-                           <span className="text-slate-600">Desconto por parcela:</span>
-                           <span className="font-semibold text-green-700">- {formatCurrency(resultado.descontoPorParcela)}</span>
-                         </div>
-                         <div className="flex justify-between text-xs text-slate-500">
-                           <span>Lance ÷ (prazo - 1)</span>
-                           <span>{formatCurrency(resultado.lanceProprio)} ÷ {resultado.prazoOriginal - 1}</span>
-                         </div>
-                         <div className="flex justify-between border-t pt-1 mt-1">
-                           <span className="text-slate-500 text-xs">1 paga no ato + {resultado.carenciaDecrescente || 0} meses de carência</span>
-                           <span className="text-slate-500 text-xs font-semibold">= {resultado.prazoOriginal} - {1 + (resultado.carenciaDecrescente || 0)} = {resultado.novoPrazo} meses</span>
-                         </div>
-                       </>
-                     )}
-                     {resultado.aplicarRegraCanopus && !resultado.temPlanoDecrescente && (
-                       <>
-                         <div className="flex justify-between">
-                           <span className="text-slate-600">Carência:</span>
-                           <span className="font-semibold">{parcelasCarencia} meses</span>
-                         </div>
-                         <div className="flex justify-between">
-                           <span className="text-slate-600">Parcelas Restantes:</span>
-                           <span className="font-semibold">{resultado.novoPrazo} meses</span>
-                         </div>
-                       </>
-                     )}
-                   </div>
+                  {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio || resultado.temPlanoDecrescente) && (
+                  <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Total do Plano:</span>
+                      <span className="font-semibold">{formatCurrency(resultado.totalPlano)}</span>
+                    </div>
+                    {resultado.usarLanceProprio && resultado.temPlanoDecrescente && (
+                      <>
+                        <div className="flex justify-between text-xs text-slate-500">
+                          <span>Lance (distribuído como desconto por parcela):</span>
+                          <span>{formatCurrency(resultado.lanceProprio)} ÷ {resultado.prazoOriginal - 1} = - {formatCurrency(resultado.descontoPorParcela)}/parc</span>
+                        </div>
+                      </>
+                    )}
+                    {resultado.usarLanceProprio && !resultado.temPlanoDecrescente && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">(-) Lance Próprio:</span>
+                        <span className="font-semibold text-purple-700">- {formatCurrency(resultado.lanceProprio)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">(-) 1ª Parcela (no ato):</span>
+                      <span className="font-semibold text-orange-700">- {formatCurrency(resultado.valorParcelaReduzida)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 mt-1">
+                      <span className="text-slate-700 font-semibold">Saldo Devedor:</span>
+                      <span className="font-bold text-slate-900">{formatCurrency(resultado.saldoDevedor)}</span>
+                    </div>
+                    {resultado.temPlanoDecrescente && resultado.carenciaDecrescente > 0 && (
+                      <div className="flex justify-between border-t pt-1 mt-1">
+                        <span className="text-slate-500 text-xs">1 no ato + {resultado.carenciaDecrescente} carência</span>
+                        <span className="text-slate-500 text-xs font-semibold">= {resultado.prazoOriginal} - {1 + resultado.carenciaDecrescente} = {resultado.novoPrazo} meses</span>
+                      </div>
+                    )}
+                    {resultado.aplicarRegraCanopus && !resultado.temPlanoDecrescente && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Carência:</span>
+                          <span className="font-semibold">{parcelasCarencia} meses</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Parcelas Restantes:</span>
+                          <span className="font-semibold">{resultado.novoPrazo} meses</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                   )}
 
                   <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
