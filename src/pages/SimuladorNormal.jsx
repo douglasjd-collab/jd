@@ -351,14 +351,10 @@ export default function SimuladorNormal() {
           novaParcelaMeio = parcelaMeio - desconto;
           novaUltimaParcela = ultimaParc - desconto;
 
-          // Prazo restante após contemplação: prazo - 1 (ato) - 3 (antecipadas) = prazo - 4
-          // Mas a Canopus dá carência de 3 meses adicionais: prazo - 4 - 3 = prazo - 7? Não.
-          // Regra: prazo restante (após 1 ato + 3 antecipadas = 4 pagas) menos carência de 3 meses
-          // = prazo - 4 - 3 = prazo - 7... mas conforme instrução:
-          // após contemplação restam prazo-1 parcelas, 3 antecipadas => prazo - 1 - 3 = prazo - 4
-          // carência canopus desconta só do prazo: prazo - 4 - parcelasCarencia
+          // Prazo restante: prazo - 1 (paga no ato) - carência Canopus
+          // Ex: 160 - 1 - 3 = 156
           const carenciaDecrescente = aplicarRegraCanopus ? parcelasCarencia : 0;
-          novoPrazo = prazo - parcelasPagas - carenciaDecrescente;
+          novoPrazo = prazo - 1 - carenciaDecrescente;
         } else {
           // Sem lance: mantém faixas originais, apenas 1 paga no ato
           novaParcelaCalculada = parcela1a10;
@@ -991,8 +987,8 @@ export default function SimuladorNormal() {
                            <span>{formatCurrency(resultado.lanceProprio)} ÷ {resultado.prazoOriginal - 1}</span>
                          </div>
                          <div className="flex justify-between border-t pt-1 mt-1">
-                           <span className="text-slate-500 text-xs">1 ato + 3 antecipadas + {resultado.carenciaDecrescente || 0} carência</span>
-                           <span className="text-slate-500 text-xs font-semibold">= {4 + (resultado.carenciaDecrescente || 0)} já descontadas</span>
+                           <span className="text-slate-500 text-xs">1 paga no ato + {resultado.carenciaDecrescente || 0} meses de carência</span>
+                           <span className="text-slate-500 text-xs font-semibold">= {resultado.prazoOriginal} - {1 + (resultado.carenciaDecrescente || 0)} = {resultado.novoPrazo} meses</span>
                          </div>
                        </>
                      )}
