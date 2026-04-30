@@ -33,7 +33,7 @@ export default function SimuladorConsorcio() {
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '' }]);
   const [administradora, setAdministradora] = useState('');
   const [usarLanceEmbutido, setUsarLanceEmbutido] = useState(null); // null = não respondido, true/false
-  const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(30);
+  const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(0);
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(true);
