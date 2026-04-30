@@ -1099,7 +1099,7 @@ export default function SimuladorConsorcio() {
                         <div className="p-2 bg-amber-50 rounded-lg border border-amber-200">
                           <p className="text-xs text-amber-700 font-semibold mb-1">⚠️ Plano com Desconto Embutido</p>
                           <p className="text-xs text-amber-800">
-                            Este plano já possui desconto de 50% ou 70% aplicado. O lance embutido NÃO será descontado novamente.
+                            Este plano já possui desconto de 50% ou 30% aplicado. O lance embutido NÃO será descontado novamente.
                           </p>
                         </div>
                       )}
