@@ -302,40 +302,29 @@ export default function SimuladorConsorcio() {
           // Meses cobrados: prazo total - (1 no ato + 3 carência)
           mesesCobrados = prazo - parcelasPagasOuCarencia;
 
-          // Cálculo com fator de redução (Canopus)
+          // Cálculo com redução linear de seguro (Canopus)
           const taxaSeguro = 0.00038;
-          
-          // Saldo base: total a pagar - lance próprio - 1ª parcela
-          const saldoBase = round2(totalPlano - lanceProprioValor - parcela1a10);
           
           // Redução mensal do seguro = (lance embutido + lance próprio) * taxa seguro
           const reducaoSeguroMensal = round2((lanceEmbutidoAplicado + lanceProprioValor) * taxaSeguro);
           
-          // Redução total = redução mensal × meses cobrados
-          const reducaoTotalSeguro = round2(reducaoSeguroMensal * mesesCobrados);
-          
-          // Saldo devedor final
-          saldoDevedorTotal = round2(saldoBase - reducaoTotalSeguro);
-          
-          // Calcular parcelas com fator de redução
-          // Total base de parcelas (sem redução)
-          const totalBaseParcelas = round2(
+          // Total base de parcelas futuras (sem redução de seguro)
+          const somaParcelasFuturas = round2(
             round2(qtdFaixa1 * parcela1a10) +
             round2(qtdFaixa2 * parcelaMeio) +
             ultimaParc
           );
           
-          // Fator de redução
-          const fator = saldoDevedorTotal / totalBaseParcelas;
+          // Redução total = redução mensal × meses cobrados
+          const reducaoSeguroTotal = round2(reducaoSeguroMensal * mesesCobrados);
           
-          // Aplicar fator às parcelas futuras (5+)
-          novaParcelaCalculada = round2(parcela1a10 * fator);
-          novaParcelaMeio = round2(parcelaMeio * fator);
+          // Saldo devedor final: soma parcelas futuras - redução total
+          saldoDevedorTotal = round2(somaParcelasFuturas - reducaoSeguroTotal);
           
-          // Última parcela: ajusta para que o total bata exato
-          const totalParcelas5a10 = round2(qtdFaixa1 * novaParcelaCalculada);
-          const totalParcelas11a159 = round2(qtdFaixa2 * novaParcelaMeio);
-          novaUltimaParcela = round2(saldoDevedorTotal - totalParcelas5a10 - totalParcelas11a159);
+          // Aplicar redução linear (mesmo valor em cada parcela)
+          novaParcelaCalculada = round2(parcela1a10 - reducaoSeguroMensal);
+          novaParcelaMeio = round2(parcelaMeio - reducaoSeguroMensal);
+          novaUltimaParcela = round2(ultimaParc - reducaoSeguroMensal);
         }
       } else {
         const primeira_parcela_reduzida_total = cartas.reduce(
