@@ -302,31 +302,40 @@ export default function SimuladorConsorcio() {
           // Meses cobrados: prazo total - (1 no ato + 3 carência)
           mesesCobrados = prazo - parcelasPagasOuCarencia;
 
-          // Cálculo de redução de seguro (Canopus)
-          // Taxa fixa de seguro: 0.038% ao mês
-          const taxaSeguroCanopus = 0.00038;
+          // Cálculo com fator de redução (Canopus)
+          const taxaSeguro = 0.00038;
           
-          // Redução por parcela = (lance embutido + lance próprio) * taxa seguro
-          const totalLancesParaReducao = lanceEmbutidoAplicado + lanceProprioValor;
-          const reducaoSeguroPorParcela = round2(totalLancesParaReducao * taxaSeguroCanopus);
+          // Saldo base: total a pagar - lance próprio - 1ª parcela
+          const saldoBase = round2(totalPlano - lanceProprioValor - parcela1a10);
           
-          // Aplicar redução às parcelas futuras (5+)
-          novaParcelaCalculada = round2(parcela1a10 - reducaoSeguroPorParcela);
-          novaParcelaMeio = round2(parcelaMeio - reducaoSeguroPorParcela);
-          novaUltimaParcela = round2(ultimaParc - reducaoSeguroPorParcela);
+          // Redução mensal do seguro = (lance embutido + lance próprio) * taxa seguro
+          const reducaoSeguroMensal = round2((lanceEmbutidoAplicado + lanceProprioValor) * taxaSeguro);
           
-          // Calcular total com arredondamento em cada etapa
-          const totalParcelas = round2(
-            round2(qtdFaixa1 * novaParcelaCalculada) +
-            round2(qtdFaixa2 * novaParcelaMeio) +
-            novaUltimaParcela
+          // Redução total = redução mensal × meses cobrados
+          const reducaoTotalSeguro = round2(reducaoSeguroMensal * mesesCobrados);
+          
+          // Saldo devedor final
+          saldoDevedorTotal = round2(saldoBase - reducaoTotalSeguro);
+          
+          // Calcular parcelas com fator de redução
+          // Total base de parcelas (sem redução)
+          const totalBaseParcelas = round2(
+            round2(qtdFaixa1 * parcela1a10) +
+            round2(qtdFaixa2 * parcelaMeio) +
+            ultimaParc
           );
           
-          // Saldo devedor corrigido
-          // = total a pagar - lance próprio - 1ª parcela - (redução seguro x meses cobrados)
-          const totalReducaoSeguro = round2(reducaoSeguroPorParcela * mesesCobrados);
-          const saldoAntesReducao = round2(totalPlano - lanceProprioValor - parcela1a10);
-          saldoDevedorTotal = round2(saldoAntesReducao - totalReducaoSeguro);
+          // Fator de redução
+          const fator = saldoDevedorTotal / totalBaseParcelas;
+          
+          // Aplicar fator às parcelas futuras (5+)
+          novaParcelaCalculada = round2(parcela1a10 * fator);
+          novaParcelaMeio = round2(parcelaMeio * fator);
+          
+          // Última parcela: ajusta para que o total bata exato
+          const totalParcelas5a10 = round2(qtdFaixa1 * novaParcelaCalculada);
+          const totalParcelas11a159 = round2(qtdFaixa2 * novaParcelaMeio);
+          novaUltimaParcela = round2(saldoDevedorTotal - totalParcelas5a10 - totalParcelas11a159);
         }
       } else {
         const primeira_parcela_reduzida_total = cartas.reduce(
