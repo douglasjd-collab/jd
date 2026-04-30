@@ -30,7 +30,7 @@ export default function SimuladorConsorcio() {
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [grupo, setGrupo] = useState('');
-  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '' }]);
+  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '' }]);
   const [administradora, setAdministradora] = useState('');
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(30);
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
@@ -114,7 +114,7 @@ export default function SimuladorConsorcio() {
   }, [administradora, lanceEmbutidoPercentual]);
 
   const adicionarCarta = () => {
-    setCartas([...cartas, { credito: '', parcela: '', prazo: '' }]);
+    setCartas([...cartas, { credito: '', parcela: '', prazo: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '' }]);
   };
 
   const duplicarCarta = (index) => {
@@ -141,6 +141,18 @@ export default function SimuladorConsorcio() {
   const parcelaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcela) || 0), 0);
   const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
   const lanceEmbutidoValor = creditoTotal * (lanceEmbutidoPercentual / 100);
+
+  // Plano decrescente
+  const temPlanoDecrescente = cartas.some(c => c.planoDecrescente);
+  const calcularTotalDecrescente = (carta) => {
+    const prazo = parseInt(carta.prazo) || 0;
+    const parcela = parseFloat(carta.parcela) || 0;
+    if (!carta.planoDecrescente || prazo <= 10) return parcela * prazo;
+    const parcelaMeio = parseFloat(carta.parcelaMeio) || 0;
+    const ultimaP = parseFloat(carta.ultimaParcela) || 0;
+    return 10 * parcela + (prazo - 11) * parcelaMeio + ultimaP;
+  };
+  const totalPlanoDecrescente = cartas.reduce((acc, carta) => acc + calcularTotalDecrescente(carta), 0);
   const creditoAReceber = creditoTotal - lanceEmbutidoValor;
   
   // Calcular percentual do lance próprio em cima do crédito
@@ -235,13 +247,15 @@ export default function SimuladorConsorcio() {
     }
 
     const prazoNum = parseFloat(prazoOriginal);
-    const totalPlano = prazoNum * parcelaTotal;
+    const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
 
     // Verificar se o plano tem desconto embutido (50% ou 70%)
     const planoTemDescontoEmbutido = planoSelecionadoInfo && 
       (planoSelecionadoInfo.includes('50%') || planoSelecionadoInfo.includes('70%'));
 
     let novaParcelaCalculada = parcelaTotal;
+    let novaParcelaMeio = null;
+    let novaUltimaParcela = null;
     let mesesCobrados = prazoNum;
     let saldoDevedorTotal = totalPlano;
     let lanceProprioValor = 0;
@@ -249,42 +263,59 @@ export default function SimuladorConsorcio() {
 
     if (usarLanceProprio) {
       lanceProprioValor = parseFloat(lanceProprio);
-      
-      // Validar se lance próprio não é maior que o total do plano
       if (lanceProprioValor > totalPlano) {
         lanceProprioValor = totalPlano;
         toast.warning('Lance próprio ajustado para o valor máximo do plano');
       }
 
-      // Calcular primeira parcela reduzida (soma de todas as cartas com parcela reduzida)
-      const primeira_parcela_reduzida_total = cartas.reduce(
-        (acc, c) => acc + Number(c.parcelaReduzida || 0), 
-        0
-      );
+      if (temPlanoDecrescente) {
+        const cartaDec = cartas.find(c => c.planoDecrescente && parseInt(c.prazo) > 10);
+        if (cartaDec) {
+          const prazo = parseInt(cartaDec.prazo) || prazoNum;
+          const parcela1a10 = parseFloat(cartaDec.parcela) || 0;
+          const parcelaMeio = parseFloat(cartaDec.parcelaMeio) || 0;
+          const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
+          const carenciaAplicada = (aplicarRegraCanopus && administradora === 'canopus') ? parcelasCarencia : 0;
+          const primeiraParcRestante = 1 + carenciaAplicada + 1;
+          mesesCobrados = prazo - 1 - carenciaAplicada;
 
-      // Calcular saldo devedor:
-      // Se plano tem 50% ou 70%, NÃO descontar lance embutido (já foi descontado no plano)
-      // SE houver parcela reduzida, TAMBÉM NÃO descontar lance embutido (já foi reduzido)
-      // Total a pagar - 1ª parcela no ato - Lance próprio (apenas se não tiver parcela reduzida)
-      const haParcelaReduzida = primeira_parcela_reduzida_total > 0;
-      const lanceTotalADescontar = lanceEmbutidoAplicado && !haParcelaReduzida ? lanceEmbutidoAplicado : 0;
-      const primeira_parcela_final = haParcelaReduzida ? primeira_parcela_reduzida_total : parcelaTotal;
-      saldoDevedorTotal = totalPlano - primeira_parcela_final - lanceTotalADescontar - lanceProprioValor;
+          const saldoAposParcela = totalPlano - parcela1a10;
+          const totalLance = lanceEmbutidoAplicado + lanceProprioValor;
+          const saldoAposLance = saldoAposParcela - totalLance;
 
-      // Calcular meses cobrados
-      if (aplicarRegraCanopus && administradora === 'canopus') {
-        const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
-        mesesCobrados = prazoNum - mesesNaoCobrados;
-        if (mesesCobrados < 1) mesesCobrados = 1;
+          const qtdFaixa1Restante = Math.max(0, 10 - primeiraParcRestante + 1);
+          const qtdFaixa2 = Math.max(0, (prazo - 1) - 10);
+          const totalRestanteOriginal = qtdFaixa1Restante * parcela1a10 + qtdFaixa2 * parcelaMeio + ultimaParc;
+          const fatorReducao = saldoAposLance / totalRestanteOriginal;
+
+          novaParcelaCalculada = parcela1a10 * fatorReducao;
+          novaParcelaMeio = parcelaMeio * fatorReducao;
+          novaUltimaParcela = ultimaParc * fatorReducao;
+          saldoDevedorTotal = saldoAposLance;
+        }
+      } else {
+        const primeira_parcela_reduzida_total = cartas.reduce(
+          (acc, c) => acc + Number(c.parcelaReduzida || 0), 0
+        );
+        const haParcelaReduzida = primeira_parcela_reduzida_total > 0;
+        const lanceTotalADescontar = lanceEmbutidoAplicado && !haParcelaReduzida ? lanceEmbutidoAplicado : 0;
+        const primeira_parcela_final = haParcelaReduzida ? primeira_parcela_reduzida_total : parcelaTotal;
+        saldoDevedorTotal = totalPlano - primeira_parcela_final - lanceTotalADescontar - lanceProprioValor;
+
+        if (aplicarRegraCanopus && administradora === 'canopus') {
+          const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
+          mesesCobrados = prazoNum - mesesNaoCobrados;
+          if (mesesCobrados < 1) mesesCobrados = 1;
+        } else {
+          mesesCobrados = prazoNum - 1;
+        }
+        novaParcelaCalculada = saldoDevedorTotal / mesesCobrados;
       }
-
-      // Calcular nova parcela
-      novaParcelaCalculada = saldoDevedorTotal / mesesCobrados;
     }
 
     setResultado({
-      creditoTotal: creditoTotal,
-      creditoAReceber: creditoAReceber,
+      creditoTotal,
+      creditoAReceber,
       parcelaTotal,
       totalPlano,
       lanceEmbutidoValor: lanceEmbutidoAplicado,
@@ -292,12 +323,15 @@ export default function SimuladorConsorcio() {
       lanceEmbutidoPercentual,
       prazoOriginal: prazoNum,
       novaParcela: novaParcelaCalculada,
+      novaParcelaMeio,
+      novaUltimaParcela,
       saldoDevedor: saldoDevedorTotal,
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
       mesesCobrados,
       aplicarRegraCanopus: aplicarRegraCanopus && administradora === 'canopus',
-      planoTemDescontoEmbutido
+      planoTemDescontoEmbutido,
+      temPlanoDecrescente,
     });
   };
 
@@ -678,89 +712,96 @@ export default function SimuladorConsorcio() {
             </CardHeader>
             <CardContent className="space-y-3">
               {cartas.map((carta, index) => (
-               <div key={index} className="relative p-2 bg-slate-50 rounded-lg border">
-                 <div className="absolute top-1 right-1 flex gap-1">
-                   <Button
-                     size="icon"
-                     variant="ghost"
-                     onClick={() => handleAbrirPlanoModal(index)}
-                     className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                     title="Selecionar Plano"
-                   >
+               <div key={index} className="relative p-3 bg-slate-50 rounded-lg border">
+                 <div className="absolute top-2 right-2 flex gap-1">
+                   <Button size="icon" variant="ghost" onClick={() => handleAbrirPlanoModal(index)} className="h-6 w-6 text-blue-600 hover:bg-blue-50" title="Selecionar Plano">
                      <ShoppingBag className="w-4 h-4" />
                    </Button>
-                   <Button
-                     size="icon"
-                     variant="ghost"
-                     onClick={() => duplicarCarta(index)}
-                     className="h-6 w-6 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                     title="Duplicar carta"
-                   >
+                   <Button size="icon" variant="ghost" onClick={() => duplicarCarta(index)} className="h-6 w-6 text-blue-600 hover:bg-blue-50" title="Duplicar carta">
                      <Copy className="w-4 h-4" />
                    </Button>
                    {cartas.length > 1 && (
-                     <Button
-                       size="icon"
-                       variant="ghost"
-                       onClick={() => removerCarta(index)}
-                       className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-                       title="Remover carta"
-                     >
+                     <Button size="icon" variant="ghost" onClick={() => removerCarta(index)} className="h-6 w-6 text-red-600 hover:bg-red-50" title="Remover carta">
                        <X className="w-4 h-4" />
                      </Button>
                    )}
                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div>
-                      <Label className="text-xs">Crédito (R$) *</Label>
-                      <Input
-                        type="text"
-                        value={carta.credito ? formatarParaExibicao(carta.credito) : ''}
-                        onChange={(e) => {
-                          const valorNumerico = handleMoedaInput(e.target.value);
-                          atualizarCarta(index, 'credito', valorNumerico > 0 ? valorNumerico.toString() : '');
-                        }}
-                        placeholder="0,00"
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Parcela (R$) *</Label>
-                      <Input
-                        type="text"
-                        value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''}
-                        onChange={(e) => {
-                          const valorNumerico = handleMoedaInput(e.target.value);
-                          atualizarCarta(index, 'parcela', valorNumerico > 0 ? valorNumerico.toString() : '');
-                        }}
-                        placeholder="0,00"
-                        className="h-9"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Prazo (meses) *</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={carta.prazo}
-                        onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)}
-                        placeholder="Ex: 120"
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
+                 {/* Switch Plano Decrescente */}
+                 <div className="flex items-center gap-2 mb-3">
+                   <Switch
+                     checked={carta.planoDecrescente || false}
+                     onCheckedChange={(v) => atualizarCarta(index, 'planoDecrescente', v)}
+                   />
+                   <Label className="text-xs font-medium text-purple-700 cursor-pointer">📉 Plano Decrescente</Label>
+                 </div>
 
-                  {carta.credito && carta.parcela && carta.prazo && (
-                    <div className="mt-1 text-xs text-slate-600 pt-1 border-t">
-                      <span className="font-semibold">
-                        {formatCurrency(parseFloat(carta.credito))} • 
-                        {formatCurrency(parseFloat(carta.parcela))}/mês • 
-                        {carta.prazo} meses
-                      </span>
-                    </div>
-                  )}
-                </div>
+                 {!carta.planoDecrescente ? (
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                     <div>
+                       <Label className="text-xs">Crédito (R$) *</Label>
+                       <Input type="text" value={carta.credito ? formatarParaExibicao(carta.credito) : ''} onChange={(e) => { const v = handleMoedaInput(e.target.value); atualizarCarta(index, 'credito', v > 0 ? v.toString() : ''); }} placeholder="0,00" className="h-9" />
+                     </div>
+                     <div>
+                       <Label className="text-xs">Parcela (R$) *</Label>
+                       <Input type="text" value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''} onChange={(e) => { const v = handleMoedaInput(e.target.value); atualizarCarta(index, 'parcela', v > 0 ? v.toString() : ''); }} placeholder="0,00" className="h-9" />
+                     </div>
+                     <div>
+                       <Label className="text-xs">Prazo (meses) *</Label>
+                       <Input type="number" min="1" value={carta.prazo} onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)} placeholder="Ex: 120" className="h-9" />
+                     </div>
+                   </div>
+                 ) : (
+                   <div className="space-y-3">
+                     <div className="grid grid-cols-2 gap-2">
+                       <div>
+                         <Label className="text-xs">Crédito (R$) *</Label>
+                         <Input type="text" value={carta.credito ? formatarParaExibicao(carta.credito) : ''} onChange={(e) => { const v = handleMoedaInput(e.target.value); atualizarCarta(index, 'credito', v > 0 ? v.toString() : ''); }} placeholder="0,00" className="h-9" />
+                       </div>
+                       <div>
+                         <Label className="text-xs">Prazo Total (meses) *</Label>
+                         <Input type="number" value={carta.prazo} onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)} placeholder="Ex: 222" className="h-9" />
+                       </div>
+                     </div>
+                     {carta.prazo && parseInt(carta.prazo) > 10 && (
+                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-2">
+                         <p className="text-xs font-semibold text-purple-700">📉 Faixas de Parcela</p>
+                         <div className="flex items-center gap-2">
+                           <span className="text-xs text-slate-600 w-28 shrink-0">Parcelas 1 a 10:</span>
+                           <Input type="text" value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''} onChange={(e) => { const v = handleMoedaInput(e.target.value); atualizarCarta(index, 'parcela', v > 0 ? v.toString() : ''); }} placeholder="0,00" className="h-8 text-sm" />
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <span className="text-xs text-slate-600 w-28 shrink-0">Parcelas 11 a {parseInt(carta.prazo) - 1}:</span>
+                           <Input type="text" value={carta.parcelaMeio ? formatarParaExibicao(carta.parcelaMeio) : ''} onChange={(e) => { const v = handleMoedaInput(e.target.value); atualizarCarta(index, 'parcelaMeio', v > 0 ? v.toString() : ''); }} placeholder="0,00" className="h-8 text-sm" />
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <span className="text-xs text-slate-600 w-28 shrink-0">Parcela {carta.prazo} (última):</span>
+                           <Input type="text" value={carta.ultimaParcela ? formatarParaExibicao(carta.ultimaParcela) : ''} onChange={(e) => { const v = handleMoedaInput(e.target.value); atualizarCarta(index, 'ultimaParcela', v > 0 ? v.toString() : ''); }} placeholder="0,00" className="h-8 text-sm" />
+                         </div>
+                       </div>
+                     )}
+                     {carta.prazo && parseInt(carta.prazo) <= 10 && (
+                       <p className="text-xs text-red-500">⚠️ Prazo deve ser maior que 10 meses.</p>
+                     )}
+                   </div>
+                 )}
+
+                 {carta.credito && carta.parcela && carta.prazo && (
+                   <div className="mt-2 text-xs text-slate-600 pt-2 border-t">
+                     {carta.planoDecrescente && carta.parcelaMeio ? (
+                       <span className="font-semibold">
+                         {formatCurrency(parseFloat(carta.credito))} • {carta.prazo} meses •{' '}
+                         Parc. 1-10: {formatCurrency(parseFloat(carta.parcela))} •{' '}
+                         Parc. 11-{parseInt(carta.prazo)-1}: {formatCurrency(parseFloat(carta.parcelaMeio))}
+                       </span>
+                     ) : (
+                       <span className="font-semibold">
+                         {formatCurrency(parseFloat(carta.credito))} • {formatCurrency(parseFloat(carta.parcela))}/mês • {carta.prazo} meses
+                       </span>
+                     )}
+                   </div>
+                 )}
+               </div>
               ))}
 
               {/* Totais */}
@@ -1083,10 +1124,33 @@ export default function SimuladorConsorcio() {
                             <span className="text-purple-700 text-sm">Parcelas:</span>
                             <span className="font-bold text-purple-900 text-lg">{resultado.mesesCobrados}x</span>
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-purple-700 text-sm">Nova Parcela:</span>
-                            <span className="font-bold text-purple-900 text-lg">{formatCurrency(resultado.novaParcela)}</span>
-                          </div>
+                          {resultado.temPlanoDecrescente ? (
+                            <div className="bg-white rounded-lg border border-purple-200 divide-y divide-purple-100 text-sm mt-1">
+                              <div className="flex justify-between items-center px-3 py-1.5">
+                                <span className="text-purple-700 text-xs">Parc. 1 (no ato):</span>
+                                <span className="text-slate-400 text-xs line-through">Já paga</span>
+                              </div>
+                              <div className="flex justify-between items-center px-3 py-1.5">
+                                <span className="text-purple-700 text-xs">Parcelas 2 a 10:</span>
+                                <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
+                              </div>
+                              {resultado.novaParcelaMeio !== null && (
+                                <div className="flex justify-between items-center px-3 py-1.5">
+                                  <span className="text-purple-700 text-xs">Parcelas 11 a {resultado.prazoOriginal - 1}:</span>
+                                  <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcelaMeio)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between items-center px-3 py-1.5">
+                                <span className="text-purple-700 text-xs">Parcela {resultado.prazoOriginal} (última):</span>
+                                <span className="font-bold text-purple-900">{formatCurrency(resultado.novaUltimaParcela)}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between items-center">
+                              <span className="text-purple-700 text-sm">Nova Parcela:</span>
+                              <span className="font-bold text-purple-900 text-lg">{formatCurrency(resultado.novaParcela)}</span>
+                            </div>
+                          )}
                         </>
                       ) : (
                         <>
