@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calculator, Sparkles } from 'lucide-react';
+import { Calculator, Sparkles, Settings } from 'lucide-react';
 import { createPageUrl } from '@/utils';
+import ConfiguracaoSimuladorModal from '@/components/simulador/ConfiguracaoSimuladorModal';
 
 export default function SimuladorEscolha() {
   const navigate = useNavigate();
+  const [configOpen, setConfigOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
@@ -107,10 +109,23 @@ export default function SimuladorEscolha() {
           </Card>
         </div>
 
-        <p className="text-center text-sm text-slate-500 mt-8">
+        <div className="flex justify-center mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setConfigOpen(true)}
+            className="gap-2 text-slate-600 border-slate-300 hover:bg-slate-100"
+          >
+            <Settings className="w-4 h-4" />
+            Configuração do Simulador
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-slate-500 mt-4">
           Escolha o simulador que melhor se adapta às necessidades do seu cliente
         </p>
       </div>
+
+      <ConfiguracaoSimuladorModal open={configOpen} onOpenChange={setConfigOpen} />
     </div>
   );
 }
