@@ -340,6 +340,10 @@ export default function SimuladorConsorcio() {
         // Saldo devedor = total a pagar - lance próprio - 1ª parcela
         saldoDevedorTotal = round2(totalPlano - lanceProprioValor - primeira_parcela_final);
 
+        // Aplicar redução de seguro mesmo sem lance embutido
+        const taxaSeguro = 0.00038;
+        const reducaoSeguroMensal = round2((lanceEmbutidoValor + lanceProprioValor) * taxaSeguro);
+
         if (aplicarRegraCanopus && administradora === 'canopus') {
           const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
           mesesCobrados = prazoNum - mesesNaoCobrados;
@@ -347,6 +351,13 @@ export default function SimuladorConsorcio() {
         } else {
           mesesCobrados = prazoNum - 1;
         }
+        
+        // Redução total de seguro
+        reducaoSeguroTotal = round2(reducaoSeguroMensal * mesesCobrados);
+        
+        // Aplicar redução ao saldo devedor
+        saldoDevedorTotal = round2(saldoDevedorTotal - reducaoSeguroTotal);
+        
         novaParcelaCalculada = round2(saldoDevedorTotal / mesesCobrados);
       }
     }
