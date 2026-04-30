@@ -860,11 +860,11 @@ export default function BatePapo() {
       if (isGrupo(c)) return filtroStatus === 'grupos'; // Grupos ficam apenas na aba grupos
       
       if (filtroStatus === 'todas') return true; // TODAS as conversas válidas
-      if (filtroStatus === 'espera') return estaEmEspera(c); // Último remetente = cliente (aguardando resposta)
-      if (filtroStatus === 'ativa') return estaEmAtendimento(c); // Atendente respondeu e está ativo
+      if (filtroStatus === 'espera') return naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente'; // Mensagens não lidas do cliente
+      if (filtroStatus === 'ativa') return c.ultimo_remetente === 'vendedor' && naoLidasPorConversa[c.id] === 0; // Vendedor respondeu e nenhuma não lida
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada';
-      if (filtroStatus === 'meu') return estaEmAtendimento(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
+      if (filtroStatus === 'meu') return c.responsavel_id === (user?.colaborador_id || user?.id) && naoLidasPorConversa[c.id] === 0;
       
       return false;
     })
