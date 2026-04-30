@@ -341,16 +341,18 @@ export default function SimuladorNormal() {
         const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
 
         if (lanceProprioValor > 0) {
-          // Desconto do lance dividido pelo prazo restante (prazo - 1 pois 1 parcela já foi paga no ato)
-          const desconto = lanceProprioValor / (prazo - 1);
+          // As 3 parcelas antecipadas na contemplação saem do lance
+          // Usamos a parcela do meio (faixa 11+) como valor de referência para a antecipação
+          const valorAntecipacao3Parcelas = parcelaMeio * 3;
+          const lanceLiquido = lanceProprioValor - valorAntecipacao3Parcelas;
+
+          // Desconto por parcela = lance líquido ÷ (prazo - 1) pois 1 já foi paga no ato
+          const desconto = lanceLiquido / (prazo - 1);
           descontoPorParcela = desconto;
           parcelasJaPagas = parcelasPagas; // 1 ato + 3 antecipadas
-
-          // Faixa 1 restante: parcelas 5 a 10 (as 4 primeiras já foram pagas)
+          // Guardar info extra para exibição
           novaParcelaCalculada = parcela1a10 - desconto;
-          // Faixa 2: parcelas 11 a (prazo-1)
           novaParcelaMeio = parcelaMeio - desconto;
-          // Faixa 3: última parcela
           novaUltimaParcela = ultimaParc - desconto;
 
           // Prazo restante: parcelas 5 até o fim = prazo - 4
@@ -396,6 +398,12 @@ export default function SimuladorNormal() {
       temPlanoDecrescente,
       descontoPorParcela,
       parcelasJaPagas,
+      valorAntecipacao3Parcelas: temPlanoDecrescente && lanceProprioValor > 0
+        ? (() => { const cartaDec = cartas.find(c => c.planoDecrescente && parseInt(c.prazo) > 10); return cartaDec ? (parseFloat(cartaDec.parcelaMeio) || 0) * 3 : 0; })()
+        : 0,
+      lanceLiquido: temPlanoDecrescente && lanceProprioValor > 0
+        ? (() => { const cartaDec = cartas.find(c => c.planoDecrescente && parseInt(c.prazo) > 10); return lanceProprioValor - (cartaDec ? (parseFloat(cartaDec.parcelaMeio) || 0) * 3 : 0); })()
+        : 0,
     });
   };
 
@@ -978,20 +986,20 @@ export default function SimuladorNormal() {
                      {resultado.temPlanoDecrescente && resultado.descontoPorParcela > 0 && (
                        <>
                          <div className="flex justify-between border-t pt-2 mt-1">
+                           <span className="text-slate-600">3 parc. antecipadas (lance):</span>
+                           <span className="font-semibold text-red-600">- {formatCurrency(resultado.valorAntecipacao3Parcelas)}</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-slate-600">Lance líquido:</span>
+                           <span className="font-semibold text-green-700">{formatCurrency(resultado.lanceLiquido)}</span>
+                         </div>
+                         <div className="flex justify-between">
                            <span className="text-slate-600">Desconto por parcela:</span>
                            <span className="font-semibold text-green-700">- {formatCurrency(resultado.descontoPorParcela)}</span>
                          </div>
-                         <div className="flex justify-between">
-                           <span className="text-slate-600">Parcelas antecipadas:</span>
-                           <span className="font-semibold">3 parcelas</span>
-                         </div>
-                         <div className="flex justify-between">
-                           <span className="text-slate-600">Parcela no ato (contratação):</span>
-                           <span className="font-semibold">1 parcela</span>
-                         </div>
-                         <div className="flex justify-between">
-                           <span className="text-slate-600 font-medium">Total já pago:</span>
-                           <span className="font-semibold text-slate-800">4 parcelas</span>
+                         <div className="flex justify-between border-t pt-1 mt-1">
+                           <span className="text-slate-500 text-xs">Pagas: 1 ato + 3 antecipadas</span>
+                           <span className="text-slate-500 text-xs font-semibold">= 4 parcelas</span>
                          </div>
                        </>
                      )}
