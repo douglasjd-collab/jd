@@ -32,6 +32,7 @@ export default function SimuladorConsorcio() {
   const [grupo, setGrupo] = useState('');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '' }]);
   const [administradora, setAdministradora] = useState('');
+  const [usarLanceEmbutido, setUsarLanceEmbutido] = useState(null); // null = não respondido, true/false
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState(30);
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
@@ -238,14 +239,21 @@ export default function SimuladorConsorcio() {
       return;
     }
 
-    if (!administradora) {
-      toast.error('Selecione a administradora');
+    if (usarLanceEmbutido === null) {
+      toast.error('Responda se deseja utilizar lance embutido');
       return;
     }
 
-    if (parcelaJaReduzida === null) {
-      toast.error('Responda se a parcela já foi reduzida pelo lance embutido');
-      return;
+    if (usarLanceEmbutido === true) {
+      if (!administradora) {
+        toast.error('Selecione a administradora');
+        return;
+      }
+
+      if (parcelaJaReduzida === null) {
+        toast.error('Responda se a parcela já foi reduzida pelo lance embutido');
+        return;
+      }
     }
 
     if (usarLanceProprio && (!lanceProprio || parseFloat(lanceProprio) <= 0)) {
@@ -256,10 +264,14 @@ export default function SimuladorConsorcio() {
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
 
+    // Se não está usando lance embutido, zerar valores
+    const lanceEmbutidoValorFinal = usarLanceEmbutido ? lanceEmbutidoValor : 0;
+    const creditoAReceber = creditoTotal - lanceEmbutidoValorFinal;
+
     // parcelaJaReduzida = true → parcela informada já está com desconto, NÃO descontar lance embutido novamente
     // parcelaJaReduzida = false → calcular desconto do lance embutido normalmente
-    const lanceEmbutidoAplicado = parcelaJaReduzida ? 0 : lanceEmbutidoValor;
-    const planoTemDescontoEmbutido = parcelaJaReduzida;
+    const lanceEmbutidoAplicado = usarLanceEmbutido && parcelaJaReduzida ? 0 : lanceEmbutidoValorFinal;
+    const planoTemDescontoEmbutido = usarLanceEmbutido && parcelaJaReduzida;
 
     let novaParcelaCalculada = parcelaTotal;
     let novaParcelaMeio = null;
@@ -344,6 +356,7 @@ export default function SimuladorConsorcio() {
       creditoAReceber,
       parcelaTotal,
       totalPlano,
+      usarLanceEmbutido,
       lanceEmbutidoValor: lanceEmbutidoAplicado,
       administradora,
       lanceEmbutidoPercentual,
@@ -865,14 +878,40 @@ export default function SimuladorConsorcio() {
             </CardContent>
           </Card>
 
-          {/* Lance Embutido */}
+          {/* Escolher usar Lance Embutido */}
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                🎯 Lance Embutido
+                🎯 Deseja utilizar lance embutido?
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setUsarLanceEmbutido(false)}
+                  className={`p-4 rounded-lg border-2 text-center transition-all font-semibold ${usarLanceEmbutido === false ? 'border-red-500 bg-red-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                >
+                  <p className={usarLanceEmbutido === false ? 'text-red-700' : 'text-slate-700'}>( ) Não</p>
+                </button>
+                <button
+                  onClick={() => setUsarLanceEmbutido(true)}
+                  className={`p-4 rounded-lg border-2 text-center transition-all font-semibold ${usarLanceEmbutido === true ? 'border-green-500 bg-green-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                >
+                  <p className={usarLanceEmbutido === true ? 'text-green-700' : 'text-slate-700'}>( ) Sim</p>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lance Embutido - Mostrar apenas se SIM */}
+          {usarLanceEmbutido === true && (
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  💰 Configurar Lance Embutido
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
               <div>
                 <Label className="text-xs">Administradora *</Label>
                 <Select value={administradora} onValueChange={setAdministradora}>
@@ -960,9 +999,10 @@ export default function SimuladorConsorcio() {
               )}
             </CardContent>
           </Card>
+          )}
 
-          {/* Lance Próprio (Recurso Próprio) */}
-          {lanceEmbutidoPercentual > 0 && (
+          {/* Lance Próprio (Recurso Próprio) - Apenas se usando Lance Embutido */}
+          {usarLanceEmbutido === true && lanceEmbutidoPercentual > 0 && (
             <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
