@@ -848,6 +848,7 @@ export default function BatePapo() {
 
   const conversasFiltradas = conversasValidas
     .filter(c => {
+      // Aplicar busca primeiro
       if (searchConversas) {
         const match = 
           (c.cliente_nome || '').toLowerCase().includes(searchConversas.toLowerCase()) ||
@@ -855,15 +856,17 @@ export default function BatePapo() {
         if (!match) return false;
       }
       
-      if (filtroStatus === 'grupos') return isGrupo(c);
-      if (filtroStatus === 'todas') return !isGrupo(c);
-      if (filtroStatus === 'ativa') return !isGrupo(c) && estaEmAtendimento(c);
-      if (filtroStatus === 'espera') return !isGrupo(c) && estaEmEspera(c);
-      if (filtroStatus === 'arquivada') return !isGrupo(c) && c.status === 'arquivada';
-      if (filtroStatus === 'transferida') return !isGrupo(c) && c.status === 'encerrada';
-      if (filtroStatus === 'meu') return !isGrupo(c) && estaEmAtendimento(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
+      // Filtrar por status
+      if (isGrupo(c)) return filtroStatus === 'grupos'; // Grupos ficam apenas na aba grupos
       
-      return true;
+      if (filtroStatus === 'todas') return true; // TODAS as conversas válidas
+      if (filtroStatus === 'espera') return estaEmEspera(c); // Último remetente = cliente (aguardando resposta)
+      if (filtroStatus === 'ativa') return estaEmAtendimento(c); // Atendente respondeu e está ativo
+      if (filtroStatus === 'arquivada') return c.status === 'arquivada';
+      if (filtroStatus === 'transferida') return c.status === 'encerrada';
+      if (filtroStatus === 'meu') return estaEmAtendimento(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
+      
+      return false;
     })
     .sort((a, b) => 
       new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0)
