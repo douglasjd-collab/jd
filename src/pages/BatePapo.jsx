@@ -1265,7 +1265,7 @@ export default function BatePapo() {
                               {mostrarBadge && (
                                 <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                                   <span style={{ backgroundColor: '#10B981', minWidth: '22px', height: '22px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none">
-                                    {contadorBadge}
+                                    {naoLidas > 0 ? naoLidas : '!'}
                                   </span>
                                   <span className="text-[10px] text-emerald-700 font-medium">
                                     {naoLidas > 0 ? `${naoLidas} ${naoLidas === 1 ? 'mensagem' : 'mensagens'}` : 'Esperando'}
