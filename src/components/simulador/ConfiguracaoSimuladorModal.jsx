@@ -356,9 +356,9 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
                           <SelectTrigger className="h-8 text-sm bg-white border border-slate-200">
                             <SelectValue placeholder="Selecionar Administradora..." />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-white border-slate-200 text-slate-900">
                             {administradoras.map(a => (
-                              <SelectItem key={a.id} value={a.id}>{a.razao_social || a.nome_fantasia}</SelectItem>
+                              <SelectItem key={a.id} value={a.id} className="text-slate-900 focus:bg-slate-100 focus:text-slate-900">{a.razao_social || a.nome_fantasia}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -412,9 +412,9 @@ function PlanoForm({ dados, onChange, administradoras, onSalvar, onCancelar, sal
           <Label className="text-xs">Tipo do Consórcio *</Label>
           <Select value={dados.tipo_consorcio} onValueChange={v => set('tipo_consorcio', v)}>
             <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border-slate-200">
               {[{ value: 'automovel', label: 'Automóvel' }, { value: 'imovel', label: 'Imóvel' }, { value: 'motocicleta', label: 'Motocicleta' }, { value: 'servico', label: 'Serviço' }].map(t =>
-                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                <SelectItem key={t.value} value={t.value} className="text-slate-900 focus:bg-slate-100">{t.label}</SelectItem>
               )}
             </SelectContent>
           </Select>
@@ -423,10 +423,10 @@ function PlanoForm({ dados, onChange, administradoras, onSalvar, onCancelar, sal
           <Label className="text-xs">Tipo de Parcela *</Label>
           <Select value={dados.tipo_parcela} onValueChange={v => set('tipo_parcela', v)}>
             <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="linear">Linear</SelectItem>
-              <SelectItem value="gradual">Gradual</SelectItem>
-              <SelectItem value="decrescente">Decrescente</SelectItem>
+            <SelectContent className="bg-white border-slate-200">
+              <SelectItem value="linear" className="text-slate-900 focus:bg-slate-100">Linear</SelectItem>
+              <SelectItem value="gradual" className="text-slate-900 focus:bg-slate-100">Gradual</SelectItem>
+              <SelectItem value="decrescente" className="text-slate-900 focus:bg-slate-100">Decrescente</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -454,8 +454,8 @@ function PlanoForm({ dados, onChange, administradoras, onSalvar, onCancelar, sal
           <Label className="text-xs">Administradora</Label>
           <Select value={dados.administradora_id || ''} onValueChange={v => set('administradora_id', v)}>
             <SelectTrigger className="h-8 text-xs mt-0.5"><SelectValue placeholder="Selecionar (opcional)..." /></SelectTrigger>
-            <SelectContent>
-              {administradoras.map(a => <SelectItem key={a.id} value={a.id}>{a.razao_social || a.nome_fantasia}</SelectItem>)}
+            <SelectContent className="bg-white border-slate-200">
+              {administradoras.map(a => <SelectItem key={a.id} value={a.id} className="text-slate-900 focus:bg-slate-100">{a.razao_social || a.nome_fantasia}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
