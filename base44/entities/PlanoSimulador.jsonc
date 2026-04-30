@@ -1,0 +1,74 @@
+{
+  "name": "PlanoSimulador",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "tipo_consorcio": {
+      "type": "string",
+      "enum": [
+        "automovel",
+        "imovel",
+        "motocicleta",
+        "servico"
+      ],
+      "description": "Tipo do cons\u00f3rcio"
+    },
+    "codigo_grupo": {
+      "type": "string",
+      "description": "C\u00f3digo do Grupo/Plano (ex: 3000, 4000, 40, 21)"
+    },
+    "nome_plano": {
+      "type": "string",
+      "description": "Nome do Plano (ex: PLANO EXCLUSIVO 70%)"
+    },
+    "codigo_modalidade": {
+      "type": "string",
+      "description": "C\u00f3digo da Modalidade (ex: 61, 71, 16)"
+    },
+    "tipo_parcela": {
+      "type": "string",
+      "enum": [
+        "linear",
+        "gradual",
+        "decrescente"
+      ],
+      "description": "Tipo de parcela"
+    },
+    "prazo_total": {
+      "type": "number",
+      "description": "Prazo total em meses"
+    },
+    "percentual_plano": {
+      "type": "number",
+      "description": "Percentual do plano quando houver (ex: 50, 70)"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora vinculada"
+    },
+    "administradora_nome": {
+      "type": "string",
+      "description": "Nome da administradora (denormalizado)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo"
+      ],
+      "default": "ativo",
+      "description": "Status do plano"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "tipo_consorcio",
+    "codigo_grupo",
+    "nome_plano",
+    "codigo_modalidade",
+    "tipo_parcela"
+  ]
+}

@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calculator, Sparkles, Settings } from 'lucide-react';
 import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
 import ConfiguracaoSimuladorModal from '@/components/simulador/ConfiguracaoSimuladorModal';
 
 export default function SimuladorEscolha() {
   const navigate = useNavigate();
   const [configOpen, setConfigOpen] = useState(false);
+  const [empresaId, setEmpresaId] = useState(null);
+
+  useEffect(() => {
+    base44.auth.me().then(user => {
+      if (!user) return;
+      base44.entities.Colaborador.filter({ user_id: user.id, status: 'ativo' }, '-created_date', 1)
+        .then(cols => { if (cols?.[0]?.empresa_id) setEmpresaId(cols[0].empresa_id); });
+    });
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100">
@@ -125,7 +135,7 @@ export default function SimuladorEscolha() {
         </p>
       </div>
 
-      <ConfiguracaoSimuladorModal open={configOpen} onOpenChange={setConfigOpen} />
+      <ConfiguracaoSimuladorModal open={configOpen} onOpenChange={setConfigOpen} empresaId={empresaId} />
     </div>
   );
 }
