@@ -215,7 +215,7 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col overflow-visible">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-slate-600" />
@@ -223,7 +223,7 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab} className="flex-1 overflow-hidden flex flex-col">
+        <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
           <TabsList className="grid grid-cols-2 w-full">
             <TabsTrigger value="planos">📋 Planos</TabsTrigger>
             <TabsTrigger value="seguro">🛡️ Seguro Prestamista</TabsTrigger>
@@ -353,10 +353,10 @@ export default function ConfiguracaoSimuladorModal({ open, onOpenChange, empresa
                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50">
                       <div className="flex-1">
                         <Select value={linha.administradora_id || ''} onValueChange={v => setAdmSeguro(idx, v)}>
-                          <SelectTrigger className="h-8 text-sm bg-white border border-slate-200">
+                          <SelectTrigger className="h-8 text-sm bg-white border border-slate-200 text-slate-900">
                             <SelectValue placeholder="Selecionar Administradora..." />
                           </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200 text-slate-900">
+                          <SelectContent position="popper" className="bg-white border-slate-200 text-slate-900 z-[9999]">
                             {administradoras.map(a => (
                               <SelectItem key={a.id} value={a.id} className="text-slate-900 focus:bg-slate-100 focus:text-slate-900">{a.razao_social || a.nome_fantasia}</SelectItem>
                             ))}
