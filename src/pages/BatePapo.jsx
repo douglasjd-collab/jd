@@ -1259,13 +1259,18 @@ export default function BatePapo() {
                               {ultimaMsg}
                             </p>
 
-                            {/* Linha 3: hora + badge não lidas estilo WhatsApp */}
-                            <div className="flex items-center justify-between gap-1 mt-0.5">
-                              <p className={`text-[11px] ${mostrarBadge ? 'text-[#25D366] font-semibold' : 'text-slate-400'}`}>{hora}</p>
+                            {/* Linha 3: hora + badge não lidas com contador verde */}
+                            <div className="flex items-center justify-between gap-2 mt-0.5">
+                              <p className="text-[11px] text-slate-400">{hora}</p>
                               {mostrarBadge && (
-                                <span style={{ backgroundColor: '#25D366', minWidth: '22px', height: '22px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none px-1.5">
-                                  {contadorBadge}
-                                </span>
+                                <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                  <span style={{ backgroundColor: '#10B981', minWidth: '22px', height: '22px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none">
+                                    {contadorBadge}
+                                  </span>
+                                  <span className="text-[10px] text-emerald-700 font-medium">
+                                    {naoLidas > 0 ? `${naoLidas} ${naoLidas === 1 ? 'mensagem' : 'mensagens'}` : 'Esperando'}
+                                  </span>
+                                </div>
                               )}
                             </div>
                           </div>
