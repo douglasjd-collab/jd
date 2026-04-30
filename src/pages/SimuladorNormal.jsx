@@ -409,13 +409,13 @@ export default function SimuladorNormal() {
         const parcelasQuitadas = Math.floor(lancePrazo / parcelaTotal);
         const novoPrazo5050 = Math.max(1, novoPrazo - parcelasQuitadas);
 
-        // Saldo após 1ª parcela no ato e após a metade que reduz parcela
-        const saldoAposLanceParcela = saldoDevedorReal - lanceParcela;
-        novaParcelaCalculada = saldoAposLanceParcela / novoPrazo5050;
+        // Saldo para dividir = saldoDevedorReal (já sem 1ª parcela no ato) - metade do lance na parcela
+        const saldoParaDividir = saldoDevedorReal - lanceParcela;
+        novaParcelaCalculada = saldoParaDividir / novoPrazo5050;
         novoPrazo = novoPrazo5050;
 
-        // Ajustar saldoDevedorTotal para exibição (já inclui ambas as deduções do lance)
-        saldoDevedorTotal = saldoDevedorReal - lanceParcela;
+        // Saldo exibido = o mesmo que é dividido pelo prazo
+        saldoDevedorTotal = saldoParaDividir + primeiraParcelaNoAto; // reverter para que a linha de exibição subtraia corretamente
 
         // Guardar info para exibição
         descontoPorParcela = lanceParcela;
@@ -431,9 +431,7 @@ export default function SimuladorNormal() {
     // No plano normal: totalPlano - lance - 1ª parcela no ato
     const saldoDevedorExibicao = temPlanoDecrescente
       ? saldoDevedorTotal
-      : (modoReducao === '5050' && lanceProprioValor > 0)
-        ? saldoDevedorTotal
-        : saldoDevedorTotal - primeiraParcelaNoAto;
+      : saldoDevedorTotal - primeiraParcelaNoAto;
 
     setResultado({
       creditoTotal,
