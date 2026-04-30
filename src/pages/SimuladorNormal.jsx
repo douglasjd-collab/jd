@@ -316,37 +316,64 @@ export default function SimuladorNormal() {
     }
 
     const saldoAposLance = saldoDevedorTotal;
-    
-    let mesesCobrados = prazoNum;
-    let novoPrazo = prazoNum - 1;
-    
-    const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
 
-    // Para plano decrescente: manter as mesmas faixas originais (as parcelas já estão definidas)
-    let novaParcelaCalculada = saldoDevedorReal / novoPrazo;
+    // Prazo restante após contemplação:
+    // - Parcela 1: paga no ato da contratação
+    // - Parcelas 2, 3, 4: antecipadas na contemplação (3 parcelas)
+    // Total já pagas = 4. Restam prazo - 4 parcelas.
+    const parcelasPagas = 4; // 1 ato + 3 antecipadas
+    const prazoRestante = prazoNum - parcelasPagas;
+
+    let novaParcelaCalculada = saldoDevedorTotal / prazoNum; // padrão não-decrescente
     let novaParcelaMeio = null;
     let novaUltimaParcela = null;
+    // Info extra para o resultado
+    let descontoPorParcela = null;
+    let parcelasJaPagas = null;
+    let novoPrazo = prazoNum - 1; // padrão não-decrescente (1 paga no ato)
 
     if (temPlanoDecrescente) {
       const cartaDec = cartas.find(c => c.planoDecrescente && parseInt(c.prazo) > 10);
       if (cartaDec) {
-        // Após contemplação: as faixas se mantêm conforme o plano original
-        // A contemplação acontece na parcela 1, então o saldo restante são parcelas 2 em diante
-        // Mantemos os mesmos valores informados (o plano já define as faixas)
-        novaParcelaCalculada = parseFloat(cartaDec.parcela) || 0; // faixa 1-10 continua igual
-        novaParcelaMeio = parseFloat(cartaDec.parcelaMeio) || 0;  // faixa 11-(prazo-1)
-        novaUltimaParcela = parseFloat(cartaDec.ultimaParcela) || 0; // última
-      }
-    }
+        const prazo = parseInt(cartaDec.prazo) || prazoNum;
+        const parcela1a10 = parseFloat(cartaDec.parcela) || 0;
+        const parcelaMeio = parseFloat(cartaDec.parcelaMeio) || 0;
+        const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
 
-    // Aplicar regra Canopus se ativado
-    if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
-      const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
-      mesesCobrados = prazoNum - mesesNaoCobrados;
-      if (mesesCobrados < 1) mesesCobrados = 1;
-      novoPrazo = mesesCobrados;
-      if (!temPlanoDecrescente) {
-        novaParcelaCalculada = saldoDevedorReal / mesesCobrados;
+        if (lanceProprioValor > 0) {
+          // Desconto do lance dividido pelo prazo total restante
+          const desconto = lanceProprioValor / prazo;
+          descontoPorParcela = desconto;
+          parcelasJaPagas = parcelasPagas; // 1 ato + 3 antecipadas
+
+          // Faixa 1 restante: parcelas 5 a 10 (as 4 primeiras já foram pagas)
+          novaParcelaCalculada = parcela1a10 - desconto;
+          // Faixa 2: parcelas 11 a (prazo-1)
+          novaParcelaMeio = parcelaMeio - desconto;
+          // Faixa 3: última parcela
+          novaUltimaParcela = ultimaParc - desconto;
+
+          // Prazo restante: parcelas 5 até o fim = prazo - 4
+          novoPrazo = prazo - parcelasPagas;
+        } else {
+          // Sem lance: mantém faixas originais, apenas 1 paga no ato
+          novaParcelaCalculada = parcela1a10;
+          novaParcelaMeio = parcelaMeio;
+          novaUltimaParcela = ultimaParc;
+          novoPrazo = prazo - 1;
+        }
+      }
+    } else {
+      const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
+      novaParcelaCalculada = saldoDevedorReal / (prazoNum - 1);
+      novoPrazo = prazoNum - 1;
+
+      // Aplicar regra Canopus se ativado (apenas plano normal)
+      if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
+        const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
+        const mesesCobrados = prazoNum - mesesNaoCobrados;
+        novoPrazo = mesesCobrados < 1 ? 1 : mesesCobrados;
+        novaParcelaCalculada = saldoDevedorReal / novoPrazo;
       }
     }
 
@@ -359,15 +386,16 @@ export default function SimuladorNormal() {
       novaParcela: novaParcelaCalculada,
       novaParcelaMeio,
       novaUltimaParcela,
-      mesesCobrados,
       aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel'),
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
       saldoAposLance,
-      saldoDevedor: saldoDevedorReal,
+      saldoDevedor: saldoDevedorTotal,
       parcelaReduzida: parcelaReduzidaTotal > 0,
       valorParcelaReduzida: primeiraParcelaNoAto,
       temPlanoDecrescente,
+      descontoPorParcela,
+      parcelasJaPagas,
     });
   };
 
@@ -937,23 +965,37 @@ export default function SimuladorNormal() {
                      </div>
                      {resultado.usarLanceProprio && (
                        <div className="flex justify-between">
-                         <span className="text-slate-600">Saldo após Lance:</span>
-                         <span className="font-semibold">{formatCurrency(resultado.saldoAposLance)}</span>
-                       </div>
-                     )}
-                     {resultado.parcelaReduzida && (
-                       <div className="flex justify-between">
-                         <span className="text-slate-600">1ª Parcela Reduzida:</span>
-                         <span className="font-semibold text-orange-700">- {formatCurrency(resultado.valorParcelaReduzida)}</span>
+                         <span className="text-slate-600">(-) Lance Próprio:</span>
+                         <span className="font-semibold text-purple-700">- {formatCurrency(resultado.lanceProprio)}</span>
                        </div>
                      )}
                      {resultado.usarLanceProprio && (
                        <div className="flex justify-between border-t pt-2 mt-1">
-                         <span className="text-slate-700 font-semibold">Saldo Devedor Final:</span>
+                         <span className="text-slate-700 font-semibold">Saldo Restante:</span>
                          <span className="font-bold text-slate-900">{formatCurrency(resultado.saldoDevedor)}</span>
                        </div>
                      )}
-                     {resultado.aplicarRegraCanopus && (
+                     {resultado.temPlanoDecrescente && resultado.descontoPorParcela > 0 && (
+                       <>
+                         <div className="flex justify-between border-t pt-2 mt-1">
+                           <span className="text-slate-600">Desconto por parcela:</span>
+                           <span className="font-semibold text-green-700">- {formatCurrency(resultado.descontoPorParcela)}</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-slate-600">Parcelas antecipadas:</span>
+                           <span className="font-semibold">3 parcelas</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-slate-600">Parcela no ato (contratação):</span>
+                           <span className="font-semibold">1 parcela</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <span className="text-slate-600 font-medium">Total já pago:</span>
+                           <span className="font-semibold text-slate-800">4 parcelas</span>
+                         </div>
+                       </>
+                     )}
+                     {resultado.aplicarRegraCanopus && !resultado.temPlanoDecrescente && (
                        <>
                          <div className="flex justify-between">
                            <span className="text-slate-600">Carência:</span>
@@ -961,7 +1003,7 @@ export default function SimuladorNormal() {
                          </div>
                          <div className="flex justify-between">
                            <span className="text-slate-600">Parcelas Restantes:</span>
-                           <span className="font-semibold">{resultado.mesesCobrados} meses</span>
+                           <span className="font-semibold">{resultado.novoPrazo} meses</span>
                          </div>
                        </>
                      )}
@@ -978,23 +1020,50 @@ export default function SimuladorNormal() {
                        {resultado.temPlanoDecrescente ? (
                          <>
                            <div className="mt-1 mb-2">
-                             <p className="text-xs text-purple-600 font-semibold">📉 Plano Decrescente</p>
+                             <p className="text-xs text-purple-600 font-semibold">📉 Plano Decrescente — Parcelas Restantes</p>
                            </div>
                            <div className="bg-white rounded-lg border border-purple-200 divide-y divide-purple-100 text-sm">
-                             <div className="flex justify-between items-center px-3 py-2">
-                               <span className="text-purple-700">Parcelas 1 a 10:</span>
-                               <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
-                             </div>
-                             {resultado.novaParcelaMeio !== null && resultado.novoPrazo > 11 && (
-                               <div className="flex justify-between items-center px-3 py-2">
-                                 <span className="text-purple-700">Parcelas 11 a {resultado.novoPrazo - 1}:</span>
-                                 <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcelaMeio)}</span>
-                               </div>
+                             {resultado.descontoPorParcela > 0 ? (
+                               // Com lance: parcelas 1-4 já pagas, restam 5-10, 11-(prazo-1), última
+                               <>
+                                 <div className="flex justify-between items-center px-3 py-2">
+                                   <span className="text-slate-500 text-xs">Parcelas 1 a 4:</span>
+                                   <span className="text-slate-400 text-xs line-through">Já pagas</span>
+                                 </div>
+                                 <div className="flex justify-between items-center px-3 py-2">
+                                   <span className="text-purple-700">Parcelas 5 a 10:</span>
+                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
+                                 </div>
+                                 {resultado.novaParcelaMeio !== null && (
+                                   <div className="flex justify-between items-center px-3 py-2">
+                                     <span className="text-purple-700">Parcelas 11 a {resultado.prazoOriginal - 1}:</span>
+                                     <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcelaMeio)}</span>
+                                   </div>
+                                 )}
+                                 <div className="flex justify-between items-center px-3 py-2">
+                                   <span className="text-purple-700">Parcela {resultado.prazoOriginal} (última):</span>
+                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaUltimaParcela)}</span>
+                                 </div>
+                               </>
+                             ) : (
+                               // Sem lance: apenas 1 paga no ato, restam 2-10, 11-(prazo-1), última
+                               <>
+                                 <div className="flex justify-between items-center px-3 py-2">
+                                   <span className="text-purple-700">Parcelas 2 a 10:</span>
+                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
+                                 </div>
+                                 {resultado.novaParcelaMeio !== null && (
+                                   <div className="flex justify-between items-center px-3 py-2">
+                                     <span className="text-purple-700">Parcelas 11 a {resultado.prazoOriginal - 1}:</span>
+                                     <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcelaMeio)}</span>
+                                   </div>
+                                 )}
+                                 <div className="flex justify-between items-center px-3 py-2">
+                                   <span className="text-purple-700">Parcela {resultado.prazoOriginal} (última):</span>
+                                   <span className="font-bold text-purple-900">{formatCurrency(resultado.novaUltimaParcela)}</span>
+                                 </div>
+                               </>
                              )}
-                             <div className="flex justify-between items-center px-3 py-2">
-                               <span className="text-purple-700">Parcela {resultado.novoPrazo} (última):</span>
-                               <span className="font-bold text-purple-900">{formatCurrency(resultado.novaUltimaParcela)}</span>
-                             </div>
                            </div>
                          </>
                        ) : (
