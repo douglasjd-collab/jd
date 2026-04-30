@@ -283,24 +283,18 @@ export default function SimuladorConsorcio() {
           const parcelaMeio = parseFloat(cartaDec.parcelaMeio) || 0;
           const ultimaParc = parseFloat(cartaDec.ultimaParcela) || 0;
           
-          // Regra de carência: parcela 1 no ato + 3 meses carência (R$ 0,00)
-          const parcelaNoAto = 1;
-          const carenciaAplicada = (aplicarRegraCanopus && administradora === 'canopus') ? 3 : 0;
-          const parcelasPagasOuCarencia = parcelaNoAto + carenciaAplicada; // 4 (parcelas 1-4)
+          // Regra de carência: 1 parcela no ato + 3 meses carência
+          const mesesCarencia = 3;
+          const mesesNoAto = 1;
           
-          // Faixa 1: parcelas 5 a 10 (após carência)
-          const inicioFaixa1 = parcelasPagasOuCarencia + 1; // 5
-          const fimFaixa1 = 10;
-          const qtdFaixa1 = Math.max(0, fimFaixa1 - inicioFaixa1 + 1); // 6 parcelas (5-10)
+          // Faixa 1: parcelas 5 a 10 (6 parcelas)
+          const qtdFaixa1 = 6;
           
-          // Faixa 2: parcelas 11 a (prazo-1)
-          const qtdFaixa2 = Math.max(0, (prazo - 1) - 10); // ex: 149 (11-159)
+          // Faixa 2: parcelas 11 a (prazo-1) (149 para prazo=160)
+          const qtdFaixa2 = (prazo - 1) - 10;
           
-          // Faixa 3: última parcela
-          const qtdFaixa3 = 1;
-          
-          // Meses cobrados: prazo total - (1 no ato + 3 carência)
-          mesesCobrados = prazo - parcelasPagasOuCarencia;
+          // Meses efetivamente cobrados (após 1ª parcela e carência)
+          mesesCobrados = prazo - mesesNoAto - mesesCarencia; // 156 para prazo=160
 
           // Cálculo com redução linear de seguro (Canopus)
           const taxaSeguro = 0.00038;
