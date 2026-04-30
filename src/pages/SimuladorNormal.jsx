@@ -28,7 +28,7 @@ export default function SimuladorNormal() {
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [grupo, setGrupo] = useState('');
-  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', parcelaReduzida: '' }]);
+  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, ultimaParcela: '' }]);
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(false);
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
@@ -135,7 +135,7 @@ export default function SimuladorNormal() {
   const [relogioContemplacao, setRelogioContemplacao] = useState(null);
 
   const adicionarCarta = () => {
-    setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '' }]);
+    setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, ultimaParcela: '' }]);
   };
 
   const duplicarCarta = (index) => {
@@ -262,6 +262,21 @@ export default function SimuladorNormal() {
     setRelogioContemplacao(relogio);
   }, [usarLanceProprio, lanceProprio, lanceProprioPercentual, menorLanceHistorico, maiorLanceHistorico]);
 
+  // Verificar se alguma carta tem plano decrescente
+  const temPlanoDecrescente = cartas.some(c => c.planoDecrescente);
+
+  // Calcular total do plano considerando decrescente
+  const calcularTotalDecrescente = (carta) => {
+    const parcela = parseFloat(carta.parcela) || 0;
+    const ultimaP = parseFloat(carta.ultimaParcela) || 0;
+    const prazo = parseInt(carta.prazo) || 0;
+    if (!carta.planoDecrescente || !ultimaP || !prazo) return parcela * prazo;
+    // Soma PA = n * (a1 + an) / 2
+    return prazo * (parcela + ultimaP) / 2;
+  };
+
+  const totalPlanoDecrescente = cartas.reduce((acc, carta) => acc + calcularTotalDecrescente(carta), 0);
+
   const calcularSimulacao = () => {
     if (!clienteNome || !telefone) {
       toast.error('Preencha nome e telefone do cliente');
@@ -279,7 +294,7 @@ export default function SimuladorNormal() {
     }
 
     const prazoNum = parseFloat(prazoOriginal);
-    const totalPlano = prazoNum * parcelaTotal;
+    const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
     
     let lanceProprioValor = 0;
     let saldoDevedorTotal = totalPlano;
@@ -294,25 +309,46 @@ export default function SimuladorNormal() {
       saldoDevedorTotal = totalPlano - lanceProprioValor;
     }
 
-    // saldoDevedorTotal após lance (antes de descontar a 1ª parcela)
     const saldoAposLance = saldoDevedorTotal;
     
     let mesesCobrados = prazoNum;
     let novoPrazo = prazoNum - 1;
     
-    // Saldo devedor real = saldo após lance - 1ª parcela (reduzida ou normal)
     const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
 
+    // Para plano decrescente: calcular nova parcela inicial e final após contemplação
     let novaParcelaCalculada = saldoDevedorReal / novoPrazo;
+    let novaUltimaParcela = null;
+
+    if (temPlanoDecrescente) {
+      // Encontrar carta decrescente principal
+      const cartaDec = cartas.find(c => c.planoDecrescente && c.ultimaParcela);
+      if (cartaDec) {
+        const primeiraOrig = parseFloat(cartaDec.parcela) || 0;
+        const ultimaOrig = parseFloat(cartaDec.ultimaParcela) || 0;
+        const prazoOrig = parseInt(cartaDec.prazo) || prazoNum;
+        // Redução por mês = (primeira - ultima) / (prazo - 1)
+        const reducaoPorMes = prazoOrig > 1 ? (primeiraOrig - ultimaOrig) / (prazoOrig - 1) : 0;
+        // Após contemplação (1 mês consumido): nova primeira = primeira - reducaoPorMes
+        novaParcelaCalculada = primeiraOrig - reducaoPorMes;
+        // Calcular nova última: saldo devedor / soma decrescente inversa
+        if (novoPrazo > 1) {
+          // nova ultima = nova primeira - (novoPrazo-1) * reducaoPorMes
+          novaUltimaParcela = novaParcelaCalculada - (novoPrazo - 1) * reducaoPorMes;
+          if (novaUltimaParcela < 0) novaUltimaParcela = 0;
+        }
+      }
+    }
 
     // Aplicar regra Canopus se ativado
     if (aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel')) {
       const mesesNaoCobrados = parcelasCarencia + parcelaAtoContratacao;
       mesesCobrados = prazoNum - mesesNaoCobrados;
       if (mesesCobrados < 1) mesesCobrados = 1;
-      
       novoPrazo = mesesCobrados;
-      novaParcelaCalculada = saldoDevedorReal / mesesCobrados;
+      if (!temPlanoDecrescente) {
+        novaParcelaCalculada = saldoDevedorReal / mesesCobrados;
+      }
     }
 
     setResultado({
@@ -322,14 +358,16 @@ export default function SimuladorNormal() {
       prazoOriginal: prazoNum,
       novoPrazo,
       novaParcela: novaParcelaCalculada,
+      novaUltimaParcela,
       mesesCobrados,
       aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel'),
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
-      saldoAposLance,          // total - lance (sem descontar 1ª parcela)
-      saldoDevedor: saldoDevedorReal, // total - lance - 1ª parcela
+      saldoAposLance,
+      saldoDevedor: saldoDevedorReal,
       parcelaReduzida: parcelaReduzidaTotal > 0,
-      valorParcelaReduzida: primeiraParcelaNoAto
+      valorParcelaReduzida: primeiraParcelaNoAto,
+      temPlanoDecrescente,
     });
   };
 
@@ -608,7 +646,7 @@ export default function SimuladorNormal() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Parcela (R$) *</Label>
+                      <Label className="text-xs">{carta.planoDecrescente ? '1ª Parcela (R$) *' : 'Parcela (R$) *'}</Label>
                       <Input
                         type="text"
                         value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''}
@@ -638,10 +676,38 @@ export default function SimuladorNormal() {
                       />
                     </div>
                   </div>
+
+                  {/* Opção Plano Decrescente */}
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t">
+                    <Switch
+                      checked={carta.planoDecrescente || false}
+                      onCheckedChange={(v) => atualizarCarta(index, 'planoDecrescente', v)}
+                    />
+                    <Label className="text-xs font-medium text-purple-700 cursor-pointer">
+                      📉 Plano Decrescente
+                    </Label>
+                    {carta.planoDecrescente && (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <Label className="text-xs text-slate-500 whitespace-nowrap">Última Parcela (R$):</Label>
+                        <Input
+                          type="text"
+                          value={carta.ultimaParcela ? formatarParaExibicao(carta.ultimaParcela) : ''}
+                          onChange={(e) => {
+                            const val = handleMoedaInput(e.target.value);
+                            atualizarCarta(index, 'ultimaParcela', val > 0 ? val.toString() : '');
+                          }}
+                          placeholder="0,00"
+                          className="h-8 w-32 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   {carta.credito && carta.parcela && carta.prazo && (
-                    <div className="mt-2 text-xs text-slate-600 pt-2 border-t">
+                    <div className="mt-2 text-xs text-slate-600 pt-1">
                       <span className="font-semibold">
                         {formatCurrency(parseFloat(carta.credito))} • {formatCurrency(parseFloat(carta.parcela))}/mês • {carta.prazo} meses
+                        {carta.planoDecrescente && carta.ultimaParcela && ` → ${formatCurrency(parseFloat(carta.ultimaParcela))} (última)`}
                         {carta.parcelaReduzida && ` • 1ª Parc. Reduzida: ${formatCurrency(parseFloat(carta.parcelaReduzida))}`}
                       </span>
                     </div>
@@ -892,18 +958,36 @@ export default function SimuladorNormal() {
                   )}
 
                   <div className="p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
-                    <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-purple-700 text-sm">Novo Prazo:</span>
-                        <span className="font-bold text-purple-900 text-xl">{resultado.novoPrazo} meses</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-purple-700 text-sm">Nova Parcela:</span>
-                        <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
-                      </div>
-                    </div>
-                  </div>
+                     <p className="text-xs text-purple-700 font-semibold mb-3">✨ Resultado Final</p>
+                     <div className="space-y-2">
+                       <div className="flex justify-between items-center">
+                         <span className="text-purple-700 text-sm">Novo Prazo:</span>
+                         <span className="font-bold text-purple-900 text-xl">{resultado.novoPrazo} meses</span>
+                       </div>
+                       {resultado.temPlanoDecrescente ? (
+                         <>
+                           <div className="flex justify-between items-center">
+                             <span className="text-purple-700 text-sm">1ª Parcela após contemplação:</span>
+                             <span className="font-bold text-purple-900 text-lg">{formatCurrency(resultado.novaParcela)}</span>
+                           </div>
+                           {resultado.novaUltimaParcela !== null && (
+                             <div className="flex justify-between items-center">
+                               <span className="text-purple-700 text-sm">Última Parcela:</span>
+                               <span className="font-bold text-purple-900 text-lg">{formatCurrency(resultado.novaUltimaParcela)}</span>
+                             </div>
+                           )}
+                           <div className="mt-1 pt-1 border-t border-purple-200">
+                             <p className="text-xs text-purple-600 text-center">📉 Plano Decrescente — parcelas reduzem mensalmente</p>
+                           </div>
+                         </>
+                       ) : (
+                         <div className="flex justify-between items-center">
+                           <span className="text-purple-700 text-sm">Nova Parcela:</span>
+                           <span className="font-bold text-purple-900 text-xl">{formatCurrency(resultado.novaParcela)}</span>
+                         </div>
+                       )}
+                     </div>
+                   </div>
                   <Button
                     onClick={() => gerarSimulacaoMutation.mutate()}
                     disabled={gerarSimulacaoMutation.isPending}
