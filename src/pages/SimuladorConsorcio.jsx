@@ -903,6 +903,61 @@ export default function SimuladorConsorcio() {
             </CardContent>
           </Card>
 
+          {/* Lance Próprio SEM Administradora - Mostrar apenas se NÃO */}
+          {usarLanceEmbutido === false && (
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  💰 Ofertar Lance Próprio
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-2">
+                <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                  <Label className="text-xs font-medium">Usar lance próprio?</Label>
+                  <Switch checked={usarLanceProprio} onCheckedChange={setUsarLanceProprio} />
+                </div>
+
+                {usarLanceProprio && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Valor do Lance (R$) *</Label>
+                      <Input
+                        type="text"
+                        value={lanceProprio ? formatarParaExibicao(lanceProprio) : ''}
+                        onChange={(e) => {
+                          const valorNumerico = handleMoedaInput(e.target.value);
+                          setLanceProprio(valorNumerico > 0 ? valorNumerico.toString() : '');
+                        }}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div className="text-xs text-slate-600 space-y-1 pt-2 border-t">
+                      <p className="font-semibold">Opções rápidas de lance embutido:</p>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setLanceEmbutidoPercentual(30)}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${lanceEmbutidoPercentual === 30 ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        >
+                          30%
+                        </button>
+                        <button
+                          onClick={() => setLanceEmbutidoPercentual(50)}
+                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${lanceEmbutidoPercentual === 50 ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                        >
+                          50%
+                        </button>
+                      </div>
+                      {lanceEmbutidoPercentual > 0 && (
+                        <p className="text-blue-600 font-semibold">Lance embutido: {lanceEmbutidoPercentual}%</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Lance Embutido - Mostrar apenas se SIM */}
           {usarLanceEmbutido === true && (
             <Card className="border-0 shadow-sm">
