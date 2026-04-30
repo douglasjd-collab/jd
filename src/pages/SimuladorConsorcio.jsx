@@ -323,11 +323,20 @@ export default function SimuladorConsorcio() {
           const fatorReducaoParcelamento = saldoAposLance / saldoAposParcela1;
           
           // As parcelas futuras são reduzidas pelo fator de redução do saldo
-          novaParcelaCalculada = parcela1a10 * fatorReducaoParcelamento;
-          novaParcelaMeio = parcelaMeio * fatorReducaoParcelamento;
-          novaUltimaParcela = ultimaParc * fatorReducaoParcelamento;
+          // Arredondar cada multiplicação antes de somar
+          novaParcelaCalculada = round2(parcela1a10 * fatorReducaoParcelamento);
+          novaParcelaMeio = round2(parcelaMeio * fatorReducaoParcelamento);
+          novaUltimaParcela = round2(ultimaParc * fatorReducaoParcelamento);
           
-          saldoDevedorTotal = saldoAposLance;
+          // Calcular total com arredondamento em cada etapa
+          const totalParcelas = round2(
+            round2(qtdFaixa1 * novaParcelaCalculada) +
+            round2(qtdFaixa2 * novaParcelaMeio) +
+            novaUltimaParcela
+          );
+          
+          // Saldo devedor = total de parcelas futuras
+          saldoDevedorTotal = round2(totalParcelas);
         }
       } else {
         const primeira_parcela_reduzida_total = cartas.reduce(
@@ -345,7 +354,7 @@ export default function SimuladorConsorcio() {
         } else {
           mesesCobrados = prazoNum - 1;
         }
-        novaParcelaCalculada = saldoDevedorTotal / mesesCobrados;
+        novaParcelaCalculada = round2(saldoDevedorTotal / mesesCobrados);
       }
     }
 
@@ -622,6 +631,10 @@ export default function SimuladorConsorcio() {
     const num = parseFloat(valor);
     if (isNaN(num)) return '';
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const round2 = (valor) => {
+    return Math.round(valor * 100) / 100;
   };
 
   const handleAbrirPlanoModal = (index) => {
