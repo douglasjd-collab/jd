@@ -38,6 +38,7 @@ export default function SimuladorConsorcio() {
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(true);
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
+  const [taxaSeguro, setTaxaSeguro] = useState(0.00038); // Taxa padrão 0.038% ao mês
   const [resultado, setResultado] = useState(null);
   const [relogio, setRelogio] = useState(null);
   const [menorLanceLivre, setMenorLanceLivre] = useState(null);
@@ -303,30 +304,27 @@ export default function SimuladorConsorcio() {
 
           // Cálculo de redução de seguro
           // Seguro original sobre crédito total
-          const creditoTotal_valor = creditoTotal; // crédito total da simulação
+          const creditoTotal_valor = creditoTotal;
+          const seguroOriginal = round2(creditoTotal_valor * taxaSeguro);
+          
+          // Saldo após a parcela 1 e após aplicar lance
           const saldoAposParcela1 = creditoTotal_valor - parcela1a10;
-          
-          // Depois do lance, o saldo reduz
           const totalLance = lanceEmbutidoAplicado + lanceProprioValor;
-          const saldoAposLance = saldoAposParcela1 - totalLance;
+          const saldoAposLance = round2(saldoAposParcela1 - totalLance);
           
-          // Redução de seguro = diferença entre o que seria cobrado no saldo original vs. novo
-          // A parcela 1 não recalcula seguro (mantém valor original)
-          // As parcelas futuras recebem o desconto de seguro
+          // Seguro que seria cobrado sobre o novo saldo
+          const seguroNovo = round2(saldoAposLance * taxaSeguro);
           
-          // Total do plano original = parcela1 + (parcelas restantes em valores originais)
-          const totalRestanteOriginal = qtdFaixa1 * parcela1a10 + qtdFaixa2 * parcelaMeio + qtdFaixa3 * ultimaParc;
+          // Redução do seguro = diferença que deixa de ser cobrada em cada parcela
+          const reducaoSeguro = round2(seguroOriginal - seguroNovo);
           
-          // Novo total = total original - (diferença de seguro que deixa de ser cobrada)
-          // Como o saldo reduziu, menos seguro deve ser cobrado nas parcelas futuras
-          // Diferença de seguro por mês ≈ proporção de redução do saldo
-          const fatorReducaoParcelamento = saldoAposLance / saldoAposParcela1;
-          
-          // As parcelas futuras são reduzidas pelo fator de redução do saldo
-          // Arredondar cada multiplicação antes de somar
-          novaParcelaCalculada = round2(parcela1a10 * fatorReducaoParcelamento);
-          novaParcelaMeio = round2(parcelaMeio * fatorReducaoParcelamento);
-          novaUltimaParcela = round2(ultimaParc * fatorReducaoParcelamento);
+          // Aplicar redução de seguro em cada faixa de parcelas
+          // A parcela 1 não reduz (foi paga antes da contemplação)
+          // As parcelas 2 a 4 são carência = R$ 0,00 (sem seguro extra)
+          // As parcelas futuras (5+) reduzem pelo valor da redução de seguro
+          novaParcelaCalculada = round2(parcela1a10 - reducaoSeguro);
+          novaParcelaMeio = round2(parcelaMeio - reducaoSeguro);
+          novaUltimaParcela = round2(ultimaParc - reducaoSeguro);
           
           // Calcular total com arredondamento em cada etapa
           const totalParcelas = round2(
