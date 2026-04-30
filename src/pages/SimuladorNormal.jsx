@@ -323,6 +323,8 @@ export default function SimuladorNormal() {
     // Info extra para o resultado
     let descontoPorParcela = null;
     let parcelasJaPagas = null;
+    let parcelaCarenciaValor = null;
+    let numParcelasCarenciaLocal = 0;
     let novoPrazo = prazoNum - 1; // padrão não-decrescente (1 paga no ato)
 
     if (temPlanoDecrescente) {
@@ -341,10 +343,16 @@ export default function SimuladorNormal() {
           const desconto = lanceProprioValor / prazoRestanteParaDesconto;
           descontoPorParcela = desconto;
           parcelasJaPagas = 1; // 1 paga no ato
+          parcelaCarenciaValor = parcelaCarencia;
+          numParcelasCarenciaLocal = carenciaDecrescenteTemp;
 
-          novaParcelaCalculada = parcela1a10 - desconto;
+          // Parcelas dentro da carência (2 a 4) não têm desconto aplicado
+          // Parcelas após a carência (5 em diante) têm o desconto
+          novaParcelaCalculada = parcela1a10 - desconto; // parcelas 5 a 10 (após carência)
           novaParcelaMeio = parcelaMeio - desconto;
           novaUltimaParcela = ultimaParc - desconto;
+          // Parcelas na carência = valor original sem desconto
+          const parcelaCarencia = parcela1a10;
 
           // Prazo restante: prazo - 1 (paga no ato) - carência Canopus
           // Ex: 160 - 1 - 3 = 156
@@ -398,6 +406,8 @@ export default function SimuladorNormal() {
       temPlanoDecrescente,
       descontoPorParcela,
       parcelasJaPagas,
+      parcelaCarenciaValor,
+      numParcelasCarencia: numParcelasCarenciaLocal,
       carenciaDecrescente: aplicarRegraCanopus ? parcelasCarencia : 0,
     });
   };
@@ -1027,8 +1037,16 @@ export default function SimuladorNormal() {
                                  <span className="text-slate-500 text-xs">Parcela 1 (no ato):</span>
                                  <span className="text-slate-400 text-xs line-through">Já paga</span>
                                </div>
+                               {/* Parcelas na carência (2 a 1+carência): sem desconto */}
+                               {resultado.numParcelasCarencia > 0 && (
+                                 <div className="flex justify-between items-center px-3 py-2">
+                                   <span className="text-slate-500 text-xs">Parcelas 2 a {1 + resultado.numParcelasCarencia} (carência):</span>
+                                   <span className="font-bold text-slate-600">{formatCurrency(resultado.parcelaCarenciaValor)}</span>
+                                 </div>
+                               )}
+                               {/* Parcelas após carência até 10 */}
                                <div className="flex justify-between items-center px-3 py-2">
-                                 <span className="text-purple-700">Parcelas 2 a 10:</span>
+                                 <span className="text-purple-700">Parcelas {1 + resultado.numParcelasCarencia + 1} a 10:</span>
                                  <span className="font-bold text-purple-900">{formatCurrency(resultado.novaParcela)}</span>
                                </div>
                                {resultado.novaParcelaMeio !== null && (
