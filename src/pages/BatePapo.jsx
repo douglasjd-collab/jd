@@ -1355,9 +1355,9 @@ export default function BatePapo() {
                                      </DropdownMenu>
                                      </div>
                                      {mostrarBadge && (
-                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0 ml-auto">
-                                       {naoLidas > 0 ? naoLidas : '!'}
-                                     </span>
+                                       <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0 ml-auto">
+                                         {naoLidas > 0 ? naoLidas : '!'}
+                                       </span>
                                      )}
                                      </div>
                                      );
