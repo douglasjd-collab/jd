@@ -778,19 +778,13 @@ export default function BatePapo() {
 
   // Helper: detectar se é grupo
   const isGrupo = (c) => {
-    const telOriginal = (c.cliente_telefone || '');
+    const tel = (c.cliente_telefone || '');
     const wid = (c.whatsapp_id || '');
-    const tel = telOriginal.replace(/\D/g, '');
     return (
+      tel.includes('@g.us') ||
+      tel.includes('@broadcast') ||
       wid.includes('@g.us') ||
-      wid.includes('@broadcast') ||
-      telOriginal.includes('@g.us') ||
-      telOriginal.includes('@broadcast') ||
-      // Grupos da Evolution têm whatsapp_id com formato: número-número@g.us ou só @g.us
-      // Também podem ter o ID no formato 120363xxxxx-xxxxxxx (com hífen no meio)
-      /^\d{10,}-\d+$/.test(wid) ||
-      // Número com mais de 13 dígitos (grupos no Brasil)
-      (tel.length > 13 && !telOriginal.includes('@'))
+      wid.includes('@broadcast')
     );
   };
 
@@ -839,12 +833,11 @@ export default function BatePapo() {
   // Conversas válidas — exclui grupos, broadcast e LID (apenas contatos individuais)
   const conversasValidas = React.useMemo(() => conversas.filter(c => {
     if (!c || !c.id || !c.cliente_telefone) return false;
-    // Excluir grupos detectados pelo isGrupo
     if (isGrupo(c)) return false;
     const tel = (c.cliente_telefone || '').replace(/\D/g, '');
     if (c.cliente_telefone?.includes('@lid') || tel.startsWith('lid_')) return false;
     return tel.length >= 8;
-  }), [conversas]);
+  }), [conversas, isGrupo]);
 
   // Verifica se ainda há atendente ativo (dentro dos 10 minutos)
   const atendenteDentroDoTempo = (c) => {
@@ -895,8 +888,10 @@ export default function BatePapo() {
     }
   }, [filtroStatus, conversasValidas, naoLidasPorConversa]);
 
-  const conversasFiltradas = (filtroStatus === 'grupos' ? conversas : conversasValidas)
+  const conversasFiltradas = conversas
     .filter(c => {
+      if (!c || !c.id || !c.cliente_telefone) return false;
+
       // Aplicar busca primeiro
       if (searchConversas) {
         const match = 
