@@ -91,8 +91,8 @@ export default function BatePapo() {
   const selecionarConversa = async (conversa, forcarSync = true) => {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
-    // Zerar contador de não lidas ao abrir a conversa
-    setNaoLidasPorConversa(prev => ({ ...prev, [conversa.id]: 0 }));
+    // NÃO zerar contador aqui — a conversa deve permanecer no filtro "Esperando"
+    // até que o atendente envie uma mensagem de resposta
     
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
@@ -439,12 +439,8 @@ export default function BatePapo() {
       );
       console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
       const ordenadas = [...msgs].reverse();
-      const naoLidas = ordenadas.filter(m => m.remetente === 'cliente' && m.status !== 'lida');
-      if (naoLidas.length > 0) {
-        await Promise.all(naoLidas.map(msg => 
-          base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {})
-        ));
-      }
+      // NÃO marcar mensagens como lidas automaticamente ao abrir a conversa
+      // A conversa deve permanecer em "Esperando" até o atendente responder
       return ordenadas;
     },
     staleTime: 5000,
