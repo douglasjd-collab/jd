@@ -835,7 +835,7 @@ export default function BatePapo() {
   const contadores = {
     todas: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length,
     espera: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente')).length,
-    ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.ultimo_remetente === 'vendedor' && naoLidasPorConversa[c.id] === 0).length,
+    ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.ultimo_remetente === 'vendedor').length,
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
@@ -872,7 +872,7 @@ export default function BatePapo() {
         if (c.status !== 'ativa') return false;
         return (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
       }
-      if (filtroStatus === 'ativa') return c.status === 'ativa' && c.ultimo_remetente === 'vendedor' && !naoLidasPorConversa[c.id]; // Vendedor respondeu e nenhuma não lida
+      if (filtroStatus === 'ativa') return c.status === 'ativa' && c.ultimo_remetente === 'vendedor'; // Vendedor respondeu → Em Atendimento
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada';
       if (filtroStatus === 'meu') return c.responsavel_id === (user?.colaborador_id || user?.id) && naoLidasPorConversa[c.id] === 0;
