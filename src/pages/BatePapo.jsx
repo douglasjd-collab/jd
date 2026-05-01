@@ -1277,9 +1277,14 @@ export default function BatePapo() {
                            <div className="jd-conversation-text flex-1 min-w-0">
                              {/* Linha 1: nome + hora + menu */}
                              <div className="flex items-center justify-between gap-2 min-w-0">
-                               <p className="jd-conversation-name flex-1 min-w-0">
-                                 {nome}
-                               </p>
+                               <div className="flex-1 min-w-0">
+                                 <p className="jd-conversation-name">
+                                   {nome}
+                                 </p>
+                                 <p className="jd-conversation-message">
+                                   {ultimaMsg}
+                                 </p>
+                               </div>
                                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                              <p className="text-[10px] text-slate-500 whitespace-nowrap">{hora}</p>
                              <DropdownMenu>
@@ -1351,19 +1356,11 @@ export default function BatePapo() {
                                </div>
                                      </div>
                                      </div>
-
-                                     {/* Linha 2: última mensagem + badge */}
-                                     <div className="flex items-center justify-between gap-1 min-w-0">
-                                     <p className="jd-conversation-message">
-                                     {ultimaMsg}
-                                     </p>
                                      {mostrarBadge && (
-                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0 ml-auto">
-                                     {naoLidas > 0 ? naoLidas : '!'}
-                                     </span>
+                                       <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0 ml-auto">
+                                         {naoLidas > 0 ? naoLidas : '!'}
+                                       </span>
                                      )}
-                                     </div>
-                                     </div>
                                      );
                                      })
                                      )}
