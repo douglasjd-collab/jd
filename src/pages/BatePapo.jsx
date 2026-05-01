@@ -1,4 +1,3 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -1178,107 +1177,107 @@ export default function BatePapo() {
 
                       return (
                         <div
-                          key={c.id}
-                          className={classNames(
-                            "flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition cursor-pointer border-b border-slate-100 last:border-0",
-                            conversaSelecionada?.id === c.id
-                              ? "bg-blue-50"
-                              : naoLidas > 0
-                              ? "bg-white hover:bg-slate-50"
-                              : "bg-white hover:bg-slate-50"
-                          )}
-                          onClick={() => selecionarConversa(c)}
-                        >
-                          {/* Avatar */}
-                          <div className="relative flex-shrink-0">
-                            <AvatarContato
-                              contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
-                              className="h-11 w-11"
-                            />
-                          </div>
+                           key={c.id}
+                           className={classNames(
+                             "flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-hidden",
+                             conversaSelecionada?.id === c.id
+                               ? "bg-blue-50"
+                               : naoLidas > 0
+                               ? "bg-white hover:bg-slate-50"
+                               : "bg-white hover:bg-slate-50"
+                           )}
+                           onClick={() => selecionarConversa(c)}
+                         >
+                           {/* Avatar com ponto status */}
+                           <div className="relative flex-shrink-0">
+                             <AvatarContato
+                               contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
+                               className="h-11 w-11"
+                             />
+                             <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-1.5 border-white ${statusColor}`} />
+                           </div>
 
-                          {/* Conteúdo */}
-                          <div className="flex flex-1 flex-col min-w-0 gap-0.5">
-                            {/* Linha 1: ícone chat + ponto status + nome + hora */}
-                            <div className="flex items-center justify-between gap-1">
-                              <div className="flex items-center gap-1 min-w-0">
-                                <MessageCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                                <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${statusColor}`} />
-                                <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
-                                  {nome}
-                                </p>
-                              </div>
-                              <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-                                      <MoreVertical className="h-3.5 w-3.5" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                      <Contact className="mr-2 h-3.5 w-3.5" />
-                                      {contatosWhatsapp[c.id]?.id ? 'Editar nome no CRM' : 'Salvar no CRM'}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                      <Pencil className="mr-2 h-3.5 w-3.5" />
-                                      Alterar nome do contato
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
-                                      <Tag className="mr-2 h-3.5 w-3.5" />
-                                      Adicionar tag
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
-                                      <Clock className="mr-2 h-3.5 w-3.5" />
-                                      Criar tarefa
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
-                                      <Star className="mr-2 h-3.5 w-3.5" />
-                                      Marcar como favorito
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-red-600 focus:text-red-600"
-                                      onClick={async () => {
-                                        if (confirm('Excluir esta conversa e todas as mensagens?')) {
-                                          const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
-                                          for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
-                                          await base44.entities.ConversaWhatsapp.delete(c.id);
-                                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                                          queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
-                                          if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
-                                          toast.success('Conversa excluída');
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                      Excluir conversa
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
+                           {/* Conteúdo - agora com layout flexível */}
+                           <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
+                             {/* Linha 1: ícone + nome + hora (em uma linha) */}
+                             <div className="flex items-baseline justify-between gap-1.5 min-w-0">
+                               <div className="flex items-baseline gap-1 min-w-0">
+                                 <MessageCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                                 <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
+                                   {nome}
+                                 </p>
+                               </div>
+                               <p className="text-[11px] text-slate-400 flex-shrink-0">{hora}</p>
+                             </div>
 
-                            {/* Linha 2: última mensagem */}
-                            <p className={`line-clamp-1 text-xs ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
-                              {ultimaMsg}
-                            </p>
+                             {/* Linha 2: última mensagem (truncada) */}
+                             <p className={`line-clamp-1 text-xs ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                               {ultimaMsg}
+                             </p>
 
-                            {/* Linha 3: hora + badge não lidas com contador verde */}
-                            <div className="flex items-center justify-between gap-2 mt-0.5">
-                              <p className="text-[11px] text-slate-400">{hora}</p>
-                              {mostrarBadge && (
-                                <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                                  <span style={{ backgroundColor: '#10B981', minWidth: '22px', height: '22px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none">
-                                    {naoLidas > 0 ? naoLidas : '!'}
-                                  </span>
-                                  <span className="text-[10px] text-emerald-700 font-medium">
-                                    {naoLidas > 0 ? `${naoLidas} ${naoLidas === 1 ? 'mensagem' : 'mensagens'}` : 'Esperando'}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                             {/* Linha 3: badge em destaque */}
+                             <div className="flex items-center justify-between gap-2 mt-0.5">
+                               {mostrarBadge && (
+                                 <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
+                                   <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none">
+                                     {naoLidas > 0 ? naoLidas : '!'}
+                                   </span>
+                                   <span className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">
+                                     {naoLidas > 0 ? `${naoLidas} msg` : 'Esperando'}
+                                   </span>
+                                 </div>
+                               )}
+                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                                 <DropdownMenu>
+                                   <DropdownMenuTrigger asChild>
+                                     <button className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 -mr-1">
+                                       <MoreVertical className="h-3 w-3" />
+                                     </button>
+                                   </DropdownMenuTrigger>
+                                   <DropdownMenuContent align="end" className="w-48">
+                                     <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                       <Contact className="mr-2 h-3.5 w-3.5" />
+                                       {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                       <Pencil className="mr-2 h-3.5 w-3.5" />
+                                       Alterar nome
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
+                                       <Tag className="mr-2 h-3.5 w-3.5" />
+                                       Adicionar tag
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
+                                       <Clock className="mr-2 h-3.5 w-3.5" />
+                                       Criar tarefa
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
+                                       <Star className="mr-2 h-3.5 w-3.5" />
+                                       Favoritar
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem
+                                       className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                       onClick={async () => {
+                                         if (confirm('Excluir esta conversa e todas as mensagens?')) {
+                                           const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
+                                           for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
+                                           await base44.entities.ConversaWhatsapp.delete(c.id);
+                                           queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                           queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
+                                           if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
+                                           toast.success('Conversa excluída');
+                                         }
+                                       }}
+                                     >
+                                       <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                       Excluir
+                                     </DropdownMenuItem>
+                                   </DropdownMenuContent>
+                                 </DropdownMenu>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
                       );
                     })
                   )}
