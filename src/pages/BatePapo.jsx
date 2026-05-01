@@ -1128,57 +1128,57 @@ export default function BatePapo() {
               {/* Status badges com abas */}
               <div className="px-4 space-y-2">
                 {/* Primeira linha - Todos, Esperando, Em Atend., Finalizados, Grupos */}
-                <div className="flex items-center justify-start gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <button onClick={() => setFiltroStatus('todas')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`w-10 h-10 rounded flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'todas' ? 'bg-slate-900 ring-2 ring-slate-400' : 'bg-slate-700'}`}>
+                    <div className={`w-12 h-12 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'todas' ? 'bg-slate-500 ring-2 ring-slate-300' : 'bg-slate-400'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length}
                     </div>
-                    <span className="text-[11px] text-slate-700 font-medium">Todos</span>
+                    <span className="text-[11px] text-slate-600 font-medium">Todos</span>
                   </button>
 
                   <button onClick={() => setFiltroStatus('espera')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'espera' ? 'bg-red-500 ring-2 ring-red-300' : 'bg-red-500'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'espera' ? 'bg-red-600 ring-2 ring-red-300' : 'bg-red-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length}
                     </div>
-                    <span className="text-[11px] text-slate-700 font-medium">Esperando</span>
+                    <span className="text-[11px] text-slate-600 font-medium">Esperando</span>
                   </button>
 
                   <button onClick={() => setFiltroStatus('ativa')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`w-10 h-10 rounded flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'ativa' ? 'bg-slate-500 ring-2 ring-slate-300' : 'bg-slate-400'}`}>
+                    <div className={`w-12 h-12 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'ativa' ? 'bg-slate-500 ring-2 ring-slate-300' : 'bg-slate-400'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length}
                     </div>
-                    <span className="text-[11px] text-slate-700 font-medium">Em Atend.</span>
+                    <span className="text-[11px] text-slate-600 font-medium">Em Atend.</span>
                   </button>
 
                   <button onClick={() => setFiltroStatus('encerrada')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`w-10 h-10 rounded flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'encerrada' ? 'bg-slate-500 ring-2 ring-slate-300' : 'bg-slate-400'}`}>
+                    <div className={`w-12 h-12 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'encerrada' ? 'bg-slate-500 ring-2 ring-slate-300' : 'bg-slate-400'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
                     </div>
-                    <span className="text-[11px] text-slate-700 font-medium">Finalizados</span>
+                    <span className="text-[11px] text-slate-600 font-medium">Finalizados</span>
                   </button>
 
                   <button onClick={() => setFiltroStatus('grupos')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'grupos' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'grupos' ? 'bg-emerald-600 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
                       {conversas.filter(c => isGrupo(c)).length}
                     </div>
-                    <span className="text-[11px] text-slate-700 font-medium">Grupos</span>
+                    <span className="text-[11px] text-slate-600 font-medium">Grupos</span>
                   </button>
                 </div>
 
                 {/* Segunda linha - Responsável, Transferidos */}
-                <div className="flex items-center justify-start gap-2">
+                <div className="flex items-center gap-2">
                   <button onClick={() => setFiltroStatus('meu')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'meu' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'meu' ? 'bg-emerald-600 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length}
                     </div>
-                    <span className="text-[11px] text-slate-700 font-medium">Responsável</span>
+                    <span className="text-[11px] text-slate-600 font-medium">Responsável</span>
                   </button>
 
                   <button onClick={() => setFiltroStatus('transferida')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'transferida' ? 'bg-purple-500 ring-2 ring-purple-300' : 'bg-purple-500'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'transferida' ? 'bg-purple-600 ring-2 ring-purple-300' : 'bg-purple-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
                     </div>
-                    <span className="text-[11px] text-slate-700 font-medium">Transferidos</span>
+                    <span className="text-[11px] text-slate-600 font-medium">Transferidos</span>
                   </button>
                 </div>
               </div>
