@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) {
   const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url || null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
@@ -317,7 +317,14 @@ export default function MensagemItem({ mensagem, conversaId }) {
             : 'bg-white text-slate-900 rounded-bl-md border border-slate-200'
         }`}
       >
-        {!isVendedor && mensagem.usuario_nome && (
+        {/* Nome do remetente em grupos */}
+        {isGrupo && !isVendedor && mensagem.remetente_nome && (
+          <p className="text-xs font-bold mb-1 text-blue-600">{mensagem.remetente_nome}</p>
+        )}
+        {isGrupo && isVendedor && mensagem.remetente_nome && (
+          <p className="text-xs font-bold mb-1 text-white/70">{mensagem.remetente_nome}</p>
+        )}
+        {!isGrupo && !isVendedor && mensagem.usuario_nome && (
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
         <div className="mb-1">{renderConteudo()}</div>

@@ -1566,7 +1566,7 @@ export default function BatePapo() {
                                     <div className="flex-1 h-px bg-slate-300/50" />
                                   </div>
                                 )}
-                                <MensagemItem mensagem={msg} conversaId={conversaSelecionada?.id} />
+                                <MensagemItem mensagem={msg} conversaId={conversaSelecionada?.id} isGrupo={isGrupo(conversaSelecionada)} />
                               </React.Fragment>
                             );
                           })}

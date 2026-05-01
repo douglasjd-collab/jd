@@ -1,0 +1,103 @@
+{
+  "name": "MensagemWhatsapp",
+  "type": "object",
+  "properties": {
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da conversa"
+    },
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "remetente": {
+      "type": "string",
+      "enum": [
+        "cliente",
+        "vendedor"
+      ],
+      "description": "Quem enviou a mensagem"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio (se vendedor)"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio (se vendedor)"
+    },
+    "remetente_nome": {
+      "type": "string",
+      "description": "Nome/n\u00famero do remetente (especialmente em grupos)"
+    },
+    "tipo_conteudo": {
+      "type": "string",
+      "enum": [
+        "texto",
+        "imagem",
+        "audio",
+        "video",
+        "pdf",
+        "documento"
+      ],
+      "description": "Tipo de conte\u00fado da mensagem"
+    },
+    "texto": {
+      "type": "string",
+      "description": "Conte\u00fado de texto da mensagem"
+    },
+    "arquivo_url": {
+      "type": "string",
+      "description": "URL do arquivo (imagem, \u00e1udio, v\u00eddeo, PDF)"
+    },
+    "arquivo_nome": {
+      "type": "string",
+      "description": "Nome original do arquivo"
+    },
+    "arquivo_tamanho": {
+      "type": "number",
+      "description": "Tamanho do arquivo em bytes"
+    },
+    "whatsapp_message_id": {
+      "type": "string",
+      "description": "ID da mensagem no WhatsApp/Evolution"
+    },
+    "data_envio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora de envio"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "enviada",
+        "entregue",
+        "lida",
+        "erro"
+      ],
+      "default": "pendente",
+      "description": "Status da mensagem"
+    }
+  },
+  "required": [
+    "conversa_id",
+    "empresa_id",
+    "remetente",
+    "tipo_conteudo"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return true; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin';"
+    }
+  }
+}

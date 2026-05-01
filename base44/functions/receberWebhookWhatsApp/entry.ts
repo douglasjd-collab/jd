@@ -327,11 +327,19 @@ async function processarWebhook(req, rawBody, base44) {
     }
 
     // Salvar mensagem do grupo
+    // Determinar nome do remetente: para mensagens de outros participantes, usar participant JID ou pushName
+    const participantJid = key.participant || msgData.participant || '';
+    const participantNumero = participantJid.replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+    const remetenteNomeGrupo = fromMe
+      ? (msgData.pushName || 'Você')
+      : (msgData.pushName || msgData.senderName || (participantNumero ? `+${participantNumero}` : 'Participante'));
+
     const existentesGrupo = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ whatsapp_message_id: messageId });
     if (existentesGrupo.length === 0) {
       await base44.asServiceRole.entities.MensagemWhatsapp.create({
         conversa_id: conversaGrupo.id, empresa_id: empresaId,
         remetente: fromMe ? 'vendedor' : 'cliente',
+        remetente_nome: remetenteNomeGrupo,
         tipo_conteudo: tipoG, texto: conteudoG,
         arquivo_url: arquivoUrlG || null,
         whatsapp_message_id: messageId,
