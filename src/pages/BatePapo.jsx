@@ -863,7 +863,7 @@ export default function BatePapo() {
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
-    grupos: conversasValidas.filter(c => isGrupo(c)).length,
+    grupos: conversas.filter(c => isGrupo(c)).length,
   };
 
   // Debug temporário
@@ -877,7 +877,7 @@ export default function BatePapo() {
     }
   }, [filtroStatus, conversasValidas, naoLidasPorConversa]);
 
-  const conversasFiltradas = conversasValidas
+  const conversasFiltradas = (filtroStatus === 'grupos' ? conversas : conversasValidas)
     .filter(c => {
       // Aplicar busca primeiro
       if (searchConversas) {
