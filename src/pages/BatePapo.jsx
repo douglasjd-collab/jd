@@ -1506,7 +1506,7 @@ export default function BatePapo() {
                           <MoreVertical className="h-4 w-4 text-slate-500" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
                           <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
                             <Contact className="mr-2 h-3.5 w-3.5" />
                             {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
