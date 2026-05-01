@@ -1320,7 +1320,7 @@ export default function BatePapo() {
                                      </div>
                                    )}
                                  </div>
-                                 {atendenteDentroDoTempo(c) && c.responsavel_nome && (
+                                 {c.responsavel_nome && (
                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full border border-blue-200 w-fit">
                                      <UserPlus className="h-2.5 w-2.5 text-blue-500 flex-shrink-0" />
                                      <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[110px]">
