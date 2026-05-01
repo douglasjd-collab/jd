@@ -1300,9 +1300,14 @@ export default function BatePapo() {
 
                            {/* Conteúdo - agora com layout flexível */}
                            <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
-                             {/* Linha 1: ícone + nome + hora (em uma linha) */}
-                             <div className="flex items-baseline justify-between gap-1.5 min-w-0">
-                               <div className="flex items-baseline gap-1 min-w-0">
+                             {/* Linha 1: nome + hora (em uma linha) */}
+                             <div className="flex items-center justify-between gap-1.5 min-w-0">
+                               <div className="flex items-center gap-2 min-w-0 flex-1">
+                                 {naoLidas > 0 && (
+                                   <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none flex-shrink-0">
+                                     {naoLidas}
+                                   </span>
+                                 )}
                                  <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
                                    {nome}
                                  </p>
@@ -1315,21 +1320,9 @@ export default function BatePapo() {
                                {ultimaMsg}
                              </p>
 
-                             {/* Linha 3: badges + menu */}
+                             {/* Linha 3: status atendimento + menu */}
                              <div className="flex items-start justify-between gap-1 mt-0.5 group">
                                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                                 <div className="flex flex-wrap gap-1">
-                                   {mostrarBadge && (
-                                     <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
-                                       <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none">
-                                         {naoLidas > 0 ? naoLidas : '!'}
-                                       </span>
-                                       <span className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">
-                                         {naoLidas > 0 ? `${naoLidas} msg` : 'Esperando'}
-                                       </span>
-                                     </div>
-                                   )}
-                                 </div>
                                  {(estaEmAtendimentoFiltro(c) || atendenteDentroDoTempo(c)) && (c.responsavel_nome || c.usuario_responsavel_nome) && (
                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full border border-blue-200 w-fit">
                                      <UserPlus className="h-2.5 w-2.5 text-blue-500 flex-shrink-0" />
