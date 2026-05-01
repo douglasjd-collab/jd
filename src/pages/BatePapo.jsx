@@ -1157,7 +1157,7 @@ export default function BatePapo() {
               </div>
             </CardHeader>
 
-            <CardContent className="flex flex-1 flex-col gap-3 pt-0 overflow-hidden">
+            <CardContent className="flex flex-1 flex-col gap-2 pt-0 overflow-hidden">
               {/* Seletor de empresa — apenas super_admin */}
               {isSuperAdmin && empresas.length > 0 && (
                 <Select value={empresaId || ''} onValueChange={(val) => {
@@ -1203,7 +1203,7 @@ export default function BatePapo() {
               </div>
 
               {/* Abas estilo da imagem: contador em cima, label embaixo */}
-              <div className="flex flex-wrap gap-x-1 gap-y-2">
+              <div className="flex flex-wrap gap-x-1.5 gap-y-1">
                 {[
                   { value: 'todas', label: 'Todos', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
                   { value: 'espera', label: 'Esperando', cor: 'bg-red-500', corAtiva: 'bg-red-600' },
@@ -1219,12 +1219,12 @@ export default function BatePapo() {
                     <button
                       key={tab.value}
                       onClick={() => setFiltroStatus(tab.value)}
-                      className="flex flex-col items-center gap-1 min-w-[46px]"
+                      className="flex flex-col items-center gap-0.5 min-w-fit px-2"
                     >
-                      <span className={`inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold px-2 py-0.5 min-w-[26px] transition-all ${ativa ? tab.corAtiva : tab.cor} ${ativa ? 'ring-4 ring-offset-2 ring-current shadow-lg scale-110' : 'opacity-70'}`}>
+                      <span className={`inline-flex items-center justify-center rounded-full text-white text-[10px] font-bold px-1.5 py-0.5 min-w-[22px] transition-all ${ativa ? tab.corAtiva : tab.cor} ${ativa ? 'ring-3 ring-offset-1 ring-current shadow-md scale-105' : 'opacity-70'}`}>
                         {count}
                       </span>
-                      <span className={`text-[10px] font-medium whitespace-nowrap transition-all border-b-2 px-1 ${ativa ? 'text-slate-900 border-current font-bold' : 'text-slate-500 border-transparent'}`}>
+                      <span className={`text-[9px] font-medium whitespace-nowrap transition-all border-b-2 px-0.5 ${ativa ? 'text-slate-900 border-current font-bold' : 'text-slate-500 border-transparent'}`}>
                         {tab.label}
                       </span>
                     </button>
