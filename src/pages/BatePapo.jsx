@@ -1402,43 +1402,6 @@ export default function BatePapo() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-blue-600 hover:text-blue-700 hover:border-blue-300"
-                          onClick={async () => {
-                            console.log(`🔄 Sincronizando mensagens para ${conversaSelecionada.cliente_telefone}...`);
-                            try {
-                              const resp = await base44.functions.invoke('importarMensagensConversa', {
-                                empresa_id: empresaId,
-                                telefone: conversaSelecionada.cliente_telefone,
-                                conversa_id: conversaSelecionada.id
-                              });
-                              toast.success(`✅ ${resp?.data?.message || 'Mensagens sincronizadas!'}`);
-                              queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-                              setTimeout(() => refetchMensagens?.(), 100);
-                            } catch (e) {
-                              toast.error('Erro ao sincronizar: ' + e.message);
-                            }
-                          }}
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          Carregar Mensagens
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Importar histórico completo do WhatsApp</TooltipContent>
-                    </Tooltip>
-
-                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium">
-                      <Tag className="h-3.5 w-3.5" />
-                      Criar Proposta
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium" onClick={() => setCriarTarefaOpen(true)}>
-                      <Clock className="h-3.5 w-3.5" />
-                      Criar Tarefa
-                    </Button>
                     <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300" onClick={async () => {
                                       try {
                                         await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'arquivada' });
@@ -1461,6 +1424,35 @@ export default function BatePapo() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
+                          <DropdownMenuItem 
+                            onClick={async () => {
+                              console.log(`🔄 Sincronizando mensagens para ${conversaSelecionada.cliente_telefone}...`);
+                              try {
+                                const resp = await base44.functions.invoke('importarMensagensConversa', {
+                                  empresa_id: empresaId,
+                                  telefone: conversaSelecionada.cliente_telefone,
+                                  conversa_id: conversaSelecionada.id
+                                });
+                                toast.success(`✅ ${resp?.data?.message || 'Mensagens sincronizadas!'}`);
+                                queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+                                setTimeout(() => refetchMensagens?.(), 100);
+                              } catch (e) {
+                                toast.error('Erro ao sincronizar: ' + e.message);
+                              }
+                            }}
+                          >
+                            <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                            Carregar Mensagens
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Tag className="mr-2 h-3.5 w-3.5" />
+                            Criar Proposta
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setCriarTarefaOpen(true)}>
+                            <Clock className="mr-2 h-3.5 w-3.5" />
+                            Criar Tarefa
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
                             <Contact className="mr-2 h-3.5 w-3.5" />
                             {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
@@ -1476,10 +1468,6 @@ export default function BatePapo() {
                           }}>
                             <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
                             Reabrir conversa
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTransferirModal(conversaSelecionada)}>
-                           <UserPlus className="mr-2 h-3.5 w-3.5" />
-                           Transferir atendimento
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
                             <BellOff className="mr-2 h-3.5 w-3.5" />
