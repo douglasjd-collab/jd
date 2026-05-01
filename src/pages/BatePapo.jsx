@@ -973,11 +973,12 @@ export default function BatePapo() {
             min-height: 0;
           }
           .jd-conversation-card {
-            height: 80px;
-            padding: 8px 12px;
+            height: 72px;
+            padding: 6px 8px;
             display: flex;
             align-items: flex-start;
             overflow: hidden;
+            gap: 8px;
           }
         `}</style>
         <NovaConversaModal
@@ -1231,13 +1232,13 @@ export default function BatePapo() {
                             </div>
 
                            {/* Conteúdo */}
-                           <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
+                           <div className="flex flex-1 flex-col min-w-0 gap-0 overflow-hidden">
                              {/* Linha 1: nome + hora + menu */}
-                             <div className="flex items-center justify-between gap-1 min-w-0 flex-1">
-                               <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
+                             <div className="flex items-center justify-between gap-1 min-w-0 flex-1 h-5">
+                               <p className={`truncate text-xs text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
                                  {nome}
                                </p>
-                               <p className="text-xs text-slate-500 flex-shrink-0 whitespace-nowrap">{hora}</p>
+                               <p className="text-[10px] text-slate-500 flex-shrink-0 whitespace-nowrap">{hora}</p>
                                <DropdownMenu>
                                  <DropdownMenuTrigger asChild>
                                    <button className="p-0.5 hover:bg-slate-100 rounded opacity-100 flex-shrink-0">
@@ -1308,12 +1309,12 @@ export default function BatePapo() {
                                      </div>
 
                                      {/* Linha 2: última mensagem + badge */}
-                                     <div className="flex items-center justify-between gap-2 min-w-0">
-                                     <p className={`truncate text-xs flex-1 ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                                     <div className="flex items-center justify-between gap-1 min-w-0 h-4">
+                                     <p className={`truncate text-[10px] flex-1 ${mostrarBadge ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
                                      {ultimaMsg}
                                      </p>
                                      {mostrarBadge && (
-                                     <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none flex-shrink-0">
+                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0">
                                      {naoLidas > 0 ? naoLidas : '!'}
                                      </span>
                                      )}
