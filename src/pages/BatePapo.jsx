@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -1059,128 +1060,42 @@ export default function BatePapo() {
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {/* Coluna esquerda - Conversas */}
           <Card className="jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full" style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh' }}>
-            <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-3 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <div>
-                  <p className="text-sm font-semibold leading-tight">JD Messenger</p>
-                  <p className="text-[11px] text-slate-500">Central de conversas</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 flex-wrap justify-end">
-                {/* Consolidar duplicadas */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
-                      onClick={async () => {
-                        setCorrigindo(true);
-                        try {
-                          const resp = await base44.functions.invoke('consolidarConversasDuplicadas', { empresa_id: empresaId });
-                          if (resp?.data?.ok) { toast.success(resp.data.mensagem); refetchConversas(); }
-                        } catch (e) { toast.error('Erro: ' + e.message); } finally { setCorrigindo(false); }
-                      }}
-                      disabled={corrigindo}>
-                      {corrigindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-orange-500" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Consolidar duplicadas</p></TooltipContent>
-                </Tooltip>
-
-                {/* Importar todos contatos */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
-                      onClick={sincronizarTodosContatosEvolution} disabled={sincronizando}>
-                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5 text-green-600" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Importar todos contatos</p></TooltipContent>
-                </Tooltip>
-
-                {/* Sincronizar histórico completo */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
-                      onClick={sincronizarHistoricoTodasConversas}
-                      disabled={sincronizando}>
-                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5 text-purple-600" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>🔄 Sincronizar histórico TODAS conversas</p></TooltipContent>
-                </Tooltip>
-
-                {/* Sincronizar nomes do WhatsApp */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
-                      onClick={async () => {
-                        setSincronizando(true);
-                        try {
-                          const resp = await base44.functions.invoke('sincronizarNomesContatos', { empresa_id: empresaId });
-                          if (resp?.data?.ok) {
-                            toast.success(`✅ ${resp.data.mensagem}`);
-                            refetchConversas();
-                          } else toast.error('Erro ao sincronizar nomes');
-                        } catch (e) { toast.error('Erro: ' + e.message); } finally { setSincronizando(false); }
-                      }}
-                      disabled={sincronizando}>
-                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Contact className="h-3.5 w-3.5 text-indigo-600" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Sincronizar nomes do WhatsApp</p></TooltipContent>
-                </Tooltip>
-
-                {/* Sincronizar fotos */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
-                      onClick={async () => {
-                        setSincronizando(true);
-                        try {
-                          const resp = await base44.functions.invoke('sincronizarFotosContatos', { empresa_id: empresaId });
-                          if (resp?.data?.ok) { toast.success(`✅ ${resp.data.fotosAtualizadas}/${resp.data.totalContatos} fotos sincronizadas`); refetchConversas(); }
-                          else toast.error('Erro ao sincronizar fotos');
-                        } catch (e) { toast.error('Erro: ' + e.message); } finally { setSincronizando(false); }
-                      }}
-                      disabled={sincronizando}>
-                      {sincronizando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5 text-blue-600" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Sincronizar fotos</p></TooltipContent>
-                </Tooltip>
-
-                {/* Refresh conversas */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-slate-200 flex-shrink-0"
-                      onClick={sincronizarChats} disabled={sincronizando}>
-                      <RefreshCw className={`h-3.5 w-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom"><p>Sincronizar conversas</p></TooltipContent>
-                </Tooltip>
-
-                {/* 🔴 Limpar histórico */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="icon" variant="destructive"
-                      className="h-8 w-8 rounded-full flex-shrink-0"
-                      onClick={limparHistoricoCompleto}
-                      disabled={limpandoTudo || sincronizando}>
-                      {limpandoTudo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-red-700 text-white"><p>🔴 Limpar histórico completo</p></TooltipContent>
-                </Tooltip>
-
-                {/* Novo */}
-                <Button size="default" className="gap-1.5 rounded-full px-3 flex-shrink-0" onClick={() => setNovaConversaOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  <span className="text-sm font-semibold">Novo</span>
+            <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
+              <p className="text-lg font-semibold">Conversas</p>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setNovaConversaOpen(true)}>
+                  <Plus className="h-5 w-5" />
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-8 w-8">
+                      <MoreVertical className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={sincronizarChats} disabled={sincronizando}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Sincronizar conversas
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={sincronizarTodosContatosEvolution} disabled={sincronizando}>
+                      <Users className="mr-2 h-4 w-4" />
+                      Importar contatos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={sincronizarHistoricoTodasConversas} disabled={sincronizando}>
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Sincronizar histórico
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={limparHistoricoCompleto} disabled={limpandoTudo} className="text-red-600">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Limpar histórico
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardHeader>
 
-            <CardContent className="flex flex-1 flex-col gap-2 pt-0 overflow-hidden flex-shrink-0">
+            <CardContent className="flex flex-1 flex-col gap-3 pt-3 px-4 overflow-hidden flex-shrink-0">
               {/* Seletor de empresa — apenas super_admin */}
               {isSuperAdmin && empresas.length > 0 && (
                 <Select value={empresaId || ''} onValueChange={(val) => {
@@ -1199,57 +1114,32 @@ export default function BatePapo() {
                   </SelectContent>
                 </Select>
               )}
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-                  <Input
-                    className="h-9 rounded-full bg-slate-50 pl-8 text-xs"
-                    placeholder="Buscar por nome, telefone..."
-                    value={searchConversas}
-                    onChange={(e) => setSearchConversas(e.target.value)}
-                  />
-                </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-9 w-9 rounded-full border-slate-200"
-                    >
-                      <Filter className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>Filtrar conversas</p>
-                  </TooltipContent>
-                </Tooltip>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
+                <Input
+                  className="h-9 rounded-full bg-slate-100 pl-10 text-sm border-0 placeholder:text-slate-500"
+                  placeholder="Pesquisar ou começar uma nova conve..."
+                  value={searchConversas}
+                  onChange={(e) => setSearchConversas(e.target.value)}
+                />
               </div>
 
-              {/* Abas estilo da imagem: contador em cima, label embaixo */}
-              <div className="flex flex-wrap gap-x-1.5 gap-y-1">
+              {/* Abas simples estilo WhatsApp */}
+              <div className="flex flex-wrap gap-2 px-4">
                 {[
-                  { value: 'todas', label: 'Todos', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
-                  { value: 'espera', label: 'Esperando', cor: 'bg-red-500', corAtiva: 'bg-red-600' },
-                  { value: 'ativa', label: 'Em Atend.', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
-                  { value: 'arquivada', label: 'Finalizados', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
-                  { value: 'grupos', label: 'Grupos', cor: 'bg-slate-600', corAtiva: 'bg-slate-700' },
-                  { value: 'meu', label: 'Responsável', cor: 'bg-emerald-500', corAtiva: 'bg-emerald-600' },
-                  { value: 'transferida', label: 'Transferidos', cor: 'bg-purple-500', corAtiva: 'bg-purple-600' },
+                  { value: 'todas', label: 'Tudo' },
+                  { value: 'espera', label: 'Não lidas' },
+                  { value: 'ativa', label: 'Favoritas' },
+                  { value: 'grupos', label: 'Grupos' },
                 ].map(tab => {
-                  const count = contadores[tab.value] || 0;
                   const ativa = filtroStatus === tab.value;
                   return (
                     <button
                       key={tab.value}
                       onClick={() => setFiltroStatus(tab.value)}
-                      className="flex flex-col items-center gap-0.5 min-w-fit px-2"
+                      className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${ativa ? 'bg-slate-200 border-slate-300 text-slate-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                     >
-                      <span className={`inline-flex items-center justify-center rounded-full text-white text-[10px] font-bold px-1.5 py-0.5 min-w-[22px] transition-all ${ativa ? tab.corAtiva : tab.cor} ${ativa ? 'ring-3 ring-offset-1 ring-current shadow-md scale-105' : 'opacity-70'}`}>
-                        {count}
-                      </span>
-                      <span className={`text-[9px] font-medium whitespace-nowrap transition-all border-b-2 px-0.5 ${ativa ? 'text-slate-900 border-current font-bold' : 'text-slate-500 border-transparent'}`}>
-                        {tab.label}
-                      </span>
+                      {tab.label}
                     </button>
                   );
                 })}
@@ -1291,62 +1181,39 @@ export default function BatePapo() {
                         <div
                            key={c.id}
                            className={classNames(
-                             "jd-conversation-card flex w-full items-start gap-2.5 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible",
+                             "jd-conversation-card flex w-full items-start gap-3 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible",
                              conversaSelecionada?.id === c.id
                                ? "bg-blue-50"
                                : naoLidas > 0
                                ? "bg-white hover:bg-slate-50"
                                : "bg-white hover:bg-slate-50"
-                           )}
-                           onClick={() => selecionarConversa(c)}
-                         >
-                           {/* Avatar com ponto status */}
-                           <div className="relative flex-shrink-0">
-                             <AvatarContato
-                               contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
-                               className="h-11 w-11"
-                             />
-                             {c.bloqueado ? (
-                               <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
-                                 <Lock className="w-2 h-2 text-white" />
-                               </span>
-                             ) : (
-                               <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-1.5 border-white ${statusColor}`} />
-                             )}
-                             {/* Badge API */}
-                             {c.tipo_conexao === 'meta_oficial' ? (
-                               <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] font-bold px-1 rounded-full leading-tight border border-white" title="API Oficial Meta">M</span>
-                             ) : (
-                               <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-[8px] font-bold px-1 rounded-full leading-tight border border-white" title="Evolution API">E</span>
-                             )}
-                           </div>
+                            )}
+                            onClick={() => selecionarConversa(c)}
+                          >
+                            {/* Avatar com ponto status */}
+                            <div className="relative flex-shrink-0">
+                              <AvatarContato
+                                contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
+                                className="h-12 w-12"
+                              />
+                              {c.bloqueado ? (
+                                <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
+                                  <Lock className="w-2 h-2 text-white" />
+                                </span>
+                              ) : (
+                                <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-1.5 border-white ${statusColor}`} />
+                              )}
+                            </div>
 
-                           {/* Conteúdo - agora com layout flexível */}
-                           <div className="flex flex-1 flex-col min-w-0 gap-1 overflow-hidden">
-                             {/* Linha 1: nome + coluna direita (hora/data + menu) */}
-                             <div className="flex items-start justify-between gap-2 min-w-0">
+                           {/* Conteúdo */}
+                           <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
+                             {/* Linha 1: nome + hora */}
+                             <div className="flex items-center justify-between gap-2 min-w-0">
                                <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
                                  {nome}
                                </p>
-                               <div className="flex items-start gap-1.5 flex-shrink-0">
-                                 {/* Coluna hora + data */}
-                                 <div className="flex flex-col items-end gap-0.5">
-                                   <p className="text-[11px] text-slate-400">{hora}</p>
-                                   <p className="text-[10px] text-slate-300">{new Date(c.data_ultima_mensagem || 0).toLocaleDateString('pt-BR', { month: '2-digit', day: '2-digit' })}</p>
-                                   {naoLidas > 0 && (
-                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[10px] font-bold leading-none mt-0.5">
-                                       {naoLidas}
-                                     </span>
-                                   )}
-                                 </div>
-                                 {/* Menu 3 pontinhos */}
-                                 <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <DropdownMenu>
-                                     <DropdownMenuTrigger asChild>
-                                       <button className="rounded-full p-0.5 text-slate-700 hover:bg-slate-100 hover:text-slate-900">
-                                         <MoreVertical className="h-4 w-4" />
-                                       </button>
-                                     </DropdownMenuTrigger>
+                               <p className="text-xs text-slate-500 flex-shrink-0">{hora}</p>
+                             </div>
                                    <DropdownMenuContent align="end" className="w-48">
                                      {!isGrupo(c) && (<>
                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
@@ -1405,36 +1272,23 @@ export default function BatePapo() {
                                        <Trash2 className="mr-2 h-3.5 w-3.5" />
                                        Excluir
                                      </DropdownMenuItem>
-                                   </DropdownMenuContent>
-                                   </DropdownMenu>
-                                   </div>
-                                   </div>
-                                   </div>
-
-                                   {/* Linha 2: última mensagem (2 linhas) */}
-                                   <p className={`line-clamp-2 text-xs leading-tight ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
-                                     {ultimaMsg}
-                                   </p>
-
-                                   {/* Linha 3: status atendimento */}
-                                   <div className="flex items-start justify-between gap-1 mt-0.5">
-                                   <div className="flex flex-col gap-1 flex-1 min-w-0">
-                                   {(estaEmAtendimentoFiltro(c) || atendenteDentroDoTempo(c)) && (c.responsavel_nome || c.usuario_responsavel_nome) && (
-                                   <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full border border-blue-200 w-fit">
-                                   <UserPlus className="h-2.5 w-2.5 text-blue-500 flex-shrink-0" />
-                                   <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[130px]">
-                                     {c.responsavel_nome || c.usuario_responsavel_nome}: atendendo
-                                   </span>
-                                   </div>
-                                   )}
-                                   </div>
-                                   </div>
-                                   </div>
-                                   </div>
-                                   );
-                                   })
-                                   )}
-                </div>
+                                   {/* Linha 2: última mensagem + badge */}
+                                   <div className="flex items-center justify-between gap-2 min-w-0">
+                                     <p className={`line-clamp-1 text-xs flex-1 ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                                       {ultimaMsg}
+                                     </p>
+                                     {naoLidas > 0 && (
+                                       <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none flex-shrink-0">
+                                         {naoLidas}
+                                       </span>
+                                     )}
+                                     </div>
+                                     </div>
+                                     </div>
+                                     );
+                                     })
+                                     )}
+                                     </div>
               </ScrollArea>
             </CardContent>
           </Card>
