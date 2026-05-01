@@ -195,10 +195,7 @@ async function processarWebhook(req, rawBody, base44) {
 
   console.log(`📨 Mensagem ${fromMe ? '(ENVIADA)' : '(RECEBIDA)'} | remoteJid: ${remoteJidOriginal} | msgId: ${messageId}`);
 
-  if (remoteJidOriginal.includes('@g.us')) {
-    console.log('⏭️ Grupo ignorado');
-    return;
-  }
+  const isGrupo = remoteJidOriginal.includes('@g.us');
 
   // Determinar empresa pela instância Evolution (cada empresa tem sua instância)
   let empresaId = '699696c2c9f5bffc2e67402b'; // fallback para JD Promotora
@@ -233,6 +230,89 @@ async function processarWebhook(req, rawBody, base44) {
   } else {
     empresaEvolutionUrl = Deno.env.get('EVOLUTION_API_URL');
     empresaEvolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+  }
+
+  // Para grupos: usar o JID completo como identificador
+  if (isGrupo) {
+    const grupoJid = remoteJidOriginal; // ex: 120363xxxx@g.us
+    const pushNameGrupo = msgData.pushName || msgData.senderName || pushName || 'Grupo';
+
+    // Buscar ou criar conversa do grupo
+    let conversaGrupo = null;
+    const convsGrupo = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+      empresa_id: empresaId,
+      whatsapp_id: grupoJid
+    }, '-data_ultima_mensagem', 1);
+
+    // Extrair conteúdo da mensagem do grupo
+    let tipoG = 'texto', conteudoG = '', arquivoUrlG = '';
+    if (message.conversation) conteudoG = message.conversation;
+    else if (message.extendedTextMessage?.text) conteudoG = message.extendedTextMessage.text;
+    else if (message.imageMessage) { tipoG = 'imagem'; conteudoG = message.imageMessage.caption || 'Imagem'; arquivoUrlG = message.imageMessage.url || ''; }
+    else if (message.audioMessage || message.pttMessage) { tipoG = 'audio'; conteudoG = 'Áudio'; }
+    else if (message.videoMessage) { tipoG = 'video'; conteudoG = message.videoMessage.caption || 'Vídeo'; }
+    else if (message.documentMessage) { tipoG = 'pdf'; conteudoG = message.documentMessage.title || 'Documento'; }
+    else conteudoG = JSON.stringify(message).substring(0, 200);
+
+    if (convsGrupo.length > 0) {
+      conversaGrupo = convsGrupo[0];
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversaGrupo.id, {
+        ultima_mensagem: conteudoG.substring(0, 200),
+        data_ultima_mensagem: new Date().toISOString(),
+        status: 'ativa',
+        ultimo_remetente: fromMe ? 'vendedor' : 'cliente',
+        instancia: instanceFinal,
+      });
+    } else {
+      // Buscar nome do grupo via Evolution
+      let nomeGrupo = pushNameGrupo;
+      try {
+        const evolutionUrl = empresaEvolutionUrl?.replace(/\/$/, '');
+        const evolutionKey = empresaEvolutionKey;
+        const evolutionInstance = instanceFinal || Deno.env.get('EVOLUTION_INSTANCE_NAME');
+        if (evolutionUrl && evolutionKey && evolutionInstance) {
+          const resGrupo = await fetch(`${evolutionUrl}/group/findGroupInfos/${evolutionInstance}?groupJid=${grupoJid}`, {
+            headers: { 'apikey': evolutionKey }
+          });
+          if (resGrupo.ok) {
+            const dadosGrupo = await resGrupo.json();
+            nomeGrupo = dadosGrupo?.subject || dadosGrupo?.name || nomeGrupo;
+          }
+        }
+      } catch (_) {}
+
+      conversaGrupo = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+        empresa_id: empresaId,
+        cliente_id: '',
+        cliente_nome: nomeGrupo,
+        cliente_telefone: grupoJid,
+        whatsapp_id: grupoJid,
+        status: 'ativa',
+        ultimo_remetente: fromMe ? 'vendedor' : 'cliente',
+        ultima_mensagem: conteudoG.substring(0, 200),
+        data_ultima_mensagem: new Date().toISOString(),
+        tipo_conexao: 'empresa',
+        colaborador_id: '',
+        instancia: instanceFinal
+      });
+      console.log(`✅ Conversa de GRUPO criada: ${conversaGrupo.id} | JID: ${grupoJid}`);
+    }
+
+    // Salvar mensagem do grupo
+    const existentesGrupo = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ whatsapp_message_id: messageId });
+    if (existentesGrupo.length === 0) {
+      await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        conversa_id: conversaGrupo.id, empresa_id: empresaId,
+        remetente: fromMe ? 'vendedor' : 'cliente',
+        tipo_conteudo: tipoG, texto: conteudoG,
+        arquivo_url: arquivoUrlG || null,
+        whatsapp_message_id: messageId,
+        data_envio: new Date().toISOString(),
+        status: fromMe ? 'enviada' : 'entregue'
+      });
+      console.log(`✅ Mensagem de GRUPO salva | conversa: ${conversaGrupo.id}`);
+    }
+    return;
   }
 
   // Tentar extrair telefone diretamente (quando não é @lid)
