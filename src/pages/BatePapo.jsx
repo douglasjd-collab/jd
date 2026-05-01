@@ -1299,7 +1299,6 @@ export default function BatePapo() {
                              {/* Linha 1: ícone + nome + hora (em uma linha) */}
                              <div className="flex items-baseline justify-between gap-1.5 min-w-0">
                                <div className="flex items-baseline gap-1 min-w-0">
-                                 <MessageCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
                                  <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
                                    {nome}
                                  </p>
