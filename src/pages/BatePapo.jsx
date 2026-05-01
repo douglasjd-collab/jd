@@ -1219,12 +1219,12 @@ export default function BatePapo() {
                     <button
                       key={tab.value}
                       onClick={() => setFiltroStatus(tab.value)}
-                      className="flex flex-col items-center gap-0.5 min-w-[46px]"
+                      className="flex flex-col items-center gap-1 min-w-[46px]"
                     >
-                      <span className={`inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold px-2 py-0.5 min-w-[26px] ${ativa ? tab.corAtiva : tab.cor} ${ativa ? 'ring-2 ring-offset-1 ring-current' : 'opacity-80'}`}>
+                      <span className={`inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold px-2 py-0.5 min-w-[26px] transition-all ${ativa ? tab.corAtiva : tab.cor} ${ativa ? 'ring-4 ring-offset-2 ring-current shadow-lg scale-110' : 'opacity-70'}`}>
                         {count}
                       </span>
-                      <span className={`text-[10px] font-medium whitespace-nowrap ${ativa ? 'text-slate-900' : 'text-slate-500'}`}>
+                      <span className={`text-[10px] font-medium whitespace-nowrap transition-all border-b-2 px-1 ${ativa ? 'text-slate-900 border-current font-bold' : 'text-slate-500 border-transparent'}`}>
                         {tab.label}
                       </span>
                     </button>
