@@ -1272,17 +1272,20 @@ export default function BatePapo() {
                                        <Trash2 className="mr-2 h-3.5 w-3.5" />
                                        Excluir
                                      </DropdownMenuItem>
-                                   {/* Linha 2: última mensagem + badge */}
-                                   <div className="flex items-center justify-between gap-2 min-w-0">
+                                     </DropdownMenuContent>
+                                     </DropdownMenu>
+                                     </div>
+
+                                     {/* Linha 2: última mensagem + badge */}
+                                     <div className="flex items-center justify-between gap-2 min-w-0">
                                      <p className={`line-clamp-1 text-xs flex-1 ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
-                                       {ultimaMsg}
+                                     {ultimaMsg}
                                      </p>
                                      {naoLidas > 0 && (
-                                       <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none flex-shrink-0">
-                                         {naoLidas}
-                                       </span>
+                                     <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none flex-shrink-0">
+                                     {naoLidas}
+                                     </span>
                                      )}
-                                     </div>
                                      </div>
                                      </div>
                                      );
