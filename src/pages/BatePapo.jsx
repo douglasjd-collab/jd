@@ -778,9 +778,16 @@ export default function BatePapo() {
 
   // Helper: detectar se é grupo
   const isGrupo = (c) => {
-    const tel = (c.cliente_telefone || '').replace(/\D/g, '');
+    const telOriginal = (c.cliente_telefone || '');
     const wid = (c.whatsapp_id || '').toLowerCase();
-    return wid.includes('@g.us') || tel.includes('@g.us') || wid.endsWith('-') || tel.length > 13;
+    const tel = telOriginal.replace(/\D/g, '');
+    return (
+      wid.includes('@g.us') ||
+      telOriginal.includes('@g.us') ||
+      telOriginal.includes('@broadcast') ||
+      wid.endsWith('-') ||
+      tel.length > 15
+    );
   };
 
   // ── Lógica de responsabilidade por 10 minutos ────────────────────────────
@@ -825,18 +832,13 @@ export default function BatePapo() {
     } catch (_) {}
   };
 
-  // Conversas válidas — filtra apenas grupos e LID
+  // Conversas válidas — exclui grupos, broadcast e LID (apenas contatos individuais)
   const conversasValidas = React.useMemo(() => conversas.filter(c => {
     if (!c || !c.id || !c.cliente_telefone) return false;
-    
+    // Excluir grupos detectados pelo isGrupo
+    if (isGrupo(c)) return false;
     const tel = (c.cliente_telefone || '').replace(/\D/g, '');
-    
-    const isGrupoOuBroadcast = c.cliente_telefone?.includes('@g.us') || 
-                               c.cliente_telefone?.includes('@broadcast') ||
-                               c.cliente_telefone?.includes('@lid');
-    
-    if (isGrupoOuBroadcast) return false;
-    if (tel.startsWith('lid_')) return false;
+    if (c.cliente_telefone?.includes('@lid') || tel.startsWith('lid_')) return false;
     return tel.length >= 8;
   }), [conversas]);
 
