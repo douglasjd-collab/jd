@@ -708,26 +708,26 @@ export default function BatePapo() {
       if (conversaSelecionada) {
         const msgExibicao = variables.texto || (variables.arquivo ? variables.arquivo.nome : '');
         const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
-        await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
-          ultima_mensagem: msgExibicao,
-          data_ultima_mensagem: new Date().toISOString(),
-          ultimo_remetente: 'vendedor',
-          responsavel_id: user?.colaborador_id || user?.id || 'atendente',
-          responsavel_expira_em: expira,
-        });
 
-        // Atualizar cache local das conversas imediatamente (sem aguardar refetch)
+        // 1. Atualizar cache LOCAL imediatamente — move conversa para "Em Atendimento"
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
           old.map(c => c.id === conversaSelecionada.id
             ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString() }
             : c
           )
         );
+
+        // 2. Salvar no banco em background (sem bloquear a UI)
+        base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
+          ultima_mensagem: msgExibicao,
+          data_ultima_mensagem: new Date().toISOString(),
+          ultimo_remetente: 'vendedor',
+          responsavel_id: user?.colaborador_id || user?.id || 'atendente',
+          responsavel_expira_em: expira,
+        }).then(() => refetchConversas()).catch(() => {});
       }
-      // Invalidar mensagens imediatamente para refetch da mensagem confirmada
-      await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
-      // Refetch conversas para sincronizar com banco
-      refetchConversas();
+      // Invalidar mensagens para mostrar a confirmada
+      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
       toast.success('Mensagem enviada');
     }
   });
