@@ -953,6 +953,29 @@ export default function BatePapo() {
         <style>{`
           @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; }  }
           @media (max-width: 1023px) { #batepapo-root { top: 3.5rem !important; } }
+          .jd-messenger-sidebar {
+            width: 420px;
+            max-width: 420px;
+            min-width: 380px;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+          }
+          .jd-messenger-top {
+            flex-shrink: 0;
+          }
+          .jd-conversation-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+          }
+          .jd-conversation-card {
+            min-height: 72px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: flex-start;
+          }
         `}</style>
         <NovaConversaModal
           open={novaConversaOpen}
@@ -1035,8 +1058,8 @@ export default function BatePapo() {
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className="flex w-[370px] shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 h-screen [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3 flex-shrink-0">
+          <Card className="jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full" style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh' }}>
+            <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-3 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div>
                   <p className="text-sm font-semibold leading-tight">JD Messenger</p>
@@ -1232,8 +1255,8 @@ export default function BatePapo() {
                 })}
               </div>
 
-              <ScrollArea className="mt-1 flex-1 w-full overflow-y-auto">
-                <div className="space-y-1 pb-4 pr-4">
+              <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full">
+                <div className="space-y-0 pb-4 pr-4">
                   {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
                       <MessageCircle className="w-8 h-8 opacity-40" />
@@ -1268,7 +1291,7 @@ export default function BatePapo() {
                         <div
                            key={c.id}
                            className={classNames(
-                             "flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible min-h-[82px]",
+                             "jd-conversation-card flex w-full items-start gap-2.5 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible",
                              conversaSelecionada?.id === c.id
                                ? "bg-blue-50"
                                : naoLidas > 0
