@@ -1640,56 +1640,56 @@ export default function BatePapo() {
 
                   {/* Painel Informações do Lead - dentro do mesmo Card */}
                   {infoLeadAberto && (
-                    <div className="flex w-[300px] shrink-0 flex-col border-l overflow-hidden">
-                      <div className="border-b bg-white px-4 py-3 shrink-0">
-                        <p className="text-sm font-semibold">Informações do Lead</p>
-                        <p className="text-[11px] text-slate-500">Detalhes e histórico</p>
+                    <div className="flex w-[260px] shrink-0 flex-col border-l overflow-hidden">
+                      <div className="border-b bg-white px-3 py-2 shrink-0">
+                        <p className="text-xs font-semibold">Informações do Lead</p>
+                        <p className="text-[10px] text-slate-500">Detalhes e histórico</p>
                       </div>
 
                       <ScrollArea className="flex-1">
-                        <div className="flex flex-col gap-4 px-4 pb-4 pt-3">
+                        <div className="flex flex-col gap-3 px-3 pb-3 pt-2">
                           {/* Perfil */}
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <AvatarContato 
                                contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
-                               className="h-10 w-10"
+                               className="h-9 w-9"
                              />
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold leading-tight">{conversaSelecionada.cliente_telefone || conversaSelecionada.cliente_nome}</p>
-                              <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold leading-tight truncate">{conversaSelecionada.cliente_telefone || conversaSelecionada.cliente_nome}</p>
+                              <p className="text-[10px] text-slate-500 truncate">{conversaSelecionada.cliente_telefone}</p>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
-                              <PhoneCall className="h-3.5 w-3.5" />
-                              Ligar
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Ligar">
+                              <PhoneCall className="h-3 w-3" />
+                              <span className="hidden sm:inline">Ligar</span>
                             </Button>
-                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
-                              <Star className="h-3.5 w-3.5" />
-                              Favorito
+                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Favorito">
+                              <Star className="h-3 w-3" />
+                              <span className="hidden sm:inline">Favorito</span>
                             </Button>
-                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
-                              <Tag className="h-3.5 w-3.5" />
-                              Proposta
+                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Proposta">
+                              <Tag className="h-3 w-3" />
+                              <span className="hidden sm:inline">Proposta</span>
                             </Button>
-                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]" onClick={() => setTransferirModal(conversaSelecionada)}>
-                              <ArrowRightLeft className="h-3.5 w-3.5" />
-                              Transferir
+                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" onClick={() => setTransferirModal(conversaSelecionada)} title="Transferir">
+                              <ArrowRightLeft className="h-3 w-3" />
+                              <span className="hidden sm:inline">Transferir</span>
                             </Button>
                           </div>
 
                           <Separator />
 
                           {/* Tags */}
-                          <div className="space-y-2">
+                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold">Tags</span>
-                              <span className="text-[10px] text-slate-400">{tagsDB.length} tag(s)</span>
+                              <span className="text-[11px] font-semibold">Tags</span>
+                              <span className="text-[9px] text-slate-400">{tagsDB.length} tag(s)</span>
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1">
                               {tagsDB.length === 0 ? (
-                                <p className="text-[11px] text-slate-400">Nenhuma tag criada. Crie em Contatos CRM.</p>
+                                <p className="text-[10px] text-slate-400">Nenhuma tag criada. Crie em Contatos CRM.</p>
                               ) : tagsDB.map((t) => {
                                 const contatoAtual = contatosWhatsapp[conversaSelecionada?.id];
                                 const ativa = (contatoAtual?.tags_ids || []).includes(t.id);
@@ -1709,7 +1709,7 @@ export default function BatePapo() {
                                       toast.success(ativa ? 'Tag removida' : 'Tag adicionada');
                                     }}
                                     className={classNames(
-                                      'rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all',
+                                      'rounded-full px-1.5 py-0.5 text-[9px] font-medium border transition-all whitespace-nowrap',
                                       ativa ? 'border-slate-500 ring-1 ring-slate-400' : 'border-transparent opacity-60 hover:opacity-100'
                                     )}
                                     style={{ backgroundColor: t.cor + '33', color: t.cor }}
@@ -1724,9 +1724,9 @@ export default function BatePapo() {
                           <Separator />
 
                           {/* Status */}
-                          <div className="space-y-2">
-                            <span className="text-xs font-semibold">Status</span>
-                            <div className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px]">
+                          <div className="space-y-1.5">
+                            <span className="text-[11px] font-semibold">Status</span>
+                            <div className="flex items-center justify-between rounded-lg bg-slate-50 px-2 py-1 text-[10px]">
                               <span className="capitalize">{conversaSelecionada.status}</span>
                               <Check className="h-3 w-3 text-emerald-500" />
                             </div>
