@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const { conversa_id, mensagem_texto, numero_cliente, arquivo } = payload;
+    const { conversa_id, mensagem_texto, numero_cliente, arquivo, forcar_api } = payload;
     
     console.log('📋 Parâmetros:');
     console.log('  - conversa_id:', conversa_id);
@@ -72,23 +72,31 @@ Deno.serve(async (req) => {
     if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
-    // Determinar qual API usar baseado na preferência configurada
-    const apiPreferida = empresa?.whatsapp_api_preferida || 'auto';
+    // Determinar qual API usar
+    // forcar_api vem da conversa: 'meta_oficial' ou 'evolution'
     const temCredenciaisMeta = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
     const temCredenciaisEvolution = !!(evolutionApiKey && evolutionApiUrl && instanceName);
 
     let usaMetaOficial;
-    if (apiPreferida === 'meta_oficial') {
-      usaMetaOficial = temCredenciaisMeta;
-      if (!temCredenciaisMeta) console.warn('⚠️ API Oficial Meta configurada como preferida, mas credenciais faltando — tentando Evolution');
-    } else if (apiPreferida === 'evolution') {
+    if (forcar_api === 'meta_oficial') {
+      usaMetaOficial = true;
+      console.log('🟢 Forçando API Oficial Meta (conversa veio pela Meta)');
+    } else if (forcar_api === 'evolution') {
       usaMetaOficial = false;
+      console.log('🟣 Forçando Evolution API (conversa veio pela Evolution)');
     } else {
-      // auto: prioriza Evolution se tiver credenciais, senão usa Meta
-      usaMetaOficial = !temCredenciaisEvolution && temCredenciaisMeta;
+      // fallback: preferência da empresa
+      const apiPreferida = empresa?.whatsapp_api_preferida || 'auto';
+      if (apiPreferida === 'meta_oficial') {
+        usaMetaOficial = temCredenciaisMeta;
+      } else if (apiPreferida === 'evolution') {
+        usaMetaOficial = false;
+      } else {
+        usaMetaOficial = !temCredenciaisEvolution && temCredenciaisMeta;
+      }
     }
 
-    console.log('🔌 API preferida:', apiPreferida, '→ Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
+    console.log('🔌 Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
 
     // Formatar número
     const isGrupo = numero_cliente.includes('@g.us');
