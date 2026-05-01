@@ -24,33 +24,34 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Search,
-  Filter,
-  Plus,
-  MoreVertical,
-  PhoneCall,
-  Star,
-  Tag,
-  UserPlus,
-  ArrowRightLeft,
-  BellOff,
-  Pin,
-  Check,
-  Clock,
-  Loader2,
-  MessageCircle,
-  AlignJustify,
-  X,
-  Trash2,
-  RefreshCw,
-  Contact,
-  Pencil,
-  Users,
-  Image as ImageIcon,
-  Bell,
-  Lock,
-  Unlock,
-} from "lucide-react";
+   Search,
+   Filter,
+   Plus,
+   MoreVertical,
+   PhoneCall,
+   Star,
+   Tag,
+   UserPlus,
+   ArrowRightLeft,
+   BellOff,
+   Pin,
+   Check,
+   Clock,
+   Loader2,
+   MessageCircle,
+   AlignJustify,
+   X,
+   Trash2,
+   RefreshCw,
+   Contact,
+   Pencil,
+   Users,
+   Image as ImageIcon,
+   Bell,
+   Lock,
+   Unlock,
+   Instagram,
+ } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -1125,82 +1126,78 @@ export default function BatePapo() {
               </div>
 
               {/* Status badges */}
-              <div className="px-4 space-y-3">
-                {/* Conexão status */}
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Conectado
-                  </span>
-                </div>
-
-                {/* Badge grid */}
-                <div className="grid grid-cols-4 gap-2">
+              <div className="px-4 space-y-2">
+                {/* Primeira linha - Badges de status */}
+                <div className="flex items-end justify-between gap-2">
                   {/* Todos */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-slate-900 text-white rounded flex items-center justify-center font-bold text-xs">
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length}
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Todos</span>
+                    <span className="text-xs text-slate-700 font-medium">Todos</span>
                   </div>
 
                   {/* Esperando */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length}
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Esperando</span>
+                    <span className="text-xs text-slate-700 font-medium">Esperando</span>
                   </div>
 
                   {/* Em Atend. */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-emerald-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-emerald-500 text-white rounded flex items-center justify-center font-bold text-xs">
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length}
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Em Atend.</span>
+                    <span className="text-xs text-slate-700 font-medium">Em Atend.</span>
                   </div>
 
                   {/* Finalizados */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-slate-900 text-white rounded flex items-center justify-center font-bold text-xs">
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Finalizados</span>
+                    <span className="text-xs text-slate-700 font-medium">Finalizados</span>
                   </div>
                 </div>
 
-                {/* Canais */}
-                <div className="grid grid-cols-4 gap-2">
+                {/* Segunda linha - Canais */}
+                <div className="flex items-end justify-between gap-2">
                   {/* Instagram */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-pink-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
                       0
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Instagram</span>
+                    <span className="text-xs text-slate-700 font-medium flex items-center gap-1">
+                      <Instagram className="w-3 h-3" /> Instagram
+                    </span>
                   </div>
 
                   {/* Messenger */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-emerald-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
                       0
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Messenger</span>
+                    <span className="text-xs text-slate-700 font-medium flex items-center gap-1">
+                      <MessageCircle className="w-3 h-3" /> Messenger
+                    </span>
                   </div>
 
                   {/* Responsável */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-slate-300 text-slate-700 rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
                       0
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Responsável</span>
+                    <span className="text-xs text-slate-700 font-medium">Responsável</span>
                   </div>
 
                   {/* Transferidos */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 bg-purple-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="h-8 px-3 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
                       0
                     </div>
-                    <span className="text-[11px] text-center text-slate-600 font-medium">Transferidos</span>
+                    <span className="text-xs text-slate-700 font-medium">Transferidos</span>
                   </div>
                 </div>
               </div>
