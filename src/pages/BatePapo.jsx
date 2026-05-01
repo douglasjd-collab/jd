@@ -970,12 +970,16 @@ export default function BatePapo() {
           .jd-conversation-list {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             min-height: 0;
+            width: 100%;
           }
           .jd-conversation-card {
             height: 72px;
             max-height: 72px;
             min-height: 72px;
+            width: 100%;
+            max-width: 100%;
             padding: 10px 12px;
             display: flex;
             align-items: center;
@@ -985,6 +989,7 @@ export default function BatePapo() {
             border: 2px solid #e5e7eb;
             border-radius: 12px;
             transition: background-color 150ms, border-color 150ms;
+            box-sizing: border-box;
           }
           .jd-conversation-card:hover {
             background-color: #f3f4f6;
@@ -997,6 +1002,7 @@ export default function BatePapo() {
             overflow: hidden;
             flex: 1;
             min-width: 0;
+            width: 100%;
           }
           .jd-conversation-name {
             font-weight: 600;
@@ -1005,6 +1011,7 @@ export default function BatePapo() {
             overflow: hidden;
             text-overflow: ellipsis;
             line-height: 1.2;
+            min-width: 0;
           }
           .jd-conversation-message {
             font-size: 12px;
@@ -1013,6 +1020,7 @@ export default function BatePapo() {
             overflow: hidden;
             text-overflow: ellipsis;
             line-height: 1.2;
+            min-width: 0;
           }
         `}</style>
         <NovaConversaModal
