@@ -1303,14 +1303,14 @@ export default function BatePapo() {
                              {/* Linha 1: nome + hora (em uma linha) */}
                              <div className="flex items-center justify-between gap-1.5 min-w-0">
                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                 <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
+                                   {nome}
+                                 </p>
                                  {naoLidas > 0 && (
                                    <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none flex-shrink-0">
                                      {naoLidas}
                                    </span>
                                  )}
-                                 <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
-                                   {nome}
-                                 </p>
                                </div>
                                <p className="text-[11px] text-slate-400 flex-shrink-0">{hora}</p>
                              </div>
