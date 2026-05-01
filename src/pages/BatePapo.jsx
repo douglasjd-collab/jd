@@ -1193,7 +1193,7 @@ export default function BatePapo() {
                       const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
                       const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
                       const hora = c.data_ultima_mensagem
-                        ? format(new Date(c.data_ultima_mensagem), "dd/MM 'às' HH:mm", { locale: ptBR })
+                        ? format(new Date(c.data_ultima_mensagem), "HH:mm", { locale: ptBR })
                         : '';
                       const statusColor = estaEmEspera(c)
                         ? 'bg-amber-400'
@@ -1231,15 +1231,15 @@ export default function BatePapo() {
 
                            {/* Conteúdo */}
                            <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
-                             {/* Linha 1: nome + hora */}
-                             <div className="flex items-center justify-between gap-2 min-w-0">
+                             {/* Linha 1: nome + hora + menu */}
+                             <div className="flex items-center justify-between gap-1 min-w-0 flex-1">
                                <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
                                  {nome}
                                </p>
-                               <p className="text-xs text-slate-500 flex-shrink-0">{hora}</p>
+                               <p className="text-xs text-slate-500 flex-shrink-0 whitespace-nowrap">{hora}</p>
                                <DropdownMenu>
                                  <DropdownMenuTrigger asChild>
-                                   <button className="p-0.5 hover:bg-slate-100 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <button className="p-0.5 hover:bg-slate-100 rounded opacity-100 flex-shrink-0">
                                      <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
                                    </button>
                                  </DropdownMenuTrigger>
@@ -1311,9 +1311,9 @@ export default function BatePapo() {
                                      <p className={`line-clamp-1 text-xs flex-1 ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
                                      {ultimaMsg}
                                      </p>
-                                     {naoLidas > 0 && (
+                                     {mostrarBadge && (
                                      <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none flex-shrink-0">
-                                     {naoLidas}
+                                     {naoLidas > 0 ? naoLidas : '!'}
                                      </span>
                                      )}
                                      </div>
