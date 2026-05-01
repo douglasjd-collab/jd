@@ -974,11 +974,43 @@ export default function BatePapo() {
           }
           .jd-conversation-card {
             height: 72px;
-            padding: 6px 8px;
+            max-height: 72px;
+            min-height: 72px;
+            padding: 10px 12px;
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             overflow: hidden;
             gap: 8px;
+            background: #ffffff;
+            border-radius: 8px;
+            transition: background-color 150ms;
+          }
+          .jd-conversation-card:hover {
+            background-color: #f3f4f6;
+            cursor: pointer;
+          }
+          .jd-conversation-text {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            min-width: 0;
+          }
+          .jd-conversation-name {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+          }
+          .jd-conversation-message {
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
           }
         `}</style>
         <NovaConversaModal
@@ -1232,10 +1264,10 @@ export default function BatePapo() {
                             </div>
 
                            {/* Conteúdo */}
-                           <div className="flex flex-1 flex-col min-w-0 gap-0 overflow-hidden">
+                           <div className="jd-conversation-text">
                              {/* Linha 1: nome + hora + menu */}
-                             <div className="flex items-center justify-between gap-1 min-w-0 flex-1 h-5">
-                               <p className={`truncate text-xs text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
+                             <div className="flex items-center justify-between gap-2 min-w-0">
+                               <p className="jd-conversation-name">
                                  {nome}
                                </p>
                                <p className="text-[10px] text-slate-500 flex-shrink-0 whitespace-nowrap">{hora}</p>
@@ -1309,8 +1341,8 @@ export default function BatePapo() {
                                      </div>
 
                                      {/* Linha 2: última mensagem + badge */}
-                                     <div className="flex items-center justify-between gap-1 min-w-0 h-4">
-                                     <p className={`truncate text-[10px] flex-1 ${mostrarBadge ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>
+                                     <div className="flex items-center justify-between gap-1 min-w-0">
+                                     <p className="jd-conversation-message">
                                      {ultimaMsg}
                                      </p>
                                      {mostrarBadge && (
