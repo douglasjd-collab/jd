@@ -1364,7 +1364,7 @@ export default function BatePapo() {
                                      })}
                                      </div>
                                      </ScrollArea>
-            </CardContent>
+                                     </CardContent>
           </Card>
 
           {/* Coluna central - Chat + painel lead */}
