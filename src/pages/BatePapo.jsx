@@ -1124,25 +1124,85 @@ export default function BatePapo() {
                 />
               </div>
 
-              {/* Abas simples estilo WhatsApp */}
-              <div className="flex flex-wrap gap-2 px-4">
-                {[
-                  { value: 'todas', label: 'Tudo' },
-                  { value: 'espera', label: 'Não lidas' },
-                  { value: 'ativa', label: 'Favoritas' },
-                  { value: 'grupos', label: 'Grupos' },
-                ].map(tab => {
-                  const ativa = filtroStatus === tab.value;
-                  return (
-                    <button
-                      key={tab.value}
-                      onClick={() => setFiltroStatus(tab.value)}
-                      className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-all ${ativa ? 'bg-slate-200 border-slate-300 text-slate-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      {tab.label}
-                    </button>
-                  );
-                })}
+              {/* Status badges */}
+              <div className="px-4 space-y-3">
+                {/* Conexão status */}
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Conectado
+                  </span>
+                </div>
+
+                {/* Badge grid */}
+                <div className="grid grid-cols-4 gap-2">
+                  {/* Todos */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                      {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length}
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Todos</span>
+                  </div>
+
+                  {/* Esperando */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                      {conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length}
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Esperando</span>
+                  </div>
+
+                  {/* Em Atend. */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-emerald-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                      {conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length}
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Em Atend.</span>
+                  </div>
+
+                  {/* Finalizados */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-slate-900 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                      {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Finalizados</span>
+                  </div>
+                </div>
+
+                {/* Canais */}
+                <div className="grid grid-cols-4 gap-2">
+                  {/* Instagram */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-pink-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                      0
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Instagram</span>
+                  </div>
+
+                  {/* Messenger */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-emerald-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                      0
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Messenger</span>
+                  </div>
+
+                  {/* Responsável */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-slate-300 text-slate-700 rounded-lg flex items-center justify-center font-bold text-sm">
+                      0
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Responsável</span>
+                  </div>
+
+                  {/* Transferidos */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-12 h-12 bg-purple-500 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                      0
+                    </div>
+                    <span className="text-[11px] text-center text-slate-600 font-medium">Transferidos</span>
+                  </div>
+                </div>
               </div>
 
               <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full">
