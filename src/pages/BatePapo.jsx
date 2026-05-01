@@ -715,11 +715,19 @@ export default function BatePapo() {
           responsavel_id: user?.colaborador_id || user?.id || 'atendente',
           responsavel_expira_em: expira,
         });
+
+        // Atualizar cache local das conversas imediatamente (sem aguardar refetch)
+        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+          old.map(c => c.id === conversaSelecionada.id
+            ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString() }
+            : c
+          )
+        );
       }
       // Invalidar mensagens imediatamente para refetch da mensagem confirmada
       await queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
-      // E atualizar conversas
-      await queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      // Refetch conversas para sincronizar com banco
+      refetchConversas();
       toast.success('Mensagem enviada');
     }
   });
