@@ -949,8 +949,11 @@ export default function BatePapo() {
 
   return (
     <TooltipProvider>
-      <div className="bg-[#F0EBE0] p-2 flex flex-col overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 }} id="batepapo-root">
-        <style>{`@media (min-width: 1024px) { #batepapo-root { padding-left: calc(18rem + 0.5rem) !important; } } @media (max-width: 1023px) { #batepapo-root { padding-top: 3.5rem !important; } }`}</style>
+      <div id="batepapo-root" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30, display: 'flex', flexDirection: 'column', padding: '8px', boxSizing: 'border-box', backgroundColor: '#F0EBE0' }}>
+        <style>{`
+          @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; }  }
+          @media (max-width: 1023px) { #batepapo-root { top: 3.5rem !important; } }
+        `}</style>
         <NovaConversaModal
           open={novaConversaOpen}
           onOpenChange={setNovaConversaOpen}
@@ -1030,9 +1033,9 @@ export default function BatePapo() {
           </DialogContent>
         </Dialog>
 
-        <div className="flex overflow-hidden rounded-xl shadow-sm" style={{ flex: '1 1 0', minHeight: 0 }}>
+        <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className="flex w-[370px] shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
+          <Card className="flex w-[370px] shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 h-full [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
               <div className="flex items-center gap-2">
                 <div>
@@ -1416,7 +1419,7 @@ export default function BatePapo() {
           </Card>
 
           {/* Coluna central - Chat + painel lead */}
-          <Card className="flex flex-1 flex-col overflow-hidden rounded-none rounded-r-xl">
+          <Card className="flex flex-1 flex-col overflow-hidden rounded-none rounded-r-xl h-full">
             {conversaSelecionada ? (
               <>
                 {/* Header do chat - fixo */}
