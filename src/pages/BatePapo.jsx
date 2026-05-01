@@ -1129,42 +1129,42 @@ export default function BatePapo() {
               <div className="px-4 space-y-2">
                 {/* Primeira linha - Todos, Esperando, Em Atend., Finalizados, Grupos */}
                 <div className="flex items-center justify-between gap-2">
-                  <button onClick={() => setFiltroStatus('todas')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <span className="text-sm font-bold text-slate-700">{conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length}</span>
-                    <span className="text-[11px] text-slate-600 font-medium">Todos</span>
+                  <button onClick={() => setFiltroStatus('todas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1 ${filtroStatus === 'todas' ? 'bg-slate-600' : ''}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-700'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length}</span>
+                    <span className={`text-[11px] font-medium ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-600'}`}>Todos</span>
                   </button>
 
-                  <button onClick={() => setFiltroStatus('espera')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <span className="text-sm font-bold text-red-500">{conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length}</span>
-                    <span className="text-[11px] text-slate-600 font-medium">Esperando</span>
+                  <button onClick={() => setFiltroStatus('espera')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1 ${filtroStatus === 'espera' ? 'bg-red-500' : ''}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'espera' ? 'text-white' : 'text-red-500'}`}>{conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length}</span>
+                    <span className={`text-[11px] font-medium ${filtroStatus === 'espera' ? 'text-white' : 'text-slate-600'}`}>Esperando</span>
                   </button>
 
-                  <button onClick={() => setFiltroStatus('ativa')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <span className="text-sm font-bold text-slate-700">{conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length}</span>
-                    <span className="text-[11px] text-slate-600 font-medium">Em Atend.</span>
+                  <button onClick={() => setFiltroStatus('ativa')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1 ${filtroStatus === 'ativa' ? 'bg-slate-600' : ''}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'ativa' ? 'text-white' : 'text-slate-700'}`}>{conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length}</span>
+                    <span className={`text-[11px] font-medium ${filtroStatus === 'ativa' ? 'text-white' : 'text-slate-600'}`}>Em Atend.</span>
                   </button>
 
-                  <button onClick={() => setFiltroStatus('encerrada')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <span className="text-sm font-bold text-slate-700">{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}</span>
-                    <span className="text-[11px] text-slate-600 font-medium">Finalizados</span>
+                  <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : ''}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}</span>
+                    <span className={`text-[11px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-600'}`}>Finalizados</span>
                   </button>
 
-                  <button onClick={() => setFiltroStatus('grupos')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <span className="text-sm font-bold text-emerald-500">{conversas.filter(c => isGrupo(c)).length}</span>
-                    <span className="text-[11px] text-slate-600 font-medium">Grupos</span>
+                  <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : ''}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{conversas.filter(c => isGrupo(c)).length}</span>
+                    <span className={`text-[11px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
                   </button>
                 </div>
 
                 {/* Segunda linha - Responsável, Transferidos */}
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setFiltroStatus('meu')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <span className="text-sm font-bold text-emerald-500">{conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length}</span>
-                    <span className="text-[11px] text-slate-600 font-medium">Responsável</span>
+                  <button onClick={() => setFiltroStatus('meu')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1 ${filtroStatus === 'meu' ? 'bg-emerald-600' : ''}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'meu' ? 'text-white' : 'text-emerald-500'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length}</span>
+                    <span className={`text-[11px] font-medium ${filtroStatus === 'meu' ? 'text-white' : 'text-slate-600'}`}>Responsável</span>
                   </button>
 
-                  <button onClick={() => setFiltroStatus('transferida')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <span className="text-sm font-bold text-purple-500">{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}</span>
-                    <span className="text-[11px] text-slate-600 font-medium">Transferidos</span>
+                  <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1 ${filtroStatus === 'transferida' ? 'bg-purple-600' : ''}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-purple-500'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}</span>
+                    <span className={`text-[11px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
                   </button>
                 </div>
               </div>
