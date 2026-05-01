@@ -1154,7 +1154,16 @@ export default function BatePapo() {
 
               <ScrollArea className="mt-1 flex-1 w-full">
                 <div className="space-y-1 pb-4 pr-4">
-                  {conversasFiltradas.length === 0 ? (
+                  {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
+                    <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
+                      <MessageCircle className="w-8 h-8 opacity-40" />
+                      <p className="text-xs text-center text-slate-400">
+                        {conversasValidas.filter(c => !isGrupo(c)).length} conversas verificadas.<br/>
+                        Com último remetente cliente: {conversasValidas.filter(c => !isGrupo(c) && c.ultimo_remetente === 'cliente').length}<br/>
+                        Com msgs não lidas: {conversasValidas.filter(c => !isGrupo(c) && naoLidasPorConversa[c.id] > 0).length}
+                      </p>
+                    </div>
+                  ) : conversasFiltradas.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-slate-400">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                     </div>
