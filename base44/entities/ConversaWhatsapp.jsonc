@@ -22,6 +22,10 @@
       "type": "string",
       "description": "ID da conversa no WhatsApp/Evolution"
     },
+    "foto_url": {
+      "type": "string",
+      "description": "URL da foto de perfil do contato ou grupo"
+    },
     "status": {
       "type": "string",
       "enum": [

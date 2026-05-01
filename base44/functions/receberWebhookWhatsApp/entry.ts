@@ -281,12 +281,33 @@ async function processarWebhook(req, rawBody, base44) {
         }
       } catch (_) {}
 
+      // Buscar foto do grupo via Evolution
+      let fotoGrupo = null;
+      try {
+        const evolutionUrl = empresaEvolutionUrl?.replace(/\/$/, '');
+        const evolutionKey = empresaEvolutionKey;
+        const evolutionInstance = instanceFinal || Deno.env.get('EVOLUTION_INSTANCE_NAME');
+        if (evolutionUrl && evolutionKey && evolutionInstance) {
+          const resFoto = await fetch(`${evolutionUrl}/group/findGroupInfos/${evolutionInstance}?groupJid=${grupoJid}`, {
+            headers: { 'apikey': evolutionKey }
+          });
+          if (resFoto.ok) {
+            const dadosFoto = await resFoto.json();
+            fotoGrupo = dadosFoto?.pictureUrl || dadosFoto?.profilePictureUrl || null;
+            if (!nomeGrupo || nomeGrupo === pushNameGrupo) {
+              nomeGrupo = dadosFoto?.subject || dadosFoto?.name || nomeGrupo;
+            }
+          }
+        }
+      } catch (_) {}
+
       conversaGrupo = await base44.asServiceRole.entities.ConversaWhatsapp.create({
         empresa_id: empresaId,
         cliente_id: '',
         cliente_nome: nomeGrupo,
         cliente_telefone: grupoJid,
         whatsapp_id: grupoJid,
+        foto_url: fotoGrupo || null,
         status: 'ativa',
         ultimo_remetente: fromMe ? 'vendedor' : 'cliente',
         ultima_mensagem: conteudoG.substring(0, 200),

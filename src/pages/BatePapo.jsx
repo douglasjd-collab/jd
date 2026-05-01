@@ -1244,7 +1244,7 @@ export default function BatePapo() {
                            {/* Avatar com ponto status */}
                            <div className="relative flex-shrink-0">
                              <AvatarContato
-                               contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone }}
+                               contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
                                className="h-11 w-11"
                              />
                              <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-1.5 border-white ${statusColor}`} />
@@ -1358,7 +1358,7 @@ export default function BatePapo() {
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <AvatarContato 
-                         contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone }}
+                         contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
                          className="h-11 w-11"
                        />
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
@@ -1574,7 +1574,7 @@ export default function BatePapo() {
                           {/* Perfil */}
                           <div className="flex items-center gap-3">
                             <AvatarContato 
-                               contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone }}
+                               contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
                                className="h-10 w-10"
                              />
                             <div className="flex-1">
