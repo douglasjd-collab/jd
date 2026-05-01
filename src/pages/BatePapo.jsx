@@ -982,11 +982,13 @@ export default function BatePapo() {
             overflow: hidden;
             gap: 8px;
             background: #ffffff;
-            border-radius: 8px;
-            transition: background-color 150ms;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: background-color 150ms, border-color 150ms;
           }
           .jd-conversation-card:hover {
             background-color: #f3f4f6;
+            border-color: #d1d5db;
             cursor: pointer;
           }
           .jd-conversation-text {
