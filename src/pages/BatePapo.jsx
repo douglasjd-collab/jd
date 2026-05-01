@@ -135,7 +135,7 @@ export default function BatePapo() {
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
-  const [infoLeadAberto, setInfoLeadAberto] = useState(true);
+  const [infoLeadAberto, setInfoLeadAberto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [salvarCrmModal, setSalvarCrmModal] = useState(null); // { conversa, contato? }
   const [nomeContatoEdit, setNomeContatoEdit] = useState('');
