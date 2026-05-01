@@ -1247,6 +1247,10 @@ export default function BatePapo() {
                     <div className="flex items-center justify-center h-32 text-slate-400">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                     </div>
+                  ) : conversasFiltradas.length === 0 ? (
+                    <div className="flex items-center justify-center h-32 text-slate-400">
+                      <MessageCircle className="w-8 h-8 opacity-40" />
+                    </div>
                   ) : (
                     conversasFiltradas.map((c) => {
                     const naoLidas = naoLidasPorConversa[c.id] ?? 0;
