@@ -839,9 +839,19 @@ export default function BatePapo() {
     return tel.length >= 8;
   }), [conversas]);
 
-  // Conversa está em espera: cliente enviou a última mensagem
-  const estaEmEsperaFiltro = (c) => c.status === 'ativa' && (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
-  // Conversa está em atendimento: vendedor respondeu OU sem remetente definido (conversa sem histórico claro)
+  // Verifica se ainda há atendente ativo (dentro dos 10 minutos)
+  const atendenteDentroDoTempo = (c) => {
+    if (!c.responsavel_expira_em) return false;
+    return new Date(c.responsavel_expira_em) > new Date();
+  };
+
+  // Conversa está em espera: cliente enviou mensagem E não há atendente ativo no tempo de 10 min
+  const estaEmEsperaFiltro = (c) => {
+    if (c.status !== 'ativa') return false;
+    if (atendenteDentroDoTempo(c)) return false; // ainda em atendimento, não vai para espera
+    return (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
+  };
+  // Conversa está em atendimento: atendente respondeu nos últimos 10 min OU sem remetente definido
   const estaEmAtendimentoFiltro = (c) => c.status === 'ativa' && !estaEmEsperaFiltro(c);
 
   // Contadores por aba
