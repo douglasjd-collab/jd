@@ -1249,7 +1249,7 @@ export default function BatePapo() {
                         <div
                            key={c.id}
                            className={classNames(
-                             "jd-conversation-card flex w-full items-start gap-3 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible",
+                             "jd-conversation-card flex w-full items-center gap-3 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-hidden",
                              conversaSelecionada?.id === c.id
                                ? "bg-blue-50"
                                : naoLidas > 0
@@ -1259,7 +1259,7 @@ export default function BatePapo() {
                             onClick={() => selecionarConversa(c)}
                           >
                             {/* Avatar com ponto status */}
-                            <div className="relative flex-shrink-0">
+                            <div className="relative flex-shrink-0 h-12 w-12">
                               <AvatarContato
                                 contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
                                 className="h-12 w-12"
@@ -1274,13 +1274,13 @@ export default function BatePapo() {
                             </div>
 
                            {/* Conteúdo */}
-                           <div className="jd-conversation-text">
+                           <div className="jd-conversation-text flex-1 min-w-0">
                              {/* Linha 1: nome + hora + menu */}
-                             <div className="flex items-center justify-between gap-2 min-w-0 w-full">
-                             <p className="jd-conversation-name">
-                             {nome}
-                             </p>
-                             <div className="flex items-center gap-1 flex-shrink-0">
+                             <div className="flex items-center justify-between gap-2 min-w-0">
+                               <p className="jd-conversation-name flex-1 min-w-0">
+                                 {nome}
+                               </p>
+                               <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                              <p className="text-[10px] text-slate-500 whitespace-nowrap">{hora}</p>
                              <DropdownMenu>
                              <DropdownMenuTrigger asChild>
