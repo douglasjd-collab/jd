@@ -1362,10 +1362,9 @@ export default function BatePapo() {
                                        </span>
                                      )}
                                      );
-                                     })
-                                     )}
+                                     })}
                                      </div>
-              </ScrollArea>
+                                     </ScrollArea>
             </CardContent>
           </Card>
 
