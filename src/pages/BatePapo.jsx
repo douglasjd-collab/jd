@@ -1323,45 +1323,30 @@ export default function BatePapo() {
 
                            {/* Conteúdo - agora com layout flexível */}
                            <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
-                             {/* Linha 1: nome + coluna direita (hora acima, bolinha abaixo) */}
+                             {/* Linha 1: nome + coluna direita (hora/data + menu) */}
                              <div className="flex items-start justify-between gap-2 min-w-0">
                                <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
                                  {nome}
                                </p>
-                               <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                 <p className="text-[11px] text-slate-400">{hora}</p>
-                                 {naoLidas > 0 && (
-                                   <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[10px] font-bold leading-none">
-                                     {naoLidas}
-                                   </span>
-                                 )}
-                               </div>
-                             </div>
-
-                             {/* Linha 2: última mensagem (truncada) */}
-                             <p className={`line-clamp-1 text-xs ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
-                               {ultimaMsg}
-                             </p>
-
-                             {/* Linha 3: status atendimento + menu */}
-                             <div className="flex items-start justify-between gap-1 mt-0.5 group">
-                               <div className="flex flex-col gap-1 flex-1 min-w-0">
-                                 {(estaEmAtendimentoFiltro(c) || atendenteDentroDoTempo(c)) && (c.responsavel_nome || c.usuario_responsavel_nome) && (
-                                   <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full border border-blue-200 w-fit">
-                                     <UserPlus className="h-2.5 w-2.5 text-blue-500 flex-shrink-0" />
-                                     <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[130px]">
-                                       {c.responsavel_nome || c.usuario_responsavel_nome}: atendendo
+                               <div className="flex items-start gap-1.5 flex-shrink-0">
+                                 {/* Coluna hora + data */}
+                                 <div className="flex flex-col items-end gap-0.5">
+                                   <p className="text-[11px] text-slate-400">{hora}</p>
+                                   <p className="text-[10px] text-slate-300">{new Date(c.data_ultima_mensagem || 0).toLocaleDateString('pt-BR', { month: '2-digit', day: '2-digit' })}</p>
+                                   {naoLidas > 0 && (
+                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[10px] font-bold leading-none mt-0.5">
+                                       {naoLidas}
                                      </span>
-                                   </div>
-                                 )}
-                               </div>
-                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <DropdownMenu>
-                                   <DropdownMenuTrigger asChild>
-                                     <button className="rounded-full p-1 text-slate-700 hover:bg-slate-100 hover:text-slate-900">
-                                       <MoreVertical className="h-4 w-4" />
-                                     </button>
-                                   </DropdownMenuTrigger>
+                                   )}
+                                 </div>
+                                 {/* Menu 3 pontinhos */}
+                                 <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <DropdownMenu>
+                                     <DropdownMenuTrigger asChild>
+                                       <button className="rounded-full p-0.5 text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+                                         <MoreVertical className="h-4 w-4" />
+                                       </button>
+                                     </DropdownMenuTrigger>
                                    <DropdownMenuContent align="end" className="w-48">
                                      {!isGrupo(c) && (<>
                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
@@ -1421,14 +1406,34 @@ export default function BatePapo() {
                                        Excluir
                                      </DropdownMenuItem>
                                    </DropdownMenuContent>
-                                 </DropdownMenu>
-                               </div>
-                             </div>
-                           </div>
-                         </div>
-                      );
-                    })
-                  )}
+                                   </DropdownMenu>
+                                   </div>
+                                   </div>
+                                   </div>
+
+                                   {/* Linha 2: última mensagem (truncada) */}
+                                   <p className={`line-clamp-1 text-xs ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                                   {ultimaMsg}
+                                   </p>
+
+                                   {/* Linha 3: status atendimento */}
+                                   <div className="flex items-start justify-between gap-1 mt-0.5">
+                                   <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                   {(estaEmAtendimentoFiltro(c) || atendenteDentroDoTempo(c)) && (c.responsavel_nome || c.usuario_responsavel_nome) && (
+                                   <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full border border-blue-200 w-fit">
+                                   <UserPlus className="h-2.5 w-2.5 text-blue-500 flex-shrink-0" />
+                                   <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[130px]">
+                                     {c.responsavel_nome || c.usuario_responsavel_nome}: atendendo
+                                   </span>
+                                   </div>
+                                   )}
+                                   </div>
+                                   </div>
+                                   </div>
+                                   </div>
+                                   );
+                                   })
+                                   )}
                 </div>
               </ScrollArea>
             </CardContent>
