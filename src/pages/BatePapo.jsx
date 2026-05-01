@@ -734,7 +734,7 @@ export default function BatePapo() {
         // 1. Atualizar cache LOCAL imediatamente — move conversa para "Em Atendimento"
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
           old.map(c => c.id === conversaSelecionada.id
-            ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.full_name || user?.nome_perfil || 'Atendente', responsavel_expira_em: expira }
+            ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || user?.email || 'Atendente', responsavel_expira_em: expira }
             : c
           )
         );
@@ -745,7 +745,7 @@ export default function BatePapo() {
           data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor',
           responsavel_id: user?.colaborador_id || user?.id || 'atendente',
-          responsavel_nome: user?.full_name || user?.nome_perfil || 'Atendente',
+          responsavel_nome: user?.nome_perfil || user?.full_name || user?.email || 'Atendente',
           responsavel_expira_em: expira,
         }).then(() => refetchConversas()).catch(() => {});
       }
@@ -1320,11 +1320,11 @@ export default function BatePapo() {
                                      </div>
                                    )}
                                  </div>
-                                 {c.responsavel_nome && (
+                                 {(c.responsavel_nome || c.usuario_responsavel_nome) && (
                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full border border-blue-200 w-fit">
                                      <UserPlus className="h-2.5 w-2.5 text-blue-500 flex-shrink-0" />
-                                     <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[110px]">
-                                       {c.responsavel_nome} atendendo
+                                     <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[130px]">
+                                       {c.responsavel_nome || c.usuario_responsavel_nome}: atendendo
                                      </span>
                                    </div>
                                  )}
