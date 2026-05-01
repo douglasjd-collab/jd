@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -29,19 +30,17 @@ import {
   Search,
   Plus,
   Pencil,
-  Trash2,
-  Eye,
-  CheckCircle2,
   Clock,
-  AlertCircle,
-  MessageSquare,
   BarChart3,
   Users,
   Tag,
   Zap,
   FileText,
   RefreshCw,
-  ChevronRight,
+  Filter,
+  CheckCircle2,
+  AlertCircle,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -65,32 +64,42 @@ const IDIOMAS = [
 
 export default function CampanhaMetaOficial({ empresaId }) {
   const queryClient = useQueryClient();
-  const [abaAtiva, setAbaAtiva] = useState('templates');
-  const [searchTemplate, setSearchTemplate] = useState('');
-  const [modalTemplate, setModalTemplate] = useState(null); // null | 'novo' | objeto
-  const [modalDisparo, setModalDisparo] = useState(null); // template selecionado para disparar
-  const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', botoes: '' });
-  const [tagFiltro, setTagFiltro] = useState('');
-  const [disparoContatos, setDisparoContatos] = useState(''); // telefones separados por linha
-  const [disparoVariaveis, setDisparoVariaveis] = useState({}); // { var1: '', var2: '' }
-  const [sincronizando, setSincronizando] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState('disparo');
 
-  // Buscar templates salvos localmente
+  // ─── Template modal state ───────────────────────────────────────────────────
+  const [modalTemplate, setModalTemplate] = useState(null);
+  const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '' });
+  const [sincronizando, setSincronizando] = useState(false);
+  const [searchTemplate, setSearchTemplate] = useState('');
+
+  // ─── Disparo em Massa state ─────────────────────────────────────────────────
+  const [busca, setBusca] = useState('');
+  const [filtroTag, setFiltroTag] = useState('todas');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [contatosSelecionados, setContatosSelecionados] = useState(new Set());
+  const [nomeCampanha, setNomeCampanha] = useState('');
+  const [marcarProspeccao, setMarcarProspeccao] = useState(true);
+  const [delaySegundos, setDelaySegundos] = useState(7);
+  const [pausarApos, setPausarApos] = useState(15);
+  const [duracaoPausa, setDuracaoPausa] = useState(120);
+  const [tipoMensagem, setTipoMensagem] = useState('template'); // 'texto' | 'imagem' | 'video' | 'template'
+  const [templateSelecionado, setTemplateSelecionado] = useState(null);
+  const [disparando, setDisparando] = useState(false);
+
+  // ─── Queries ─────────────────────────────────────────────────────────────────
   const { data: templates = [], refetch: refetchTemplates } = useQuery({
     queryKey: ['meta-templates', empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
       try {
-        const logs = await base44.entities.CampanhaLog.filter(
+        return await base44.entities.CampanhaLog.filter(
           { empresa_id: empresaId, tipo_campanha: 'meta_template_definition' },
           '-created_date', 200
         );
-        return logs;
       } catch { return []; }
     },
   });
 
-  // Buscar logs de disparo da Meta Oficial
   const { data: logsDisparo = [], refetch: refetchLogs } = useQuery({
     queryKey: ['meta-disparos', empresaId],
     enabled: !!empresaId,
@@ -104,11 +113,10 @@ export default function CampanhaMetaOficial({ empresaId }) {
     },
   });
 
-  // Buscar contatos com tags
   const { data: contatosWhatsapp = [] } = useQuery({
     queryKey: ['contatos-wpp', empresaId],
     enabled: !!empresaId,
-    queryFn: () => base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, 'nome', 2000),
+    queryFn: () => base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, 'nome', 3000),
   });
 
   const { data: tags = [] } = useQuery({
@@ -120,7 +128,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
     },
   });
 
-  // Estatísticas de disparos
+  // ─── Derived ─────────────────────────────────────────────────────────────────
   const stats = {
     total: logsDisparo.length,
     enviados: logsDisparo.filter(l => l.status === 'enviada').length,
@@ -128,16 +136,52 @@ export default function CampanhaMetaOficial({ empresaId }) {
     respondidos: logsDisparo.filter(l => l.status === 'respondida').length,
     erros: logsDisparo.filter(l => l.status === 'erro').length,
   };
-
   const taxaAbertura = stats.enviados > 0 ? Math.round((stats.lidos / stats.enviados) * 100) : 0;
   const taxaResposta = stats.enviados > 0 ? Math.round((stats.respondidos / stats.enviados) * 100) : 0;
 
-  // Contatos filtrados por tag
-  const contatosFiltradosPorTag = tagFiltro
-    ? contatosWhatsapp.filter(c => (c.tags_ids || []).includes(tagFiltro))
-    : contatosWhatsapp;
+  const parseTemplateDados = (t) => {
+    try { return JSON.parse(t.motivo_erro || '{}'); } catch { return {}; }
+  };
 
-  // Sincronizar templates com a Meta
+  const contatosFiltrados = useMemo(() => {
+    return contatosWhatsapp.filter(c => {
+      const matchBusca = !busca || (c.nome || '').toLowerCase().includes(busca.toLowerCase()) || (c.telefone || '').includes(busca);
+      const matchTag = filtroTag === 'todas' || (c.tags_ids || []).includes(filtroTag);
+      return matchBusca && matchTag;
+    });
+  }, [contatosWhatsapp, busca, filtroTag]);
+
+  const templatesFiltrados = useMemo(() => templates.filter(t => {
+    const d = parseTemplateDados(t);
+    const nome = d.nome || t.cliente_nome || '';
+    return !searchTemplate || nome.toLowerCase().includes(searchTemplate.toLowerCase());
+  }), [templates, searchTemplate]);
+
+  const templateAprovados = useMemo(() => templates.filter(t => {
+    const d = parseTemplateDados(t);
+    return d.status_meta === 'aprovado';
+  }), [templates]);
+
+  // ─── Handlers ────────────────────────────────────────────────────────────────
+  const toggleContato = (id) => {
+    setContatosSelecionados(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selecionarTodos = () => {
+    if (contatosSelecionados.size === contatosFiltrados.length) {
+      setContatosSelecionados(new Set());
+    } else {
+      setContatosSelecionados(new Set(contatosFiltrados.map(c => c.id)));
+    }
+  };
+
+  const contatosSelecionadosLista = contatosFiltrados.filter(c => contatosSelecionados.has(c.id));
+
   const sincronizarTemplates = async () => {
     setSincronizando(true);
     try {
@@ -155,7 +199,6 @@ export default function CampanhaMetaOficial({ empresaId }) {
     }
   };
 
-  // Salvar template localmente (rascunho para submeter à Meta depois)
   const salvarTemplateMutation = useMutation({
     mutationFn: async (dados) => {
       const payload = {
@@ -171,13 +214,10 @@ export default function CampanhaMetaOficial({ empresaId }) {
           corpo: dados.corpo,
           cabecalho: dados.cabecalho,
           rodape: dados.rodape,
-          botoes: dados.botoes,
           status_meta: 'pendente',
         }),
       };
-      if (dados.id) {
-        return base44.entities.CampanhaLog.update(dados.id, payload);
-      }
+      if (dados.id) return base44.entities.CampanhaLog.update(dados.id, payload);
       return base44.entities.CampanhaLog.create(payload);
     },
     onSuccess: () => {
@@ -188,59 +228,42 @@ export default function CampanhaMetaOficial({ empresaId }) {
     onError: (e) => toast.error('Erro: ' + e.message),
   });
 
-  // Disparar campanha Meta Oficial
-  const dispararMutation = useMutation({
-    mutationFn: async ({ template, contatos, variaveis }) => {
-      if (!contatos.length) throw new Error('Selecione pelo menos 1 contato');
+  const dispararCampanha = async () => {
+    if (!nomeCampanha.trim()) { toast.error('Informe o nome da campanha'); return; }
+    if (contatosSelecionados.size === 0) { toast.error('Selecione pelo menos 1 lead'); return; }
+    if (!templateSelecionado) { toast.error('Selecione um template'); return; }
+
+    const templateDados = parseTemplateDados(templateSelecionado);
+    const contatos = contatosSelecionadosLista.map(c => c.telefone).filter(Boolean);
+
+    setDisparando(true);
+    try {
       const resp = await base44.functions.invoke('dispararCampanhaMetaOficial', {
         empresa_id: empresaId,
-        template_name: template.nome || parseTemplateDados(template).nome,
-        variaveis,
+        template_name: templateDados.nome,
+        variaveis: {},
         contatos,
+        nome_campanha: nomeCampanha,
+        delay_segundos: Number(delaySegundos),
+        pausar_apos: Number(pausarApos),
+        duracao_pausa: Number(duracaoPausa),
       });
-      return resp?.data;
-    },
-    onSuccess: (data) => {
-      toast.success(`✅ Campanha disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
-      setModalDisparo(null);
+      const data = resp?.data;
+      toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
+      setContatosSelecionados(new Set());
+      setNomeCampanha('');
+      setTemplateSelecionado(null);
       refetchLogs();
-    },
-    onError: (e) => toast.error('Erro: ' + e.message),
-  });
-
-  const parseTemplateDados = (t) => {
-    try { return JSON.parse(t.motivo_erro || '{}'); } catch { return {}; }
-  };
-
-  const templatesFiltrados = templates.filter(t => {
-    const d = parseTemplateDados(t);
-    const nome = d.nome || t.cliente_nome || '';
-    return !searchTemplate || nome.toLowerCase().includes(searchTemplate.toLowerCase());
-  });
-
-  const abrirDisparo = (template) => {
-    const dados = parseTemplateDados(template);
-    // Detectar variáveis no corpo: {{1}}, {{2}}, etc.
-    const vars = [];
-    const matches = (dados.corpo || '').matchAll(/\{\{(\d+)\}\}/g);
-    for (const m of matches) { if (!vars.includes(m[1])) vars.push(m[1]); }
-    const initVars = {};
-    vars.forEach(v => { initVars[v] = ''; });
-    setDisparoVariaveis(initVars);
-    setDisparoContatos('');
-    setTagFiltro('');
-    setModalDisparo(template);
-  };
-
-  const contatosDoDisparo = () => {
-    // Telefones manuais + tag selecionada
-    const manuais = disparoContatos.split('\n').map(t => t.trim()).filter(Boolean);
-    const porTag = tagFiltro ? contatosFiltradosPorTag.map(c => c.telefone).filter(Boolean) : [];
-    const todos = [...new Set([...manuais, ...porTag])];
-    return todos;
+    } catch (e) {
+      toast.error('Erro: ' + e.message);
+    } finally {
+      setDisparando(false);
+    }
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
+
+  const tagNome = (id) => tags.find(t => t.id === id)?.nome || id;
 
   return (
     <div className="space-y-4">
@@ -262,11 +285,14 @@ export default function CampanhaMetaOficial({ empresaId }) {
 
       <Tabs value={abaAtiva} onValueChange={setAbaAtiva}>
         <TabsList>
+          <TabsTrigger value="disparo" className="gap-1.5">
+            <Send className="w-4 h-4" /> Disparo em Massa
+          </TabsTrigger>
           <TabsTrigger value="templates" className="gap-1.5">
             <FileText className="w-4 h-4" /> Templates
             <span className="ml-1 bg-green-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{templates.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="disparos" className="gap-1.5">
+          <TabsTrigger value="historico" className="gap-1.5">
             <Zap className="w-4 h-4" /> Histórico de Disparos
           </TabsTrigger>
           <TabsTrigger value="dashboard" className="gap-1.5">
@@ -274,7 +300,293 @@ export default function CampanhaMetaOficial({ empresaId }) {
           </TabsTrigger>
         </TabsList>
 
-        {/* ABA: Templates */}
+        {/* ═══ ABA: DISPARO EM MASSA ════════════════════════════════════════════ */}
+        <TabsContent value="disparo">
+          <div className="space-y-4">
+            {/* Filtros de Seleção */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-slate-500" /> Filtros de Seleção
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Buscar</Label>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+                      <Input
+                        placeholder="Nome, email, telefone..."
+                        value={busca}
+                        onChange={e => setBusca(e.target.value)}
+                        className="pl-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Tag</Label>
+                    <Select value={filtroTag} onValueChange={setFiltroTag}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas</SelectItem>
+                        {tags.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Segmentação</Label>
+                    <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todas</SelectItem>
+                        <SelectItem value="novo">Novo</SelectItem>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Lista de Leads */}
+            <Card>
+              <CardContent className="pt-4 pb-0">
+                {/* Barra de contagem e seleção total */}
+                <div className="flex items-center justify-between mb-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="flex items-center gap-4 text-sm text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-slate-400" />
+                      <strong className="text-slate-800">{contatosFiltrados.length}</strong> leads encontrados
+                    </span>
+                    {contatosSelecionados.size > 0 && (
+                      <span className="flex items-center gap-1.5 text-green-700">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <strong>{contatosSelecionados.size}</strong> selecionados
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={selecionarTodos}
+                  >
+                    {contatosSelecionados.size === contatosFiltrados.length && contatosFiltrados.length > 0
+                      ? 'Desmarcar Todos'
+                      : 'Selecionar Todos'}
+                  </Button>
+                </div>
+
+                <p className="text-xs font-semibold text-slate-600 mb-2 px-1">Selecionar Leads</p>
+
+                <ScrollArea className="h-[340px] border rounded-lg">
+                  <div className="divide-y divide-slate-100">
+                    {contatosFiltrados.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2">
+                        <Users className="w-8 h-8 opacity-30" />
+                        <p className="text-sm">Nenhum contato encontrado</p>
+                      </div>
+                    ) : (
+                      contatosFiltrados.map(c => {
+                        const selecionado = contatosSelecionados.has(c.id);
+                        const contatoTags = (c.tags_ids || []).map(tid => tags.find(t => t.id === tid)).filter(Boolean);
+                        return (
+                          <div
+                            key={c.id}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors ${selecionado ? 'bg-green-50' : ''}`}
+                            onClick={() => toggleContato(c.id)}
+                          >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${selecionado ? 'bg-green-500 border-green-500' : 'border-slate-300'}`}>
+                              {selecionado && <CheckCircle2 className="w-3 h-3 text-white" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 truncate">{c.nome || c.telefone}</p>
+                              <p className="text-xs text-slate-400">{c.telefone}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {contatoTags.map(t => (
+                                <span
+                                  key={t.id}
+                                  className="text-[10px] font-medium px-2 py-0.5 rounded-full border"
+                                  style={{ backgroundColor: (t.cor || '#6b7280') + '22', color: t.cor || '#6b7280', borderColor: (t.cor || '#6b7280') + '55' }}
+                                >
+                                  {t.nome}
+                                </span>
+                              ))}
+                              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                                {c.status || 'novo'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+
+              {/* ─── Configurações da Campanha ──────────────────────────────────── */}
+              <CardContent className="pt-4 space-y-4">
+                {/* Nome */}
+                <div>
+                  <Label className="text-sm font-semibold mb-1 block">
+                    Nome da Campanha <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    value={nomeCampanha}
+                    onChange={e => setNomeCampanha(e.target.value)}
+                    placeholder="Ex: Promoção Black Friday 2024"
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Dê um nome descritivo para identificar esta campanha nos relatórios</p>
+                </div>
+
+                {/* Marcar prospecção */}
+                <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div
+                    className={`w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0 mt-0.5 ${marcarProspeccao ? 'bg-green-500' : 'border-2 border-slate-300'}`}
+                    onClick={() => setMarcarProspeccao(!marcarProspeccao)}
+                  >
+                    {marcarProspeccao && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-green-900">Marcar leads selecionados para prospecção</p>
+                    <p className="text-xs text-green-700 mt-0.5">Adiciona automaticamente todos os leads desta campanha à fila de prospecção (canal WhatsApp) — eles aparecerão no módulo Prospecção.</p>
+                  </div>
+                </div>
+
+                {/* Configurações de Timing */}
+                <div className="border rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-slate-500" /> Configurações de Timing
+                  </p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-xs text-slate-500 mb-1 block">Delay entre mensagens (segundos)</Label>
+                      <Input type="number" value={delaySegundos} onChange={e => setDelaySegundos(e.target.value)} className="text-sm" min={1} />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Recomendado: 5-10 segundos</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500 mb-1 block">Pausar após (mensagens)</Label>
+                      <Input type="number" value={pausarApos} onChange={e => setPausarApos(e.target.value)} className="text-sm" min={0} />
+                      <p className="text-[10px] text-slate-400 mt-0.5">0 = sem pausa automática</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500 mb-1 block">Duração da pausa (segundos)</Label>
+                      <Input type="number" value={duracaoPausa} onChange={e => setDuracaoPausa(e.target.value)} className="text-sm" min={0} />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Ex: 120 = 2 minutos</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mensagem da Campanha */}
+                <div className="border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-slate-500" /> Mensagem da Campanha
+                    </p>
+                    <div className="flex gap-1">
+                      {['Texto', 'Imagem', 'Vídeo', 'Template'].map(tipo => (
+                        <button
+                          key={tipo}
+                          onClick={() => setTipoMensagem(tipo.toLowerCase())}
+                          className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+                            tipoMensagem === tipo.toLowerCase()
+                              ? tipo === 'Template' ? 'bg-green-600 text-white' : 'bg-slate-700 text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {tipo === 'Template' && <span className="mr-1">📱</span>}{tipo}
+                          {tipo === 'Template' && <span className="ml-1 text-[9px] bg-white/20 px-1 rounded">Meta</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {tipoMensagem === 'template' && (
+                    <div className="space-y-3">
+                      {templateAprovados.length === 0 ? (
+                        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                          Nenhum template aprovado encontrado. Sincronize ou crie um template na aba Templates.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {templateAprovados.map(t => {
+                            const d = parseTemplateDados(t);
+                            const selecionado = templateSelecionado?.id === t.id;
+                            return (
+                              <div
+                                key={t.id}
+                                onClick={() => setTemplateSelecionado(selecionado ? null : t)}
+                                className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${selecionado ? 'border-green-500 bg-green-50' : 'border-slate-200 hover:border-slate-300'}`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${selecionado ? 'bg-green-500 border-green-500' : 'border-slate-300'}`} />
+                                    <p className="text-sm font-semibold text-slate-900">{d.nome || t.cliente_nome}</p>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Aprovado</Badge>
+                                    {d.categoria && <Badge variant="outline" className="text-[10px]">{d.categoria}</Badge>}
+                                  </div>
+                                </div>
+                                {d.corpo && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 pl-6">{d.corpo}</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <p className="text-xs text-slate-400 flex items-center gap-1">
+                        ℹ️ Templates Meta API: Mensagens com templates são enviadas via API oficial do WhatsApp e funcionam mesmo para contatos fora da janela de 24 horas.
+                      </p>
+                    </div>
+                  )}
+
+                  {tipoMensagem !== 'template' && (
+                    <div className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-slate-200 rounded-lg text-slate-400">
+                      <p className="text-sm">Modo "{tipoMensagem}" em desenvolvimento</p>
+                      <p className="text-xs mt-1">Use o modo Template para disparos oficiais via Meta</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Rodapé: status + botão */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <p className="text-sm text-slate-500">
+                    {templateSelecionado
+                      ? <span className="text-green-700 font-medium">✓ Template: {parseTemplateDados(templateSelecionado).nome}</span>
+                      : <span className="text-slate-400">Nenhum template selecionado</span>}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setContatosSelecionados(new Set()); setNomeCampanha(''); setTemplateSelecionado(null); }}
+                    >
+                      ✕ Limpar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="gap-2 bg-green-600 hover:bg-green-700"
+                      onClick={dispararCampanha}
+                      disabled={disparando || contatosSelecionados.size === 0 || !templateSelecionado || !nomeCampanha.trim()}
+                    >
+                      {disparando
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Disparando...</>
+                        : <><Send className="w-4 h-4" /> Enviar para Leads ({contatosSelecionados.size})</>}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ═══ ABA: TEMPLATES ══════════════════════════════════════════════════ */}
         <TabsContent value="templates">
           <Card>
             <CardHeader>
@@ -296,7 +608,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   <Button
                     size="sm"
                     className="gap-1.5 bg-green-600 hover:bg-green-700"
-                    onClick={() => { setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', botoes: '' }); setModalTemplate('novo'); }}
+                    onClick={() => { setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '' }); setModalTemplate('novo'); }}
                   >
                     <Plus className="w-4 h-4" /> Novo Template
                   </Button>
@@ -306,19 +618,14 @@ export default function CampanhaMetaOficial({ empresaId }) {
             <CardContent className="space-y-3">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Buscar template por nome..."
-                  value={searchTemplate}
-                  onChange={e => setSearchTemplate(e.target.value)}
-                  className="pl-9"
-                />
+                <Input placeholder="Buscar template por nome..." value={searchTemplate} onChange={e => setSearchTemplate(e.target.value)} className="pl-9" />
               </div>
 
               {templatesFiltrados.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2 border rounded-lg">
                   <FileText className="w-10 h-10 opacity-30" />
                   <p className="text-sm">Nenhum template cadastrado</p>
-                  <p className="text-xs text-slate-400">Crie um template ou sincronize com a Meta</p>
+                  <p className="text-xs">Crie um template ou sincronize com a Meta</p>
                 </div>
               ) : (
                 <div className="grid gap-3">
@@ -336,33 +643,19 @@ export default function CampanhaMetaOficial({ empresaId }) {
                               {d.categoria && <Badge variant="outline" className="text-[10px]">{d.categoria}</Badge>}
                               {d.idioma && <Badge variant="outline" className="text-[10px]">{d.idioma}</Badge>}
                             </div>
-                            {d.corpo && (
-                              <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{d.corpo}</p>
-                            )}
-                            {d.cabecalho && (
-                              <p className="text-[10px] text-slate-400 mt-1">Cabeçalho: {d.cabecalho}</p>
-                            )}
+                            {d.corpo && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{d.corpo}</p>}
+                            {d.cabecalho && <p className="text-[10px] text-slate-400 mt-1">Cabeçalho: {d.cabecalho}</p>}
                           </div>
                           <div className="flex gap-1.5 flex-shrink-0">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="gap-1 text-xs"
-                              onClick={() => { setFormTemplate({ ...d, id: t.id }); setModalTemplate(t); }}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => { setFormTemplate({ ...d, id: t.id }); setModalTemplate(t); }}>
                               <Pencil className="w-3.5 h-3.5" />
                             </Button>
-                            {statusMeta === 'aprovado' && (
-                              <Button
-                                size="sm"
-                                className="gap-1 text-xs bg-green-600 hover:bg-green-700"
-                                onClick={() => abrirDisparo(t)}
-                              >
-                                <Send className="w-3.5 h-3.5" /> Disparar
+                            {statusMeta === 'aprovado' ? (
+                              <Button size="sm" className="gap-1 text-xs bg-green-600 hover:bg-green-700" onClick={() => { setTemplateSelecionado(t); setAbaAtiva('disparo'); }}>
+                                <Send className="w-3.5 h-3.5" /> Usar no Disparo
                               </Button>
-                            )}
-                            {statusMeta !== 'aprovado' && (
-                              <Button size="sm" variant="outline" className="gap-1 text-xs text-slate-400" disabled title="Aguardando aprovação da Meta">
+                            ) : (
+                              <Button size="sm" variant="outline" className="gap-1 text-xs text-slate-400" disabled>
                                 <Clock className="w-3.5 h-3.5" /> Aguardando
                               </Button>
                             )}
@@ -377,13 +670,12 @@ export default function CampanhaMetaOficial({ empresaId }) {
           </Card>
         </TabsContent>
 
-        {/* ABA: Disparos */}
-        <TabsContent value="disparos">
+        {/* ═══ ABA: HISTÓRICO ══════════════════════════════════════════════════ */}
+        <TabsContent value="historico">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Zap className="w-5 h-5 text-amber-500" />
-                Histórico de Disparos — Meta Oficial
+                <Zap className="w-5 h-5 text-amber-500" /> Histórico de Disparos — Meta Oficial
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -400,9 +692,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-slate-900 truncate">{l.cliente_nome || '-'}</p>
                           <p className="text-xs text-slate-500">{l.cliente_telefone}</p>
-                          {l.motivo_erro && l.status === 'erro' && (
-                            <p className="text-xs text-red-500 mt-0.5">⚠️ {l.motivo_erro}</p>
-                          )}
+                          {l.motivo_erro && l.status === 'erro' && <p className="text-xs text-red-500 mt-0.5">⚠️ {l.motivo_erro}</p>}
                         </div>
                         <div className="flex items-center gap-3 ml-4 flex-shrink-0">
                           <span className="text-xs text-slate-400">{formatDate(l.created_date)}</span>
@@ -412,10 +702,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                             l.status === 'respondida' ? 'bg-purple-100 text-purple-700' :
                             'bg-red-100 text-red-700'
                           }>
-                            {l.status === 'enviada' ? '✓ Enviada' :
-                             l.status === 'lida' ? '👁 Lida' :
-                             l.status === 'respondida' ? '💬 Respondida' :
-                             '✗ Erro'}
+                            {l.status === 'enviada' ? '✓ Enviada' : l.status === 'lida' ? '👁 Lida' : l.status === 'respondida' ? '💬 Respondida' : '✗ Erro'}
                           </Badge>
                         </div>
                       </div>
@@ -427,7 +714,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
           </Card>
         </TabsContent>
 
-        {/* ABA: Dashboard */}
+        {/* ═══ ABA: DASHBOARD ══════════════════════════════════════════════════ */}
         <TabsContent value="dashboard">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
@@ -451,7 +738,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                         <span className="text-sm font-bold text-slate-900">{m.value} <span className="text-slate-400 font-normal text-xs">({pct}%)</span></span>
                       </div>
                       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full ${m.color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                        <div className={`h-full ${m.color} rounded-full`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -481,15 +768,9 @@ export default function CampanhaMetaOficial({ empresaId }) {
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-slate-500">{count} contatos</span>
                             <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7 gap-1"
+                              size="sm" variant="outline" className="text-xs h-7 gap-1"
                               disabled={count === 0}
-                              onClick={() => {
-                                // Ir para aba templates para disparar
-                                setAbaAtiva('templates');
-                                toast.info(`Selecione um template e use a tag "${tag.nome}" no disparo`);
-                              }}
+                              onClick={() => { setFiltroTag(tag.id); setAbaAtiva('disparo'); }}
                             >
                               <Send className="w-3 h-3" /> Disparar
                             </Button>
@@ -505,7 +786,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
         </TabsContent>
       </Tabs>
 
-      {/* Modal: Criar/Editar Template */}
+      {/* ─── Modal Criar/Editar Template ──────────────────────────────────────── */}
       <Dialog open={!!modalTemplate} onOpenChange={v => !v && setModalTemplate(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -557,7 +838,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
               <Textarea
                 value={formTemplate.corpo}
                 onChange={e => setFormTemplate(p => ({ ...p, corpo: e.target.value }))}
-                placeholder={"Olá {{1}}! 👋\n\nTemos uma oferta especial para você.\n\nValor: {{2}}"}
+                placeholder={"Olá {{1}}! 👋\n\nTemos uma oferta especial para você."}
                 rows={5}
                 className="text-sm resize-none"
               />
@@ -581,104 +862,6 @@ export default function CampanhaMetaOficial({ empresaId }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Modal: Disparar Campanha */}
-      {modalDisparo && (
-        <Dialog open={!!modalDisparo} onOpenChange={v => !v && setModalDisparo(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Send className="w-5 h-5 text-green-600" />
-                Disparar Campanha — Meta Oficial
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-1">
-              {/* Info template */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm font-semibold text-green-900">{parseTemplateDados(modalDisparo).nome}</p>
-                <p className="text-xs text-green-700 mt-1 line-clamp-3">{parseTemplateDados(modalDisparo).corpo}</p>
-              </div>
-
-              {/* Variáveis */}
-              {Object.keys(disparoVariaveis).length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Preencher variáveis</Label>
-                  {Object.keys(disparoVariaveis).map(v => (
-                    <div key={v}>
-                      <Label className="text-xs mb-1 block text-slate-500">{'{{' + v + '}}'}</Label>
-                      <Input
-                        value={disparoVariaveis[v]}
-                        onChange={e => setDisparoVariaveis(prev => ({ ...prev, [v]: e.target.value }))}
-                        placeholder={`Valor para a variável ${v}`}
-                        className="text-sm"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Seleção por tag */}
-              <div>
-                <Label className="text-xs font-semibold mb-1 block flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5" /> Segmentar por tag (opcional)
-                </Label>
-                <Select value={tagFiltro} onValueChange={setTagFiltro}>
-                  <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Selecionar tag..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={null}>Sem filtro de tag</SelectItem>
-                    {tags.map(t => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.nome} ({contatosWhatsapp.filter(c => (c.tags_ids || []).includes(t.id)).length} contatos)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {tagFiltro && (
-                  <p className="text-xs text-green-700 mt-1">
-                    ✓ {contatosFiltradosPorTag.length} contatos selecionados pela tag
-                  </p>
-                )}
-              </div>
-
-              {/* Telefones manuais */}
-              <div>
-                <Label className="text-xs font-semibold mb-1 block">Telefones adicionais (um por linha)</Label>
-                <Textarea
-                  value={disparoContatos}
-                  onChange={e => setDisparoContatos(e.target.value)}
-                  placeholder={"5511999998888\n5521999997777\n..."}
-                  rows={4}
-                  className="text-sm resize-none font-mono"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">Formato: código do país + DDD + número (ex: 5511999998888)</p>
-              </div>
-
-              <div className="bg-slate-50 rounded-lg p-3 flex items-center justify-between">
-                <span className="text-sm text-slate-600">Total de destinatários:</span>
-                <span className="text-lg font-bold text-green-700">{contatosDoDisparo().length}</span>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setModalDisparo(null)}>Cancelar</Button>
-              <Button
-                className="gap-2 bg-green-600 hover:bg-green-700"
-                onClick={() => dispararMutation.mutate({
-                  template: modalDisparo,
-                  contatos: contatosDoDisparo(),
-                  variaveis: disparoVariaveis,
-                })}
-                disabled={dispararMutation.isPending || contatosDoDisparo().length === 0}
-              >
-                {dispararMutation.isPending
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Disparando...</>
-                  : <><Send className="w-4 h-4" /> Disparar para {contatosDoDisparo().length} contatos</>}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }
