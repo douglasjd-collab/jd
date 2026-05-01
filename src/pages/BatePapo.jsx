@@ -1130,75 +1130,75 @@ export default function BatePapo() {
                 {/* Primeira linha - Badges de status */}
                 <div className="flex items-end justify-between gap-2">
                   {/* Todos */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-slate-900 text-white rounded flex items-center justify-center font-bold text-xs">
+                  <button onClick={() => setFiltroStatus('todas')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'todas' ? 'bg-slate-900 ring-2 ring-slate-400' : 'bg-slate-900'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Todos</span>
-                  </div>
+                  </button>
 
                   {/* Esperando */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                  <button onClick={() => setFiltroStatus('espera')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'espera' ? 'bg-red-500 ring-2 ring-red-300' : 'bg-red-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Esperando</span>
-                  </div>
+                  </button>
 
                   {/* Em Atend. */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-emerald-500 text-white rounded flex items-center justify-center font-bold text-xs">
+                  <button onClick={() => setFiltroStatus('ativa')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'ativa' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Em Atend.</span>
-                  </div>
+                  </button>
 
                   {/* Finalizados */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-slate-900 text-white rounded flex items-center justify-center font-bold text-xs">
+                  <button onClick={() => setFiltroStatus('encerrada')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'encerrada' ? 'bg-slate-900 ring-2 ring-slate-400' : 'bg-slate-900'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Finalizados</span>
-                  </div>
+                  </button>
                 </div>
 
                 {/* Segunda linha - Canais */}
                 <div className="flex items-end justify-between gap-2">
                   {/* Instagram */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-pink-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                  <button onClick={() => setFiltroStatus('instagram')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'instagram' ? 'bg-pink-500 ring-2 ring-pink-300' : 'bg-pink-500'}`}>
                       0
                     </div>
                     <span className="text-xs text-slate-700 font-medium flex items-center gap-1">
                       <Instagram className="w-3 h-3" /> Instagram
                     </span>
-                  </div>
+                  </button>
 
                   {/* Messenger */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                  <button onClick={() => setFiltroStatus('messenger')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'messenger' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
                       0
                     </div>
                     <span className="text-xs text-slate-700 font-medium flex items-center gap-1">
                       <MessageCircle className="w-3 h-3" /> Messenger
                     </span>
-                  </div>
+                  </button>
 
                   {/* Responsável */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
-                      0
+                  <button onClick={() => setFiltroStatus('meu')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'meu' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
+                      {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Responsável</span>
-                  </div>
+                  </button>
 
                   {/* Transferidos */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="h-8 px-3 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
-                      0
+                  <button onClick={() => setFiltroStatus('transferida')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'transferida' ? 'bg-purple-500 ring-2 ring-purple-300' : 'bg-purple-500'}`}>
+                      {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Transferidos</span>
-                  </div>
+                  </button>
                 </div>
               </div>
 
