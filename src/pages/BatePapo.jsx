@@ -957,8 +957,8 @@ export default function BatePapo() {
           @media (max-width: 1023px) { #batepapo-root { top: 3.5rem !important; } }
           .jd-messenger-sidebar {
             width: 100%;
-            max-width: 380px;
-            min-width: 340px;
+            max-width: 340px;
+            min-width: 300px;
             height: 100vh;
             overflow: hidden;
             display: flex;
