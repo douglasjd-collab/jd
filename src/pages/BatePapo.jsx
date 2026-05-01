@@ -712,7 +712,7 @@ export default function BatePapo() {
         // 1. Atualizar cache LOCAL imediatamente — move conversa para "Em Atendimento"
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
           old.map(c => c.id === conversaSelecionada.id
-            ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString() }
+            ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.full_name || user?.nome_perfil || 'Atendente', responsavel_expira_em: expira }
             : c
           )
         );
@@ -723,6 +723,7 @@ export default function BatePapo() {
           data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor',
           responsavel_id: user?.colaborador_id || user?.id || 'atendente',
+          responsavel_nome: user?.full_name || user?.nome_perfil || 'Atendente',
           responsavel_expira_em: expira,
         }).then(() => refetchConversas()).catch(() => {});
       }
@@ -861,7 +862,7 @@ export default function BatePapo() {
     ativa: conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length,
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
-    meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
+    meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
     grupos: conversasValidas.filter(c => isGrupo(c)).length,
   };
 
@@ -894,7 +895,7 @@ export default function BatePapo() {
       if (filtroStatus === 'ativa') return estaEmAtendimentoFiltro(c); // Vendedor respondeu OU sem remetente → Em Atendimento
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada';
-      if (filtroStatus === 'meu') return c.responsavel_id === (user?.colaborador_id || user?.id) && naoLidasPorConversa[c.id] === 0;
+      if (filtroStatus === 'meu') return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       
       return false;
     })
@@ -1254,19 +1255,29 @@ export default function BatePapo() {
                                {ultimaMsg}
                              </p>
 
-                             {/* Linha 3: badge em destaque */}
+                             {/* Linha 3: badges */}
                              <div className="flex items-center justify-between gap-2 mt-0.5">
-                               {mostrarBadge && (
-                                 <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
-                                   <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none">
-                                     {naoLidas > 0 ? naoLidas : '!'}
-                                   </span>
-                                   <span className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">
-                                     {naoLidas > 0 ? `${naoLidas} msg` : 'Esperando'}
-                                   </span>
-                                 </div>
-                               )}
-                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                               <div className="flex items-center gap-1 flex-wrap">
+                                 {mostrarBadge && (
+                                   <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
+                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none">
+                                       {naoLidas > 0 ? naoLidas : '!'}
+                                     </span>
+                                     <span className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">
+                                       {naoLidas > 0 ? `${naoLidas} msg` : 'Esperando'}
+                                     </span>
+                                   </div>
+                                 )}
+                                 {atendenteDentroDoTempo(c) && c.responsavel_nome && (
+                                   <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 flex-shrink-0">
+                                     <UserPlus className="h-2.5 w-2.5 text-blue-500" />
+                                     <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[90px]">
+                                       {c.responsavel_nome} atendendo
+                                     </span>
+                                   </div>
+                                 )}
+                               </div>
+                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 ml-auto">
                                  <DropdownMenu>
                                    <DropdownMenuTrigger asChild>
                                      <button className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 -mr-1">
