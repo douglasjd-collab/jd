@@ -1131,7 +1131,7 @@ export default function BatePapo() {
                 <div className="flex items-end justify-between gap-2">
                   {/* Todos */}
                   <button onClick={() => setFiltroStatus('todas')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'todas' ? 'bg-slate-900 ring-2 ring-slate-400' : 'bg-slate-900'}`}>
+                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'todas' ? 'bg-slate-900 ring-2 ring-slate-400' : 'bg-slate-900'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Todos</span>
@@ -1139,7 +1139,7 @@ export default function BatePapo() {
 
                   {/* Esperando */}
                   <button onClick={() => setFiltroStatus('espera')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'espera' ? 'bg-red-500 ring-2 ring-red-300' : 'bg-red-500'}`}>
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'espera' ? 'bg-red-500 ring-2 ring-red-300' : 'bg-red-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Esperando</span>
@@ -1147,7 +1147,7 @@ export default function BatePapo() {
 
                   {/* Em Atend. */}
                   <button onClick={() => setFiltroStatus('ativa')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'ativa' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
+                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'ativa' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Em Atend.</span>
@@ -1155,7 +1155,7 @@ export default function BatePapo() {
 
                   {/* Finalizados */}
                   <button onClick={() => setFiltroStatus('encerrada')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'encerrada' ? 'bg-slate-900 ring-2 ring-slate-400' : 'bg-slate-900'}`}>
+                    <div className={`h-8 px-3 rounded flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'encerrada' ? 'bg-slate-900 ring-2 ring-slate-400' : 'bg-slate-900'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Finalizados</span>
@@ -1166,7 +1166,7 @@ export default function BatePapo() {
                 <div className="flex items-end justify-between gap-2">
                   {/* Instagram */}
                   <button onClick={() => setFiltroStatus('instagram')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'instagram' ? 'bg-pink-500 ring-2 ring-pink-300' : 'bg-pink-500'}`}>
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'instagram' ? 'bg-pink-500 ring-2 ring-pink-300' : 'bg-pink-500'}`}>
                       0
                     </div>
                     <span className="text-xs text-slate-700 font-medium flex items-center gap-1">
@@ -1176,7 +1176,7 @@ export default function BatePapo() {
 
                   {/* Messenger */}
                   <button onClick={() => setFiltroStatus('messenger')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'messenger' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'messenger' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
                       0
                     </div>
                     <span className="text-xs text-slate-700 font-medium flex items-center gap-1">
@@ -1186,7 +1186,7 @@ export default function BatePapo() {
 
                   {/* Responsável */}
                   <button onClick={() => setFiltroStatus('meu')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'meu' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'meu' ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-emerald-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Responsável</span>
@@ -1194,7 +1194,7 @@ export default function BatePapo() {
 
                   {/* Transferidos */}
                   <button onClick={() => setFiltroStatus('transferida')} className="flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-opacity">
-                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-xs text-white ${filtroStatus === 'transferida' ? 'bg-purple-500 ring-2 ring-purple-300' : 'bg-purple-500'}`}>
+                    <div className={`h-8 px-3 rounded-full flex items-center justify-center font-bold text-[11px] text-white ${filtroStatus === 'transferida' ? 'bg-purple-500 ring-2 ring-purple-300' : 'bg-purple-500'}`}>
                       {conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}
                     </div>
                     <span className="text-xs text-slate-700 font-medium">Transferidos</span>
