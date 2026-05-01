@@ -1035,8 +1035,8 @@ export default function BatePapo() {
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className="flex w-[370px] shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 h-full [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+          <Card className="flex w-[370px] shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 h-screen [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div>
                   <p className="text-sm font-semibold leading-tight">JD Messenger</p>
@@ -1157,7 +1157,7 @@ export default function BatePapo() {
               </div>
             </CardHeader>
 
-            <CardContent className="flex flex-1 flex-col gap-2 pt-0 overflow-hidden">
+            <CardContent className="flex flex-1 flex-col gap-2 pt-0 overflow-hidden flex-shrink-0">
               {/* Seletor de empresa — apenas super_admin */}
               {isSuperAdmin && empresas.length > 0 && (
                 <Select value={empresaId || ''} onValueChange={(val) => {
@@ -1232,7 +1232,7 @@ export default function BatePapo() {
                 })}
               </div>
 
-              <ScrollArea className="mt-1 flex-1 w-full">
+              <ScrollArea className="mt-1 flex-1 w-full overflow-y-auto">
                 <div className="space-y-1 pb-4 pr-4">
                   {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
@@ -1268,7 +1268,7 @@ export default function BatePapo() {
                         <div
                            key={c.id}
                            className={classNames(
-                             "flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible",
+                             "flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible min-h-[82px]",
                              conversaSelecionada?.id === c.id
                                ? "bg-blue-50"
                                : naoLidas > 0
