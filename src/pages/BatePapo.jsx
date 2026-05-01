@@ -1300,19 +1300,19 @@ export default function BatePapo() {
 
                            {/* Conteúdo - agora com layout flexível */}
                            <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
-                             {/* Linha 1: nome + hora (em uma linha) */}
-                             <div className="flex items-center justify-between gap-1.5 min-w-0">
-                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                 <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
-                                   {nome}
-                                 </p>
+                             {/* Linha 1: nome + coluna direita (hora acima, bolinha abaixo) */}
+                             <div className="flex items-start justify-between gap-2 min-w-0">
+                               <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
+                                 {nome}
+                               </p>
+                               <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                 <p className="text-[11px] text-slate-400">{hora}</p>
                                  {naoLidas > 0 && (
-                                   <span style={{ backgroundColor: '#10B981', minWidth: '24px', height: '24px' }} className="inline-flex items-center justify-center rounded-full text-white text-[12px] font-bold leading-none flex-shrink-0">
+                                   <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[10px] font-bold leading-none">
                                      {naoLidas}
                                    </span>
                                  )}
                                </div>
-                               <p className="text-[11px] text-slate-400 flex-shrink-0">{hora}</p>
                              </div>
 
                              {/* Linha 2: última mensagem (truncada) */}
