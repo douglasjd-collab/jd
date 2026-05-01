@@ -47,6 +47,8 @@ import {
   Users,
   Image as ImageIcon,
   Bell,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1247,7 +1249,13 @@ export default function BatePapo() {
                                contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
                                className="h-11 w-11"
                              />
-                             <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-1.5 border-white ${statusColor}`} />
+                             {c.bloqueado ? (
+                               <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
+                                 <Lock className="w-2 h-2 text-white" />
+                               </span>
+                             ) : (
+                               <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-1.5 border-white ${statusColor}`} />
+                             )}
                            </div>
 
                            {/* Conteúdo - agora com layout flexível */}
@@ -1298,6 +1306,7 @@ export default function BatePapo() {
                                      </button>
                                    </DropdownMenuTrigger>
                                    <DropdownMenuContent align="end" className="w-48">
+                                     {!isGrupo(c) && (<>
                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
                                        <Contact className="mr-2 h-3.5 w-3.5" />
                                        {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
@@ -1318,6 +1327,21 @@ export default function BatePapo() {
                                        <Star className="mr-2 h-3.5 w-3.5" />
                                        Favoritar
                                      </DropdownMenuItem>
+                                     </>)}
+                                     {isGrupo(c) && (
+                                       <DropdownMenuItem
+                                         onClick={async () => {
+                                           const novoBloqueado = !c.bloqueado;
+                                           await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: novoBloqueado });
+                                           queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                           toast.success(novoBloqueado ? '🔒 Grupo bloqueado — mensagens serão ignoradas' : '🔓 Grupo desbloqueado');
+                                         }}
+                                         className={c.bloqueado ? 'text-green-600 focus:text-green-700' : 'text-orange-600 focus:text-orange-700'}
+                                       >
+                                         {c.bloqueado ? <Unlock className="mr-2 h-3.5 w-3.5" /> : <Lock className="mr-2 h-3.5 w-3.5" />}
+                                         {c.bloqueado ? 'Desbloquear grupo' : 'Bloquear grupo'}
+                                       </DropdownMenuItem>
+                                     )}
                                      <DropdownMenuItem
                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                        onClick={async () => {

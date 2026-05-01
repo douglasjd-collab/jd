@@ -256,6 +256,13 @@ async function processarWebhook(req, rawBody, base44) {
 
     if (convsGrupo.length > 0) {
       conversaGrupo = convsGrupo[0];
+
+      // ⛔ Grupo bloqueado — ignorar mensagem
+      if (conversaGrupo.bloqueado === true) {
+        console.log(`⛔ Grupo bloqueado ignorado: ${grupoJid}`);
+        return;
+      }
+
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversaGrupo.id, {
         ultima_mensagem: conteudoG.substring(0, 200),
         data_ultima_mensagem: new Date().toISOString(),
