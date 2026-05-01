@@ -158,13 +158,17 @@ async function processarWebhook(req, rawBody, base44) {
   // ─── ACK / status update ──────────────────────────────────────────────────
   if (['messages_update', 'message_ack', 'messages_ack'].includes(event)) {
     const updates = Array.isArray(data) ? data : [data];
+    console.log(`🔔 ACK Event: ${event} | Updates: ${updates.length}`);
     for (const upd of updates) {
       const remoteId = upd.key?.id || upd.id || upd.messageId;
       const rawStatus = (upd.status || upd.ack || '').toString().toUpperCase();
       let novoStatus = null;
+      
       if (rawStatus === 'SENT' || rawStatus === '1') novoStatus = 'enviada';
       else if (rawStatus === 'DELIVERED' || rawStatus === '2') novoStatus = 'entregue';
       else if (['READ', '3', 'PLAYED', '4'].includes(rawStatus)) novoStatus = 'lida';
+
+      console.log(`  • msgId: "${remoteId}" | rawStatus: "${rawStatus}" | novoStatus: "${novoStatus}"`);
 
       if (remoteId && novoStatus) {
         const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
@@ -172,7 +176,9 @@ async function processarWebhook(req, rawBody, base44) {
         );
         if (msgs?.length > 0) {
           await base44.asServiceRole.entities.MensagemWhatsapp.update(msgs[0].id, { status: novoStatus });
-          console.log(`✅ ACK: status="${novoStatus}" para msg ${msgs[0].id}`);
+          console.log(`✅ ACK: status="${novoStatus}" para msg ${msgs[0].id} (whatsapp_id: ${remoteId})`);
+        } else {
+          console.warn(`⚠️ ACK: msg com whatsapp_id "${remoteId}" não encontrada no banco`);
         }
       }
     }
