@@ -860,7 +860,13 @@ export default function BatePapo() {
       if (isGrupo(c)) return filtroStatus === 'grupos'; // Grupos ficam apenas na aba grupos
       
       if (filtroStatus === 'todas') return c.status === 'ativa'; // TODAS as conversas ATIVAS
-      if (filtroStatus === 'espera') return (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente'); // Tem msgs não lidas OU último remetente é cliente (sem exigir status ativa)
+      if (filtroStatus === 'espera') {
+        // Considera "esperando" se: tem msgs não lidas, OU último remetente é cliente, OU não tem último remetente mas está ativa
+        const temNaoLidas = (naoLidasPorConversa[c.id] || 0) > 0;
+        const ultimoCliente = c.ultimo_remetente === 'cliente';
+        const semRemetente = !c.ultimo_remetente && c.status === 'ativa';
+        return temNaoLidas || ultimoCliente || semRemetente;
+      }
       if (filtroStatus === 'ativa') return c.status === 'ativa' && c.ultimo_remetente === 'vendedor' && !naoLidasPorConversa[c.id]; // Vendedor respondeu e nenhuma não lida
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada';
