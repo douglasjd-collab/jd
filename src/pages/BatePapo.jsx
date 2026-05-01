@@ -971,8 +971,8 @@ export default function BatePapo() {
             min-height: 0;
           }
           .jd-conversation-card {
-            min-height: 72px;
-            padding: 10px 12px;
+            min-height: 80px;
+            padding: 8px 12px;
             display: flex;
             align-items: flex-start;
           }
@@ -1322,7 +1322,7 @@ export default function BatePapo() {
                            </div>
 
                            {/* Conteúdo - agora com layout flexível */}
-                           <div className="flex flex-1 flex-col min-w-0 gap-0.5 overflow-hidden">
+                           <div className="flex flex-1 flex-col min-w-0 gap-1 overflow-hidden">
                              {/* Linha 1: nome + coluna direita (hora/data + menu) */}
                              <div className="flex items-start justify-between gap-2 min-w-0">
                                <p className={`truncate text-sm text-slate-900 ${mostrarBadge ? 'font-bold' : 'font-semibold'}`}>
@@ -1411,9 +1411,9 @@ export default function BatePapo() {
                                    </div>
                                    </div>
 
-                                   {/* Linha 2: última mensagem (truncada) */}
-                                   <p className={`line-clamp-1 text-xs ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
-                                   {ultimaMsg}
+                                   {/* Linha 2: última mensagem (2 linhas) */}
+                                   <p className={`line-clamp-2 text-xs leading-tight ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                                     {ultimaMsg}
                                    </p>
 
                                    {/* Linha 3: status atendimento */}
