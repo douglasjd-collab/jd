@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Check, CheckCheck, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2 } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
@@ -328,17 +328,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) 
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
         <div className="mb-1">{renderConteudo()}</div>
-        <div className="flex items-center justify-end gap-1 mt-1">
+        <div className="flex items-center justify-end gap-1.5 mt-1">
           <p className={`text-xs ${isVendedor ? 'text-white/80' : 'text-slate-500'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
-            {format(new Date(mensagem.data_envio || mensagem.created_date), 'dd/MM HH:mm', { locale: ptBR })}
+            {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
           </p>
           {isVendedor && (
-            <span className="flex items-center">
-              {(!mensagem.status || mensagem.status === 'pendente' || mensagem.status === 'enviada') && (
-                <Check className="w-3.5 h-3.5 text-white/70" />
-              )}
-              {mensagem.status === 'entregue' && <CheckCheck className="w-3.5 h-3.5 text-white/70" />}
-              {mensagem.status === 'lida' && <CheckCheck className="w-3.5 h-3.5 text-sky-300" />}
+            <span className={`text-xs font-medium ${mensagem.status === 'lida' ? 'text-sky-300' : 'text-white/70'}`}>
+              {mensagem.status === 'lida' && '✓✓'}
+              {mensagem.status === 'entregue' && '✓✓'}
+              {(!mensagem.status || mensagem.status === 'pendente' || mensagem.status === 'enviada') && '✓'}
             </span>
           )}
         </div>
