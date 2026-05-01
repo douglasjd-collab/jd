@@ -1315,8 +1315,8 @@ export default function BatePapo() {
                                {ultimaMsg}
                              </p>
 
-                             {/* Linha 3: badges */}
-                             <div className="flex items-start justify-between gap-2 mt-0.5">
+                             {/* Linha 3: badges + menu */}
+                             <div className="flex items-start justify-between gap-1 mt-0.5 group">
                                <div className="flex flex-col gap-1 flex-1 min-w-0">
                                  <div className="flex flex-wrap gap-1">
                                    {mostrarBadge && (
@@ -1339,11 +1339,11 @@ export default function BatePapo() {
                                    </div>
                                  )}
                                </div>
-                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 ml-1">
+                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                  <DropdownMenu>
                                    <DropdownMenuTrigger asChild>
-                                     <button className="rounded-full p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-900">
-                                       <MoreVertical className="h-5 w-5" />
+                                     <button className="rounded-full p-1 text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+                                       <MoreVertical className="h-4 w-4" />
                                      </button>
                                    </DropdownMenuTrigger>
                                    <DropdownMenuContent align="end" className="w-48">
