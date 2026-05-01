@@ -973,10 +973,11 @@ export default function BatePapo() {
             min-height: 0;
           }
           .jd-conversation-card {
-            min-height: 80px;
+            height: 80px;
             padding: 8px 12px;
             display: flex;
             align-items: flex-start;
+            overflow: hidden;
           }
         `}</style>
         <NovaConversaModal
@@ -1308,7 +1309,7 @@ export default function BatePapo() {
 
                                      {/* Linha 2: última mensagem + badge */}
                                      <div className="flex items-center justify-between gap-2 min-w-0">
-                                     <p className={`line-clamp-1 text-xs flex-1 ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                                     <p className={`truncate text-xs flex-1 ${mostrarBadge ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
                                      {ultimaMsg}
                                      </p>
                                      {mostrarBadge && (
