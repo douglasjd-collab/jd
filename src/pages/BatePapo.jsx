@@ -846,6 +846,17 @@ export default function BatePapo() {
     grupos: conversasValidas.filter(c => isGrupo(c)).length,
   };
 
+  // Debug temporário
+  React.useEffect(() => {
+    if (filtroStatus === 'espera') {
+      const ativas = conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa');
+      const comCliente = ativas.filter(c => c.ultimo_remetente === 'cliente');
+      const comNaoLidas = ativas.filter(c => naoLidasPorConversa[c.id] > 0);
+      console.log('[ESPERA DEBUG] ativas:', ativas.length, 'ultimo_remetente=cliente:', comCliente.length, 'naoLidas>0:', comNaoLidas.length);
+      if (comCliente.length > 0) console.log('[ESPERA DEBUG] exemplo:', comCliente[0]);
+    }
+  }, [filtroStatus, conversasValidas, naoLidasPorConversa]);
+
   const conversasFiltradas = conversasValidas
     .filter(c => {
       // Aplicar busca primeiro
@@ -861,11 +872,9 @@ export default function BatePapo() {
       
       if (filtroStatus === 'todas') return c.status === 'ativa'; // TODAS as conversas ATIVAS
       if (filtroStatus === 'espera') {
-        // Considera "esperando" se: tem msgs não lidas, OU último remetente é cliente, OU não tem último remetente mas está ativa
-        const temNaoLidas = (naoLidasPorConversa[c.id] || 0) > 0;
-        const ultimoCliente = c.ultimo_remetente === 'cliente';
-        const semRemetente = !c.ultimo_remetente && c.status === 'ativa';
-        return temNaoLidas || ultimoCliente || semRemetente;
+        // Exatamente igual ao contador: ativa + (naoLidas > 0 OU ultimo_remetente === 'cliente')
+        if (c.status !== 'ativa') return false;
+        return (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
       }
       if (filtroStatus === 'ativa') return c.status === 'ativa' && c.ultimo_remetente === 'vendedor' && !naoLidasPorConversa[c.id]; // Vendedor respondeu e nenhuma não lida
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
