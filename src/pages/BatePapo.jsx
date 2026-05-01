@@ -1339,11 +1339,11 @@ export default function BatePapo() {
                                    </div>
                                  )}
                                </div>
-                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 ml-1">
                                  <DropdownMenu>
                                    <DropdownMenuTrigger asChild>
-                                     <button className="rounded-full p-1.5 text-slate-700 hover:bg-slate-100 hover:text-slate-900 -mr-1">
-                                       <MoreVertical className="h-4 w-4" />
+                                     <button className="rounded-full p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+                                       <MoreVertical className="h-5 w-5" />
                                      </button>
                                    </DropdownMenuTrigger>
                                    <DropdownMenuContent align="end" className="w-48">
