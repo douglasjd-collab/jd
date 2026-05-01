@@ -1213,8 +1213,13 @@ export default function BatePapo() {
                                  {nome}
                                </p>
                                <p className="text-xs text-slate-500 flex-shrink-0">{hora}</p>
-                             </div>
-                                   <DropdownMenuContent align="end" className="w-48">
+                               <DropdownMenu>
+                                 <DropdownMenuTrigger asChild>
+                                   <button className="p-0.5 hover:bg-slate-100 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
+                                   </button>
+                                 </DropdownMenuTrigger>
+                                 <DropdownMenuContent align="end" className="w-48">
                                      {!isGrupo(c) && (<>
                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
                                        <Contact className="mr-2 h-3.5 w-3.5" />
@@ -1274,6 +1279,7 @@ export default function BatePapo() {
                                      </DropdownMenuItem>
                                      </DropdownMenuContent>
                                      </DropdownMenu>
+                                     </div>
                                      </div>
 
                                      {/* Linha 2: última mensagem + badge */}
