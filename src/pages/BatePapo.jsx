@@ -73,6 +73,7 @@ import MensagemItem from '@/components/chat/MensagemItem';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
 import AvatarContato from '@/components/chat/AvatarContato';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
+import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -183,7 +184,26 @@ export default function BatePapo() {
   const [empresas, setEmpresas] = useState([]); // apenas para super_admin
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
+  const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
+
+  const handleTransferir = async (conversa, colaborador) => {
+    try {
+      // Atualiza responsável e marca status como encerrada (filtro Transferidos)
+      await base44.entities.ConversaWhatsapp.update(conversa.id, {
+        responsavel_id: colaborador.id,
+        responsavel_nome: colaborador.nome,
+        responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
+        status: 'encerrada',
+        ultimo_remetente: 'vendedor',
+      });
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      if (conversaSelecionada?.id === conversa.id) setConversaSelecionada(null);
+      toast.success(`✅ Atendimento transferido para ${colaborador.nome}`);
+    } catch (e) {
+      toast.error('Erro ao transferir: ' + e.message);
+    }
+  };
 
   const limparHistoricoCompleto = async () => {
     const confirmacao = window.confirm(
@@ -936,6 +956,15 @@ export default function BatePapo() {
           isLoading={criarConversaMutation.isPending}
         />
 
+        {/* Modal Transferir Atendimento */}
+        <TransferirAtendimentoModal
+          open={!!transferirModal}
+          onOpenChange={(v) => !v && setTransferirModal(null)}
+          conversa={transferirModal}
+          empresaId={empresaId}
+          onTransferir={handleTransferir}
+        />
+
         {/* Modal Criar Tarefa */}
         <TarefaFormModal
           open={criarTarefaOpen}
@@ -1325,6 +1354,10 @@ export default function BatePapo() {
                                        <Clock className="mr-2 h-3.5 w-3.5" />
                                        Criar tarefa
                                      </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => { setTransferirModal(c); }}>
+                                       <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                                       Transferir atendimento
+                                     </DropdownMenuItem>
                                      <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
                                        <Star className="mr-2 h-3.5 w-3.5" />
                                        Favoritar
@@ -1446,8 +1479,9 @@ export default function BatePapo() {
                                       <Check className="h-3.5 w-3.5" />
                                       Finalizar Conversa
                                     </Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-200">
-                      <ArrowRightLeft className="h-4 w-4 text-slate-500" />
+                    <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-purple-600 hover:text-purple-700 hover:border-purple-300" onClick={() => setTransferirModal(conversaSelecionada)}>
+                      <ArrowRightLeft className="h-3.5 w-3.5" />
+                      Transferir
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -1472,9 +1506,9 @@ export default function BatePapo() {
                             <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
                             Reabrir conversa
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
-                            <UserPlus className="mr-2 h-3.5 w-3.5" />
-                            Atribuir responsável
+                          <DropdownMenuItem onClick={() => setTransferirModal(conversaSelecionada)}>
+                           <UserPlus className="mr-2 h-3.5 w-3.5" />
+                           Transferir atendimento
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
                             <BellOff className="mr-2 h-3.5 w-3.5" />
@@ -1622,7 +1656,7 @@ export default function BatePapo() {
                               <Tag className="h-3.5 w-3.5" />
                               Proposta
                             </Button>
-                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]">
+                            <Button variant="outline" size="sm" className="h-8 justify-start gap-1 rounded-lg text-[11px]" onClick={() => setTransferirModal(conversaSelecionada)}>
                               <ArrowRightLeft className="h-3.5 w-3.5" />
                               Transferir
                             </Button>
