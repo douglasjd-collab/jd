@@ -975,12 +975,12 @@ export default function BatePapo() {
             width: 100%;
           }
           .jd-conversation-card {
-            height: 72px;
-            max-height: 72px;
-            min-height: 72px;
+            height: 56px;
+            max-height: 56px;
+            min-height: 56px;
             width: 100%;
             max-width: 100%;
-            padding: 10px 12px;
+            padding: 8px 10px;
             display: flex;
             align-items: center;
             overflow: hidden;
@@ -1259,7 +1259,7 @@ export default function BatePapo() {
                             onClick={() => selecionarConversa(c)}
                           >
                             {/* Avatar com ponto status */}
-                            <div className="relative flex-shrink-0 h-12 w-12">
+                            <div className="relative flex-shrink-0 h-10 w-10">
                               <AvatarContato
                                 contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
                                 className="h-12 w-12"
