@@ -1268,7 +1268,7 @@ export default function BatePapo() {
                         <div
                            key={c.id}
                            className={classNames(
-                             "flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-hidden",
+                             "flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-visible",
                              conversaSelecionada?.id === c.id
                                ? "bg-blue-50"
                                : naoLidas > 0
