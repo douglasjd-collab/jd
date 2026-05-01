@@ -839,11 +839,16 @@ export default function BatePapo() {
     return tel.length >= 8;
   }), [conversas]);
 
+  // Conversa está em espera: cliente enviou a última mensagem
+  const estaEmEsperaFiltro = (c) => c.status === 'ativa' && (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
+  // Conversa está em atendimento: vendedor respondeu OU sem remetente definido (conversa sem histórico claro)
+  const estaEmAtendimentoFiltro = (c) => c.status === 'ativa' && !estaEmEsperaFiltro(c);
+
   // Contadores por aba
   const contadores = {
     todas: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa').length,
-    espera: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente')).length,
-    ativa: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.ultimo_remetente === 'vendedor').length,
+    espera: conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length,
+    ativa: conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length,
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
@@ -875,12 +880,8 @@ export default function BatePapo() {
       if (isGrupo(c)) return filtroStatus === 'grupos'; // Grupos ficam apenas na aba grupos
       
       if (filtroStatus === 'todas') return c.status === 'ativa'; // TODAS as conversas ATIVAS
-      if (filtroStatus === 'espera') {
-        // Exatamente igual ao contador: ativa + (naoLidas > 0 OU ultimo_remetente === 'cliente')
-        if (c.status !== 'ativa') return false;
-        return (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
-      }
-      if (filtroStatus === 'ativa') return c.status === 'ativa' && c.ultimo_remetente === 'vendedor'; // Vendedor respondeu → Em Atendimento
+      if (filtroStatus === 'espera') return estaEmEsperaFiltro(c);
+      if (filtroStatus === 'ativa') return estaEmAtendimentoFiltro(c); // Vendedor respondeu OU sem remetente → Em Atendimento
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada';
       if (filtroStatus === 'meu') return c.responsavel_id === (user?.colaborador_id || user?.id) && naoLidasPorConversa[c.id] === 0;
