@@ -1277,28 +1277,30 @@ export default function BatePapo() {
                              </p>
 
                              {/* Linha 3: badges */}
-                             <div className="flex items-center justify-between gap-2 mt-0.5">
-                               <div className="flex items-center gap-1 flex-wrap">
-                                 {mostrarBadge && (
-                                   <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
-                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none">
-                                       {naoLidas > 0 ? naoLidas : '!'}
-                                     </span>
-                                     <span className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">
-                                       {naoLidas > 0 ? `${naoLidas} msg` : 'Esperando'}
-                                     </span>
-                                   </div>
-                                 )}
+                             <div className="flex items-start justify-between gap-2 mt-0.5">
+                               <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                 <div className="flex flex-wrap gap-1">
+                                   {mostrarBadge && (
+                                     <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
+                                       <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[11px] font-bold leading-none">
+                                         {naoLidas > 0 ? naoLidas : '!'}
+                                       </span>
+                                       <span className="text-[10px] text-emerald-700 font-medium whitespace-nowrap">
+                                         {naoLidas > 0 ? `${naoLidas} msg` : 'Esperando'}
+                                       </span>
+                                     </div>
+                                   )}
+                                 </div>
                                  {atendenteDentroDoTempo(c) && c.responsavel_nome && (
-                                   <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 flex-shrink-0">
-                                     <UserPlus className="h-2.5 w-2.5 text-blue-500" />
-                                     <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[90px]">
+                                   <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-full border border-blue-200 w-fit">
+                                     <UserPlus className="h-2.5 w-2.5 text-blue-500 flex-shrink-0" />
+                                     <span className="text-[10px] text-blue-700 font-medium whitespace-nowrap truncate max-w-[110px]">
                                        {c.responsavel_nome} atendendo
                                      </span>
                                    </div>
                                  )}
                                </div>
-                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0 ml-auto">
+                               <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                                  <DropdownMenu>
                                    <DropdownMenuTrigger asChild>
                                      <button className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 -mr-1">
