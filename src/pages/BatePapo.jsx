@@ -779,14 +779,18 @@ export default function BatePapo() {
   // Helper: detectar se é grupo
   const isGrupo = (c) => {
     const telOriginal = (c.cliente_telefone || '');
-    const wid = (c.whatsapp_id || '').toLowerCase();
+    const wid = (c.whatsapp_id || '');
     const tel = telOriginal.replace(/\D/g, '');
     return (
       wid.includes('@g.us') ||
+      wid.includes('@broadcast') ||
       telOriginal.includes('@g.us') ||
       telOriginal.includes('@broadcast') ||
-      wid.endsWith('-') ||
-      tel.length > 15
+      // Grupos da Evolution têm whatsapp_id com formato: número-número@g.us ou só @g.us
+      // Também podem ter o ID no formato 120363xxxxx-xxxxxxx (com hífen no meio)
+      /^\d{10,}-\d+$/.test(wid) ||
+      // Número com mais de 13 dígitos (grupos no Brasil)
+      (tel.length > 13 && !telOriginal.includes('@'))
     );
   };
 
@@ -869,6 +873,18 @@ export default function BatePapo() {
   };
 
   // Debug temporário
+  React.useEffect(() => {
+    if (filtroStatus === 'grupos') {
+      console.log('[GRUPOS DEBUG] Total conversas:', conversas.length);
+      const grupos = conversas.filter(c => isGrupo(c));
+      console.log('[GRUPOS DEBUG] Grupos detectados:', grupos.length);
+      grupos.forEach(g => console.log('  grupo:', { id: g.id, nome: g.cliente_nome, telefone: g.cliente_telefone, whatsapp_id: g.whatsapp_id }));
+      // Mostrar também as primeiras não-grupo para comparar
+      const naoGrupos = conversas.filter(c => !isGrupo(c)).slice(0, 3);
+      naoGrupos.forEach(g => console.log('  não-grupo:', { telefone: g.cliente_telefone, whatsapp_id: g.whatsapp_id }));
+    }
+  }, [filtroStatus, conversas]);
+
   React.useEffect(() => {
     if (filtroStatus === 'espera') {
       const ativas = conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa');
