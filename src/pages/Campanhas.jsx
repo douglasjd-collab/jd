@@ -26,6 +26,7 @@ import {
   CalendarClock,
   RefreshCw,
   MessageCircle,
+  MessageSquare,
   Building2,
   DollarSign,
   X,
@@ -37,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
+import CampanhaMetaOficial from '@/components/campanhas/CampanhaMetaOficial';
 
 export default function Campanhas() {
   const [user, setUser] = useState(null);
@@ -447,6 +449,11 @@ export default function Campanhas() {
       {/* Abas */}
       <Tabs defaultValue="fila">
         <TabsList className="mb-4">
+          <TabsTrigger value="meta_oficial" className="gap-1.5">
+            <MessageSquare className="w-4 h-4 text-green-600" />
+            <span className="text-green-700 font-semibold">Meta Oficial</span>
+            <span className="ml-1 bg-green-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">NOVO</span>
+          </TabsTrigger>
           <TabsTrigger value="fila" className="gap-1.5">
             <CalendarClock className="w-4 h-4" />
             Fila de Renovações
@@ -470,6 +477,11 @@ export default function Campanhas() {
             Histórico de Envios
           </TabsTrigger>
         </TabsList>
+
+        {/* ABA: Meta Oficial */}
+        <TabsContent value="meta_oficial">
+          <CampanhaMetaOficial empresaId={empresaId} />
+        </TabsContent>
 
         {/* ABA: Fila de Renovações */}
         <TabsContent value="fila">
