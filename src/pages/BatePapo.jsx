@@ -1502,8 +1502,8 @@ export default function BatePapo() {
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-200">
-                          <MoreVertical className="h-4 w-4 text-slate-500" />
+                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100">
+                          <MoreVertical className="h-4 w-4 text-slate-700" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
