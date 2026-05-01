@@ -1276,17 +1276,18 @@ export default function BatePapo() {
                            {/* Conteúdo */}
                            <div className="jd-conversation-text">
                              {/* Linha 1: nome + hora + menu */}
-                             <div className="flex items-center justify-between gap-2 min-w-0">
-                               <p className="jd-conversation-name">
-                                 {nome}
-                               </p>
-                               <p className="text-[10px] text-slate-500 flex-shrink-0 whitespace-nowrap">{hora}</p>
-                               <DropdownMenu>
-                                 <DropdownMenuTrigger asChild>
-                                   <button className="p-0.5 hover:bg-slate-100 rounded opacity-100 flex-shrink-0">
-                                     <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
-                                   </button>
-                                 </DropdownMenuTrigger>
+                             <div className="flex items-center justify-between gap-2 min-w-0 w-full">
+                             <p className="jd-conversation-name">
+                             {nome}
+                             </p>
+                             <div className="flex items-center gap-1 flex-shrink-0">
+                             <p className="text-[10px] text-slate-500 whitespace-nowrap">{hora}</p>
+                             <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <button className="p-0.5 hover:bg-slate-100 rounded opacity-100">
+                                 <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
+                               </button>
+                             </DropdownMenuTrigger>
                                  <DropdownMenuContent align="end" className="w-48">
                                      {!isGrupo(c) && (<>
                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
@@ -1347,6 +1348,7 @@ export default function BatePapo() {
                                      </DropdownMenuItem>
                                      </DropdownMenuContent>
                                      </DropdownMenu>
+                               </div>
                                      </div>
                                      </div>
 
@@ -1356,7 +1358,7 @@ export default function BatePapo() {
                                      {ultimaMsg}
                                      </p>
                                      {mostrarBadge && (
-                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0">
+                                     <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0 ml-auto">
                                      {naoLidas > 0 ? naoLidas : '!'}
                                      </span>
                                      )}
