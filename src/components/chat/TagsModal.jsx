@@ -134,8 +134,8 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
       }
 
       // Recarregar tags atuais do contato no banco (em caso de desincronização)
-      const contatoAtualizado = await base44.entities.ContatoWhatsapp.read(contatoCRM.id);
-      const tagsAtuais = contatoAtualizado?.tags_ids || [];
+      const contatosAtualizados = await base44.entities.ContatoWhatsapp.filter({ id: contatoCRM.id });
+      const tagsAtuais = contatosAtualizados?.[0]?.tags_ids || [];
       
       // Atualizar as tags do contato
       if (tagsAtuais.includes(tagId)) {
