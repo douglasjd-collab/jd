@@ -1666,17 +1666,17 @@ export default function BatePapo() {
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold leading-tight">
-                          {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone}
-                        </p>
+                      <p className="text-sm font-semibold leading-tight">
+                        {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
                         {conversaSelecionada.tipo_conexao === 'meta_oficial' ? (
                           <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-green-300" title="Conversa via API Oficial Meta WhatsApp">Meta Oficial</span>
                         ) : (
                           <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-purple-300" title="Conversa via Evolution API">Evolution</span>
                         )}
+                        <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
                       </div>
-                      <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
                     </div>
                   </div>
 
