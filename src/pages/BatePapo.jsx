@@ -97,8 +97,8 @@ export default function BatePapo() {
   const selecionarConversa = async (conversa, forcarSync = true) => {
     setConversaSelecionada(conversa);
     localStorage.setItem('ultimaConversaId', conversa.id);
-    // NÃO zerar contador aqui — a conversa deve permanecer no filtro "Esperando"
-    // até que o atendente envie uma mensagem de resposta
+    // Zerar contador de não lidas ao abrir a conversa
+    setNaoLidasPorConversa(prev => ({ ...prev, [conversa.id]: 0 }));
     
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
@@ -1423,7 +1423,7 @@ export default function BatePapo() {
                     </div>
                   ) : conversasFiltradas.map((c) => {
                       const naoLidas = naoLidasPorConversa[c.id] ?? 0;
-                      const mostrarBadge = naoLidas > 0 || estaEmEspera(c);
+                      const mostrarBadge = c.status !== 'encerrada' && (naoLidas > 0 || estaEmEspera(c));
                       const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
                       const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
                       const hora = c.data_ultima_mensagem
