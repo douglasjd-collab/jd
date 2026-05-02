@@ -630,10 +630,16 @@ export default function BatePapo() {
       if (msgData?.remetente === 'cliente' && msgData?.conversa_id) {
         const conversaAtualId = conversaSelecionadaIdRef.current;
         if (msgData.conversa_id !== conversaAtualId) {
-          setNaoLidasPorConversa(prev => ({
-            ...prev,
-            [msgData.conversa_id]: (prev[msgData.conversa_id] || 0) + 1
-          }));
+          setNaoLidasPorConversa(prev => {
+            const nova = { ...prev };
+            nova[msgData.conversa_id] = (nova[msgData.conversa_id] || 0) + 1;
+            // Garantir que conversa aberta mantenha contador = 0
+            nova[conversaAtualId] = 0;
+            return nova;
+          });
+        } else {
+          // Conversa aberta: garantir que o contador seja 0
+          setNaoLidasPorConversa(prev => ({ ...prev, [conversaAtualId]: 0 }));
         }
         // Marcar último remetente como cliente (conversa volta para "em espera" se responsável expirou)
         base44.entities.ConversaWhatsapp.update(msgData.conversa_id, {
