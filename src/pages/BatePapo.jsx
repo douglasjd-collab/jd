@@ -1005,8 +1005,8 @@ export default function BatePapo() {
     .filter(c => {
       if (!c || !c.id) return false;
       
-      // Para grupos, whatsapp_id serve; para contatos, cliente_telefone é necessário
-      const temIdentificador = c.cliente_telefone || (isGrupo(c) && c.whatsapp_id);
+      // Grupos podem ter apenas whatsapp_id, contatos precisam de um identificador
+      const temIdentificador = c.cliente_telefone || c.whatsapp_id;
       if (!temIdentificador) return false;
 
       // Aplicar busca primeiro
