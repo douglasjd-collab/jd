@@ -33,9 +33,9 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
-    if (!open || !empresaId || !contato) return;
+    if (!open || !empresaId || !contato?.cliente_telefone) return;
     carregarTags();
-  }, [open, empresaId, contato?.id]);
+  }, [open, empresaId, contato?.cliente_telefone]);
 
   const carregarTags = async () => {
     setCarregando(true);
@@ -48,12 +48,21 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
       );
       setTags(todasTags || []);
 
-      // Carregar tags do contato passado
-      if (contato?.tags_ids) {
-        const tagIds = Array.isArray(contato.tags_ids) ? contato.tags_ids : [];
-        setContatoTags(tagIds);
+      // Buscar tags do contato pelo telefone (não pelo ID da conversa)
+      if (contato?.cliente_telefone) {
+        const telefoneLimpo = contato.cliente_telefone.replace(/\D/g, '');
+        const contatosExistentes = await base44.entities.ContatoWhatsapp.filter({
+          empresa_id: empresaId,
+          telefone: telefoneLimpo
+        });
+        
+        if (contatosExistentes?.length > 0) {
+          const tagIds = contatosExistentes[0].tags_ids || [];
+          setContatoTags(Array.isArray(tagIds) ? tagIds : []);
+        }
       }
     } catch (e) {
+      console.error('Erro ao carregar tags:', e);
       toast.error('Erro ao carregar tags');
     } finally {
       setCarregando(false);
