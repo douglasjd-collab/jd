@@ -153,17 +153,44 @@ async function processarWebhook(req, rawBody, base44) {
 
   console.log(`📋 Event: "${event}" | Instance query: "${instanceFromQuery}" | Instance payload: "${instancePayload}" | Final: "${instanceFinal}"`);
 
-  const data = payload.data || {};
+  let data = payload.data || {};
+  
+  // Se event é update, pode vir em payload.result ou outras estruturas
+  if (event.includes('update') && !data && payload.result) {
+    data = payload.result;
+    console.log(`🔄 Detectado payload.result para update`);
+  }
 
   // ─── ACK / status update ──────────────────────────────────────────────────
-  if (['messages_update', 'message_ack', 'messages_ack'].includes(event)) {
-    const updates = Array.isArray(data) ? data : [data];
-    console.log(`🔔 ACK Event: ${event} | Raw data: ${JSON.stringify(updates).substring(0, 200)}`);
+  if (['messages_update', 'message_ack', 'messages_ack', 'webhook_update', 'message_upsert'].includes(event)) {
+    // Evolution pode enviar ACK como array direto em data ou aninhado em data.messages
+    let updates = [];
+    if (Array.isArray(data)) {
+      updates = data;
+    } else if (data && typeof data === 'object') {
+      // Tentar extrair de estruturas aninhadas
+      if (Array.isArray(data.messages)) {
+        updates = data.messages;
+      } else if (data.message || data.status || data.ack) {
+        updates = [data];
+      }
+    }
+    
+    if (updates.length === 0) {
+      console.log(`⏭️ ACK Event ${event} sem dados válidos`);
+      return;
+    }
+    
+    console.log(`🔔 ACK Event: ${event} | Updates: ${updates.length}`);
     for (const upd of updates) {
+      if (!upd || typeof upd !== 'object') continue;
+      
       const remoteId = upd.key?.id || upd.id || upd.messageId;
-      // Evolution envia: status (0=pendente, 1=enviada, 2=entregue, 3=lida) ou ack (string)
-      let rawStatusNum = parseInt(upd.status) || parseInt(upd.ack);
-      let rawStatus = (upd.status || upd.ack || '').toString().toUpperCase();
+      if (!remoteId) continue;
+      
+      // Evolution envia: status (0=pendente, 1=enviada, 2=entregue, 3=lida) ou ack (string/number)
+      let rawStatusNum = parseInt(upd.status) || parseInt(upd.ack) || parseInt(upd.status?.toString());
+      let rawStatus = (upd.status || upd.ack || '').toString().toUpperCase().trim();
       let novoStatus = null;
       
       // Tentar por número primeiro (mais confiável)
@@ -171,16 +198,16 @@ async function processarWebhook(req, rawBody, base44) {
         if (rawStatusNum === 1) novoStatus = 'enviada';
         else if (rawStatusNum === 2) novoStatus = 'entregue';
         else if (rawStatusNum === 3 || rawStatusNum === 4) novoStatus = 'lida';
+        console.log(`  ✓ msgId: ${remoteId} | ack(num): ${rawStatusNum} → ${novoStatus}`);
+      } else if (rawStatus) {
+        // Fallback para string
+        if (['SENT', '1', 'PENDING'].includes(rawStatus)) novoStatus = 'enviada';
+        else if (['DELIVERED', '2', 'RECEIVED'].includes(rawStatus)) novoStatus = 'entregue';
+        else if (['READ', 'PLAYED', '3', '4'].includes(rawStatus)) novoStatus = 'lida';
+        if (novoStatus) {
+          console.log(`  ✓ msgId: ${remoteId} | ack(str): ${rawStatus} → ${novoStatus}`);
+        }
       }
-      
-      // Fallback para string
-      if (!novoStatus) {
-        if (rawStatus === 'SENT' || rawStatus === '1') novoStatus = 'enviada';
-        else if (rawStatus === 'DELIVERED' || rawStatus === '2') novoStatus = 'entregue';
-        else if (['READ', '3', 'PLAYED', '4'].includes(rawStatus)) novoStatus = 'lida';
-      }
-
-      console.log(`  • msgId: "${remoteId}" | rawStatus: "${rawStatus}" | num: ${rawStatusNum} | novoStatus: "${novoStatus}"`);
 
       if (remoteId && novoStatus) {
         const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
@@ -195,15 +222,9 @@ async function processarWebhook(req, rawBody, base44) {
           
           if (novaProioridade >= atualPrioridade) {
             await base44.asServiceRole.entities.MensagemWhatsapp.update(msgAtual.id, { status: novoStatus });
-            console.log(`✅ ACK processado: status="${novoStatus}" para msg ${msgAtual.id} (whatsapp_id: ${remoteId})`);
-          } else {
-            console.log(`⏭️ ACK ignorado: downgrade ${msgAtual.status} → ${novoStatus} para msg ${remoteId}`);
+            console.log(`✅ ACK aplicado: ${msgAtual.status} → ${novoStatus}`);
           }
-        } else {
-          console.warn(`⚠️ ACK: msg com whatsapp_id "${remoteId}" não encontrada no banco`);
         }
-      } else if (remoteId) {
-        console.warn(`⚠️ ACK: status não identificado para msg ${remoteId} (rawStatus="${rawStatus}", num=${rawStatusNum})`);
       }
     }
     return;
