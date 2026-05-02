@@ -91,30 +91,52 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
   };
 
   const adicionarTagAoContato = async (tagId) => {
-    if (!contato?.id) {
-      toast.error('Contato não encontrado');
+    if (!contato?.cliente_telefone || !empresaId) {
+      toast.error('Contato ou empresa não encontrados');
       return;
     }
 
     try {
+      // Buscar ou criar contato no CRM
+      let contatoCRM = contato;
+      if (!contato.id) {
+        // Buscar contato existente
+        const telefoneLimpo = contato.cliente_telefone.replace(/\D/g, '');
+        const contatosExistentes = await base44.entities.ContatoWhatsapp.filter({
+          empresa_id: empresaId,
+          telefone: telefoneLimpo
+        });
+        
+        if (contatosExistentes.length > 0) {
+          contatoCRM = contatosExistentes[0];
+        } else {
+          // Criar novo contato
+          contatoCRM = await base44.entities.ContatoWhatsapp.create({
+            empresa_id: empresaId,
+            telefone: telefoneLimpo,
+            nome: contato.cliente_nome || 'Sem nome'
+          });
+        }
+      }
+
+      // Agora atualizar as tags do contato
       if (contatoTags.includes(tagId)) {
-        // Remover tag
         const novasTags = contatoTags.filter(id => id !== tagId);
         setContatoTags(novasTags);
-        await base44.entities.ContatoWhatsapp.update(contato.id, {
+        await base44.entities.ContatoWhatsapp.update(contatoCRM.id, {
           tags_ids: novasTags,
         });
         toast.success('Tag removida');
       } else {
-        // Adicionar tag
         const novasTags = [...contatoTags, tagId];
         setContatoTags(novasTags);
-        await base44.entities.ContatoWhatsapp.update(contato.id, {
+        await base44.entities.ContatoWhatsapp.update(contatoCRM.id, {
           tags_ids: novasTags,
         });
         toast.success('Tag adicionada');
       }
     } catch (e) {
+      console.error('Erro ao atualizar tag:', e);
       toast.error('Erro ao atualizar tag: ' + e.message);
     }
   };
