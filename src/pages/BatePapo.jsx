@@ -984,6 +984,11 @@ export default function BatePapo() {
           .jd-conversation-list [data-radix-scroll-area-viewport] {
             overflow-x: hidden !important;
             max-width: 100% !important;
+            width: 100% !important;
+          }
+          .jd-conversation-list > div {
+            width: 100% !important;
+            max-width: 100% !important;
           }
           .jd-chat-card {
             width: 100%;
@@ -1212,7 +1217,7 @@ export default function BatePapo() {
               </div>
             </CardHeader>
 
-            <CardContent className="flex flex-1 flex-col gap-3 pt-3 px-4 overflow-hidden flex-shrink-0" style={{ minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
+            <CardContent className="flex flex-col gap-3 pt-3 px-4 overflow-hidden" style={{ flex: '1 1 0', minHeight: 0, minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
               {/* Seletor de empresa — apenas super_admin */}
               {isSuperAdmin && empresas.length > 0 && (
                 <Select value={empresaId || ''} onValueChange={(val) => {
