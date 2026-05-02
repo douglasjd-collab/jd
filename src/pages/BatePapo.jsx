@@ -1214,7 +1214,7 @@ export default function BatePapo() {
         <TagsModal
           open={tagsModalOpen}
           onOpenChange={setTagsModalOpen}
-          contatoId={contatoParaTags?.id}
+          contato={contatoParaTags}
           empresaId={empresaId}
         />
 

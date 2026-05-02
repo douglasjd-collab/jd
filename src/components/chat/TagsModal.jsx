@@ -24,7 +24,7 @@ const DEFAULT_TAGS = [
   { nome: 'Pós-venda', cor: '#0EA5E9' },
 ];
 
-export default function TagsModal({ open, onOpenChange, contatoId, empresaId }) {
+export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
   const [tags, setTags] = useState([]);
   const [contatoTags, setContatoTags] = useState([]);
   const [novaTagNome, setNovaTagNome] = useState('');
@@ -33,9 +33,9 @@ export default function TagsModal({ open, onOpenChange, contatoId, empresaId }) 
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
-    if (!open || !empresaId) return;
+    if (!open || !empresaId || !contato) return;
     carregarTags();
-  }, [open, empresaId, contatoId]);
+  }, [open, empresaId, contato?.id]);
 
   const carregarTags = async () => {
     setCarregando(true);
@@ -48,19 +48,10 @@ export default function TagsModal({ open, onOpenChange, contatoId, empresaId }) 
       );
       setTags(todasTags || []);
 
-      // Buscar tags do contato
-      if (contatoId) {
-        const contato = await base44.entities.ContatoWhatsapp.filter(
-          { id: contatoId },
-          null,
-          1
-        );
-        if (contato?.[0]?.tags_ids) {
-          const tagIds = Array.isArray(contato[0].tags_ids)
-            ? contato[0].tags_ids
-            : [];
-          setContatoTags(tagIds);
-        }
+      // Carregar tags do contato passado
+      if (contato?.tags_ids) {
+        const tagIds = Array.isArray(contato.tags_ids) ? contato.tags_ids : [];
+        setContatoTags(tagIds);
       }
     } catch (e) {
       toast.error('Erro ao carregar tags');
@@ -100,24 +91,31 @@ export default function TagsModal({ open, onOpenChange, contatoId, empresaId }) 
   };
 
   const adicionarTagAoContato = async (tagId) => {
+    if (!contato?.id) {
+      toast.error('Contato não encontrado');
+      return;
+    }
+
     try {
       if (contatoTags.includes(tagId)) {
         // Remover tag
         const novasTags = contatoTags.filter(id => id !== tagId);
         setContatoTags(novasTags);
-        await base44.entities.ContatoWhatsapp.update(contatoId, {
+        await base44.entities.ContatoWhatsapp.update(contato.id, {
           tags_ids: novasTags,
         });
+        toast.success('Tag removida');
       } else {
         // Adicionar tag
         const novasTags = [...contatoTags, tagId];
         setContatoTags(novasTags);
-        await base44.entities.ContatoWhatsapp.update(contatoId, {
+        await base44.entities.ContatoWhatsapp.update(contato.id, {
           tags_ids: novasTags,
         });
+        toast.success('Tag adicionada');
       }
     } catch (e) {
-      toast.error('Erro ao atualizar tag');
+      toast.error('Erro ao atualizar tag: ' + e.message);
     }
   };
 
