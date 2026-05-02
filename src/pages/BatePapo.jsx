@@ -189,6 +189,7 @@ export default function BatePapo() {
   const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
   const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
+  const [gruposBloqueadosOpen, setGruposBloqueadosOpen] = useState(false);
 
   const handleTransferir = async (conversa, colaborador) => {
     try {
@@ -1174,6 +1175,67 @@ export default function BatePapo() {
           currentUser={user}
         />
 
+        {/* Modal Grupos Bloqueados */}
+        <Dialog open={gruposBloqueadosOpen} onOpenChange={setGruposBloqueadosOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-orange-500" />
+                Grupos Bloqueados
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              {conversas.filter(c => isGrupo(c) && c.bloqueado).length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-2">
+                  <Unlock className="w-10 h-10 opacity-40" />
+                  <p className="text-sm">Nenhum grupo bloqueado</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {conversas.filter(c => isGrupo(c) && c.bloqueado).map(c => {
+                    const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.whatsapp_id || c.cliente_telefone;
+                    return (
+                      <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 border border-orange-100">
+                        <div className="relative flex-shrink-0">
+                          <AvatarContato
+                            contato={contatosWhatsapp[c.id] || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
+                            className="h-10 w-10"
+                          />
+                          <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
+                            <Lock className="w-2 h-2 text-white" />
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{nome}</p>
+                          <p className="text-xs text-slate-500 truncate">{c.cliente_telefone || c.whatsapp_id}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-shrink-0 gap-1.5 text-xs text-green-600 border-green-300 hover:bg-green-50"
+                          onClick={async () => {
+                            queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+                              old.map(cv => cv.id === c.id ? { ...cv, bloqueado: false } : cv)
+                            );
+                            await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: false });
+                            toast.success('🔓 Grupo desbloqueado');
+                          }}
+                        >
+                          <Unlock className="w-3 h-3" />
+                          Desbloquear
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGruposBloqueadosOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Modal Salvar/Editar Contato CRM */}
         <Dialog open={!!salvarCrmModal} onOpenChange={(v) => !v && setSalvarCrmModal(null)}>
           <DialogContent className="max-w-sm">
@@ -1239,7 +1301,7 @@ export default function BatePapo() {
                       Sincronizar histórico
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setFiltroStatus('grupos_bloqueados')}>
+                    <DropdownMenuItem onClick={() => setGruposBloqueadosOpen(true)}>
                       <Lock className="mr-2 h-4 w-4" />
                       Grupos Bloqueados
                     </DropdownMenuItem>
