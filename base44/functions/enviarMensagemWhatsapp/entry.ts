@@ -250,6 +250,17 @@ Deno.serve(async (req) => {
       } catch (e) {
         result = { raw: responseText };
       }
+      
+      // Extrair message ID de diferentes formatos da Evolution
+      let messageIdEvolution = null;
+      if (result.message?.id) messageIdEvolution = result.message.id;
+      else if (result.key?.id) messageIdEvolution = result.key.id;
+      else if (result.id) messageIdEvolution = result.id;
+      else if (result.messageId) messageIdEvolution = result.messageId;
+      else if (result.messages?.[0]?.id) messageIdEvolution = result.messages[0].id;
+      
+      console.log('📍 Message ID extraído:', messageIdEvolution || 'NÃO ENCONTRADO');
+      console.log('📋 Response completo:', JSON.stringify(result).substring(0, 500));
       console.log('✅ Enviado via Evolution');
     }
 
@@ -322,7 +333,7 @@ Deno.serve(async (req) => {
       arquivo_url: arquivo_url_permanente,
       arquivo_nome: arquivo?.nome || null,
       arquivo_tamanho: 0,
-      whatsapp_message_id: result.key?.id || result.messageId || result.id || 'pending',
+      whatsapp_message_id: messageIdEvolution || result.key?.id || result.messageId || result.id || `temp_${Date.now()}`,
       data_envio: new Date().toISOString(),
       status: 'enviada'
     });
