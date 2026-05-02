@@ -223,6 +223,17 @@ export default function ConfiguracaoWhatsApp() {
       
       setEditMode(false);
       toast.success('✅ Configurações salvas com sucesso! Cada empresa tem suas credenciais isoladas.');
+      
+      // 🔄 Ativar todos os eventos automaticamente
+      try {
+        const resEventos = await base44.functions.invoke('ativarTodosEventosWebhook', {});
+        if (resEventos?.data?.success) {
+          toast.success(`📡 ${resEventos.data.message}`);
+        }
+      } catch (e) {
+        console.warn('⚠️ Aviso ao ativar eventos:', e.message);
+        // Não falhar a configuração se os eventos não ativarem
+      }
     } catch (error) {
       toast.error('Erro ao salvar: ' + error.message);
     } finally {
