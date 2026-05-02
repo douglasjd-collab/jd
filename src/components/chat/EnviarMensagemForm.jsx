@@ -105,6 +105,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     const textoEnviar = assinatura + texto.trim();
     setErro(null);
     
+    // Limpar UI imediatamente (antes de enviar)
+    setTexto('');
+    setArquivo(null);
+    setShowQuickReplies(false);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '40px';
+    }
+    setShowScroll(false);
+
     try {
       let arquivoBase64 = null;
       let nomeArquivo = null;
@@ -121,7 +130,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
           reader.readAsDataURL(arquivo);
         });
         nomeArquivo = arquivo.name;
-        // Garantir tipo MIME correto mesmo se o browser não detectar
         tipoArquivo = arquivo.type || '';
         if (!tipoArquivo) {
           const ext = nomeArquivo.split('.').pop()?.toLowerCase();
@@ -134,13 +142,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         texto: textoEnviar, 
         arquivo: arquivoBase64 ? { base64: arquivoBase64, nome: nomeArquivo, tipo: tipoArquivo } : null 
       });
-      setTexto('');
-      setArquivo(null);
-      setShowQuickReplies(false);
-      if (textareaRef.current) {
-        textareaRef.current.style.height = '40px';
-      }
-      setShowScroll(false);
     } catch (err) {
       setErro(err.message || 'Erro ao enviar mensagem. Tente novamente.');
     }
