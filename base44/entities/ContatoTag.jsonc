@@ -1,0 +1,23 @@
+{
+  "name": "ContatoTag",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome da tag"
+    },
+    "cor": {
+      "type": "string",
+      "description": "Cor da tag em formato hex (ex: #FF0000)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "cor"
+  ]
+}

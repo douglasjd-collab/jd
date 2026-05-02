@@ -77,6 +77,7 @@ import NovaConversaModal from '@/components/chat/NovaConversaModal';
 import AvatarContato from '@/components/chat/AvatarContato';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoModal';
+import TagsModal from '@/components/chat/TagsModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -199,6 +200,8 @@ export default function BatePapo() {
   const [gruposBloqueadosOpen, setGruposBloqueadosOpen] = useState(false);
   const [gruposBloqueadosLista, setGruposBloqueadosLista] = useState([]);
   const [loadingGruposBloqueados, setLoadingGruposBloqueados] = useState(false);
+  const [tagsModalOpen, setTagsModalOpen] = useState(false);
+  const [contatoParaTags, setContatoParaTags] = useState(null);
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -1205,6 +1208,14 @@ export default function BatePapo() {
           currentUser={user}
         />
 
+        {/* Modal Tags */}
+        <TagsModal
+          open={tagsModalOpen}
+          onOpenChange={setTagsModalOpen}
+          contatoId={contatoParaTags?.id}
+          empresaId={empresaId}
+        />
+
         {/* Modal Grupos Bloqueados */}
         <Dialog open={gruposBloqueadosOpen} onOpenChange={setGruposBloqueadosOpen}>
           <DialogContent className="max-w-md">
@@ -1474,6 +1485,29 @@ export default function BatePapo() {
                               <span className="jd-chat-name">{nome}</span>
                               <span className="jd-chat-time">{hora}</span>
                             </div>
+                            {contatosWhatsapp[c.id]?.tags_ids && contatosWhatsapp[c.id].tags_ids.length > 0 && (
+                              <div className="flex gap-1 flex-wrap mb-1">
+                                {contatosWhatsapp[c.id].tags_ids.map(tagId => {
+                                  // Buscar a tag nos contatos (se disponível)
+                                  const contato = contatosWhatsapp[c.id];
+                                  if (contato?.tags && Array.isArray(contato.tags)) {
+                                    const tag = contato.tags.find(t => t.id === tagId);
+                                    if (tag) {
+                                      return (
+                                        <span
+                                          key={tagId}
+                                          className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
+                                          style={{ backgroundColor: tag.cor }}
+                                        >
+                                          {tag.nome}
+                                        </span>
+                                      );
+                                    }
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            )}
                             <div className="jd-chat-bottom">
                               <span className="jd-chat-message">{ultimaMsg}</span>
                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -1520,9 +1554,12 @@ export default function BatePapo() {
                                         <Pencil className="mr-2 h-3.5 w-3.5" />
                                         Alterar nome
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
+                                      <DropdownMenuItem onClick={() => {
+                                        setContatoParaTags(c);
+                                        setTagsModalOpen(true);
+                                      }}>
                                         <Tag className="mr-2 h-3.5 w-3.5" />
-                                        Adicionar tag
+                                        Tags
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
                                         <Clock className="mr-2 h-3.5 w-3.5" />
@@ -1691,6 +1728,13 @@ export default function BatePapo() {
                           <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
                             <Pencil className="mr-2 h-3.5 w-3.5" />
                             Alterar nome do contato
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setContatoParaTags(conversaSelecionada);
+                            setTagsModalOpen(true);
+                          }}>
+                            <Tag className="mr-2 h-3.5 w-3.5" />
+                            Gerenciar Tags
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={async () => {
                             await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'ativa' });
