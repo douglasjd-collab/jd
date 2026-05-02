@@ -19,6 +19,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [pdfAberto, setPdfAberto] = useState(false);
   const [pdfCarregado, setPdfCarregado] = useState(false);
+  const [imagemAberta, setImagemAberta] = useState(false);
   const [deletando, setDeletando] = useState(false);
   const audioRef = React.useRef(null);
   
@@ -131,22 +132,36 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
       case 'imagem':
         return (
-          <div className="max-w-xs">
-            {loadingMedia ? (
-              <div className="flex items-center gap-2 bg-white/10 rounded-lg p-4 w-32 h-32 justify-center">
-                <Loader2 className="w-5 h-5 animate-spin" />
-              </div>
-            ) : mediaUrl ? (
-              <img
-                src={mediaUrl}
-                alt="Imagem"
-                className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                onError={() => setMediaUrl(null)}
-              />
-            ) : (
-              <div className="bg-white/10 rounded-lg p-4 text-sm opacity-75">Imagem indisponível</div>
-            )}
-          </div>
+          <>
+            <div className="max-w-xs">
+              {loadingMedia ? (
+                <div className="flex items-center gap-2 bg-white/10 rounded-lg p-4 w-32 h-32 justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+              ) : mediaUrl ? (
+                <img
+                  src={mediaUrl}
+                  alt="Imagem"
+                  className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                  onError={() => setMediaUrl(null)}
+                  onClick={() => setImagemAberta(true)}
+                />
+              ) : (
+                <div className="bg-white/10 rounded-lg p-4 text-sm opacity-75">Imagem indisponível</div>
+              )}
+            </div>
+            <Dialog open={imagemAberta} onOpenChange={setImagemAberta}>
+              <DialogContent className="max-w-4xl w-full p-0 bg-black border-0 flex items-center justify-center">
+                {mediaUrl && (
+                  <img
+                    src={mediaUrl}
+                    alt="Imagem ampliada"
+                    className="max-w-full max-h-[90vh] object-contain"
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
+          </>
         );
 
       case 'audio':
