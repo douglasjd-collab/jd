@@ -974,53 +974,110 @@ export default function BatePapo() {
             min-height: 0;
             width: 100%;
           }
-          .jd-conversation-card {
-            height: 68px;
-            max-height: 68px;
-            min-height: 68px;
+          .jd-chat-list {
             width: 100%;
             max-width: 100%;
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-            gap: 12px;
-            background: #ffffff;
-            border: none;
-            border-bottom: 1px solid #f1f5f9;
-            border-radius: 0;
-            transition: background-color 150ms;
+            overflow-x: hidden;
+            padding: 8px 10px;
             box-sizing: border-box;
           }
-          .jd-conversation-card:hover {
-            background-color: #f8fafc;
-            cursor: pointer;
-          }
-          .jd-conversation-text {
+          .jd-chat-card {
+            width: 100%;
+            max-width: 100%;
+            height: 76px;
+            min-height: 76px;
+            max-height: 76px;
+            box-sizing: border-box;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: #f7f7f7;
+            border-radius: 14px;
             overflow: hidden;
+            cursor: pointer;
+            transition: background-color 150ms;
+          }
+          .jd-chat-card:hover {
+            background: #efefef;
+          }
+          .jd-chat-card.selected {
+            background: #e8f4fd;
+          }
+          .jd-chat-avatar {
+            width: 52px;
+            height: 52px;
+            min-width: 52px;
+            border-radius: 50%;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+          }
+          .jd-chat-content {
             flex: 1;
             min-width: 0;
-            width: 100%;
+            overflow: hidden;
           }
-          .jd-conversation-name {
+          .jd-chat-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+            min-width: 0;
+          }
+          .jd-chat-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 15px;
             font-weight: 600;
-            font-size: 14px;
+            color: #111827;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
-            min-width: 0;
           }
-          .jd-conversation-message {
+          .jd-chat-time {
+            flex-shrink: 0;
             font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+          }
+          .jd-chat-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            width: 100%;
+            min-width: 0;
+            margin-top: 3px;
+          }
+          .jd-chat-message {
+            flex: 1;
+            min-width: 0;
+            font-size: 13px;
             color: #6b7280;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
-            min-width: 0;
+          }
+          .jd-chat-badge {
+            flex-shrink: 0;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #22c55e;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .jd-chat-menu {
+            flex-shrink: 0;
+            color: #9ca3af;
           }
         `}</style>
         <NovaConversaModal
@@ -1214,7 +1271,7 @@ export default function BatePapo() {
               </div>
 
               <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full">
-                <div className="space-y-0 pb-4 pr-4">
+                <div className="jd-chat-list pb-4">
                   {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
                       <MessageCircle className="w-8 h-8 opacity-40" />
@@ -1236,131 +1293,118 @@ export default function BatePapo() {
                       const hora = c.data_ultima_mensagem
                         ? format(new Date(c.data_ultima_mensagem), "HH:mm", { locale: ptBR })
                         : '';
-                      const statusColor = estaEmEspera(c)
-                        ? 'bg-amber-400'
-                        : estaEmAtendimento(c)
-                        ? 'bg-emerald-500'
-                        : 'bg-slate-300';
+                      const statusDotColor = estaEmEspera(c) ? '#f59e0b' : estaEmAtendimento(c) ? '#22c55e' : '#cbd5e1';
                       return (
                         <div
-                           key={c.id}
-                           className={classNames(
-                             "jd-conversation-card flex w-full items-center gap-4 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-hidden",
-                             conversaSelecionada?.id === c.id
-                               ? "bg-blue-50"
-                               : naoLidas > 0
-                               ? "bg-white hover:bg-slate-50"
-                               : "bg-white hover:bg-slate-50"
+                          key={c.id}
+                          className={classNames('jd-chat-card', conversaSelecionada?.id === c.id && 'selected')}
+                          onClick={() => selecionarConversa(c)}
+                        >
+                          {/* Avatar */}
+                          <div className="jd-chat-avatar">
+                            <AvatarContato
+                              contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
+                              className="h-full w-full"
+                            />
+                            {c.bloqueado ? (
+                              <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
+                                <Lock className="w-2 h-2 text-white" />
+                              </span>
+                            ) : (
+                              <span style={{ backgroundColor: statusDotColor }} className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white" />
                             )}
-                            onClick={() => selecionarConversa(c)}
-                          >
-                            {/* Avatar com ponto status */}
-                            <div className="relative flex-shrink-0 h-10 w-10">
-                              <AvatarContato
-                                contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
-                                className="h-12 w-12"
-                              />
-                              {c.bloqueado ? (
-                                <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
-                                  <Lock className="w-2 h-2 text-white" />
-                                </span>
-                              ) : (
-                                <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-1.5 border-white ${statusColor}`} />
-                              )}
-                            </div>
+                          </div>
 
-                           {/* Conteúdo */}
-                           <div className="jd-conversation-text flex-1 min-w-0">
-                             {/* Linha 1: nome + hora */}
-                             <div className="flex items-center justify-between gap-1 min-w-0">
-                               <p className="jd-conversation-name flex-1 min-w-0">{nome}</p>
-                               <p className="text-[10px] text-slate-400 whitespace-nowrap flex-shrink-0">{hora}</p>
-                             </div>
-                             {/* Linha 2: última mensagem + menu + badge */}
-                             <div className="flex items-center gap-1 min-w-0 mt-0.5">
-                               <p className="jd-conversation-message flex-1 min-w-0">{ultimaMsg}</p>
-                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                                 {mostrarBadge && (
-                                   <span style={{ backgroundColor: '#10B981', minWidth: '18px', height: '18px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0">
-                                     {naoLidas > 0 ? naoLidas : '!'}
-                                   </span>
-                                 )}
-                                 <DropdownMenu>
-                                   <DropdownMenuTrigger asChild>
-                                     <button className="p-0.5 hover:bg-slate-100 rounded">
-                                       <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
-                                     </button>
-                                   </DropdownMenuTrigger>
-                                   <DropdownMenuContent align="end" className="w-48">
-                                     {!isGrupo(c) && (<>
-                                       <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                         <Contact className="mr-2 h-3.5 w-3.5" />
-                                         {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
-                                       </DropdownMenuItem>
-                                       <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                         <Pencil className="mr-2 h-3.5 w-3.5" />
-                                         Alterar nome
-                                       </DropdownMenuItem>
-                                       <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
-                                         <Tag className="mr-2 h-3.5 w-3.5" />
-                                         Adicionar tag
-                                       </DropdownMenuItem>
-                                       <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
-                                         <Clock className="mr-2 h-3.5 w-3.5" />
-                                         Criar tarefa
-                                       </DropdownMenuItem>
-                                       <DropdownMenuItem onClick={() => { setTransferirModal(c); }}>
-                                         <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
-                                         Transferir atendimento
-                                       </DropdownMenuItem>
-                                       <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
-                                         <Star className="mr-2 h-3.5 w-3.5" />
-                                         Favoritar
-                                       </DropdownMenuItem>
-                                     </>)}
-                                     {isGrupo(c) && (
-                                       <DropdownMenuItem
-                                         onClick={async () => {
-                                           const novoBloqueado = !c.bloqueado;
-                                           await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: novoBloqueado });
-                                           queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                                           toast.success(novoBloqueado ? '🔒 Grupo bloqueado — mensagens serão ignoradas' : '🔓 Grupo desbloqueado');
-                                         }}
-                                         className={c.bloqueado ? 'text-green-600 focus:text-green-700' : 'text-orange-600 focus:text-orange-700'}
-                                       >
-                                         {c.bloqueado ? <Unlock className="mr-2 h-3.5 w-3.5" /> : <Lock className="mr-2 h-3.5 w-3.5" />}
-                                         {c.bloqueado ? 'Desbloquear grupo' : 'Bloquear grupo'}
-                                       </DropdownMenuItem>
-                                     )}
-                                     <DropdownMenuItem
-                                       className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                       onClick={async () => {
-                                         if (confirm('Excluir esta conversa e todas as mensagens?')) {
-                                           const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
-                                           for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
-                                           await base44.entities.ConversaWhatsapp.delete(c.id);
-                                           queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                                           queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
-                                           if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
-                                           toast.success('Conversa excluída');
-                                         }
-                                       }}
-                                     >
-                                       <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                       Excluir
-                                     </DropdownMenuItem>
-                                   </DropdownMenuContent>
-                                 </DropdownMenu>
-                               </div>
-                             </div>
-                           </div>
-                           </div>
-                                     );
-                                     })
-                                     }
-                                     </div>
-                                     </ScrollArea>
-                                     </CardContent>
+                          {/* Conteúdo */}
+                          <div className="jd-chat-content">
+                            <div className="jd-chat-top">
+                              <span className="jd-chat-name">{nome}</span>
+                              <span className="jd-chat-time">{hora}</span>
+                            </div>
+                            <div className="jd-chat-bottom">
+                              <span className="jd-chat-message">{ultimaMsg}</span>
+                              <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                {mostrarBadge && (
+                                  <span className="jd-chat-badge">
+                                    {naoLidas > 0 ? naoLidas : '!'}
+                                  </span>
+                                )}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="jd-chat-menu p-0.5 hover:bg-black/5 rounded">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    {!isGrupo(c) && (<>
+                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                        <Contact className="mr-2 h-3.5 w-3.5" />
+                                        {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                        <Pencil className="mr-2 h-3.5 w-3.5" />
+                                        Alterar nome
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
+                                        <Tag className="mr-2 h-3.5 w-3.5" />
+                                        Adicionar tag
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
+                                        <Clock className="mr-2 h-3.5 w-3.5" />
+                                        Criar tarefa
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => { setTransferirModal(c); }}>
+                                        <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                                        Transferir atendimento
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
+                                        <Star className="mr-2 h-3.5 w-3.5" />
+                                        Favoritar
+                                      </DropdownMenuItem>
+                                    </>)}
+                                    {isGrupo(c) && (
+                                      <DropdownMenuItem
+                                        onClick={async () => {
+                                          const novoBloqueado = !c.bloqueado;
+                                          await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: novoBloqueado });
+                                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                          toast.success(novoBloqueado ? '🔒 Grupo bloqueado — mensagens serão ignoradas' : '🔓 Grupo desbloqueado');
+                                        }}
+                                        className={c.bloqueado ? 'text-green-600 focus:text-green-700' : 'text-orange-600 focus:text-orange-700'}
+                                      >
+                                        {c.bloqueado ? <Unlock className="mr-2 h-3.5 w-3.5" /> : <Lock className="mr-2 h-3.5 w-3.5" />}
+                                        {c.bloqueado ? 'Desbloquear grupo' : 'Bloquear grupo'}
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                      onClick={async () => {
+                                        if (confirm('Excluir esta conversa e todas as mensagens?')) {
+                                          const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
+                                          for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
+                                          await base44.entities.ConversaWhatsapp.delete(c.id);
+                                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                          queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
+                                          if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
+                                          toast.success('Conversa excluída');
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                      Excluir
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
+                </div>
+              </ScrollArea>
+            </CardContent>
           </Card>
 
           {/* Coluna central - Chat + painel lead */}
