@@ -109,14 +109,14 @@ export default function BatePapo() {
       nova.delete(conversa.id);
       return nova;
     });
-    
+
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
-    
+
     // Apenas invalida o cache para forçar refetch das mensagens do banco local
     // NÃO dispara sincronização/download automático ao abrir conversa
-    
-    // Carregar foto do contato
+
+    // SOLUÇÃO 2: Buscar foto do contato ao abrir conversa
     if (!conversa?.cliente_telefone || !empresaId) return;
     try {
       const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
@@ -126,13 +126,13 @@ export default function BatePapo() {
       } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
         variacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
       }
-      
+
       for (const tel of variacoes) {
         const contatos = await base44.entities.ContatoWhatsapp.filter({
           empresa_id: empresaId,
           telefone: tel
         }, '-created_date', 1);
-        
+
         if (contatos?.length > 0) {
           setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatos[0] }));
           break;
