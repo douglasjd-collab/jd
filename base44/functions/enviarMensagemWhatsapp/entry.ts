@@ -242,7 +242,8 @@ Deno.serve(async (req) => {
           }
         } catch (_) {}
         console.error(`❌ Evolution ${response.status}: ${mensagemErro}`);
-        return Response.json({ error: mensagemErro, details: responseText, status: response.status, success: false }, { status: 400 });
+        // NÃO retornar erro aqui — salvar a mensagem no banco mesmo com erro do WhatsApp
+        // Continuar com o fluxo para salvar a mensagem
       }
 
       try {
