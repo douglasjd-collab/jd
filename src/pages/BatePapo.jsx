@@ -99,6 +99,12 @@ export default function BatePapo() {
     localStorage.setItem('ultimaConversaId', conversa.id);
     // Zerar contador de não lidas ao abrir a conversa
     setNaoLidasPorConversa(prev => ({ ...prev, [conversa.id]: 0 }));
+    // Remover da lista de marcadas manualmente como não lido
+    setMarcadasNaoLidasManual(prev => {
+      const nova = new Set(prev);
+      nova.delete(conversa.id);
+      return nova;
+    });
     
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
@@ -189,6 +195,7 @@ export default function BatePapo() {
   const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
   const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
+  const [marcadasNaoLidasManual, setMarcadasNaoLidasManual] = useState(new Set()); // IDs marcadas manualmente como não lido
   const [gruposBloqueadosOpen, setGruposBloqueadosOpen] = useState(false);
   const [gruposBloqueadosLista, setGruposBloqueadosLista] = useState([]);
   const [loadingGruposBloqueados, setLoadingGruposBloqueados] = useState(false);
@@ -1470,9 +1477,13 @@ export default function BatePapo() {
                             <div className="jd-chat-bottom">
                               <span className="jd-chat-message">{ultimaMsg}</span>
                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                                {mostrarBadge && (
+                                {mostrarBadge && conversaSelecionada?.id !== c.id && (
                                   <span className="jd-chat-badge">
                                     {naoLidas > 0 ? naoLidas : '!'}
+                                  </span>
+                                )}
+                                {marcadasNaoLidasManual.has(c.id) && (
+                                  <span className="jd-chat-badge" style={{ backgroundColor: '#22c55e' }}>
                                   </span>
                                 )}
                                 <DropdownMenu>
@@ -1483,11 +1494,28 @@ export default function BatePapo() {
                                  </DropdownMenuTrigger>
                                  <DropdownMenuPortal>
                                  <DropdownMenuContent align="end" className="w-48 z-[9999]">
-                                    {!isGrupo(c) && (<>
-                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                        <Contact className="mr-2 h-3.5 w-3.5" />
-                                        {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
-                                      </DropdownMenuItem>
+                                   {!isGrupo(c) && (<>
+                                     <DropdownMenuItem onClick={() => {
+                                       if (marcadasNaoLidasManual.has(c.id)) {
+                                         setMarcadasNaoLidasManual(prev => {
+                                           const nova = new Set(prev);
+                                           nova.delete(c.id);
+                                           return nova;
+                                         });
+                                         toast.success('Marcado como lido');
+                                       } else {
+                                         setMarcadasNaoLidasManual(prev => new Set(prev).add(c.id));
+                                         setNaoLidasPorConversa(prev => ({ ...prev, [c.id]: 1 }));
+                                         toast.success('Marcado como não lido');
+                                       }
+                                     }}>
+                                       <Bell className="mr-2 h-3.5 w-3.5" />
+                                       {marcadasNaoLidasManual.has(c.id) ? 'Marcar como lido' : 'Marcar como não lido'}
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                       <Contact className="mr-2 h-3.5 w-3.5" />
+                                       {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
+                                     </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
                                         <Pencil className="mr-2 h-3.5 w-3.5" />
                                         Alterar nome
