@@ -594,6 +594,32 @@ async function processarWebhook(req, rawBody, base44) {
 
   console.log(`✅ Mensagem salva: ${novaMensagem.id} | remetente: ${remetente}`);
 
+  // Enviar confirmação de entrega ao cliente (se for mensagem recebida do cliente)
+  if (remetente === 'cliente' && messageId) {
+    try {
+      const evolutionUrl = empresaEvolutionUrl?.replace(/\/$/, '');
+      const evolutionKey = empresaEvolutionKey;
+      const evolutionInstance = instanceFinal || Deno.env.get('EVOLUTION_INSTANCE_NAME');
+      if (evolutionUrl && evolutionKey && evolutionInstance) {
+        const deliveryRes = await fetch(`${evolutionUrl}/message/sendRead/${evolutionInstance}`, {
+          method: 'POST',
+          headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            number: telefoneLimpo,
+            readMessages: [messageId]
+          })
+        });
+        if (deliveryRes.ok) {
+          console.log(`✅ Confirmação de entrega enviada para ${telefoneLimpo}`);
+        } else {
+          console.warn(`⚠️ Erro ao enviar confirmação de entrega: ${deliveryRes.status}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ Erro ao enviar confirmação de entrega:`, e.message);
+    }
+  }
+
   // Log em background
   base44.asServiceRole.entities.LogRecebimentoWebhook.create({
     empresa_id: empresaId,
