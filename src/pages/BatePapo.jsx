@@ -921,7 +921,7 @@ export default function BatePapo() {
     espera: conversasValidas.filter(c => !isGrupo(c) && estaEmEsperaFiltro(c)).length,
     ativa: conversasValidas.filter(c => !isGrupo(c) && estaEmAtendimentoFiltro(c)).length,
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
-    transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length,
+    transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id).length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
     grupos: conversas.filter(c => isGrupo(c)).length,
   };
@@ -968,8 +968,8 @@ export default function BatePapo() {
       if (filtroStatus === 'espera') return estaEmEsperaFiltro(c);
       if (filtroStatus === 'ativa') return estaEmAtendimentoFiltro(c); // Vendedor respondeu OU sem remetente → Em Atendimento
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
-      if (filtroStatus === 'transferida') return c.status === 'encerrada';
-      if (filtroStatus === 'encerrada') return c.status === 'encerrada';
+      if (filtroStatus === 'transferida') return c.status === 'encerrada' && !!c.responsavel_id;
+      if (filtroStatus === 'encerrada') return c.status === 'encerrada' && !c.responsavel_id;
       if (filtroStatus === 'meu') return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       
       return false;
@@ -1292,7 +1292,7 @@ export default function BatePapo() {
                   </button>
 
                   <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}</span>
+                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !c.responsavel_id).length}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-600'}`}>Finalizados</span>
                   </button>
 
@@ -1307,7 +1307,7 @@ export default function BatePapo() {
                   </button>
 
                   <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'transferida' ? 'bg-purple-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-purple-500'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada').length}</span>
+                    <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-purple-500'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id).length}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
                   </button>
                 </div>
@@ -1486,12 +1486,12 @@ export default function BatePapo() {
                                       const idFinalizar = conversaSelecionada.id;
                                       // Atualizar cache LOCAL imediatamente — move para "Finalizados"
                                       queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-                                        old.map(c => c.id === idFinalizar ? { ...c, status: 'encerrada' } : c)
+                                        old.map(c => c.id === idFinalizar ? { ...c, status: 'encerrada', responsavel_id: null, responsavel_nome: null } : c)
                                       );
                                       setConversaSelecionada(null);
                                       toast.success('Conversa finalizada');
                                       // Salvar no banco em background
-                                      base44.entities.ConversaWhatsapp.update(idFinalizar, { status: 'encerrada' }).catch(() => {});
+                                      base44.entities.ConversaWhatsapp.update(idFinalizar, { status: 'encerrada', responsavel_id: null, responsavel_nome: null }).catch(() => {});
                                     }}>
                                       <Check className="h-3.5 w-3.5" />
                                       Finalizar Conversa
