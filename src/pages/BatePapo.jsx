@@ -910,13 +910,15 @@ export default function BatePapo() {
     return new Date(c.responsavel_expira_em) > new Date();
   };
 
-  // Em espera: último remetente foi o CLIENTE (aguardando resposta do atendente)
-  // Baseado SOMENTE em ultimo_remetente — não some ao abrir/ler a conversa
+  // Em espera: último remetente foi o CLIENTE AND NÃO há atendente ativo
+  // Só mostra bolinha quando cliente enviou mensagem E ninguém respondeu ainda
   const estaEmEspera = (c) => {
     if (!c || !c.id) return false;
     if (c.status === 'arquivada' || c.status === 'encerrada') return false;
     if (c.status !== 'ativa') return false;
-    return c.ultimo_remetente === 'cliente';
+    if (c.ultimo_remetente !== 'cliente') return false;
+    // NÃO está em espera se há um atendente ativo responsável
+    return !temAtendente(c);
   };
 
   // Em atendimento: atendente respondeu recentemente (dentro dos 10 min) E NÃO está em espera
