@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
@@ -20,7 +20,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const [pdfAberto, setPdfAberto] = useState(false);
   const [pdfCarregado, setPdfCarregado] = useState(false);
   const [deletando, setDeletando] = useState(false);
-  const [velocidadeAudio, setVelocidadeAudio] = useState(1);
   const audioRef = React.useRef(null);
   
   const queryClient = useQueryClient();
@@ -168,9 +167,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     className="flex-1 h-8" 
                     src={mediaUrl} 
                     preload="metadata"
-                    onLoadedMetadata={() => {
-                      if (audioRef.current) audioRef.current.playbackRate = velocidadeAudio;
-                    }}
                     style={{ minWidth: '180px' }}
                   >
                     <source src={mediaUrl} type="audio/ogg" />
@@ -194,21 +190,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                       {transcrevendo ? <><Loader2 className="w-3 h-3 animate-spin" /> Transcrevendo...</> : <><Mic className="w-3 h-3" /> Transcrever</>}
                     </button>
                   )}
-                  <button
-                    onClick={() => {
-                      const velocidades = [1, 1.5, 2];
-                      const indexAtual = velocidades.indexOf(velocidadeAudio);
-                      const novaVelocidade = velocidades[(indexAtual + 1) % velocidades.length];
-                      setVelocidadeAudio(novaVelocidade);
-                      if (audioRef.current) audioRef.current.playbackRate = novaVelocidade;
-                    }}
-                    className={`flex items-center justify-center text-xs font-medium px-2 py-1 rounded-lg whitespace-nowrap transition-colors flex-shrink-0 ${
-                      isVendedor ? 'bg-white/15 hover:bg-white/25 text-white/80' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                    }`}
-                    title="Alternar velocidade do áudio"
-                  >
-                    {velocidadeAudio}x
-                  </button>
                 </div>
               </div>
             ) : (
@@ -388,37 +369,53 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
              <Reply className="w-4 h-4 mr-2" />
              Responder
            </DropdownMenuItem>
+           <DropdownMenuItem onClick={() => toast.info('Encaminhar em breve')}>
+             <Share2 className="w-4 h-4 mr-2" />
+             Encaminhar
+           </DropdownMenuItem>
+           <DropdownMenuItem onClick={() => {
+             const texto = mensagem.texto || `[${mensagem.tipo_conteudo}]`;
+             navigator.clipboard.writeText(texto);
+             toast.success('Copiado!');
+           }}>
+             <Copy className="w-4 h-4 mr-2" />
+             Copiar
+           </DropdownMenuItem>
+           <DropdownMenuItem onClick={() => toast.info('Fixar em breve')}>
+             <Pin className="w-4 h-4 mr-2" />
+             Fixar
+           </DropdownMenuItem>
            {mensagem.tipo_conteudo === 'audio' && mediaUrl && (
-            <>
-              <DropdownMenuItem onClick={() => {
-                const link = document.createElement('a');
-                link.href = mediaUrl;
-                link.download = `audio_${mensagem.id}.mp3`;
-                link.click();
-              }}>
-                <Download className="w-4 h-4 mr-2" />
-                Baixar áudio
-              </DropdownMenuItem>
-            </>
-          )}
-          <DropdownMenuItem 
-            onClick={handleDeletar}
-            disabled={deletando}
-            className="text-red-600 focus:text-red-600"
-          >
-            {deletando ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Deletando...
-              </>
-            ) : (
-              <>
-                <Trash2 className="w-4 h-4 mr-2" />
-                Deletar mensagem
-              </>
-            )}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+             <>
+               <DropdownMenuItem onClick={() => {
+                 const link = document.createElement('a');
+                 link.href = mediaUrl;
+                 link.download = `audio_${mensagem.id}.mp3`;
+                 link.click();
+               }}>
+                 <Download className="w-4 h-4 mr-2" />
+                 Baixar áudio
+               </DropdownMenuItem>
+             </>
+           )}
+           <DropdownMenuItem 
+             onClick={handleDeletar}
+             disabled={deletando}
+             className="text-red-600 focus:text-red-600"
+           >
+             {deletando ? (
+               <>
+                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                 Deletando...
+               </>
+             ) : (
+               <>
+                 <Trash2 className="w-4 h-4 mr-2" />
+                 Deletar mensagem
+               </>
+             )}
+           </DropdownMenuItem>
+         </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );
