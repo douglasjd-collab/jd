@@ -810,18 +810,25 @@ export default function BatePapo() {
 
   const scrollAreaRef = React.useRef(null);
 
-  React.useEffect(() => {
-    if (!mensagens.length) return;
-    // Rola o viewport interno do ScrollArea até o fim
+  // Scroll automático para última mensagem
+  const fazerScrollParaFim = React.useCallback(() => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (viewport) {
-        viewport.scrollTop = viewport.scrollHeight;
+        // Usar requestAnimationFrame para garantir que o DOM foi atualizado
+        requestAnimationFrame(() => {
+          viewport.scrollTop = viewport.scrollHeight;
+        });
       }
     }
-  }, [mensagens]);
+  }, []);
 
-  // Ao abrir conversa, forçar refetch do histórico
+  React.useEffect(() => {
+    if (!mensagens.length) return;
+    fazerScrollParaFim();
+  }, [mensagens, fazerScrollParaFim]);
+
+  // Ao abrir conversa, forçar refetch do histórico e scroll para fim
   React.useEffect(() => {
     if (!conversaSelecionada?.id) return;
     
@@ -833,8 +840,10 @@ export default function BatePapo() {
     // Aguardar um pouco e refetch
     setTimeout(() => {
       refetchMensagens?.().catch(e => console.error('Erro no refetch:', e));
+      // Scroll para fim após carregamento
+      setTimeout(fazerScrollParaFim, 300);
     }, 100);
-  }, [conversaSelecionada?.id, refetchMensagens]);
+  }, [conversaSelecionada?.id, refetchMensagens, fazerScrollParaFim]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN
   const normalizarTelefone = (tel) => {
