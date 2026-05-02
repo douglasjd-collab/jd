@@ -359,12 +359,23 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             : 'bg-white text-slate-900 rounded-bl-md border border-slate-200'
         }`}
       >
-        {/* Nome do remetente em grupos */}
-        {isGrupo && !isVendedor && mensagem.remetente_nome && (
-          <p className="text-xs font-bold mb-1 text-blue-600">{mensagem.remetente_nome}</p>
-        )}
-        {isGrupo && isVendedor && mensagem.remetente_nome && (
-          <p className="text-xs font-bold mb-1 text-white/70">{mensagem.remetente_nome}</p>
+        {/* Nome do remetente em grupos com avatar */}
+        {isGrupo && mensagem.remetente_nome && (
+          <div className="flex items-center gap-2 mb-1 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+            // Extrair telefone do nome ou participant JID
+            const participant = mensagem.remetente_nome;
+            if (participant && participant.includes('@s.whatsapp.net')) {
+              const tel = participant.replace(/@s\.whatsapp\.net/g, '').replace(/\D/g, '');
+              // Aqui seria possível abrir conversa se houver callback
+            }
+          }}>
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 text-white text-[10px] font-bold">
+              {(mensagem.remetente_nome || '?').charAt(0).toUpperCase()}
+            </div>
+            <p className={`text-xs font-bold ${isVendedor ? 'text-white/80' : 'text-blue-600'}`}>
+              {mensagem.remetente_nome}
+            </p>
+          </div>
         )}
         {!isGrupo && !isVendedor && mensagem.usuario_nome && (
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
