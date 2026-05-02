@@ -91,7 +91,22 @@ export default function ConversaContextMenu({
   // Conversa pessoal
   return (
     <>
-      {conversa.status === 'encerrada' && (
+      {conversa.status === 'encerrada' && conversa.responsavel_id && (
+        <DropdownMenuItem
+          onClick={async () => {
+            queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+              old.map(cv => cv.id === conversa.id ? { ...cv, responsavel_id: null, responsavel_expira_em: null } : cv)
+            );
+            await base44.entities.ConversaWhatsapp.update(conversa.id, { responsavel_id: null, responsavel_expira_em: null });
+            toast.success('✅ Conversa finalizada e movida para Finalizados');
+          }}
+          className="text-red-600 focus:text-red-700"
+        >
+          <Check className="mr-2 h-3.5 w-3.5" />
+          Finalizar conversa
+        </DropdownMenuItem>
+      )}
+      {conversa.status === 'encerrada' && !conversa.responsavel_id && (
         <DropdownMenuItem
           onClick={async () => {
             queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
