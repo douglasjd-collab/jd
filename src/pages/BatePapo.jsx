@@ -1438,10 +1438,13 @@ export default function BatePapo() {
                         >
                           {/* Avatar */}
                           <div className="jd-chat-avatar">
-                            <AvatarContato
-                              contato={contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
-                              className="h-full w-full"
-                            />
+                           <AvatarContato
+                             contato={isGrupo(c)
+                               ? { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }
+                               : (contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url })
+                             }
+                             className="h-full w-full"
+                           />
                             {c.bloqueado ? (
                               <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
                                 <Lock className="w-2 h-2 text-white" />
