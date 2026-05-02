@@ -117,29 +117,45 @@ export default function BatePapo() {
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
 
-    // Apenas invalida o cache para forçar refetch das mensagens do banco local
-    // NÃO dispara sincronização/download automático ao abrir conversa
+    // Buscar foto: grupos via Evolution API, contatos via CRM
+    if (!empresaId) return;
 
-    // SOLUÇÃO 2: Buscar foto do contato ao abrir conversa
-    if (!conversa?.cliente_telefone || !empresaId) return;
     try {
-      const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
-      const variacoes = [telefoneLimpo];
-      if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
-        variacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
-      } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
-        variacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
-      }
+      if (isGrupo(conversa)) {
+        // Grupo: buscar foto via Evolution API
+        const grupoJid = conversa.whatsapp_id;
+        if (grupoJid && grupoJid.includes('@g.us')) {
+          const resp = await base44.functions.invoke('buscarFotoContatoAPI', {
+            empresa_id: empresaId,
+            contato_id: grupoJid
+          });
+          if (resp?.data?.foto_url) {
+            setContatosWhatsapp(prev => ({
+              ...prev,
+              [conversa.id]: { nome: conversa.cliente_nome, telefone: conversa.whatsapp_id, foto_url: resp.data.foto_url }
+            }));
+          }
+        }
+      } else if (conversa?.cliente_telefone) {
+        // Contato: buscar do CRM via telefone
+        const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
+        const variacoes = [telefoneLimpo];
+        if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
+          variacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
+        } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+          variacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
+        }
 
-      for (const tel of variacoes) {
-        const contatos = await base44.entities.ContatoWhatsapp.filter({
-          empresa_id: empresaId,
-          telefone: tel
-        }, '-created_date', 1);
+        for (const tel of variacoes) {
+          const contatos = await base44.entities.ContatoWhatsapp.filter({
+            empresa_id: empresaId,
+            telefone: tel
+          }, '-created_date', 1);
 
-        if (contatos?.length > 0) {
-          setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatos[0] }));
-          break;
+          if (contatos?.length > 0) {
+            setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatos[0] }));
+            break;
+          }
         }
       }
     } catch (e) {
