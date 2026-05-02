@@ -975,9 +975,9 @@ export default function BatePapo() {
             width: 100%;
           }
           .jd-conversation-card {
-            height: 56px;
-            max-height: 56px;
-            min-height: 56px;
+            height: 68px;
+            max-height: 68px;
+            min-height: 68px;
             width: 100%;
             max-width: 100%;
             padding: 8px 12px;
@@ -1271,50 +1271,52 @@ export default function BatePapo() {
 
                            {/* Conteúdo */}
                            <div className="jd-conversation-text flex-1 min-w-0">
-                             {/* Linha 1: nome + hora + menu */}
-                             <div className="flex items-center justify-between gap-2 min-w-0">
-                               <div className="flex-1 min-w-0">
-                                 <p className="jd-conversation-name">
-                                   {nome}
-                                 </p>
-                                 <p className="jd-conversation-message">
-                                   {ultimaMsg}
-                                 </p>
-                               </div>
-                               <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                             <p className="text-[10px] text-slate-500 whitespace-nowrap">{hora}</p>
-                             <DropdownMenu>
-                             <DropdownMenuTrigger asChild>
-                               <button className="p-0.5 hover:bg-slate-100 rounded opacity-100">
-                                 <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
-                               </button>
-                             </DropdownMenuTrigger>
-                                 <DropdownMenuContent align="end" className="w-48">
+                             {/* Linha 1: nome + hora */}
+                             <div className="flex items-center justify-between gap-1 min-w-0">
+                               <p className="jd-conversation-name flex-1 min-w-0">{nome}</p>
+                               <p className="text-[10px] text-slate-400 whitespace-nowrap flex-shrink-0">{hora}</p>
+                             </div>
+                             {/* Linha 2: última mensagem + menu + badge */}
+                             <div className="flex items-center gap-1 min-w-0 mt-0.5">
+                               <p className="jd-conversation-message flex-1 min-w-0">{ultimaMsg}</p>
+                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                 {mostrarBadge && (
+                                   <span style={{ backgroundColor: '#10B981', minWidth: '18px', height: '18px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0">
+                                     {naoLidas > 0 ? naoLidas : '!'}
+                                   </span>
+                                 )}
+                                 <DropdownMenu>
+                                   <DropdownMenuTrigger asChild>
+                                     <button className="p-0.5 hover:bg-slate-100 rounded">
+                                       <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
+                                     </button>
+                                   </DropdownMenuTrigger>
+                                   <DropdownMenuContent align="end" className="w-48">
                                      {!isGrupo(c) && (<>
-                                     <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                       <Contact className="mr-2 h-3.5 w-3.5" />
-                                       {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
-                                     </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                       <Pencil className="mr-2 h-3.5 w-3.5" />
-                                       Alterar nome
-                                     </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
-                                       <Tag className="mr-2 h-3.5 w-3.5" />
-                                       Adicionar tag
-                                     </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
-                                       <Clock className="mr-2 h-3.5 w-3.5" />
-                                       Criar tarefa
-                                     </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => { setTransferirModal(c); }}>
-                                       <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
-                                       Transferir atendimento
-                                     </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
-                                       <Star className="mr-2 h-3.5 w-3.5" />
-                                       Favoritar
-                                     </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                         <Contact className="mr-2 h-3.5 w-3.5" />
+                                         {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
+                                       </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
+                                         <Pencil className="mr-2 h-3.5 w-3.5" />
+                                         Alterar nome
+                                       </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => toast.success('Conversa atribuída para você')}>
+                                         <Tag className="mr-2 h-3.5 w-3.5" />
+                                         Adicionar tag
+                                       </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
+                                         <Clock className="mr-2 h-3.5 w-3.5" />
+                                         Criar tarefa
+                                       </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => { setTransferirModal(c); }}>
+                                         <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                                         Transferir atendimento
+                                       </DropdownMenuItem>
+                                       <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
+                                         <Star className="mr-2 h-3.5 w-3.5" />
+                                         Favoritar
+                                       </DropdownMenuItem>
                                      </>)}
                                      {isGrupo(c) && (
                                        <DropdownMenuItem
@@ -1347,17 +1349,12 @@ export default function BatePapo() {
                                        <Trash2 className="mr-2 h-3.5 w-3.5" />
                                        Excluir
                                      </DropdownMenuItem>
-                                     </DropdownMenuContent>
-                                     </DropdownMenu>
-                                     {mostrarBadge && (
-                                       <span style={{ backgroundColor: '#10B981', minWidth: '20px', height: '20px' }} className="inline-flex items-center justify-center rounded-full text-white text-[9px] font-bold leading-none flex-shrink-0">
-                                         {naoLidas > 0 ? naoLidas : '!'}
-                                       </span>
-                                     )}
-                                       </div>
-                                       </div>
-                                       </div>
-                                       </div>
+                                   </DropdownMenuContent>
+                                 </DropdownMenu>
+                               </div>
+                             </div>
+                           </div>
+                           </div>
                                      );
                                      })
                                      }
