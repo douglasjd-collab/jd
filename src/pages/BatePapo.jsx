@@ -980,20 +980,20 @@ export default function BatePapo() {
             min-height: 56px;
             width: 100%;
             max-width: 100%;
-            padding: 8px 10px;
+            padding: 8px 12px;
             display: flex;
             align-items: center;
             overflow: hidden;
-            gap: 8px;
+            gap: 12px;
             background: #ffffff;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            transition: background-color 150ms, border-color 150ms;
+            border: none;
+            border-bottom: 1px solid #f1f5f9;
+            border-radius: 0;
+            transition: background-color 150ms;
             box-sizing: border-box;
           }
           .jd-conversation-card:hover {
-            background-color: #f3f4f6;
-            border-color: #d1d5db;
+            background-color: #f8fafc;
             cursor: pointer;
           }
           .jd-conversation-text {
@@ -1245,7 +1245,7 @@ export default function BatePapo() {
                         <div
                            key={c.id}
                            className={classNames(
-                             "jd-conversation-card flex w-full items-center gap-3 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-hidden",
+                             "jd-conversation-card flex w-full items-center gap-4 rounded-none px-3 py-2 text-left transition cursor-pointer border-b border-slate-100 last:border-0 overflow-hidden",
                              conversaSelecionada?.id === c.id
                                ? "bg-blue-50"
                                : naoLidas > 0
