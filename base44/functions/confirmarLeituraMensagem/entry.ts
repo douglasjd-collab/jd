@@ -49,20 +49,20 @@ Deno.serve(async (req) => {
         if (!phoneNumber) return Response.json({ ok: true });
 
         // Enviar confirmação de leitura via Evolution
-        const readRes = await fetch(`${evolutionUrl}/chat/readMessages/${instanceName}`, {
+        const readRes = await fetch(`${evolutionUrl}/message/sendRead/${instanceName}`, {
           method: 'POST',
           headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            readMessages: [
-              { key: { remoteJid: `${phoneNumber}@s.whatsapp.net`, id: mensagem.whatsapp_message_id } }
-            ]
+            number: phoneNumber,
+            readMessages: [mensagem.whatsapp_message_id]
           })
         });
 
+        const readText = await readRes.text();
         if (readRes.ok) {
           console.log(`✅ Confirmação de leitura enviada para Evolution`);
         } else {
-          console.warn(`⚠️ Erro ao enviar confirmação de leitura: ${readRes.status}`);
+          console.warn(`⚠️ Erro ao enviar confirmação de leitura: ${readRes.status}`, readText.substring(0, 200));
         }
       } catch (e) {
         console.warn(`⚠️ Erro ao confirmar leitura na Evolution:`, e.message);
