@@ -21,6 +21,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const [pdfCarregado, setPdfCarregado] = useState(false);
   const [imagemAberta, setImagemAberta] = useState(false);
   const [deletando, setDeletando] = useState(false);
+  const [velocidadeAudio, setVelocidadeAudio] = useState(1);
   const audioRef = React.useRef(null);
   
   const queryClient = useQueryClient();
@@ -158,6 +159,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         );
 
       case 'audio':
+        const velocidades = [0.5, 1, 1.5, 2];
+        const proximaVelocidade = velocidades[(velocidades.indexOf(velocidadeAudio) + 1) % velocidades.length];
         return (
           <div className="flex flex-col gap-2 min-w-[200px]">
             {!mediaUrl ? (
@@ -166,7 +169,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 <span className="text-sm opacity-75">Carregando áudio...</span>
               </div>
             ) : mediaUrl ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <FileAudio className="w-4 h-4 flex-shrink-0 opacity-70" />
                   <audio 
@@ -181,23 +184,18 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     <source src={mediaUrl} type="audio/webm" />
                     <source src={mediaUrl} type="audio/mpeg" />
                   </audio>
-                  <select 
-                    defaultValue="1"
-                    onChange={(e) => {
-                      if (audioRef.current) audioRef.current.playbackRate = parseFloat(e.target.value);
-                    }}
-                    className={`text-xs px-1.5 py-0.5 rounded-md border ${
-                      isVendedor ? 'bg-white/15 text-white border-white/20' : 'bg-slate-50 text-slate-900 border-slate-200'
-                    }`}
-                  >
-                    <option value="0.5">0.5x</option>
-                    <option value="0.75">0.75x</option>
-                    <option value="1">1x</option>
-                    <option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x</option>
-                    <option value="2">2x</option>
-                  </select>
                 </div>
+                <button
+                  onClick={() => {
+                    setVelocidadeAudio(proximaVelocidade);
+                    if (audioRef.current) audioRef.current.playbackRate = proximaVelocidade;
+                  }}
+                  className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${
+                    isVendedor ? 'bg-white/15 hover:bg-white/25 text-white/80' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  {velocidadeAudio}x
+                </button>
                 <div className="flex items-center gap-1.5">
                   {transcricao ? (
                     <div className={`text-xs flex-1 px-2 py-1.5 rounded-lg italic ${isVendedor ? 'bg-white/15 text-white/90' : 'bg-slate-100 text-slate-600'}`}>
