@@ -1358,13 +1358,13 @@ export default function BatePapo() {
                                          {naoLidas > 0 ? naoLidas : '!'}
                                        </span>
                                      )}
-                                       </div>{/* end: flex items-center gap-1 */}
-                                     </div>{/* end: flex items-center justify-between */}
-                                     </div>{/* end: jd-conversation-text */}
-                                     </div>{/* end: card root div */}
+                                       </div>
+                                       </div>
+                                       </div>
+                                       </div>
                                      );
                                      })
-                                     }
+                                     )}
                                      </div>
                                      </ScrollArea>
                                      </CardContent>
