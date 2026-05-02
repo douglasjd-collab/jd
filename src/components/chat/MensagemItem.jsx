@@ -69,19 +69,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     const tiposMidia = ['audio', 'imagem', 'video', 'pdf', 'documento'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
-    if (loadingMedia || mediaUrl) return;  // Não baixar se já está carregando ou já tem URL
+    if (loadingMedia) return;  // Já carregando
 
-    const isPermanente = mediaUrl && (
-      mediaUrl.includes('base44') ||
-      mediaUrl.includes('supabase') ||
-      mediaUrl.includes('amazonaws')
-    );
-    if (isPermanente) return;
+    // Se já tem URL permanente, não faz nada
+    if (mediaUrl && (mediaUrl.includes('base44') || mediaUrl.includes('supabase') || mediaUrl.includes('amazonaws'))) return;
 
-    // Só tenta se há url de origem OU whatsapp_message_id para buscar
-    const temFonte = !!mensagem.arquivo_url || !!mensagem.whatsapp_message_id;
-    if (!temFonte) return;
-
+    // Tenta baixar sempre que não tem URL ou é URL temporária
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
@@ -96,7 +89,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       })
       .catch(err => console.error('Erro ao baixar mídia:', err))
       .finally(() => setLoadingMedia(false));
-  }, [mensagem.id, mensagem.tipo_conteudo, mensagem.arquivo_url, mensagem.whatsapp_message_id]);
+  }, [mensagem.id, mensagem.tipo_conteudo]);
 
   const handleTranscrever = async () => {
     if (!mediaUrl) return;
