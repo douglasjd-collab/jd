@@ -923,7 +923,8 @@ export default function BatePapo() {
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id).length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
-    grupos: conversas.filter(c => isGrupo(c)).length,
+    grupos: conversas.filter(c => isGrupo(c) && !c.bloqueado).length,
+    grupos_bloqueados: conversas.filter(c => isGrupo(c) && c.bloqueado).length,
   };
 
   // Debug temporário
@@ -962,7 +963,10 @@ export default function BatePapo() {
       }
       
       // Filtrar por status
-      if (isGrupo(c)) return filtroStatus === 'grupos'; // Grupos ficam apenas na aba grupos
+      if (isGrupo(c)) {
+        if (c.bloqueado) return filtroStatus === 'grupos_bloqueados';
+        return filtroStatus === 'grupos';
+      }
       
       if (filtroStatus === 'todas') return c.status === 'ativa'; // TODAS as conversas ATIVAS
       if (filtroStatus === 'espera') return estaEmEsperaFiltro(c);
@@ -970,6 +974,7 @@ export default function BatePapo() {
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada' && !!c.responsavel_id;
       if (filtroStatus === 'encerrada') return c.status === 'encerrada' && !c.responsavel_id;
+      if (filtroStatus === 'grupos_bloqueados') return isGrupo(c) && c.bloqueado === true;
       if (filtroStatus === 'meu') return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       
       return false;
@@ -1234,6 +1239,11 @@ export default function BatePapo() {
                       Sincronizar histórico
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setFiltroStatus('grupos_bloqueados')}>
+                      <Lock className="mr-2 h-4 w-4" />
+                      Grupos Bloqueados
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={limparHistoricoCompleto} disabled={limpandoTudo} className="text-red-600">
                       <Trash2 className="mr-2 h-4 w-4" />
                       Limpar histórico
@@ -1297,7 +1307,7 @@ export default function BatePapo() {
                   </button>
 
                   <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{conversas.filter(c => isGrupo(c)).length}</span>
+                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{conversas.filter(c => isGrupo(c) && !c.bloqueado).length}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
                   </button>
 
@@ -1410,8 +1420,12 @@ export default function BatePapo() {
                                       <DropdownMenuItem
                                         onClick={async () => {
                                           const novoBloqueado = !c.bloqueado;
+                                          // Atualizar cache LOCAL imediatamente
+                                          queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+                                            old.map(cv => cv.id === c.id ? { ...cv, bloqueado: novoBloqueado } : cv)
+                                          );
+                                          if (novoBloqueado) setFiltroStatus('grupos_bloqueados');
                                           await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: novoBloqueado });
-                                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
                                           toast.success(novoBloqueado ? '🔒 Grupo bloqueado — mensagens serão ignoradas' : '🔓 Grupo desbloqueado');
                                         }}
                                         className={c.bloqueado ? 'text-green-600 focus:text-green-700' : 'text-orange-600 focus:text-orange-700'}
