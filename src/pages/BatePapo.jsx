@@ -557,8 +557,10 @@ export default function BatePapo() {
   const conversaSelecionadaIdRef = React.useRef(conversaSelecionadaId);
   const conversasRef = React.useRef(conversas);
   const notificadasRef = React.useRef(new Set()); // IDs já notificados — evita duplicatas
+  const empresaIdRef = React.useRef(empresaId);
   React.useEffect(() => { conversaSelecionadaIdRef.current = conversaSelecionadaId; }, [conversaSelecionadaId]);
   React.useEffect(() => { conversasRef.current = conversas; }, [conversas]);
+  React.useEffect(() => { empresaIdRef.current = empresaId; }, [empresaId]);
 
   useEffect(() => {
     if (!empresaId || !refetchConversas) return;
@@ -602,6 +604,39 @@ export default function BatePapo() {
         base44.entities.ConversaWhatsapp.update(msgData.conversa_id, {
           ultimo_remetente: 'cliente',
         }).catch(() => {});
+
+        // Verificar se a conversa está encerrada e perguntar se quer reabrir
+        const conversaEncerrada = conversasRef.current.find(
+          c => c.id === msgData.conversa_id && c.status === 'encerrada'
+        );
+        if (conversaEncerrada) {
+          const nomeContato = conversaEncerrada.cliente_nome || conversaEncerrada.cliente_telefone || 'Cliente';
+          toast.message(`📩 Nova mensagem de ${nomeContato}`, {
+            description: 'Esta conversa está finalizada. Deseja reabri-la?',
+            duration: 15000,
+            action: {
+              label: 'Abrir conversa',
+              onClick: async () => {
+                // Reativar conversa
+                const eid = empresaIdRef.current;
+                queryClient.setQueryData(['conversas-whatsapp', eid], (old = []) =>
+                  old.map(c => c.id === conversaEncerrada.id
+                    ? { ...c, status: 'ativa', ultimo_remetente: 'cliente', responsavel_id: null, responsavel_expira_em: null }
+                    : c
+                  )
+                );
+                selecionarConversa({ ...conversaEncerrada, status: 'ativa' });
+                base44.entities.ConversaWhatsapp.update(conversaEncerrada.id, {
+                  status: 'ativa',
+                  ultimo_remetente: 'cliente',
+                  responsavel_id: null,
+                  responsavel_expira_em: null,
+                }).catch(() => {});
+                toast.success('Conversa reaberta!');
+              },
+            },
+          });
+        }
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
@@ -933,6 +968,7 @@ export default function BatePapo() {
       if (filtroStatus === 'ativa') return estaEmAtendimentoFiltro(c); // Vendedor respondeu OU sem remetente → Em Atendimento
       if (filtroStatus === 'arquivada') return c.status === 'arquivada';
       if (filtroStatus === 'transferida') return c.status === 'encerrada';
+      if (filtroStatus === 'encerrada') return c.status === 'encerrada';
       if (filtroStatus === 'meu') return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       
       return false;
@@ -1466,12 +1502,15 @@ export default function BatePapo() {
 
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300" onClick={async () => {
-                                      try {
-                                        await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'arquivada' });
-                                      } catch (_) {}
-                                      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                      const idFinalizar = conversaSelecionada.id;
+                                      // Atualizar cache LOCAL imediatamente — move para "Finalizados"
+                                      queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+                                        old.map(c => c.id === idFinalizar ? { ...c, status: 'encerrada' } : c)
+                                      );
                                       setConversaSelecionada(null);
                                       toast.success('Conversa finalizada');
+                                      // Salvar no banco em background
+                                      base44.entities.ConversaWhatsapp.update(idFinalizar, { status: 'encerrada' }).catch(() => {});
                                     }}>
                                       <Check className="h-3.5 w-3.5" />
                                       Finalizar Conversa
