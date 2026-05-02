@@ -1351,6 +1351,29 @@ export default function BatePapo() {
                       Gerenciar Tags
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={async () => {
+                        setSincronizando(true);
+                        try {
+                          const resp = await base44.functions.invoke('sincronizarFotosContatosAgressivo', { empresa_id: empresaId });
+                          const data = resp?.data;
+                          if (data?.ok) {
+                            toast.success(`📸 ${data.fotos_atualizadas}/${data.total_contatos} fotos atualizadas`);
+                            refetchConversas();
+                          } else {
+                            toast.error('Erro ao sincronizar fotos: ' + (data?.error || 'Desconhecido'));
+                          }
+                        } catch (e) {
+                          toast.error('Erro: ' + e.message);
+                        } finally {
+                          setSincronizando(false);
+                        }
+                      }}
+                      disabled={sincronizando}
+                    >
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Sincronizar fotos
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={sincronizarChats} disabled={sincronizando}>
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Sincronizar conversas
