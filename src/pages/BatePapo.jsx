@@ -1228,12 +1228,9 @@ export default function BatePapo() {
                     <div className="flex items-center justify-center h-32 text-slate-400">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                     </div>
-                  ) : (
-                    conversasFiltradas.map((c) => {
-                    const naoLidas = naoLidasPorConversa[c.id] ?? 0;
-                      // Badge verde: mostra quando há msgs não lidas OU quando está em espera (ultimo_remetente = cliente)
+                  ) : conversasFiltradas.map((c) => {
+                      const naoLidas = naoLidasPorConversa[c.id] ?? 0;
                       const mostrarBadge = naoLidas > 0 || estaEmEspera(c);
-                      const contadorBadge = naoLidas > 0 ? naoLidas : '!';
                       const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
                       const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
                       const hora = c.data_ultima_mensagem
@@ -1244,7 +1241,6 @@ export default function BatePapo() {
                         : estaEmAtendimento(c)
                         ? 'bg-emerald-500'
                         : 'bg-slate-300';
-
                       return (
                         <div
                            key={c.id}
@@ -1364,7 +1360,7 @@ export default function BatePapo() {
                                        </div>
                                      );
                                      })
-                                     )}
+                                     }
                                      </div>
                                      </ScrollArea>
                                      </CardContent>
