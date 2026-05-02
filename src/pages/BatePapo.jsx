@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -1032,7 +1033,6 @@ export default function BatePapo() {
             cursor: pointer;
             transition: background-color 150ms;
             flex-shrink: 0;
-            contain: layout style;
           }
           .jd-chat-card:hover {
             background: #efefef;
@@ -1373,12 +1373,13 @@ export default function BatePapo() {
                                   </span>
                                 )}
                                 <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className="jd-chat-menu p-0.5 hover:bg-black/5 rounded">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
+                                 <DropdownMenuTrigger asChild>
+                                   <button className="jd-chat-menu p-0.5 hover:bg-black/5 rounded">
+                                     <MoreVertical className="h-4 w-4" />
+                                   </button>
+                                 </DropdownMenuTrigger>
+                                 <DropdownMenuPortal>
+                                 <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                     {!isGrupo(c) && (<>
                                       <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
                                         <Contact className="mr-2 h-3.5 w-3.5" />
@@ -1437,13 +1438,14 @@ export default function BatePapo() {
                                       Excluir
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
+                                  </DropdownMenuPortal>
+                                  </DropdownMenu>
+                                  </div>
+                                  </div>
+                                  </div>
+                                  </div>
+                                  );
+                                  })
                   }
                 </div>
               </div>
