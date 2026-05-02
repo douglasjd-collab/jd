@@ -116,7 +116,12 @@ Deno.serve(async (req) => {
     }
 
     if (!base64Data) {
-      return Response.json({ error: 'Não foi possível baixar a mídia' }, { status: 500 });
+      console.warn('⚠️ Não conseguiu baixar via Evolution - retornando URL temporária');
+      return Response.json({ 
+        ok: true, 
+        arquivo_url: urlAtual || 'indisponivel',
+        aviso: 'URL temporária - pode expirar'
+      });
     }
 
     // Converter base64 → Blob → File e fazer upload no backend (via service role)

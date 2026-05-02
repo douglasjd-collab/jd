@@ -27,6 +27,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const queryClient = useQueryClient();
   const isVendedor = mensagem.remetente === 'vendedor';
 
+  // Confirmar leitura ao montar a mensagem (se for mensagem de cliente)
+  useEffect(() => {
+    if (mensagem.remetente === 'cliente' && (mensagem.status === 'entregue' || mensagem.status === 'enviada')) {
+      base44.functions.invoke('confirmarLeituraMensagem', {
+        mensagem_id: mensagem.id,
+        conversa_id: conversaId
+      }).catch(e => console.warn('Erro ao confirmar leitura:', e.message));
+    }
+  }, [mensagem.id]);
+
   const handleDeletar = async () => {
     if (mensagem.id?.startsWith('temp_')) {
       // Mensagem temporária (não foi enviada ainda)
