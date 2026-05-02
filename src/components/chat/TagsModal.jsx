@@ -133,16 +133,20 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
         return;
       }
 
+      // Recarregar tags atuais do contato no banco (em caso de desincronização)
+      const contatoAtualizado = await base44.entities.ContatoWhatsapp.read(contatoCRM.id);
+      const tagsAtuais = contatoAtualizado?.tags_ids || [];
+      
       // Atualizar as tags do contato
-      if (contatoTags.includes(tagId)) {
-        const novasTags = contatoTags.filter(id => id !== tagId);
+      if (tagsAtuais.includes(tagId)) {
+        const novasTags = tagsAtuais.filter(id => id !== tagId);
         setContatoTags(novasTags);
         await base44.entities.ContatoWhatsapp.update(contatoCRM.id, {
           tags_ids: novasTags,
         });
         toast.success('Tag removida');
       } else {
-        const novasTags = [...contatoTags, tagId];
+        const novasTags = [...tagsAtuais, tagId];
         setContatoTags(novasTags);
         await base44.entities.ContatoWhatsapp.update(contatoCRM.id, {
           tags_ids: novasTags,
