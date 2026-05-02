@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder }) {
   const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url || null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
@@ -384,7 +384,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) 
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align={isVendedor ? "end" : "start"}>
-          {mensagem.tipo_conteudo === 'audio' && mediaUrl && (
+           <DropdownMenuItem onClick={() => onResponder?.(mensagem)}>
+             <Reply className="w-4 h-4 mr-2" />
+             Responder
+           </DropdownMenuItem>
+           {mensagem.tipo_conteudo === 'audio' && mediaUrl && (
             <>
               <DropdownMenuItem onClick={() => {
                 const link = document.createElement('a');

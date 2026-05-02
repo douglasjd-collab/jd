@@ -146,6 +146,7 @@ export default function BatePapo() {
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const [mensagemParaResponder, setMensagemParaResponder] = useState(null);
   const [salvarCrmModal, setSalvarCrmModal] = useState(null); // { conversa, contato? }
   const [nomeContatoEdit, setNomeContatoEdit] = useState('');
   const [salvandoCrm, setSalvandoCrm] = useState(false);
@@ -1850,7 +1851,7 @@ export default function BatePapo() {
                                     <div className="flex-1 h-px bg-slate-300/50" />
                                   </div>
                                 )}
-                                <MensagemItem mensagem={msg} conversaId={conversaSelecionada?.id} isGrupo={isGrupo(conversaSelecionada)} />
+                                <MensagemItem mensagem={msg} conversaId={conversaSelecionada?.id} isGrupo={isGrupo(conversaSelecionada)} onResponder={setMensagemParaResponder} />
                               </React.Fragment>
                             );
                           })}
@@ -1860,9 +1861,21 @@ export default function BatePapo() {
                     </ScrollArea>
 
                     {/* Input de mensagem */}
+                    {mensagemParaResponder && (
+                      <div className="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-blue-600 mb-1">Respondendo a:</p>
+                          <p className="text-sm text-slate-700 truncate">{mensagemParaResponder.texto || `[${mensagemParaResponder.tipo_conteudo}]`}</p>
+                        </div>
+                        <button onClick={() => setMensagemParaResponder(null)} className="ml-2 text-slate-400 hover:text-slate-600">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )}
                     <EnviarMensagemForm
                       onEnviar={async ({ texto, arquivo }) => {
                         await enviarMensagemMutation.mutateAsync({ texto, arquivo });
+                        setMensagemParaResponder(null);
                       }}
                       isLoading={enviarMensagemMutation.isPending}
                       nomeUsuario={user?.full_name || ''}
