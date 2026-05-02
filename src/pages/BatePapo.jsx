@@ -993,6 +993,10 @@ export default function BatePapo() {
           .jd-conversation-list [data-radix-scroll-area-scrollbar] {
             display: none !important;
           }
+          .jd-chat-list * {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
           .jd-chat-card {
             width: 100%;
             max-width: 100%;
@@ -1011,6 +1015,7 @@ export default function BatePapo() {
             cursor: pointer;
             transition: background-color 150ms;
             flex-shrink: 0;
+            contain: layout style;
           }
           .jd-chat-card:hover {
             background: #efefef;
@@ -1293,7 +1298,7 @@ export default function BatePapo() {
                 </div>
               </div>
 
-              <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full" style={{ minWidth: 0, maxWidth: '100%', overflowX: 'hidden' }}>
+              <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full" style={{ minWidth: 0, maxWidth: '100%', overflowX: 'hidden', overflow: 'hidden' }}>
                 <div className="jd-chat-list pb-4" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
                   {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
