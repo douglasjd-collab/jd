@@ -476,16 +476,14 @@ export default function BatePapo() {
       const msgs = await base44.entities.MensagemWhatsapp.filter(
         { conversa_id: conversaSelecionadaId },
         '-data_envio',
-        5000
+        1000  // Reduzir limite para carregar mais rápido
       );
       console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
       const ordenadas = [...msgs].reverse();
-      // NÃO marcar mensagens como lidas automaticamente ao abrir a conversa
-      // A conversa deve permanecer em "Esperando" até o atendente responder
       return ordenadas;
     },
-    staleTime: 5000,
-    refetchInterval: 5000,
+    staleTime: 10000,  // Aumentar staleTime para evitar refetches desnecessários
+    refetchInterval: 3000,  // Reduzir intervalo de polling
     placeholderData: (prev) => prev,
   });
 

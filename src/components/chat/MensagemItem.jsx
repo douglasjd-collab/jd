@@ -69,7 +69,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) 
     const tiposMidia = ['audio', 'imagem', 'video', 'pdf', 'documento'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
-    if (loadingMedia) return;
+    if (loadingMedia || mediaUrl) return;  // Não baixar se já está carregando ou já tem URL
 
     const isPermanente = mediaUrl && (
       mediaUrl.includes('base44') ||
@@ -153,7 +153,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) 
       case 'audio':
         return (
           <div className="flex flex-col gap-2 min-w-[200px]">
-            {loadingMedia ? (
+            {!mediaUrl ? (
               <div className="flex items-center gap-2 bg-white/10 rounded-lg p-3">
                 <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
                 <span className="text-sm opacity-75">Carregando áudio...</span>
