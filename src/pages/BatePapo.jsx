@@ -72,6 +72,7 @@ import {
 } from "@/components/ui/select";
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
+import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
@@ -1544,100 +1545,38 @@ export default function BatePapo() {
                                  </DropdownMenuTrigger>
                                  <DropdownMenuPortal>
                                  <DropdownMenuContent align="end" className="w-48 z-[9999]">
-                                   {!isGrupo(c) && (<>
-                                     <DropdownMenuItem onClick={() => {
-                                       if (marcadasNaoLidasManual.has(c.id)) {
-                                         setMarcadasNaoLidasManual(prev => {
-                                           const nova = new Set(prev);
-                                           nova.delete(c.id);
-                                           return nova;
-                                         });
-                                         toast.success('Marcado como lido');
-                                       } else {
-                                         setMarcadasNaoLidasManual(prev => new Set(prev).add(c.id));
-                                         setNaoLidasPorConversa(prev => ({ ...prev, [c.id]: 1 }));
-                                         toast.success('Marcado como não lido');
+                                   <ConversaContextMenu
+                                     conversa={c}
+                                     isGrupo={isGrupo(c)}
+                                     empresaId={empresaId}
+                                     conversaSelecionada={conversaSelecionada}
+                                     setConversaSelecionada={setConversaSelecionada}
+                                     setMarcadasNaoLidasManual={setMarcadasNaoLidasManual}
+                                     marcadasNaoLidasManual={marcadasNaoLidasManual}
+                                     setNaoLidasPorConversa={setNaoLidasPorConversa}
+                                     abrirSalvarCrm={abrirSalvarCrm}
+                                     setContatoParaTags={setContatoParaTags}
+                                     setTagsModalOpen={setTagsModalOpen}
+                                     setTransferirModal={setTransferirModal}
+                                   />
+                                   <DropdownMenuSeparator />
+                                   <DropdownMenuItem
+                                     className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                     onClick={async () => {
+                                       if (confirm('Excluir esta conversa e todas as mensagens?')) {
+                                         const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
+                                         for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
+                                         await base44.entities.ConversaWhatsapp.delete(c.id);
+                                         queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                                         queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
+                                         if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
+                                         toast.success('Conversa excluída');
                                        }
-                                     }}>
-                                       <Bell className="mr-2 h-3.5 w-3.5" />
-                                       {marcadasNaoLidasManual.has(c.id) ? 'Marcar como lido' : 'Marcar como não lido'}
-                                     </DropdownMenuItem>
-                                     <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                       <Contact className="mr-2 h-3.5 w-3.5" />
-                                       {contatosWhatsapp[c.id]?.id ? 'Editar no CRM' : 'Salvar no CRM'}
-                                     </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => abrirSalvarCrm(c)}>
-                                        <Pencil className="mr-2 h-3.5 w-3.5" />
-                                        Alterar nome
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => {
-                                        setContatoParaTags(c);
-                                        setTagsModalOpen(true);
-                                      }}>
-                                        <Tag className="mr-2 h-3.5 w-3.5" />
-                                        Tags
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
-                                        <Clock className="mr-2 h-3.5 w-3.5" />
-                                        Criar tarefa
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => { setTransferirModal(c); }}>
-                                        <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
-                                        Transferir atendimento
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
-                                        <Star className="mr-2 h-3.5 w-3.5" />
-                                        Favoritar
-                                      </DropdownMenuItem>
-                                    </>)}
-                                    {isGrupo(c) && (<>
-                                      <DropdownMenuItem
-                                        onClick={async () => {
-                                          queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-                                            old.map(cv => cv.id === c.id ? { ...cv, status: 'encerrada', responsavel_id: null, responsavel_nome: null } : cv)
-                                          );
-                                          if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
-                                          base44.entities.ConversaWhatsapp.update(c.id, { status: 'encerrada', responsavel_id: null, responsavel_nome: null }).catch(() => {});
-                                          toast.success('✅ Conversa do grupo finalizada');
-                                        }}
-                                        className="text-red-600 focus:text-red-700"
-                                      >
-                                        <Check className="mr-2 h-3.5 w-3.5" />
-                                        Finalizar conversa
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={async () => {
-                                          const novoBloqueado = !c.bloqueado;
-                                          queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-                                            old.map(cv => cv.id === c.id ? { ...cv, bloqueado: novoBloqueado } : cv)
-                                          );
-                                          if (novoBloqueado) setFiltroStatus('grupos_bloqueados');
-                                          await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: novoBloqueado });
-                                          toast.success(novoBloqueado ? '🔒 Grupo bloqueado — mensagens serão ignoradas' : '🔓 Grupo desbloqueado');
-                                        }}
-                                        className={c.bloqueado ? 'text-green-600 focus:text-green-700' : 'text-orange-600 focus:text-orange-700'}
-                                      >
-                                        {c.bloqueado ? <Unlock className="mr-2 h-3.5 w-3.5" /> : <Lock className="mr-2 h-3.5 w-3.5" />}
-                                        {c.bloqueado ? 'Desbloquear grupo' : 'Bloquear grupo'}
-                                      </DropdownMenuItem>
-                                    </>)}
-                                    <DropdownMenuItem
-                                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                      onClick={async () => {
-                                        if (confirm('Excluir esta conversa e todas as mensagens?')) {
-                                          const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
-                                          for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
-                                          await base44.entities.ConversaWhatsapp.delete(c.id);
-                                          queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                                          queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
-                                          if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
-                                          toast.success('Conversa excluída');
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                      Excluir
-                                    </DropdownMenuItem>
+                                     }}
+                                   >
+                                     <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                     Excluir
+                                   </DropdownMenuItem>
                                   </DropdownMenuContent>
                                   </DropdownMenuPortal>
                                   </DropdownMenu>
