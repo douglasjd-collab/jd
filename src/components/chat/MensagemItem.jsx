@@ -181,6 +181,22 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     <source src={mediaUrl} type="audio/webm" />
                     <source src={mediaUrl} type="audio/mpeg" />
                   </audio>
+                  <select 
+                    defaultValue="1"
+                    onChange={(e) => {
+                      if (audioRef.current) audioRef.current.playbackRate = parseFloat(e.target.value);
+                    }}
+                    className={`text-xs px-1.5 py-0.5 rounded-md border ${
+                      isVendedor ? 'bg-white/15 text-white border-white/20' : 'bg-slate-50 text-slate-900 border-slate-200'
+                    }`}
+                  >
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1">1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                  </select>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {transcricao ? (
