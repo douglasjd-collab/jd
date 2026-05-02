@@ -1004,11 +1004,8 @@ export default function BatePapo() {
             flex-shrink: 0;
           }
           .jd-conversation-list {
-            flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            min-height: 0;
-            width: 100%;
           }
           .jd-chat-list {
             width: 100%;
@@ -1016,22 +1013,6 @@ export default function BatePapo() {
             overflow-x: hidden;
             padding: 8px 10px;
             box-sizing: border-box;
-          }
-          .jd-conversation-list [data-radix-scroll-area-viewport] {
-            overflow-x: hidden !important;
-            max-width: 100% !important;
-            width: 100% !important;
-          }
-          .jd-conversation-list > div {
-            width: 100% !important;
-            max-width: 100% !important;
-          }
-          .jd-conversation-list [data-radix-scroll-area-scrollbar] {
-            display: none !important;
-          }
-          .jd-chat-list * {
-            max-width: 100% !important;
-            box-sizing: border-box !important;
           }
           .jd-chat-card {
             width: 100%;
@@ -1334,7 +1315,7 @@ export default function BatePapo() {
                 </div>
               </div>
 
-              <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full" style={{ minWidth: 0, maxWidth: '100%', overflowX: 'hidden', overflow: 'hidden' }}>
+              <div className="jd-conversation-list mt-1" style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', width: '100%' }}>
                 <div className="jd-chat-list pb-4" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
                   {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
@@ -1467,7 +1448,7 @@ export default function BatePapo() {
                     })
                   }
                 </div>
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
 
