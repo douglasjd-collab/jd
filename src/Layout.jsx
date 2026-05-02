@@ -270,6 +270,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Gestão de Usuários', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
+    { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVendaConsignado', roles: ALL_ROLES },
     { 
       name: 'Empréstimos', 
@@ -298,7 +299,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
-    { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
     { name: 'Empresas Parceiras', icon: Building2, page: 'EmpresasParceiras', roles: ['master', 'super_admin', 'admin'] },
     { 
