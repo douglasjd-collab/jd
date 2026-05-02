@@ -1624,14 +1624,14 @@ export default function BatePapo() {
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <AvatarContato 
-                         contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_nome, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
+                         contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_telefone, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
                          className="h-11 w-11"
                        />
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold leading-tight">
-                        {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone}
+                        {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_telefone}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {conversaSelecionada.tipo_conexao === 'meta_oficial' ? (
@@ -1852,8 +1852,8 @@ export default function BatePapo() {
                                className="h-9 w-9"
                              />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold leading-tight truncate">{conversaSelecionada.cliente_telefone || conversaSelecionada.cliente_nome}</p>
-                              <p className="text-[10px] text-slate-500 truncate">{conversaSelecionada.cliente_telefone}</p>
+                              <p className="text-xs font-semibold leading-tight truncate">{conversaSelecionada.cliente_telefone}</p>
+                              <p className="text-[10px] text-slate-500 truncate">{contatosWhatsapp[conversaSelecionada?.id]?.nome || 'Sem nome'}</p>
                             </div>
                           </div>
 

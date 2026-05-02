@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       const novoContato = await base44.entities.ContatoWhatsapp.create({
         empresa_id,
         telefone: telLimpo,
-        nome: `Contato ${telLimpo.slice(-8)}`,
+        nome: telLimpo, // Usar o próprio número como nome padrão
       });
 
       return Response.json({ 
