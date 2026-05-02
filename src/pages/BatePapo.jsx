@@ -1003,7 +1003,11 @@ export default function BatePapo() {
 
   const conversasFiltradas = conversas
     .filter(c => {
-      if (!c || !c.id || !c.cliente_telefone) return false;
+      if (!c || !c.id) return false;
+      
+      // Para grupos, whatsapp_id serve; para contatos, cliente_telefone é necessário
+      const temIdentificador = c.cliente_telefone || (isGrupo(c) && c.whatsapp_id);
+      if (!temIdentificador) return false;
 
       // Aplicar busca primeiro
       if (searchConversas) {
