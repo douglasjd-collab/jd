@@ -190,6 +190,21 @@ export default function BatePapo() {
   const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
   const [gruposBloqueadosOpen, setGruposBloqueadosOpen] = useState(false);
+  const [gruposBloqueadosLista, setGruposBloqueadosLista] = useState([]);
+  const [loadingGruposBloqueados, setLoadingGruposBloqueados] = useState(false);
+
+  const abrirGruposBloqueados = async () => {
+    setGruposBloqueadosOpen(true);
+    setLoadingGruposBloqueados(true);
+    try {
+      const todos = await base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId, bloqueado: true }, '-updated_date', 200);
+      setGruposBloqueadosLista(todos);
+    } catch (e) {
+      toast.error('Erro ao carregar grupos bloqueados');
+    } finally {
+      setLoadingGruposBloqueados(false);
+    }
+  };
 
   const handleTransferir = async (conversa, colaborador) => {
     try {
@@ -1185,14 +1200,18 @@ export default function BatePapo() {
               </DialogTitle>
             </DialogHeader>
             <div className="py-2">
-              {conversas.filter(c => isGrupo(c) && c.bloqueado).length === 0 ? (
+              {loadingGruposBloqueados ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                </div>
+              ) : gruposBloqueadosLista.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-2">
                   <Unlock className="w-10 h-10 opacity-40" />
                   <p className="text-sm">Nenhum grupo bloqueado</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {conversas.filter(c => isGrupo(c) && c.bloqueado).map(c => {
+                  {gruposBloqueadosLista.map(c => {
                     const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.whatsapp_id || c.cliente_telefone;
                     return (
                       <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 border border-orange-100">
@@ -1214,10 +1233,11 @@ export default function BatePapo() {
                           variant="outline"
                           className="flex-shrink-0 gap-1.5 text-xs text-green-600 border-green-300 hover:bg-green-50"
                           onClick={async () => {
+                            await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: false });
+                            setGruposBloqueadosLista(prev => prev.filter(g => g.id !== c.id));
                             queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
                               old.map(cv => cv.id === c.id ? { ...cv, bloqueado: false } : cv)
                             );
-                            await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: false });
                             toast.success('🔓 Grupo desbloqueado');
                           }}
                         >
@@ -1301,7 +1321,7 @@ export default function BatePapo() {
                       Sincronizar histórico
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setGruposBloqueadosOpen(true)}>
+                    <DropdownMenuItem onClick={abrirGruposBloqueados}>
                       <Lock className="mr-2 h-4 w-4" />
                       Grupos Bloqueados
                     </DropdownMenuItem>
