@@ -71,6 +71,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
+import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
@@ -1861,24 +1862,14 @@ export default function BatePapo() {
                     </ScrollArea>
 
                     {/* Input de mensagem */}
-                    {mensagemParaResponder && (
-                      <div className="bg-blue-50 border-l-4 border-blue-500 px-4 py-3 flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-blue-600 mb-1">Respondendo a:</p>
-                          <p className="text-sm text-slate-700 truncate">{mensagemParaResponder.texto || `[${mensagemParaResponder.tipo_conteudo}]`}</p>
-                        </div>
-                        <button onClick={() => setMensagemParaResponder(null)} className="ml-2 text-slate-400 hover:text-slate-600">
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    )}
-                    <EnviarMensagemForm
-                      onEnviar={async ({ texto, arquivo }) => {
-                        await enviarMensagemMutation.mutateAsync({ texto, arquivo });
-                        setMensagemParaResponder(null);
-                      }}
-                      isLoading={enviarMensagemMutation.isPending}
-                      nomeUsuario={user?.full_name || ''}
+                    <ChatMessageFooter
+                      conversaSelecionada={conversaSelecionada}
+                      mensagemParaResponder={mensagemParaResponder}
+                      setMensagemParaResponder={setMensagemParaResponder}
+                      enviarMensagemMutation={enviarMensagemMutation}
+                      user={user}
+                      empresaId={empresaId}
+                      selecionarConversa={selecionarConversa}
                     />
                   </div>
 
