@@ -386,7 +386,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
           </p>
           {isVendedor && (
-            <span className={`text-xs font-medium ${mensagem.status === 'lida' ? 'text-sky-300' : 'text-white/70'}`}>
+            <span className={`text-xs font-medium ${mensagem.status === 'lida' ? 'text-blue-400' : 'text-white/70'}`}>
               {mensagem.status === 'lida' && '✓✓'}
               {mensagem.status === 'entregue' && '✓✓'}
               {(!mensagem.status || mensagem.status === 'pendente' || mensagem.status === 'enviada') && '✓'}
