@@ -264,7 +264,7 @@ async function processarWebhook(req, rawBody, base44) {
       conversaGrupo = convsGrupo[0];
 
       // ⛔ Grupo bloqueado — ignorar mensagem
-      if (conversaGrupo.bloqueado === true) {
+      if (conversaGrupo.bloqueado === true || conversaGrupo.bloqueado === 'true') {
         console.log(`⛔ Grupo bloqueado ignorado: ${grupoJid}`);
         return;
       }
