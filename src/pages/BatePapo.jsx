@@ -99,10 +99,14 @@ export default function BatePapo() {
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
   const selecionarConversa = async (conversa, forcarSync = true) => {
-    setConversaSelecionada(conversa);
-    localStorage.setItem('ultimaConversaId', conversa.id);
-    // Zerar contador de não lidas ao abrir a conversa
-    setNaoLidasPorConversa(prev => ({ ...prev, [conversa.id]: 0 }));
+     setConversaSelecionada(conversa);
+     localStorage.setItem('ultimaConversaId', conversa.id);
+     // Zerar contador de não lidas ao abrir a conversa — garantir que não reapareça
+     setNaoLidasPorConversa(prev => {
+       const nova = { ...prev };
+       nova[conversa.id] = 0;
+       return nova;
+     });
     // Remover da lista de marcadas manualmente como não lido
     setMarcadasNaoLidasManual(prev => {
       const nova = new Set(prev);
@@ -522,7 +526,8 @@ export default function BatePapo() {
         if (m.status === 'lida') return; // já lida, não conta
         contadores[m.conversa_id] = (contadores[m.conversa_id] || 0) + 1;
       });
-      setNaoLidasPorConversa(contadores);
+      // Manter contadores zerados para conversa aberta
+      setNaoLidasPorConversa(prev => ({ ...contadores, [abertaId]: 0 }));
     }).catch(() => {});
   }, [empresaId, conversas, conversaSelecionadaId]);
 
@@ -1488,7 +1493,8 @@ export default function BatePapo() {
                     </div>
                   ) : conversasFiltradas.map((c) => {
                       const naoLidas = naoLidasPorConversa[c.id] ?? 0;
-                      const mostrarBadge = c.status !== 'encerrada' && (naoLidas > 0 || estaEmEspera(c));
+                       const isSelecionada = conversaSelecionada?.id === c.id;
+                       const mostrarBadge = !isSelecionada && c.status !== 'encerrada' && (naoLidas > 0 || estaEmEspera(c));
                       const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
                       const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
                       const hora = c.data_ultima_mensagem
