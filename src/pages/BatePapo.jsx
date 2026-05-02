@@ -981,6 +981,10 @@ export default function BatePapo() {
             padding: 8px 10px;
             box-sizing: border-box;
           }
+          .jd-conversation-list [data-radix-scroll-area-viewport] {
+            overflow-x: hidden !important;
+            max-width: 100% !important;
+          }
           .jd-chat-card {
             width: 100%;
             max-width: 100%;
@@ -1172,7 +1176,7 @@ export default function BatePapo() {
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className="jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full" style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh' }}>
+          <Card className="jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-thumb]]:bg-slate-300 [&_[data-radix-scroll-area-thumb]]:rounded-full" style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
             <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
               <p className="text-lg font-semibold">Conversas</p>
               <div className="flex items-center gap-1">
@@ -1208,7 +1212,7 @@ export default function BatePapo() {
               </div>
             </CardHeader>
 
-            <CardContent className="flex flex-1 flex-col gap-3 pt-3 px-4 overflow-hidden flex-shrink-0">
+            <CardContent className="flex flex-1 flex-col gap-3 pt-3 px-4 overflow-hidden flex-shrink-0" style={{ minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
               {/* Seletor de empresa — apenas super_admin */}
               {isSuperAdmin && empresas.length > 0 && (
                 <Select value={empresaId || ''} onValueChange={(val) => {
@@ -1281,8 +1285,8 @@ export default function BatePapo() {
                 </div>
               </div>
 
-              <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full">
-                <div className="jd-chat-list pb-4">
+              <ScrollArea className="jd-conversation-list mt-1 flex-1 w-full" style={{ minWidth: 0, maxWidth: '100%', overflowX: 'hidden' }}>
+                <div className="jd-chat-list pb-4" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
                   {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
                       <MessageCircle className="w-8 h-8 opacity-40" />
