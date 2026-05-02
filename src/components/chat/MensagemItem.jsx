@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2 } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
@@ -20,6 +20,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) 
   const [pdfAberto, setPdfAberto] = useState(false);
   const [pdfCarregado, setPdfCarregado] = useState(false);
   const [deletando, setDeletando] = useState(false);
+  const [velocidadeAudio, setVelocidadeAudio] = useState(1);
+  const audioRef = React.useRef(null);
   
   const queryClient = useQueryClient();
   const isVendedor = mensagem.remetente === 'vendedor';
@@ -160,27 +162,54 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) 
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <FileAudio className="w-4 h-4 flex-shrink-0 opacity-70" />
-                  <audio controls className="flex-1 h-8" src={mediaUrl} preload="metadata" style={{ minWidth: '180px' }}>
+                  <audio 
+                    ref={audioRef}
+                    controls 
+                    className="flex-1 h-8" 
+                    src={mediaUrl} 
+                    preload="metadata"
+                    onLoadedMetadata={() => {
+                      if (audioRef.current) audioRef.current.playbackRate = velocidadeAudio;
+                    }}
+                    style={{ minWidth: '180px' }}
+                  >
                     <source src={mediaUrl} type="audio/ogg" />
                     <source src={mediaUrl} type="audio/webm" />
                     <source src={mediaUrl} type="audio/mpeg" />
                   </audio>
                 </div>
-                {transcricao ? (
-                  <div className={`text-xs mt-1 px-2 py-1.5 rounded-lg italic ${isVendedor ? 'bg-white/15 text-white/90' : 'bg-slate-100 text-slate-600'}`}>
-                    🗒️ {transcricao}
-                  </div>
-                ) : (
+                <div className="flex items-center gap-1.5">
+                  {transcricao ? (
+                    <div className={`text-xs flex-1 px-2 py-1.5 rounded-lg italic ${isVendedor ? 'bg-white/15 text-white/90' : 'bg-slate-100 text-slate-600'}`}>
+                      🗒️ {transcricao}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleTranscrever}
+                      disabled={transcrevendo}
+                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg flex-1 transition-colors ${
+                        isVendedor ? 'bg-white/15 hover:bg-white/25 text-white/80' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {transcrevendo ? <><Loader2 className="w-3 h-3 animate-spin" /> Transcrevendo...</> : <><Mic className="w-3 h-3" /> Transcrever</>}
+                    </button>
+                  )}
                   <button
-                    onClick={handleTranscrever}
-                    disabled={transcrevendo}
-                    className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg w-fit transition-colors ${
+                    onClick={() => {
+                      const velocidades = [1, 1.5, 2];
+                      const indexAtual = velocidades.indexOf(velocidadeAudio);
+                      const novaVelocidade = velocidades[(indexAtual + 1) % velocidades.length];
+                      setVelocidadeAudio(novaVelocidade);
+                      if (audioRef.current) audioRef.current.playbackRate = novaVelocidade;
+                    }}
+                    className={`flex items-center justify-center text-xs font-medium px-2 py-1 rounded-lg whitespace-nowrap transition-colors flex-shrink-0 ${
                       isVendedor ? 'bg-white/15 hover:bg-white/25 text-white/80' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                     }`}
+                    title="Alternar velocidade do áudio"
                   >
-                    {transcrevendo ? <><Loader2 className="w-3 h-3 animate-spin" /> Transcrevendo...</> : <><Mic className="w-3 h-3" /> Transcrever</>}
+                    {velocidadeAudio}x
                   </button>
-                )}
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 bg-white/10 rounded-lg p-3">
@@ -351,10 +380,23 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false }) 
             className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
             disabled={deletando}
           >
-            <Trash2 className="w-4 h-4 text-slate-400" />
+            <MoreVertical className="w-4 h-4 text-slate-400" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align={isVendedor ? "end" : "start"}>
+          {mensagem.tipo_conteudo === 'audio' && mediaUrl && (
+            <>
+              <DropdownMenuItem onClick={() => {
+                const link = document.createElement('a');
+                link.href = mediaUrl;
+                link.download = `audio_${mensagem.id}.mp3`;
+                link.click();
+              }}>
+                <Download className="w-4 h-4 mr-2" />
+                Baixar áudio
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuItem 
             onClick={handleDeletar}
             disabled={deletando}
