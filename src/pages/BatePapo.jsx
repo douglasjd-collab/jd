@@ -1385,7 +1385,7 @@ export default function BatePapo() {
                   </button>
 
                   <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !c.responsavel_id).length}</span>
+                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{conversas.filter(c => c.status === 'encerrada' && !c.responsavel_id).length}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-600'}`}>Finalizados</span>
                   </button>
 
