@@ -517,8 +517,8 @@ export default function BatePapo() {
       const ordenadas = [...msgs].reverse();
       return ordenadas;
     },
-    staleTime: 10000,  // Aumentar staleTime para evitar refetches desnecessários
-    refetchInterval: 3000,  // Reduzir intervalo de polling
+    staleTime: 5000,  // Reduzir staleTime para detectar status mais rápido
+    refetchInterval: 2000,  // Polling a cada 2 segundos para status "lida"
     placeholderData: (prev) => prev,
   });
 
