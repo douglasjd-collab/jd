@@ -939,8 +939,8 @@ export default function BatePapo() {
     arquivada: conversasValidas.filter(c => !isGrupo(c) && c.status === 'arquivada').length,
     transferida: conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id).length,
     meu: conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
-    grupos: conversas.filter(c => isGrupo(c) && !c.bloqueado && c.status !== 'encerrada').length,
-    grupos_bloqueados: conversas.filter(c => isGrupo(c) && c.bloqueado).length,
+    grupos: conversas.filter(c => isGrupo(c) && c.bloqueado !== true && c.bloqueado !== 'true' && c.status !== 'encerrada').length,
+    grupos_bloqueados: conversas.filter(c => isGrupo(c) && (c.bloqueado === true || c.bloqueado === 'true')).length,
   };
 
   // Debug temporário
@@ -979,11 +979,11 @@ export default function BatePapo() {
       }
       
       // Filtrar por status
-      if (isGrupo(c)) {
-        if (c.bloqueado) return filtroStatus === 'grupos_bloqueados';
-        if (c.status === 'encerrada') return filtroStatus === 'encerrada';
-        return filtroStatus === 'grupos';
-      }
+        if (isGrupo(c)) {
+          if (c.bloqueado === true || c.bloqueado === 'true') return filtroStatus === 'grupos_bloqueados';
+          if (c.status === 'encerrada') return filtroStatus === 'encerrada';
+          return filtroStatus === 'grupos';
+        }
       
       if (filtroStatus === 'todas') return c.status === 'ativa'; // TODAS as conversas ATIVAS
       if (filtroStatus === 'espera') return estaEmEsperaFiltro(c);
@@ -1390,7 +1390,7 @@ export default function BatePapo() {
                   </button>
 
                   <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{conversas.filter(c => isGrupo(c) && !c.bloqueado && c.status !== 'encerrada').length}</span>
+                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{conversas.filter(c => isGrupo(c) && c.bloqueado !== true && c.bloqueado !== 'true' && c.status !== 'encerrada').length}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
                   </button>
 
