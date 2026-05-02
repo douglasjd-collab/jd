@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Trash2, Plus } from 'lucide-react';
+import { Loader2, Trash2, Plus, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const cores = [
@@ -19,6 +19,9 @@ export default function TagsGerenciamentoModal({ open, onOpenChange, empresaId }
   const [novoNome, setNovoNome] = useState('');
   const [novaCor, setNovaCor] = useState(cores[0]);
   const [deletando, setDeletando] = useState(null);
+  const [editando, setEditando] = useState(null);
+  const [editNome, setEditNome] = useState('');
+  const [editCor, setEditCor] = useState('');
 
   useEffect(() => {
     if (!open || !empresaId) return;
@@ -60,6 +63,32 @@ export default function TagsGerenciamentoModal({ open, onOpenChange, empresaId }
       toast.error('Erro ao criar tag: ' + e.message);
     } finally {
       setCriando(false);
+    }
+  };
+
+  const iniciarEdicao = (tag) => {
+    setEditando(tag.id);
+    setEditNome(tag.nome);
+    setEditCor(tag.cor);
+  };
+
+  const salvarEdicao = async (tagId) => {
+    if (!editNome.trim()) {
+      toast.error('Nome da tag é obrigatório');
+      return;
+    }
+
+    try {
+      await base44.entities.ContatoTag.update(tagId, {
+        nome: editNome.trim(),
+        cor: editCor
+      });
+      setTags(tags.map(t => t.id === tagId ? { ...t, nome: editNome.trim(), cor: editCor } : t));
+      setEditando(null);
+      toast.success('Tag atualizada com sucesso!');
+    } catch (e) {
+      console.error('Erro ao atualizar tag:', e);
+      toast.error('Erro ao atualizar tag: ' + e.message);
     }
   };
 
@@ -139,30 +168,80 @@ export default function TagsGerenciamentoModal({ open, onOpenChange, empresaId }
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {tags.map(tag => (
-                  <div
-                    key={tag.id}
-                    className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <div
-                        className="w-4 h-4 rounded flex-shrink-0"
-                        style={{ backgroundColor: tag.cor }}
-                      />
-                      <span className="text-sm font-medium text-slate-700">{tag.nome}</span>
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 text-red-600 hover:bg-red-50 hover:text-red-700"
-                      onClick={() => deletarTag(tag.id)}
-                      disabled={deletando === tag.id}
-                    >
-                      {deletando === tag.id ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3 h-3" />
-                      )}
-                    </Button>
+                  <div key={tag.id}>
+                    {editando === tag.id ? (
+                      <div className="flex flex-col gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                        <Input
+                          value={editNome}
+                          onChange={e => setEditNome(e.target.value)}
+                          placeholder="Nome da tag"
+                          className="text-sm"
+                          autoFocus
+                        />
+                        <div className="grid grid-cols-5 gap-1">
+                          {cores.map(cor => (
+                            <button
+                              key={cor}
+                              onClick={() => setEditCor(cor)}
+                              className={`h-6 rounded border-2 transition-all ${
+                                editCor === cor ? 'border-slate-900' : 'border-transparent'
+                              }`}
+                              style={{ backgroundColor: cor }}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => salvarEdicao(tag.id)}
+                          >
+                            Salvar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => setEditando(null)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-2 flex-1">
+                          <div
+                            className="w-4 h-4 rounded flex-shrink-0"
+                            style={{ backgroundColor: tag.cor }}
+                          />
+                          <span className="text-sm font-medium text-slate-700">{tag.nome}</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                            onClick={() => iniciarEdicao(tag)}
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => deletarTag(tag.id)}
+                            disabled={deletando === tag.id}
+                          >
+                            {deletando === tag.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
