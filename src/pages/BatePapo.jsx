@@ -1004,7 +1004,8 @@ export default function BatePapo() {
             background: #efefef;
           }
           .jd-chat-card.selected {
-            background: #e8f4fd;
+            background: #d1e9ff;
+            box-shadow: inset 3px 0 0 #2563eb;
           }
           .jd-chat-avatar {
             width: 52px;
