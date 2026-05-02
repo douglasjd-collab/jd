@@ -78,6 +78,7 @@ import AvatarContato from '@/components/chat/AvatarContato';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoModal';
 import TagsModal from '@/components/chat/TagsModal';
+import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -202,6 +203,7 @@ export default function BatePapo() {
   const [loadingGruposBloqueados, setLoadingGruposBloqueados] = useState(false);
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [contatoParaTags, setContatoParaTags] = useState(null);
+  const [gerenciamentoTagsOpen, setGerenciamentoTagsOpen] = useState(false);
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -1208,11 +1210,18 @@ export default function BatePapo() {
           currentUser={user}
         />
 
-        {/* Modal Tags */}
+        {/* Modal Tags - Atribuir a Contato */}
         <TagsModal
           open={tagsModalOpen}
           onOpenChange={setTagsModalOpen}
           contatoId={contatoParaTags?.id}
+          empresaId={empresaId}
+        />
+
+        {/* Modal Gerenciar Tags */}
+        <TagsGerenciamentoModal
+          open={gerenciamentoTagsOpen}
+          onOpenChange={setGerenciamentoTagsOpen}
           empresaId={empresaId}
         />
 
@@ -1334,6 +1343,11 @@ export default function BatePapo() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => setGerenciamentoTagsOpen(true)}>
+                      <Tag className="mr-2 h-4 w-4" />
+                      Gerenciar Tags
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={sincronizarChats} disabled={sincronizando}>
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Sincronizar conversas
