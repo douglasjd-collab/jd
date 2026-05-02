@@ -185,17 +185,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     <source src={mediaUrl} type="audio/mpeg" />
                   </audio>
                 </div>
-                <button
-                  onClick={() => {
-                    setVelocidadeAudio(proximaVelocidade);
-                    if (audioRef.current) audioRef.current.playbackRate = proximaVelocidade;
-                  }}
-                  className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors ${
-                    isVendedor ? 'bg-white/15 hover:bg-white/25 text-white/80' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  {velocidadeAudio}x
-                </button>
                 <div className="flex items-center gap-1.5">
                   {transcricao ? (
                     <div className={`text-xs flex-1 px-2 py-1.5 rounded-lg italic ${isVendedor ? 'bg-white/15 text-white/90' : 'bg-slate-100 text-slate-600'}`}>
@@ -212,6 +201,17 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                       {transcrevendo ? <><Loader2 className="w-3 h-3 animate-spin" /> Transcrevendo...</> : <><Mic className="w-3 h-3" /> Transcrever</>}
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      setVelocidadeAudio(proximaVelocidade);
+                      if (audioRef.current) audioRef.current.playbackRate = proximaVelocidade;
+                    }}
+                    className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors flex-shrink-0 ${
+                      isVendedor ? 'bg-white/15 hover:bg-white/25 text-white/80' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {velocidadeAudio}x
+                  </button>
                 </div>
               </div>
             ) : (
