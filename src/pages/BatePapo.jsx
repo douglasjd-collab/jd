@@ -998,6 +998,7 @@ export default function BatePapo() {
             overflow: hidden;
             cursor: pointer;
             transition: background-color 150ms;
+            flex-shrink: 0;
           }
           .jd-chat-card:hover {
             background: #efefef;
@@ -1018,6 +1019,9 @@ export default function BatePapo() {
             flex: 1;
             min-width: 0;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
           }
           .jd-chat-top {
             display: flex;
@@ -1026,6 +1030,7 @@ export default function BatePapo() {
             gap: 8px;
             width: 100%;
             min-width: 0;
+            overflow: hidden;
           }
           .jd-chat-name {
             flex: 1;
@@ -1036,6 +1041,7 @@ export default function BatePapo() {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: block;
           }
           .jd-chat-time {
             flex-shrink: 0;
@@ -1051,6 +1057,7 @@ export default function BatePapo() {
             width: 100%;
             min-width: 0;
             margin-top: 3px;
+            overflow: hidden;
           }
           .jd-chat-message {
             flex: 1;
@@ -1060,6 +1067,9 @@ export default function BatePapo() {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: block;
+            line-height: 20px;
+            max-height: 20px;
           }
           .jd-chat-badge {
             flex-shrink: 0;
