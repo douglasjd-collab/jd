@@ -148,10 +148,16 @@ async function processarWebhook(req, rawBody, base44) {
 
   const event = (payload.event || '').toLowerCase().replace(/\./g, '_');
   const instancePayload = payload.instance || '';
-  // Prioridade: payload > query string (o payload é mais confiável)
   const instanceFinal = instancePayload || instanceFromQuery || '';
 
-  console.log(`📋 Event: "${event}" | Instance query: "${instanceFromQuery}" | Instance payload: "${instancePayload}" | Final: "${instanceFinal}"`);
+  // 🔥 LOG DETALHADO DO PAYLOAD INTEIRO
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`📥 WEBHOOK RECEBIDO | ${new Date().toISOString()}`);
+  console.log(`📋 Event: "${event}"`);
+  console.log(`🔑 Payload keys: ${Object.keys(payload).join(', ')}`);
+  console.log(`📊 Data type: ${Array.isArray(payload.data) ? 'ARRAY' : 'OBJECT'}`);
+  console.log(`📄 Full data: ${JSON.stringify(payload.data).substring(0, 500)}`);
+  console.log(`${'='.repeat(70)}\n`);
 
   let data = payload.data || {};
   
