@@ -17,12 +17,25 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
     }
 
-    // Buscar TODAS as conversas
+    // Buscar TODAS as conversas (exceto grupos bloqueados)
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-data_ultima_mensagem',
       Math.max(limit, 10000)
     );
+
+    // Filtrar grupos bloqueados
+    const conversasValidas = conversas.filter(c => {
+      // Se é grupo e está bloqueado, descartar
+      const isGrupo = (c.cliente_telefone || '').includes('@g.us') || 
+                      (c.whatsapp_id || '').includes('@g.us') ||
+                      (c.cliente_telefone || '').includes('@broadcast') ||
+                      (c.whatsapp_id || '').includes('@broadcast');
+      if (isGrupo && (c.bloqueado === true || c.bloqueado === 'true')) {
+        return false;
+      }
+      return true;
+    });
 
     // Buscar todos os contatos da empresa
     const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
@@ -61,9 +74,9 @@ Deno.serve(async (req) => {
     // PASSO 1: Deduplicar — manter a conversa mais recente por telefone
     // Sem buscar mensagens individuais (evita rate limit)
     // ═══════════════════════════════════════════════════════════
-    console.log(`📊 Total conversas carregadas: ${conversas.length}`);
+    console.log(`📊 Total conversas carregadas: ${conversas.length} | Válidas (não-bloqueadas): ${conversasValidas.length}`);
     const conversasPorTelNorm = {};
-    for (const conversa of conversas) {
+    for (const conversa of conversasValidas) {
       const tel = conversa.cliente_telefone || '';
       if (!tel || tel.trim() === '') {
         console.warn(`⚠️ Conversa sem telefone: ${conversa.id}`);
@@ -119,6 +132,8 @@ Deno.serve(async (req) => {
         responsavel_expira_em: conversa.responsavel_expira_em || null,
         usuario_responsavel_id: conversa.usuario_responsavel_id || null,
         usuario_responsavel_nome: conversa.usuario_responsavel_nome || null,
+        bloqueado: conversa.bloqueado || false,
+        foto_url: conversa.foto_url || null,
         contato: contato ? {
           id: contato.id,
           nome: contato.nome,
