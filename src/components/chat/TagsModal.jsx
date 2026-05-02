@@ -98,28 +98,33 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
 
     try {
       // Buscar ou criar contato no CRM
-      let contatoCRM = contato;
-      if (!contato.id) {
-        // Buscar contato existente
-        const telefoneLimpo = contato.cliente_telefone.replace(/\D/g, '');
-        const contatosExistentes = await base44.entities.ContatoWhatsapp.filter({
+      let contatoCRM = null;
+      const telefoneLimpo = contato.cliente_telefone.replace(/\D/g, '');
+
+      // Sempre buscar contato existente por telefone
+      const contatosExistentes = await base44.entities.ContatoWhatsapp.filter({
+        empresa_id: empresaId,
+        telefone: telefoneLimpo
+      });
+      
+      if (contatosExistentes?.length > 0) {
+        contatoCRM = contatosExistentes[0];
+      } else {
+        // Criar novo contato se não existir
+        contatoCRM = await base44.entities.ContatoWhatsapp.create({
           empresa_id: empresaId,
-          telefone: telefoneLimpo
+          telefone: telefoneLimpo,
+          nome: contato.cliente_nome || 'Sem nome'
         });
-        
-        if (contatosExistentes.length > 0) {
-          contatoCRM = contatosExistentes[0];
-        } else {
-          // Criar novo contato
-          contatoCRM = await base44.entities.ContatoWhatsapp.create({
-            empresa_id: empresaId,
-            telefone: telefoneLimpo,
-            nome: contato.cliente_nome || 'Sem nome'
-          });
-        }
       }
 
-      // Agora atualizar as tags do contato
+      // Validar que temos um ID válido
+      if (!contatoCRM?.id) {
+        toast.error('Erro: contato inválido');
+        return;
+      }
+
+      // Atualizar as tags do contato
       if (contatoTags.includes(tagId)) {
         const novasTags = contatoTags.filter(id => id !== tagId);
         setContatoTags(novasTags);
