@@ -834,7 +834,12 @@ export default function BatePapo() {
           )
         );
 
-        // 2. Salvar no banco em background (sem bloquear a UI)
+        // 2. Atualizar status da mensagem para "enviada" no cache LOCAL
+        queryClient.setQueryData(['mensagens-whatsapp', conversaSelecionadaId], (old = []) =>
+          old.map(m => m.id?.startsWith('temp_') ? { ...m, status: 'enviada' } : m)
+        );
+
+        // 3. Salvar no banco em background (sem bloquear a UI)
         base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
           ultima_mensagem: msgExibicao,
           data_ultima_mensagem: new Date().toISOString(),
@@ -844,8 +849,10 @@ export default function BatePapo() {
           responsavel_expira_em: expira,
         }).then(() => refetchConversas()).catch(() => {});
       }
-      // Invalidar mensagens para mostrar a confirmada
-      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
+      // Invalidar mensagens para refetch do status real após sucesso
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
+      }, 500);
       toast.success('Mensagem enviada');
     }
   });
