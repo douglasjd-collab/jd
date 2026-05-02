@@ -175,8 +175,18 @@ async function processarWebhook(req, rawBody, base44) {
           { whatsapp_message_id: remoteId }, '-created_date', 1
         );
         if (msgs?.length > 0) {
-          await base44.asServiceRole.entities.MensagemWhatsapp.update(msgs[0].id, { status: novoStatus });
-          console.log(`✅ ACK: status="${novoStatus}" para msg ${msgs[0].id} (whatsapp_id: ${remoteId})`);
+          const msgAtual = msgs[0];
+          // Nunca downgrade de status (lida > entregue > enviada)
+          const statusPriority = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0 };
+          const novaProioridade = statusPriority[novoStatus] || 0;
+          const atualPrioridade = statusPriority[msgAtual.status] || 0;
+          
+          if (novaProioridade >= atualPrioridade) {
+            await base44.asServiceRole.entities.MensagemWhatsapp.update(msgAtual.id, { status: novoStatus });
+            console.log(`✅ ACK: status="${novoStatus}" para msg ${msgAtual.id} (whatsapp_id: ${remoteId})`);
+          } else {
+            console.log(`⏭️ ACK: ignorado downgrade ${msgAtual.status} → ${novoStatus} para msg ${remoteId}`);
+          }
         } else {
           console.warn(`⚠️ ACK: msg com whatsapp_id "${remoteId}" não encontrada no banco`);
         }
@@ -594,31 +604,8 @@ async function processarWebhook(req, rawBody, base44) {
 
   console.log(`✅ Mensagem salva: ${novaMensagem.id} | remetente: ${remetente}`);
 
-  // Enviar confirmação de entrega ao cliente (se for mensagem recebida do cliente)
-  if (remetente === 'cliente' && messageId) {
-    try {
-      const evolutionUrl = empresaEvolutionUrl?.replace(/\/$/, '');
-      const evolutionKey = empresaEvolutionKey;
-      const evolutionInstance = instanceFinal || Deno.env.get('EVOLUTION_INSTANCE_NAME');
-      if (evolutionUrl && evolutionKey && evolutionInstance) {
-        const deliveryRes = await fetch(`${evolutionUrl}/message/sendRead/${evolutionInstance}`, {
-          method: 'POST',
-          headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            number: telefoneLimpo,
-            readMessages: [messageId]
-          })
-        });
-        if (deliveryRes.ok) {
-          console.log(`✅ Confirmação de entrega enviada para ${telefoneLimpo}`);
-        } else {
-          console.warn(`⚠️ Erro ao enviar confirmação de entrega: ${deliveryRes.status}`);
-        }
-      }
-    } catch (e) {
-      console.warn(`⚠️ Erro ao enviar confirmação de entrega:`, e.message);
-    }
-  }
+  // NÃO enviar confirmação automática de leitura (deixar para o usuário fazer manualmente)
+  // A Evolution API naturalmente envia "entregue" quando a mensagem chega no telefone
 
   // Log em background
   base44.asServiceRole.entities.LogRecebimentoWebhook.create({
