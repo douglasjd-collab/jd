@@ -359,16 +359,16 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               {form.cliente_id && !cadastrandoCliente && (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <F label="CPF">
-                    <Input value={form.cliente_cpf} onChange={e => set('cliente_cpf', e.target.value)} placeholder="000.000.000-00" />
+                    <Input value={form.cliente_cpf} onChange={e => set('cliente_cpf', e.target.value)} placeholder="000.000.000-00" autoComplete="off" />
                   </F>
                   <F label="Telefone">
-                    <Input value={form.cliente_telefone} onChange={e => set('cliente_telefone', e.target.value)} />
+                    <Input value={form.cliente_telefone} onChange={e => set('cliente_telefone', e.target.value)} autoComplete="off" />
                   </F>
                   <F label="Profissão">
-                    <Input value={form.cliente_profissao} onChange={e => set('cliente_profissao', e.target.value)} />
+                    <Input value={form.cliente_profissao} onChange={e => set('cliente_profissao', e.target.value)} autoComplete="off" />
                   </F>
                   <F label="Renda (R$)">
-                    <Input type="number" value={form.cliente_renda} onChange={e => set('cliente_renda', e.target.value)} />
+                    <Input type="number" value={form.cliente_renda} onChange={e => set('cliente_renda', e.target.value)} autoComplete="off" />
                   </F>
                 </div>
               )}
