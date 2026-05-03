@@ -41,6 +41,12 @@ import {
   CheckCircle2,
   AlertCircle,
   ChevronDown,
+  Eye,
+  Image,
+  Video,
+  Mic,
+  File,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -71,6 +77,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '' });
   const [sincronizando, setSincronizando] = useState(false);
   const [searchTemplate, setSearchTemplate] = useState('');
+  const [templateVisualizando, setTemplateVisualizando] = useState(null);
 
   // ─── Disparo em Massa state ─────────────────────────────────────────────────
   const [busca, setBusca] = useState('');
@@ -717,19 +724,22 @@ export default function CampanhaMetaOficial({ empresaId }) {
                             {d.cabecalho && <p className="text-[10px] text-slate-400 mt-1">Cabeçalho: {d.cabecalho}</p>}
                           </div>
                           <div className="flex gap-1.5 flex-shrink-0">
-                            <Button size="sm" variant="outline" onClick={() => { setFormTemplate({ ...d, id: t.id }); setModalTemplate(t); }}>
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            {statusMeta === 'aprovado' ? (
-                              <Button size="sm" className="gap-1 text-xs bg-green-600 hover:bg-green-700" onClick={() => { setTemplateSelecionado(t); setAbaAtiva('disparo'); }}>
-                                <Send className="w-3.5 h-3.5" /> Usar no Disparo
-                              </Button>
-                            ) : (
-                              <Button size="sm" variant="outline" className="gap-1 text-xs text-slate-400" disabled>
-                                <Clock className="w-3.5 h-3.5" /> Aguardando
-                              </Button>
-                            )}
-                          </div>
+                             <Button size="sm" variant="outline" onClick={() => setTemplateVisualizando(t)} title="Visualizar template">
+                               <Eye className="w-3.5 h-3.5" />
+                             </Button>
+                             <Button size="sm" variant="outline" onClick={() => { setFormTemplate({ ...d, id: t.id }); setModalTemplate(t); }}>
+                               <Pencil className="w-3.5 h-3.5" />
+                             </Button>
+                             {statusMeta === 'aprovado' ? (
+                               <Button size="sm" className="gap-1 text-xs bg-green-600 hover:bg-green-700" onClick={() => { setTemplateSelecionado(t); setAbaAtiva('disparo'); }}>
+                                 <Send className="w-3.5 h-3.5" /> Usar no Disparo
+                               </Button>
+                             ) : (
+                               <Button size="sm" variant="outline" className="gap-1 text-xs text-slate-400" disabled>
+                                 <Clock className="w-3.5 h-3.5" /> Aguardando
+                               </Button>
+                             )}
+                           </div>
                         </div>
                       </div>
                     );
@@ -855,6 +865,112 @@ export default function CampanhaMetaOficial({ empresaId }) {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* ─── Modal Visualizar Template ────────────────────────────────────────── */}
+      {templateVisualizando && (() => {
+        const d = parseTemplateDados(templateVisualizando);
+        const statusMeta = d.status_meta || 'pendente';
+        const statusInfo = STATUS_TEMPLATE[statusMeta] || STATUS_TEMPLATE.pendente;
+
+        const TIPOS_MIDIA = [
+          { tipo: 'texto', icon: <MessageSquare className="w-5 h-5 text-blue-500" />, label: 'Texto', desc: 'Mensagem somente com texto e variáveis personalizadas.' },
+          { tipo: 'imagem', icon: <Image className="w-5 h-5 text-emerald-500" />, label: 'Imagem', desc: 'Cabeçalho com imagem (JPG, PNG) + corpo de texto.' },
+          { tipo: 'video', icon: <Video className="w-5 h-5 text-purple-500" />, label: 'Vídeo', desc: 'Cabeçalho com vídeo (MP4) + corpo de texto.' },
+          { tipo: 'audio', icon: <Mic className="w-5 h-5 text-amber-500" />, label: 'Áudio', desc: 'Mensagem de voz ou arquivo de áudio.' },
+          { tipo: 'documento', icon: <File className="w-5 h-5 text-red-500" />, label: 'Documento PDF', desc: 'Cabeçalho com arquivo PDF/documento + corpo de texto.' },
+        ];
+
+        const tipoAtual = d.tipo_midia || 'texto';
+
+        return (
+          <Dialog open={!!templateVisualizando} onOpenChange={v => !v && setTemplateVisualizando(null)}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-blue-600" />
+                  Visualizar Template
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 py-1">
+                {/* Header info */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-slate-900 text-base">{d.nome || templateVisualizando.cliente_nome}</span>
+                  <Badge className={`text-[10px] border ${statusInfo.color}`}>{statusInfo.label}</Badge>
+                  {d.categoria && <Badge variant="outline" className="text-[10px]">{d.categoria}</Badge>}
+                  {d.idioma && <Badge variant="outline" className="text-[10px]">{d.idioma}</Badge>}
+                </div>
+
+                {/* Preview estilo WhatsApp */}
+                <div className="bg-[#e5ddd5] rounded-xl p-4">
+                  <p className="text-[10px] text-slate-500 mb-2 font-medium uppercase tracking-wide">Prévia da mensagem</p>
+                  <div className="bg-white rounded-xl shadow-sm max-w-xs ml-auto p-3 space-y-1.5">
+                    {d.cabecalho && (
+                      <p className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1.5">{d.cabecalho}</p>
+                    )}
+                    {d.corpo && (
+                      <p className="text-sm text-slate-800 whitespace-pre-wrap">{d.corpo}</p>
+                    )}
+                    {d.rodape && (
+                      <p className="text-[10px] text-slate-400 border-t border-slate-100 pt-1.5">{d.rodape}</p>
+                    )}
+                    <p className="text-[10px] text-slate-400 text-right">agora ✓✓</p>
+                  </div>
+                </div>
+
+                {/* Tipos de mídia suportados */}
+                <div className="border rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    Tipos de Template Suportados pela Meta
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Os templates Meta Oficial suportam os seguintes tipos de conteúdo para o <strong>cabeçalho</strong>:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {TIPOS_MIDIA.map(m => (
+                      <div
+                        key={m.tipo}
+                        className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-colors ${
+                          tipoAtual === m.tipo
+                            ? 'border-green-400 bg-green-50'
+                            : 'border-slate-100 bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex-shrink-0 mt-0.5">{m.icon}</div>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                            {m.label}
+                            {tipoAtual === m.tipo && (
+                              <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full">Este template</span>
+                            )}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{m.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                    ⚠️ Para criar templates com mídia (imagem, vídeo, documento), acesse o <strong>Meta Business Manager</strong> e selecione o tipo de cabeçalho ao criar o modelo.
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setTemplateVisualizando(null)}>Fechar</Button>
+                {statusMeta === 'aprovado' && (
+                  <Button
+                    className="gap-2 bg-green-600 hover:bg-green-700"
+                    onClick={() => { setTemplateSelecionado(templateVisualizando); setAbaAtiva('disparo'); setTemplateVisualizando(null); }}
+                  >
+                    <Send className="w-4 h-4" /> Usar no Disparo
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* ─── Modal Criar/Editar Template ──────────────────────────────────────── */}
       <Dialog open={!!modalTemplate} onOpenChange={v => !v && setModalTemplate(null)}>
