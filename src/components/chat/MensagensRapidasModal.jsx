@@ -117,10 +117,14 @@ export default function MensagensRapidasModal({ open, onOpenChange, empresaId, o
 
   const adicionarCategoria = () => {
     if (!novaCategoria.trim()) return;
-    setForm(p => ({ ...p, categoria: novaCategoria.trim() }));
+    const nomeCat = novaCategoria.trim();
     setNovaCategoria('');
+    // Redireciona para criação de mensagem com a categoria já preenchida
+    setForm({ categoria: nomeCat, titulo: '', tipo: 'texto', conteudo: '' });
+    setEditando(null);
     setCriandoNova(true);
     setAbaAtiva('mensagens');
+    toast.info(`Categoria "${nomeCat}" criada! Agora adicione uma mensagem para ela.`);
   };
 
   return (
@@ -282,7 +286,7 @@ export default function MensagensRapidasModal({ open, onOpenChange, empresaId, o
 
           <TabsContent value="categorias" className="mt-3">
             <div className="space-y-3">
-              <p className="text-sm text-slate-500">Crie uma nova categoria para organizar suas mensagens rápidas.</p>
+              <p className="text-sm text-slate-500">Crie uma nova categoria. Você será redirecionado para adicionar a primeira mensagem nela.</p>
               <div className="flex gap-2">
                 <Input
                   value={novaCategoria}
@@ -291,10 +295,13 @@ export default function MensagensRapidasModal({ open, onOpenChange, empresaId, o
                   className="text-sm"
                   onKeyDown={e => e.key === 'Enter' && adicionarCategoria()}
                 />
-                <Button onClick={adicionarCategoria} className="bg-green-600 hover:bg-green-700 flex-shrink-0">
-                  <Plus className="w-4 h-4" />
+                <Button onClick={adicionarCategoria} disabled={!novaCategoria.trim()} className="bg-green-600 hover:bg-green-700 flex-shrink-0 gap-1">
+                  <Plus className="w-4 h-4" /> Criar
                 </Button>
               </div>
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                ⚠️ Categorias são criadas automaticamente ao salvar uma mensagem. Use esta aba para iniciar rapidamente uma categoria nova.
+              </p>
               {categorias.length > 0 && (
                 <div className="space-y-1.5 mt-2">
                   <p className="text-xs font-semibold text-slate-500">Categorias existentes:</p>
