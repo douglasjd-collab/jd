@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 import { Plus, Search, Edit2, Trash2, ChevronDown, ChevronUp, Car, Bike } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,11 +78,14 @@ export default function PropostasFinanciamento({ user }) {
     const base = { ...dados, empresa_id: empresaId };
     if (propostaSelecionada?.id) {
       await base44.entities.FinanciamentoVeiculo.update(propostaSelecionada.id, base);
+      toast.success('Proposta atualizada!');
     } else {
-      const todas = await base44.entities.FinanciamentoVeiculo.filter({ empresa_id: empresaId }, '-created_date', 1);
-      const seq = (todas.length || 0) + 1;
-      base.numero_proposta = `FIN${String(seq).padStart(4, '0')}`;
+      if (!base.numero_proposta) {
+        const todas = await base44.entities.FinanciamentoVeiculo.filter({ empresa_id: empresaId }, '-created_date', 200);
+        base.numero_proposta = `FIN${String((todas.length || 0) + 1).padStart(4, '0')}`;
+      }
       await base44.entities.FinanciamentoVeiculo.create(base);
+      toast.success('Proposta cadastrada!');
     }
     setModalOpen(false);
     carregar();

@@ -161,14 +161,19 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.cliente_id) { toast.error('Selecione um cliente do CRM'); return; }
+    if (!form.cliente_nome && !buscaCliente) { toast.error('Informe o nome do cliente'); return; }
     setSaving(true);
-    const dados = { ...form };
-    ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
-      'valor_parcela', 'taxa_juros', 'valor_comissao_recebida', 'percentual_comissao', 'comissao_vendedor']
-      .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
-    await onSalvar(dados);
-    setSaving(false);
+    try {
+      const dados = { ...form, cliente_nome: form.cliente_nome || buscaCliente };
+      ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
+        'valor_parcela', 'taxa_juros', 'valor_comissao_recebida', 'percentual_comissao', 'comissao_vendedor']
+        .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
+      await onSalvar(dados);
+    } catch (err) {
+      toast.error('Erro ao salvar: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const F = ({ label, children, className = '' }) => (
