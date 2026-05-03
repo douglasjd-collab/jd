@@ -131,6 +131,7 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
         empresa_id: empresaId,
         tipo_pessoa: 'Física',
         nome_completo: novoCliente.nome_completo.trim(),
+        apelido: novoCliente.apelido || '',
         cpf: novoCliente.cpf || '',
         rg: novoCliente.rg || '',
         data_nascimento: novoCliente.data_nascimento || '',
@@ -288,12 +289,14 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
 
                 {/* Dados Pessoais */}
                 <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">🧾 Dados Pessoais</p>
-                <Input
-                  placeholder="Nome completo *"
-                  value={novoCliente.nome_completo}
-                  onChange={e => setNovoCliente(n => ({ ...n, nome_completo: e.target.value }))}
-                  className="h-8 text-sm bg-white"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  <Input placeholder="Nome completo *" value={novoCliente.nome_completo}
+                    onChange={e => setNovoCliente(n => ({ ...n, nome_completo: e.target.value }))}
+                    className="h-8 text-sm bg-white col-span-2" />
+                  <Input placeholder="Apelido" value={novoCliente.apelido || ''}
+                    onChange={e => setNovoCliente(n => ({ ...n, apelido: e.target.value }))}
+                    className="h-8 text-sm bg-white" />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="CPF" value={novoCliente.cpf} onChange={e => setNovoCliente(n => ({ ...n, cpf: e.target.value }))} className="h-8 text-sm bg-white" />
                   <Input placeholder="RG" value={novoCliente.rg} onChange={e => setNovoCliente(n => ({ ...n, rg: e.target.value }))} className="h-8 text-sm bg-white" />
