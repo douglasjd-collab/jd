@@ -253,6 +253,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
         resp = await base44.functions.invoke('dispararCampanhaMetaOficial', {
           empresa_id: empresaId,
           template_name: templateDados.nome,
+          template_language: templateDados.idioma || 'pt_BR',
           variaveis: {},
           contatos,
           nome_campanha: nomeCampanha,

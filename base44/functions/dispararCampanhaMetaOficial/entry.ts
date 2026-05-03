@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, variaveis = {}, contatos = [] } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [] } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
         type: 'template',
         template: {
           name: template_name,
-          language: { code: 'pt_BR' },
+          language: { code: template_language },
           ...(components.length > 0 ? { components } : {}),
         },
       };
