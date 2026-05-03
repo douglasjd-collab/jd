@@ -253,29 +253,16 @@ export default function CampanhaMetaOficial({ empresaId }) {
           duracao_pausa: Number(duracaoPausa),
         });
       } else {
-        // Modo texto: disparo via Evolution API para cada contato
-        let enviados = 0, erros = 0;
-        for (const telefone of contatos) {
-          try {
-            await base44.functions.invoke('enviarMensagemWhatsapp', {
-              empresa_id: empresaId,
-              numero_cliente: telefone,
-              mensagem_texto: mensagemTexto,
-            });
-            await base44.entities.CampanhaLog.create({
-              empresa_id: empresaId,
-              tipo_campanha: 'meta_oficial',
-              cliente_telefone: telefone,
-              cliente_nome: contatosWhatsapp.find(c => c.telefone === telefone)?.nome || telefone,
-              status: 'enviada',
-            });
-            enviados++;
-          } catch {
-            erros++;
-          }
-          if (Number(delaySegundos) > 0) await new Promise(r => setTimeout(r, Number(delaySegundos) * 1000));
-        }
-        toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${enviados} enviados${erros > 0 ? ` | ⚠️ ${erros} erros` : ''}`);
+        // Modo texto: usar função dedicada de disparo em massa
+        resp = await base44.functions.invoke('dispararCampanhaTexto', {
+          empresa_id: empresaId,
+          contatos,
+          mensagem_texto: mensagemTexto,
+          nome_campanha: nomeCampanha,
+          delay_segundos: Number(delaySegundos),
+        });
+        const data = resp?.data;
+        toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
         setContatosSelecionados(new Set());
         setNomeCampanha('');
         setMensagemTexto('');
