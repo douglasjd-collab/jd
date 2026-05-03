@@ -1,0 +1,222 @@
+import React from 'react';
+import { base44 } from '@/api/base44Client';
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Check, ArrowRightLeft, MoreVertical, RefreshCw, Tag, Clock,
+  Contact, Pencil, BellOff, Pin, X, AlignJustify
+} from "lucide-react";
+import AvatarContato from './AvatarContato';
+import { toast } from 'sonner';
+
+export default function ChatHeader({
+  conversaSelecionada,
+  contatosWhatsapp,
+  empresaId,
+  user,
+  infoLeadAberto,
+  setInfoLeadAberto,
+  setTransferirModal,
+  abrirSalvarCrm,
+  setContatoParaTags,
+  setTagsModalOpen,
+  setCriarTarefaOpen,
+  refetchMensagens,
+  queryClient,
+  setConversaSelecionada,
+}) {
+  if (!conversaSelecionada) return null;
+
+  const ehMeta =
+    conversaSelecionada.tipo_conexao === 'meta_oficial' ||
+    conversaSelecionada.instancia === 'META_OFICIAL' ||
+    conversaSelecionada.instancia === 'meta_oficial';
+
+  const alternarApi = async () => {
+    if (ehMeta) {
+      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { tipo_conexao: 'empresa', instancia: '' });
+      setConversaSelecionada(prev => ({ ...prev, tipo_conexao: 'empresa', instancia: '' }));
+      toast.success('Alterado para Evolution');
+    } else {
+      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' });
+      setConversaSelecionada(prev => ({ ...prev, tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' }));
+      toast.success('Alterado para Meta Oficial');
+    }
+    queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+  };
+
+  return (
+    <div className="flex flex-row items-center justify-between gap-4 border-b bg-white px-5 py-3 shrink-0">
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <AvatarContato
+            contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_telefone, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
+            className="h-11 w-11"
+          />
+          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold leading-tight">
+            {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_telefone}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <button
+              onClick={alternarApi}
+              title={ehMeta ? 'Meta Oficial — clique para alternar para Evolution' : 'Evolution — clique para alternar para Meta Oficial'}
+              className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-opacity hover:opacity-80 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+              {ehMeta ? 'Meta Oficial' : 'Evolution'}
+            </button>
+            <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300"
+          onClick={async () => {
+            const idFinalizar = conversaSelecionada.id;
+            queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+              old.map(c => c.id === idFinalizar ? { ...c, status: 'encerrada', responsavel_id: null, responsavel_nome: null } : c)
+            );
+            setConversaSelecionada(null);
+            toast.success('Conversa finalizada');
+            base44.entities.ConversaWhatsapp.update(idFinalizar, { status: 'encerrada', responsavel_id: null, responsavel_nome: null }).catch(() => {});
+          }}
+        >
+          <Check className="h-3.5 w-3.5" />
+          Finalizar Conversa
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-purple-600 hover:text-purple-700 hover:border-purple-300"
+          onClick={() => setTransferirModal(conversaSelecionada)}
+        >
+          <ArrowRightLeft className="h-3.5 w-3.5" />
+          Transferir
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100">
+              <MoreVertical className="h-4 w-4 text-slate-900" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  const resp = await base44.functions.invoke('importarMensagensConversa', {
+                    empresa_id: empresaId,
+                    telefone: conversaSelecionada.cliente_telefone,
+                    conversa_id: conversaSelecionada.id
+                  });
+                  toast.success(`✅ ${resp?.data?.message || 'Mensagens sincronizadas!'}`);
+                  queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+                  setTimeout(() => refetchMensagens?.(), 100);
+                } catch (e) {
+                  toast.error('Erro ao sincronizar: ' + e.message);
+                }
+              }}
+            >
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              Carregar Mensagens
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Tag className="mr-2 h-3.5 w-3.5" />
+              Criar Proposta
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setCriarTarefaOpen(true)}>
+              <Clock className="mr-2 h-3.5 w-3.5" />
+              Criar Tarefa
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
+              <Contact className="mr-2 h-3.5 w-3.5" />
+              {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
+              <Pencil className="mr-2 h-3.5 w-3.5" />
+              Alterar nome do contato
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              setContatoParaTags(conversaSelecionada);
+              setTagsModalOpen(true);
+            }}>
+              <Tag className="mr-2 h-3.5 w-3.5" />
+              Gerenciar Tags
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={async () => {
+              await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'ativa' });
+              queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+              toast.success('Conversa reaberta');
+            }}>
+              <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+              Reabrir conversa
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => alternarApi()}>
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              {ehMeta ? 'Usar Evolution nesta conversa' : 'Usar Meta Oficial nesta conversa'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+              <BellOff className="mr-2 h-3.5 w-3.5" />
+              Silenciar conversa
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+              <Pin className="mr-2 h-3.5 w-3.5" />
+              Fixar conversa
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                if (confirm('Tem certeza que deseja excluir esta conversa e todas as mensagens?')) {
+                  const mensagensParaExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: conversaSelecionada.id });
+                  for (const msg of mensagensParaExcluir) {
+                    await base44.entities.MensagemWhatsapp.delete(msg.id);
+                  }
+                  await base44.entities.ConversaWhatsapp.delete(conversaSelecionada.id);
+                  queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                  queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+                  setConversaSelecionada(null);
+                  toast.success('Conversa excluída');
+                }
+              }}
+              className="text-red-600 hover:bg-red-50"
+            >
+              <X className="mr-2 h-3.5 w-3.5" />
+              Excluir conversa
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={infoLeadAberto ? "secondary" : "outline"}
+              size="icon"
+              className="h-8 w-8 rounded-md border-slate-200"
+              onClick={() => setInfoLeadAberto(!infoLeadAberto)}
+            >
+              <AlignJustify className="h-4 w-4 text-slate-500" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{infoLeadAberto ? 'Fechar' : 'Abrir'} informações do lead</TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  );
+}
