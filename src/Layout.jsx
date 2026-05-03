@@ -268,7 +268,6 @@ export default function Layout({ children, currentPageName }) {
   const ALL_ROLES = ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'];
 
   const menuItems = [
-    { name: 'Gestão de Usuários', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
     { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVendaConsignado', roles: ALL_ROLES },
@@ -292,6 +291,18 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Simulador', page: 'SimuladorEscolha' },
         { name: 'Resultado de Assembleia', page: 'HistoricoResultadoAssembleia' },
         { name: 'Oferta de Lance', page: 'OfertaLance' },
+      ]
+    },
+    {
+      name: 'Seguros',
+      icon: Shield,
+      roles: ALL_ROLES,
+      submenu: [
+        { name: 'Dashboard', page: 'DashboardSeguros' },
+        { name: 'Propostas', page: 'Seguros' },
+        { name: 'Renovações', page: 'RenovacoesSeguro' },
+        { name: 'Cobrança', page: 'CobrancaSeguro' },
+        { name: 'Configurações', page: 'ConfiguracaoSeguros' },
       ]
     },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ALL_ROLES },
@@ -356,18 +367,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     {
-      name: 'Seguros',
-      icon: Shield,
-      roles: ALL_ROLES,
-      submenu: [
-        { name: 'Dashboard', page: 'DashboardSeguros' },
-        { name: 'Propostas', page: 'Seguros' },
-        { name: 'Renovações', page: 'RenovacoesSeguro' },
-        { name: 'Cobrança', page: 'CobrancaSeguro' },
-        { name: 'Configurações', page: 'ConfiguracaoSeguros' },
-      ]
-    },
-    {
       name: 'Funcionários',
       icon: Users,
       roles: ['master', 'super_admin', 'admin'],
@@ -379,6 +378,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Relatórios', page: 'RelatorioFuncionarios' },
       ]
     },
+    { name: 'Gestão de Usuários', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
   ];
 
   // Mapa de chave de permissão por nome do menu
