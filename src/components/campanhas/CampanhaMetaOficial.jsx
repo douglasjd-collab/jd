@@ -86,6 +86,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [templateSelecionado, setTemplateSelecionado] = useState(null);
   const [mensagemTexto, setMensagemTexto] = useState('');
   const [disparando, setDisparando] = useState(false);
+  const [apiSelecionada, setApiSelecionada] = useState('meta'); // 'meta' | 'evolution'
 
   // ─── Queries ─────────────────────────────────────────────────────────────────
   const { data: templates = [], refetch: refetchTemplates } = useQuery({
@@ -260,6 +261,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
           mensagem_texto: mensagemTexto,
           nome_campanha: nomeCampanha,
           delay_segundos: Number(delaySegundos),
+          api_preferida: apiSelecionada,
         });
         const data = resp?.data;
         toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
@@ -570,7 +572,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   )}
 
                   {tipoMensagem === 'texto' && (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Textarea
                         value={mensagemTexto}
                         onChange={e => setMensagemTexto(e.target.value)}
@@ -578,9 +580,39 @@ export default function CampanhaMetaOficial({ empresaId }) {
                         rows={5}
                         className="text-sm resize-none"
                       />
-                      <p className="text-xs text-amber-600 flex items-center gap-1">
-                        ⚠️ Mensagens de texto são enviadas via Evolution API. Para contatos fora da janela de 24h, use o modo Template.
-                      </p>
+                      {/* Seletor de API */}
+                      <div className="border rounded-lg p-3 bg-slate-50 space-y-2">
+                        <p className="text-xs font-semibold text-slate-600">API de Envio</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setApiSelecionada('meta')}
+                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
+                              apiSelecionada === 'meta'
+                                ? 'border-green-500 bg-green-50 text-green-700'
+                                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                            }`}
+                          >
+                            <span>📱</span> API Oficial Meta
+                            {apiSelecionada === 'meta' && <span className="ml-1 bg-green-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">Selecionado</span>}
+                          </button>
+                          <button
+                            onClick={() => setApiSelecionada('evolution')}
+                            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
+                              apiSelecionada === 'evolution'
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                            }`}
+                          >
+                            <span>⚡</span> Evolution API
+                            {apiSelecionada === 'evolution' && <span className="ml-1 bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">Selecionado</span>}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          {apiSelecionada === 'meta'
+                            ? '⚠️ API Meta só envia para contatos dentro da janela de 24h (ou use Templates para contatos fora da janela).'
+                            : '⚠️ Evolution API requer que o contato esteja dentro da janela de 24h de conversas ativas.'}
+                        </p>
+                      </div>
                     </div>
                   )}
 

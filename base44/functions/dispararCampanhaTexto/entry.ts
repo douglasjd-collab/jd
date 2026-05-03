@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { empresa_id, contatos, mensagem_texto, nome_campanha, delay_segundos = 7 } = body;
+    const { empresa_id, contatos, mensagem_texto, nome_campanha, delay_segundos = 7, api_preferida = 'meta' } = body;
 
     if (!empresa_id) return Response.json({ error: 'empresa_id obrigatório' }, { status: 400 });
     if (!mensagem_texto?.trim()) return Response.json({ error: 'mensagem_texto obrigatório' }, { status: 400 });
@@ -45,18 +45,8 @@ Deno.serve(async (req) => {
         // Tentar enviar via Evolution primeiro, depois Meta como fallback
         let enviou = false;
 
-        if (temEvolution) {
-          const baseUrl = evolutionApiUrl.replace(/\/$/, '');
-          const endpoint = `${baseUrl}/message/sendText/${instanceName}`;
-          const resp = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
-            body: JSON.stringify({ number: numeroLimpo, text: mensagem_texto.trim() }),
-          });
-          if (resp.ok) enviou = true;
-        }
-
-        if (!enviou && temMeta) {
+        if (api_preferida === 'meta' && temMeta) {
+          // Enviar via API Oficial Meta primeiro
           const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
           const resp = await fetch(metaUrl, {
             method: 'POST',
@@ -67,6 +57,43 @@ Deno.serve(async (req) => {
               type: 'text',
               text: { body: mensagem_texto.trim() },
             }),
+          });
+          if (resp.ok) enviou = true;
+        } else if (api_preferida === 'evolution' && temEvolution) {
+          // Enviar via Evolution API
+          const baseUrl = evolutionApiUrl.replace(/\/$/, '');
+          const endpoint = `${baseUrl}/message/sendText/${instanceName}`;
+          const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
+            body: JSON.stringify({ number: numeroLimpo, text: mensagem_texto.trim() }),
+          });
+          if (resp.ok) enviou = true;
+        }
+
+        // Fallback: se a API preferida falhou ou não está configurada, tenta a outra
+        if (!enviou && temMeta && api_preferida !== 'meta') {
+          const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+          const resp = await fetch(metaUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: numeroLimpo,
+              type: 'text',
+              text: { body: mensagem_texto.trim() },
+            }),
+          });
+          if (resp.ok) enviou = true;
+        }
+
+        if (!enviou && temEvolution && api_preferida !== 'evolution') {
+          const baseUrl = evolutionApiUrl.replace(/\/$/, '');
+          const endpoint = `${baseUrl}/message/sendText/${instanceName}`;
+          const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
+            body: JSON.stringify({ number: numeroLimpo, text: mensagem_texto.trim() }),
           });
           if (resp.ok) enviou = true;
         }
