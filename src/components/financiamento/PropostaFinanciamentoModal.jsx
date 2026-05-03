@@ -235,7 +235,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                     </button>
                   ))}
                   {clientesFiltrados.length === 0 && buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id && (
-                    <div className="px-3 py-2 border-b">
+                    <div className="px-3 py-2">
                       <p className="text-xs text-slate-400 mb-1">Nenhum cliente encontrado para "{buscaCliente}"</p>
                       <button
                         type="button"
@@ -254,9 +254,10 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               {cadastrandoCliente && (
                 <div className="mt-2 border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente</p>
+                    <p className="text-xs font-semibold text-blue-700 flex items-center gap-1.5"><UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente</p>
                     <button type="button" onClick={() => setCadastrandoCliente(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                   </div>
+
                   <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">🧾 Dados Pessoais</p>
                   <Input placeholder="Nome completo *" value={novoCliente.nome_completo}
                     onChange={e => setNovoCliente(n => ({ ...n, nome_completo: e.target.value }))}
@@ -284,14 +285,16 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                     <Input placeholder="Nacionalidade" value={novoCliente.nacionalidade} onChange={e => setNovoCliente(n => ({ ...n, nacionalidade: e.target.value }))} className="h-8 text-sm bg-white" />
                     <Input placeholder="Naturalidade (cidade/UF)" value={novoCliente.local_nascimento} onChange={e => setNovoCliente(n => ({ ...n, local_nascimento: e.target.value }))} className="h-8 text-sm bg-white" />
                   </div>
+
                   <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">📞 Contato</p>
                   <div className="grid grid-cols-2 gap-2">
                     <Input placeholder="Telefone / WhatsApp *" value={novoCliente.celular} onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))} className="h-8 text-sm bg-white" />
                     <Input placeholder="E-mail" type="email" value={novoCliente.email} onChange={e => setNovoCliente(n => ({ ...n, email: e.target.value }))} className="h-8 text-sm bg-white" />
                   </div>
+
                   <Button type="button" size="sm" onClick={salvarNovoCliente} disabled={salvandoCliente}
-                    className="w-full h-8 bg-blue-600 hover:bg-blue-700 text-xs gap-1.5">
-                    {salvandoCliente ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                    className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-sm gap-1.5">
+                    {salvandoCliente ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                     Cadastrar e Selecionar
                   </Button>
                 </div>
