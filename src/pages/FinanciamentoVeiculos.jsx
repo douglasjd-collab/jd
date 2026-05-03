@@ -66,12 +66,12 @@ export default function FinanciamentoVeiculos() {
         ))}
       </div>
 
-      {/* Conteúdo */}
-      {aba === 'dashboard' && <DashboardFinanciamento user={user} />}
-      {aba === 'propostas' && <PropostasFinanciamento user={user} />}
-      {aba === 'bancos' && <BancosFinanciamento user={user} />}
-      {aba === 'relatorios' && <RelatoriosFinanciamento user={user} />}
-      {aba === 'configuracoes' && <ConfiguracoesFinanciamento user={user} />}
+      {/* Conteúdo — renderizado sempre para evitar remontagem ao trocar abas */}
+      <div className={aba === 'dashboard' ? '' : 'hidden'}><DashboardFinanciamento user={user} /></div>
+      {user && <div className={aba === 'propostas' ? '' : 'hidden'}><PropostasFinanciamento user={user} /></div>}
+      <div className={aba === 'bancos' ? '' : 'hidden'}><BancosFinanciamento user={user} /></div>
+      <div className={aba === 'relatorios' ? '' : 'hidden'}><RelatoriosFinanciamento user={user} /></div>
+      <div className={aba === 'configuracoes' ? '' : 'hidden'}><ConfiguracoesFinanciamento user={user} /></div>
     </div>
   );
 }

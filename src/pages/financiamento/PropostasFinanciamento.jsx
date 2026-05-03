@@ -1,116 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { toast } from 'sonner';
-import { Plus, Search, Edit2, Trash2, ChevronDown, ChevronUp, Car, Bike } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import PropostaFinanciamentoModal from '@/components/financiamento/PropostaFinanciamentoModal';
+import { toast } from 'sonner';
 
 const STATUS_LABELS = {
-  em_analise: 'Em análise',
-  aguardando_documentacao: 'Aguard. Documentação',
-  aprovado: 'Aprovado',
-  reprovado: 'Reprovado',
-  contrato_emitido: 'Contrato Emitido',
-  pago: 'Pago / Finalizado',
-  cancelado: 'Cancelado',
+  em_analise: { label: 'Em análise', color: 'bg-blue-100 text-blue-700' },
+  aguardando_documentacao: { label: 'Aguardando Doc.', color: 'bg-yellow-100 text-yellow-700' },
+  aprovado: { label: 'Aprovado', color: 'bg-green-100 text-green-700' },
+  reprovado: { label: 'Reprovado', color: 'bg-red-100 text-red-700' },
+  contrato_emitido: { label: 'Contrato Emitido', color: 'bg-purple-100 text-purple-700' },
+  pago: { label: 'Pago / Finalizado', color: 'bg-emerald-100 text-emerald-700' },
+  cancelado: { label: 'Cancelado', color: 'bg-gray-100 text-gray-600' },
 };
 
-const STATUS_COLORS = {
-  em_analise: 'bg-yellow-100 text-yellow-800',
-  aguardando_documentacao: 'bg-blue-100 text-blue-800',
-  aprovado: 'bg-green-100 text-green-800',
-  reprovado: 'bg-red-100 text-red-800',
-  contrato_emitido: 'bg-purple-100 text-purple-800',
-  pago: 'bg-emerald-100 text-emerald-800',
-  cancelado: 'bg-gray-100 text-gray-700',
-};
-
-function fmt(val) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
-}
+const TIPO_LABELS = { carro: 'Carro', moto: 'Moto', caminhao: 'Caminhão' };
 
 export default function PropostasFinanciamento({ user }) {
   const [propostas, setPropostas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('all');
   const [filtroTipo, setFiltroTipo] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [propostaSelecionada, setPropostaSelecionada] = useState(null);
 
-  const empresaId = user?.empresa_id;
-
-  const carregar = async () => {
+  const carregarPropostas = useCallback(async () => {
+    if (!user?.empresa_id) return;
     setLoading(true);
-    const filtro = empresaId ? { empresa_id: empresaId } : {};
-    const data = await base44.entities.FinanciamentoVeiculo.filter(filtro, '-created_date', 500);
-    setPropostas(data || []);
+    const data = await base44.entities.FinanciamentoVeiculo.filter({ empresa_id: user.empresa_id }, '-created_date', 1000);
+    setPropostas(data);
     setLoading(false);
+  }, [user?.empresa_id]);
+
+  useEffect(() => {
+    carregarPropostas();
+  }, [carregarPropostas]);
+
+  const handleSalvar = async (dados) => {
+    if (propostaSelecionada) {
+      await base44.entities.FinanciamentoVeiculo.update(propostaSelecionada.id, dados);
+      toast.success('Proposta atualizada!');
+    } else {
+      const count = propostas.length + 1;
+      await base44.entities.FinanciamentoVeiculo.create({
+        ...dados,
+        empresa_id: user?.empresa_id,
+        numero_proposta: `FIN${String(count).padStart(4, '0')}`,
+      });
+      toast.success('Proposta cadastrada!');
+    }
+    setModalOpen(false);
+    setPropostaSelecionada(null);
+    carregarPropostas();
   };
 
-  useEffect(() => { carregar(); }, [empresaId]);
+  const handleExcluir = async (id) => {
+    if (!confirm('Confirmar exclusão?')) return;
+    await base44.entities.FinanciamentoVeiculo.delete(id);
+    toast.success('Proposta excluída!');
+    carregarPropostas();
+  };
 
-  const filtradas = propostas.filter(p => {
+  const propostasFiltradas = propostas.filter(p => {
     if (filtroStatus !== 'all' && p.status !== filtroStatus) return false;
     if (filtroTipo !== 'all' && p.tipo_veiculo !== filtroTipo) return false;
     if (busca) {
-      const q = busca.toLowerCase();
-      return (p.cliente_nome || '').toLowerCase().includes(q) ||
-        (p.cliente_cpf || '').includes(q) ||
-        (p.numero_proposta || '').toLowerCase().includes(q) ||
-        (p.veiculo_modelo || '').toLowerCase().includes(q);
+      const b = busca.toLowerCase();
+      if (!(p.cliente_nome?.toLowerCase().includes(b) || p.cliente_cpf?.includes(b) || p.veiculo_marca?.toLowerCase().includes(b) || p.numero_proposta?.toLowerCase().includes(b))) return false;
     }
     return true;
   });
 
-  const handleNova = () => { setPropostaSelecionada(null); setModalOpen(true); };
-  const handleEditar = (p) => { setPropostaSelecionada(p); setModalOpen(true); };
-  const handleExcluir = async (id) => {
-    if (!confirm('Deseja excluir esta proposta?')) return;
-    await base44.entities.FinanciamentoVeiculo.delete(id);
-    carregar();
-  };
-
-  const handleSalvar = async (dados) => {
-    const base = { ...dados, empresa_id: empresaId };
-    if (propostaSelecionada?.id) {
-      await base44.entities.FinanciamentoVeiculo.update(propostaSelecionada.id, base);
-      toast.success('Proposta atualizada!');
-    } else {
-      if (!base.numero_proposta) {
-        const todas = await base44.entities.FinanciamentoVeiculo.filter({ empresa_id: empresaId }, '-created_date', 200);
-        base.numero_proposta = `FIN${String((todas.length || 0) + 1).padStart(4, '0')}`;
-      }
-      await base44.entities.FinanciamentoVeiculo.create(base);
-      toast.success('Proposta cadastrada!');
-    }
-    setModalOpen(false);
-    carregar();
-  };
+  const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold text-slate-800">Propostas — Financiamento de Veículos</h2>
-        <Button onClick={handleNova} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
-          <Plus className="w-4 h-4" /> Nova Proposta
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-800">Propostas de Financiamento</h1>
+        <Button onClick={() => { setPropostaSelecionada(null); setModalOpen(true); }} className="bg-[#10353C] hover:bg-[#10353C]/90">
+          <Plus className="w-4 h-4 mr-2" /> Nova Proposta
         </Button>
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-wrap gap-3 bg-white p-3 rounded-xl border">
+      <div className="bg-white rounded-xl border p-4 flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input placeholder="Buscar por cliente, CPF, modelo..." className="pl-9" value={busca} onChange={e => setBusca(e.target.value)} />
+          <Input placeholder="Buscar por cliente, CPF, marca..." className="pl-9" value={busca} onChange={e => setBusca(e.target.value)} />
         </div>
         <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os status</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filtroTipo} onValueChange={setFiltroTipo}>
@@ -124,69 +109,68 @@ export default function PropostasFinanciamento({ user }) {
         </Select>
       </div>
 
-      {/* Tabela */}
-      <div className="bg-white rounded-xl border overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Proposta</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Cliente</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Veículo</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Banco</th>
-              <th className="text-right px-4 py-3 font-semibold text-slate-600">Valor Fin.</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
-              <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={8} className="text-center py-10 text-slate-400">Carregando...</td></tr>
-            ) : filtradas.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
-            ) : filtradas.map(p => (
-              <tr key={p.id} className="border-b hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{p.numero_proposta || '—'}</td>
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-800">{p.cliente_nome}</p>
-                  <p className="text-xs text-slate-500">{p.cliente_cpf}</p>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    {p.tipo_veiculo === 'moto' ? <Bike className="w-4 h-4 text-orange-500" /> : <Car className="w-4 h-4 text-blue-500" />}
-                    <span>{p.veiculo_marca} {p.veiculo_modelo} {p.veiculo_ano}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{p.banco || '—'}</td>
-                <td className="px-4 py-3 text-right font-semibold text-slate-800">{fmt(p.valor_financiado)}</td>
-                <td className="px-4 py-3 text-slate-600">{p.vendedor_nome || '—'}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[p.status]}`}>
-                    {STATUS_LABELS[p.status]}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-end">
-                    <button onClick={() => handleEditar(p)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleExcluir(p.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+      <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b">
+              <tr>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Proposta</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Cliente</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Veículo</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Banco</th>
+                <th className="text-right px-4 py-3 font-semibold text-slate-600">Vr. Financiado</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
+                <th className="text-center px-4 py-3 font-semibold text-slate-600">Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Carregando...</td></tr>
+              ) : propostasFiltradas.length === 0 ? (
+                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
+              ) : propostasFiltradas.map(p => (
+                <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-700">{p.numero_proposta || '—'}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-slate-700">{p.cliente_nome}</p>
+                    <p className="text-xs text-slate-400">{p.cliente_cpf}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="text-slate-700">{p.veiculo_marca} {p.veiculo_modelo}</p>
+                    <p className="text-xs text-slate-400">{TIPO_LABELS[p.tipo_veiculo]} • {p.veiculo_ano}</p>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{p.banco || '—'}</td>
+                  <td className="px-4 py-3 text-right font-medium text-slate-700">{fmt(p.valor_financiado)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_LABELS[p.status]?.color || 'bg-gray-100 text-gray-600'}`}>
+                      {STATUS_LABELS[p.status]?.label || p.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{p.vendedor_nome || '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => { setPropostaSelecionada(p); setModalOpen(true); }} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Editar">
+                        <Pencil className="w-4 h-4 text-slate-500" />
+                      </button>
+                      <button onClick={() => handleExcluir(p.id)} className="p-1.5 hover:bg-red-50 rounded-lg" title="Excluir">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <PropostaFinanciamentoModal
         open={modalOpen}
         onOpenChange={setModalOpen}
         proposta={propostaSelecionada}
-        user={user}
         onSalvar={handleSalvar}
+        user={user}
       />
     </div>
   );
