@@ -35,6 +35,13 @@ const EMPTY = {
   status_comissao: 'pendente', observacoes: '',
 };
 
+const F = ({ label, children, className = '' }) => (
+  <div className={`space-y-1 ${className}`}>
+    <Label className="text-xs font-medium text-slate-600">{label}</Label>
+    {children}
+  </div>
+);
+
 export default function PropostaFinanciamentoModal({ open, onOpenChange, proposta, onSalvar, user }) {
   const [form, setForm] = useState(EMPTY);
   const [vendedores, setVendedores] = useState([]);
@@ -202,13 +209,6 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
       setSaving(false);
     }
   };
-
-  const F = ({ label, children, className = '' }) => (
-    <div className={`space-y-1 ${className}`}>
-      <Label className="text-xs font-medium text-slate-600">{label}</Label>
-      {children}
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
