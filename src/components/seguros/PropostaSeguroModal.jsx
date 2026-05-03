@@ -23,7 +23,7 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
-  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', cpf: '', celular: '' });
+  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '' });
   const [salvandoCliente, setSalvandoCliente] = useState(false);
   const [colaboradores, setColaboradores] = useState([]);
   const [buscandoPlaca, setBuscandoPlaca] = useState(false);
@@ -104,7 +104,7 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
   };
 
   const abrirCadastroCliente = () => {
-    setNovoCliente({ nome_completo: buscaCliente, cpf: '', celular: '' });
+    setNovoCliente({ nome_completo: buscaCliente, cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '' });
     setCadastrandoCliente(true);
     setClientesFiltrados([]);
   };
@@ -118,7 +118,14 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
         tipo_pessoa: 'Física',
         nome_completo: novoCliente.nome_completo.trim(),
         cpf: novoCliente.cpf || '',
+        rg: novoCliente.rg || '',
+        data_nascimento: novoCliente.data_nascimento || '',
+        estado_civil: novoCliente.estado_civil || '',
+        nome_mae: novoCliente.nome_mae || '',
+        nacionalidade: novoCliente.nacionalidade || '',
+        local_nascimento: novoCliente.local_nascimento || '',
         celular: novoCliente.celular || '',
+        email: novoCliente.email || '',
       });
       selecionarCliente(criado);
       setCadastrandoCliente(false);
@@ -252,11 +259,14 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
 
             {/* Mini formulário de cadastro rápido */}
             {cadastrandoCliente && (
-              <div className="mt-2 border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-2">
+              <div className="mt-2 border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente</p>
                   <button onClick={() => setCadastrandoCliente(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                 </div>
+
+                {/* Dados Pessoais */}
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">🧾 Dados Pessoais</p>
                 <Input
                   placeholder="Nome completo *"
                   value={novoCliente.nome_completo}
@@ -264,19 +274,39 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
                   className="h-8 text-sm bg-white"
                 />
                 <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder="CPF"
-                    value={novoCliente.cpf}
-                    onChange={e => setNovoCliente(n => ({ ...n, cpf: e.target.value }))}
-                    className="h-8 text-sm bg-white"
-                  />
-                  <Input
-                    placeholder="Celular"
-                    value={novoCliente.celular}
-                    onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))}
-                    className="h-8 text-sm bg-white"
-                  />
+                  <Input placeholder="CPF" value={novoCliente.cpf} onChange={e => setNovoCliente(n => ({ ...n, cpf: e.target.value }))} className="h-8 text-sm bg-white" />
+                  <Input placeholder="RG" value={novoCliente.rg} onChange={e => setNovoCliente(n => ({ ...n, rg: e.target.value }))} className="h-8 text-sm bg-white" />
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[10px] text-slate-500 mb-0.5">Data de Nascimento</p>
+                    <Input type="date" value={novoCliente.data_nascimento} onChange={e => setNovoCliente(n => ({ ...n, data_nascimento: e.target.value }))} className="h-8 text-sm bg-white" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 mb-0.5">Estado Civil</p>
+                    <select
+                      value={novoCliente.estado_civil}
+                      onChange={e => setNovoCliente(n => ({ ...n, estado_civil: e.target.value }))}
+                      className="h-8 w-full rounded-md border border-input bg-white px-2 text-sm"
+                    >
+                      <option value="">Selecionar...</option>
+                      {['Solteiro(a)','Casado(a)','Divorciado(a)','Viúvo(a)','União Estável'].map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <Input placeholder="Nome da mãe" value={novoCliente.nome_mae} onChange={e => setNovoCliente(n => ({ ...n, nome_mae: e.target.value }))} className="h-8 text-sm bg-white" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Nacionalidade" value={novoCliente.nacionalidade} onChange={e => setNovoCliente(n => ({ ...n, nacionalidade: e.target.value }))} className="h-8 text-sm bg-white" />
+                  <Input placeholder="Naturalidade (cidade/UF)" value={novoCliente.local_nascimento} onChange={e => setNovoCliente(n => ({ ...n, local_nascimento: e.target.value }))} className="h-8 text-sm bg-white" />
+                </div>
+
+                {/* Contato */}
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">📞 Contato</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Telefone / WhatsApp *" value={novoCliente.celular} onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))} className="h-8 text-sm bg-white" />
+                  <Input placeholder="E-mail" type="email" value={novoCliente.email} onChange={e => setNovoCliente(n => ({ ...n, email: e.target.value }))} className="h-8 text-sm bg-white" />
+                </div>
+
                 <Button
                   type="button"
                   size="sm"
