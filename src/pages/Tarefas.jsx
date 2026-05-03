@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -47,6 +47,38 @@ export default function Tarefas() {
   const [abaAtiva, setAbaAtiva] = useState('andamento'); // 'andamento' | 'finalizados'
   const [configOpen, setConfigOpen] = useState(false);
   const queryClient = useQueryClient();
+  const kanbanRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const scrollAnimRef = useRef(null);
+
+  const handleDragStart = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isDraggingRef.current || !kanbanRef.current) return;
+    const container = kanbanRef.current;
+    const rect = container.getBoundingClientRect();
+    const ZONE = 100;
+    const SPEED = 12;
+    cancelAnimationFrame(scrollAnimRef.current);
+    const distRight = rect.right - e.clientX;
+    const distLeft = e.clientX - rect.left;
+    if (distRight < ZONE) {
+      const step = Math.round(SPEED * (1 - distRight / ZONE));
+      const scroll = () => { container.scrollLeft += step; scrollAnimRef.current = requestAnimationFrame(scroll); };
+      scroll();
+    } else if (distLeft < ZONE) {
+      const step = Math.round(SPEED * (1 - distLeft / ZONE));
+      const scroll = () => { container.scrollLeft -= step; scrollAnimRef.current = requestAnimationFrame(scroll); };
+      scroll();
+    }
+  }, []);
+
+  const stopScroll = useCallback(() => {
+    isDraggingRef.current = false;
+    cancelAnimationFrame(scrollAnimRef.current);
+  }, []);
 
   useEffect(() => { loadUser(); }, []);
 
@@ -380,11 +412,20 @@ export default function Tarefas() {
       ) : null}
 
       {modoVisualizacao === 'kanban' && (
-      <DragDropContext onDragEnd={({ source, destination, draggableId }) => {
-        if (!destination || destination.droppableId === source.droppableId) return;
-        handleUpdate(draggableId, { status: destination.droppableId });
-      }}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+      <DragDropContext
+        onDragStart={handleDragStart}
+        onDragEnd={({ source, destination, draggableId }) => {
+          stopScroll();
+          if (!destination || destination.droppableId === source.droppableId) return;
+          handleUpdate(draggableId, { status: destination.droppableId });
+        }}
+      >
+        <div
+          ref={kanbanRef}
+          className="flex gap-4 overflow-x-auto pb-4"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={stopScroll}
+        >
           {statusList.map(status => {
             const statusKey = status.slug || status.id;
             const colTarefas = tarefasFiltradas.filter(t => t.status === statusKey);
