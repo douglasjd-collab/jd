@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -70,23 +70,28 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const buscarClientes = async (q) => {
+  const debounceRef = useRef(null);
+
+  const buscarClientes = useCallback((q) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (q.length < 2) { setClientesFiltrados([]); return; }
-    setBuscandoCliente(true);
-    try {
-      const qLower = q.toLowerCase().trim();
-      const res = await base44.entities.Cliente.filter({ empresa_id: user.empresa_id }, 'nome_completo', 2000);
-      const filtrado = res.filter(c => {
-        const nome = (c.nome_completo || '').toLowerCase();
-        const cpf = (c.cpf || '').replace(/\D/g, '');
-        const qDigits = q.replace(/\D/g, '');
-        return nome.includes(qLower) ||
-          (qDigits.length >= 3 && cpf.includes(qDigits)) ||
-          (c.celular || '').includes(q);
-      }).slice(0, 10);
-      setClientesFiltrados(filtrado);
-    } catch { } finally { setBuscandoCliente(false); }
-  };
+    debounceRef.current = setTimeout(async () => {
+      setBuscandoCliente(true);
+      try {
+        const qLower = q.toLowerCase().trim();
+        const res = await base44.entities.Cliente.filter({ empresa_id: user?.empresa_id }, 'nome_completo', 2000);
+        const filtrado = res.filter(c => {
+          const nome = (c.nome_completo || '').toLowerCase();
+          const cpf = (c.cpf || '').replace(/\D/g, '');
+          const qDigits = q.replace(/\D/g, '');
+          return nome.includes(qLower) ||
+            (qDigits.length >= 3 && cpf.includes(qDigits)) ||
+            (c.celular || '').includes(q);
+        }).slice(0, 10);
+        setClientesFiltrados(filtrado);
+      } catch { } finally { setBuscandoCliente(false); }
+    }, 400);
+  }, [user?.empresa_id]);
 
   const selecionarCliente = (c) => {
     setForm(f => ({
@@ -207,13 +212,15 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               <Input
                 value={buscaCliente}
                 onChange={e => {
-                  setBuscaCliente(e.target.value);
-                  buscarClientes(e.target.value);
-                  setForm(f => ({ ...f, cliente_id: '' }));
-                  setCadastrandoCliente(false);
+                  const v = e.target.value;
+                  setBuscaCliente(v);
+                  if (form.cliente_id) setForm(f => ({ ...f, cliente_id: '' }));
+                  if (cadastrandoCliente) setCadastrandoCliente(false);
+                  buscarClientes(v);
                 }}
                 placeholder="Digite nome, CPF ou telefone..."
                 className="mt-1"
+                autoComplete="off"
               />
               {buscandoCliente && <Loader2 className="absolute right-3 top-8 w-4 h-4 animate-spin text-slate-400" />}
 
