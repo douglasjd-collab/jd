@@ -602,7 +602,7 @@ export default function Layout({ children, currentPageName }) {
                   )}
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-280px)]">
+        <nav className="p-4 space-y-1 overflow-y-auto flex-1">
           {filteredMenuItems.map((item) => (
             <div key={item.page || item.name}>
               {item.submenu ? (
@@ -695,7 +695,7 @@ export default function Layout({ children, currentPageName }) {
         </nav>
 
         {/* Botão Sair */}
-        <div className="p-4 border-t border-white/10 mt-auto">
+        <div className="p-4 border-t border-white/10 flex-shrink-0">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-400 hover:bg-red-500/10 hover:text-red-300"
