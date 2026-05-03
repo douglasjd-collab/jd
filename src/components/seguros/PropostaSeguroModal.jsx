@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, Shield, Search } from 'lucide-react';
+import { Loader2, Save, Shield, Search, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { addYears, addMonths, subDays, format } from 'date-fns';
 
@@ -22,6 +22,9 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
   const [buscaCliente, setBuscaCliente] = useState('');
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
+  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', cpf: '', celular: '' });
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
   const [colaboradores, setColaboradores] = useState([]);
   const [buscandoPlaca, setBuscandoPlaca] = useState(false);
 
@@ -98,6 +101,33 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
       }).slice(0, 10);
       setClientesFiltrados(filtrado);
     } catch { } finally { setBuscandoCliente(false); }
+  };
+
+  const abrirCadastroCliente = () => {
+    setNovoCliente({ nome_completo: buscaCliente, cpf: '', celular: '' });
+    setCadastrandoCliente(true);
+    setClientesFiltrados([]);
+  };
+
+  const salvarNovoCliente = async () => {
+    if (!novoCliente.nome_completo.trim()) { toast.error('Informe o nome do cliente'); return; }
+    setSalvandoCliente(true);
+    try {
+      const criado = await base44.entities.Cliente.create({
+        empresa_id: empresaId,
+        tipo_pessoa: 'Física',
+        nome_completo: novoCliente.nome_completo.trim(),
+        cpf: novoCliente.cpf || '',
+        celular: novoCliente.celular || '',
+      });
+      selecionarCliente(criado);
+      setCadastrandoCliente(false);
+      toast.success('Cliente cadastrado e selecionado!');
+    } catch (e) {
+      toast.error('Erro ao cadastrar cliente: ' + e.message);
+    } finally {
+      setSalvandoCliente(false);
+    }
   };
 
   const selecionarCliente = (c) => {
@@ -191,12 +221,12 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
             <Label className="text-xs font-semibold">Cliente *</Label>
             <Input
               value={buscaCliente}
-              onChange={e => { setBuscaCliente(e.target.value); buscarClientes(e.target.value); }}
+              onChange={e => { setBuscaCliente(e.target.value); buscarClientes(e.target.value); setForm(f => ({ ...f, cliente_id: '' })); setCadastrandoCliente(false); }}
               placeholder="Digite nome, CPF ou telefone..."
               className="mt-1 h-8"
             />
             {buscandoCliente && <Loader2 className="absolute right-3 top-7 w-4 h-4 animate-spin text-slate-400" />}
-            {clientesFiltrados.length > 0 && (
+            {(clientesFiltrados.length > 0 || (buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id)) && (
               <div className="absolute z-50 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {clientesFiltrados.map(c => (
                   <button key={c.id} onClick={() => selecionarCliente(c)}
@@ -205,6 +235,58 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
                     <span className="text-slate-400 text-xs ml-2">{c.cpf}</span>
                   </button>
                 ))}
+                {clientesFiltrados.length === 0 && buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id && (
+                  <div className="px-3 py-2 border-b">
+                    <p className="text-xs text-slate-400 mb-1">Nenhum cliente encontrado para "{buscaCliente}"</p>
+                    <button
+                      onClick={abrirCadastroCliente}
+                      className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Cadastrar "{buscaCliente}" como novo cliente
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mini formulário de cadastro rápido */}
+            {cadastrandoCliente && (
+              <div className="mt-2 border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente</p>
+                  <button onClick={() => setCadastrandoCliente(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                </div>
+                <Input
+                  placeholder="Nome completo *"
+                  value={novoCliente.nome_completo}
+                  onChange={e => setNovoCliente(n => ({ ...n, nome_completo: e.target.value }))}
+                  className="h-8 text-sm bg-white"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="CPF"
+                    value={novoCliente.cpf}
+                    onChange={e => setNovoCliente(n => ({ ...n, cpf: e.target.value }))}
+                    className="h-8 text-sm bg-white"
+                  />
+                  <Input
+                    placeholder="Celular"
+                    value={novoCliente.celular}
+                    onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))}
+                    className="h-8 text-sm bg-white"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={salvarNovoCliente}
+                  disabled={salvandoCliente}
+                  className="w-full h-8 bg-blue-600 hover:bg-blue-700 text-xs gap-1.5"
+                >
+                  {salvandoCliente ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                  Cadastrar e Selecionar
+                </Button>
               </div>
             )}
           </div>
