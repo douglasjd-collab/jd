@@ -306,6 +306,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Configurações', page: 'ConfiguracaoSeguros' },
       ]
     },
+    { name: 'Financiamento de Veículos', icon: Car, page: 'FinanciamentoVeiculos', roles: ALL_ROLES },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ALL_ROLES },
     { name: 'Tarefas', icon: CheckSquare, page: 'Tarefas', roles: ALL_ROLES },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
@@ -377,18 +378,6 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Adiantamentos', page: 'AdiantamentosFuncionarios' },
         { name: 'Lançamento de Faltas', page: 'LancamentoFaltas' },
         { name: 'Relatórios', page: 'RelatorioFuncionarios' },
-      ]
-    },
-    {
-      name: 'Financiamento',
-      icon: Car,
-      roles: ALL_ROLES,
-      submenu: [
-        { name: 'Dashboard', page: 'FinanciamentoDashboard' },
-        { name: 'Propostas', page: 'FinanciamentoPropostas' },
-        { name: 'Bancos / Tabelas', page: 'FinanciamentoBancos' },
-        { name: 'Relatórios', page: 'FinanciamentoRelatorios' },
-        { name: 'Configurações', page: 'FinanciamentoConfiguracoes' },
       ]
     },
     { name: 'Gestão de Usuários', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },
