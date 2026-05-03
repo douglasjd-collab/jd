@@ -441,7 +441,7 @@ export default function Tarefas() {
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                        className={`p-2 space-y-2 min-h-[200px] transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
                       >
                         {colTarefas.map((tarefa, index) => (
                           <Draggable key={tarefa.id} draggableId={tarefa.id} index={index}>
