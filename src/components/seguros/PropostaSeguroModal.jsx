@@ -23,10 +23,11 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
   const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
-  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '' });
+  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '', cep: '', endereco: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' });
   const [salvandoCliente, setSalvandoCliente] = useState(false);
   const [colaboradores, setColaboradores] = useState([]);
   const [buscandoPlaca, setBuscandoPlaca] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   const { data: seguradoras = [] } = useQuery({
     queryKey: ['seguradoras', empresaId],
@@ -103,8 +104,21 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
     } catch { } finally { setBuscandoCliente(false); }
   };
 
+  const buscarCep = async (cep) => {
+    const digits = cep.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setBuscandoCep(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setNovoCliente(n => ({ ...n, endereco: data.logradouro || n.endereco, bairro: data.bairro || n.bairro, cidade: data.localidade || n.cidade, estado: data.uf || n.estado }));
+      }
+    } catch { } finally { setBuscandoCep(false); }
+  };
+
   const abrirCadastroCliente = () => {
-    setNovoCliente({ nome_completo: buscaCliente, cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '' });
+    setNovoCliente({ nome_completo: buscaCliente, cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '', cep: '', endereco: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' });
     setCadastrandoCliente(true);
     setClientesFiltrados([]);
   };
@@ -126,6 +140,13 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
         local_nascimento: novoCliente.local_nascimento || '',
         celular: novoCliente.celular || '',
         email: novoCliente.email || '',
+        cep: novoCliente.cep || '',
+        endereco: novoCliente.endereco || '',
+        numero: novoCliente.numero || '',
+        complemento: novoCliente.complemento || '',
+        bairro: novoCliente.bairro || '',
+        cidade: novoCliente.cidade || '',
+        estado: novoCliente.estado || '',
       });
       selecionarCliente(criado);
       setCadastrandoCliente(false);
@@ -305,6 +326,35 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Telefone / WhatsApp *" value={novoCliente.celular} onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))} className="h-8 text-sm bg-white" />
                   <Input placeholder="E-mail" type="email" value={novoCliente.email} onChange={e => setNovoCliente(n => ({ ...n, email: e.target.value }))} className="h-8 text-sm bg-white" />
+                </div>
+
+                {/* Endereço */}
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">📍 Endereço</p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="CEP *"
+                      value={novoCliente.cep}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setNovoCliente(n => ({ ...n, cep: v }));
+                        buscarCep(v);
+                      }}
+                      className="h-8 text-sm bg-white"
+                      maxLength={9}
+                    />
+                    {buscandoCep && <Loader2 className="absolute right-2 top-2 w-3.5 h-3.5 animate-spin text-slate-400" />}
+                  </div>
+                  <Input placeholder="Número" value={novoCliente.numero} onChange={e => setNovoCliente(n => ({ ...n, numero: e.target.value }))} className="h-8 text-sm bg-white w-24" />
+                </div>
+                <Input placeholder="Rua / Logradouro" value={novoCliente.endereco} onChange={e => setNovoCliente(n => ({ ...n, endereco: e.target.value }))} className="h-8 text-sm bg-white" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Complemento" value={novoCliente.complemento} onChange={e => setNovoCliente(n => ({ ...n, complemento: e.target.value }))} className="h-8 text-sm bg-white" />
+                  <Input placeholder="Bairro" value={novoCliente.bairro} onChange={e => setNovoCliente(n => ({ ...n, bairro: e.target.value }))} className="h-8 text-sm bg-white" />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Input placeholder="Cidade" value={novoCliente.cidade} onChange={e => setNovoCliente(n => ({ ...n, cidade: e.target.value }))} className="h-8 text-sm bg-white col-span-2" />
+                  <Input placeholder="UF" value={novoCliente.estado} onChange={e => setNovoCliente(n => ({ ...n, estado: e.target.value }))} className="h-8 text-sm bg-white" maxLength={2} />
                 </div>
 
                 <Button
