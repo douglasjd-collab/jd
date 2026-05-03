@@ -39,7 +39,21 @@ Deno.serve(async (req) => {
       const lotes = await base44.asServiceRole.entities.PagamentoComissaoLote.filter({ id: lote_id });
       const l = lotes?.[0];
       if (!l) return Response.json({ error: 'Lote nao encontrado' }, { status: 404 });
-      if (l.relatorio_html) return Response.json({ relatorio_html: l.relatorio_html });
+      if (l.relatorio_html) {
+        let html = l.relatorio_html;
+
+        // Se houver comprovante, injetar imagem antes do </body>
+        if (l.comprovante_url) {
+          const comprovanteSection = `
+            <div style="page-break-before: always; padding: 20px; text-align: center;">
+              <h2 style="font-family: Arial, sans-serif; color: #10353c; border-bottom: 2px solid #10353c; padding-bottom: 8px; margin-bottom: 16px;">Comprovante de Pagamento</h2>
+              <img src="${l.comprovante_url}" style="max-width: 100%; max-height: 80vh; border: 1px solid #ccc; border-radius: 6px;" />
+            </div>`;
+          html = html.replace('</body>', comprovanteSection + '</body>');
+        }
+
+        return Response.json({ relatorio_html: html });
+      }
       return Response.json({ error: 'Relatorio nao disponivel para este lote' }, { status: 404 });
     }
 
@@ -187,6 +201,45 @@ Deno.serve(async (req) => {
       const ph = doc.internal.pageSize.height;
       doc.setFontSize(7); doc.setTextColor(100, 100, 100);
       doc.text(`Gerado em ${fmtDateTime(new Date())}`, 148, ph - 5, { align: 'center' });
+
+      // Se houver comprovante de pagamento, adicionar como página seguinte
+      if (lote.comprovante_url) {
+        try {
+          const comprovanteResp = await fetch(lote.comprovante_url);
+          const comprovanteBuffer = await comprovanteResp.arrayBuffer();
+          const comprovanteBytes = new Uint8Array(comprovanteBuffer);
+
+          const isPdf = lote.comprovante_url.toLowerCase().includes('.pdf') ||
+            comprovanteResp.headers.get('content-type')?.includes('application/pdf');
+
+          if (!isPdf) {
+            // Imagem: adicionar nova página e inserir imagem centralizada
+            doc.addPage('landscape');
+
+            // Cabeçalho da página do comprovante
+            doc.setFillColor(16, 53, 60);
+            doc.rect(0, 0, 297, 14, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+            doc.text('COMPROVANTE DE PAGAMENTO', 148, 9, { align: 'center' });
+
+            // Converter Uint8Array para base64
+            let binary = '';
+            for (let i = 0; i < comprovanteBytes.length; i++) {
+              binary += String.fromCharCode(comprovanteBytes[i]);
+            }
+            const base64Img = btoa(binary);
+            const contentType = comprovanteResp.headers.get('content-type') || 'image/jpeg';
+            const imgFormat = contentType.includes('png') ? 'PNG' : 'JPEG';
+
+            // Inserir imagem centralizada
+            doc.addImage(`data:${contentType};base64,${base64Img}`, imgFormat, 30, 18, 237, 155);
+          }
+          // Para comprovante PDF, não é possível mesclar facilmente — ignora silenciosamente
+        } catch (_) {
+          // Se falhar ao carregar o comprovante, continua sem ele
+        }
+      }
 
       // Retorna PDF como base64
       const pdfBase64 = doc.output('datauristring');
