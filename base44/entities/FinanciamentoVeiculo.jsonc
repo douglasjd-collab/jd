@@ -1,0 +1,174 @@
+{
+  "name": "FinanciamentoVeiculo",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "numero_proposta": {
+      "type": "string",
+      "description": "N\u00famero da proposta (FIN001, FIN002...)"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "cliente_cpf": {
+      "type": "string",
+      "description": "CPF do cliente"
+    },
+    "cliente_telefone": {
+      "type": "string",
+      "description": "Telefone do cliente"
+    },
+    "cliente_renda": {
+      "type": "number",
+      "description": "Renda do cliente"
+    },
+    "cliente_profissao": {
+      "type": "string",
+      "description": "Profiss\u00e3o do cliente"
+    },
+    "tipo_veiculo": {
+      "type": "string",
+      "enum": [
+        "carro",
+        "moto",
+        "caminhao"
+      ],
+      "description": "Tipo do ve\u00edculo"
+    },
+    "veiculo_marca": {
+      "type": "string",
+      "description": "Marca do ve\u00edculo"
+    },
+    "veiculo_modelo": {
+      "type": "string",
+      "description": "Modelo do ve\u00edculo"
+    },
+    "veiculo_ano": {
+      "type": "string",
+      "description": "Ano do ve\u00edculo"
+    },
+    "veiculo_placa": {
+      "type": "string",
+      "description": "Placa do ve\u00edculo"
+    },
+    "valor_veiculo": {
+      "type": "number",
+      "description": "Valor do ve\u00edculo"
+    },
+    "valor_entrada": {
+      "type": "number",
+      "description": "Valor de entrada",
+      "default": 0
+    },
+    "valor_financiado": {
+      "type": "number",
+      "description": "Valor financiado"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Banco / institui\u00e7\u00e3o financeira"
+    },
+    "prazo_meses": {
+      "type": "number",
+      "description": "Prazo em meses"
+    },
+    "valor_parcela": {
+      "type": "number",
+      "description": "Valor da parcela"
+    },
+    "taxa_juros": {
+      "type": "number",
+      "description": "Taxa de juros (% ao m\u00eas)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_analise",
+        "aguardando_documentacao",
+        "aprovado",
+        "reprovado",
+        "contrato_emitido",
+        "pago",
+        "cancelado"
+      ],
+      "default": "em_analise",
+      "description": "Status da proposta"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor"
+    },
+    "data_proposta": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da proposta"
+    },
+    "data_aprovacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da aprova\u00e7\u00e3o"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do pagamento"
+    },
+    "valor_comissao_recebida": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o recebida",
+      "default": 0
+    },
+    "percentual_comissao": {
+      "type": "number",
+      "description": "Percentual da comiss\u00e3o (%)",
+      "default": 0
+    },
+    "comissao_vendedor": {
+      "type": "number",
+      "description": "Comiss\u00e3o do vendedor",
+      "default": 0
+    },
+    "status_comissao": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "recebida",
+        "paga"
+      ],
+      "default": "pendente",
+      "description": "Status da comiss\u00e3o"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "cliente_nome",
+    "tipo_veiculo",
+    "status"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

@@ -30,7 +30,8 @@ import {
         Plug,
         Send,
         Edit3,
-        Shield
+        Shield,
+        Car
       } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -376,6 +377,18 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Adiantamentos', page: 'AdiantamentosFuncionarios' },
         { name: 'Lançamento de Faltas', page: 'LancamentoFaltas' },
         { name: 'Relatórios', page: 'RelatorioFuncionarios' },
+      ]
+    },
+    {
+      name: 'Financiamento',
+      icon: Car,
+      roles: ALL_ROLES,
+      submenu: [
+        { name: 'Dashboard', page: 'FinanciamentoDashboard' },
+        { name: 'Propostas', page: 'FinanciamentoPropostas' },
+        { name: 'Bancos / Tabelas', page: 'FinanciamentoBancos' },
+        { name: 'Relatórios', page: 'FinanciamentoRelatorios' },
+        { name: 'Configurações', page: 'FinanciamentoConfiguracoes' },
       ]
     },
     { name: 'Gestão de Usuários', icon: Building2, page: 'Empresas', roles: ['master', 'super_admin', 'admin'] },

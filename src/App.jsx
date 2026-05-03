@@ -33,6 +33,7 @@ import RelatorioFuncionarios from './pages/RelatorioFuncionarios';
 import ContasBancarias from './pages/ContasBancarias';
 import LancamentoFaltas from './pages/LancamentoFaltas';
 import DashboardSeguros from './pages/DashboardSeguros';
+import FinanciamentoVeiculos from './pages/FinanciamentoVeiculos';
 import Seguros from './pages/Seguros';
 import RenovacoesSeguro from './pages/RenovacoesSeguro';
 import CobrancaSeguro from './pages/CobrancaSeguro';
