@@ -72,18 +72,33 @@ Deno.serve(async (req) => {
     if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
+    // Buscar dados da conversa no banco para determinar a API correta
+    let conversaDoBanco = null;
+    try {
+      conversaDoBanco = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id);
+    } catch (_) {}
+
+    const instanciaConversa = conversaDoBanco?.instancia || '';
+    const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
+
+    // Detectar se a conversa veio pela Meta Oficial
+    const conversaEhMetaOficial =
+      tipoConexaoConversa === 'meta_oficial' ||
+      instanciaConversa === 'META_OFICIAL' ||
+      instanciaConversa === 'meta_oficial' ||
+      forcar_api === 'meta_oficial';
+
     // Determinar qual API usar
-    // forcar_api vem da conversa: 'meta_oficial' ou 'evolution'
     const temCredenciaisMeta = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
     const temCredenciaisEvolution = !!(evolutionApiKey && evolutionApiUrl && instanceName);
 
     let usaMetaOficial;
-    if (forcar_api === 'meta_oficial') {
+    if (conversaEhMetaOficial) {
       usaMetaOficial = true;
-      console.log('🟢 Forçando API Oficial Meta (conversa veio pela Meta)');
-    } else if (forcar_api === 'evolution') {
+      console.log('🟢 API Oficial Meta (conversa iniciada pela Meta — tipo_conexao:', tipoConexaoConversa, ', instancia:', instanciaConversa, ')');
+    } else if (forcar_api === 'evolution' || tipoConexaoConversa === 'empresa' || tipoConexaoConversa === 'usuario') {
       usaMetaOficial = false;
-      console.log('🟣 Forçando Evolution API (conversa veio pela Evolution)');
+      console.log('🟣 Evolution API (conversa iniciada pela Evolution)');
     } else {
       // fallback: preferência da empresa
       const apiPreferida = empresa?.whatsapp_api_preferida || 'auto';
@@ -94,6 +109,7 @@ Deno.serve(async (req) => {
       } else {
         usaMetaOficial = !temCredenciaisEvolution && temCredenciaisMeta;
       }
+      console.log('⚙️ API por preferência da empresa:', usaMetaOficial ? 'Meta' : 'Evolution');
     }
 
     console.log('🔌 Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
@@ -108,6 +124,7 @@ Deno.serve(async (req) => {
     }
 
     let result;
+    let messageIdEvolution = null;
 
     if (usaMetaOficial) {
       // ── ENVIO VIA API OFICIAL META ──────────────────────────────────────
@@ -253,7 +270,6 @@ Deno.serve(async (req) => {
       }
       
       // Extrair message ID de diferentes formatos da Evolution
-      let messageIdEvolution = null;
       if (result.message?.id) messageIdEvolution = result.message.id;
       else if (result.key?.id) messageIdEvolution = result.key.id;
       else if (result.id) messageIdEvolution = result.id;
@@ -336,7 +352,7 @@ Deno.serve(async (req) => {
         arquivo_url: arquivo_url_permanente,
         arquivo_nome: arquivo?.nome || null,
         arquivo_tamanho: 0,
-        whatsapp_message_id: messageIdEvolution || result.key?.id || result.messageId || result.id || `temp_${Date.now()}`,
+        whatsapp_message_id: (usaMetaOficial ? null : messageIdEvolution) || result?.key?.id || result?.messageId || result?.id || `temp_${Date.now()}`,
         data_envio: new Date().toISOString(),
         status: 'enviada'
       });
