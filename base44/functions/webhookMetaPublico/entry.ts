@@ -210,7 +210,7 @@ async function salvarMensagem(base44, value, message) {
     }
 
     // Garantir dados atualizados na conversa principal
-    const update = { instancia: 'META_OFICIAL', status: 'ativa' };
+    const update = { instancia: 'META_OFICIAL', tipo_conexao: 'meta_oficial', status: 'ativa' };
     if (!conversa.cliente_telefone || conversa.cliente_telefone !== telefoneLimpo) update.cliente_telefone = telefoneLimpo;
     if (!conversa.cliente_id && cliente?.id) update.cliente_id = cliente.id;
     if (!conversa.cliente_nome && cliente?.nome_completo) update.cliente_nome = cliente.nome_completo;
@@ -225,7 +225,7 @@ async function salvarMensagem(base44, value, message) {
       cliente_telefone: telefoneLimpo,
       whatsapp_id: telefoneLimpo,
       status: 'ativa',
-      tipo_conexao: 'empresa',
+      tipo_conexao: 'meta_oficial',
       instancia: 'META_OFICIAL',
     });
     console.log(`✨ Conversa criada: ${conversa.id}`);

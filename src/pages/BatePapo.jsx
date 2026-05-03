@@ -771,7 +771,7 @@ export default function BatePapo() {
         numero_cliente: destinatario,
         empresa_id: empresaId,
         arquivo: arquivo,
-        forcar_api: conversaSelecionada.tipo_conexao === 'meta_oficial' ? 'meta_oficial' : 'evolution'
+        forcar_api: (conversaSelecionada.tipo_conexao === 'meta_oficial' || conversaSelecionada.instancia === 'META_OFICIAL') ? 'meta_oficial' : 'evolution'
       });
       if (!resp?.data?.success) {
         throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');
@@ -1675,10 +1675,16 @@ export default function BatePapo() {
                         {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_telefone}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {conversaSelecionada.tipo_conexao === 'meta_oficial' ? (
-                          <span className="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-green-300" title="Conversa via API Oficial Meta WhatsApp">Meta Oficial</span>
+                        {(conversaSelecionada.tipo_conexao === 'meta_oficial' || conversaSelecionada.instancia === 'META_OFICIAL') ? (
+                          <span className="inline-flex items-center gap-1 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm" title="Mensagens enviadas e recebidas via API Oficial Meta WhatsApp">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                            Meta Oficial
+                          </span>
                         ) : (
-                          <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-purple-300" title="Conversa via Evolution API">Evolution</span>
+                          <span className="inline-flex items-center gap-1 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm" title="Mensagens enviadas e recebidas via Evolution API">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                            Evolution
+                          </span>
                         )}
                         <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
                       </div>
