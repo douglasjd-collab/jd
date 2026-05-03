@@ -226,7 +226,7 @@ export default function PropostaSeguroModal({ open, onOpenChange, proposta, empr
               className="mt-1 h-8"
             />
             {buscandoCliente && <Loader2 className="absolute right-3 top-7 w-4 h-4 animate-spin text-slate-400" />}
-            {(clientesFiltrados.length > 0 || (buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id)) && (
+            {!cadastrandoCliente && (clientesFiltrados.length > 0 || (buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id)) && (
               <div className="absolute z-50 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {clientesFiltrados.map(c => (
                   <button key={c.id} onClick={() => selecionarCliente(c)}
