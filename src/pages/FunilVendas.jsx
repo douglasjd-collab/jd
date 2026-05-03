@@ -401,6 +401,8 @@ export default function FunilVendas() {
     mutationFn: async (data) => {
       const baseOrdem = (etapas?.length || 0) + 1;
       const empresaId = currentUser?.empresa_id || '';
+      // Gerar slug do produto a partir do nome
+      const produtoSlug = data.nome.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 
       // Criar etapa principal do funil
       const etapaPrincipal = await base44.entities.EtapaFunil.create({
@@ -410,6 +412,7 @@ export default function FunilVendas() {
         ordem: baseOrdem,
         tipo: 'aberta',
         empresa_id: empresaId,
+        produto: produtoSlug,
       });
 
       // Criar etapa "Planejamento de Compra" pré-fixada
@@ -420,15 +423,18 @@ export default function FunilVendas() {
         ordem: baseOrdem + 1,
         tipo: 'planejamento',
         empresa_id: empresaId,
+        produto: produtoSlug,
       });
 
-      return etapaPrincipal;
+      return { etapaPrincipal, produtoSlug };
     },
-    onSuccess: () => {
+    onSuccess: ({ produtoSlug }) => {
       queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
       setCriarFunilOpen(false);
       setNovoFunil({ nome: '', cor: '#3b82f6' });
-      toast.success('Funil criado com sucesso! Coluna "Planejamento de Compra" adicionada automaticamente.');
+      setFilterProduto(produtoSlug);
+      toast.success('Funil criado com sucesso! Agora você pode criar oportunidades nele.');
     },
     onError: (error) => {
       toast.error('Erro ao criar funil: ' + error.message);
@@ -843,6 +849,18 @@ export default function FunilVendas() {
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
 
+  // Produtos únicos: das etapas (funis criados) + das oportunidades existentes
+  const produtosDasEtapas = [...new Set(etapas.map(e => e.produto).filter(Boolean))];
+  const produtosDasOportunidades = [...new Set(oportunidades.map(o => o.produto).filter(Boolean))];
+  const todosProdutos = [...new Set([...produtosDasEtapas, ...produtosDasOportunidades])];
+  const todosOsFunis = [
+    { value: 'consorcio', label: 'Consórcio' },
+    { value: 'emprestimo', label: 'Empréstimo Consignado' },
+    ...todosProdutos
+      .filter(p => p !== 'consorcio' && p !== 'emprestimo')
+      .map(p => ({ value: p, label: p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) })),
+  ];
+
   if (loadingEtapas || loadingOportunidades || !currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -910,8 +928,9 @@ export default function FunilVendas() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos os Funis</SelectItem>
-            <SelectItem value="consorcio">Funil - Consórcio</SelectItem>
-            <SelectItem value="emprestimo">Funil - Empréstimo Consignado</SelectItem>
+            {todosOsFunis.map(f => (
+              <SelectItem key={f.value} value={f.value}>Funil - {f.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {podeVerTodos && (
@@ -955,7 +974,7 @@ export default function FunilVendas() {
       </div>
 
       {/* Seletor de Funis em Botões */}
-      <div className="flex gap-2 mb-4 items-center">
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
         <Button
           variant={filterProduto === 'todos' ? 'default' : 'outline'}
           onClick={() => setFilterProduto('todos')}
@@ -963,20 +982,16 @@ export default function FunilVendas() {
         >
           Todos
         </Button>
-        <Button
-          variant={filterProduto === 'consorcio' ? 'default' : 'outline'}
-          onClick={() => setFilterProduto('consorcio')}
-          className={filterProduto === 'consorcio' ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
-        >
-          Consórcio
-        </Button>
-        <Button
-          variant={filterProduto === 'emprestimo' ? 'default' : 'outline'}
-          onClick={() => setFilterProduto('emprestimo')}
-          className={filterProduto === 'emprestimo' ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
-        >
-          Empréstimo Consignado
-        </Button>
+        {todosOsFunis.map(funil => (
+          <Button
+            key={funil.value}
+            variant={filterProduto === funil.value ? 'default' : 'outline'}
+            onClick={() => setFilterProduto(funil.value)}
+            className={filterProduto === funil.value ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
+          >
+            {funil.label}
+          </Button>
+        ))}
         {podeAlterarQuadro && (
           <Button
             size="icon"
@@ -1375,6 +1390,12 @@ export default function FunilVendas() {
                   <SelectContent>
                     <SelectItem value="consorcio">🏦 Consórcio</SelectItem>
                     <SelectItem value="emprestimo">💳 Empréstimo Consignado</SelectItem>
+                    {todosOsFunis
+                      .filter(f => f.value !== 'consorcio' && f.value !== 'emprestimo')
+                      .map(f => (
+                        <SelectItem key={f.value} value={f.value}>🗂️ {f.label}</SelectItem>
+                      ))
+                    }
                   </SelectContent>
                 </Select>
               </div>

@@ -30,6 +30,10 @@
       "default": "aberta",
       "description": "Tipo da etapa"
     },
+    "produto": {
+      "type": "string",
+      "description": "Slug do funil/produto ao qual esta etapa pertence (ex: consorcio, emprestimo, funil_credito)"
+    },
     "requer_cliente": {
       "type": "boolean",
       "default": false,
