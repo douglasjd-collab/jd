@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle, Mic, MicOff, X, PenLine } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, MicOff, X, PenLine, Zap } from 'lucide-react';
+import MensagensRapidasModal from './MensagensRapidasModal';
 
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '' }) {
+export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null }) {
   const [texto, setTexto] = useState('');
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(() => {
     return localStorage.getItem('chat_assinatura') === 'true';
@@ -18,6 +19,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [erro, setErro] = useState(null);
   const [gravando, setGravando] = useState(false);
   const [tempoGravacao, setTempoGravacao] = useState(0);
+  const [mensagensRapidasOpen, setMensagensRapidasOpen] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -193,7 +195,21 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     ? quickReplies
     : quickReplies.filter(r => r.toLowerCase().startsWith(texto.toLowerCase()));
 
+  const handleUsarMensagemRapida = ({ tipo, conteudo }) => {
+    if (tipo === 'texto') {
+      setTexto(conteudo);
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    }
+  };
+
   return (
+    <>
+    <MensagensRapidasModal
+      open={mensagensRapidasOpen}
+      onOpenChange={setMensagensRapidasOpen}
+      empresaId={empresaId}
+      onUsar={handleUsarMensagemRapida}
+    />
     <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative">
       {erro && (
         <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
@@ -297,6 +313,16 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                 <PenLine className="w-4 h-4" />
               </Button>
             )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              title="Mensagens Rápidas"
+              onClick={() => setMensagensRapidasOpen(true)}
+              className="rounded-full w-9 h-9 hover:bg-yellow-100 text-slate-500 hover:text-yellow-600"
+            >
+              <Zap className="w-4 h-4" />
+            </Button>
           </div>
 
           {/* Textarea */}
@@ -365,5 +391,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         </div>
       )}
     </form>
+    </>
   );
 }

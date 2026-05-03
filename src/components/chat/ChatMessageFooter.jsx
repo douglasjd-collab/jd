@@ -75,6 +75,7 @@ export default function ChatMessageFooter({
         }}
         isLoading={enviarMensagemMutation.isPending}
         nomeUsuario={user?.full_name || ''}
+        empresaId={empresaId}
       />
     </>
   );
