@@ -498,21 +498,8 @@ export default function Layout({ children, currentPageName }) {
         "fixed top-0 left-0 h-full w-72 bg-[#10353C] text-white z-50 transform transition-transform duration-300 lg:translate-x-0 flex flex-col",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-6 flex items-center justify-between border-b border-white/10">
-          <div className="flex items-center gap-3">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
-            ) : (
-              <div className="w-10 h-10 bg-[#23BE84] rounded-xl flex items-center justify-center">
-                <Wallet className="w-5 h-5" />
-              </div>
-            )}
-            <div>
-              <h1 className="font-bold text-lg">CRM Consórcio</h1>
-              <p className="text-xs text-white/60">Gestão Financeira</p>
-            </div>
-          </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1">
+        <div className="flex justify-end lg:hidden p-3 border-b border-white/10">
+          <button onClick={() => setSidebarOpen(false)} className="p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
