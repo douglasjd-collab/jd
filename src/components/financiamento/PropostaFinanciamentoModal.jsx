@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Save, Car, Search, UserPlus, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
   { value: 'em_analise', label: 'Em análise' },
@@ -24,7 +26,7 @@ const STATUS_COMISSAO = [
 ];
 
 const EMPTY = {
-  cliente_nome: '', cliente_cpf: '', cliente_telefone: '', cliente_renda: '', cliente_profissao: '',
+  cliente_id: '', cliente_nome: '', cliente_cpf: '', cliente_telefone: '', cliente_renda: '', cliente_profissao: '',
   tipo_veiculo: 'carro', veiculo_marca: '', veiculo_modelo: '', veiculo_ano: '', veiculo_placa: '',
   valor_veiculo: '', valor_entrada: '', valor_financiado: '', banco: '', prazo_meses: '',
   valor_parcela: '', taxa_juros: '', status: 'em_analise', vendedor_id: '', vendedor_nome: '',
@@ -38,12 +40,26 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
   const [vendedores, setVendedores] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Busca de cliente
+  const [buscaCliente, setBuscaCliente] = useState('');
+  const [clientesFiltrados, setClientesFiltrados] = useState([]);
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
+  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '' });
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
+  const [buscandoPlaca, setBuscandoPlaca] = useState(false);
+
   useEffect(() => {
+    if (!open) return;
     if (proposta) {
       setForm({ ...EMPTY, ...proposta });
+      setBuscaCliente(proposta.cliente_nome || '');
     } else {
       setForm({ ...EMPTY, data_proposta: new Date().toISOString().split('T')[0] });
+      setBuscaCliente('');
     }
+    setCadastrandoCliente(false);
+    setClientesFiltrados([]);
   }, [proposta, open]);
 
   useEffect(() => {
@@ -54,11 +70,100 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const buscarClientes = async (q) => {
+    if (q.length < 2) { setClientesFiltrados([]); return; }
+    setBuscandoCliente(true);
+    try {
+      const qLower = q.toLowerCase().trim();
+      const res = await base44.entities.Cliente.filter({ empresa_id: user.empresa_id }, 'nome_completo', 2000);
+      const filtrado = res.filter(c => {
+        const nome = (c.nome_completo || '').toLowerCase();
+        const cpf = (c.cpf || '').replace(/\D/g, '');
+        const qDigits = q.replace(/\D/g, '');
+        return nome.includes(qLower) ||
+          (qDigits.length >= 3 && cpf.includes(qDigits)) ||
+          (c.celular || '').includes(q);
+      }).slice(0, 10);
+      setClientesFiltrados(filtrado);
+    } catch { } finally { setBuscandoCliente(false); }
+  };
+
+  const selecionarCliente = (c) => {
+    setForm(f => ({
+      ...f,
+      cliente_id: c.id,
+      cliente_nome: c.nome_completo,
+      cliente_cpf: c.cpf || '',
+      cliente_telefone: c.celular || c.telefone_fixo || '',
+    }));
+    setBuscaCliente(c.nome_completo);
+    setClientesFiltrados([]);
+  };
+
+  const abrirCadastroCliente = () => {
+    setNovoCliente({ nome_completo: buscaCliente, cpf: '', rg: '', data_nascimento: '', estado_civil: '', nome_mae: '', nacionalidade: '', local_nascimento: '', celular: '', email: '' });
+    setCadastrandoCliente(true);
+    setClientesFiltrados([]);
+  };
+
+  const salvarNovoCliente = async () => {
+    if (!novoCliente.nome_completo.trim()) { toast.error('Informe o nome do cliente'); return; }
+    setSalvandoCliente(true);
+    try {
+      const criado = await base44.entities.Cliente.create({
+        empresa_id: user.empresa_id,
+        tipo_pessoa: 'Física',
+        nome_completo: novoCliente.nome_completo.trim(),
+        cpf: novoCliente.cpf || '',
+        rg: novoCliente.rg || '',
+        data_nascimento: novoCliente.data_nascimento || '',
+        estado_civil: novoCliente.estado_civil || '',
+        nome_mae: novoCliente.nome_mae || '',
+        nacionalidade: novoCliente.nacionalidade || '',
+        local_nascimento: novoCliente.local_nascimento || '',
+        celular: novoCliente.celular || '',
+        email: novoCliente.email || '',
+      });
+      selecionarCliente(criado);
+      setCadastrandoCliente(false);
+      toast.success('Cliente cadastrado e selecionado!');
+    } catch (e) {
+      toast.error('Erro ao cadastrar cliente: ' + e.message);
+    } finally {
+      setSalvandoCliente(false);
+    }
+  };
+
+  const consultarPlaca = async () => {
+    const placa = form.veiculo_placa;
+    if (!placa || placa.replace(/[^A-Za-z0-9]/g, '').length !== 7) {
+      toast.error('Informe uma placa válida com 7 caracteres.');
+      return;
+    }
+    setBuscandoPlaca(true);
+    try {
+      const res = await base44.functions.invoke('buscarVeiculoPorPlaca', { placa });
+      const data = res.data;
+      if (!data.sucesso) { toast.error(data.mensagem || 'Erro ao consultar placa.'); return; }
+      setForm(f => ({
+        ...f,
+        veiculo_marca: data.marca || f.veiculo_marca,
+        veiculo_modelo: data.modelo || f.veiculo_modelo,
+        veiculo_ano: data.ano || f.veiculo_ano,
+      }));
+      toast.success('Dados do veículo preenchidos automaticamente!');
+    } catch (e) {
+      toast.error('Erro ao consultar placa: ' + e.message);
+    } finally {
+      setBuscandoPlaca(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.cliente_id) { toast.error('Selecione um cliente do CRM'); return; }
     setSaving(true);
     const dados = { ...form };
-    // Conversões numéricas
     ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
       'valor_parcela', 'taxa_juros', 'valor_comissao_recebida', 'percentual_comissao', 'comissao_vendedor']
       .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
@@ -77,35 +182,132 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{proposta ? 'Editar Proposta' : 'Nova Proposta de Financiamento'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Car className="w-5 h-5 text-[#10353C]" />
+            {proposta ? 'Editar Proposta' : 'Nova Proposta — Financiamento de Veículo'}
+          </DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-6 pt-2">
 
-          {/* Dados do cliente */}
+          {/* Dados do Cliente */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">Dados do Cliente</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <F label="Nome do cliente *" className="lg:col-span-2">
-                <Input value={form.cliente_nome} onChange={e => set('cliente_nome', e.target.value)} required />
-              </F>
-              <F label="CPF">
-                <Input value={form.cliente_cpf} onChange={e => set('cliente_cpf', e.target.value)} placeholder="000.000.000-00" />
-              </F>
-              <F label="Telefone">
-                <Input value={form.cliente_telefone} onChange={e => set('cliente_telefone', e.target.value)} />
-              </F>
-              <F label="Renda (R$)">
-                <Input type="number" value={form.cliente_renda} onChange={e => set('cliente_renda', e.target.value)} />
-              </F>
-              <F label="Profissão">
-                <Input value={form.cliente_profissao} onChange={e => set('cliente_profissao', e.target.value)} />
-              </F>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b flex items-center gap-1.5">
+              🧾 Dados do Cliente
+            </h3>
+
+            {/* Busca de cliente */}
+            <div className="relative mb-4">
+              <Label className="text-xs font-semibold">Cliente * <span className="text-slate-400 font-normal">(buscar pelo nome, CPF ou telefone)</span></Label>
+              <Input
+                value={buscaCliente}
+                onChange={e => {
+                  setBuscaCliente(e.target.value);
+                  buscarClientes(e.target.value);
+                  setForm(f => ({ ...f, cliente_id: '' }));
+                  setCadastrandoCliente(false);
+                }}
+                placeholder="Digite nome, CPF ou telefone..."
+                className="mt-1"
+              />
+              {buscandoCliente && <Loader2 className="absolute right-3 top-8 w-4 h-4 animate-spin text-slate-400" />}
+
+              {/* Dropdown de resultados */}
+              {!cadastrandoCliente && (clientesFiltrados.length > 0 || (buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id)) && (
+                <div className="absolute z-50 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {clientesFiltrados.map(c => (
+                    <button key={c.id} type="button" onClick={() => selecionarCliente(c)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b last:border-0">
+                      <span className="font-medium">{c.nome_completo}</span>
+                      <span className="text-slate-400 text-xs ml-2">{c.cpf}</span>
+                    </button>
+                  ))}
+                  {clientesFiltrados.length === 0 && buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id && (
+                    <div className="px-3 py-2 border-b">
+                      <p className="text-xs text-slate-400 mb-1">Nenhum cliente encontrado para "{buscaCliente}"</p>
+                      <button
+                        type="button"
+                        onClick={abrirCadastroCliente}
+                        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        Cadastrar "{buscaCliente}" como novo cliente
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Mini formulário de cadastro rápido */}
+              {cadastrandoCliente && (
+                <div className="mt-2 border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-blue-700 flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente</p>
+                    <button type="button" onClick={() => setCadastrandoCliente(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+                  </div>
+                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">🧾 Dados Pessoais</p>
+                  <Input placeholder="Nome completo *" value={novoCliente.nome_completo}
+                    onChange={e => setNovoCliente(n => ({ ...n, nome_completo: e.target.value }))}
+                    className="h-8 text-sm bg-white" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="CPF" value={novoCliente.cpf} onChange={e => setNovoCliente(n => ({ ...n, cpf: e.target.value }))} className="h-8 text-sm bg-white" />
+                    <Input placeholder="RG" value={novoCliente.rg} onChange={e => setNovoCliente(n => ({ ...n, rg: e.target.value }))} className="h-8 text-sm bg-white" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] text-slate-500 mb-0.5">Data de Nascimento</p>
+                      <Input type="date" value={novoCliente.data_nascimento} onChange={e => setNovoCliente(n => ({ ...n, data_nascimento: e.target.value }))} className="h-8 text-sm bg-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500 mb-0.5">Estado Civil</p>
+                      <select value={novoCliente.estado_civil} onChange={e => setNovoCliente(n => ({ ...n, estado_civil: e.target.value }))}
+                        className="h-8 w-full rounded-md border border-input bg-white px-2 text-sm">
+                        <option value="">Selecionar...</option>
+                        {['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União Estável'].map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <Input placeholder="Nome da mãe" value={novoCliente.nome_mae} onChange={e => setNovoCliente(n => ({ ...n, nome_mae: e.target.value }))} className="h-8 text-sm bg-white" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Nacionalidade" value={novoCliente.nacionalidade} onChange={e => setNovoCliente(n => ({ ...n, nacionalidade: e.target.value }))} className="h-8 text-sm bg-white" />
+                    <Input placeholder="Naturalidade (cidade/UF)" value={novoCliente.local_nascimento} onChange={e => setNovoCliente(n => ({ ...n, local_nascimento: e.target.value }))} className="h-8 text-sm bg-white" />
+                  </div>
+                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">📞 Contato</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Telefone / WhatsApp *" value={novoCliente.celular} onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))} className="h-8 text-sm bg-white" />
+                    <Input placeholder="E-mail" type="email" value={novoCliente.email} onChange={e => setNovoCliente(n => ({ ...n, email: e.target.value }))} className="h-8 text-sm bg-white" />
+                  </div>
+                  <Button type="button" size="sm" onClick={salvarNovoCliente} disabled={salvandoCliente}
+                    className="w-full h-8 bg-blue-600 hover:bg-blue-700 text-xs gap-1.5">
+                    {salvandoCliente ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                    Cadastrar e Selecionar
+                  </Button>
+                </div>
+              )}
+
+              {/* Cliente selecionado — mostrar dados extras */}
+              {form.cliente_id && !cadastrandoCliente && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <F label="CPF">
+                    <Input value={form.cliente_cpf} onChange={e => set('cliente_cpf', e.target.value)} placeholder="000.000.000-00" />
+                  </F>
+                  <F label="Telefone">
+                    <Input value={form.cliente_telefone} onChange={e => set('cliente_telefone', e.target.value)} />
+                  </F>
+                  <F label="Profissão">
+                    <Input value={form.cliente_profissao} onChange={e => set('cliente_profissao', e.target.value)} />
+                  </F>
+                  <F label="Renda (R$)">
+                    <Input type="number" value={form.cliente_renda} onChange={e => set('cliente_renda', e.target.value)} />
+                  </F>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Dados do veículo */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">Dados do Veículo</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🚗 Dados do Veículo</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <F label="Tipo de veículo *">
                 <Select value={form.tipo_veiculo} onValueChange={v => set('tipo_veiculo', v)}>
@@ -117,6 +319,15 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                   </SelectContent>
                 </Select>
               </F>
+              <F label="Placa" className="sm:col-span-1">
+                <div className="flex gap-2">
+                  <Input value={form.veiculo_placa} onChange={e => set('veiculo_placa', e.target.value.toUpperCase())} placeholder="ABC-1234" maxLength={8} className="font-mono tracking-widest uppercase" />
+                  <Button type="button" onClick={consultarPlaca} disabled={buscandoPlaca}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 shrink-0">
+                    {buscandoPlaca ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </F>
               <F label="Marca">
                 <Input value={form.veiculo_marca} onChange={e => set('veiculo_marca', e.target.value)} />
               </F>
@@ -126,9 +337,6 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               <F label="Ano">
                 <Input value={form.veiculo_ano} onChange={e => set('veiculo_ano', e.target.value)} placeholder="2024" />
               </F>
-              <F label="Placa">
-                <Input value={form.veiculo_placa} onChange={e => set('veiculo_placa', e.target.value)} placeholder="ABC-1234" />
-              </F>
               <F label="Valor do veículo (R$)">
                 <Input type="number" value={form.valor_veiculo} onChange={e => set('valor_veiculo', e.target.value)} />
               </F>
@@ -137,7 +345,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
           {/* Dados do financiamento */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">Dados do Financiamento</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">💰 Dados do Financiamento</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <F label="Valor de entrada (R$)">
                 <Input type="number" value={form.valor_entrada} onChange={e => set('valor_entrada', e.target.value)} />
@@ -162,7 +370,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
           {/* Status e datas */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">Status e Datas</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">📋 Status e Datas</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <F label="Status da proposta *">
                 <Select value={form.status} onValueChange={v => set('status', v)}>
@@ -176,8 +384,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 <Select value={form.vendedor_id || 'none'} onValueChange={v => {
                   if (v === 'none') { set('vendedor_id', ''); set('vendedor_nome', ''); return; }
                   const vend = vendedores.find(x => x.id === v);
-                  set('vendedor_id', v);
-                  set('vendedor_nome', vend?.nome || '');
+                  set('vendedor_id', v); set('vendedor_nome', vend?.nome || '');
                 }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar vendedor" /></SelectTrigger>
                   <SelectContent>
@@ -200,7 +407,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
           {/* Comissão */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">Comissão</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">💼 Comissão</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <F label="Vr. comissão recebida (R$)">
                 <Input type="number" value={form.valor_comissao_recebida} onChange={e => set('valor_comissao_recebida', e.target.value)} />
@@ -226,12 +433,13 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             <Textarea value={form.observacoes} onChange={e => set('observacoes', e.target.value)} rows={3} />
           </F>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving} className="bg-[#10353C] hover:bg-[#10353C]/90">
-              {saving ? 'Salvando...' : proposta ? 'Salvar alterações' : 'Cadastrar proposta'}
+            <Button type="submit" disabled={saving} className="gap-1.5 bg-[#10353C] hover:bg-[#10353C]/90">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {proposta ? 'Salvar alterações' : 'Cadastrar proposta'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
