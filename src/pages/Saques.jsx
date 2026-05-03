@@ -355,7 +355,7 @@ function ModalAnexarComprovante({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster, onAnexarComprovante }) {
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster, onAnexarComprovante, podeQuitar }) {
   const total = lotes.reduce((acc, l) => ({
     valor: acc.valor + (l._valor || 0),
     acrescimos: acc.acrescimos + (l.acrescimos || 0),
@@ -413,8 +413,10 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                         variant="outline"
                         className={l.status === 'quitado'
                           ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                          : 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'}
-                        onClick={l.status !== 'quitado' ? () => onQuitar(l) : (onReprogramar ? () => onReprogramar(l) : undefined)}
+                          : podeQuitar
+                            ? 'border-amber-300 text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100 transition-colors'
+                            : 'border-amber-300 text-amber-700 bg-amber-50'}
+                        onClick={l.status !== 'quitado' && podeQuitar ? () => onQuitar(l) : (l.status === 'quitado' && onReprogramar ? () => onReprogramar(l) : undefined)}
                       >
                         {l.status === 'quitado' ? 'Quitado' : 'Programado'}
                       </Badge>
@@ -483,7 +485,7 @@ export default function Saques() {
   };
 
   const perfil = colab?.perfil || user?.role || '';
-  const isMaster = ['master', 'super_admin', 'admin'].includes(perfil);
+  const isMaster = ['master', 'super_admin', 'admin', 'gerente'].includes(perfil);
   const empresaId = colab?.empresa_id || user?.empresa_id;
 
   const userLoaded = !loadingUser && !!user;
@@ -766,6 +768,7 @@ export default function Saques() {
             onQuitar={setLoteParaQuitar}
             mostrarQuitacao={false}
             isMaster={isMaster}
+            podeQuitar={isMaster}
           />
           <TabelaLotes
             titulo="Comissões Quitadas"
@@ -777,6 +780,7 @@ export default function Saques() {
             onReprogramar={isMaster ? setLoteParaReprogramar : undefined}
             mostrarQuitacao={true}
             isMaster={isMaster}
+            podeQuitar={isMaster}
             onAnexarComprovante={setLoteParaComprovante}
           />
         </div>
