@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import PropostaFinanciamentoModal from './PropostaFinanciamentoModal';
+import PropostaFinanciamentoModal from '@/components/financiamento/PropostaFinanciamentoModal';
 
 const STATUS_LABELS = {
   em_analise: 'Em análise',
@@ -70,6 +70,20 @@ export default function PropostasFinanciamento({ user }) {
   const handleExcluir = async (id) => {
     if (!confirm('Deseja excluir esta proposta?')) return;
     await base44.entities.FinanciamentoVeiculo.delete(id);
+    carregar();
+  };
+
+  const handleSalvar = async (dados) => {
+    const base = { ...dados, empresa_id: empresaId };
+    if (propostaSelecionada?.id) {
+      await base44.entities.FinanciamentoVeiculo.update(propostaSelecionada.id, base);
+    } else {
+      const todas = await base44.entities.FinanciamentoVeiculo.filter({ empresa_id: empresaId }, '-created_date', 1);
+      const seq = (todas.length || 0) + 1;
+      base.numero_proposta = `FIN${String(seq).padStart(4, '0')}`;
+      await base44.entities.FinanciamentoVeiculo.create(base);
+    }
+    setModalOpen(false);
     carregar();
   };
 
@@ -165,10 +179,10 @@ export default function PropostasFinanciamento({ user }) {
 
       <PropostaFinanciamentoModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onOpenChange={setModalOpen}
         proposta={propostaSelecionada}
         user={user}
-        onSuccess={carregar}
+        onSalvar={handleSalvar}
       />
     </div>
   );
