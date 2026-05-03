@@ -84,6 +84,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [duracaoPausa, setDuracaoPausa] = useState(120);
   const [tipoMensagem, setTipoMensagem] = useState('template'); // 'texto' | 'imagem' | 'video' | 'template'
   const [templateSelecionado, setTemplateSelecionado] = useState(null);
+  const [mensagemTexto, setMensagemTexto] = useState('');
   const [disparando, setDisparando] = useState(false);
 
   // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -231,28 +232,63 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const dispararCampanha = async () => {
     if (!nomeCampanha.trim()) { toast.error('Informe o nome da campanha'); return; }
     if (contatosSelecionados.size === 0) { toast.error('Selecione pelo menos 1 lead'); return; }
-    if (!templateSelecionado) { toast.error('Selecione um template'); return; }
+    if (tipoMensagem === 'template' && !templateSelecionado) { toast.error('Selecione um template'); return; }
+    if (tipoMensagem === 'texto' && !mensagemTexto.trim()) { toast.error('Digite a mensagem'); return; }
 
-    const templateDados = parseTemplateDados(templateSelecionado);
     const contatos = contatosSelecionadosLista.map(c => c.telefone).filter(Boolean);
 
     setDisparando(true);
     try {
-      const resp = await base44.functions.invoke('dispararCampanhaMetaOficial', {
-        empresa_id: empresaId,
-        template_name: templateDados.nome,
-        variaveis: {},
-        contatos,
-        nome_campanha: nomeCampanha,
-        delay_segundos: Number(delaySegundos),
-        pausar_apos: Number(pausarApos),
-        duracao_pausa: Number(duracaoPausa),
-      });
+      let resp;
+      if (tipoMensagem === 'template') {
+        const templateDados = parseTemplateDados(templateSelecionado);
+        resp = await base44.functions.invoke('dispararCampanhaMetaOficial', {
+          empresa_id: empresaId,
+          template_name: templateDados.nome,
+          variaveis: {},
+          contatos,
+          nome_campanha: nomeCampanha,
+          delay_segundos: Number(delaySegundos),
+          pausar_apos: Number(pausarApos),
+          duracao_pausa: Number(duracaoPausa),
+        });
+      } else {
+        // Modo texto: disparo via Evolution API para cada contato
+        let enviados = 0, erros = 0;
+        for (const telefone of contatos) {
+          try {
+            await base44.functions.invoke('enviarMensagemWhatsapp', {
+              empresa_id: empresaId,
+              numero_cliente: telefone,
+              mensagem_texto: mensagemTexto,
+            });
+            await base44.entities.CampanhaLog.create({
+              empresa_id: empresaId,
+              tipo_campanha: 'meta_oficial',
+              cliente_telefone: telefone,
+              cliente_nome: contatosWhatsapp.find(c => c.telefone === telefone)?.nome || telefone,
+              status: 'enviada',
+            });
+            enviados++;
+          } catch {
+            erros++;
+          }
+          if (Number(delaySegundos) > 0) await new Promise(r => setTimeout(r, Number(delaySegundos) * 1000));
+        }
+        toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${enviados} enviados${erros > 0 ? ` | ⚠️ ${erros} erros` : ''}`);
+        setContatosSelecionados(new Set());
+        setNomeCampanha('');
+        setMensagemTexto('');
+        refetchLogs();
+        setDisparando(false);
+        return;
+      }
       const data = resp?.data;
       toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
       setContatosSelecionados(new Set());
       setNomeCampanha('');
       setTemplateSelecionado(null);
+      setMensagemTexto('');
       refetchLogs();
     } catch (e) {
       toast.error('Erro: ' + e.message);
@@ -546,10 +582,25 @@ export default function CampanhaMetaOficial({ empresaId }) {
                     </div>
                   )}
 
-                  {tipoMensagem !== 'template' && (
+                  {tipoMensagem === 'texto' && (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={mensagemTexto}
+                        onChange={e => setMensagemTexto(e.target.value)}
+                        placeholder={"Olá! 👋 Temos uma oferta especial para você. Entre em contato conosco!"}
+                        rows={5}
+                        className="text-sm resize-none"
+                      />
+                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                        ⚠️ Mensagens de texto são enviadas via Evolution API. Para contatos fora da janela de 24h, use o modo Template.
+                      </p>
+                    </div>
+                  )}
+
+                  {(tipoMensagem === 'imagem' || tipoMensagem === 'vídeo') && (
                     <div className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-slate-200 rounded-lg text-slate-400">
                       <p className="text-sm">Modo "{tipoMensagem}" em desenvolvimento</p>
-                      <p className="text-xs mt-1">Use o modo Template para disparos oficiais via Meta</p>
+                      <p className="text-xs mt-1">Use o modo Template ou Texto por enquanto</p>
                     </div>
                   )}
                 </div>
@@ -573,7 +624,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                       size="sm"
                       className="gap-2 bg-green-600 hover:bg-green-700"
                       onClick={dispararCampanha}
-                      disabled={disparando || contatosSelecionados.size === 0 || !templateSelecionado || !nomeCampanha.trim()}
+                      disabled={disparando || contatosSelecionados.size === 0 || !nomeCampanha.trim() || (tipoMensagem === 'template' && !templateSelecionado) || (tipoMensagem === 'texto' && !mensagemTexto.trim())}
                     >
                       {disparando
                         ? <><Loader2 className="w-4 h-4 animate-spin" /> Disparando...</>
