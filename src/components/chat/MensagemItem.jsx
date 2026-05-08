@@ -75,17 +75,25 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.arquivo_url]);
 
-  // Baixar mídia se necessário (URL não-permanente ou sem URL)
+  // Baixar mídia apenas se não tiver URL permanente armazenada
   useEffect(() => {
     const tiposMidia = ['audio', 'imagem', 'video', 'pdf', 'documento'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
-    if (loadingMedia) return;  // Já carregando
 
-    // Se já tem URL permanente, não faz nada
-    if (mediaUrl && (mediaUrl.includes('base44') || mediaUrl.includes('supabase') || mediaUrl.includes('amazonaws'))) return;
+    // Só tenta baixar se NÃO tiver nenhuma URL permanente no banco
+    // URLs permanentes ficam em base44, supabase ou amazonaws
+    const temUrlPermanente = mediaUrl && (
+      mediaUrl.includes('base44') ||
+      mediaUrl.includes('supabase') ||
+      mediaUrl.includes('amazonaws') ||
+      mediaUrl.startsWith('https://') // já é URL pública — não forçar download
+    );
+    if (temUrlPermanente) return;
 
-    // Tenta baixar sempre que não tem URL ou é URL temporária
+    // Só tenta se realmente não tem URL nenhuma (não tenta re-baixar URLs temporárias que causam downloads)
+    if (mediaUrl) return;
+
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
