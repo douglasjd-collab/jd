@@ -94,6 +94,10 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [mensagemTexto, setMensagemTexto] = useState('');
   const [disparando, setDisparando] = useState(false);
   const [apiSelecionada, setApiSelecionada] = useState('meta'); // 'meta' | 'evolution'
+  // ─── Funil de Vendas state ──────────────────────────────────────────────────
+  const [adicionarAoFunil, setAdicionarAoFunil] = useState(false);
+  const [funilSelecionado, setFunilSelecionado] = useState('');
+  const [etapaSelecionada, setEtapaSelecionada] = useState('');
 
   // ─── Queries ─────────────────────────────────────────────────────────────────
   const { data: templates = [], refetch: refetchTemplates } = useQuery({
@@ -136,6 +140,32 @@ export default function CampanhaMetaOficial({ empresaId }) {
       catch { return []; }
     },
   });
+
+  const { data: etapasFunil = [] } = useQuery({
+    queryKey: ['etapas-funil-campanha', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.EtapaFunil.filter({ empresa_id: empresaId, status: 'ativa' }, 'ordem', 200),
+  });
+
+  // Derivar funis únicos a partir das etapas
+  const funisDisponiveis = useMemo(() => {
+    const produtos = [...new Set(etapasFunil.map(e => e.produto).filter(Boolean))];
+    const funisBase = ['consorcio', 'emprestimo'];
+    const todosProdutos = [...new Set([...funisBase, ...produtos])];
+    return todosProdutos.map(p => ({
+      value: p,
+      label: p === 'consorcio' ? 'Consórcio' : p === 'emprestimo' ? 'Empréstimo Consignado' : p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    }));
+  }, [etapasFunil]);
+
+  const etapasDoProduto = useMemo(() => {
+    if (!funilSelecionado) return [];
+    return etapasFunil.filter(e => {
+      if (funilSelecionado === 'consorcio') return !e.produto || e.produto === 'consorcio';
+      if (funilSelecionado === 'emprestimo') return e.produto === 'emprestimo';
+      return e.produto === funilSelecionado;
+    });
+  }, [etapasFunil, funilSelecionado]);
 
   // ─── Derived ─────────────────────────────────────────────────────────────────
   const stats = {
@@ -242,6 +272,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
     if (contatosSelecionados.size === 0) { toast.error('Selecione pelo menos 1 lead'); return; }
     if (tipoMensagem === 'template' && !templateSelecionado) { toast.error('Selecione um template'); return; }
     if (tipoMensagem === 'texto' && !mensagemTexto.trim()) { toast.error('Digite a mensagem'); return; }
+    if (adicionarAoFunil && !etapaSelecionada) { toast.error('Selecione uma etapa do funil'); return; }
 
     const contatos = contatosSelecionadosLista.map(c => c.telefone).filter(Boolean);
 
@@ -273,6 +304,9 @@ export default function CampanhaMetaOficial({ empresaId }) {
         });
         const data = resp?.data;
         toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
+        if (adicionarAoFunil && etapaSelecionada) {
+          await adicionarContatosAoFunil();
+        }
         setContatosSelecionados(new Set());
         setNomeCampanha('');
         setMensagemTexto('');
@@ -282,6 +316,12 @@ export default function CampanhaMetaOficial({ empresaId }) {
       }
       const data = resp?.data;
       toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
+
+      // Adicionar ao funil se configurado
+      if (adicionarAoFunil && etapaSelecionada) {
+        await adicionarContatosAoFunil();
+      }
+
       setContatosSelecionados(new Set());
       setNomeCampanha('');
       setTemplateSelecionado(null);
@@ -292,6 +332,28 @@ export default function CampanhaMetaOficial({ empresaId }) {
     } finally {
       setDisparando(false);
     }
+  };
+
+  const adicionarContatosAoFunil = async () => {
+    const etapa = etapasDoProduto.find(e => e.id === etapaSelecionada);
+    if (!etapa) return;
+    let criados = 0;
+    for (const contato of contatosSelecionadosLista) {
+      try {
+        await base44.entities.Oportunidade.create({
+          empresa_id: empresaId,
+          titulo: contato.nome || contato.telefone,
+          cliente_nome: contato.nome || '',
+          telefone_lead: contato.telefone || '',
+          etapa_id: etapa.id,
+          produto: funilSelecionado,
+          status: 'aberta',
+          origem: `Campanha: ${nomeCampanha}`,
+        });
+        criados++;
+      } catch {}
+    }
+    if (criados > 0) toast.success(`🎯 ${criados} contatos adicionados ao funil "${etapa.nome}"`);
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -489,6 +551,45 @@ export default function CampanhaMetaOficial({ empresaId }) {
                     <p className="text-sm font-semibold text-green-900">Marcar leads selecionados para prospecção</p>
                     <p className="text-xs text-green-700 mt-0.5">Adiciona automaticamente todos os leads desta campanha à fila de prospecção (canal WhatsApp) — eles aparecerão no módulo Prospecção.</p>
                   </div>
+                </div>
+
+                {/* Adicionar ao Funil de Vendas */}
+                <div className={`border rounded-xl p-4 space-y-3 ${adicionarAoFunil ? 'border-blue-300 bg-blue-50/50' : ''}`}>
+                  <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setAdicionarAoFunil(!adicionarAoFunil); setFunilSelecionado(''); setEtapaSelecionada(''); }}>
+                    <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${adicionarAoFunil ? 'bg-blue-600' : 'border-2 border-slate-300'}`}>
+                      {adicionarAoFunil && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">Adicionar contatos ao Funil de Vendas</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Os contatos desta campanha serão criados como oportunidades em uma etapa do funil.</p>
+                    </div>
+                  </div>
+                  {adicionarAoFunil && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-1 block">Funil de Vendas *</Label>
+                        <Select value={funilSelecionado} onValueChange={v => { setFunilSelecionado(v); setEtapaSelecionada(''); }}>
+                          <SelectTrigger className="text-sm bg-white"><SelectValue placeholder="Selecionar funil..." /></SelectTrigger>
+                          <SelectContent>
+                            {funisDisponiveis.map(f => (
+                              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-1 block">Etapa (Coluna) *</Label>
+                        <Select value={etapaSelecionada} onValueChange={setEtapaSelecionada} disabled={!funilSelecionado}>
+                          <SelectTrigger className="text-sm bg-white"><SelectValue placeholder={funilSelecionado ? 'Selecionar etapa...' : 'Selecione o funil primeiro'} /></SelectTrigger>
+                          <SelectContent>
+                            {etapasDoProduto.map(e => (
+                              <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Configurações de Timing */}
