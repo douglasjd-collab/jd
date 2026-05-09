@@ -95,6 +95,32 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     return Object.values(groups);
   }, [planos]);
 
+  const formatCurrency = (value) => {
+    return value?.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    });
+  };
+
+  const formatCurrencyInput = (value) => {
+    if (!value) return '';
+    const number = parseFloat(value.replace(/\D/g, '')) / 100;
+    return number.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  };
+
+  const parseCurrencyInput = (value) => {
+    if (!value) return '';
+    return value.replace(/\D/g, '');
+  };
+
+  const digitosParaReais = (digitos) => {
+    if (!digitos) return 0;
+    return parseFloat(digitos) / 100;
+  };
+
   const filteredPlanos = useMemo(() => {
     const filtered = groupedPlanos.filter(g => {
       if (search) {
@@ -119,34 +145,6 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     // Ordenar por valor (crescente)
     return filtered.sort((a, b) => (a.valor_bem || 0) - (b.valor_bem || 0));
   }, [groupedPlanos, search, valorMin, valorMax]);
-
-  const formatCurrency = (value) => {
-    return value?.toLocaleString('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
-    });
-  };
-
-  const formatCurrencyInput = (value) => {
-    if (!value) return '';
-    const number = parseFloat(value.replace(/\D/g, '')) / 100;
-    return number.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    });
-  };
-
-  const parseCurrencyInput = (value) => {
-    if (!value) return '';
-    // Retorna apenas os dígitos, que serão divididos por 100 ao exibir
-    return value.replace(/\D/g, '');
-  };
-
-  // Converte string de dígitos (centavos) para número em reais
-  const digitosParaReais = (digitos) => {
-    if (!digitos) return 0;
-    return parseFloat(digitos) / 100;
-  };
 
   const handleSelectVariacao = (group, variacao) => {
     // Extrair número do grupo do campo plano (ex: "9130|..." -> "9130")
