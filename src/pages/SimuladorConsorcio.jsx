@@ -50,6 +50,7 @@ export default function SimuladorConsorcio() {
   const [cartaIndex, setCartaIndex] = useState(null);
   const [planoSelecionadoInfo, setPlanoSelecionadoInfo] = useState('');
   const [parcelaJaReduzida, setParcelaJaReduzida] = useState(null); // null = não respondido, true/false
+  const [usarParcelaReduzida, setUsarParcelaReduzida] = useState(null); // null = não respondido, true/false
 
   useEffect(() => {
     loadUser();
@@ -139,6 +140,16 @@ export default function SimuladorConsorcio() {
     novasCartas[index][field] = value;
     setCartas(novasCartas);
   };
+
+  // Verifica se alguma carta tem parcela reduzida informada
+  const temParcelaReduzidaNasCartas = cartas.some(c => parseFloat(c.parcelaReduzida) > 0);
+
+  // Resetar escolha quando cartas mudam e não tem mais parcela reduzida
+  useEffect(() => {
+    if (!temParcelaReduzidaNasCartas) {
+      setUsarParcelaReduzida(null);
+    }
+  }, [temParcelaReduzidaNasCartas]);
 
   const creditoTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.credito) || 0), 0);
   const parcelaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcela) || 0), 0);
@@ -261,6 +272,12 @@ export default function SimuladorConsorcio() {
       return;
     }
 
+    // Se há parcela reduzida preenchida, exigir resposta
+    if (usarLanceProprio && temParcelaReduzidaNasCartas && usarParcelaReduzida === null) {
+      toast.error('Responda se deseja usar a parcela reduzida ou a parcela normal na contratação');
+      return;
+    }
+
     const prazoNum = parseFloat(prazoOriginal);
     const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
 
@@ -335,8 +352,9 @@ export default function SimuladorConsorcio() {
         const primeira_parcela_reduzida_total = cartas.reduce(
           (acc, c) => acc + Number(c.parcelaReduzida || 0), 0
         );
-        const haParcelaReduzida = primeira_parcela_reduzida_total > 0;
-        const primeira_parcela_final = haParcelaReduzida ? primeira_parcela_reduzida_total : parcelaTotal;
+        // Usa parcela reduzida somente se o usuário escolheu "sim"
+        const deveUsarReduzida = primeira_parcela_reduzida_total > 0 && usarParcelaReduzida === true;
+        const primeira_parcela_final = deveUsarReduzida ? primeira_parcela_reduzida_total : parcelaTotal;
         // Saldo devedor = total a pagar - lance próprio - 1ª parcela
         saldoDevedorTotal = round2(totalPlano - lanceProprioValor - primeira_parcela_final);
 
@@ -1166,6 +1184,43 @@ export default function SimuladorConsorcio() {
                       </>
                     )}
                   </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pergunta parcela reduzida - aparece quando há lance próprio e parcela reduzida preenchida */}
+          {usarLanceProprio && temParcelaReduzidaNasCartas && (
+            <Card className="border-0 shadow-sm border-l-4 border-l-orange-400">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium text-orange-700">
+                  🏷️ Qual parcela usar na contratação?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-2">
+                <p className="text-xs text-slate-500">
+                  Este plano possui uma 1ª parcela reduzida. Escolha qual será usada no cálculo do saldo devedor.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setUsarParcelaReduzida(false)}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${usarParcelaReduzida === false ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  >
+                    <p className={`text-xs font-semibold ${usarParcelaReduzida === false ? 'text-blue-700' : 'text-slate-700'}`}>📋 Parcela Normal</p>
+                    <p className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(parcelaTotal)}</p>
+                  </button>
+                  <button
+                    onClick={() => setUsarParcelaReduzida(true)}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${usarParcelaReduzida === true ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  >
+                    <p className={`text-xs font-semibold ${usarParcelaReduzida === true ? 'text-orange-700' : 'text-slate-700'}`}>🏷️ Parcela Reduzida</p>
+                    <p className="text-sm font-bold text-slate-800 mt-1">
+                      {formatCurrency(cartas.reduce((acc, c) => acc + Number(c.parcelaReduzida || 0), 0))}
+                    </p>
+                  </button>
+                </div>
+                {usarParcelaReduzida === null && (
+                  <p className="text-xs text-red-500 font-medium">⚠️ Resposta obrigatória para calcular</p>
                 )}
               </CardContent>
             </Card>
