@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Calendar, CheckSquare, MessageCircle, User, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { format } from 'date-fns';
+import { format, differenceInDays, differenceInHours } from 'date-fns';
 
 const prioridadeCfg = {
   urgente: { label: 'Urgente', className: 'bg-red-600 text-white' },
@@ -43,6 +43,21 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
   try { responsaveisFotos = tarefa.responsaveis_fotos ? JSON.parse(tarefa.responsaveis_fotos) : []; } catch {}
 
   const pCfg = prioridadeCfg[tarefa.prioridade] || prioridadeCfg.media;
+
+  // Tempo restante até o prazo
+  function tempoRestante() {
+    if (!tarefa.data_conclusao_prevista) return null;
+    if (tarefa.status === 'concluido' || tarefa.status === 'arquivado') return null;
+    const prazo = new Date(tarefa.data_conclusao_prevista + 'T23:59:59');
+    const agora = new Date();
+    const dias = differenceInDays(prazo, agora);
+    if (dias < 0) return { label: `${Math.abs(dias)}d atrasada`, cor: 'text-red-600' };
+    if (dias === 0) return { label: 'Vence hoje', cor: 'text-amber-600' };
+    if (dias === 1) return { label: 'Vence amanhã', cor: 'text-amber-500' };
+    if (dias <= 7) return { label: `${dias}d restantes`, cor: 'text-amber-500' };
+    return { label: `${dias}d restantes`, cor: 'text-slate-400' };
+  }
+  const tempo = tempoRestante();
 
   return (
     <div
@@ -108,6 +123,24 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
         </div>
       )}
 
+      {/* Datas: início e prazo */}
+      {(tarefa.data_cadastro || tarefa.data_conclusao_prevista) && (
+        <div className="flex items-center gap-3 mt-2 text-xs text-slate-400 flex-wrap">
+          {tarefa.data_cadastro && (
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              Início: {format(new Date(tarefa.data_cadastro + 'T12:00:00'), 'dd/MM/yy')}
+            </span>
+          )}
+          {tarefa.data_conclusao_prevista && (
+            <span className={`flex items-center gap-1 ${atrasada ? 'text-red-600 font-semibold' : venceHoje ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
+              <Calendar className="w-3 h-3" />
+              Prazo: {format(new Date(tarefa.data_conclusao_prevista + 'T12:00:00'), 'dd/MM/yy')}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Footer */}
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
         <div className="flex items-center gap-1 -space-x-2">
@@ -123,10 +156,9 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
             </div>
           )}
         </div>
-        {tarefa.data_conclusao_prevista && (
-          <span className={`text-xs flex items-center gap-1 ${atrasada ? 'text-red-600 font-semibold' : venceHoje ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
-            <Calendar className="w-3 h-3" />
-            {format(new Date(tarefa.data_conclusao_prevista + 'T12:00:00'), 'dd/MM/yy')}
+        {tempo && (
+          <span className={`text-xs font-semibold ${tempo.cor}`}>
+            ⏱ {tempo.label}
           </span>
         )}
       </div>
