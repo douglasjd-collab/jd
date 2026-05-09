@@ -42,7 +42,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   const [clienteDropdownOpen, setClienteDropdownOpen] = useState(false);
   const [responsavelSearch, setResponsavelSearch] = useState('');
   const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
-  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', celular: '', cpf: '' });
+  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', celular: '', cpf: '', data_nascimento: '' });
   const [salvandoCliente, setSalvandoCliente] = useState(false);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
       setClienteDropdownOpen(false);
       setResponsavelSearch('');
       setCadastrandoCliente(false);
-      setNovoCliente({ nome_completo: '', celular: '', cpf: '' });
+      setNovoCliente({ nome_completo: '', celular: '', cpf: '', data_nascimento: '' });
     }
   }, [open, tarefa, statusInicial, statusList]);
 
@@ -157,8 +157,25 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
 
   const responsaveisSelecionadosDados = responsaveisSel.map(id => colaboradores.find(c => c.id === id)).filter(Boolean);
 
+  const formatarCelular = (v) => {
+    const nums = v.replace(/\D/g, '').slice(0, 11);
+    if (nums.length <= 2) return nums;
+    if (nums.length <= 7) return `(${nums.slice(0,2)}) ${nums.slice(2)}`;
+    if (nums.length <= 11) return `(${nums.slice(0,2)}) ${nums.slice(2,3)} ${nums.slice(3,7)}-${nums.slice(7)}`;
+    return `(${nums.slice(0,2)}) ${nums.slice(2,3)} ${nums.slice(3,7)}-${nums.slice(7,11)}`;
+  };
+
+  const formatarCPF = (v) => {
+    const nums = v.replace(/\D/g, '').slice(0, 11);
+    if (nums.length <= 3) return nums;
+    if (nums.length <= 6) return `${nums.slice(0,3)}.${nums.slice(3)}`;
+    if (nums.length <= 9) return `${nums.slice(0,3)}.${nums.slice(3,6)}.${nums.slice(6)}`;
+    return `${nums.slice(0,3)}.${nums.slice(3,6)}.${nums.slice(6,9)}-${nums.slice(9,11)}`;
+  };
+
   const handleSalvarNovoCliente = async () => {
     if (!novoCliente.nome_completo.trim()) { toast.error('Informe o nome do cliente'); return; }
+    if (!novoCliente.data_nascimento) { toast.error('Informe a data de nascimento'); return; }
     setSalvandoCliente(true);
     try {
       const empresaId = currentUser?.empresa_id;
@@ -166,6 +183,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
         nome_completo: novoCliente.nome_completo.trim(),
         celular: novoCliente.celular.trim(),
         cpf: novoCliente.cpf.trim(),
+        data_nascimento: novoCliente.data_nascimento,
         empresa_id: empresaId,
         status: 'ativo',
       });
@@ -173,7 +191,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
       setCadastrandoCliente(false);
       setClienteDropdownOpen(false);
       setClienteSearch('');
-      setNovoCliente({ nome_completo: '', celular: '', cpf: '' });
+      setNovoCliente({ nome_completo: '', celular: '', cpf: '', data_nascimento: '' });
       toast.success('Cliente cadastrado e selecionado!');
     } catch (e) {
       toast.error('Erro ao cadastrar cliente: ' + e.message);
@@ -263,17 +281,26 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
                               className="text-sm h-8"
                             />
                             <Input
-                              placeholder="Celular"
+                              placeholder="Celular ex: (87) 9 8128-5628"
                               value={novoCliente.celular}
-                              onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))}
+                              onChange={e => setNovoCliente(n => ({ ...n, celular: formatarCelular(e.target.value) }))}
                               className="text-sm h-8"
                             />
                             <Input
-                              placeholder="CPF"
+                              placeholder="CPF ex: 101.765.654-55"
                               value={novoCliente.cpf}
-                              onChange={e => setNovoCliente(n => ({ ...n, cpf: e.target.value }))}
+                              onChange={e => setNovoCliente(n => ({ ...n, cpf: formatarCPF(e.target.value) }))}
                               className="text-sm h-8"
                             />
+                            <div>
+                              <label className="text-xs text-slate-500 block mb-0.5">Data de Nascimento *</label>
+                              <Input
+                                type="date"
+                                value={novoCliente.data_nascimento}
+                                onChange={e => setNovoCliente(n => ({ ...n, data_nascimento: e.target.value }))}
+                                className="text-sm h-8"
+                              />
+                            </div>
                             <div className="flex gap-2">
                               <Button size="sm" className="flex-1 h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={handleSalvarNovoCliente} disabled={salvandoCliente}>
                                 {salvandoCliente ? 'Salvando...' : 'Salvar'}
