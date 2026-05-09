@@ -108,9 +108,8 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
       }
       
       const valor = g.valor_bem || 0;
-      // valorMin e valorMax são strings numéricas simples (ex: "40000")
-      const min = valorMin ? parseFloat(valorMin) : 0;
-      const max = valorMax ? parseFloat(valorMax) : Infinity;
+      const min = valorMin ? digitosParaReais(valorMin) : 0;
+      const max = valorMax ? digitosParaReais(valorMax) : Infinity;
       if (min && valor < min) return false;
       if (max < Infinity && valor > max) return false;
       
@@ -139,7 +138,14 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
 
   const parseCurrencyInput = (value) => {
     if (!value) return '';
+    // Retorna apenas os dígitos, que serão divididos por 100 ao exibir
     return value.replace(/\D/g, '');
+  };
+
+  // Converte string de dígitos (centavos) para número em reais
+  const digitosParaReais = (digitos) => {
+    if (!digitos) return 0;
+    return parseFloat(digitos) / 100;
   };
 
   const handleSelectVariacao = (group, variacao) => {
@@ -190,18 +196,18 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-slate-400" />
                 <Input
-                  type="number"
+                  type="text"
                   placeholder="Valor mín. (R$)"
-                  value={valorMin}
-                  onChange={(e) => setValorMin(e.target.value)}
+                  value={valorMin ? formatCurrencyInput(valorMin) : ''}
+                  onChange={(e) => setValorMin(parseCurrencyInput(e.target.value))}
                   className="w-36"
                 />
                 <span className="text-slate-400 text-sm">até</span>
                 <Input
-                  type="number"
+                  type="text"
                   placeholder="Valor máx. (R$)"
-                  value={valorMax}
-                  onChange={(e) => setValorMax(e.target.value)}
+                  value={valorMax ? formatCurrencyInput(valorMax) : ''}
+                  onChange={(e) => setValorMax(parseCurrencyInput(e.target.value))}
                   className="w-36"
                 />
                 {(valorMin || valorMax) && (
