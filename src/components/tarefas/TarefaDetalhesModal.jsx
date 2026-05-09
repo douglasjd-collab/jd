@@ -221,6 +221,17 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
 
                 {/* Cards: prazo + setor */}
                 <div className="flex gap-3 flex-wrap">
+                  {tarefa.data_cadastro && (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl border bg-white border-slate-200">
+                      <Calendar className="w-4 h-4 text-slate-400" />
+                      <div>
+                        <p className="text-xs text-slate-400 font-medium">Início</p>
+                        <p className="text-sm font-bold text-slate-800">
+                          {format(new Date(tarefa.data_cadastro + 'T12:00:00'), 'dd/MM/yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {tarefa.data_conclusao_prevista && (
                     <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${atrasada ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
                       <Calendar className={`w-4 h-4 ${atrasada ? 'text-red-400' : 'text-slate-400'}`} />
