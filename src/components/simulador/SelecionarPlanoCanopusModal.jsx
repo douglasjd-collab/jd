@@ -55,8 +55,11 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
       const codigo = plano.nome_bem?.split(' - ')[0]?.trim() || plano.external_hash?.split('_')[0];
       if (!codigo) return;
       
-      if (!groups[codigo]) {
-        groups[codigo] = {
+      // Agrupar por código + valor_bem para não perder planos com mesmo código mas créditos diferentes (ex: 50% vs 100%)
+      const chave = `${codigo}__${plano.valor_bem || 0}`;
+      
+      if (!groups[chave]) {
+        groups[chave] = {
           codigo,
           nome_bem: plano.nome_bem,
           valor_bem: plano.valor_bem,
@@ -67,7 +70,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
         };
       }
       
-      groups[codigo].variacoes.push({
+      groups[chave].variacoes.push({
         id: plano.id,
         prazo_meses: plano.prazo_meses,
         parcela: plano.parcela,
