@@ -64,8 +64,8 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
       const codigo = plano.nome_bem?.split(' - ')[0]?.trim() || plano.external_hash?.split('_')[0];
       if (!codigo) return;
       
-      // Agrupar por código + valor_bem para não perder planos com mesmo código mas créditos diferentes (ex: 50% vs 100%)
-      const chave = `${codigo}__${plano.valor_bem || 0}`;
+      // Agrupar por nome_bem completo + valor_bem para não perder planos com mesmo código mas nomes diferentes (ex: 50% vs 70% vs normal)
+      const chave = `${plano.nome_bem || codigo}__${plano.valor_bem || 0}`;
       
       if (!groups[chave]) {
         groups[chave] = {
