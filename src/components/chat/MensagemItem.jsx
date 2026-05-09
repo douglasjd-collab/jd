@@ -10,7 +10,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder }) {
-  const [mediaUrl, setMediaUrl] = useState(mensagem.arquivo_url || null);
+  // Não auto-carregar arquivos .enc (criptografados do WhatsApp — causam download indesejado no browser)
+  const isUrlValida = (url) => {
+    if (!url) return false;
+    if (url.endsWith('.enc') || url.includes('.enc?') || url.includes('media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
+    return true;
+  };
+  const [mediaUrl, setMediaUrl] = useState(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
     mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
@@ -68,9 +74,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   };
 
-  // Atualizar mediaUrl se mensagem for atualizada externamente
+  // Atualizar mediaUrl se mensagem for atualizada externamente (só URLs válidas)
   useEffect(() => {
-    if (mensagem.arquivo_url && mensagem.arquivo_url !== mediaUrl) {
+    if (mensagem.arquivo_url && mensagem.arquivo_url !== mediaUrl && isUrlValida(mensagem.arquivo_url)) {
       setMediaUrl(mensagem.arquivo_url);
     }
   }, [mensagem.arquivo_url]);
