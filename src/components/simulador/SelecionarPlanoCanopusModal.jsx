@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -29,6 +29,15 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
   const [search, setSearch] = useState('');
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
+
+  // Resetar filtros ao abrir o modal
+  React.useEffect(() => {
+    if (open) {
+      setSearch('');
+      setValorMin('');
+      setValorMax('');
+    }
+  }, [open]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [variacoesDialogOpen, setVariacoesDialogOpen] = useState(false);
 
@@ -48,7 +57,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     staleTime: 0,
   });
 
-  const groupedPlanos = React.useMemo(() => {
+  const groupedPlanos = useMemo(() => {
     const groups = {};
     
     planos.forEach(plano => {
@@ -86,7 +95,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     return Object.values(groups);
   }, [planos]);
 
-  const filteredPlanos = React.useMemo(() => {
+  const filteredPlanos = useMemo(() => {
     const filtered = groupedPlanos.filter(g => {
       if (search) {
         const s = search.toLowerCase();
