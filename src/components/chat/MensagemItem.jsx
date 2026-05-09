@@ -75,25 +75,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.arquivo_url]);
 
-  // Baixar mídia apenas se não tiver URL permanente armazenada
-  useEffect(() => {
-    const tiposMidia = ['audio', 'imagem', 'video', 'pdf', 'documento'];
-    if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
-    if (mensagem.id?.startsWith('temp_')) return;
-
-    // Só tenta baixar se NÃO tiver nenhuma URL permanente no banco
-    // URLs permanentes ficam em base44, supabase ou amazonaws
-    const temUrlPermanente = mediaUrl && (
-      mediaUrl.includes('base44') ||
-      mediaUrl.includes('supabase') ||
-      mediaUrl.includes('amazonaws') ||
-      mediaUrl.startsWith('https://') // já é URL pública — não forçar download
-    );
-    if (temUrlPermanente) return;
-
-    // Só tenta se realmente não tem URL nenhuma (não tenta re-baixar URLs temporárias que causam downloads)
-    if (mediaUrl) return;
-
+  const handleCarregarMidia = () => {
+    if (loadingMedia || mediaUrl) return;
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
@@ -102,13 +85,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     })
       .then(res => {
         const data = res?.data;
-        if (data?.arquivo_url) {
-          setMediaUrl(data.arquivo_url);
-        }
+        if (data?.arquivo_url) setMediaUrl(data.arquivo_url);
       })
       .catch(err => console.error('Erro ao baixar mídia:', err))
       .finally(() => setLoadingMedia(false));
-  }, [mensagem.id, mensagem.tipo_conteudo]);
+  };
 
   const handleTranscrever = async () => {
     if (!mediaUrl) return;
@@ -159,7 +140,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   onClick={() => setImagemAberta(true)}
                 />
               ) : (
-                <div className="bg-white/10 rounded-lg p-4 text-sm opacity-75">Imagem indisponível</div>
+                <button onClick={handleCarregarMidia} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg p-4 text-sm opacity-75 transition-colors cursor-pointer">
+                  <Download className="w-4 h-4" /> Carregar imagem
+                </button>
               )}
             </div>
             <Dialog open={imagemAberta} onOpenChange={setImagemAberta}>
@@ -181,11 +164,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         const proximaVelocidade = velocidades[(velocidades.indexOf(velocidadeAudio) + 1) % velocidades.length];
         return (
           <div className="flex flex-col gap-2 min-w-[200px]">
-            {!mediaUrl ? (
+            {loadingMedia ? (
               <div className="flex items-center gap-2 bg-white/10 rounded-lg p-3">
                 <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
                 <span className="text-sm opacity-75">Carregando áudio...</span>
               </div>
+            ) : !mediaUrl ? (
+              <button onClick={handleCarregarMidia} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg p-3 text-sm opacity-75 transition-colors cursor-pointer">
+                <Download className="w-4 h-4 flex-shrink-0" /> Carregar áudio
+              </button>
             ) : mediaUrl ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
@@ -232,12 +219,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 bg-white/10 rounded-lg p-3">
-                <FileAudio className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm opacity-75">Áudio indisponível</span>
-              </div>
-            )}
+            ) : null}
           </div>
         );
 
@@ -251,7 +233,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             ) : mediaUrl ? (
               <video controls className="rounded-lg max-w-full h-auto bg-black" src={mediaUrl} />
             ) : (
-              <div className="bg-white/10 rounded-lg p-4 text-sm opacity-75">Vídeo indisponível</div>
+              <button onClick={handleCarregarMidia} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg p-4 text-sm opacity-75 transition-colors cursor-pointer">
+                <Download className="w-4 h-4" /> Carregar vídeo
+              </button>
             )}
           </div>
         );
@@ -271,6 +255,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 <div className="w-full h-28 flex items-center justify-center bg-slate-100">
                   <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                 </div>
+              ) : !urlDoc ? (
+                <button onClick={(e) => { e.stopPropagation(); handleCarregarMidia(); }} className="w-full h-28 flex flex-col items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer">
+                  <Download className="w-6 h-6 text-slate-400" />
+                  <span className="text-xs text-slate-500">Carregar documento</span>
+                </button>
               ) : urlDoc && isPdf ? (
                 <div className="relative w-full h-36 bg-slate-100 flex items-center justify-center overflow-hidden">
                   <iframe
