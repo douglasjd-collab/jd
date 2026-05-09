@@ -12,6 +12,7 @@ import { Plus, Trash2, Star, X, Search, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
+import CadastrarClienteModal from './CadastrarClienteModal';
 
 function getInitials(name = '') {
   const parts = name.trim().split(/\s+/);
@@ -42,8 +43,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   const [clienteDropdownOpen, setClienteDropdownOpen] = useState(false);
   const [responsavelSearch, setResponsavelSearch] = useState('');
   const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
-  const [novoCliente, setNovoCliente] = useState({ nome_completo: '', celular: '', cpf: '', data_nascimento: '' });
-  const [salvandoCliente, setSalvandoCliente] = useState(false);
+  const [nomeInicialCliente, setNomeInicialCliente] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -87,7 +87,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
       setClienteDropdownOpen(false);
       setResponsavelSearch('');
       setCadastrandoCliente(false);
-      setNovoCliente({ nome_completo: '', celular: '', cpf: '', data_nascimento: '' });
+      setNomeInicialCliente('');
     }
   }, [open, tarefa, statusInicial, statusList]);
 
@@ -157,50 +157,15 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
 
   const responsaveisSelecionadosDados = responsaveisSel.map(id => colaboradores.find(c => c.id === id)).filter(Boolean);
 
-  const formatarCelular = (v) => {
-    const nums = v.replace(/\D/g, '').slice(0, 11);
-    if (nums.length <= 2) return nums;
-    if (nums.length <= 7) return `(${nums.slice(0,2)}) ${nums.slice(2)}`;
-    if (nums.length <= 11) return `(${nums.slice(0,2)}) ${nums.slice(2,3)} ${nums.slice(3,7)}-${nums.slice(7)}`;
-    return `(${nums.slice(0,2)}) ${nums.slice(2,3)} ${nums.slice(3,7)}-${nums.slice(7,11)}`;
-  };
-
-  const formatarCPF = (v) => {
-    const nums = v.replace(/\D/g, '').slice(0, 11);
-    if (nums.length <= 3) return nums;
-    if (nums.length <= 6) return `${nums.slice(0,3)}.${nums.slice(3)}`;
-    if (nums.length <= 9) return `${nums.slice(0,3)}.${nums.slice(3,6)}.${nums.slice(6)}`;
-    return `${nums.slice(0,3)}.${nums.slice(3,6)}.${nums.slice(6,9)}-${nums.slice(9,11)}`;
-  };
-
-  const handleSalvarNovoCliente = async () => {
-    if (!novoCliente.nome_completo.trim()) { toast.error('Informe o nome do cliente'); return; }
-    if (!novoCliente.data_nascimento) { toast.error('Informe a data de nascimento'); return; }
-    setSalvandoCliente(true);
-    try {
-      const empresaId = currentUser?.empresa_id;
-      const criado = await base44.entities.Cliente.create({
-        nome_completo: novoCliente.nome_completo.trim(),
-        celular: novoCliente.celular.trim(),
-        cpf: novoCliente.cpf.trim(),
-        data_nascimento: novoCliente.data_nascimento,
-        empresa_id: empresaId,
-        status: 'ativo',
-      });
-      setForm(f => ({ ...f, cliente_id: criado.id, cliente_nome: criado.nome_completo, cliente_telefone: criado.celular || '' }));
-      setCadastrandoCliente(false);
-      setClienteDropdownOpen(false);
-      setClienteSearch('');
-      setNovoCliente({ nome_completo: '', celular: '', cpf: '', data_nascimento: '' });
-      toast.success('Cliente cadastrado e selecionado!');
-    } catch (e) {
-      toast.error('Erro ao cadastrar cliente: ' + e.message);
-    } finally {
-      setSalvandoCliente(false);
-    }
+  const handleClienteCriado = (criado) => {
+    setForm(f => ({ ...f, cliente_id: criado.id, cliente_nome: criado.nome_completo, cliente_telefone: criado.celular || '' }));
+    setClienteDropdownOpen(false);
+    setClienteSearch('');
+    toast.success('Cliente cadastrado e selecionado!');
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -264,53 +229,12 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
                     {clientesFiltrados.length === 0 ? (
                       <div className="px-3 py-3 text-center">
                         <p className="text-sm text-slate-400 mb-2">Nenhum cliente encontrado</p>
-                        {!cadastrandoCliente ? (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setCadastrandoCliente(true); setNovoCliente(n => ({ ...n, nome_completo: clienteSearch })); }}
-                            className="flex items-center gap-1.5 mx-auto text-xs text-blue-600 hover:text-blue-800 font-medium px-3 py-1.5 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
-                          >
-                            <UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente
-                          </button>
-                        ) : (
-                          <div className="text-left space-y-2 p-1" onClick={e => e.stopPropagation()}>
-                            <Input
-                              autoFocus
-                              placeholder="Nome completo *"
-                              value={novoCliente.nome_completo}
-                              onChange={e => setNovoCliente(n => ({ ...n, nome_completo: e.target.value }))}
-                              className="text-sm h-8"
-                            />
-                            <Input
-                              placeholder="Celular ex: (87) 9 8128-5628"
-                              value={novoCliente.celular}
-                              onChange={e => setNovoCliente(n => ({ ...n, celular: formatarCelular(e.target.value) }))}
-                              className="text-sm h-8"
-                            />
-                            <Input
-                              placeholder="CPF ex: 101.765.654-55"
-                              value={novoCliente.cpf}
-                              onChange={e => setNovoCliente(n => ({ ...n, cpf: formatarCPF(e.target.value) }))}
-                              className="text-sm h-8"
-                            />
-                            <div>
-                              <label className="text-xs text-slate-500 block mb-0.5">Data de Nascimento *</label>
-                              <Input
-                                type="date"
-                                value={novoCliente.data_nascimento}
-                                onChange={e => setNovoCliente(n => ({ ...n, data_nascimento: e.target.value }))}
-                                className="text-sm h-8"
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="sm" className="flex-1 h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={handleSalvarNovoCliente} disabled={salvandoCliente}>
-                                {salvandoCliente ? 'Salvando...' : 'Salvar'}
-                              </Button>
-                              <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => setCadastrandoCliente(false)}>
-                                Cancelar
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setNomeInicialCliente(clienteSearch); setCadastrandoCliente(true); setClienteDropdownOpen(false); }}
+                          className="flex items-center gap-1.5 mx-auto text-xs text-blue-600 hover:text-blue-800 font-medium px-3 py-1.5 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente
+                        </button>
                       </div>
                     ) : clientesFiltrados.map(c => (
                       <div key={c.id} className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100"
@@ -541,5 +465,14 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
         </div>
       </DialogContent>
     </Dialog>
+
+    <CadastrarClienteModal
+      open={cadastrandoCliente}
+      onOpenChange={setCadastrandoCliente}
+      nomeInicial={nomeInicialCliente}
+      empresaId={currentUser?.empresa_id}
+      onClienteCriado={handleClienteCriado}
+    />
+    </>
   );
 }
