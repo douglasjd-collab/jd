@@ -35,6 +35,7 @@ export default function SimuladorNormal() {
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
   const [modoReducao, setModoReducao] = useState('parcela'); // 'parcela' | '5050'
+  const [usarParcelaReduzida, setUsarParcelaReduzida] = useState(false); // false = parcela normal, true = parcela reduzida
   const [resultado, setResultado] = useState(null);
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
   const [cartaIndex, setCartaIndex] = useState(null);
@@ -164,8 +165,8 @@ export default function SimuladorNormal() {
   const parcelaReduzidaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcelaReduzida) || 0), 0);
   const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
   
-  // Define qual parcela usar no ato: reduzida (se houver) ou normal
-  const primeiraParcelaNoAto = parcelaReduzidaTotal > 0 ? parcelaReduzidaTotal : parcelaTotal;
+  // Define qual parcela usar no ato: conforme escolha do usuário (ou normal se não houver reduzida)
+  const primeiraParcelaNoAto = (parcelaReduzidaTotal > 0 && usarParcelaReduzida) ? parcelaReduzidaTotal : parcelaTotal;
   
   // Calcular percentual do lance próprio em cima do crédito - USAR useMemo para evitar loop
   const lanceProprioPercentual = React.useMemo(() => {
@@ -985,6 +986,38 @@ export default function SimuladorNormal() {
               )}
             </CardContent>
           </Card>
+
+          {/* Seletor de parcela - só aparece quando há parcela reduzida */}
+          {parcelaReduzidaTotal > 0 && (
+            <Card className="border-0 shadow-sm border-l-4 border-l-orange-400">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium text-orange-700">
+                  🏷️ Qual parcela usar na contratação?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-2">
+                <p className="text-xs text-slate-500">
+                  Este plano possui uma 1ª parcela reduzida. Escolha qual será usada no cálculo do saldo devedor.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setUsarParcelaReduzida(false)}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${usarParcelaReduzida === false ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  >
+                    <p className={`text-xs font-semibold ${usarParcelaReduzida === false ? 'text-blue-700' : 'text-slate-700'}`}>📋 Parcela Normal</p>
+                    <p className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(parcelaTotal)}</p>
+                  </button>
+                  <button
+                    onClick={() => setUsarParcelaReduzida(true)}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${usarParcelaReduzida === true ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  >
+                    <p className={`text-xs font-semibold ${usarParcelaReduzida === true ? 'text-orange-700' : 'text-slate-700'}`}>🏷️ Parcela Reduzida</p>
+                    <p className="text-sm font-bold text-slate-800 mt-1">{formatCurrency(parcelaReduzidaTotal)}</p>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
