@@ -108,8 +108,9 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
       }
       
       const valor = g.valor_bem || 0;
-      const min = valorMin ? parseFloat(valorMin) / 100 : 0;
-      const max = valorMax ? parseFloat(valorMax) / 100 : Infinity;
+      // valorMin e valorMax são strings numéricas simples (ex: "40000")
+      const min = valorMin ? parseFloat(valorMin) : 0;
+      const max = valorMax ? parseFloat(valorMax) : Infinity;
       if (min && valor < min) return false;
       if (max < Infinity && valor > max) return false;
       
@@ -189,19 +190,19 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-slate-400" />
                 <Input
-                  type="text"
-                  placeholder="Valor mín."
-                  value={formatCurrencyInput(valorMin)}
-                  onChange={(e) => setValorMin(parseCurrencyInput(e.target.value))}
-                  className="w-32"
+                  type="number"
+                  placeholder="Valor mín. (R$)"
+                  value={valorMin}
+                  onChange={(e) => setValorMin(e.target.value)}
+                  className="w-36"
                 />
                 <span className="text-slate-400 text-sm">até</span>
                 <Input
-                  type="text"
-                  placeholder="Valor máx."
-                  value={formatCurrencyInput(valorMax)}
-                  onChange={(e) => setValorMax(parseCurrencyInput(e.target.value))}
-                  className="w-32"
+                  type="number"
+                  placeholder="Valor máx. (R$)"
+                  value={valorMax}
+                  onChange={(e) => setValorMax(e.target.value)}
+                  className="w-36"
                 />
                 {(valorMin || valorMax) && (
                   <Button
@@ -243,7 +244,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
                   <TableBody>
                     {filteredPlanos.map((group) => (
                       <TableRow 
-                        key={group.codigo}
+                        key={`${group.codigo}__${group.valor_bem}`}
                         className="hover:bg-slate-50 cursor-pointer"
                         onClick={() => handleOpenVariacoes(group)}
                       >
