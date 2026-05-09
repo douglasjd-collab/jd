@@ -45,7 +45,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     queryKey: ['planos-canopus-modal', empresaId, open],
     queryFn: async () => {
       // Busca todos planos ativos — sem filtro de empresa para garantir que aparece
-      const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 1000);
+      const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 3000);
       const lista = Array.isArray(res) ? res : (res?.items ?? []);
       // Se tiver empresaId, filtra pelo client-side
       if (empresaId) {
