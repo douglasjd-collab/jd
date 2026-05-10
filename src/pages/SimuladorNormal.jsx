@@ -329,7 +329,11 @@ export default function SimuladorNormal() {
     }
 
     const lanceTotalValor = lanceProprioValor + lanceEmbutidoValor;
-    saldoDevedorTotal = totalPlano - lanceTotalValor;
+    // Quando parcela reduzida está selecionada, o lance embutido já está embutido na parcela reduzida
+    // Portanto NÃO desconta o lance embutido do saldo devedor nesse caso
+    const usandoParcelaReduzida = usarParcelaReduzida && parcelaReduzidaTotal > 0;
+    const lanceParaDescontarDoSaldo = usandoParcelaReduzida ? lanceProprioValor : lanceTotalValor;
+    saldoDevedorTotal = totalPlano - lanceParaDescontarDoSaldo;
 
     const saldoAposLance = saldoDevedorTotal;
 
@@ -404,11 +408,8 @@ export default function SimuladorNormal() {
         }
       }
     } else {
-      // Se usa parcela reduzida, o totalPlano já foi calculado com essa parcela (prazo * parcelaReduzida)
-      // Portanto NÃO desconta a 1ª parcela do saldo — ela já está embutida no cálculo do total
-      const saldoDevedorReal = (usarParcelaReduzida && parcelaReduzidaTotal > 0)
-        ? saldoDevedorTotal
-        : saldoDevedorTotal - primeiraParcelaNoAto;
+      // Sempre desconta a 1ª parcela no ato do saldo devedor
+      const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
       novoPrazo = prazoNum - 1;
 
       // Aplicar regra Canopus se ativado (apenas plano normal)
@@ -450,9 +451,7 @@ export default function SimuladorNormal() {
     // No plano normal: totalPlano - lance - 1ª parcela no ato
     const saldoDevedorExibicao = temPlanoDecrescente
       ? saldoDevedorTotal
-      : (usarParcelaReduzida && parcelaReduzidaTotal > 0)
-        ? saldoDevedorTotal
-        : saldoDevedorTotal - primeiraParcelaNoAto;
+      : saldoDevedorTotal - primeiraParcelaNoAto;
 
     setResultado({
       creditoTotal,
@@ -1192,10 +1191,16 @@ export default function SimuladorNormal() {
                         </div>
                       </>
                     )}
-                    {resultado.usarLanceEmbutido && (
+                    {resultado.usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && (
                       <div className="flex justify-between">
                         <span className="text-slate-600">(-) Lance Embutido ({resultado.lanceEmbutidoPercentual}%):</span>
                         <span className="font-semibold text-emerald-700">- {formatCurrency(resultado.lanceEmbutido)}</span>
+                      </div>
+                    )}
+                    {resultado.usarLanceEmbutido && (usarParcelaReduzida && parcelaReduzidaTotal > 0) && (
+                      <div className="flex justify-between text-xs text-emerald-700">
+                        <span>✨ Lance Embutido já incluso na parcela reduzida</span>
+                        <span className="font-semibold">{formatCurrency(resultado.lanceEmbutido)}</span>
                       </div>
                     )}
                     {resultado.usarLanceProprio && !resultado.temPlanoDecrescente && resultado.modoReducao !== '5050' && (
@@ -1220,7 +1225,7 @@ export default function SimuladorNormal() {
                         </div>
                       </>
                     )}
-                    {!resultado.temPlanoDecrescente && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && (
+                    {!resultado.temPlanoDecrescente && (
                       <div className="flex justify-between">
                         <span className="text-slate-600">(-) 1ª Parcela (no ato):</span>
                         <span className="font-semibold text-orange-700">- {formatCurrency(resultado.valorParcelaReduzida)}</span>
