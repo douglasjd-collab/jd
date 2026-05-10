@@ -304,7 +304,10 @@ export default function SimuladorNormal() {
     }
 
     const prazoNum = parseFloat(prazoOriginal);
-    const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
+    // Se usar parcela reduzida, o total do plano já considera o crédito reduzido (plano 50%)
+    // Nesse caso, a 1ª parcela reduzida NÃO deve ser descontada separadamente do saldo devedor
+    const parcelaParaTotalPlano = (usarParcelaReduzida && parcelaReduzidaTotal > 0) ? parcelaReduzidaTotal : parcelaTotal;
+    const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaParaTotalPlano;
     
     let lanceProprioValor = 0;
     let lanceEmbutidoValor = 0;
@@ -401,7 +404,11 @@ export default function SimuladorNormal() {
         }
       }
     } else {
-      const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
+      // Se usa parcela reduzida, o totalPlano já foi calculado com essa parcela (prazo * parcelaReduzida)
+      // Portanto NÃO desconta a 1ª parcela do saldo — ela já está embutida no cálculo do total
+      const saldoDevedorReal = (usarParcelaReduzida && parcelaReduzidaTotal > 0)
+        ? saldoDevedorTotal
+        : saldoDevedorTotal - primeiraParcelaNoAto;
       novoPrazo = prazoNum - 1;
 
       // Aplicar regra Canopus se ativado (apenas plano normal)
@@ -443,7 +450,9 @@ export default function SimuladorNormal() {
     // No plano normal: totalPlano - lance - 1ª parcela no ato
     const saldoDevedorExibicao = temPlanoDecrescente
       ? saldoDevedorTotal
-      : saldoDevedorTotal - primeiraParcelaNoAto;
+      : (usarParcelaReduzida && parcelaReduzidaTotal > 0)
+        ? saldoDevedorTotal
+        : saldoDevedorTotal - primeiraParcelaNoAto;
 
     setResultado({
       creditoTotal,
@@ -1211,7 +1220,7 @@ export default function SimuladorNormal() {
                         </div>
                       </>
                     )}
-                    {!resultado.temPlanoDecrescente && (
+                    {!resultado.temPlanoDecrescente && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && (
                       <div className="flex justify-between">
                         <span className="text-slate-600">(-) 1ª Parcela (no ato):</span>
                         <span className="font-semibold text-orange-700">- {formatCurrency(resultado.valorParcelaReduzida)}</span>
