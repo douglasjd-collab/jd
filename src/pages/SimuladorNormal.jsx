@@ -1136,7 +1136,10 @@ export default function SimuladorNormal() {
 
                   <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
                     <p className="text-xs font-semibold mb-1">💰 Valor a Receber</p>
-                    <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
+                    <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal - (resultado.usarLanceEmbutido ? resultado.lanceEmbutido : 0))}</p>
+                    {resultado.usarLanceEmbutido && (
+                      <p className="text-xs mt-1 text-blue-100">Crédito {formatCurrency(resultado.creditoTotal)} - Lance Embutido {formatCurrency(resultado.lanceEmbutido)}</p>
+                    )}
                   </div>
 
                   {resultado.usarLanceEmbutido && (
