@@ -72,24 +72,38 @@ function matchConta(nomeBuscado, contas) {
 async function callLLM(base44, message, context) {
   const hoje = new Date().toLocaleDateString('fr-CA'); // YYYY-MM-DD
 
+  // Calcular "amanhã" corretamente no fuso Brasil
+  const amanhaDate = new Date();
+  amanhaDate.setDate(amanhaDate.getDate() + 1);
+  const amanha = amanhaDate.toLocaleDateString('fr-CA');
+
   const prompt = `
 Você é um assistente para um CRM/Financeiro via Telegram.
 Transforme a mensagem do usuário em UMA ação do sistema.
 
 Contexto: ${JSON.stringify(context)}
-Data de hoje (Brasil): ${hoje}
+Data de hoje (Brasil/Brasília, UTC-3): ${hoje}
+Data de amanhã (Brasil/Brasília, UTC-3): ${amanha}
 
 Mensagem do usuário: "${message}"
 
 Regras gerais:
 - Se faltar dado essencial, use action="clarify" e pergunte objetivamente.
-- Datas: se o usuário disser "hoje" use ${hoje}, "amanhã" use o dia seguinte. Formato YYYY-MM-DD.
+- Datas: se o usuário disser "hoje" use ${hoje}, "amanhã" use ${amanha}. Formato YYYY-MM-DD.
 - Valores: "35,90" -> 35.90, "1.500" -> 1500, "R$ 1.500,00" -> 1500
 - Telefone: normalize apenas números quando possível.
 - Categorias de despesa: Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros
 - Categorias de receita: Bônus, Repasse, Comissão, Ajuste, Outros
 - Para oportunidades no funil: produto pode ser "consorcio" (padrão) ou "emprestimo". nome = título da oportunidade (ex: "João Silva" ou "Venda consórcio João"). Telefone opcional.
 - Use action=create_opportunity quando o usuário mencionar: criar lead, novo cliente, nova oportunidade, funil, consórcio (nome de pessoa), empréstimo (nome de pessoa)
+
+REGRA CRÍTICA PARA HORÁRIOS (agenda):
+- O usuário está no fuso horário de Brasília (UTC-3).
+- Quando o usuário diz "20h", "às 20:00", "20 horas" etc., o horário correto em UTC é 20h + 3h = 23h UTC.
+- PORTANTO: sempre converta o horário mencionado pelo usuário (horário de Brasília) para UTC somando 3 horas.
+- Exemplos: "20h" → UTC 23:00 | "10h" → UTC 13:00 | "14h" → UTC 17:00 | "8h" → UTC 11:00
+- O campo "inicio" deve ser formato ISO 8601 em UTC: "YYYY-MM-DDTHH:MM:00.000Z"
+- Exemplo: usuário diz "amanhã às 20h" → inicio: "${amanha}T23:00:00.000Z"
 
 Regras para transações financeiras com conta bancária (action=create_financial_transaction):
 Use esta action quando o usuário mencionar conta bancária (itau, nubank, caixa, bb, santander, bradesco, inter, sicoob, sicredi, safra, c6, pagbank, mercado pago, carteira, etc) junto com uma movimentação de dinheiro.
@@ -1024,7 +1038,7 @@ Deno.serve(async (req) => {
         lembrete_10_enviado_em: null,
       });
 
-      await sendTelegram(chatId, `✅ Agendado: <b>${created.titulo}</b>\n📅 ${new Date(created.inicio).toLocaleString("pt-BR")}\n<code>ID ${created.id}</code>`);
+      await sendTelegram(chatId, `✅ Agendado: <b>${created.titulo}</b>\n📅 ${new Date(created.inicio).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}\n<code>ID ${created.id}</code>`);
       return Response.json({ ok: true });
     }
 
@@ -1046,7 +1060,7 @@ Deno.serve(async (req) => {
         lembrete_30_enviado_em: null,
         lembrete_10_enviado_em: null,
       });
-      await sendTelegram(chatId, `✅ Remarcado: <b>${item.titulo}</b>\n📅 ${new Date(a.inicio).toLocaleString("pt-BR")}\n<code>ID ${a.id}</code>`);
+      await sendTelegram(chatId, `✅ Remarcado: <b>${item.titulo}</b>\n📅 ${new Date(a.inicio).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}\n<code>ID ${a.id}</code>`);
       return Response.json({ ok: true });
     }
 
