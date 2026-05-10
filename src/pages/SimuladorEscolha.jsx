@@ -88,11 +88,11 @@ export default function SimuladorEscolha() {
                   <Calculator className="w-8 h-8 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-2xl text-slate-900">Simulação com Recursos Próprios</CardTitle>
+              <CardTitle className="text-2xl text-slate-900">Simulação via CRM</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-slate-600 text-center">
-                Simulação tradicional sem lance embutido, ideal para cálculos básicos
+                Simulação com recursos próprios e lance embutido opcional, ideal para o funil de vendas
               </p>
               <ul className="space-y-2 text-sm text-slate-600">
                 <li className="flex items-start gap-2">
@@ -101,7 +101,7 @@ export default function SimuladorEscolha() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">✓</span>
-                  <span>Lance próprio opcional</span>
+                  <span>Lance próprio e embutido opcional</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">✓</span>

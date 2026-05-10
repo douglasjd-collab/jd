@@ -35,6 +35,8 @@ export default function SimuladorNormal() {
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
   const [lanceProprio, setLanceProprio] = useState('');
   const [modoReducao, setModoReducao] = useState('parcela'); // 'parcela' | '5050'
+  const [usarLanceEmbutido, setUsarLanceEmbutido] = useState(false);
+  const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState('30');
   const [usarParcelaReduzida, setUsarParcelaReduzida] = useState(false); // false = parcela normal, true = parcela reduzida
   const [resultado, setResultado] = useState(null);
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
@@ -305,8 +307,15 @@ export default function SimuladorNormal() {
     const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
     
     let lanceProprioValor = 0;
+    let lanceEmbutidoValor = 0;
     let saldoDevedorTotal = totalPlano;
     
+    // Aplicar lance embutido se ativo (% do crédito total)
+    if (usarLanceEmbutido && lanceEmbutidoPercentual) {
+      const pctEmbutido = parseFloat(lanceEmbutidoPercentual) / 100;
+      lanceEmbutidoValor = creditoTotal * pctEmbutido;
+    }
+
     // Aplicar lance próprio se ativo
     if (usarLanceProprio && lanceProprio) {
       lanceProprioValor = parseFloat(lanceProprio);
@@ -314,8 +323,10 @@ export default function SimuladorNormal() {
         lanceProprioValor = totalPlano;
         toast.warning('Lance próprio ajustado para o valor máximo do plano');
       }
-      saldoDevedorTotal = totalPlano - lanceProprioValor;
     }
+
+    const lanceTotalValor = lanceProprioValor + lanceEmbutidoValor;
+    saldoDevedorTotal = totalPlano - lanceTotalValor;
 
     const saldoAposLance = saldoDevedorTotal;
 
@@ -351,11 +362,11 @@ export default function SimuladorNormal() {
         // Parcelas na carência: valor original sem desconto
         parcelaCarenciaValor = parcela1a10;
 
-        if (lanceProprioValor > 0) {
+        if (lanceTotalValor > 0) {
           // Saldo após parcela paga no ato
           const saldoAposParcela = totalPlano - parcela1a10;
           // Saldo após lance
-          const saldoAposLanceDecrescente = saldoAposParcela - lanceProprioValor;
+          const saldoAposLanceDecrescente = saldoAposParcela - lanceTotalValor;
 
           // Calcular total original apenas das parcelas RESTANTES (após ato + carência)
           // Faixa 1 restante: parcelas primeiraParcRestante a 10
@@ -446,6 +457,10 @@ export default function SimuladorNormal() {
       aplicarRegraCanopus: aplicarRegraCanopus && (tipoGrupo === 'automovel' || tipoGrupo === 'imovel'),
       usarLanceProprio,
       lanceProprio: lanceProprioValor,
+      usarLanceEmbutido,
+      lanceEmbutido: lanceEmbutidoValor,
+      lanceEmbutidoPercentual: usarLanceEmbutido ? parseFloat(lanceEmbutidoPercentual) : 0,
+      lanceTotal: lanceTotalValor,
       saldoAposLance,
       saldoDevedor: saldoDevedorExibicao,
       parcelaReduzida: parcelaReduzidaTotal > 0,
@@ -631,8 +646,8 @@ export default function SimuladorNormal() {
             className="h-12 w-auto object-contain"
           />
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulação com Recursos Próprios</h1>
-        <p className="text-slate-500">Simulação simplificada sem lance embutido</p>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulação via CRM</h1>
+        <p className="text-slate-500">Simulação simplificada</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -875,6 +890,56 @@ export default function SimuladorNormal() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">✨ Lance Embutido (Opcional)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div>
+                  <Label className="text-sm font-medium">Deseja usar Lance Embutido?</Label>
+                  <p className="text-xs text-emerald-600 mt-1">Lance pago com o próprio crédito (% do crédito total)</p>
+                </div>
+                <Switch checked={usarLanceEmbutido} onCheckedChange={setUsarLanceEmbutido} />
+              </div>
+              {usarLanceEmbutido && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Percentual do Lance Embutido (%)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={lanceEmbutidoPercentual}
+                        onChange={(e) => setLanceEmbutidoPercentual(e.target.value)}
+                        className="h-9"
+                        placeholder="30"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Valor do Lance Embutido (R$)</Label>
+                      <Input
+                        type="text"
+                        value={creditoTotal > 0 && lanceEmbutidoPercentual ? formatarParaExibicao((creditoTotal * parseFloat(lanceEmbutidoPercentual || 0) / 100).toString()) : ''}
+                        disabled
+                        className="h-9 bg-slate-100 text-slate-700 font-semibold"
+                      />
+                    </div>
+                  </div>
+                  {creditoTotal > 0 && lanceEmbutidoPercentual && (
+                    <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <p className="text-xs text-emerald-700">✨ Lance Embutido</p>
+                      <p className="text-xl font-bold text-emerald-900">{formatCurrency(creditoTotal * parseFloat(lanceEmbutidoPercentual || 0) / 100)}</p>
+                      <p className="text-xs text-emerald-700 mt-1">{lanceEmbutidoPercentual}% de {formatCurrency(creditoTotal)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">💰 Lance Próprio (Opcional)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1074,6 +1139,13 @@ export default function SimuladorNormal() {
                     <p className="text-3xl font-bold">{formatCurrency(resultado.creditoTotal)}</p>
                   </div>
 
+                  {resultado.usarLanceEmbutido && (
+                    <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <p className="text-xs text-emerald-700 font-semibold mb-2">✨ Lance Embutido</p>
+                      <p className="text-2xl font-bold text-emerald-900">{formatCurrency(resultado.lanceEmbutido)}</p>
+                      <p className="text-xs text-emerald-700 mt-1">{resultado.lanceEmbutidoPercentual}% do crédito total</p>
+                    </div>
+                  )}
                   {resultado.usarLanceProprio && (
                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                       <p className="text-xs text-purple-700 font-semibold mb-2">💎 Lance Próprio</p>
@@ -1083,8 +1155,14 @@ export default function SimuladorNormal() {
                       </p>
                     </div>
                   )}
+                  {resultado.usarLanceEmbutido && resultado.usarLanceProprio && (
+                    <div className="p-3 bg-slate-100 rounded-lg border border-slate-300 flex justify-between items-center">
+                      <span className="text-sm font-semibold text-slate-700">Lance Total:</span>
+                      <span className="text-lg font-bold text-slate-900">{formatCurrency(resultado.lanceTotal)}</span>
+                    </div>
+                  )}
 
-                  {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio || resultado.temPlanoDecrescente) && (
+                  {(resultado.aplicarRegraCanopus || resultado.usarLanceProprio || resultado.usarLanceEmbutido || resultado.temPlanoDecrescente) && (
                   <div className="p-3 bg-slate-50 rounded-lg space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-600">Total do Plano:</span>
@@ -1101,6 +1179,12 @@ export default function SimuladorNormal() {
                           <span>{resultado.descontoPorParcela?.toFixed(6)}</span>
                         </div>
                       </>
+                    )}
+                    {resultado.usarLanceEmbutido && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">(-) Lance Embutido ({resultado.lanceEmbutidoPercentual}%):</span>
+                        <span className="font-semibold text-emerald-700">- {formatCurrency(resultado.lanceEmbutido)}</span>
+                      </div>
                     )}
                     {resultado.usarLanceProprio && !resultado.temPlanoDecrescente && resultado.modoReducao !== '5050' && (
                       <div className="flex justify-between">
