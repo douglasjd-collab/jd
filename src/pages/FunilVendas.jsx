@@ -950,11 +950,7 @@ export default function FunilVendas() {
             <Link to={createPageUrl('ConfiguracaoFunis')}>
               <Button variant="outline">Configurar Funis</Button>
             </Link>
-            <Link to={createPageUrl('ConfiguracaoFunis')}>
-              <Button variant="outline" className="gap-1">
-                <Settings2 className="w-4 h-4" /> Configurar Funis
-              </Button>
-            </Link>
+
           </>
         )}
       </PageHeader>
