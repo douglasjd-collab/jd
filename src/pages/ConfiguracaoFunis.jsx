@@ -104,7 +104,7 @@ function EtapaCard({ etapa, index, onEdit, onDelete, funil, etapasDoFunil }) {
   );
 }
 
-function FunilCard({ funil, oportunidades, onRename, onDelete, onDuplicate, onAddEtapa, onEditEtapa, onDeleteEtapa, onReorder }) {
+function FunilCard({ funil, oportunidades, onRename, onDelete, onDuplicate, onAddEtapa, onEditEtapa, onDeleteEtapa, onReorder, onEditIcon }) {
   const [expanded, setExpanded] = useState(false);
   const leadsAtivos = oportunidades.filter(o => o.produto === funil.slug && o.status !== 'ganha' && o.status !== 'perdida').length;
 
@@ -136,12 +136,19 @@ function FunilCard({ funil, oportunidades, onRename, onDelete, onDuplicate, onAd
         <div className="flex items-start justify-between gap-3">
           {/* Info principal */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden"
-              style={{ backgroundColor: iconUrl ? 'transparent' : corPrincipal + '20' }}>
+            <button
+              onClick={() => onEditIcon(funil)}
+              title="Clique para alterar imagem"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden group/icon relative cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-[#1e3a5f]"
+              style={{ backgroundColor: iconUrl ? 'transparent' : corPrincipal + '20' }}
+            >
               {iconUrl ? (
                 <img src={iconUrl} alt="ícone" className="w-10 h-10 object-cover rounded-xl" />
               ) : emojiFunil}
-            </div>
+              <div className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover/icon:opacity-100 transition-opacity flex items-center justify-center">
+                <ImageIcon className="w-4 h-4 text-white" />
+              </div>
+            </button>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-bold text-slate-900 text-base">{nomeExibicao}</h3>
@@ -543,6 +550,7 @@ export default function ConfiguracaoFunis() {
               funil={funil}
               oportunidades={oportunidades}
               onRename={(f) => setRenameFunil({ slug: f.slug, novoNome: f.nomeExibicao || f.label, iconUrl: f.iconUrl || '' })}
+              onEditIcon={(f) => setRenameFunil({ slug: f.slug, novoNome: f.nomeExibicao || f.label, iconUrl: f.iconUrl || '' })}
               onDelete={(slug) => setDeleteFunilSlug(slug)}
               onDuplicate={(f) => duplicarFunilMutation.mutate({ slug: f.slug, novoNome: f.label })}
               onAddEtapa={(slug) => {
