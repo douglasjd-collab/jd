@@ -18,6 +18,7 @@ import {
   AlertCircle, RefreshCw, Settings, MessageCircle, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import {
   format, parseISO, addDays, subDays, startOfWeek, endOfWeek,
   isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths,
@@ -121,48 +122,7 @@ function ConfigStatusModal({ open, onClose, customLabels, onSave }) {
   );
 }
 
-// Modal WhatsApp — abre conversa inline
-function WhatsAppModal({ open, onClose, item }) {
-  const telefone = item?.telefone || item?.local || '';
-  const numero = telefone.replace(/\D/g, '');
-  const waUrl = numero ? `https://wa.me/55${numero}` : null;
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-green-700">
-            <MessageCircle className="w-5 h-5" /> WhatsApp
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <p className="text-sm text-slate-600">
-            <b>{item?.titulo}</b> — {formatDateBR(item?.inicio)}
-          </p>
-          {numero ? (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-500">Número: <b className="text-slate-800">{telefone}</b></p>
-              <a
-                href={waUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold transition-all"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Abrir conversa no WhatsApp
-              </a>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-slate-500 mb-3">Nenhum telefone cadastrado neste compromisso.</p>
-              <p className="text-xs text-slate-400">Adicione o telefone no campo "Local" ou edite o compromisso.</p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+// WhatsAppModal removido — agora usa ChatPopupModal inline
 
 const AVATAR_COLORS = [
   'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
@@ -656,7 +616,7 @@ export default function AgendaPage() {
   const statusConfig = useMemo(() => buildStatusConfig(customLabels), [customLabels]);
 
   const [formData, setFormData] = useState({
-    titulo: '', tipo: 'reuniao', inicio: '', fim: '', status: 'agendado', descricao: '', local: '',
+    titulo: '', tipo: 'reuniao', inicio: '', fim: '', status: 'agendado', descricao: '', local: '', telefone: '',
   });
 
   const queryClient = useQueryClient();
@@ -709,8 +669,8 @@ export default function AgendaPage() {
       titulo: item.titulo || '', tipo: item.tipo || 'reuniao',
       inicio: item.inicio ? format(parseISO(item.inicio), "yyyy-MM-dd'T'HH:mm") : '',
       fim: item.fim ? format(parseISO(item.fim), "yyyy-MM-dd'T'HH:mm") : '',
-      status: item.status || 'agendado', descricao: item.descricao || '', local: item.local || '',
-    } : { titulo: '', tipo: 'reuniao', inicio: format(selectedDate, "yyyy-MM-dd'T'HH:mm"), fim: '', status: 'agendado', descricao: '', local: '' });
+      status: item.status || 'agendado', descricao: item.descricao || '', local: item.local || '', telefone: item.telefone || '',
+    } : { titulo: '', tipo: 'reuniao', inicio: format(selectedDate, "yyyy-MM-dd'T'HH:mm"), fim: '', status: 'agendado', descricao: '', local: '', telefone: '' });
     setModalOpen(true);
   };
 
@@ -893,12 +853,21 @@ export default function AgendaPage() {
         onSave={saveCustomLabels}
       />
 
-      {/* Modal WhatsApp */}
-      <WhatsAppModal
-        open={!!whatsAppItem}
-        onClose={() => setWhatsAppItem(null)}
-        item={whatsAppItem}
-      />
+      {/* Chat popup do CRM */}
+      {whatsAppItem && (() => {
+        // Extrai telefone: campo telefone > descricao (se só dígitos/formato tel) > local
+        const raw = whatsAppItem.telefone || whatsAppItem.contato_telefone || '';
+        const tel = raw.replace(/\D/g, '');
+        return (
+          <ChatPopupModal
+            open={true}
+            onOpenChange={(v) => { if (!v) setWhatsAppItem(null); }}
+            contato={{ telefone: tel, nome: whatsAppItem.titulo }}
+            empresaId={user?.empresa_id}
+            user={user}
+          />
+        );
+      })()}
 
       {/* Modal criar/editar */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -944,9 +913,15 @@ export default function AgendaPage() {
                 <Input type="datetime-local" value={formData.fim} onChange={e => setFormData({ ...formData, fim: e.target.value })} />
               </div>
             </div>
-            <div>
-              <Label>Local</Label>
-              <Input value={formData.local} onChange={e => setFormData({ ...formData, local: e.target.value })} placeholder="Ex: Escritório, Online" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Local</Label>
+                <Input value={formData.local} onChange={e => setFormData({ ...formData, local: e.target.value })} placeholder="Ex: Escritório, Online" />
+              </div>
+              <div>
+                <Label>Telefone do contato</Label>
+                <Input value={formData.telefone} onChange={e => setFormData({ ...formData, telefone: e.target.value })} placeholder="Ex: 11999999999" />
+              </div>
             </div>
             <div>
               <Label>Descrição</Label>

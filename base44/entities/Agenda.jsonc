@@ -1,0 +1,114 @@
+{
+  "name": "Agenda",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "T\u00edtulo do compromisso"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "reuniao",
+        "tarefa"
+      ],
+      "description": "Tipo de compromisso"
+    },
+    "inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora de in\u00edcio do compromisso"
+    },
+    "fim": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora de t\u00e9rmino do compromisso (opcional)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "agendado",
+        "confirmado",
+        "concluido",
+        "cancelado",
+        "remarcado"
+      ],
+      "default": "agendado",
+      "description": "Status do compromisso"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o detalhada do compromisso (opcional)"
+    },
+    "local": {
+      "type": "string",
+      "description": "Local do compromisso (opcional)"
+    },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone do contato para abrir conversa no CRM"
+    },
+    "telegram_chat_id": {
+      "type": "string",
+      "description": "ID do chat do Telegram para notifica\u00e7\u00f5es"
+    },
+    "lembrete_30_enviado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de quando o lembrete de 30 minutos foi enviado (opcional)"
+    },
+    "lembrete_10_enviado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de quando o lembrete de 10 minutos foi enviado (opcional)"
+    },
+    "cancelado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de cancelamento (opcional)"
+    },
+    "cancelado_motivo": {
+      "type": "string",
+      "description": "Motivo do cancelamento (opcional)"
+    },
+    "remarcado_de": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora original do compromisso se remarcado (opcional)"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio respons\u00e1vel"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio respons\u00e1vel"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "titulo",
+    "tipo",
+    "inicio",
+    "status",
+    "telegram_chat_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
