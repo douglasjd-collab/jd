@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2 } from 'lucide-react';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -949,6 +949,11 @@ export default function FunilVendas() {
             </Select>
             <Link to={createPageUrl('ConfiguracaoFunil')}>
               <Button variant="outline">Configurar Etapas</Button>
+            </Link>
+            <Link to={createPageUrl('ConfiguracaoFunis')}>
+              <Button variant="outline" className="gap-1">
+                <Settings2 className="w-4 h-4" /> Configurar Funis
+              </Button>
             </Link>
           </>
         )}
