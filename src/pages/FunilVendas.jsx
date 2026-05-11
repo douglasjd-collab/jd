@@ -159,7 +159,7 @@ export default function FunilVendas() {
 
   const { data: etapas = [], isLoading: loadingEtapas } = useQuery({
     queryKey: ['etapas-funil'],
-    queryFn: () => base44.entities.EtapaFunil.filter({ status: 'ativa' }),
+    queryFn: () => base44.entities.EtapaFunil.list('ordem', 500),
   });
 
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({

@@ -294,13 +294,7 @@ export default function ConfiguracaoFunis() {
   const { data: etapas = [], isLoading } = useQuery({
     queryKey: ['etapas-funil-config'],
     enabled: !!currentUser,
-    queryFn: () => base44.entities.EtapaFunil.filter(
-      currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'master'
-        ? {}
-        : { empresa_id: currentUser.empresa_id },
-      'ordem',
-      500
-    ),
+    queryFn: () => base44.entities.EtapaFunil.list('ordem', 500),
   });
 
   const { data: oportunidades = [] } = useQuery({
