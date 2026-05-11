@@ -234,7 +234,7 @@ export default function ConfiguracaoFunis() {
     }
   };
 
-  const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
+  const isAdmin = true; // Todos têm acesso completo às configurações do funil
 
   if (isLoading || !currentUser) {
     return (
