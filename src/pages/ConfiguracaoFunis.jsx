@@ -294,7 +294,13 @@ export default function ConfiguracaoFunis() {
   const { data: etapas = [], isLoading } = useQuery({
     queryKey: ['etapas-funil-config'],
     enabled: !!currentUser,
-    queryFn: () => base44.entities.EtapaFunil.list('ordem'),
+    queryFn: () => base44.entities.EtapaFunil.filter(
+      currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'master'
+        ? {}
+        : { empresa_id: currentUser.empresa_id },
+      'ordem',
+      500
+    ),
   });
 
   const { data: oportunidades = [] } = useQuery({
@@ -304,7 +310,7 @@ export default function ConfiguracaoFunis() {
   });
 
   const funis = useMemo(() => {
-    const slugs = [...new Set(etapas.map(e => e.produto).filter(Boolean))];
+    const slugs = [...new Set(etapas.map(e => e.produto || 'sem_funil').filter(Boolean))];
     const fixosSlugs = FUNIS_FIXOS.map(f => f.value);
     const todos = [
       ...fixosSlugs.filter(s => slugs.includes(s)),
@@ -312,8 +318,8 @@ export default function ConfiguracaoFunis() {
     ];
     return todos.map(slug => {
       const fixo = FUNIS_FIXOS.find(f => f.value === slug);
-      const etapasDoFunil = etapas.filter(e => e.produto === slug).sort((a, b) => a.ordem - b.ordem);
-      const label = fixo?.label || slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const etapasDoFunil = etapas.filter(e => (e.produto || 'sem_funil') === slug).sort((a, b) => a.ordem - b.ordem);
+      const label = fixo?.label || (slug === 'sem_funil' ? 'Sem Funil' : slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
       return { slug, label, fixo: !!fixo, etapas: etapasDoFunil };
     });
   }, [etapas]);
