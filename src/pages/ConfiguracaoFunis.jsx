@@ -16,7 +16,7 @@ import {
   ChevronDown, ChevronRight, Plus, Loader2, MoreVertical,
   Pencil, Trash2, Copy, ArrowRight, GripVertical,
   Users, Zap, Archive, Settings, LayoutGrid, TrendingUp,
-  ArrowUp, ArrowDown, CheckSquare, MessageSquare, Tag
+  ArrowUp, ArrowDown, CheckSquare, MessageSquare, Tag, ImageIcon, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -26,6 +26,9 @@ const FUNIS_FIXOS = [
   { value: 'consorcio', label: 'Consórcio', emoji: '🏦' },
   { value: 'emprestimo', label: 'Empréstimo Consignado', emoji: '💳' },
 ];
+
+// Chave no ConfiguracaoSistema para metadados de funis customizados
+const FUNIS_META_CHAVE = 'funis_meta_v1';
 
 const CORES_ETAPA = [
   { nome: 'Azul', valor: '#3b82f6' },
@@ -111,7 +114,6 @@ function FunilCard({ funil, oportunidades, onRename, onDelete, onDuplicate, onAd
     const sorted = [...funil.etapas].sort((a, b) => a.ordem - b.ordem);
     const [moved] = sorted.splice(result.source.index, 1);
     sorted.splice(result.destination.index, 0, moved);
-    // Atualizar ordens
     sorted.forEach((etapa, idx) => {
       if (etapa.ordem !== idx + 1) {
         onReorder(etapa.id, idx + 1);
@@ -121,6 +123,8 @@ function FunilCard({ funil, oportunidades, onRename, onDelete, onDuplicate, onAd
 
   const emojiFunil = FUNIS_FIXOS.find(f => f.value === funil.slug)?.emoji || '📋';
   const corPrincipal = funil.etapas[0]?.cor || '#3b82f6';
+  const iconUrl = funil.iconUrl;
+  const nomeExibicao = funil.nomeExibicao || funil.label;
 
   return (
     <Card className="overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-all">
@@ -132,13 +136,15 @@ function FunilCard({ funil, oportunidades, onRename, onDelete, onDuplicate, onAd
         <div className="flex items-start justify-between gap-3">
           {/* Info principal */}
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-              style={{ backgroundColor: corPrincipal + '20' }}>
-              {emojiFunil}
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden"
+              style={{ backgroundColor: iconUrl ? 'transparent' : corPrincipal + '20' }}>
+              {iconUrl ? (
+                <img src={iconUrl} alt="ícone" className="w-10 h-10 object-cover rounded-xl" />
+              ) : emojiFunil}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-slate-900 text-base">{funil.label}</h3>
+                <h3 className="font-bold text-slate-900 text-base">{nomeExibicao}</h3>
                 {funil.fixo && (
                   <Badge className="text-xs bg-slate-100 text-slate-500 border-none font-normal">Padrão</Badge>
                 )}
@@ -272,7 +278,8 @@ export default function ConfiguracaoFunis() {
   const [selectedFunilSlug, setSelectedFunilSlug] = useState(null);
   const [deleteEtapaId, setDeleteEtapaId] = useState(null);
   const [deleteFunilSlug, setDeleteFunilSlug] = useState(null);
-  const [renameFunil, setRenameFunil] = useState(null);
+  const [renameFunil, setRenameFunil] = useState(null); // { slug, novoNome, iconUrl }
+  const [uploadingIcon, setUploadingIcon] = useState(false);
   const [etapaForm, setEtapaForm] = useState({
     nome: '', ordem: '', cor: '#3b82f6', tipo: 'aberta',
     requer_cliente: false, requer_documentos: false, status: 'ativa',
@@ -303,7 +310,26 @@ export default function ConfiguracaoFunis() {
     queryFn: () => base44.entities.Oportunidade.list(),
   });
 
+  // Metadados dos funis (nome exibição + ícone)
+  const { data: funisMeta = {} } = useQuery({
+    queryKey: ['funis-meta'],
+    enabled: !!currentUser,
+    queryFn: async () => {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: FUNIS_META_CHAVE });
+      if (configs.length > 0 && configs[0].valor) {
+        try { return JSON.parse(configs[0].valor); } catch { return {}; }
+      }
+      return {};
+    },
+  });
+
   const funis = useMemo(() => {
+    // Helper para enriquecer com metadados
+    const enrich = (obj) => ({
+      ...obj,
+      nomeExibicao: funisMeta[obj.slug]?.nome || obj.label,
+      iconUrl: funisMeta[obj.slug]?.iconUrl || null,
+    });
     // Slugs de etapas que têm produto definido
     const slugsComProduto = [...new Set(etapas.filter(e => e.produto).map(e => e.produto))];
     // Etapas sem produto (legado)
@@ -321,38 +347,34 @@ export default function ConfiguracaoFunis() {
       const fixo = FUNIS_FIXOS.find(f => f.value === slug);
       const etapasDoFunil = etapas.filter(e => e.produto === slug).sort((a, b) => a.ordem - b.ordem);
       const label = fixo?.label || slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      return { slug, label, fixo: !!fixo, etapas: etapasDoFunil };
+      return enrich({ slug, label, fixo: !!fixo, etapas: etapasDoFunil });
     });
 
     // Se há etapas sem produto, criar um grupo "Etapas Gerais" para elas
     // MAS se os funis fixos existem, associar as etapas sem produto a eles (legado)
     // Se não há nenhum slug cadastrado mas há etapas sem produto, mostrar grupo "Etapas Gerais"
     if (etapasSemProduto.length > 0) {
-      // Verificar se os funis fixos já estão na lista — se não, adicionar grupo legado
       FUNIS_FIXOS.forEach(fixo => {
         if (!resultado.find(f => f.slug === fixo.value)) {
-          resultado.unshift({ slug: fixo.value, label: fixo.label, fixo: true, etapas: [] });
+          resultado.unshift(enrich({ slug: fixo.value, label: fixo.label, fixo: true, etapas: [] }));
         }
       });
-
-      // Adicionar etapas sem produto num grupo "Etapas Gerais" (legado)
       if (!resultado.find(f => f.slug === 'sem_produto')) {
-        resultado.push({
+        resultado.push(enrich({
           slug: 'sem_produto',
           label: 'Etapas Gerais (sem funil definido)',
           fixo: false,
           etapas: etapasSemProduto.sort((a, b) => a.ordem - b.ordem),
-        });
+        }));
       }
     }
 
-    // Se absolutamente nenhuma etapa com produto E nenhum funil com produto, mostrar funis fixos vazios
     if (resultado.length === 0 && etapasSemProduto.length === 0) {
-      return FUNIS_FIXOS.map(f => ({ slug: f.value, label: f.label, fixo: true, etapas: [] }));
+      return FUNIS_FIXOS.map(f => enrich({ slug: f.value, label: f.label, fixo: true, etapas: [] }));
     }
 
     return resultado;
-  }, [etapas]);
+  }, [etapas, funisMeta]);
 
   const createEtapaMutation = useMutation({
     mutationFn: (data) => base44.entities.EtapaFunil.create({
@@ -401,18 +423,21 @@ export default function ConfiguracaoFunis() {
     onError: (e) => toast.error(e.message),
   });
 
-  const renameFunilMutation = useMutation({
-    mutationFn: async ({ slug, novoNome }) => {
-      const etapasDoFunil = etapas.filter(e => e.produto === slug);
-      const novoSlug = novoNome.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-      for (const e of etapasDoFunil) {
-        await base44.entities.EtapaFunil.update(e.id, { ...e, produto: novoSlug });
+  const saveFunisMetaMutation = useMutation({
+    mutationFn: async (novosMeta) => {
+      // novosMeta = { [slug]: { nome, iconUrl }, ... }
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: FUNIS_META_CHAVE });
+      const merged = { ...funisMeta, ...novosMeta };
+      if (configs.length > 0) {
+        await base44.entities.ConfiguracaoSistema.update(configs[0].id, { valor: JSON.stringify(merged) });
+      } else {
+        await base44.entities.ConfiguracaoSistema.create({ chave: FUNIS_META_CHAVE, valor: JSON.stringify(merged) });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['etapas-funil-config'] });
-      queryClient.invalidateQueries({ queryKey: ['etapas-funil'] });
-      setRenameFunil(null); toast.success('Funil renomeado!');
+      queryClient.invalidateQueries({ queryKey: ['funis-meta'] });
+      setRenameFunil(null);
+      toast.success('Funil atualizado!');
     },
     onError: (e) => toast.error(e.message),
   });
@@ -517,7 +542,7 @@ export default function ConfiguracaoFunis() {
               key={funil.slug}
               funil={funil}
               oportunidades={oportunidades}
-              onRename={(f) => setRenameFunil({ slug: f.slug, novoNome: f.label })}
+              onRename={(f) => setRenameFunil({ slug: f.slug, novoNome: f.nomeExibicao || f.label, iconUrl: f.iconUrl || '' })}
               onDelete={(slug) => setDeleteFunilSlug(slug)}
               onDuplicate={(f) => duplicarFunilMutation.mutate({ slug: f.slug, novoNome: f.label })}
               onAddEtapa={(slug) => {
@@ -634,22 +659,84 @@ export default function ConfiguracaoFunis() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal renomear funil */}
+      {/* Modal editar funil (renomear + ícone) */}
       <Dialog open={!!renameFunil} onOpenChange={() => setRenameFunil(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Pencil className="w-4 h-4" /> Renomear Funil</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4" /> Editar Funil
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            {/* Nome */}
             <div>
-              <Label>Novo nome do funil</Label>
+              <Label>Nome do funil *</Label>
               <Input className="mt-1" value={renameFunil?.novoNome || ''}
                 onChange={e => setRenameFunil(r => ({ ...r, novoNome: e.target.value }))}
                 placeholder="Ex: Financiamento Veículos" />
             </div>
-            <div className="flex justify-end gap-3">
+
+            {/* Ícone / Imagem */}
+            <div>
+              <Label>Imagem / Ícone do funil</Label>
+              <div className="mt-2 flex items-center gap-3">
+                {/* Preview */}
+                <div className="w-14 h-14 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden bg-slate-50 flex-shrink-0">
+                  {renameFunil?.iconUrl ? (
+                    <img src={renameFunil.iconUrl} alt="ícone" className="w-14 h-14 object-cover rounded-xl" />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-slate-300" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingIcon(true);
+                        try {
+                          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                          setRenameFunil(r => ({ ...r, iconUrl: file_url }));
+                        } catch {
+                          toast.error('Erro ao fazer upload da imagem');
+                        } finally {
+                          setUploadingIcon(false);
+                        }
+                      }}
+                    />
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:border-[#1e3a5f] hover:text-[#1e3a5f] transition-colors cursor-pointer ${uploadingIcon ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {uploadingIcon ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                      {uploadingIcon ? 'Enviando...' : 'Enviar imagem'}
+                    </div>
+                  </label>
+                  {renameFunil?.iconUrl && (
+                    <button onClick={() => setRenameFunil(r => ({ ...r, iconUrl: '' }))}
+                      className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700">
+                      <X className="w-3 h-3" /> Remover imagem
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 mt-2">Recomendado: imagem quadrada, pelo menos 64×64px (PNG ou JPEG)</p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => setRenameFunil(null)}>Cancelar</Button>
-              <Button onClick={() => { if (!renameFunil?.novoNome?.trim()) { toast.error('Digite um nome'); return; } renameFunilMutation.mutate(renameFunil); }}
-                disabled={renameFunilMutation.isPending} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
-                {renameFunilMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              <Button
+                onClick={() => {
+                  if (!renameFunil?.novoNome?.trim()) { toast.error('Digite um nome'); return; }
+                  saveFunisMetaMutation.mutate({
+                    [renameFunil.slug]: {
+                      nome: renameFunil.novoNome.trim(),
+                      iconUrl: renameFunil.iconUrl || '',
+                    }
+                  });
+                }}
+                disabled={saveFunisMetaMutation.isPending || uploadingIcon}
+                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
+              >
+                {saveFunisMetaMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Salvar
               </Button>
             </div>
