@@ -15,7 +15,7 @@ import {
 import {
   Calendar, Clock, MapPin, Search, Edit2, Trash2, CheckCircle,
   XCircle, Plus, ChevronLeft, ChevronRight, CalendarDays, MoreVertical,
-  AlertCircle, RefreshCw,
+  AlertCircle, RefreshCw, Settings, MessageCircle, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -48,13 +48,121 @@ function getInitials(name = '') {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
 
-const STATUS_CONFIG = {
-  agendado:  { label: 'Agendado',   color: 'bg-blue-100 text-blue-700 border-blue-200',   dot: 'bg-blue-500',   left: 'border-l-blue-500' },
-  confirmado:{ label: 'Confirmado', color: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500',  left: 'border-l-green-500' },
-  concluido: { label: 'Concluído',  color: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400',  left: 'border-l-slate-400' },
-  cancelado: { label: 'Cancelado',  color: 'bg-red-100 text-red-700 border-red-200',       dot: 'bg-red-500',    left: 'border-l-red-400' },
-  remarcado: { label: 'Remarcado',  color: 'bg-orange-100 text-orange-700 border-orange-200', dot: 'bg-orange-400', left: 'border-l-orange-400' },
+const DEFAULT_STATUS_LABELS = {
+  agendado:   'Agendado',
+  confirmado: 'Em aberto',
+  concluido:  'Concluído',
+  cancelado:  'Cancelado',
+  remarcado:  'Reagendado',
+  aguardando: 'Aguardando Cliente',
 };
+
+const STATUS_STYLE = {
+  agendado:   { color: 'bg-blue-100 text-blue-700 border-blue-200',       dot: 'bg-blue-500',    left: 'border-l-blue-500' },
+  confirmado: { color: 'bg-green-100 text-green-700 border-green-200',     dot: 'bg-green-500',   left: 'border-l-green-500' },
+  concluido:  { color: 'bg-slate-100 text-slate-600 border-slate-200',     dot: 'bg-slate-400',   left: 'border-l-slate-400' },
+  cancelado:  { color: 'bg-red-100 text-red-700 border-red-200',           dot: 'bg-red-500',     left: 'border-l-red-400' },
+  remarcado:  { color: 'bg-orange-100 text-orange-700 border-orange-200',  dot: 'bg-orange-400',  left: 'border-l-orange-400' },
+  aguardando: { color: 'bg-yellow-100 text-yellow-700 border-yellow-200',  dot: 'bg-yellow-500',  left: 'border-l-yellow-400' },
+};
+
+// Cria STATUS_CONFIG dinâmico com labels customizados
+function buildStatusConfig(customLabels = {}) {
+  const result = {};
+  Object.keys(DEFAULT_STATUS_LABELS).forEach(k => {
+    result[k] = {
+      label: customLabels[k] || DEFAULT_STATUS_LABELS[k],
+      ...STATUS_STYLE[k],
+    };
+  });
+  return result;
+}
+
+// Hook para labels customizados (persistidos no localStorage)
+function useStatusLabels() {
+  const [labels, setLabels] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('agenda_status_labels') || '{}'); } catch { return {}; }
+  });
+  const save = (newLabels) => {
+    setLabels(newLabels);
+    localStorage.setItem('agenda_status_labels', JSON.stringify(newLabels));
+  };
+  return [labels, save];
+}
+
+// Modal de configuração de status
+function ConfigStatusModal({ open, onClose, customLabels, onSave }) {
+  const [draft, setDraft] = useState({ ...DEFAULT_STATUS_LABELS, ...customLabels });
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Settings className="w-4 h-4" /> Personalizar nomes dos status</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          {Object.keys(DEFAULT_STATUS_LABELS).map(k => (
+            <div key={k} className="flex items-center gap-3">
+              <span className={`w-3 h-3 rounded-full flex-shrink-0 ${STATUS_STYLE[k]?.dot}`} />
+              <Input
+                value={draft[k] || ''}
+                onChange={e => setDraft(d => ({ ...d, [k]: e.target.value }))}
+                className="flex-1"
+                placeholder={DEFAULT_STATUS_LABELS[k]}
+              />
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setDraft({ ...DEFAULT_STATUS_LABELS }); onSave({}); onClose(); }}>Restaurar padrão</Button>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { onSave(draft); onClose(); }}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Modal WhatsApp — abre conversa inline
+function WhatsAppModal({ open, onClose, item }) {
+  const telefone = item?.telefone || item?.local || '';
+  const numero = telefone.replace(/\D/g, '');
+  const waUrl = numero ? `https://wa.me/55${numero}` : null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-green-700">
+            <MessageCircle className="w-5 h-5" /> WhatsApp
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-slate-600">
+            <b>{item?.titulo}</b> — {formatDateBR(item?.inicio)}
+          </p>
+          {numero ? (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-500">Número: <b className="text-slate-800">{telefone}</b></p>
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold transition-all"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Abrir conversa no WhatsApp
+              </a>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-slate-500 mb-3">Nenhum telefone cadastrado neste compromisso.</p>
+              <p className="text-xs text-slate-400">Adicione o telefone no campo "Local" ou edite o compromisso.</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const AVATAR_COLORS = [
   'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
@@ -141,10 +249,10 @@ function MiniCalendar({ selectedDate, onSelectDate, compromissos }) {
 
       {/* legenda */}
       <div className="mt-4 pt-3 border-t flex flex-wrap gap-x-3 gap-y-1">
-        {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+        {Object.entries(DEFAULT_STATUS_LABELS).map(([k, label]) => (
           <div key={k} className="flex items-center gap-1 text-xs text-slate-500">
-            <span className={`w-2 h-2 rounded-full ${v.dot}`} />
-            {v.label}
+            <span className={`w-2 h-2 rounded-full ${STATUS_STYLE[k]?.dot}`} />
+            {label}
           </div>
         ))}
       </div>
@@ -212,7 +320,7 @@ function WeekTimeline({ selectedDate, compromissos, onSelectDate }) {
                   {evts.map(evt => (
                     <div
                       key={evt.id}
-                      className={`rounded text-xs px-1 py-0.5 mb-0.5 truncate cursor-pointer border-l-2 ${STATUS_CONFIG[evt.status]?.left || 'border-l-blue-500'} bg-blue-50 text-blue-800`}
+                      className={`rounded text-xs px-1 py-0.5 mb-0.5 truncate cursor-pointer border-l-2 ${STATUS_STYLE[evt.status]?.left || 'border-l-blue-500'} bg-blue-50 text-blue-800`}
                       title={evt.titulo}
                     >
                       {formatHour(evt.inicio)} {evt.titulo}
@@ -229,8 +337,8 @@ function WeekTimeline({ selectedDate, compromissos, onSelectDate }) {
 }
 
 // ─── Card de compromisso na lista ─────────────────────────────────────────────
-function CompromissoCard({ item, selected, onClick, onEdit, onConcluir, onCancelar, onDelete }) {
-  const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.agendado;
+function CompromissoCard({ item, selected, onClick, onEdit, onConcluir, onCancelar, onDelete, onWhatsApp, statusConfig }) {
+  const cfg = statusConfig[item.status] || statusConfig.agendado;
   const ini = formatHour(item.inicio);
   const isLate = item.status === 'agendado' && isBefore(parseISO(item.inicio), startOfDay(new Date()));
 
@@ -275,6 +383,15 @@ function CompromissoCard({ item, selected, onClick, onEdit, onConcluir, onCancel
         {cfg.label}
       </span>
 
+      {/* botão WhatsApp */}
+      <button
+        onClick={e => { e.stopPropagation(); onWhatsApp(item); }}
+        className="p-1.5 rounded-full bg-green-50 hover:bg-green-100 text-green-600 flex-shrink-0 transition-all"
+        title="Abrir WhatsApp"
+      >
+        <MessageCircle className="w-4 h-4" />
+      </button>
+
       {/* ações */}
       <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
         {item.status !== 'concluido' && item.status !== 'cancelado' && (
@@ -296,7 +413,7 @@ function CompromissoCard({ item, selected, onClick, onEdit, onConcluir, onCancel
 }
 
 // ─── Painel de detalhes ────────────────────────────────────────────────────────
-function DetalhesPanel({ item, onEdit, onConcluir, onCancelar, onClose }) {
+function DetalhesPanel({ item, onEdit, onConcluir, onCancelar, onClose, statusConfig, onWhatsApp }) {
   if (!item) return (
     <div className="bg-white rounded-xl shadow-sm flex flex-col items-center justify-center py-16 text-slate-400">
       <CalendarDays className="w-12 h-12 mb-3 opacity-30" />
@@ -304,7 +421,7 @@ function DetalhesPanel({ item, onEdit, onConcluir, onCancelar, onClose }) {
     </div>
   );
 
-  const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.agendado;
+  const cfg = statusConfig[item.status] || statusConfig.agendado;
   const isLate = item.status === 'agendado' && isBefore(parseISO(item.inicio), startOfDay(new Date()));
 
   return (
@@ -376,6 +493,16 @@ function DetalhesPanel({ item, onEdit, onConcluir, onCancelar, onClose }) {
         </div>
       </div>
 
+      {/* botão WhatsApp */}
+      <div className="px-4 pb-2">
+        <button
+          onClick={() => onWhatsApp(item)}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-green-300 bg-green-50 hover:bg-green-100 text-green-700 font-medium text-sm transition-all"
+        >
+          <MessageCircle className="w-4 h-4" /> Enviar lembrete via WhatsApp
+        </button>
+      </div>
+
       {/* ações */}
       {item.status !== 'concluido' && item.status !== 'cancelado' && (
         <div className="p-4 border-t flex gap-2">
@@ -438,10 +565,10 @@ function ResumoDia({ compromissos }) {
             </div>
           </div>
           <div className="space-y-0.5 text-xs">
-            {Object.entries(STATUS_CONFIG).map(([k, v]) => counts[k] > 0 && (
+            {Object.entries(DEFAULT_STATUS_LABELS).map(([k, label]) => counts[k] > 0 && (
               <div key={k} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-full ${v.dot}`} />
-                <span className="text-slate-600">{counts[k]} {v.label}</span>
+                <span className={`w-2 h-2 rounded-full ${STATUS_STYLE[k]?.dot}`} />
+                <span className="text-slate-600">{counts[k]} {label}</span>
               </div>
             ))}
           </div>
@@ -522,7 +649,11 @@ export default function AgendaPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('semana'); // semana | calendario
+  const [viewMode, setViewMode] = useState('semana');
+  const [configStatusOpen, setConfigStatusOpen] = useState(false);
+  const [whatsAppItem, setWhatsAppItem] = useState(null);
+  const [customLabels, saveCustomLabels] = useStatusLabels();
+  const statusConfig = useMemo(() => buildStatusConfig(customLabels), [customLabels]);
 
   const [formData, setFormData] = useState({
     titulo: '', tipo: 'reuniao', inicio: '', fim: '', status: 'agendado', descricao: '', local: '',
@@ -631,10 +762,19 @@ export default function AgendaPage() {
           </h1>
           <p className="text-slate-500 text-sm">Gerencie seus compromissos e atividades</p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 gap-2">
-          <Plus className="w-4 h-4" />
-          Novo compromisso
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setConfigStatusOpen(true)}
+            className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 transition-all"
+            title="Personalizar status"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          <Button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 gap-2">
+            <Plus className="w-4 h-4" />
+            Novo compromisso
+          </Button>
+        </div>
       </div>
 
       {/* Barra de navegação de semana + busca */}
@@ -709,6 +849,8 @@ export default function AgendaPage() {
                   onConcluir={handleConcluir}
                   onCancelar={handleCancelar}
                   onDelete={handleDelete}
+                  onWhatsApp={setWhatsAppItem}
+                  statusConfig={statusConfig}
                 />
               ))}
             </div>
@@ -723,6 +865,8 @@ export default function AgendaPage() {
             onConcluir={handleConcluir}
             onCancelar={handleCancelar}
             onClose={() => setSelectedItem(null)}
+            statusConfig={statusConfig}
+            onWhatsApp={setWhatsAppItem}
           />
         </div>
 
@@ -740,6 +884,21 @@ export default function AgendaPage() {
 
       {/* Resumo */}
       <ResumoDia compromissos={compromissos} />
+
+      {/* Modal configuração de status */}
+      <ConfigStatusModal
+        open={configStatusOpen}
+        onClose={() => setConfigStatusOpen(false)}
+        customLabels={customLabels}
+        onSave={saveCustomLabels}
+      />
+
+      {/* Modal WhatsApp */}
+      <WhatsAppModal
+        open={!!whatsAppItem}
+        onClose={() => setWhatsAppItem(null)}
+        item={whatsAppItem}
+      />
 
       {/* Modal criar/editar */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -768,11 +927,9 @@ export default function AgendaPage() {
                 <Select value={formData.status} onValueChange={v => setFormData({ ...formData, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="agendado">Agendado</SelectItem>
-                    <SelectItem value="confirmado">Confirmado</SelectItem>
-                    <SelectItem value="concluido">Concluído</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                    <SelectItem value="remarcado">Remarcado</SelectItem>
+                    {Object.entries(statusConfig).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
