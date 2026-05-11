@@ -158,12 +158,6 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
                 <Phone className="w-4 h-4" />
               </a>
             )}
-            <button
-              onClick={() => onOpenChange(false)}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
