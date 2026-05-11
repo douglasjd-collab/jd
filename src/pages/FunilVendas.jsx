@@ -178,6 +178,19 @@ export default function FunilVendas() {
     },
   });
 
+  const FUNIS_META_CHAVE = 'funis_meta_v1';
+  const { data: funisMeta = {} } = useQuery({
+    queryKey: ['funis-meta'],
+    enabled: !!currentUser,
+    queryFn: async () => {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: FUNIS_META_CHAVE });
+      if (configs.length > 0 && configs[0].valor) {
+        try { return JSON.parse(configs[0].valor); } catch { return {}; }
+      }
+      return {};
+    },
+  });
+
   const { data: comentarios = [] } = useQuery({
     queryKey: ['comentarios', oportunidadeComentarios?.id],
     enabled: !!oportunidadeComentarios?.id,
@@ -999,12 +1012,19 @@ export default function FunilVendas() {
         {todosOsFunis.map(funil => {
           const funiEmojis = { consorcio: '🏦', emprestimo: '💳' };
           const emoji = funiEmojis[funil.value] || '🗂️';
+          const iconUrl = funisMeta[funil.value]?.iconUrl;
+          const nomeExibicao = funisMeta[funil.value]?.nome || funil.label;
           const count = oportunidades.filter(o => o.produto === funil.value && o.status === 'aberta').length;
           const isActive = filterProduto === funil.value;
           return (
             <button key={funil.value} onClick={() => setFilterProduto(funil.value)}
               className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${isActive ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'}`}>
-              <span>{emoji}</span> <span>{funil.label}</span>
+              {iconUrl ? (
+                <img src={iconUrl} alt={nomeExibicao} className="w-5 h-5 rounded object-cover flex-shrink-0" />
+              ) : (
+                <span>{emoji}</span>
+              )}
+              <span>{nomeExibicao}</span>
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${isActive ? 'bg-white/20' : 'bg-slate-100'}`}>{count}</span>
             </button>
           );
