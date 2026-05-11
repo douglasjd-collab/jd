@@ -64,6 +64,8 @@ export default function Layout({ children, currentPageName }) {
   const [comissoesPendentes, setComissoesPendentes] = useState(0);
   const [comissoesConsorcioPendentes, setComissoesConsorcioPendentes] = useState(0);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
+  const [agendaAgendados, setAgendaAgendados] = useState(0);
+  const [agendaAtrasados, setAgendaAtrasados] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -125,6 +127,20 @@ export default function Layout({ children, currentPageName }) {
           setMensagensNaoLidas(naoLidas);
         }).catch(() => {});
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const agora = new Date().toISOString();
+    const filtroAgenda = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+    base44.entities.Agenda.filter(filtroAgenda, null, 500).then(items => {
+      const agendados = items.filter(a => a.status === 'agendado' || a.status === 'confirmado').length;
+      const atrasados = items.filter(a =>
+        (a.status === 'agendado' || a.status === 'confirmado') && a.inicio && a.inicio < agora
+      ).length;
+      setAgendaAgendados(agendados);
+      setAgendaAtrasados(atrasados);
+    }).catch(() => {});
   }, [user]);
 
   useEffect(() => {
@@ -688,6 +704,16 @@ export default function Layout({ children, currentPageName }) {
                   {item.name === 'Tarefas' && tarefasVencidas > 0 && (
                     <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight">
                       {tarefasVencidas}
+                    </span>
+                  )}
+                  {item.name === 'Agenda' && agendaAgendados > 0 && (
+                    <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight mr-1" title="Compromissos agendados">
+                      {agendaAgendados}
+                    </span>
+                  )}
+                  {item.name === 'Agenda' && agendaAtrasados > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center leading-tight" title="Compromissos atrasados">
+                      {agendaAtrasados}
                     </span>
                   )}
                 </Link>
