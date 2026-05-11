@@ -304,18 +304,54 @@ export default function ConfiguracaoFunis() {
   });
 
   const funis = useMemo(() => {
-    const slugs = [...new Set(etapas.map(e => e.produto || 'sem_funil').filter(Boolean))];
+    // Slugs de etapas que têm produto definido
+    const slugsComProduto = [...new Set(etapas.filter(e => e.produto).map(e => e.produto))];
+    // Etapas sem produto (legado)
+    const etapasSemProduto = etapas.filter(e => !e.produto);
+
     const fixosSlugs = FUNIS_FIXOS.map(f => f.value);
-    const todos = [
-      ...fixosSlugs.filter(s => slugs.includes(s)),
-      ...slugs.filter(s => !fixosSlugs.includes(s)),
+
+    // Todos os slugs: fixos sempre primeiro, depois os criados
+    const todosSlugsProduto = [
+      ...fixosSlugs.filter(s => slugsComProduto.includes(s)),
+      ...slugsComProduto.filter(s => !fixosSlugs.includes(s)),
     ];
-    return todos.map(slug => {
+
+    const resultado = todosSlugsProduto.map(slug => {
       const fixo = FUNIS_FIXOS.find(f => f.value === slug);
-      const etapasDoFunil = etapas.filter(e => (e.produto || 'sem_funil') === slug).sort((a, b) => a.ordem - b.ordem);
-      const label = fixo?.label || (slug === 'sem_funil' ? 'Sem Funil' : slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+      const etapasDoFunil = etapas.filter(e => e.produto === slug).sort((a, b) => a.ordem - b.ordem);
+      const label = fixo?.label || slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       return { slug, label, fixo: !!fixo, etapas: etapasDoFunil };
     });
+
+    // Se há etapas sem produto, criar um grupo "Etapas Gerais" para elas
+    // MAS se os funis fixos existem, associar as etapas sem produto a eles (legado)
+    // Se não há nenhum slug cadastrado mas há etapas sem produto, mostrar grupo "Etapas Gerais"
+    if (etapasSemProduto.length > 0) {
+      // Verificar se os funis fixos já estão na lista — se não, adicionar grupo legado
+      FUNIS_FIXOS.forEach(fixo => {
+        if (!resultado.find(f => f.slug === fixo.value)) {
+          resultado.unshift({ slug: fixo.value, label: fixo.label, fixo: true, etapas: [] });
+        }
+      });
+
+      // Adicionar etapas sem produto num grupo "Etapas Gerais" (legado)
+      if (!resultado.find(f => f.slug === 'sem_produto')) {
+        resultado.push({
+          slug: 'sem_produto',
+          label: 'Etapas Gerais (sem funil definido)',
+          fixo: false,
+          etapas: etapasSemProduto.sort((a, b) => a.ordem - b.ordem),
+        });
+      }
+    }
+
+    // Se absolutamente nenhuma etapa com produto E nenhum funil com produto, mostrar funis fixos vazios
+    if (resultado.length === 0 && etapasSemProduto.length === 0) {
+      return FUNIS_FIXOS.map(f => ({ slug: f.value, label: f.label, fixo: true, etapas: [] }));
+    }
+
+    return resultado;
   }, [etapas]);
 
   const createEtapaMutation = useMutation({
