@@ -10,12 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -29,13 +24,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap } from 'lucide-react';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
+import { ModalAlterarResponsavel, ModalComentarios, ModalAlterarQuadro, ModalCriarFunil, ModalVenda } from '@/components/funil/FunilModais';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import VendaForm from '@/components/forms/VendaForm';
 import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
 
 export default function FunilVendas() {
@@ -45,6 +40,8 @@ export default function FunilVendas() {
   const [currentUser, setCurrentUser] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [filterProduto, setFilterProduto] = useState('todos');
+  const [filterVisao, setFilterVisao] = useState('meus'); // 'meus' | 'equipe' | 'todos' | 'sem_responsavel'
+  const [filtroRapido, setFiltroRapido] = useState(null); // null | 'atrasados' | 'sem_resposta' | 'quentes'
   const [alterarResponsavelOpen, setAlterarResponsavelOpen] = useState(false);
   const [comentariosOpen, setComentariosOpen] = useState(false);
   const [oportunidadeComentarios, setOportunidadeComentarios] = useState(null);
@@ -773,11 +770,15 @@ export default function FunilVendas() {
 
   // HU 05 - Indicadores
   const filteredOportunidades = (() => {
+    const agora = new Date();
     const base = oportunidades
       .filter((o) => {
         if (!currentUser) return false;
-        if (podeVerTodos) return true;
-        return o.vendedor_id === currentUser.id;
+        // Filtro de VISÃO
+        if (filterVisao === 'meus') return o.vendedor_id === currentUser.id;
+        if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
+        if (filterVisao === 'equipe') return podeVerTodos; // mostra todos da empresa
+        return true; // 'todos'
       })
       .filter((o) => {
         if (filterProduto === 'todos') return true;
@@ -796,6 +797,17 @@ export default function FunilVendas() {
           o.cliente_nome?.toLowerCase().includes(t) ||
           o.telefone_lead?.toLowerCase().includes(t)
         );
+      })
+      .filter((o) => {
+        if (!filtroRapido) return true;
+        const diffMs = agora - new Date(o.data_ultima_movimentacao || o.created_date || agora);
+        const diffHoras = diffMs / (1000 * 60 * 60);
+        if (filtroRapido === 'atrasados') {
+          return o.data_fechamento_prevista && o.data_fechamento_prevista < agora.toISOString().split('T')[0] && o.status === 'aberta';
+        }
+        if (filtroRapido === 'sem_resposta') return diffHoras >= 24 && o.status === 'aberta';
+        if (filtroRapido === 'quentes') return (o.valor_estimado || 0) > 50000 && o.status === 'aberta';
+        return true;
       });
 
     // Deduplicar: por cliente_id, manter apenas a oportunidade mais recente por etapa
@@ -861,6 +873,20 @@ export default function FunilVendas() {
       .map(p => ({ value: p, label: p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) })),
   ];
 
+  const openNovaOportunidade = () => {
+    setSelectedOportunidade(null);
+    const produtoSelecionado = filterProduto !== 'todos' ? filterProduto : '';
+    setFormData({
+      titulo: '', cliente_id: '', valor_estimado: '', etapa_id: '',
+      produto: produtoSelecionado, vendedor_id: currentUser?.id || '',
+      origem: '', observacoes: '', data_fechamento_prevista: '',
+      telefone_lead: '', data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
+    });
+    setIndicadorNome('');
+    setIndicadorTelefone('');
+    setFormOpen(true);
+  };
+
   if (loadingEtapas || loadingOportunidades || !currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -895,164 +921,147 @@ export default function FunilVendas() {
     );
   }
 
+  // Métricas computadas
+  const totalAtivos = filteredOportunidades.filter(o => o.status === 'aberta').length;
+  const totalGanhos = filteredOportunidades.filter(o => o.status === 'ganha').length;
+  const agora2 = new Date();
+  const totalAtrasados = filteredOportunidades.filter(o =>
+    o.data_fechamento_prevista && o.data_fechamento_prevista < agora2.toISOString().split('T')[0] && o.status === 'aberta'
+  ).length;
+  const totalSemResposta = filteredOportunidades.filter(o => {
+    const diffMs = agora2 - new Date(o.data_ultima_movimentacao || o.created_date || agora2);
+    return diffMs / (1000 * 60 * 60) >= 24 && o.status === 'aberta';
+  }).length;
+  const valorNegociacao = filteredOportunidades.filter(o => o.status === 'aberta').reduce((s, o) => s + (o.valor_estimado || 0), 0);
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Funil de Vendas"
-        subtitle="Gerencie suas oportunidades"
-        actionLabel="Nova Oportunidade"
-        onAction={() => {
-          setSelectedOportunidade(null);
-          const produtoSelecionado = filterProduto !== 'todos' ? filterProduto : '';
-          setFormData({
-            titulo: '',
-            cliente_id: '',
-            valor_estimado: '',
-            etapa_id: '',
-            produto: produtoSelecionado,
-            vendedor_id: currentUser?.id || '',
-            origem: '',
-            observacoes: '',
-            data_fechamento_prevista: '',
-            telefone_lead: '',
-            data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
-          });
-          setIndicadorNome('');
-          setIndicadorTelefone('');
-          setFormOpen(true);
-        }}
-      >
-        <Select value={filterProduto} onValueChange={setFilterProduto}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Selecionar funil" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os Funis</SelectItem>
-            {todosOsFunis.map(f => (
-              <SelectItem key={f.value} value={f.value}>Funil - {f.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {podeVerTodos && (
-          <>
+    <div className="space-y-4 pb-24">
+      {/* ── HEADER ── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Funil de Vendas</h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            <span className="font-semibold text-slate-700">{filteredOportunidades.length}</span> oportunidades
+            {totalGanhos > 0 && <> · <span className="text-green-600 font-semibold">{totalGanhos} ganhos</span></>}
+            {totalAtrasados > 0 && <> · <span className="text-red-600 font-semibold">{totalAtrasados} atrasados</span></>}
+            {totalSemResposta > 0 && <> · <span className="text-orange-600 font-semibold">{totalSemResposta} sem resposta</span></>}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Buscar lead..." value={searchCard} onChange={(e) => setSearchCard(e.target.value)} className="pl-9 w-48 h-9" />
+            {searchCard && <button onClick={() => setSearchCard('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>}
+          </div>
+          <Link to={createPageUrl('ConfiguracaoFunis')}>
+            <Button variant="outline" size="sm" className="gap-1.5 h-9"><Settings className="w-4 h-4" /> Configurar</Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* ── LINHA 1: VISÃO ── */}
+      {podeVerTodos && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { key: 'meus', label: '👤 Meus Leads', count: oportunidades.filter(o => o.vendedor_id === currentUser?.id && o.status === 'aberta').length },
+            { key: 'equipe', label: '👥 Equipe', count: oportunidades.filter(o => o.status === 'aberta').length },
+            { key: 'todos', label: '🌎 Todos', count: oportunidades.length },
+            { key: 'sem_responsavel', label: '⚠️ Sem Responsável', count: oportunidades.filter(o => !o.vendedor_id).length },
+          ].map(v => (
+            <button key={v.key} onClick={() => setFilterVisao(v.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${filterVisao === v.key ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
+              {v.label}
+              {v.count > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterVisao === v.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{v.count}</span>}
+            </button>
+          ))}
+          <div className="ml-auto">
             <Select value={filterVendedor} onValueChange={setFilterVendedor}>
-              <SelectTrigger className="w-48">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filtrar vendedor" />
+              <SelectTrigger className="h-8 text-xs w-44 border-slate-200">
+                <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+                <SelectValue placeholder="Responsável" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os vendedores</SelectItem>
-                {vendedores.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{v.razao_social || v.full_name}</SelectItem>
-                ))}
+                <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                {vendedores.map((v) => <SelectItem key={v.id} value={v.id}>{v.razao_social || v.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Link to={createPageUrl('ConfiguracaoFunis')}>
-              <Button variant="outline">Configurar Funis</Button>
-            </Link>
+          </div>
+        </div>
+      )}
 
-          </>
-        )}
-      </PageHeader>
-
-      {/* Busca de cards */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input
-          placeholder="Buscar card pelo nome..."
-          value={searchCard}
-          onChange={(e) => setSearchCard(e.target.value)}
-          className="pl-10"
-        />
-        {searchCard && (
-          <button
-            onClick={() => setSearchCard('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-          >
-            <X className="w-4 h-4" />
+      {/* ── LINHA 2: FUNIS (cards) ── */}
+      <div className="flex gap-3 flex-wrap items-center">
+        <button onClick={() => setFilterProduto('todos')}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${filterProduto === 'todos' ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'}`}>
+          <Globe className="w-4 h-4" /> <span>Todos</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterProduto === 'todos' ? 'bg-white/20' : 'bg-slate-100'}`}>{oportunidades.filter(o => o.status === 'aberta').length}</span>
+        </button>
+        {todosOsFunis.map(funil => {
+          const funiEmojis = { consorcio: '🏦', emprestimo: '💳' };
+          const emoji = funiEmojis[funil.value] || '🗂️';
+          const count = oportunidades.filter(o => o.produto === funil.value && o.status === 'aberta').length;
+          const isActive = filterProduto === funil.value;
+          return (
+            <button key={funil.value} onClick={() => setFilterProduto(funil.value)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${isActive ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'}`}>
+              <span>{emoji}</span> <span>{funil.label}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${isActive ? 'bg-white/20' : 'bg-slate-100'}`}>{count}</span>
+            </button>
+          );
+        })}
+        {podeAlterarQuadro && (
+          <button onClick={() => setCriarFunilOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-slate-300 text-slate-400 hover:border-[#1e3a5f] hover:text-[#1e3a5f] text-sm transition-all">
+            <Plus className="w-4 h-4" /> Novo Funil
           </button>
         )}
       </div>
 
-      {/* Seletor de Funis em Botões */}
-      <div className="flex flex-wrap gap-2 mb-4 items-center">
-        <Button
-          variant={filterProduto === 'todos' ? 'default' : 'outline'}
-          onClick={() => setFilterProduto('todos')}
-          className={filterProduto === 'todos' ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
-        >
-          Todos
-        </Button>
-        {todosOsFunis.map(funil => (
-          <Button
-            key={funil.value}
-            variant={filterProduto === funil.value ? 'default' : 'outline'}
-            onClick={() => setFilterProduto(funil.value)}
-            className={filterProduto === funil.value ? 'bg-[#1e3a5f] hover:bg-[#2a4a73]' : ''}
-          >
-            {funil.label}
-          </Button>
+      {/* ── FILTROS RÁPIDOS ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Filtro rápido:</span>
+        {[
+          { key: null, label: 'Todos', urgent: false },
+          { key: 'atrasados', label: `⏰ Atrasados${totalAtrasados > 0 ? ` (${totalAtrasados})` : ''}`, urgent: totalAtrasados > 0 },
+          { key: 'sem_resposta', label: `🔕 Sem Resposta${totalSemResposta > 0 ? ` (${totalSemResposta})` : ''}`, urgent: totalSemResposta > 0 },
+          { key: 'quentes', label: '🔥 Quentes (+50k)', urgent: false },
+        ].map(f => (
+          <button key={String(f.key)} onClick={() => setFiltroRapido(f.key)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all border ${
+              filtroRapido === f.key
+                ? f.urgent ? 'bg-red-600 text-white border-red-600' : 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+                : f.urgent ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+            }`}>{f.label}</button>
         ))}
-        {podeAlterarQuadro && (
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setCriarFunilOpen(true)}
-            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 ml-auto"
-            title="Criar novo funil"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
-        )}
       </div>
 
-      {/* HU 05 - Indicadores Gerais */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4 border-0 shadow-sm">
+      {/* ── BARRA DE MÉTRICAS ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="p-3 border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-blue-50/50">
+          <p className="text-xs text-blue-600 font-medium">💰 Em negociação</p>
+          <p className="text-xl font-bold text-blue-700">{formatCurrency(valorNegociacao)}</p>
+        </Card>
+        <Card className="p-3 border-l-4 border-l-orange-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-orange-50/50">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Total de Oportunidades</p>
-              <p className="text-2xl font-bold text-slate-900">{filteredOportunidades.length}</p>
+              <p className="text-xs text-orange-600 font-medium">⏰ Atrasados</p>
+              <p className="text-xl font-bold text-orange-700">{totalAtrasados}</p>
             </div>
-            <TrendingUp className="w-8 h-8 text-blue-500" />
+            {totalAtrasados > 0 && <button onClick={() => setFiltroRapido(filtroRapido === 'atrasados' ? null : 'atrasados')} className="text-xs text-orange-600 underline">ver</button>}
           </div>
         </Card>
-        <Card className="p-4 border-0 shadow-sm">
+        <Card className="p-3 border-l-4 border-l-red-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-red-50/50">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-500">Valor Total</p>
-              <p className="text-2xl font-bold text-emerald-600">
-                {formatCurrency(filteredOportunidades.reduce((sum, o) => sum + (o.valor_estimado || 0), 0))}
-              </p>
+              <p className="text-xs text-red-600 font-medium">🔕 Sem resposta</p>
+              <p className="text-xl font-bold text-red-700">{totalSemResposta}</p>
             </div>
-            <DollarSign className="w-8 h-8 text-emerald-500" />
+            {totalSemResposta > 0 && <button onClick={() => setFiltroRapido(filtroRapido === 'sem_resposta' ? null : 'sem_resposta')} className="text-xs text-red-600 underline">ver</button>}
           </div>
         </Card>
-        <Card className="p-4 border-0 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">
-                Ganhos ({filteredOportunidades.filter(o => o.status === 'ganha').length})
-              </p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(filteredOportunidades.filter(o => o.status === 'ganha').reduce((acc, o) => acc + (o.valor_estimado || 0), 0))}
-              </p>
-            </div>
-            <Badge className="bg-green-100 text-green-700">✓</Badge>
-          </div>
-        </Card>
-        <Card className="p-4 border-0 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">
-                Perdidas ({filteredOportunidades.filter(o => o.status === 'perdida').length})
-              </p>
-              <p className="text-2xl font-bold text-red-600">
-                {formatCurrency(filteredOportunidades.filter(o => o.status === 'perdida').reduce((acc, o) => acc + (o.valor_estimado || 0), 0))}
-              </p>
-            </div>
-            <Badge className="bg-red-100 text-red-700">✗</Badge>
-          </div>
+        <Card className="p-3 border-l-4 border-l-green-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-green-50/50">
+          <p className="text-xs text-green-600 font-medium">✅ Ganhos</p>
+          <p className="text-xl font-bold text-green-700">{totalGanhos}</p>
         </Card>
       </div>
 
@@ -1095,23 +1104,31 @@ export default function FunilVendas() {
                              const dataAtrasada = oport.data_fechamento_prevista && 
                                format(new Date(oport.data_fechamento_prevista), 'yyyy-MM-dd') <= format(new Date(), 'yyyy-MM-dd');
 
-                             // Definir cores baseadas no status
-                             let cardClasses = 'bg-white border border-slate-200 hover:shadow-md';
-
-                             // Verificar se a etapa é "venda fechada" ou tipo "ganho"
                              const etapaAtual = etapas.find(e => e.id === oport.etapa_id);
-                             const isVendaFechada = etapaAtual?.nome?.toLowerCase().includes('venda fechada') || 
-                                                    etapaAtual?.nome?.toLowerCase().includes('fechada') ||
-                                                    etapaAtual?.tipo === 'ganho';
+                             const isVendaFechada = etapaAtual?.tipo === 'ganho';
+
+                             // Calcular se está sem resposta (>24h sem movimentação)
+                             const diffHorasSemResposta = (new Date() - new Date(oport.data_ultima_movimentacao || oport.created_date || new Date())) / (1000 * 60 * 60);
+                             const semResposta = diffHorasSemResposta >= 24 && oport.status === 'aberta';
+
+                             // Prioridade visual
+                             let cardClasses = 'bg-white border border-slate-200 hover:shadow-md';
+                             let prioridadeLabel = null;
 
                              if (oport.status === 'ganha' || isVendaFechada) {
-                               cardClasses = 'bg-green-50 border-2 border-green-600';
+                               cardClasses = 'bg-green-50 border-2 border-green-500';
+                               prioridadeLabel = <span className="text-xs font-bold text-green-600">🟢 Ganho</span>;
                              } else if (oport.status === 'perdida') {
-                               cardClasses = 'bg-red-50 border-2 border-red-600';
+                               cardClasses = 'bg-red-50 border-2 border-red-500';
+                               prioridadeLabel = <span className="text-xs font-bold text-red-600">🔴 Perdido</span>;
                              } else if (dataAtrasada) {
-                               cardClasses = 'bg-orange-50 border-2 border-orange-400 shadow-[0_0_15px_rgba(251,146,60,0.3)]';
+                               cardClasses = 'bg-orange-50 border-2 border-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.25)]';
+                               prioridadeLabel = <span className="text-xs font-bold text-orange-600">🔴 Urgente</span>;
+                             } else if (semResposta) {
+                               cardClasses = 'bg-yellow-50 border border-yellow-300';
+                               prioridadeLabel = <span className="text-xs font-bold text-yellow-700">🟡 Sem resposta</span>;
                              } else if (podeVerTodos && !isResponsavel) {
-                               cardClasses = 'bg-purple-200/40 border border-transparent';
+                               cardClasses = 'bg-slate-50 border border-slate-200';
                              }
 
                              return (
@@ -1124,6 +1141,7 @@ export default function FunilVendas() {
                                } ${cardClasses}`}
                                onDoubleClick={() => navigate(createPageUrl(`OportunidadeDetalhes?id=${oport.id}`))}
                              >
+                                {prioridadeLabel && <div className="mb-1.5">{prioridadeLabel}</div>}
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
                                     <h4 className="font-medium text-slate-900 text-sm">{oport.titulo}</h4>
@@ -1553,431 +1571,89 @@ export default function FunilVendas() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Alterar Responsável */}
-      <Dialog open={alterarResponsavelOpen} onOpenChange={setAlterarResponsavelOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Gerenciar Responsáveis</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm text-slate-600">Oportunidade</Label>
-              <p className="font-semibold">{oportunidadeParaAlterar?.titulo}</p>
-            </div>
+      {/* Modais extraídos */}
+      <ModalAlterarResponsavel
+        open={alterarResponsavelOpen}
+        onOpenChange={setAlterarResponsavelOpen}
+        oportunidade={oportunidadeParaAlterar}
+        vendedores={vendedores}
+        loadingVendedores={loadingVendedores}
+        responsaveisSelecionados={responsaveisSelecionados}
+        setResponsaveisSelecionados={setResponsaveisSelecionados}
+        podeAlterarResponsavel={podeAlterarResponsavel}
+        onConfirmar={() => {
+          if (!podeAlterarResponsavel) { toast.error('Sem permissão'); return; }
+          if (responsaveisSelecionados.length === 0) { toast.error('Selecione ao menos um responsável'); return; }
+          alterarResponsavelMutation.mutate({ oportunidadeId: oportunidadeParaAlterar.id, responsaveisIds: responsaveisSelecionados });
+        }}
+        isPending={alterarResponsavelMutation.isPending}
+      />
 
-            <div>
-              <Label className="text-sm mb-2 block">Responsáveis da Oportunidade *</Label>
-              <p className="text-xs text-slate-500 mb-2">Selecione um ou mais responsáveis. O primeiro será o principal.</p>
+      <ModalComentarios
+        open={comentariosOpen}
+        onOpenChange={setComentariosOpen}
+        oportunidade={oportunidadeComentarios}
+        comentarios={comentarios}
+        novoComentario={novoComentario}
+        setNovoComentario={setNovoComentario}
+        tipoComentario={tipoComentario}
+        setTipoComentario={setTipoComentario}
+        mostrarFormComentario={mostrarFormComentario}
+        setMostrarFormComentario={setMostrarFormComentario}
+        onEnviar={() => criarComentarioMutation.mutate({ oportunidadeId: oportunidadeComentarios.id, mensagem: novoComentario, tipo: tipoComentario })}
+        isPending={criarComentarioMutation.isPending}
+      />
 
-              <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-lg p-2">
-                {loadingVendedores ? (
-                  <p className="text-sm text-slate-500 p-2">Carregando...</p>
-                ) : vendedores.length === 0 ? (
-                  <p className="text-sm text-slate-500 p-2">Nenhum vendedor disponível</p>
-                ) : (
-                  vendedores
-                    .filter(v => ['vendedor', 'gerente', 'admin', 'master'].includes(v.perfil) && v.status === 'ativo')
-                    .map((v) => (
-                      <div 
-                        key={v.id} 
-                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                          responsaveisSelecionados.includes(v.id) 
-                            ? 'bg-blue-100 border border-blue-300' 
-                            : 'hover:bg-slate-50 border border-transparent'
-                        }`}
-                        onClick={() => {
-                          setResponsaveisSelecionados(prev => {
-                            if (prev.includes(v.id)) {
-                              return prev.filter(id => id !== v.id);
-                            } else {
-                              return [...prev, v.id];
-                            }
-                          });
-                        }}
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={v.foto_perfil} alt={v.full_name} />
-                          <AvatarFallback className="text-xs">
-                            {getInitials(v.full_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{v.razao_social || v.full_name}</p>
-                          <p className="text-xs text-slate-500 capitalize">{v.perfil}</p>
-                        </div>
-                        {responsaveisSelecionados.includes(v.id) && (
-                          <div className="flex items-center gap-1">
-                            {responsaveisSelecionados[0] === v.id && (
-                              <Badge variant="outline" className="text-xs">Principal</Badge>
-                            )}
-                            <div className="h-5 w-5 bg-blue-600 rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs">✓</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                )}
-              </div>
-            </div>
+      <ModalAlterarQuadro
+        open={alterarQuadroOpen}
+        onOpenChange={setAlterarQuadroOpen}
+        oportunidade={oportunidadeParaAlterar}
+        etapasOrdenadas={etapasOrdenadas}
+        todosOsFunis={todosOsFunis}
+        novaEtapaId={novaEtapaId}
+        setNovaEtapaId={setNovaEtapaId}
+        funilDestino={funilDestino}
+        setFunilDestino={setFunilDestino}
+        onConfirmar={() => {
+          if (!novaEtapaId) { toast.error('Selecione uma etapa'); return; }
+          alterarQuadroMutation.mutate({ oportunidadeId: oportunidadeParaAlterar.id, novaEtapaId, novoFunil: funilDestino && funilDestino !== 'todos' ? funilDestino : undefined });
+        }}
+        isPending={alterarQuadroMutation.isPending}
+      />
 
-            {responsaveisSelecionados.length > 0 && (
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-xs text-blue-700 mb-1">
-                  {responsaveisSelecionados.length} responsável(is) selecionado(s)
-                </p>
-                <p className="text-xs text-blue-600">
-                  Principal: {vendedores.find(v => v.id === responsaveisSelecionados[0])?.razao_social || vendedores.find(v => v.id === responsaveisSelecionados[0])?.full_name}
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setAlterarResponsavelOpen(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                onClick={() => {
-                  if (!podeAlterarResponsavel) {
-                    toast.error('Você não tem permissão para alterar responsáveis');
-                    return;
-                  }
-                  if (responsaveisSelecionados.length === 0) {
-                    toast.error('Selecione pelo menos um responsável');
-                    return;
-                  }
-                  alterarResponsavelMutation.mutate({ 
-                    oportunidadeId: oportunidadeParaAlterar.id, 
-                    responsaveisIds: responsaveisSelecionados 
-                  });
-                }}
-                disabled={alterarResponsavelMutation.isPending}
-                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
-              >
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Comentários/Conversas */}
-      <Dialog open={comentariosOpen} onOpenChange={setComentariosOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>💬 Conversas - {oportunidadeComentarios?.titulo}</DialogTitle>
-            <p className="text-sm text-slate-600">
-              Cliente: {oportunidadeComentarios?.cliente_nome || oportunidadeComentarios?.telefone_lead || 'Sem cliente'}
-            </p>
-          </DialogHeader>
-
-          {/* Lista de Comentários */}
-          <div className="space-y-3 flex-1 overflow-y-auto pr-2">
-            {comentarios.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">
-                <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Nenhuma conversa registrada ainda</p>
-              </div>
-            ) : (
-              comentarios.map((comentario) => (
-                <div key={comentario.id} className="bg-slate-50 p-3 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
-                          {getInitials(comentario.usuario_nome)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{comentario.usuario_nome}</p>
-                        <p className="text-xs text-slate-500">
-                          {format(new Date(comentario.created_date), 'dd/MM/yyyy HH:mm')}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {comentario.tipo === 'comentario' && '💬 Comentário'}
-                      {comentario.tipo === 'ligacao' && '📞 Ligação'}
-                      {comentario.tipo === 'reuniao' && '🤝 Reunião'}
-                      {comentario.tipo === 'email' && '📧 Email'}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-slate-700 whitespace-pre-wrap">{comentario.mensagem}</p>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Form Novo Comentário */}
-          <div className="border-t pt-4">
-            {!mostrarFormComentario ? (
-              <div className="flex justify-between items-center">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setComentariosOpen(false);
-                    setNovoComentario('');
-                    setTipoComentario('comentario');
-                    setMostrarFormComentario(false);
-                  }}
-                >
-                  Fechar
-                </Button>
-                <Button
-                  onClick={() => setMostrarFormComentario(true)}
-                  className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Adicionar Comentário
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-sm mb-2 block">Tipo de Interação</Label>
-                  <Select value={tipoComentario} onValueChange={setTipoComentario}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="comentario">💬 Comentário</SelectItem>
-                      <SelectItem value="ligacao">📞 Ligação</SelectItem>
-                      <SelectItem value="reuniao">🤝 Reunião</SelectItem>
-                      <SelectItem value="email">📧 Email</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-sm mb-2 block">Mensagem *</Label>
-                  <Textarea
-                    value={novoComentario}
-                    onChange={(e) => setNovoComentario(e.target.value)}
-                    placeholder="Digite sua mensagem ou anotação..."
-                    rows={3}
-                    className="resize-none"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setMostrarFormComentario(false);
-                      setNovoComentario('');
-                      setTipoComentario('comentario');
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      criarComentarioMutation.mutate({
-                        oportunidadeId: oportunidadeComentarios.id,
-                        mensagem: novoComentario,
-                        tipo: tipoComentario
-                      });
-                    }}
-                    disabled={criarComentarioMutation.isPending || !novoComentario.trim()}
-                    className="bg-[#23BE84] hover:bg-[#1da570]"
-                  >
-                    {criarComentarioMutation.isPending ? 'Enviando...' : 'Enviar'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Alterar Quadro */}
-      <Dialog open={alterarQuadroOpen} onOpenChange={(v) => { setAlterarQuadroOpen(v); if (!v) setFunilDestino(''); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Alterar Quadro / Etapa</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm text-slate-600">Oportunidade</Label>
-              <p className="font-semibold">{oportunidadeParaAlterar?.titulo}</p>
-            </div>
-            <div>
-              <Label className="text-sm text-slate-600 mb-1 block">Quadro Atual</Label>
-              <p className="text-sm text-slate-700">{oportunidadeParaAlterar?.etapa_nome}</p>
-            </div>
-
-            <div>
-              <Label>Funil de Destino</Label>
-              <Select value={funilDestino} onValueChange={(v) => { setFunilDestino(v); setNovaEtapaId(''); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o funil (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">🔀 Todos os funis</SelectItem>
-                  <SelectItem value="consorcio">🏦 Consórcio</SelectItem>
-                  <SelectItem value="emprestimo">💳 Empréstimo Consignado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Nova Etapa *</Label>
-              <Select value={novaEtapaId} onValueChange={setNovaEtapaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a etapa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {etapasOrdenadas.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: e.cor }} />
-                        {e.nome}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => { setAlterarQuadroOpen(false); setFunilDestino(''); }}>
-                Cancelar
-              </Button>
-              <Button 
-                onClick={() => {
-                  if (!novaEtapaId) {
-                    toast.error('Selecione uma etapa');
-                    return;
-                  }
-                  alterarQuadroMutation.mutate({ 
-                    oportunidadeId: oportunidadeParaAlterar.id, 
-                    novaEtapaId,
-                    novoFunil: funilDestino && funilDestino !== 'todos' ? funilDestino : undefined,
-                  });
-                }}
-                disabled={alterarQuadroMutation.isPending}
-                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
-              >
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de Busca de Cliente */}
       <ClienteSearchModal
         open={clienteSearchOpen}
         onOpenChange={setClienteSearchOpen}
-        onSelectCliente={(cliente) => {
-          setFormData({ ...formData, cliente_id: cliente.id });
-          setClienteSearchOpen(false);
-        }}
+        onSelectCliente={(cliente) => { setFormData({ ...formData, cliente_id: cliente.id }); setClienteSearchOpen(false); }}
         currentUser={currentUser}
         empresaIdSelecionada={currentUser?.empresa_id}
       />
 
-      {/* Dialog Criar Novo Funil */}
-      <Dialog open={criarFunilOpen} onOpenChange={setCriarFunilOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Criar Novo Funil</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="nome_funil">Nome do Funil *</Label>
-              <Input
-                id="nome_funil"
-                value={novoFunil.nome}
-                onChange={(e) => setNovoFunil({ ...novoFunil, nome: e.target.value })}
-                placeholder="Ex: Funil - Crédito Pessoal"
-              />
-            </div>
+      <ModalCriarFunil
+        open={criarFunilOpen}
+        onOpenChange={setCriarFunilOpen}
+        novoFunil={novoFunil}
+        setNovoFunil={setNovoFunil}
+        onCriar={() => { if (!novoFunil.nome.trim()) { toast.error('Digite um nome'); return; } criarFunilMutation.mutate(novoFunil); }}
+        isPending={criarFunilMutation.isPending}
+      />
 
-            <div>
-              <Label htmlFor="cor_funil">Cor</Label>
-              <div className="flex gap-2 items-center">
-                <input
-                  id="cor_funil"
-                  type="color"
-                  value={novoFunil.cor}
-                  onChange={(e) => setNovoFunil({ ...novoFunil, cor: e.target.value })}
-                  className="h-10 w-20 rounded border border-slate-200 cursor-pointer"
-                />
-                <span className="text-sm text-slate-600">{novoFunil.cor}</span>
-              </div>
-            </div>
+      <ModalVenda
+        open={vendaFormOpen}
+        onOpenChange={setVendaFormOpen}
+        oportunidade={oportunidadeParaVenda}
+        currentUser={currentUser}
+        onSuccess={() => { setVendaFormOpen(false); setOportunidadeParaVenda(null); }}
+      />
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setCriarFunilOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!novoFunil.nome.trim()) {
-                    toast.error('Digite um nome para o funil');
-                    return;
-                  }
-                  criarFunilMutation.mutate(novoFunil);
-                }}
-                disabled={criarFunilMutation.isPending}
-                className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
-              >
-                Criar Funil
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Criar Venda */}
-      <Dialog open={vendaFormOpen} onOpenChange={setVendaFormOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Registrar Venda - {oportunidadeParaVenda?.titulo}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setVendaFormOpen(false);
-                  setOportunidadeParaVenda(null);
-                }}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-
-          <VendaForm
-            open={vendaFormOpen}
-            onOpenChange={setVendaFormOpen}
-            venda={null}
-            oportunidade={oportunidadeParaVenda}
-            currentUser={currentUser}
-            onSubmit={async (data) => {
-              try {
-                // Criar venda via mutation da página Vendas
-                const response = await base44.entities.Venda.create(data);
-                
-                // Vincular venda à oportunidade
-                await base44.entities.Oportunidade.update(oportunidadeParaVenda.id, {
-                  venda_id: response.id,
-                  empresa_id: oportunidadeParaVenda.empresa_id || currentUser?.empresa_id
-                });
-                
-                toast.success('Venda registrada com sucesso!');
-                queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
-                setVendaFormOpen(false);
-                setOportunidadeParaVenda(null);
-              } catch (error) {
-                toast.error('Erro ao registrar venda: ' + error.message);
-              }
-            }}
-            isLoading={false}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* FAB - Nova Oportunidade */}
+      <button
+        onClick={openNovaOportunidade}
+        className="fixed bottom-8 right-8 z-50 flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2a4a73] text-white px-5 py-3.5 rounded-full shadow-2xl transition-all hover:scale-105 font-semibold text-sm"
+      >
+        <Plus className="w-5 h-5" />
+        Nova Oportunidade
+      </button>
       </div>
       );
       }
