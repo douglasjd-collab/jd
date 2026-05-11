@@ -947,8 +947,8 @@ export default function FunilVendas() {
                 ))}
               </SelectContent>
             </Select>
-            <Link to={createPageUrl('ConfiguracaoFunil')}>
-              <Button variant="outline">Configurar Etapas</Button>
+            <Link to={createPageUrl('ConfiguracaoFunis')}>
+              <Button variant="outline">Configurar Funis</Button>
             </Link>
             <Link to={createPageUrl('ConfiguracaoFunis')}>
               <Button variant="outline" className="gap-1">
