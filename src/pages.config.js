@@ -107,7 +107,6 @@ import RecebimentoComissao from './pages/RecebimentoComissao';
 import Relatorios from './pages/Relatorios';
 import RelatoriosFinanceiros from './pages/RelatoriosFinanceiros';
 import Saques from './pages/Saques';
-import SimuladorConsorcio from './pages/SimuladorConsorcio';
 import SimuladorEscolha from './pages/SimuladorEscolha';
 import SimuladorNormal from './pages/SimuladorNormal';
 import StatusPropostas from './pages/StatusPropostas';
@@ -190,7 +189,6 @@ export const PAGES = {
     "Relatorios": Relatorios,
     "RelatoriosFinanceiros": RelatoriosFinanceiros,
     "Saques": Saques,
-    "SimuladorConsorcio": SimuladorConsorcio,
     "SimuladorEscolha": SimuladorEscolha,
     "SimuladorNormal": SimuladorNormal,
     "StatusPropostas": StatusPropostas,
