@@ -424,13 +424,16 @@ export default function SimuladorNormal() {
         const parcelasQuitadas = Math.floor(lancePrazo / parcelaTotal);
         const novoPrazo5050 = Math.max(1, novoPrazo - parcelasQuitadas);
 
-        // Saldo para dividir = saldoDevedorReal (já sem 1ª parcela no ato) - metade do lance na parcela
+        // O saldo devedor para exibição = saldoDevedorReal (sem 1ª parcela no ato, sem lances)
+        // A metade do lance na parcela é aplicada ao saldo, reduzindo a nova parcela
+        // mas o "saldo restante" exibido deve ser o saldo SEM os lances (apenas sem 1ª parcela no ato)
         const saldoParaDividir = saldoDevedorReal - lanceParcela;
         novaParcelaCalculada = saldoParaDividir / novoPrazo5050;
         novoPrazo = novoPrazo5050;
 
-        // Saldo exibido = saldoParaDividir + primeiraParcelaNoAto, para que a linha de exibição subtraia corretamente
-        saldoDevedorTotal = saldoParaDividir + primeiraParcelaNoAto;
+        // Saldo exibido = saldoDevedorReal (sem 1ª parcela no ato, mas ANTES de subtrair lances)
+        // para que o usuário veja o saldo real restante a pagar dividido pelo novo prazo
+        saldoDevedorTotal = saldoDevedorReal + primeiraParcelaNoAto; // restaura para totalPlano - lanceTotal
 
         // Guardar info para exibição
         descontoPorParcela = lanceParcela;
@@ -442,7 +445,7 @@ export default function SimuladorNormal() {
 
     // Saldo devedor para exibição:
     // No plano decrescente: já calculado como saldoDevedorTotal (saldo após parcela paga e lance)
-    // No modo 5050: saldoDevedorTotal já foi ajustado para (saldoReal - lanceParcela)
+    // No modo 5050: saldoDevedorTotal foi restaurado para totalPlano - lanceTotal, então subtraímos 1ª parcela normalmente
     // No plano normal: totalPlano - lance - 1ª parcela no ato
     const saldoDevedorExibicao = temPlanoDecrescente
       ? saldoDevedorTotal
