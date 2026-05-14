@@ -62,7 +62,7 @@ export default function PlanosCanopusPage() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedVariacao, setSelectedVariacao] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [tipoSimulacaoDialog, setTipoSimulacaoDialog] = useState(false);
+
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
   const [tipoProduto, setTipoProduto] = useState('');
@@ -223,37 +223,19 @@ export default function PlanosCanopusPage() {
   };
 
   const handleAbrirSimulador = (variacao) => {
-    setSelectedVariacao(variacao);
-    setTipoSimulacaoDialog(true);
-  };
-
-  const handleSelecionarTipoSimulacao = (tipo) => {
-    if (!selectedVariacao || !selectedGroup) return;
-    
-    // Extrair número do grupo do campo plano (ex: "9130 | ..." -> "9130")
+    if (!selectedGroup) return;
     const grupoNumero = selectedGroup.plano?.split('|')[0]?.trim() || '';
-    
-    // Salvar dados no localStorage para o simulador
     const dadosPlano = {
       credito: selectedGroup.valor_bem,
       valor_credito: selectedGroup.valor_bem,
-      parcela: selectedVariacao.parcela,
-      prazo: selectedVariacao.prazo_meses,
+      parcela: variacao.parcela,
+      prazo: variacao.prazo_meses,
       nome_bem: selectedGroup.nome_bem,
       plano: selectedGroup.plano,
       grupo: grupoNumero
     };
-    
     localStorage.setItem('planoSelecionado', JSON.stringify(dadosPlano));
-    
-    // Redirecionar para o simulador apropriado
-    if (tipo === 'consorcio') {
-      navigate(createPageUrl('SimuladorConsorcio'));
-    } else {
-      navigate(createPageUrl('SimuladorNormal'));
-    }
-    
-    setTipoSimulacaoDialog(false);
+    navigate(createPageUrl('SimuladorNormal'));
     setDialogOpen(false);
   };
 
@@ -720,40 +702,6 @@ ${textoVariacoes}
                 </div>
               ))}
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Tipo de Simulação */}
-      <Dialog open={tipoSimulacaoDialog} onOpenChange={setTipoSimulacaoDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Tipo de Simulação</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 mt-4">
-            <p className="text-sm text-slate-600">
-              Escolha o tipo de simulação que deseja realizar:
-            </p>
-            <Button
-              onClick={() => handleSelecionarTipoSimulacao('consorcio')}
-              className="w-full justify-start h-auto py-4 px-6 bg-orange-50 border-2 border-orange-500 hover:bg-orange-100"
-              variant="outline"
-            >
-              <div className="text-left">
-                <p className="font-semibold text-orange-900">Lance Embutido</p>
-                <p className="text-xs text-orange-700 mt-1">Simulação com lance embutido no consórcio</p>
-              </div>
-            </Button>
-            <Button
-              onClick={() => handleSelecionarTipoSimulacao('normal')}
-              className="w-full justify-start h-auto py-4 px-6 bg-blue-50 border-2 border-blue-600 hover:bg-blue-100"
-              variant="outline"
-            >
-              <div className="text-left">
-                <p className="font-semibold text-blue-900">Recurso Próprio</p>
-                <p className="text-xs text-blue-700 mt-1">Simulação com lance próprio do cliente</p>
-              </div>
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
