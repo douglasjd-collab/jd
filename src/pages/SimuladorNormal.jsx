@@ -415,29 +415,29 @@ export default function SimuladorNormal() {
       }
 
       if (modoReducao === '5050' && lanceProprioValor > 0) {
-        // Metade do lance reduz o prazo (quita parcelas do final)
-        // Metade do lance abate do saldo (reduz valor da parcela)
+        // Metade do lance quita parcelas do final (reduz prazo)
+        // Metade do lance também quita parcelas do final (ambas as metades reduzem prazo)
+        // O saldo restante é dividido pelo novo prazo
         const lancePrazo = lanceProprioValor / 2;
         const lanceParcela = lanceProprioValor / 2;
 
-        // Quantas parcelas a metade do lance consegue quitar
-        const parcelasQuitadas = Math.floor(lancePrazo / parcelaTotal);
-        const novoPrazo5050 = Math.max(1, novoPrazo - parcelasQuitadas);
+        // Quantas parcelas cada metade do lance consegue quitar
+        const parcelasQuitadasPrazo = Math.floor(lancePrazo / parcelaTotal);
+        const parcelasQuitadasParcela = Math.floor(lanceParcela / parcelaTotal);
+        const parcelasQuitadas = parcelasQuitadasPrazo + parcelasQuitadasParcela;
+        const novoPrazo5050 = Math.max(1, novoPrazo - parcelasQuitadasPrazo);
 
-        // O saldo devedor para exibição = saldoDevedorReal (sem 1ª parcela no ato, sem lances)
-        // A metade do lance na parcela é aplicada ao saldo, reduzindo a nova parcela
-        // mas o "saldo restante" exibido deve ser o saldo SEM os lances (apenas sem 1ª parcela no ato)
-        const saldoParaDividir = saldoDevedorReal - lanceParcela;
-        novaParcelaCalculada = saldoParaDividir / novoPrazo5050;
+        // Saldo a dividir = saldoDevedorReal (sem 1ª parcela no ato, sem lances)
+        // O lance inteiro quitou parcelas, então o saldo restante é dividido pelo novo prazo
+        novaParcelaCalculada = saldoDevedorReal / novoPrazo5050;
         novoPrazo = novoPrazo5050;
 
-        // Saldo exibido = saldoDevedorReal (sem 1ª parcela no ato, mas ANTES de subtrair lances)
-        // para que o usuário veja o saldo real restante a pagar dividido pelo novo prazo
-        saldoDevedorTotal = saldoDevedorReal + primeiraParcelaNoAto; // restaura para totalPlano - lanceTotal
+        // Restaurar saldoDevedorTotal para exibição correta (totalPlano - lanceTotal, antes de 1ª parcela)
+        saldoDevedorTotal = saldoDevedorReal + primeiraParcelaNoAto;
 
         // Guardar info para exibição
         descontoPorParcela = lanceParcela;
-        parcelasJaPagas = parcelasQuitadas;
+        parcelasJaPagas = parcelasQuitadasPrazo;
       } else {
         novaParcelaCalculada = saldoDevedorReal / novoPrazo;
       }
