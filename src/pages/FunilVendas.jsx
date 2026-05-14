@@ -788,9 +788,15 @@ export default function FunilVendas() {
       .filter((o) => {
         if (!currentUser) return false;
         // Filtro de VISÃO
-        if (filterVisao === 'meus') return o.vendedor_id === currentUser.id;
+        if (filterVisao === 'meus') {
+          return (
+            o.vendedor_id === currentUser.id ||
+            o.vendedor_id === currentUser.colaborador_id ||
+            o.vendedor_id === currentUser.auth_id
+          );
+        }
         if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
-        if (filterVisao === 'equipe') return podeVerTodos; // mostra todos da empresa
+        if (filterVisao === 'equipe') return true; // mostra todos da empresa
         return true; // 'todos'
       })
       .filter((o) => {
