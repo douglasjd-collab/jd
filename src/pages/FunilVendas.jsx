@@ -40,7 +40,7 @@ export default function FunilVendas() {
   const [currentUser, setCurrentUser] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [filterProduto, setFilterProduto] = useState('todos');
-  const [filterVisao, setFilterVisao] = useState('meus'); // 'meus' | 'equipe' | 'todos' | 'sem_responsavel'
+  const [filterVisao, setFilterVisao] = useState('todos'); // 'meus' | 'equipe' | 'todos' | 'sem_responsavel'
   const [filtroRapido, setFiltroRapido] = useState(null); // null | 'atrasados' | 'sem_resposta' | 'quentes'
   const [alterarResponsavelOpen, setAlterarResponsavelOpen] = useState(false);
   const [comentariosOpen, setComentariosOpen] = useState(false);
