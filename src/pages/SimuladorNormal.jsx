@@ -304,10 +304,8 @@ export default function SimuladorNormal() {
     }
 
     const prazoNum = parseFloat(prazoOriginal);
-    // Se usar parcela reduzida, o total do plano já considera o crédito reduzido (plano 50%)
-    // Nesse caso, a 1ª parcela reduzida NÃO deve ser descontada separadamente do saldo devedor
-    const parcelaParaTotalPlano = (usarParcelaReduzida && parcelaReduzidaTotal > 0) ? parcelaReduzidaTotal : parcelaTotal;
-    const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaParaTotalPlano;
+    // O total do plano SEMPRE usa a parcela cheia, independente da parcela reduzida
+    const totalPlano = temPlanoDecrescente ? totalPlanoDecrescente : prazoNum * parcelaTotal;
     
     let lanceProprioValor = 0;
     let lanceEmbutidoValor = 0;
@@ -329,11 +327,8 @@ export default function SimuladorNormal() {
     }
 
     const lanceTotalValor = lanceProprioValor + lanceEmbutidoValor;
-    // Quando parcela reduzida está selecionada, o lance embutido já está embutido na parcela reduzida
-    // Portanto NÃO desconta o lance embutido do saldo devedor nesse caso
-    const usandoParcelaReduzida = usarParcelaReduzida && parcelaReduzidaTotal > 0;
-    const lanceParaDescontarDoSaldo = usandoParcelaReduzida ? lanceProprioValor : lanceTotalValor;
-    saldoDevedorTotal = totalPlano - lanceParaDescontarDoSaldo;
+    // O lance sempre desconta do saldo total do plano (calculado com parcela cheia)
+    saldoDevedorTotal = totalPlano - lanceTotalValor;
 
     const saldoAposLance = saldoDevedorTotal;
 
@@ -408,7 +403,7 @@ export default function SimuladorNormal() {
         }
       }
     } else {
-      // Sempre desconta a 1ª parcela no ato do saldo devedor
+      // Sempre desconta a 1ª parcela no ato do saldo devedor (usa a parcela escolhida pelo cliente)
       const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
       novoPrazo = prazoNum - 1;
 
@@ -434,8 +429,8 @@ export default function SimuladorNormal() {
         novaParcelaCalculada = saldoParaDividir / novoPrazo5050;
         novoPrazo = novoPrazo5050;
 
-        // Saldo exibido = o mesmo que é dividido pelo prazo
-        saldoDevedorTotal = saldoParaDividir + primeiraParcelaNoAto; // reverter para que a linha de exibição subtraia corretamente
+        // Saldo exibido = saldoParaDividir + primeiraParcelaNoAto, para que a linha de exibição subtraia corretamente
+        saldoDevedorTotal = saldoParaDividir + primeiraParcelaNoAto;
 
         // Guardar info para exibição
         descontoPorParcela = lanceParcela;
