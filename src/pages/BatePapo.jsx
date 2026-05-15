@@ -1837,7 +1837,7 @@ export default function BatePapo() {
                               else labelData = format(dataMsg, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
                             }
                             return (
-                              <React.Fragment key={msg.id}>
+                              <div key={msg.id}>
                                 {mostrarSeparador && (
                                   <div className="flex items-center gap-2 my-3">
                                     <div className="flex-1 h-px bg-slate-300/50" />
@@ -1848,7 +1848,7 @@ export default function BatePapo() {
                                   </div>
                                 )}
                                 <MensagemItem mensagem={msg} conversaId={conversaSelecionada?.id} isGrupo={isGrupo(conversaSelecionada)} onResponder={setMensagemParaResponder} user={user} />
-                              </React.Fragment>
+                              </div>
                             );
                           })}
                           <div ref={mensagensEndRef} />
