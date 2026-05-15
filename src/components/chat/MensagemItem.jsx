@@ -40,27 +40,29 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         const vcard = obj.contactMessage.vcard;
         const displayName = obj.contactMessage.displayName || '';
         
-        // Extrair telefone - pode estar em formatos como "item1.TEL;waid=...:+55 87..."
+        // Extrair telefone do waid (mais confiável)
         let telefone = '';
-        const telefonMatch = vcard.match(/(?:item\d+\.)?TEL[^:]*:([+\d\s\-()]+)/);
-        if (telefonMatch) {
-          telefone = telefonMatch[1].trim();
+        const waidMatch = vcard.match(/waid=([0-9]+)/);
+        if (waidMatch) {
+          telefone = waidMatch[1];
         }
         
-        // Se não encontrou, tenta extrair do waid
+        // Fallback: tentar extrair do valor TEL
         if (!telefone) {
-          const waidMatch = vcard.match(/waid=([0-9]+)/);
-          if (waidMatch) {
-            telefone = waidMatch[1];
+          const telefonMatch = vcard.match(/(?:item\d+\.)?TEL[^:]*:([+\d\s\-()]+)/);
+          if (telefonMatch) {
+            telefone = telefonMatch[1].replace(/\D/g, '');
           }
         }
         
-        // Extrair foto (BASE64) - pode ter quebras de linha
+        // Extrair foto (BASE64)
         let fotoUrl = null;
-        const fotoMatch = vcard.match(/PHOTO(?:;[^:]*)?:([a-zA-Z0-9+/=\n]+?)(?=\n[A-Z]|\n$)/);
+        const fotoMatch = vcard.match(/PHOTO(?:;[^:]*)?:([a-zA-Z0-9+/=\n]+?)(?:\n[A-Z]|$)/);
         if (fotoMatch) {
           const fotoData = fotoMatch[1].replace(/\n/g, '');
-          fotoUrl = `data:image/jpeg;base64,${fotoData}`;
+          if (fotoData.trim()) {
+            fotoUrl = `data:image/jpeg;base64,${fotoData}`;
+          }
         }
         
         return { displayName, telefone, fotoUrl };
