@@ -129,9 +129,15 @@ function validarTelefone(num) {
 function normalizarParaBR(num) {
   // Se o número tem 11 ou 10 dígitos sem DDI, adiciona 55
   if (!num.startsWith('55') && (num.length === 10 || num.length === 11)) {
-    return '55' + num;
+    num = '55' + num;
   }
-  // Se tem 9 dígitos começa com 9 (celular sem DDD), não é válido — retorna como está
+  // Normalizar para 12 dígitos (sem o nono dígito) para evitar duplicatas
+  // Ex: 5511987654321 (13) → 55118765432 (12)
+  if (num.startsWith('55') && num.length === 13) {
+    const ddd = num.slice(0, 4); // 55 + DDD
+    const resto = num.slice(5);  // remove o 9 do início
+    num = ddd + resto;
+  }
   return num;
 }
 
@@ -472,11 +478,13 @@ async function processarWebhook(req, rawBody, base44) {
 
   console.log(`📞 Tel: ${telefoneLimpo} | msgId: ${messageId}`);
 
-  // Variações do telefone
+  // Variações do telefone (sempre buscar nas duas formas: com e sem o 9)
   const telefonesVariacoes = [telefoneLimpo];
   if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
+    // 12 dígitos → adicionar variação com 9
     telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
   } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+    // 13 dígitos → adicionar variação sem 9
     telefonesVariacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
   }
 
@@ -553,7 +561,7 @@ async function processarWebhook(req, rawBody, base44) {
   const ultimoRemetente = fromMe ? 'vendedor' : 'cliente';
 
   if (conversa) {
-    // Atualizar conversa existente — SEMPRE com número correto
+    // Atualizar conversa existente — SEMPRE com número normalizado (12 dígitos)
     await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
@@ -565,10 +573,10 @@ async function processarWebhook(req, rawBody, base44) {
       instancia: instanceFinal,
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
-      whatsapp_id: `${telefoneLimpo}@s.whatsapp.net`
+      whatsapp_id: conversa.whatsapp_id || `${telefoneLimpo}@s.whatsapp.net`
     });
   } else {
-    // Criar conversa APENAS com número correto (NUNCA @lid)
+    // Criar conversa APENAS com número normalizado (NUNCA @lid)
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId, cliente_id: clienteId,
       cliente_nome: pushName || telefoneLimpo, 
