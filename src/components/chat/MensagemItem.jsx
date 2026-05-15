@@ -389,14 +389,13 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
           </p>
           {isVendedor && (
-            <div className="flex items-center gap-1">
-              <span className={`text-xs font-medium ${
+            <div className="flex items-center gap-0.5">
+              <span className={`text-xs font-bold ${
                 mensagem.status === 'lida' ? 'text-blue-300' : 
                 mensagem.status === 'entregue' ? 'text-white/70' : 
                 'text-white/50'
               }`}>
-                {mensagem.status === 'lida' && '✓✓'}
-                {mensagem.status === 'entregue' && '✓✓'}
+                {(mensagem.status === 'lida' || mensagem.status === 'entregue') && '✓✓'}
                 {(!mensagem.status || mensagem.status === 'pendente' || mensagem.status === 'enviada') && '✓'}
                 {mensagem.status === 'erro' && '✕'}
               </span>
