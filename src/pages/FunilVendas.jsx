@@ -24,7 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare } from 'lucide-react';
+import ChatFunilModal from '@/components/funil/ChatFunilModal';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import { ModalAlterarResponsavel, ModalComentarios, ModalAlterarQuadro, ModalCriarFunil, ModalVenda } from '@/components/funil/FunilModais';
 import { toast } from 'sonner';
@@ -56,6 +57,7 @@ export default function FunilVendas() {
   const [criarFunilOpen, setCriarFunilOpen] = useState(false);
   const [novoFunil, setNovoFunil] = useState({ nome: '', cor: '#3b82f6' });
   const [searchCard, setSearchCard] = useState('');
+  const [chatFunilOportunidade, setChatFunilOportunidade] = useState(null);
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -1290,10 +1292,21 @@ export default function FunilVendas() {
                                         setMostrarFormComentario(false);
                                         setComentariosOpen(true);
                                       }}
-                                      title="Ver conversas"
+                                      title="Notas internas"
                                     >
                                       <MessageCircle className="w-4 h-4 text-blue-600" />
                                     </Button>
+                                    {(oport.telefone_lead || oport.cliente_telefone) && (
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 hover:bg-green-100"
+                                        onClick={(e) => { e.stopPropagation(); setChatFunilOportunidade(oport); }}
+                                        title="WhatsApp"
+                                      >
+                                        <MessageSquare className="w-4 h-4 text-green-600" />
+                                      </Button>
+                                    )}
                                     <div className="flex items-center -space-x-2">
                                       {(() => {
                                         try {
@@ -1674,6 +1687,19 @@ export default function FunilVendas() {
         currentUser={currentUser}
         onSuccess={() => { setVendaFormOpen(false); setOportunidadeParaVenda(null); }}
       />
+
+      {/* Chat Funil Modal */}
+      {chatFunilOportunidade && (
+        <ChatFunilModal
+          open={!!chatFunilOportunidade}
+          onOpenChange={(v) => { if (!v) setChatFunilOportunidade(null); }}
+          oportunidade={chatFunilOportunidade}
+          currentUser={currentUser}
+          etapas={etapasOrdenadas}
+          vendedores={vendedores}
+          onOportunidadeChanged={() => queryClient.invalidateQueries({ queryKey: ['oportunidades'] })}
+        />
+      )}
 
       {/* FAB - Nova Oportunidade */}
       <button

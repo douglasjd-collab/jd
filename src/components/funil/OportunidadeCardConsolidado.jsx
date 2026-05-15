@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
 import CampanhasPlanejamentoBadge from './CampanhasPlanejamentoBadge';
-import ChatPopupModal from '@/components/chat/ChatPopupModal';
+import ChatFunilModal from '@/components/funil/ChatFunilModal';
 
 export default function OportunidadeCardConsolidado({
   oportunidade,
@@ -215,15 +215,13 @@ export default function OportunidadeCardConsolidado({
     {/* Chat WhatsApp Popup */}
 
     {chatOpen && (
-      <ChatPopupModal
+      <ChatFunilModal
         open={chatOpen}
         onOpenChange={setChatOpen}
-        contato={{
-          telefone: oportunidade.telefone_lead || oportunidade.cliente_telefone,
-          nome: oportunidade.cliente_nome || oportunidade.titulo,
-        }}
-        empresaId={currentUser?.empresa_id}
-        user={currentUser}
+        oportunidade={oportunidade}
+        currentUser={currentUser}
+        etapas={etapas}
+        vendedores={[]}
       />
     )}
   </>
