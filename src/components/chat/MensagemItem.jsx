@@ -213,57 +213,35 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     // Se contatoExtraido já foi setado, renderizar o card de contato
     if (contatoExtraido && contatoExtraido.telefone) {
       return (
-        <>
-          <button
-            onClick={() => setContatoModalAberto(true)}
-            className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 hover:shadow-md transition-shadow cursor-pointer"
-          >
+        <div className="flex flex-col gap-2 w-56">
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-b from-green-50 to-green-100 border border-green-200">
             {contatoExtraido.fotoUrl ? (
-              <img src={contatoExtraido.fotoUrl} alt="Contato" className="w-12 h-12 rounded-full object-cover" />
+              <img src={contatoExtraido.fotoUrl} alt="Contato" className="w-12 h-12 rounded-full object-cover border-2 border-white" />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 border-2 border-white">
                 {contatoExtraido.displayName.charAt(0).toUpperCase()}
               </div>
             )}
-            <div className="text-left flex-1">
-              <p className="font-semibold text-sm text-slate-900">{contatoExtraido.displayName}</p>
-              <p className="text-xs text-slate-600">{contatoExtraido.telefone}</p>
-              <p className="text-xs text-blue-600 mt-1">👆 Clique para abrir</p>
+            <div className="text-left flex-1 min-w-0">
+              <p className="font-bold text-sm text-slate-900 truncate">{contatoExtraido.displayName}</p>
+              <p className="text-xs text-slate-700">{contatoExtraido.telefone}</p>
             </div>
+          </div>
+          <button
+            onClick={() => toast.info('Contato salvo!')}
+            className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+          >
+            📥 Salvar Contato
           </button>
-
-          <Dialog open={contatoModalAberto} onOpenChange={setContatoModalAberto}>
-            <DialogContent className="max-w-sm">
-              <div className="flex flex-col items-center gap-4 py-4">
-                {contatoExtraido.fotoUrl ? (
-                  <img src={contatoExtraido.fotoUrl} alt={contatoExtraido.displayName} className="w-20 h-20 rounded-full object-cover border-4 border-blue-200" />
-                ) : (
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-3xl">
-                    {contatoExtraido.displayName.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="text-center">
-                  <p className="text-xl font-bold text-slate-900">{contatoExtraido.displayName}</p>
-                  <p className="text-sm text-slate-600 mt-1">{contatoExtraido.telefone}</p>
-                </div>
-                <div className="w-full flex gap-2 pt-2">
-                  <Button 
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
-                    onClick={() => {
-                      window.open(`https://wa.me/${contatoExtraido.telefone.replace(/\D/g, '')}`, '_blank');
-                      setContatoModalAberto(false);
-                    }}
-                  >
-                    <span>💬</span> Enviar Mensagem
-                  </Button>
-                  <Button variant="outline" className="flex-1" onClick={() => setContatoModalAberto(false)}>
-                    Fechar
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </>
+          <button
+            onClick={() => {
+              window.open(`https://wa.me/${contatoExtraido.telefone.replace(/\D/g, '')}`, '_blank');
+            }}
+            className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+          >
+            💬 Conversar
+          </button>
+        </div>
       );
     }
 
