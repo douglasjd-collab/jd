@@ -86,6 +86,7 @@ import TagsModal from '@/components/chat/TagsModal';
 import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
 import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
 import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
+import BatePapoMenu from '@/components/chat/BatePapoMenu';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -534,11 +535,20 @@ export default function BatePapo() {
       const data = resp?.data?.conversas || [];
       console.log(`✅ Recebidas ${data.length} conversas`);
       
-      // Atualizar cache de contatos
+      // Atualizar cache de contatos — incluir foto_url da conversa como fallback
       const novoCache = {};
       data.forEach(conversa => {
         if (conversa.contato) {
-          novoCache[conversa.id] = conversa.contato;
+          // Garantir que a foto_url da conversa seja usada se o contato não tiver
+          const fotoFinal = conversa.contato.foto_url || conversa.foto_url || null;
+          novoCache[conversa.id] = { ...conversa.contato, foto_url: fotoFinal };
+        } else if (conversa.foto_url) {
+          // Se não tem contato CRM mas tem foto_url na conversa, usar ela
+          novoCache[conversa.id] = {
+            nome: conversa.cliente_nome || conversa.cliente_telefone,
+            telefone: conversa.cliente_telefone,
+            foto_url: conversa.foto_url
+          };
         }
       });
       setContatosWhatsapp(prev => ({ ...prev, ...novoCache }));
@@ -546,14 +556,16 @@ export default function BatePapo() {
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
       console.log(`🔍 Após filtro: ${filtradas.length} conversas válidas`);
 
-      // Sincronizar fotos em background para garantir que todas apareçam
+      // Sincronizar fotos agressivamente em background
       setTimeout(async () => {
         try {
-          await base44.functions.invoke('sincronizarFotosContatosAgressivo', { empresa_id: empresaId });
+          console.log('🔥 Auto-sincronizando fotos em background...');
+          await base44.functions.invoke('sincronizarFotosContatosAgressivoFinal', { empresa_id: empresaId });
+          console.log('✅ Fotos sincronizadas automaticamente');
         } catch (e) {
-          console.error('Erro ao sincronizar fotos:', e);
+          console.warn('⚠️ Sync de fotos em background falhou:', e.message);
         }
-      }, 1000);
+      }, 3000); // 3 segundos para não atrasar carregamento inicial
 
       return filtradas;
     },
@@ -1502,65 +1514,18 @@ export default function BatePapo() {
                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setNovaConversaOpen(true)}>
                   <Plus className="h-5 w-5" />
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                      <MoreVertical className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => setGerenciamentoTagsOpen(true)}>
-                      <Tag className="mr-2 h-4 w-4" />
-                      Gerenciar Tags
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={async () => {
-                        setSincronizando(true);
-                        try {
-                          const resp = await base44.functions.invoke('sincronizarFotosContatosAgressivo', { empresa_id: empresaId });
-                          const data = resp?.data;
-                          if (data?.ok) {
-                            toast.success(`📸 ${data.fotos_atualizadas}/${data.total_contatos} fotos atualizadas`);
-                            refetchConversas();
-                          } else {
-                            toast.error('Erro ao sincronizar fotos: ' + (data?.error || 'Desconhecido'));
-                          }
-                        } catch (e) {
-                          toast.error('Erro: ' + e.message);
-                        } finally {
-                          setSincronizando(false);
-                        }
-                      }}
-                      disabled={sincronizando}
-                    >
-                      <ImageIcon className="mr-2 h-4 w-4" />
-                      Sincronizar fotos
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={sincronizarChats} disabled={sincronizando}>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Sincronizar conversas
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={sincronizarTodosContatosEvolution} disabled={sincronizando}>
-                      <Users className="mr-2 h-4 w-4" />
-                      Importar contatos
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={sincronizarHistoricoTodasConversas} disabled={sincronizando}>
-                      <MessageCircle className="mr-2 h-4 w-4" />
-                      Sincronizar histórico
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={abrirGruposBloqueados}>
-                      <Lock className="mr-2 h-4 w-4" />
-                      Grupos Bloqueados
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={limparHistoricoCompleto} disabled={limpandoTudo} className="text-red-600">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Limpar histórico
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <BatePapoMenu
+                  empresaId={empresaId}
+                  sincronizando={sincronizando}
+                  setSincronizando={setSincronizando}
+                  setGerenciamentoTagsOpen={setGerenciamentoTagsOpen}
+                  setGruposBloqueadosOpen={setGruposBloqueadosOpen}
+                  limparHistoricoCompleto={limparHistoricoCompleto}
+                  limpandoTudo={limpandoTudo}
+                  refetchConversas={refetchConversas}
+                  sincronizarTodosContatosEvolution={sincronizarTodosContatosEvolution}
+                  sincronizarHistoricoTodasConversas={sincronizarHistoricoTodasConversas}
+                />
               </div>
             </CardHeader>
 
@@ -1667,13 +1632,16 @@ export default function BatePapo() {
                         >
                           {/* Avatar */}
                           <div className="jd-chat-avatar">
-                           <AvatarContato
-                             contato={isGrupo(c)
-                               ? { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }
-                               : (contatosWhatsapp[c.id] || c.contato || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url })
-                             }
-                             className="h-full w-full"
-                           />
+                          <AvatarContato
+                            contato={(() => {
+                              const cache = contatosWhatsapp[c.id];
+                              const base = { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url };
+                              if (!cache) return base;
+                              // Preferir foto do cache, mas usar foto da conversa como fallback
+                              return { ...cache, foto_url: cache.foto_url || c.foto_url };
+                            })()}
+                            className="h-full w-full"
+                          />
                             {c.bloqueado ? (
                               <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
                                 <Lock className="w-2 h-2 text-white" />
