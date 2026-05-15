@@ -59,6 +59,14 @@
       "default": true,
       "description": "Parar se cliente responder"
     },
+    "etapa_resposta_id": {
+      "type": "string",
+      "description": "ID da etapa para mover o lead quando o cliente responder (opcional)"
+    },
+    "etapa_resposta_nome": {
+      "type": "string",
+      "description": "Nome da etapa destino ao responder (denormalizado)"
+    },
     "parar_se_mudar_etapa": {
       "type": "boolean",
       "default": true,

@@ -21,7 +21,8 @@ export default function AutomacaoFunis() {
   const [formData, setFormData] = useState({
     nome: '', funil: '', etapa_id: '', etapa_nome: '', tempo_disparo: 0,
     tipo_tempo: 'dias', canal: 'whatsapp', mensagem: '', horario_envio: '08:00',
-    parar_se_responder: true, parar_se_mudar_etapa: true, ordem: 1, ativo: true
+    parar_se_responder: true, etapa_resposta_id: '', etapa_resposta_nome: '',
+    parar_se_mudar_etapa: true, ordem: 1, ativo: true
   });
 
   const queryClient = useQueryClient();
@@ -88,7 +89,8 @@ export default function AutomacaoFunis() {
   const resetForm = () => setFormData({
     nome: '', funil: '', etapa_id: '', etapa_nome: '', tempo_disparo: 0,
     tipo_tempo: 'dias', canal: 'whatsapp', mensagem: '', horario_envio: '08:00',
-    parar_se_responder: true, parar_se_mudar_etapa: true, ordem: 1, ativo: true
+    parar_se_responder: true, etapa_resposta_id: '', etapa_resposta_nome: '',
+    parar_se_mudar_etapa: true, ordem: 1, ativo: true
   });
 
   const abrirEditar = (auto) => {
@@ -99,6 +101,8 @@ export default function AutomacaoFunis() {
       tipo_tempo: auto.tipo_tempo, canal: auto.canal, mensagem: auto.mensagem,
       horario_envio: auto.horario_envio || '08:00',
       parar_se_responder: auto.parar_se_responder ?? true,
+      etapa_resposta_id: auto.etapa_resposta_id || '',
+      etapa_resposta_nome: auto.etapa_resposta_nome || '',
       parar_se_mudar_etapa: auto.parar_se_mudar_etapa ?? true,
       ordem: auto.ordem, ativo: auto.ativo
     });
@@ -327,15 +331,41 @@ export default function AutomacaoFunis() {
               />
             </div>
 
-            <div className="flex items-center gap-6 p-3 bg-slate-50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Switch checked={formData.parar_se_responder} onCheckedChange={(v) => setFormData({ ...formData, parar_se_responder: v })} />
-                <Label className="font-normal cursor-pointer">Parar se cliente responder</Label>
+            <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Switch checked={formData.parar_se_responder} onCheckedChange={(v) => setFormData({ ...formData, parar_se_responder: v, etapa_resposta_id: '', etapa_resposta_nome: '' })} />
+                  <Label className="font-normal cursor-pointer">Parar se cliente responder</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={formData.parar_se_mudar_etapa} onCheckedChange={(v) => setFormData({ ...formData, parar_se_mudar_etapa: v })} />
+                  <Label className="font-normal cursor-pointer">Parar se mudar de etapa</Label>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={formData.parar_se_mudar_etapa} onCheckedChange={(v) => setFormData({ ...formData, parar_se_mudar_etapa: v })} />
-                <Label className="font-normal cursor-pointer">Parar se mudar de etapa</Label>
-              </div>
+              {formData.parar_se_responder && (
+                <div>
+                  <Label className="text-sm">Mover para etapa ao responder <span className="text-slate-400 font-normal">(opcional)</span></Label>
+                  <Select
+                    value={formData.etapa_resposta_id || 'nenhuma'}
+                    onValueChange={(v) => {
+                      if (v === 'nenhuma') {
+                        setFormData({ ...formData, etapa_resposta_id: '', etapa_resposta_nome: '' });
+                      } else {
+                        const etapa = etapas.find(e => e.id === v);
+                        setFormData({ ...formData, etapa_resposta_id: v, etapa_resposta_nome: etapa?.nome || '' });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="bg-white"><SelectValue placeholder="Não mover de etapa" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhuma">Não mover de etapa</SelectItem>
+                      {etapasFiltradas.filter(e => e.id !== formData.etapa_id).map(e => (
+                        <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">

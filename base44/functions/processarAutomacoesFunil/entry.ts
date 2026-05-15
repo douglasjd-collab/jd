@@ -84,6 +84,15 @@ Deno.serve(async (req) => {
           const ultimaResposta = new Date(conversa.data_ultima_mensagem);
           // Se cliente respondeu DEPOIS que o lead entrou na etapa atual, parar
           if (ultimaResposta > dataEntradaEtapa) {
+            // Mover lead para etapa configurada, se houver
+            if (auto.etapa_resposta_id && oport.etapa_id !== auto.etapa_resposta_id) {
+              await base44.asServiceRole.entities.Oportunidade.update(oport.id, {
+                etapa_id: auto.etapa_resposta_id,
+                etapa_nome: auto.etapa_resposta_nome || '',
+                data_ultima_movimentacao: agora.toISOString()
+              });
+              logs.push(`🔀 [${oport.titulo}] Movido para etapa "${auto.etapa_resposta_nome}" por resposta do cliente`);
+            }
             await base44.asServiceRole.entities.HistoricoAutomacao.create({
               empresa_id: oport.empresa_id,
               oportunidade_id: oport.id,
@@ -95,7 +104,7 @@ Deno.serve(async (req) => {
               mensagem_enviada: '',
               enviado_em: agora.toISOString(),
               status: 'ignorado',
-              motivo_ignorado: 'Cliente respondeu'
+              motivo_ignorado: auto.etapa_resposta_id ? `Cliente respondeu → movido para ${auto.etapa_resposta_nome}` : 'Cliente respondeu'
             });
             continue;
           }
