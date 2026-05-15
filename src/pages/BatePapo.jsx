@@ -631,14 +631,14 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
-  // Refetch agressivo de status: a cada 1 segundo, força busca de mensagens do vendedor pendentes
+  // Refetch agressivo de status: a cada 500ms, força busca de mensagens
   useEffect(() => {
-    if (!conversaSelecionadaId) return;
-    const interval = setInterval(() => {
-      queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId], type: 'active' });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [conversaSelecionadaId]);
+  if (!conversaSelecionadaId) return;
+  const interval = setInterval(() => {
+  refetchMensagens();
+  }, 500);
+  return () => clearInterval(interval);
+  }, [conversaSelecionadaId, refetchMensagens]);
 
   useEffect(() => {
     if (!empresaId || !refetchConversas) return;
