@@ -658,17 +658,18 @@ export default function BatePapo() {
       
       console.log(`📢 Subscription event: ${msgData.id} → status: ${msgData.status}`);
       
-      // Invalidar e refetch a conversa para forçar atualização
-      queryClient.invalidateQueries({ 
-        queryKey: ['mensagens-whatsapp', msgData.conversa_id] 
-      });
-      
-      // Também atualizar o cache imediatamente
+      // 1. Atualizar cache LOCAL IMEDIATAMENTE
       queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) =>
         old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m)
       );
       
-      console.log(`✅ Status atualizado e cache invalidado: ${msgData.id} → ${msgData.status}`);
+      // 2. Refetch IMEDIATO (não apenas invalidar)
+      queryClient.refetchQueries({ 
+        queryKey: ['mensagens-whatsapp', msgData.conversa_id],
+        type: 'active'
+      });
+      
+      console.log(`✅ Status atualizado IMEDIATAMENTE: ${msgData.id} → ${msgData.status}`);
     });
     return unsub;
   }, [empresaId, queryClient]);
@@ -915,10 +916,13 @@ export default function BatePapo() {
           responsavel_expira_em: expira,
         }).then(() => refetchConversas()).catch(() => {});
       }
-      // Invalidar mensagens para refetch do status real após sucesso
+      // Refetch IMEDIATO após envio para capturar ACKs rápido
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId] });
-      }, 500);
+        queryClient.refetchQueries({ 
+          queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
+          type: 'active'
+        });
+      }, 300);
       toast.success('Mensagem enviada');
     }
   });
