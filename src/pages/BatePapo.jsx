@@ -84,6 +84,7 @@ import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoM
 import TagsModal from '@/components/chat/TagsModal';
 import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
 import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
+import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -1897,25 +1898,10 @@ export default function BatePapo() {
                           <Separator />
 
                           {/* Funil de Vendas */}
-                          {oportunidadeAtual && (
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-semibold">Funil de Vendas</span>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-5 text-[9px] px-1.5 text-blue-600 hover:bg-blue-50"
-                                  onClick={() => setFunilModalOpen(true)}
-                                >
-                                  Mover
-                                </Button>
-                              </div>
-                              <div className="bg-slate-50 rounded-lg p-2 text-[11px]">
-                                <p className="font-semibold text-slate-900">{oportunidadeAtual.etapa_nome}</p>
-                                <p className="text-slate-500 text-[10px] mt-0.5">{oportunidadeAtual.titulo}</p>
-                              </div>
-                            </div>
-                          )}
+                          <FunilInfoPanel 
+                            oportunidade={oportunidadeAtual}
+                            onMoverClick={() => setFunilModalOpen(true)}
+                          />
 
                           <Separator />
 
