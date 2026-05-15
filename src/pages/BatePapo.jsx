@@ -500,7 +500,7 @@ export default function BatePapo() {
 
       return filtradas;
     },
-    refetchInterval: false,
+    refetchInterval: 10000,  // Polling da lista de conversas a cada 10 segundos
     placeholderData: (prev) => prev,
   });
 
@@ -518,8 +518,8 @@ export default function BatePapo() {
       const ordenadas = [...msgs].reverse();
       return ordenadas;
     },
-    staleTime: 5000,  // Reduzir staleTime para detectar status mais rápido
-    refetchInterval: 2000,  // Polling a cada 2 segundos para status "lida"
+    staleTime: 2000,
+    refetchInterval: 3000,  // Polling a cada 3 segundos
     placeholderData: (prev) => prev,
   });
 
@@ -579,7 +579,7 @@ export default function BatePapo() {
     if (refetchConversasDebounced.current) clearTimeout(refetchConversasDebounced.current);
     refetchConversasDebounced.current = setTimeout(() => {
       refetchConversasRef.current?.().catch(e => console.error('Erro ao refetch:', e));
-    }, 2000);
+    }, 800);
   }, []);
 
   useEffect(() => {
