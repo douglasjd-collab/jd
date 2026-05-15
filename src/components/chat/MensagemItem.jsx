@@ -116,6 +116,13 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
+  // Auto-carregar áudio ao montar
+  useEffect(() => {
+    if (mensagem.tipo_conteudo === 'audio' && mensagem.arquivo_url && !mediaUrl && !loadingMedia) {
+      handleCarregarMidia();
+    }
+  }, [mensagem.id]);
+
   const handleDeletar = async () => {
     if (mensagem.id?.startsWith('temp_')) {
       // Mensagem temporária (não foi enviada ainda)
