@@ -41,7 +41,7 @@ export default function FunilVendas() {
   const [currentUser, setCurrentUser] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [filterProduto, setFilterProduto] = useState('todos');
-  const [filterVisao, setFilterVisao] = useState('todos'); // 'meus' | 'equipe' | 'todos' | 'sem_responsavel'
+  const [filterVisao, setFilterVisao] = useState('meus'); // 'meus' | 'equipe' | 'todos' | 'sem_responsavel'
   const [filtroRapido, setFiltroRapido] = useState(null); // null | 'atrasados' | 'sem_resposta' | 'quentes'
   const [alterarResponsavelOpen, setAlterarResponsavelOpen] = useState(false);
   const [comentariosOpen, setComentariosOpen] = useState(false);
@@ -789,7 +789,15 @@ export default function FunilVendas() {
     const base = oportunidades
       .filter((o) => {
         if (!currentUser) return false;
-        // Filtro de VISÃO
+        // Vendedores sempre veem apenas seus próprios leads
+        if (!isAdmin && !isGerente) {
+          return (
+            o.vendedor_id === currentUser.id ||
+            o.vendedor_id === currentUser.colaborador_id ||
+            o.vendedor_id === currentUser.auth_id
+          );
+        }
+        // Filtro de VISÃO para admin/gerente
         if (filterVisao === 'meus') {
           return (
             o.vendedor_id === currentUser.id ||
@@ -798,7 +806,7 @@ export default function FunilVendas() {
           );
         }
         if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
-        if (filterVisao === 'equipe') return true; // mostra todos da empresa
+        if (filterVisao === 'equipe') return true;
         return true; // 'todos'
       })
       .filter((o) => {
@@ -881,6 +889,28 @@ export default function FunilVendas() {
   };
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
+
+  // Oportunidades filtradas pelo vendedor atual (sem filtro de produto/visão)
+  const oportunidadesDoVendedor = oportunidades.filter(o => {
+    if (!currentUser) return false;
+    if (!isAdmin && !isGerente) {
+      return (
+        o.vendedor_id === currentUser.id ||
+        o.vendedor_id === currentUser.colaborador_id ||
+        o.vendedor_id === currentUser.auth_id
+      );
+    }
+    if (filterVisao === 'meus') {
+      return (
+        o.vendedor_id === currentUser.id ||
+        o.vendedor_id === currentUser.colaborador_id ||
+        o.vendedor_id === currentUser.auth_id
+      );
+    }
+    if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
+    if (filterVisao === 'equipe') return true;
+    return true;
+  });
 
   // Produtos únicos: das etapas (funis criados) + das oportunidades existentes
   const produtosDasEtapas = [...new Set(etapas.map(e => e.produto).filter(Boolean))];
@@ -981,7 +1011,7 @@ export default function FunilVendas() {
       </div>
 
       {/* ── LINHA 1: VISÃO ── */}
-      {podeVerTodos && (
+      {(isAdmin || isGerente) && (
         <div className="flex items-center gap-2 flex-wrap">
           {[
             { key: 'meus', label: '👤 Meus Leads', count: oportunidades.filter(o => o.vendedor_id === currentUser?.id && o.status === 'aberta').length },
@@ -1015,14 +1045,14 @@ export default function FunilVendas() {
         <button onClick={() => setFilterProduto('todos')}
           className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${filterProduto === 'todos' ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'}`}>
           <Globe className="w-4 h-4" /> <span>Todos</span>
-          <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterProduto === 'todos' ? 'bg-white/20' : 'bg-slate-100'}`}>{oportunidades.filter(o => o.status === 'aberta').length}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterProduto === 'todos' ? 'bg-white/20' : 'bg-slate-100'}`}>{oportunidadesDoVendedor.filter(o => o.status === 'aberta').length}</span>
         </button>
         {todosOsFunis.map(funil => {
           const funiEmojis = { consorcio: '🏦', emprestimo: '💳' };
           const emoji = funiEmojis[funil.value] || '🗂️';
           const iconUrl = funisMeta[funil.value]?.iconUrl;
           const nomeExibicao = funisMeta[funil.value]?.nome || funil.label;
-          const count = oportunidades.filter(o => o.produto === funil.value && o.status === 'aberta').length;
+          const count = oportunidadesDoVendedor.filter(o => o.produto === funil.value && o.status === 'aberta').length;
           const isActive = filterProduto === funil.value;
           return (
             <button key={funil.value} onClick={() => setFilterProduto(funil.value)}
