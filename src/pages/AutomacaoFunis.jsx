@@ -322,7 +322,17 @@ export default function AutomacaoFunis() {
             </div>
 
             <div>
-              <Label>Mensagem * <span className="text-slate-400 font-normal text-xs">(use {'{{nome}}'}, {'{{vendedor}}'})</span></Label>
+              <Label>Mensagem *</Label>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {['{{primeiro_nome}}','{{nome}}','{{vendedor}}','{{telefone}}','{{valor}}','{{empresa}}','{{etapa}}'].map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-100 transition-colors font-mono"
+                    onClick={() => setFormData(fd => ({ ...fd, mensagem: fd.mensagem + v }))}
+                  >{v}</button>
+                ))}
+              </div>
               <Textarea
                 rows={6}
                 value={formData.mensagem}

@@ -199,9 +199,19 @@ function limparTelefone(tel) {
 }
 
 function resolverVariaveis(mensagem, oport) {
+  const nomeCompleto = oport.cliente_nome || oport.titulo || 'Cliente';
+  const primeiroNome = nomeCompleto.split(' ')[0] || 'Cliente';
+  const valor = oport.valor_estimado ? `R$ ${Number(oport.valor_estimado).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
+
   return mensagem
-    .replace(/\{\{nome\}\}/gi, oport.cliente_nome || oport.titulo || 'Cliente')
+    .replace(/\{\{nome\}\}/gi, nomeCompleto)
+    .replace(/\{\{primeiro_nome\}\}/gi, primeiroNome)
+    .replace(/\{\{telefone\}\}/gi, oport.telefone_lead || oport.cliente_telefone || '')
     .replace(/\{\{vendedor\}\}/gi, oport.vendedor_nome || 'Nossa equipe')
-    .replace(/\{\{telefone\}\}/gi, oport.telefone_lead || '')
-    .replace(/\{\{valorCotacao\}\}/gi, oport.valor_estimado ? `R$ ${Number(oport.valor_estimado).toLocaleString('pt-BR')}` : '');
+    .replace(/\{\{empresa\}\}/gi, oport.empresa_nome || '')
+    .replace(/\{\{valor\}\}/gi, valor)
+    .replace(/\{\{valorCotacao\}\}/gi, valor)
+    .replace(/\{\{produto\}\}/gi, oport.produto || '')
+    .replace(/\{\{origem\}\}/gi, oport.origem || '')
+    .replace(/\{\{etapa\}\}/gi, oport.etapa_nome || '');
 }
