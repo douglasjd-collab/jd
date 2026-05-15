@@ -631,6 +631,15 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId]);
 
+  // Refetch agressivo de status: a cada 1 segundo, força busca de mensagens do vendedor pendentes
+  useEffect(() => {
+    if (!conversaSelecionadaId) return;
+    const interval = setInterval(() => {
+      queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId], type: 'active' });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [conversaSelecionadaId]);
+
   useEffect(() => {
     if (!empresaId || !refetchConversas) return;
     console.log(`🔌 Conectando subscription de mensagens...`);
