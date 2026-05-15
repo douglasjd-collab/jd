@@ -285,6 +285,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
               </div>
             );
           }
+          // Se contactMessage mas sem telefone válido, retorna nada (não renderiza JSON)
+          return null;
         }
       } catch (e) {
         // Continuar com renderização normal
@@ -346,9 +348,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       );
     }
 
-    // Ignorar mensagens internas do WhatsApp codificadas
+    // Ignorar mensagens internas do WhatsApp codificadas (incluindo contactMessage sem telefone)
     if (isJsonEncodedMessage()) {
-      return <p className="text-xs italic opacity-60">📦 Mensagem de sistema</p>;
+      return null;
     }
 
     switch (mensagem.tipo_conteudo) {
