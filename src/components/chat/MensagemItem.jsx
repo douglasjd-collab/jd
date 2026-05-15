@@ -91,7 +91,18 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     })
       .then(res => {
         const data = res?.data;
-        if (data?.arquivo_url) setMediaUrl(data.arquivo_url);
+        if (data?.arquivo_url) {
+          setMediaUrl(data.arquivo_url);
+          // Auto-download para imagens
+          if (mensagem.tipo_conteudo === 'imagem') {
+            setTimeout(() => {
+              const link = document.createElement('a');
+              link.href = data.arquivo_url;
+              link.download = `image_${mensagem.id}.jpg`;
+              link.click();
+            }, 300);
+          }
+        }
       })
       .catch(err => console.error('Erro ao baixar mídia:', err))
       .finally(() => setLoadingMedia(false));
