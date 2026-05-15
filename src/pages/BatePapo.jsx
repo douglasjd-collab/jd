@@ -118,7 +118,7 @@ export default function BatePapo() {
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
 
-    // Buscar foto: grupos via Evolution API, contatos via CRM
+    // Buscar foto com múltiplas tentativas — rigoroso
     if (!empresaId) return;
 
     try {
@@ -138,16 +138,23 @@ export default function BatePapo() {
           }
         }
       } else if (conversa?.cliente_telefone) {
-        // Contato: buscar do CRM via telefone
+        // Contato: tentar TODAS as variações de telefone + buscar via API se necessário
         const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
-        const variacoes = [telefoneLimpo];
-        if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) {
-          variacoes.push(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
-        } else if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
-          variacoes.push(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
+        const variacoes = new Set([
+          telefoneLimpo,
+          telefoneLimpo.slice(-11),  // Apenas 11 últimos dígitos
+          '55' + telefoneLimpo.slice(-11),  // Com 55
+        ]);
+        
+        // Se começar com 55, adicionar variações
+        if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) {
+          variacoes.add(telefoneLimpo.slice(2));  // Sem 55
+          variacoes.add('55' + '9' + telefoneLimpo.slice(4));  // Com 9 inserido
         }
 
+        let encontrou = false;
         for (const tel of variacoes) {
+          if (encontrou) break;
           const contatos = await base44.entities.ContatoWhatsapp.filter({
             empresa_id: empresaId,
             telefone: tel
@@ -155,8 +162,25 @@ export default function BatePapo() {
 
           if (contatos?.length > 0) {
             setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatos[0] }));
+            encontrou = true;
             break;
           }
+        }
+
+        // Se não encontrou no CRM, tentar buscar foto via API Evolution
+        if (!encontrou) {
+          try {
+            const resp = await base44.functions.invoke('buscarFotoContatoAPI', {
+              empresa_id: empresaId,
+              contato_id: conversa.cliente_telefone
+            });
+            if (resp?.data?.foto_url) {
+              setContatosWhatsapp(prev => ({
+                ...prev,
+                [conversa.id]: { nome: conversa.cliente_nome, telefone: conversa.cliente_telefone, foto_url: resp.data.foto_url }
+              }));
+            }
+          } catch (_) {}
         }
       }
     } catch (e) {
@@ -497,6 +521,15 @@ export default function BatePapo() {
       
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
       console.log(`🔍 Após filtro: ${filtradas.length} conversas válidas`);
+
+      // Sincronizar fotos em background para garantir que todas apareçam
+      setTimeout(async () => {
+        try {
+          await base44.functions.invoke('sincronizarFotosContatosAgressivo', { empresa_id: empresaId });
+        } catch (e) {
+          console.error('Erro ao sincronizar fotos:', e);
+        }
+      }, 1000);
 
       return filtradas;
     },
