@@ -225,7 +225,7 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="p-0 overflow-hidden flex"
+        className="p-0 overflow-hidden flex [&>button]:text-white [&>button]:opacity-80 [&>button:hover]:opacity-100"
         style={{ maxWidth: painelAberto ? '900px' : '680px', width: '95vw', height: '85vh', maxHeight: '720px' }}
       >
         {/* COLUNA CHAT */}
