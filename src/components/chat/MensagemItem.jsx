@@ -395,7 +395,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 mensagem.status === 'entregue' ? 'text-white/70' : 
                 'text-white/50'
               }`}>
-                {(mensagem.status === 'lida' || mensagem.status === 'entregue') && '✓✓'}
+                {mensagem.status === 'lida' && '✓✓'}
+                {mensagem.status === 'entregue' && '✓✓'}
                 {(!mensagem.status || mensagem.status === 'pendente' || mensagem.status === 'enviada') && '✓'}
                 {mensagem.status === 'erro' && '✕'}
               </span>
