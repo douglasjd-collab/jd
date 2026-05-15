@@ -15,7 +15,8 @@ export default function FunilSelectionModal({
   onSuccess,
   existingOportunidade = null
 }) {
-  const [funisSelecionado, setFunilSelecionado] = useState(existingOportunidade?.etapa_id || '');
+  const [funilSelecionado, setFunilSelecionado] = useState(existingOportunidade?.produto || '');
+  const [etapaSelecionada, setEtapaSelecionada] = useState(existingOportunidade?.etapa_id || '');
   const [funis, setFunis] = useState([]);
   const [etapas, setEtapas] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -29,8 +30,12 @@ export default function FunilSelectionModal({
       try {
         const etapasData = await base44.entities.EtapaFunil.filter({ empresa_id: empresaId });
         setEtapas(etapasData);
+        
+        // Extrair funis únicos
+        const funisUnicos = [...new Set(etapasData.map(e => e.produto))].filter(Boolean);
+        setFunis(funisUnicos);
       } catch (e) {
-        toast.error('Erro ao carregar etapas: ' + e.message);
+        toast.error('Erro ao carregar funis: ' + e.message);
       } finally {
         setLoading(false);
       }
@@ -39,21 +44,27 @@ export default function FunilSelectionModal({
     carregarFunis();
   }, [open, empresaId]);
 
+  // Filtrar etapas do funil selecionado
+  const etapasDoFunil = funilSelecionado 
+    ? etapas.filter(e => e.produto === funilSelecionado)
+    : [];
+
   const handleSalvar = async () => {
-    if (!funisSelecionado) {
-      toast.error('Selecione uma etapa');
+    if (!funilSelecionado || !etapaSelecionada) {
+      toast.error('Selecione o funil e a etapa');
       return;
     }
 
     setSalvando(true);
     try {
-      const etapaData = etapas.find(e => e.id === funisSelecionado);
+      const etapaData = etapas.find(e => e.id === etapaSelecionada);
       
       if (existingOportunidade) {
         // Atualizar oportunidade existente
         await base44.entities.Oportunidade.update(existingOportunidade.id, {
-          etapa_id: funisSelecionado,
-          etapa_nome: etapaData?.nome || 'Desconhecida'
+          etapa_id: etapaSelecionada,
+          etapa_nome: etapaData?.nome || 'Desconhecida',
+          produto: funilSelecionado
         });
         toast.success('Oportunidade movida com sucesso!');
       } else {
@@ -64,11 +75,11 @@ export default function FunilSelectionModal({
           cliente_id: contato?.id || '',
           cliente_nome: contato?.nome || contato?.telefone || '',
           cliente_telefone: contato?.telefone || '',
-          etapa_id: funisSelecionado,
+          etapa_id: etapaSelecionada,
           etapa_nome: etapaData?.nome || 'Desconhecida',
           vendedor_id: '',
           status: 'aberta',
-          produto: etapaData?.produto || 'consorcio',
+          produto: funilSelecionado,
           origem: 'BatePapo',
           valor_estimado: 0
         });
@@ -98,27 +109,50 @@ export default function FunilSelectionModal({
             <strong>Contato:</strong> {contato?.nome || contato?.telefone}
           </div>
 
+          {/* Seleção de Funil */}
           <div className="space-y-2">
-            <Label className="text-xs font-semibold">Selecionar Etapa</Label>
-            <Select value={funisSelecionado} onValueChange={setFunilSelecionado} disabled={loading}>
+            <Label className="text-xs font-semibold">Qual Funil?</Label>
+            <Select value={funilSelecionado} onValueChange={(valor) => {
+              setFunilSelecionado(valor);
+              setEtapaSelecionada(''); // Resetar etapa ao mudar funil
+            }} disabled={loading}>
               <SelectTrigger>
-                <SelectValue placeholder="Escolha uma etapa..." />
+                <SelectValue placeholder="Escolha um funil..." />
               </SelectTrigger>
               <SelectContent>
-                {etapas.map(etapa => (
-                  <SelectItem key={etapa.id} value={etapa.id}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: etapa.cor || '#3b82f6' }}
-                      />
-                      {etapa.nome}
-                    </span>
+                {funis.map(funil => (
+                  <SelectItem key={funil} value={funil}>
+                    {funil}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {/* Seleção de Etapa */}
+          {funilSelecionado && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Qual Etapa?</Label>
+              <Select value={etapaSelecionada} onValueChange={setEtapaSelecionada} disabled={loading || etapasDoFunil.length === 0}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha uma etapa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {etapasDoFunil.map(etapa => (
+                    <SelectItem key={etapa.id} value={etapa.id}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: etapa.cor || '#3b82f6' }}
+                        />
+                        {etapa.nome}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -127,7 +161,7 @@ export default function FunilSelectionModal({
           </Button>
           <Button 
             onClick={handleSalvar} 
-            disabled={!funisSelecionado || salvando || loading}
+            disabled={!funilSelecionado || !etapaSelecionada || salvando || loading}
             className="bg-blue-600 hover:bg-blue-700"
           >
             {salvando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
