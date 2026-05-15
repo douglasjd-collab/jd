@@ -135,7 +135,20 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     });
   };
 
+  // Detectar se é uma mensagem JSON codificada do WhatsApp (mensagens internas)
+  const isJsonEncodedMessage = () => {
+    if (!mensagem.texto) return false;
+    const texto = mensagem.texto.trim();
+    return (texto.startsWith('{') && texto.endsWith('}')) || 
+           (texto.startsWith('[') && texto.endsWith(']'));
+  };
+
   const renderConteudo = () => {
+    // Ignorar mensagens internas do WhatsApp codificadas
+    if (isJsonEncodedMessage()) {
+      return <p className="text-xs italic opacity-60">📦 Mensagem de sistema</p>;
+    }
+
     switch (mensagem.tipo_conteudo) {
       case 'texto':
         return <p className="break-words whitespace-pre-wrap">{formatarTexto(mensagem.texto)}</p>;
