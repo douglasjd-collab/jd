@@ -1191,6 +1191,7 @@ export default function FunilVendas() {
                                            cliente_id: oport.cliente_id || '',
                                            valor_estimado: oport.valor_estimado?.toString() || '',
                                            etapa_id: oport.etapa_id,
+                                           produto: oport.produto || '',
                                            vendedor_id: oport.vendedor_id,
                                            origem: oport.origem || '',
                                            observacoes: oport.observacoes || '',
