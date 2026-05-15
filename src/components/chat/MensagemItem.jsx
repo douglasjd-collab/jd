@@ -36,39 +36,46 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const extrairContatoVCard = (texto) => {
     try {
       const obj = JSON.parse(texto);
-      if (obj.contactMessage && obj.contactMessage.vcard) {
-        const vcard = obj.contactMessage.vcard;
-        const displayName = obj.contactMessage.displayName || '';
-        
-        // Extrair telefone do waid (mais confiável)
-        let telefone = '';
-        const waidMatch = vcard.match(/waid=([0-9]+)/);
-        if (waidMatch) {
-          telefone = waidMatch[1];
-        }
-        
-        // Fallback: tentar extrair do valor TEL
-        if (!telefone) {
-          const telefonMatch = vcard.match(/(?:item\d+\.)?TEL[^:]*:([+\d\s\-()]+)/);
-          if (telefonMatch) {
-            telefone = telefonMatch[1].replace(/\D/g, '');
-          }
-        }
-        
-        // Extrair foto (BASE64)
-        let fotoUrl = null;
-        const fotoMatch = vcard.match(/PHOTO(?:;[^:]*)?:([a-zA-Z0-9+/=\n]+?)(?:\n[A-Z]|$)/);
-        if (fotoMatch) {
-          const fotoData = fotoMatch[1].replace(/\n/g, '');
-          if (fotoData.trim()) {
-            fotoUrl = `data:image/jpeg;base64,${fotoData}`;
-          }
-        }
-        
-        return { displayName, telefone, fotoUrl };
+      if (!obj.contactMessage) return null;
+      
+      const vcard = obj.contactMessage.vcard || '';
+      const displayName = obj.contactMessage.displayName || 'Contato Desconhecido';
+      
+      // Extrair telefone do waid (mais confiável)
+      let telefone = '';
+      const waidMatch = vcard.match(/waid=([0-9]+)/);
+      if (waidMatch) {
+        telefone = waidMatch[1];
       }
+      
+      // Fallback: tentar extrair do valor TEL
+      if (!telefone) {
+        const telefonMatch = vcard.match(/(?:item\d+\.)?TEL[^:]*:([+\d\s\-()]+)/);
+        if (telefonMatch) {
+          telefone = telefonMatch[1].replace(/\D/g, '');
+        }
+      }
+      
+      // Se ainda não tem telefone, retorna null
+      if (!telefone) {
+        console.warn('Nenhum telefone encontrado no vCard');
+        return null;
+      }
+      
+      // Extrair foto (BASE64)
+      let fotoUrl = null;
+      const fotoMatch = vcard.match(/PHOTO(?:;[^:]*)?:([a-zA-Z0-9+/=\n]+?)(?:\n[A-Z]|$)/);
+      if (fotoMatch) {
+        const fotoData = fotoMatch[1].replace(/\n/g, '');
+        if (fotoData.trim()) {
+          fotoUrl = `data:image/jpeg;base64,${fotoData}`;
+        }
+      }
+      
+      console.log('✅ Contato extraído:', { displayName, telefone, temFoto: !!fotoUrl });
+      return { displayName, telefone, fotoUrl };
     } catch (e) {
-      console.error('Erro ao extrair contato:', e);
+      console.error('❌ Erro ao extrair contato:', e.message);
     }
     return null;
   };
@@ -81,14 +88,14 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (mensagem.tipo_conteudo === 'texto' && mensagem.texto) {
       try {
         const obj = JSON.parse(mensagem.texto);
-        if (obj.contactMessage && obj.contactMessage.vcard) {
+        if (obj.contactMessage) {
           const contato = extrairContatoVCard(mensagem.texto);
-          if (contato && contato.telefone) {
+          if (contato) {
             setContatoExtraido(contato);
           }
         }
       } catch (e) {
-        // Não é JSON, ignorar
+        console.error('Erro ao processar contactMessage:', e);
       }
     }
   }, [mensagem.id, mensagem.texto]);
