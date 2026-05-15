@@ -336,12 +336,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
               )}
             </div>
             <Dialog open={imagemAberta} onOpenChange={setImagemAberta}>
-              <DialogContent className="max-w-4xl w-full p-0 bg-black border-0 flex items-center justify-center">
+              <DialogContent className="max-w-2xl p-3 bg-white border border-slate-200 rounded-lg">
                 {mediaUrl && (
                   <img
                     src={mediaUrl}
                     alt="Imagem ampliada"
-                    className="max-w-full max-h-[90vh] object-contain"
+                    className="w-full h-auto rounded-lg"
                   />
                 )}
               </DialogContent>
