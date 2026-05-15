@@ -41,24 +41,30 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       const vcard = obj.contactMessage.vcard || '';
       const displayName = obj.contactMessage.displayName || 'Contato Desconhecido';
       
+      console.log('🔍 Processando vCard...');
+      console.log('displayName:', displayName);
+      
       // Extrair telefone do waid (mais confiável)
       let telefone = '';
       const waidMatch = vcard.match(/waid=([0-9]+)/);
       if (waidMatch) {
         telefone = waidMatch[1];
+        console.log('✅ Telefone encontrado via waid:', telefone);
       }
       
       // Fallback: tentar extrair do valor TEL
       if (!telefone) {
-        const telefonMatch = vcard.match(/(?:item\d+\.)?TEL[^:]*:([+\d\s\-()]+)/);
+        const telefonMatch = vcard.match(/TEL[^:]*:([+\d\s\-()]+)/);
         if (telefonMatch) {
           telefone = telefonMatch[1].replace(/\D/g, '');
+          console.log('✅ Telefone encontrado via TEL:', telefone);
         }
       }
       
       // Se ainda não tem telefone, retorna null
       if (!telefone) {
-        console.warn('Nenhum telefone encontrado no vCard');
+        console.warn('❌ Nenhum telefone encontrado');
+        console.log('vCard:', vcard.substring(0, 200));
         return null;
       }
       
@@ -72,10 +78,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         }
       }
       
-      console.log('✅ Contato extraído:', { displayName, telefone, temFoto: !!fotoUrl });
+      console.log('✅ Contato extraído com sucesso!', { displayName, telefone, temFoto: !!fotoUrl });
       return { displayName, telefone, fotoUrl };
     } catch (e) {
-      console.error('❌ Erro ao extrair contato:', e.message);
+      console.error('❌ Erro ao extrair contato:', e);
     }
     return null;
   };
