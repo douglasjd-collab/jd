@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null }) {
   // Não auto-carregar arquivos .enc (criptografados do WhatsApp — causam download indesejado no browser)
   const isUrlValida = (url) => {
     if (!url) return false;
@@ -252,8 +252,31 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   📥 Salvar Contato
                 </button>
                 <button
-                  onClick={() => {
-                    window.open(`https://wa.me/${contato.telefone.replace(/\D/g, '')}`, '_blank');
+                  onClick={async () => {
+                    try {
+                      // Buscar conversa existente ou criar uma nova
+                      const convs = await base44.entities.ConversaWhatsapp.filter({
+                        cliente_telefone: contato.telefone.replace(/\D/g, ''),
+                        empresa_id: user?.empresa_id
+                      });
+                      
+                      if (convs.length > 0) {
+                        // Navegar para conversa existente
+                        window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
+                      } else {
+                        // Criar nova conversa
+                        const novaConv = await base44.entities.ConversaWhatsapp.create({
+                          empresa_id: user?.empresa_id,
+                          cliente_telefone: contato.telefone.replace(/\D/g, ''),
+                          cliente_nome: contato.displayName,
+                          status: 'ativa'
+                        });
+                        window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
+                      }
+                    } catch (err) {
+                      console.error('Erro ao abrir conversa:', err);
+                      toast.error('Erro ao abrir conversa');
+                    }
                   }}
                   className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
                 >
@@ -292,8 +315,28 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             📥 Salvar Contato
           </button>
           <button
-            onClick={() => {
-              window.open(`https://wa.me/${contatoExtraido.telefone.replace(/\D/g, '')}`, '_blank');
+            onClick={async () => {
+              try {
+                const convs = await base44.entities.ConversaWhatsapp.filter({
+                  cliente_telefone: contatoExtraido.telefone.replace(/\D/g, ''),
+                  empresa_id: user?.empresa_id
+                });
+                
+                if (convs.length > 0) {
+                  window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
+                } else {
+                  const novaConv = await base44.entities.ConversaWhatsapp.create({
+                    empresa_id: user?.empresa_id,
+                    cliente_telefone: contatoExtraido.telefone.replace(/\D/g, ''),
+                    cliente_nome: contatoExtraido.displayName,
+                    status: 'ativa'
+                  });
+                  window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
+                }
+              } catch (err) {
+                console.error('Erro ao abrir conversa:', err);
+                toast.error('Erro ao abrir conversa');
+              }
             }}
             className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
           >
