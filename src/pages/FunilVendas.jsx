@@ -465,12 +465,15 @@ export default function FunilVendas() {
     mutationFn: async () => {
       const empresaId = currentUser?.empresa_id || '';
       const etapasPadrao = [
-        { nome: 'Novo Lead', cor: '#3b82f6', tipo: 'aberta', ordem: 1 },
-        { nome: 'Em Contato', cor: '#f59e0b', tipo: 'aberta', ordem: 2 },
-        { nome: 'Proposta Enviada', cor: '#8b5cf6', tipo: 'aberta', ordem: 3 },
-        { nome: 'Planejamento de Compra', cor: '#7c3aed', tipo: 'planejamento', ordem: 4 },
-        { nome: 'Ganho', cor: '#10b981', tipo: 'ganho', ordem: 5 },
-        { nome: 'Perdido', cor: '#ef4444', tipo: 'perdida', ordem: 6 },
+        { nome: 'Novo Lead', cor: '#3b82f6', tipo: 'aberta', ordem: 1, produto: 'consorcio' },
+        { nome: 'Em Contato', cor: '#f59e0b', tipo: 'aberta', ordem: 2, produto: 'consorcio' },
+        { nome: 'Proposta Enviada', cor: '#8b5cf6', tipo: 'aberta', ordem: 3, produto: 'consorcio' },
+        { nome: 'Qualificação', cor: '#6366f1', tipo: 'aberta', ordem: 4, produto: 'consorcio' },
+        { nome: 'Simulação', cor: '#8b5cf6', tipo: 'aberta', ordem: 5, produto: 'consorcio' },
+        { nome: 'Planejamento de Compra', cor: '#7c3aed', tipo: 'planejamento', ordem: 6, produto: 'consorcio' },
+        { nome: 'Follow-up', cor: '#f59e0b', tipo: 'aberta', ordem: 7, produto: 'consorcio' },
+        { nome: 'Ganho', cor: '#10b981', tipo: 'ganho', ordem: 8, produto: 'consorcio' },
+        { nome: 'Perdido', cor: '#ef4444', tipo: 'perdida', ordem: 9, produto: 'consorcio' },
       ];
       for (const e of etapasPadrao) {
         await base44.entities.EtapaFunil.create({ ...e, empresa_id: empresaId, status: 'ativa' });
@@ -906,10 +909,16 @@ export default function FunilVendas() {
     return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
   };
 
-  const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
+  const etapasOrdenadas = [...etapasComProduto].sort((a, b) => a.ordem - b.ordem);
 
   // Produtos únicos: das etapas (funis criados) + das oportunidades existentes
-  const produtosDasEtapas = [...new Set(etapas.map(e => e.produto).filter(Boolean))];
+  // Se há etapas sem produto defininado mas têm nome de consórcio, assume que são consórcio
+  const etapasComProduto = etapas.map(e => ({
+    ...e,
+    produto: e.produto || (e.nome && ['Novo Lead', 'Em Contato', 'Proposta Enviada', 'Qualificação', 'Simulação', 'Follow-up', 'Planejamento de Compra'].some(nome => e.nome.includes(nome)) ? 'consorcio' : null)
+  }));
+  
+  const produtosDasEtapas = [...new Set(etapasComProduto.map(e => e.produto).filter(Boolean))];
   const produtosDasOportunidades = [...new Set(oportunidades.map(o => o.produto).filter(Boolean))];
   const todosProdutos = [...new Set([...produtosDasEtapas, ...produtosDasOportunidades])];
   const todosOsFunis = [
