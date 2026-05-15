@@ -1096,7 +1096,9 @@ export default function FunilVendas() {
       {/* HU 01 e HU 03 - Kanban */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {etapasOrdenadas.map((etapa) => {
+          {etapasOrdenadas
+          .filter(etapa => filterProduto === 'todos' || etapa.produto === filterProduto)
+          .map((etapa) => {
             const { quantidade, valor } = calcularIndicadores(etapa.id);
             const oportEtapa = filteredOportunidades.filter(o => o.etapa_id === etapa.id);
 
