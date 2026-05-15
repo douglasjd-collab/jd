@@ -210,6 +210,63 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   };
 
   const renderConteudo = () => {
+    // Se contatoExtraido já foi setado, renderizar o card de contato
+    if (contatoExtraido && contatoExtraido.telefone) {
+      return (
+        <>
+          <button
+            onClick={() => setContatoModalAberto(true)}
+            className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 hover:shadow-md transition-shadow cursor-pointer"
+          >
+            {contatoExtraido.fotoUrl ? (
+              <img src={contatoExtraido.fotoUrl} alt="Contato" className="w-12 h-12 rounded-full object-cover" />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                {contatoExtraido.displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="text-left flex-1">
+              <p className="font-semibold text-sm text-slate-900">{contatoExtraido.displayName}</p>
+              <p className="text-xs text-slate-600">{contatoExtraido.telefone}</p>
+              <p className="text-xs text-blue-600 mt-1">👆 Clique para abrir</p>
+            </div>
+          </button>
+
+          <Dialog open={contatoModalAberto} onOpenChange={setContatoModalAberto}>
+            <DialogContent className="max-w-sm">
+              <div className="flex flex-col items-center gap-4 py-4">
+                {contatoExtraido.fotoUrl ? (
+                  <img src={contatoExtraido.fotoUrl} alt={contatoExtraido.displayName} className="w-20 h-20 rounded-full object-cover border-4 border-blue-200" />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-3xl">
+                    {contatoExtraido.displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="text-center">
+                  <p className="text-xl font-bold text-slate-900">{contatoExtraido.displayName}</p>
+                  <p className="text-sm text-slate-600 mt-1">{contatoExtraido.telefone}</p>
+                </div>
+                <div className="w-full flex gap-2 pt-2">
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
+                    onClick={() => {
+                      window.open(`https://wa.me/${contatoExtraido.telefone.replace(/\D/g, '')}`, '_blank');
+                      setContatoModalAberto(false);
+                    }}
+                  >
+                    <span>💬</span> Enviar Mensagem
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setContatoModalAberto(false)}>
+                    Fechar
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    }
+
     // Ignorar mensagens internas do WhatsApp codificadas
     if (isJsonEncodedMessage()) {
       return <p className="text-xs italic opacity-60">📦 Mensagem de sistema</p>;
@@ -217,75 +274,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     switch (mensagem.tipo_conteudo) {
       case 'texto': {
-        // Detectar se é um contato vCard - ANTES de qualquer outra verificação
-        let contato = null;
-        try {
-          const obj = JSON.parse(mensagem.texto);
-          if (obj.contactMessage && obj.contactMessage.vcard) {
-            contato = extrairContatoVCard(mensagem.texto);
-          }
-        } catch (e) {
-          // Não é JSON, continuar normalmente
-        }
-        
-        if (contato) {
-          return (
-            <>
-              <button
-                onClick={() => {
-                  setContatoExtraido(contato);
-                  setContatoModalAberto(true);
-                }}
-                className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                {contato.fotoUrl ? (
-                  <img src={contato.fotoUrl} alt="Contato" className="w-12 h-12 rounded-full object-cover" />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {contato.displayName.charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="text-left flex-1">
-                  <p className="font-semibold text-sm text-slate-900">{contato.displayName}</p>
-                  <p className="text-xs text-slate-600">{contato.telefone}</p>
-                  <p className="text-xs text-blue-600 mt-1">👆 Clique para abrir</p>
-                </div>
-              </button>
-
-              <Dialog open={contatoModalAberto} onOpenChange={setContatoModalAberto}>
-                <DialogContent className="max-w-sm">
-                  <div className="flex flex-col items-center gap-4 py-4">
-                    {contato.fotoUrl ? (
-                      <img src={contato.fotoUrl} alt={contato.displayName} className="w-20 h-20 rounded-full object-cover border-4 border-blue-200" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-3xl">
-                        {contato.displayName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-slate-900">{contato.displayName}</p>
-                      <p className="text-sm text-slate-600 mt-1">{contato.telefone}</p>
-                    </div>
-                    <div className="w-full flex gap-2 pt-2">
-                      <Button 
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
-                        onClick={() => {
-                          window.open(`https://wa.me/${contato.telefone.replace(/\D/g, '')}`, '_blank');
-                          setContatoModalAberto(false);
-                        }}
-                      >
-                        <span>💬</span> Enviar Mensagem
-                      </Button>
-                      <Button variant="outline" className="flex-1" onClick={() => setContatoModalAberto(false)}>
-                        Fechar
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </>
-          );
-        }
         return <p className="break-words whitespace-pre-wrap">{formatarTexto(mensagem.texto)}</p>;
       }
 
