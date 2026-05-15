@@ -52,6 +52,7 @@ import {
    Lock,
    Unlock,
    Instagram,
+   TrendingUp,
  } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -82,6 +83,7 @@ import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoModal';
 import TagsModal from '@/components/chat/TagsModal';
 import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
+import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -117,6 +119,21 @@ export default function BatePapo() {
 
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
+
+    // Buscar oportunidade associada ao contato
+    try {
+      const ops = await base44.entities.Oportunidade.filter({
+        empresa_id: empresaId,
+        cliente_telefone: conversa.cliente_telefone
+      }, '-updated_date', 1);
+      if (ops?.length > 0) {
+        setOportunidadeAtual(ops[0]);
+      } else {
+        setOportunidadeAtual(null);
+      }
+    } catch (_) {
+      setOportunidadeAtual(null);
+    }
 
     // Buscar foto com múltiplas tentativas — rigoroso
     if (!empresaId) return;
@@ -252,6 +269,8 @@ export default function BatePapo() {
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [contatoParaTags, setContatoParaTags] = useState(null);
   const [gerenciamentoTagsOpen, setGerenciamentoTagsOpen] = useState(false);
+  const [funilModalOpen, setFunilModalOpen] = useState(false);
+  const [oportunidadeAtual, setOportunidadeAtual] = useState(null);
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -1338,6 +1357,19 @@ export default function BatePapo() {
           empresaId={empresaId}
         />
 
+        {/* Modal Funil de Vendas */}
+        <FunilSelectionModal
+          open={funilModalOpen}
+          onOpenChange={setFunilModalOpen}
+          contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada}
+          empresaId={empresaId}
+          existingOportunidade={oportunidadeAtual}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+            selecionarConversa(conversaSelecionada);
+          }}
+        />
+
         {/* Modal Grupos Bloqueados */}
         <Dialog open={gruposBloqueadosOpen} onOpenChange={setGruposBloqueadosOpen}>
           <DialogContent className="max-w-md">
@@ -1838,27 +1870,56 @@ export default function BatePapo() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-1.5">
-                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Ligar">
-                              <PhoneCall className="h-3 w-3" />
-                              <span className="hidden sm:inline">Ligar</span>
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Favorito">
-                              <Star className="h-3 w-3" />
-                              <span className="hidden sm:inline">Favorito</span>
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Proposta">
-                              <Tag className="h-3 w-3" />
-                              <span className="hidden sm:inline">Proposta</span>
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" onClick={() => setTransferirModal(conversaSelecionada)} title="Transferir">
-                              <ArrowRightLeft className="h-3 w-3" />
-                              <span className="hidden sm:inline">Transferir</span>
-                            </Button>
-                          </div>
+                             <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Ligar">
+                               <PhoneCall className="h-3 w-3" />
+                               <span className="hidden sm:inline">Ligar</span>
+                             </Button>
+                             <Button 
+                               variant={oportunidadeAtual ? "default" : "outline"}
+                               size="sm" 
+                               className={`h-7 justify-center gap-1 rounded-md text-[10px] px-2 ${oportunidadeAtual ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+                               onClick={() => setFunilModalOpen(true)}
+                               title={oportunidadeAtual ? `No Funil: ${oportunidadeAtual.etapa_nome}` : 'Lançar no Funil'}
+                             >
+                               <TrendingUp className="h-3 w-3" />
+                               <span className="hidden sm:inline">{oportunidadeAtual ? 'Funil' : 'Lançar'}</span>
+                             </Button>
+                             <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Proposta">
+                               <Tag className="h-3 w-3" />
+                               <span className="hidden sm:inline">Proposta</span>
+                             </Button>
+                             <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" onClick={() => setTransferirModal(conversaSelecionada)} title="Transferir">
+                               <ArrowRightLeft className="h-3 w-3" />
+                               <span className="hidden sm:inline">Transferir</span>
+                             </Button>
+                           </div>
 
                           <Separator />
 
-                          {/* Tags */}
+                          {/* Funil de Vendas */}
+                          {oportunidadeAtual && (
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-semibold">Funil de Vendas</span>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-5 text-[9px] px-1.5 text-blue-600 hover:bg-blue-50"
+                                  onClick={() => setFunilModalOpen(true)}
+                                >
+                                  Mover
+                                </Button>
+                              </div>
+                              <div className="bg-slate-50 rounded-lg p-2 text-[11px]">
+                                <p className="font-semibold text-slate-900">{oportunidadeAtual.etapa_nome}</p>
+                                <p className="text-slate-500 text-[10px] mt-0.5">{oportunidadeAtual.titulo}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          <Separator />
+
+                           {/* Tags */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-semibold">Tags</span>
