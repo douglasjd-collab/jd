@@ -622,23 +622,26 @@ export default function BatePapo() {
       if (event.type !== 'update') return;
       const msgData = event.data;
       if (!msgData?.id || !msgData?.conversa_id) return;
-      // Atualizar a mensagem no cache local
+      
+      console.log(`📢 Subscription event: ${msgData.id} → status: ${msgData.status}`);
+      
+      // Invalidar e refetch a conversa para forçar atualização
+      queryClient.invalidateQueries({ 
+        queryKey: ['mensagens-whatsapp', msgData.conversa_id] 
+      });
+      
+      // Também atualizar o cache imediatamente
       queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) =>
-        old.map(m => m.id === msgData.id ? msgData : m)
+        old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m)
       );
-      console.log(`✅ Status atualizado: ${msgData.id} → ${msgData.status}`);
+      
+      console.log(`✅ Status atualizado e cache invalidado: ${msgData.id} → ${msgData.status}`);
     });
     return unsub;
-  }, [empresaId]);
+  }, [empresaId, queryClient]);
 
-  // Refetch agressivo de status: a cada 500ms, força busca de mensagens
-  useEffect(() => {
-  if (!conversaSelecionadaId) return;
-  const interval = setInterval(() => {
-  refetchMensagens();
-  }, 500);
-  return () => clearInterval(interval);
-  }, [conversaSelecionadaId, refetchMensagens]);
+  // Não usar refetch agressivo - confiar na subscription em tempo real
+  // O webhook já atualiza automaticamente quando ACK chega
 
   useEffect(() => {
     if (!empresaId || !refetchConversas) return;
