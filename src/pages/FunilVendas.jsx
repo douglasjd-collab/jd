@@ -836,7 +836,7 @@ export default function FunilVendas() {
       })
       .filter((o) => {
         if (!podeVerTodos) return true; // Vendedores normais só veem seus próprios
-        if (filterVendedor === 'todos') return true; // Admin vendo todos
+        if (!filterVendedor || filterVendedor === 'todos') return true; // Admin vendo todos
         return o.vendedor_id === filterVendedor; // Admin filtrando por responsável específico
       })
       .filter((o) => {
