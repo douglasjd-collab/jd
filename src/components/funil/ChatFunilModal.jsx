@@ -266,27 +266,27 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
                 </div>
               </div>
             ) : (
-              <>
-                <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 pt-3">
-                  <div className="space-y-1 pb-2">
-                    {mensagens.length === 0 ? (
-                      <div className="flex items-center justify-center h-32">
-                        <div className="bg-white rounded-xl px-4 py-2 text-xs text-slate-500 shadow-sm">Nenhuma mensagem ainda</div>
-                      </div>
-                    ) : mensagens.map(msg => (
-                      <MensagemItem key={msg.id} mensagem={msg} conversaId={conversaId} />
-                    ))}
-                  </div>
-                </ScrollArea>
-                <div className="flex-shrink-0 bg-white border-t">
-                  <EnviarMensagemForm
-                    onEnviar={async ({ texto, arquivo }) => { await enviarMutation.mutateAsync({ texto, arquivo }); }}
-                    isLoading={enviarMutation.isPending}
-                    nomeUsuario={currentUser?.full_name || ''}
-                  />
+              <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 pt-3">
+                <div className="space-y-1 pb-2">
+                  {mensagens.length === 0 ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="bg-white rounded-xl px-4 py-2 text-xs text-slate-500 shadow-sm">Nenhuma mensagem ainda</div>
+                    </div>
+                  ) : mensagens.map(msg => (
+                    <MensagemItem key={msg.id} mensagem={msg} conversaId={conversaId} />
+                  ))}
                 </div>
-              </>
+              </ScrollArea>
             )}
+          </div>
+
+          {/* Campo de envio - sempre visível */}
+          <div className="flex-shrink-0 bg-white border-t">
+            <EnviarMensagemForm
+              onEnviar={async ({ texto, arquivo }) => { await enviarMutation.mutateAsync({ texto, arquivo }); }}
+              isLoading={enviarMutation.isPending}
+              nomeUsuario={currentUser?.full_name || ''}
+            />
           </div>
         </div>
 
