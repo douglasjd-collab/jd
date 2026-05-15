@@ -76,6 +76,23 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const queryClient = useQueryClient();
   const isVendedor = mensagem.remetente === 'vendedor';
 
+  // Processar contactMessage ao montar
+  useEffect(() => {
+    if (mensagem.tipo_conteudo === 'texto' && mensagem.texto) {
+      try {
+        const obj = JSON.parse(mensagem.texto);
+        if (obj.contactMessage && obj.contactMessage.vcard) {
+          const contato = extrairContatoVCard(mensagem.texto);
+          if (contato && contato.telefone) {
+            setContatoExtraido(contato);
+          }
+        }
+      } catch (e) {
+        // Não é JSON, ignorar
+      }
+    }
+  }, [mensagem.id, mensagem.texto]);
+
   // Confirmar leitura ao montar a mensagem (se for mensagem de cliente)
   useEffect(() => {
     if (mensagem.remetente === 'cliente' && (mensagem.status === 'entregue' || mensagem.status === 'enviada')) {
