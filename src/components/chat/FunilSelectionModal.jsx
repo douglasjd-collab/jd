@@ -68,7 +68,15 @@ export default function FunilSelectionModal({
         });
         toast.success('Oportunidade movida com sucesso!');
       } else {
-        // Criar nova oportunidade
+        // Criar nova oportunidade - precisa de vendedor_id obrigatório
+        const user = await base44.auth.me();
+        const vendedorId = user?.colaborador_id || user?.id || '';
+        
+        if (!vendedorId) {
+          toast.error('Erro: usuário não identificado. Contate o suporte.');
+          return;
+        }
+
         const novaOportunidade = await base44.entities.Oportunidade.create({
           empresa_id: empresaId,
           titulo: contato?.nome || contato?.telefone || 'Lead',
@@ -77,11 +85,13 @@ export default function FunilSelectionModal({
           cliente_telefone: contato?.telefone || '',
           etapa_id: etapaSelecionada,
           etapa_nome: etapaData?.nome || 'Desconhecida',
-          vendedor_id: '',
+          vendedor_id: vendedorId,
+          vendedor_nome: user?.nome_perfil || user?.full_name || 'Desconhecido',
           status: 'aberta',
           produto: funilSelecionado,
           origem: 'BatePapo',
-          valor_estimado: 0
+          valor_estimado: 0,
+          data_cadastro_lead: new Date().toISOString().split('T')[0]
         });
         toast.success('Contato lançado no funil com sucesso!');
       }
