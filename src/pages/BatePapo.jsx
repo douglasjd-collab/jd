@@ -622,6 +622,22 @@ export default function BatePapo() {
     }
   }, [conversas]);
 
+  // Real-time: monitorar mudanças na oportunidade selecionada
+  const oportunidadeAtualRef = React.useRef(oportunidadeAtual);
+  React.useEffect(() => { oportunidadeAtualRef.current = oportunidadeAtual; }, [oportunidadeAtual]);
+
+  // Subscription para atualizar oportunidade em tempo real
+  useEffect(() => {
+    if (!conversaSelecionada?.id || !oportunidadeAtual?.id) return;
+
+    const unsub = base44.entities.Oportunidade.subscribe((event) => {
+      if (event.id === oportunidadeAtualRef.current?.id && (event.type === 'update' || event.type === 'create')) {
+        setOportunidadeAtual(event.data);
+      }
+    });
+    return unsub;
+  }, [conversaSelecionada?.id, oportunidadeAtual?.id]);
+
   // Real-time: atualizar lista de conversas quando chegar nova mensagem ou conversa criada
   const refetchConversasRef = React.useRef(refetchConversas);
   React.useEffect(() => { refetchConversasRef.current = refetchConversas; }, [refetchConversas]);
