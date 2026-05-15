@@ -909,14 +909,14 @@ export default function FunilVendas() {
     return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
   };
 
-  const etapasOrdenadas = [...etapasComProduto].sort((a, b) => a.ordem - b.ordem);
-
   // Produtos únicos: das etapas (funis criados) + das oportunidades existentes
   // Se há etapas sem produto defininado mas têm nome de consórcio, assume que são consórcio
   const etapasComProduto = etapas.map(e => ({
     ...e,
     produto: e.produto || (e.nome && ['Novo Lead', 'Em Contato', 'Proposta Enviada', 'Qualificação', 'Simulação', 'Follow-up', 'Planejamento de Compra'].some(nome => e.nome.includes(nome)) ? 'consorcio' : null)
   }));
+
+  const etapasOrdenadas = [...etapasComProduto].sort((a, b) => a.ordem - b.ordem);
   
   const produtosDasEtapas = [...new Set(etapasComProduto.map(e => e.produto).filter(Boolean))];
   const produtosDasOportunidades = [...new Set(oportunidades.map(o => o.produto).filter(Boolean))];
