@@ -217,6 +217,51 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   };
 
   const renderConteudo = () => {
+    // Tentar detectar contactMessage PRIMEIRO, mesmo se tipo_conteudo for diferente
+    if (mensagem.texto) {
+      try {
+        const obj = JSON.parse(mensagem.texto);
+        if (obj.contactMessage) {
+          const contato = extrairContatoVCard(mensagem.texto);
+          if (contato && contato.telefone) {
+            return (
+              <div className="flex flex-col gap-2 w-56">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-b from-green-50 to-green-100 border border-green-200">
+                  {contato.fotoUrl ? (
+                    <img src={contato.fotoUrl} alt="Contato" className="w-12 h-12 rounded-full object-cover border-2 border-white" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 border-2 border-white">
+                      {contato.displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="text-left flex-1 min-w-0">
+                    <p className="font-bold text-sm text-slate-900 truncate">{contato.displayName}</p>
+                    <p className="text-xs text-slate-700">{contato.telefone}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => toast.info('Contato salvo!')}
+                  className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  📥 Salvar Contato
+                </button>
+                <button
+                  onClick={() => {
+                    window.open(`https://wa.me/${contato.telefone.replace(/\D/g, '')}`, '_blank');
+                  }}
+                  className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  💬 Conversar
+                </button>
+              </div>
+            );
+          }
+        }
+      } catch (e) {
+        // Continuar com renderização normal
+      }
+    }
+
     // Se contatoExtraido já foi setado, renderizar o card de contato
     if (contatoExtraido && contatoExtraido.telefone) {
       return (
