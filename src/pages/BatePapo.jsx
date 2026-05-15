@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { marcarConversaComoLida } from '@/components/chat/marcarConversaComoLida';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +118,9 @@ export default function BatePapo() {
       nova.delete(conversa.id);
       return nova;
     });
+
+    // Marcar conversa como lida (background)
+    marcarConversaComoLida(conversa.id);
 
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
