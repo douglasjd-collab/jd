@@ -1456,9 +1456,12 @@ export default function FunilVendas() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {etapasOrdenadas.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
-                    ))}
+                    {etapasOrdenadas
+                      .filter((e) => !formData.produto || e.produto === formData.produto)
+                      .map((e) => (
+                        <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
+                      ))
+                    }
                   </SelectContent>
                 </Select>
               </div>
