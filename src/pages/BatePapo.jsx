@@ -519,7 +519,7 @@ export default function BatePapo() {
       return ordenadas;
     },
     staleTime: 0,
-    refetchInterval: 4000,  // Polling a cada 4 segundos
+    refetchInterval: 2000,  // Polling a cada 2 segundos (mais rápido para status)
     placeholderData: (prev) => prev,
   });
 
