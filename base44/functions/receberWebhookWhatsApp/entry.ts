@@ -407,7 +407,7 @@ async function processarWebhook(req, rawBody, base44) {
         arquivo_url: arquivoUrlG || null,
         whatsapp_message_id: messageId,
         data_envio: new Date().toISOString(),
-        status: fromMe ? 'enviada' : 'entregue'
+        status: fromMe ? 'enviada' : 'pendente'
       });
       console.log(`✅ Mensagem de GRUPO salva | conversa: ${conversaGrupo.id}`);
     }
@@ -648,7 +648,7 @@ async function processarWebhook(req, rawBody, base44) {
     arquivo_tamanho: arquivo_tamanho || 0,
     whatsapp_message_id: messageId,
     data_envio: new Date().toISOString(),
-    status: remetente === 'vendedor' ? 'enviada' : 'entregue'
+    status: remetente === 'vendedor' ? 'enviada' : 'pendente'
   });
 
   console.log(`✅ Mensagem salva: ${novaMensagem.id} | remetente: ${remetente}`);
