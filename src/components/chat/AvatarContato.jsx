@@ -16,7 +16,7 @@ export default function AvatarContato({ contato, className = "h-10 w-10" }) {
   const hasPhoto = !imgError && fotoUrl && fotoUrl.trim().length > 0 && fotoUrl !== 'undefined' && fotoUrl !== 'null';
 
   return (
-    <Avatar className={className}>
+    <Avatar className={className} title={`${contato?.nome || contato?.telefone || 'Contato'} ${hasPhoto ? '(com foto)' : '(sem foto)'}`}>
       {hasPhoto && (
         <AvatarImage
           src={fotoUrl}

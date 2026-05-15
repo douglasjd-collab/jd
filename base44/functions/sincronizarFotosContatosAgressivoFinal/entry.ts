@@ -52,28 +52,34 @@ Deno.serve(async (req) => {
           const tel = conversa.cliente_telefone?.replace(/\D/g, '');
           if (!tel || tel.length < 10) return null;
 
-          // Tentar múltiplas vezes
+          // Tentar múltiplos endpoints da Evolution API
           let fotoUrl = null;
-          for (let tentativa = 0; tentativa < 2; tentativa++) {
+          const endpoints = [
+            `${evolutionUrl}/chats/getProfile/${instanceName}/${tel}`,
+            `${evolutionUrl}/chats/${instanceName}/profile/${tel}`,
+            `${evolutionUrl}/profile/${tel}/${instanceName}`,
+          ];
+
+          for (const endpoint of endpoints) {
+            if (fotoUrl) break;
             try {
-              // Buscar contato na API Evolution
-              const resEvolution = await fetch(
-                `${evolutionUrl}/chats/getProfile/${instanceName}/${tel}`,
-                {
-                  headers: {
-                    apikey: evolutionKey,
-                    'Content-Type': 'application/json'
-                  }
+              const resEvolution = await fetch(endpoint, {
+                headers: {
+                  apikey: evolutionKey,
+                  'Content-Type': 'application/json'
                 }
-              );
+              });
 
               if (resEvolution.ok) {
                 const data = await resEvolution.json();
-                fotoUrl = data?.profilePictureUrl || data?.picture || null;
-                if (fotoUrl) break;
+                fotoUrl = data?.profilePictureUrl || data?.picture || data?.photo || data?.profilePicture || null;
+                if (fotoUrl) {
+                  console.log(`✅ Foto encontrada via ${endpoint} para ${tel}`);
+                  break;
+                }
               }
             } catch (e) {
-              console.warn(`Tentativa ${tentativa + 1} falhou para ${tel}`);
+              // Tentar próximo endpoint silenciosamente
             }
           }
 
@@ -83,10 +89,13 @@ Deno.serve(async (req) => {
               foto_url: fotoUrl
             });
             atualizados++;
-            console.log(`✅ ${conversa.cliente_nome || tel}: foto atualizada`);
+            console.log(`✅ ATUALIZADO: ${conversa.cliente_nome || tel} (${tel})`);
+          } else if (fotoUrl && fotoUrl === conversa.foto_url) {
+            console.log(`ℹ️  JÁ TEM FOTO: ${conversa.cliente_nome || tel} (${tel})`);
           } else if (!fotoUrl && conversa.foto_url) {
-            // Manter a foto existente
-            console.log(`⏭️  ${conversa.cliente_nome || tel}: mantendo foto existente`);
+            console.log(`⏭️  MANTÉM EXISTENTE: ${conversa.cliente_nome || tel} (${tel})`);
+          } else {
+            console.log(`❌ SEM FOTO: ${conversa.cliente_nome || tel} (${tel})`);
           }
 
           return { id: conversa.id, nome: conversa.cliente_nome, sucesso: true };
