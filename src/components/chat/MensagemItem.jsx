@@ -179,9 +179,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Detectar se é uma mensagem JSON codificada do WhatsApp (mensagens internas)
   const isJsonEncodedMessage = () => {
     if (!mensagem.texto) return false;
-    const texto = mensagem.texto.trim();
-    return (texto.startsWith('{') && texto.endsWith('}')) || 
-           (texto.startsWith('[') && texto.endsWith(']'));
+    try {
+      const obj = JSON.parse(mensagem.texto);
+      // NÃO marcar como sistema se for contactMessage (será renderizado como contato)
+      if (obj.contactMessage) return false;
+      // Marcar como sistema para outros tipos de JSON
+      return true;
+    } catch (e) {
+      return false;
+    }
   };
 
   const renderConteudo = () => {
@@ -192,8 +198,17 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     switch (mensagem.tipo_conteudo) {
       case 'texto': {
-        // Detectar se é um contato vCard
-        const contato = extrairContatoVCard(mensagem.texto);
+        // Detectar se é um contato vCard - ANTES de qualquer outra verificação
+        let contato = null;
+        try {
+          const obj = JSON.parse(mensagem.texto);
+          if (obj.contactMessage && obj.contactMessage.vcard) {
+            contato = extrairContatoVCard(mensagem.texto);
+          }
+        } catch (e) {
+          // Não é JSON, continuar normalmente
+        }
+        
         if (contato) {
           return (
             <>
