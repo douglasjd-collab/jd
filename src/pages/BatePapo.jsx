@@ -500,7 +500,7 @@ export default function BatePapo() {
 
       return filtradas;
     },
-    refetchInterval: 30000,  // Polling da lista de conversas a cada 30 segundos
+    refetchInterval: 15000,  // Polling da lista de conversas a cada 15 segundos
     placeholderData: (prev) => prev,
   });
 
@@ -519,7 +519,7 @@ export default function BatePapo() {
       return ordenadas;
     },
     staleTime: 0,
-    refetchInterval: 8000,  // Polling a cada 8 segundos
+    refetchInterval: 4000,  // Polling a cada 4 segundos
     placeholderData: (prev) => prev,
   });
 
