@@ -212,82 +212,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   };
 
   const renderConteudo = () => {
-    // Tentar detectar contactMessage PRIMEIRO, mesmo se tipo_conteudo for diferente
-    if (mensagem.texto) {
-      try {
-        const obj = JSON.parse(mensagem.texto);
-        if (obj.contactMessage) {
-          const contatos = extrairContatosVCard(mensagem.texto);
-          if (contatos.length > 0) {
-            return (
-              <div className="flex flex-col gap-3">
-                {contatos.map((contato, idx) => {
-                  const telFormatado = contato.telefone.replace(/(\d{2})(\d{5})(\d{4})/, '+$1 $2-$3');
-                  return (
-                    <div key={idx} className="flex flex-col gap-2 w-72 bg-gradient-to-b from-green-50 to-green-100 rounded-xl overflow-hidden border border-green-200 shadow-sm">
-                      <div className="flex items-center gap-3 p-3 bg-white border-b border-green-200">
-                        {contato.fotoUrl ? (
-                          <img src={contato.fotoUrl} alt={contato.displayName} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            👤
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-slate-900 truncate">{contato.displayName}</p>
-                          <p className="text-xs text-slate-600">{telFormatado}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 p-3">
-                        <button
-                          onClick={async () => {
-                            try {
-                              const tel = contato.telefone.replace(/\D/g, '');
-                              const convs = await base44.entities.ConversaWhatsapp.filter({
-                                cliente_telefone: tel,
-                                empresa_id: user?.empresa_id
-                              });
-                              
-                              if (convs.length > 0) {
-                                window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
-                              } else {
-                                const novaConv = await base44.entities.ConversaWhatsapp.create({
-                                  empresa_id: user?.empresa_id,
-                                  cliente_telefone: tel,
-                                  cliente_nome: contato.displayName,
-                                  status: 'ativa'
-                                });
-                                window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
-                              }
-                            } catch (err) {
-                              console.error('Erro:', err);
-                              toast.error('Erro ao abrir conversa');
-                            }
-                          }}
-                          className="w-full py-2 px-3 bg-white border border-green-300 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          💬 Conversar
-                        </button>
-                        <button
-                          onClick={() => toast.info('Adicionar a grupo em breve')}
-                          className="w-full py-2 px-3 bg-white border border-green-300 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          👥 Adicionar a um grupo
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          }
-          return null;
-        }
-      } catch (e) {
-        // Continuar com renderização normal
-      }
-    }
-
     // Ignorar mensagens internas do WhatsApp codificadas
     if (isJsonEncodedMessage()) {
       return null;
@@ -295,6 +219,80 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     switch (mensagem.tipo_conteudo) {
       case 'texto': {
+        // Verificar novamente se é contactMessage (pode estar como tipo_conteudo='texto')
+        if (mensagem.texto) {
+          try {
+            const obj = JSON.parse(mensagem.texto);
+            if (obj.contactMessage) {
+              const contatos = extrairContatosVCard(mensagem.texto);
+              if (contatos.length > 0) {
+                return (
+                  <div className="flex flex-col gap-3">
+                    {contatos.map((contato, idx) => {
+                      const telFormatado = contato.telefone.replace(/(\d{2})(\d{5})(\d{4})/, '+$1 $2-$3');
+                      return (
+                        <div key={idx} className="flex flex-col gap-2 w-72 bg-gradient-to-b from-green-50 to-green-100 rounded-xl overflow-hidden border border-green-200 shadow-sm">
+                          <div className="flex items-center gap-3 p-3 bg-white border-b border-green-200">
+                            {contato.fotoUrl ? (
+                              <img src={contato.fotoUrl} alt={contato.displayName} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                👤
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm text-slate-900 truncate">{contato.displayName}</p>
+                              <p className="text-xs text-slate-600">{telFormatado}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 p-3">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const tel = contato.telefone.replace(/\D/g, '');
+                                  const convs = await base44.entities.ConversaWhatsapp.filter({
+                                    cliente_telefone: tel,
+                                    empresa_id: user?.empresa_id
+                                  });
+                                  
+                                  if (convs.length > 0) {
+                                    window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
+                                  } else {
+                                    const novaConv = await base44.entities.ConversaWhatsapp.create({
+                                      empresa_id: user?.empresa_id,
+                                      cliente_telefone: tel,
+                                      cliente_nome: contato.displayName,
+                                      status: 'ativa'
+                                    });
+                                    window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
+                                  }
+                                } catch (err) {
+                                  console.error('Erro:', err);
+                                  toast.error('Erro ao abrir conversa');
+                                }
+                              }}
+                              className="w-full py-2 px-3 bg-white border border-green-300 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              💬 Conversar
+                            </button>
+                            <button
+                              onClick={() => toast.info('Adicionar a grupo em breve')}
+                              className="w-full py-2 px-3 bg-white border border-green-300 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              👥 Adicionar a um grupo
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+            }
+          } catch (e) {
+            // Não é JSON, renderizar como texto normal
+          }
+        }
         return <p className="break-words whitespace-pre-wrap">{formatarTexto(mensagem.texto)}</p>;
       }
 
