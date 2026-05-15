@@ -162,8 +162,16 @@ export default function FunilVendas() {
   });
 
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
-    queryKey: ['oportunidades'],
-    queryFn: () => base44.entities.Oportunidade.list('-data_ultima_movimentacao'),
+    queryKey: ['oportunidades', currentUser?.empresa_id],
+    enabled: !!currentUser?.empresa_id,
+    queryFn: async () => {
+      if (!currentUser?.empresa_id) return [];
+      return base44.entities.Oportunidade.filter(
+        { empresa_id: currentUser.empresa_id },
+        '-data_ultima_movimentacao',
+        1000
+      );
+    },
   });
 
   const { data: clientes = [] } = useQuery({
