@@ -1039,7 +1039,10 @@ export default function FunilVendas() {
                <SelectContent>
                  <SelectItem value="todos">Todos os responsáveis</SelectItem>
                  {vendedores.map((v) => {
-                   const countVendedor = oportunidadesDoVendedor.filter(o => o.vendedor_id === v.id && o.status === 'aberta').length;
+                   const countVendedor = oportunidades.filter(o => {
+                     const produtoOport = o.produto || (etapasComProduto.find(e => e.id === o.etapa_id)?.produto) || 'consorcio';
+                     return o.vendedor_id === v.id && o.status === 'aberta' && (filterProduto === 'todos' || produtoOport === filterProduto);
+                   }).length;
                    return <SelectItem key={v.id} value={v.id}>{v.nome || v.razao_social || v.full_name} <span className="text-slate-400 ml-2">({countVendedor})</span></SelectItem>;
                  })}
                </SelectContent>
