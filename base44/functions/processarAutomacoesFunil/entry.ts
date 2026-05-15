@@ -145,22 +145,49 @@ Deno.serve(async (req) => {
       let erroDetalhe = '';
 
       try {
-        const payload = {
-          number: telefone,
-          text: mensagemFinal
-        };
-        const resp = await fetch(`${empresa.evolution_url}/message/sendText/${empresa.evolution_instance_name}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': empresa.evolution_api_key
-          },
-          body: JSON.stringify(payload)
-        });
-        if (!resp.ok) {
-          const txt = await resp.text();
-          throw new Error(`HTTP ${resp.status}: ${txt}`);
+        const evUrl = empresa.evolution_url;
+        const evKey = empresa.evolution_api_key;
+        const evInst = empresa.evolution_instance_name;
+
+        // Enviar texto (se houver)
+        if (mensagemFinal) {
+          const resp = await fetch(`${evUrl}/message/sendText/${evInst}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': evKey },
+            body: JSON.stringify({ number: telefone, text: mensagemFinal })
+          });
+          if (!resp.ok) {
+            const txt = await resp.text();
+            throw new Error(`HTTP ${resp.status}: ${txt}`);
+          }
         }
+
+        // Enviar mídia (se configurada)
+        if (auto.tipo_midia && auto.tipo_midia !== 'nenhuma' && auto.midia_url) {
+          const caption = auto.midia_caption ? resolverVariaveis(auto.midia_caption, oport) : '';
+          if (auto.tipo_midia === 'imagem' || auto.tipo_midia === 'video') {
+            const respMedia = await fetch(`${evUrl}/message/sendMedia/${evInst}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'apikey': evKey },
+              body: JSON.stringify({ number: telefone, mediatype: auto.tipo_midia, media: auto.midia_url, caption })
+            });
+            if (!respMedia.ok) {
+              const txt = await respMedia.text();
+              throw new Error(`Mídia HTTP ${respMedia.status}: ${txt}`);
+            }
+          } else if (auto.tipo_midia === 'audio') {
+            const respAudio = await fetch(`${evUrl}/message/sendWhatsAppAudio/${evInst}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'apikey': evKey },
+              body: JSON.stringify({ number: telefone, audio: auto.midia_url })
+            });
+            if (!respAudio.ok) {
+              const txt = await respAudio.text();
+              throw new Error(`Áudio HTTP ${respAudio.status}: ${txt}`);
+            }
+          }
+        }
+
         logs.push(`✅ [${oport.titulo}] Automação "${auto.nome}" enviada para ${telefone}`);
       } catch (e) {
         statusEnvio = 'erro';

@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Zap, Clock, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Zap, Clock, MessageCircle, ChevronDown, ChevronUp, Image, Video, Mic, Type, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AutomacaoFunis() {
@@ -21,9 +21,11 @@ export default function AutomacaoFunis() {
   const [formData, setFormData] = useState({
     nome: '', funil: '', etapa_id: '', etapa_nome: '', tempo_disparo: 0,
     tipo_tempo: 'dias', canal: 'whatsapp', mensagem: '', horario_envio: '08:00',
+    tipo_midia: 'nenhuma', midia_url: '', midia_caption: '',
     parar_se_responder: true, etapa_resposta_id: '', etapa_resposta_nome: '',
     parar_se_mudar_etapa: true, ordem: 1, ativo: true
   });
+  const [uploadingMidia, setUploadingMidia] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -89,6 +91,7 @@ export default function AutomacaoFunis() {
   const resetForm = () => setFormData({
     nome: '', funil: '', etapa_id: '', etapa_nome: '', tempo_disparo: 0,
     tipo_tempo: 'dias', canal: 'whatsapp', mensagem: '', horario_envio: '08:00',
+    tipo_midia: 'nenhuma', midia_url: '', midia_caption: '',
     parar_se_responder: true, etapa_resposta_id: '', etapa_resposta_nome: '',
     parar_se_mudar_etapa: true, ordem: 1, ativo: true
   });
@@ -100,6 +103,7 @@ export default function AutomacaoFunis() {
       etapa_nome: auto.etapa_nome, tempo_disparo: auto.tempo_disparo,
       tipo_tempo: auto.tipo_tempo, canal: auto.canal, mensagem: auto.mensagem,
       horario_envio: auto.horario_envio || '08:00',
+      tipo_midia: auto.tipo_midia || 'nenhuma', midia_url: auto.midia_url || '', midia_caption: auto.midia_caption || '',
       parar_se_responder: auto.parar_se_responder ?? true,
       etapa_resposta_id: auto.etapa_resposta_id || '',
       etapa_resposta_nome: auto.etapa_resposta_nome || '',
@@ -202,6 +206,13 @@ export default function AutomacaoFunis() {
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {labelTempo(auto)}</span>
                       <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {auto.etapa_nome || auto.etapa_id}</span>
                       <span>🕐 {auto.horario_envio || '08:00'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      {auto.tipo_midia && auto.tipo_midia !== 'nenhuma' && (
+                        <Badge variant="outline" className="text-xs gap-1 text-purple-600 border-purple-300">
+                          {auto.tipo_midia === 'imagem' ? '🖼️ Imagem' : auto.tipo_midia === 'video' ? '🎬 Vídeo' : '🎵 Áudio'}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-slate-600 bg-slate-50 rounded p-2 line-clamp-2">{auto.mensagem}</p>
                   </div>
@@ -321,8 +332,86 @@ export default function AutomacaoFunis() {
               </div>
             </div>
 
+            {/* Tipo de Conteúdo */}
             <div>
-              <Label>Mensagem *</Label>
+              <Label>Tipo de Envio</Label>
+              <div className="grid grid-cols-4 gap-2 mt-1">
+                {[
+                  { value: 'nenhuma', label: 'Só Texto', icon: Type },
+                  { value: 'imagem', label: 'Texto + Imagem', icon: Image },
+                  { value: 'video', label: 'Texto + Vídeo', icon: Video },
+                  { value: 'audio', label: 'Texto + Áudio', icon: Mic },
+                ].map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFormData(fd => ({ ...fd, tipo_midia: value, midia_url: '', midia_caption: '' }))}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-sm font-medium
+                      ${formData.tipo_midia === value
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="text-xs text-center leading-tight">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Upload de mídia */}
+            {formData.tipo_midia !== 'nenhuma' && (
+              <div className="space-y-2 p-3 bg-slate-50 rounded-lg border">
+                <Label>{formData.tipo_midia === 'imagem' ? 'Imagem' : formData.tipo_midia === 'video' ? 'Vídeo' : 'Áudio'}</Label>
+                <div className="flex gap-2 items-start">
+                  <Input
+                    placeholder="URL da mídia (https://...)"
+                    value={formData.midia_url}
+                    onChange={e => setFormData(fd => ({ ...fd, midia_url: e.target.value }))}
+                    className="flex-1 bg-white"
+                  />
+                  <div className="relative">
+                    <Button type="button" variant="outline" size="sm" disabled={uploadingMidia} className="gap-1 whitespace-nowrap">
+                      <Upload className="w-3.5 h-3.5" />
+                      {uploadingMidia ? 'Enviando...' : 'Upload'}
+                    </Button>
+                    <input
+                      type="file"
+                      accept={formData.tipo_midia === 'imagem' ? 'image/*' : formData.tipo_midia === 'video' ? 'video/*' : 'audio/*'}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      disabled={uploadingMidia}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingMidia(true);
+                        try {
+                          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                          setFormData(fd => ({ ...fd, midia_url: file_url }));
+                          toast.success('Arquivo enviado!');
+                        } catch (err) {
+                          toast.error('Erro ao enviar arquivo');
+                        } finally {
+                          setUploadingMidia(false);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                {formData.midia_url && formData.tipo_midia === 'imagem' && (
+                  <img src={formData.midia_url} alt="preview" className="h-24 rounded object-cover border" />
+                )}
+                {formData.tipo_midia !== 'audio' && (
+                  <Input
+                    placeholder="Legenda da mídia (opcional)"
+                    value={formData.midia_caption}
+                    onChange={e => setFormData(fd => ({ ...fd, midia_caption: e.target.value }))}
+                    className="bg-white"
+                  />
+                )}
+              </div>
+            )}
+
+            <div>
+              <Label>{formData.tipo_midia === 'audio' ? 'Texto (enviado antes do áudio)' : 'Mensagem'} {formData.tipo_midia === 'nenhuma' ? '*' : ''}</Label>
               <div className="flex flex-wrap gap-1 mb-1">
                 {['{{primeiro_nome}}','{{nome}}','{{vendedor}}','{{telefone}}','{{valor}}','{{empresa}}','{{etapa}}'].map(v => (
                   <button
@@ -387,8 +476,14 @@ export default function AutomacaoFunis() {
               <Button variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button>
               <Button
                 onClick={() => {
-                  if (!formData.nome || !formData.funil || !formData.etapa_id || !formData.mensagem) {
+                  if (!formData.nome || !formData.funil || !formData.etapa_id) {
                     toast.error('Preencha todos os campos obrigatórios'); return;
+                  }
+                  if (!formData.mensagem && formData.tipo_midia === 'nenhuma') {
+                    toast.error('Adicione uma mensagem de texto'); return;
+                  }
+                  if (formData.tipo_midia !== 'nenhuma' && !formData.midia_url) {
+                    toast.error('Faça upload ou informe a URL da mídia'); return;
                   }
                   salvarMutation.mutate(formData);
                 }}

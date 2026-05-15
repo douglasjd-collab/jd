@@ -3,29 +3,23 @@
   "type": "object",
   "properties": {
     "empresa_id": {
-      "type": "string",
-      "description": "ID da empresa"
+      "type": "string"
     },
     "nome": {
-      "type": "string",
-      "description": "Nome da automa\u00e7\u00e3o"
+      "type": "string"
     },
     "funil": {
-      "type": "string",
-      "description": "Slug do funil (ex: seguros_autos)"
+      "type": "string"
     },
     "etapa_id": {
-      "type": "string",
-      "description": "ID da etapa que dispara a automa\u00e7\u00e3o"
+      "type": "string"
     },
     "etapa_nome": {
-      "type": "string",
-      "description": "Nome da etapa (denormalizado)"
+      "type": "string"
     },
     "tempo_disparo": {
       "type": "number",
-      "default": 0,
-      "description": "Quantidade de tempo para disparar (0 = imediato)"
+      "default": 0
     },
     "tipo_tempo": {
       "type": "string",
@@ -34,60 +28,69 @@
         "horas",
         "dias"
       ],
-      "default": "dias",
-      "description": "Unidade de tempo"
+      "default": "dias"
     },
     "canal": {
       "type": "string",
       "enum": [
         "whatsapp"
       ],
-      "default": "whatsapp",
-      "description": "Canal de envio"
+      "default": "whatsapp"
     },
     "mensagem": {
       "type": "string",
-      "description": "Mensagem a ser enviada (suporta {{nome}}, {{vendedor}})"
+      "description": "Texto da mensagem (suporta vari\u00e1veis)"
+    },
+    "tipo_midia": {
+      "type": "string",
+      "enum": [
+        "nenhuma",
+        "imagem",
+        "video",
+        "audio"
+      ],
+      "default": "nenhuma",
+      "description": "Tipo de m\u00eddia adicional"
+    },
+    "midia_url": {
+      "type": "string",
+      "description": "URL da m\u00eddia (imagem, v\u00eddeo ou \u00e1udio)"
+    },
+    "midia_caption": {
+      "type": "string",
+      "description": "Legenda da m\u00eddia (para imagem/v\u00eddeo)"
     },
     "horario_envio": {
       "type": "string",
-      "default": "08:00",
-      "description": "Hor\u00e1rio preferencial de envio (HH:MM)"
+      "default": "08:00"
     },
     "parar_se_responder": {
       "type": "boolean",
-      "default": true,
-      "description": "Parar se cliente responder"
+      "default": true
     },
     "etapa_resposta_id": {
-      "type": "string",
-      "description": "ID da etapa para mover o lead quando o cliente responder (opcional)"
+      "type": "string"
     },
     "etapa_resposta_nome": {
-      "type": "string",
-      "description": "Nome da etapa destino ao responder (denormalizado)"
+      "type": "string"
     },
     "parar_se_mudar_etapa": {
       "type": "boolean",
-      "default": true,
-      "description": "Parar se lead mudar de etapa"
+      "default": true
     },
     "ordem": {
       "type": "number",
-      "default": 1,
-      "description": "Ordem de execu\u00e7\u00e3o na sequ\u00eancia"
+      "default": 1
     },
     "ativo": {
       "type": "boolean",
-      "default": true,
-      "description": "Se a automa\u00e7\u00e3o est\u00e1 ativa"
+      "default": true
     }
   },
   "required": [
     "empresa_id",
     "nome",
     "funil",
-    "etapa_id",
-    "mensagem"
+    "etapa_id"
   ]
 }
