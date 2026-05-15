@@ -614,6 +614,23 @@ export default function BatePapo() {
   React.useEffect(() => { conversasRef.current = conversas; }, [conversas]);
   React.useEffect(() => { empresaIdRef.current = empresaId; }, [empresaId]);
 
+  // Subscription para updates de status de mensagens (ACKs/leitura)
+  useEffect(() => {
+    if (!empresaId) return;
+    console.log(`🔌 Conectando subscription de status de mensagens...`);
+    const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
+      if (event.type !== 'update') return;
+      const msgData = event.data;
+      if (!msgData?.id || !msgData?.conversa_id) return;
+      // Atualizar a mensagem no cache local
+      queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) =>
+        old.map(m => m.id === msgData.id ? msgData : m)
+      );
+      console.log(`✅ Status atualizado: ${msgData.id} → ${msgData.status}`);
+    });
+    return unsub;
+  }, [empresaId]);
+
   useEffect(() => {
     if (!empresaId || !refetchConversas) return;
     console.log(`🔌 Conectando subscription de mensagens...`);
