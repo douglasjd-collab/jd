@@ -791,24 +791,35 @@ export default function FunilVendas() {
     }
   };
 
-  // Base de oportunidades visíveis para o usuário atual (respeita visão/perfil)
+  // Base de oportunidades visíveis para o usuário atual (respeita visão/perfil + filtro de responsável)
   const oportunidadesDoVendedor = !currentUser ? [] : oportunidades.filter(o => {
+    // Primeiro filtro: quem pode ver
+    let podeVer = false;
     if (!isAdmin && !isGerente) {
-      return (
+      podeVer = (
         o.vendedor_id === currentUser.id ||
         o.vendedor_id === currentUser.colaborador_id ||
         o.vendedor_id === currentUser.auth_id
       );
-    }
-    if (filterVisao === 'meus') {
-      return (
+    } else if (filterVisao === 'meus') {
+      podeVer = (
         o.vendedor_id === currentUser.id ||
         o.vendedor_id === currentUser.colaborador_id ||
         o.vendedor_id === currentUser.auth_id
       );
+    } else if (filterVisao === 'sem_responsavel') {
+      podeVer = !o.vendedor_id;
+    } else {
+      podeVer = true; // 'equipe' ou 'todos'
     }
-    if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
-    if (filterVisao === 'equipe') return true;
+
+    if (!podeVer) return false;
+
+    // Segundo filtro: responsável específico (apenas admins/gerentes)
+    if (podeVerTodos && filterVendedor !== 'todos') {
+      return o.vendedor_id === filterVendedor;
+    }
+
     return true;
   });
 
@@ -821,9 +832,9 @@ export default function FunilVendas() {
         return o.produto === filterProduto;
       })
       .filter((o) => {
-        if (!podeVerTodos) return true;
-        if (filterVendedor === 'todos') return true;
-        return o.vendedor_id === filterVendedor;
+        if (!podeVerTodos) return true; // Vendedores normais só veem seus próprios
+        if (filterVendedor === 'todos') return true; // Admin vendo todos
+        return o.vendedor_id === filterVendedor; // Admin filtrando por responsável específico
       })
       .filter((o) => {
         if (!searchCard.trim()) return true;
@@ -998,32 +1009,32 @@ export default function FunilVendas() {
       {/* ── LINHA 1: VISÃO ── */}
       {(isAdmin || isGerente) && (
         <div className="flex items-center gap-2 flex-wrap">
-          {[
-            { key: 'meus', label: '👤 Meus Leads', count: oportunidades.filter(o => o.vendedor_id === currentUser?.id && o.status === 'aberta').length },
-            { key: 'equipe', label: '👥 Equipe', count: oportunidades.filter(o => o.status === 'aberta').length },
-            { key: 'todos', label: '🌎 Todos', count: oportunidades.length },
-            { key: 'sem_responsavel', label: '⚠️ Sem Responsável', count: oportunidades.filter(o => !o.vendedor_id).length },
-          ].map(v => (
-            <button key={v.key} onClick={() => setFilterVisao(v.key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${filterVisao === v.key ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
-              {v.label}
-              {v.count > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterVisao === v.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{v.count}</span>}
-            </button>
-          ))}
-          <div className="ml-auto">
-            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
-              <SelectTrigger className="h-8 text-xs w-44 border-slate-200">
-                <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-                <SelectValue placeholder="Responsável" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os responsáveis</SelectItem>
-                {vendedores.map((v) => <SelectItem key={v.id} value={v.id}>{v.razao_social || v.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      )}
+           {[
+             { key: 'meus', label: '👤 Meus Leads', count: oportunidades.filter(o => o.vendedor_id === currentUser?.id && o.status === 'aberta').length },
+             { key: 'equipe', label: '👥 Equipe', count: oportunidades.filter(o => o.status === 'aberta').length },
+             { key: 'todos', label: '🌎 Todos', count: oportunidades.length },
+             { key: 'sem_responsavel', label: '⚠️ Sem Responsável', count: oportunidades.filter(o => !o.vendedor_id).length },
+           ].map(v => (
+             <button key={v.key} onClick={() => setFilterVisao(v.key)}
+               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${filterVisao === v.key ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
+               {v.label}
+               {v.count > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterVisao === v.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{v.count}</span>}
+             </button>
+           ))}
+           <div className="ml-auto">
+             <Select value={filterVendedor} onValueChange={setFilterVendedor} disabled={!podeVerTodos}>
+               <SelectTrigger className="h-8 text-xs w-44 border-slate-200">
+                 <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+                 <SelectValue placeholder="Responsável" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="todos">Todos os responsáveis</SelectItem>
+                 {vendedores.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome || v.razao_social || v.full_name}</SelectItem>)}
+               </SelectContent>
+             </Select>
+           </div>
+         </div>
+       )}
 
       {/* ── LINHA 2: FUNIS (cards) ── */}
       <div className="flex gap-3 flex-wrap items-center">
