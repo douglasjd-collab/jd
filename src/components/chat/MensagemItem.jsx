@@ -215,6 +215,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       const obj = JSON.parse(mensagem.texto);
       // NÃO marcar como sistema se for contactMessage (será renderizado como contato)
       if (obj.contactMessage) return false;
+      // Bloquear outros tipos de mensagens internas do WhatsApp
+      if (obj.senderKeyDistributionMessage) return true;
+      if (obj.protocolMessage) return true;
+      if (obj.ephemeralMessage) return true;
       // Marcar como sistema para outros tipos de JSON
       return true;
     } catch (e) {
