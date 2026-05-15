@@ -1,0 +1,85 @@
+{
+  "name": "AutomacaoFunil",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome da automa\u00e7\u00e3o"
+    },
+    "funil": {
+      "type": "string",
+      "description": "Slug do funil (ex: seguros_autos)"
+    },
+    "etapa_id": {
+      "type": "string",
+      "description": "ID da etapa que dispara a automa\u00e7\u00e3o"
+    },
+    "etapa_nome": {
+      "type": "string",
+      "description": "Nome da etapa (denormalizado)"
+    },
+    "tempo_disparo": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de tempo para disparar (0 = imediato)"
+    },
+    "tipo_tempo": {
+      "type": "string",
+      "enum": [
+        "minutos",
+        "horas",
+        "dias"
+      ],
+      "default": "dias",
+      "description": "Unidade de tempo"
+    },
+    "canal": {
+      "type": "string",
+      "enum": [
+        "whatsapp"
+      ],
+      "default": "whatsapp",
+      "description": "Canal de envio"
+    },
+    "mensagem": {
+      "type": "string",
+      "description": "Mensagem a ser enviada (suporta {{nome}}, {{vendedor}})"
+    },
+    "horario_envio": {
+      "type": "string",
+      "default": "08:00",
+      "description": "Hor\u00e1rio preferencial de envio (HH:MM)"
+    },
+    "parar_se_responder": {
+      "type": "boolean",
+      "default": true,
+      "description": "Parar se cliente responder"
+    },
+    "parar_se_mudar_etapa": {
+      "type": "boolean",
+      "default": true,
+      "description": "Parar se lead mudar de etapa"
+    },
+    "ordem": {
+      "type": "number",
+      "default": 1,
+      "description": "Ordem de execu\u00e7\u00e3o na sequ\u00eancia"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se a automa\u00e7\u00e3o est\u00e1 ativa"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "funil",
+    "etapa_id",
+    "mensagem"
+  ]
+}

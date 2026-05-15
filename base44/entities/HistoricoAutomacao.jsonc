@@ -1,0 +1,67 @@
+{
+  "name": "HistoricoAutomacao",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "oportunidade_id": {
+      "type": "string",
+      "description": "ID da oportunidade (lead)"
+    },
+    "oportunidade_titulo": {
+      "type": "string",
+      "description": "T\u00edtulo da oportunidade"
+    },
+    "automacao_id": {
+      "type": "string",
+      "description": "ID da automa\u00e7\u00e3o disparada"
+    },
+    "automacao_nome": {
+      "type": "string",
+      "description": "Nome da automa\u00e7\u00e3o"
+    },
+    "etapa_id": {
+      "type": "string",
+      "description": "ID da etapa no momento do disparo"
+    },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone do lead"
+    },
+    "mensagem_enviada": {
+      "type": "string",
+      "description": "Mensagem enviada com vari\u00e1veis resolvidas"
+    },
+    "enviado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora do envio"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "enviado",
+        "erro",
+        "ignorado"
+      ],
+      "default": "enviado",
+      "description": "Status do disparo"
+    },
+    "motivo_ignorado": {
+      "type": "string",
+      "description": "Motivo de n\u00e3o envio (se ignorado)"
+    },
+    "erro_detalhe": {
+      "type": "string",
+      "description": "Detalhe do erro (se erro)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "oportunidade_id",
+    "automacao_id",
+    "status"
+  ]
+}
