@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function FunilSelectionModal({
   open,
@@ -15,6 +16,7 @@ export default function FunilSelectionModal({
   onSuccess,
   existingOportunidade = null
 }) {
+  const queryClient = useQueryClient();
   const [funilSelecionado, setFunilSelecionado] = useState(existingOportunidade?.produto || '');
   const [etapaSelecionada, setEtapaSelecionada] = useState(existingOportunidade?.etapa_id || '');
   const [funis, setFunis] = useState([]);
@@ -95,6 +97,10 @@ export default function FunilSelectionModal({
         });
         toast.success('Contato lançado no funil com sucesso!');
       }
+      
+      // Invalida queries para atualizar no FunilVendas
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp'] });
       
       onOpenChange(false);
       onSuccess?.();
