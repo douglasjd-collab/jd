@@ -91,7 +91,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Método 2: Download direto da URL com apikey
+    // Se temos URL temporária válida, retornar direto (mais rápido)
+    if (urlAtual && !urlAtual.includes('.enc')) {
+      console.log(`✅ URL temporária válida retornada direto: ${urlAtual}`);
+      return Response.json({ ok: true, arquivo_url: urlAtual });
+    }
+
+    // Método 2: Download direto da URL com apikey (para arquivos .enc)
     if (!base64Data && urlAtual) {
       try {
         const fetchRes = await fetch(urlAtual, {
@@ -101,17 +107,16 @@ Deno.serve(async (req) => {
           const ct = fetchRes.headers.get('content-type') || '';
           if (ct && ct !== 'application/octet-stream') mimeType = ct.split(';')[0].trim();
           const arrayBuffer = await fetchRes.arrayBuffer();
+
+          // Usar btoa direto com Buffer se disponível (mais rápido)
           const uint8Array = new Uint8Array(arrayBuffer);
-          let binary = '';
-          const chunkSize = 8192;
-          for (let i = 0; i < uint8Array.length; i += chunkSize) {
-            binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
-          }
-          base64Data = btoa(binary);
+          base64Data = btoa(String.fromCharCode.apply(null, uint8Array));
           console.log(`✅ Download direto | tipo: ${mimeType}`);
         }
       } catch (e) {
         console.warn('⚠️ Download direto falhou:', e.message);
+        // Retornar URL temporária se falhar
+        return Response.json({ ok: true, arquivo_url: urlAtual });
       }
     }
 
@@ -119,8 +124,7 @@ Deno.serve(async (req) => {
       console.warn('⚠️ Não conseguiu baixar via Evolution - retornando URL temporária');
       return Response.json({ 
         ok: true, 
-        arquivo_url: urlAtual || 'indisponivel',
-        aviso: 'URL temporária - pode expirar'
+        arquivo_url: urlAtual || 'indisponivel'
       });
     }
 

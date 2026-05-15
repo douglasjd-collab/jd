@@ -116,9 +116,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar áudio, vídeo e PDF ao montar
+  // Auto-carregar apenas áudio e vídeo ao montar (PDF sob demanda = mais rápido)
   useEffect(() => {
-    if ((mensagem.tipo_conteudo === 'audio' || mensagem.tipo_conteudo === 'video' || mensagem.tipo_conteudo === 'pdf' || mensagem.tipo_conteudo === 'documento') && mensagem.arquivo_url && !mediaUrl && !loadingMedia) {
+    if ((mensagem.tipo_conteudo === 'audio' || mensagem.tipo_conteudo === 'video') && mensagem.arquivo_url && !mediaUrl && !loadingMedia) {
       handleCarregarMidia();
     }
   }, [mensagem.id]);
