@@ -783,6 +783,27 @@ export default function FunilVendas() {
     }
   };
 
+  // Base de oportunidades visíveis para o usuário atual (respeita visão/perfil)
+  const oportunidadesDoVendedor = !currentUser ? [] : oportunidades.filter(o => {
+    if (!isAdmin && !isGerente) {
+      return (
+        o.vendedor_id === currentUser.id ||
+        o.vendedor_id === currentUser.colaborador_id ||
+        o.vendedor_id === currentUser.auth_id
+      );
+    }
+    if (filterVisao === 'meus') {
+      return (
+        o.vendedor_id === currentUser.id ||
+        o.vendedor_id === currentUser.colaborador_id ||
+        o.vendedor_id === currentUser.auth_id
+      );
+    }
+    if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
+    if (filterVisao === 'equipe') return true;
+    return true;
+  });
+
   // HU 05 - Indicadores
   const filteredOportunidades = (() => {
     const agora = new Date();
@@ -867,27 +888,6 @@ export default function FunilVendas() {
   };
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
-
-  // Base de oportunidades visíveis para o usuário atual (respeita visão/perfil)
-  const oportunidadesDoVendedor = !currentUser ? [] : oportunidades.filter(o => {
-    if (!isAdmin && !isGerente) {
-      return (
-        o.vendedor_id === currentUser.id ||
-        o.vendedor_id === currentUser.colaborador_id ||
-        o.vendedor_id === currentUser.auth_id
-      );
-    }
-    if (filterVisao === 'meus') {
-      return (
-        o.vendedor_id === currentUser.id ||
-        o.vendedor_id === currentUser.colaborador_id ||
-        o.vendedor_id === currentUser.auth_id
-      );
-    }
-    if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
-    if (filterVisao === 'equipe') return true;
-    return true;
-  });
 
   // Produtos únicos: das etapas (funis criados) + das oportunidades existentes
   const produtosDasEtapas = [...new Set(etapas.map(e => e.produto).filter(Boolean))];
