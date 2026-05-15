@@ -32,45 +32,35 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const [contatoExtraido, setContatoExtraido] = useState(null);
   const audioRef = React.useRef(null);
 
-  // Extrair informações do vCard
+  // Extrair informações do vCard (simplificado para contactMessage)
   const extrairContatoVCard = (texto) => {
     try {
       const obj = JSON.parse(texto);
       if (!obj.contactMessage) return null;
       
-      const vcard = obj.contactMessage.vcard || '';
       const displayName = obj.contactMessage.displayName || 'Contato Desconhecido';
+      const vcard = obj.contactMessage.vcard || '';
       
-      console.log('🔍 Processando vCard...');
-      console.log('displayName:', displayName);
-      
-      // Extrair telefone do waid (mais confiável)
+      // Extrair telefone: procura primeiro por "waid=", depois por "TEL:"
       let telefone = '';
+      
+      // Método 1: waid (mais confiável)
       const waidMatch = vcard.match(/waid=([0-9]+)/);
       if (waidMatch) {
         telefone = waidMatch[1];
-        console.log('✅ Telefone encontrado via waid:', telefone);
-      }
-      
-      // Fallback: tentar extrair do valor TEL
-      if (!telefone) {
-        const telefonMatch = vcard.match(/TEL[^:]*:([+\d\s\-()]+)/);
-        if (telefonMatch) {
-          telefone = telefonMatch[1].replace(/\D/g, '');
-          console.log('✅ Telefone encontrado via TEL:', telefone);
+      } else {
+        // Método 2: TEL
+        const telMatch = vcard.match(/TEL[^:]*:([+\d\s\-()]+)/);
+        if (telMatch) {
+          telefone = telMatch[1].replace(/\D/g, '');
         }
       }
       
-      // Se ainda não tem telefone, retorna null
-      if (!telefone) {
-        console.warn('❌ Nenhum telefone encontrado');
-        console.log('vCard:', vcard.substring(0, 200));
-        return null;
-      }
+      if (!telefone) return null;
       
-      // Extrair foto (BASE64)
+      // Extrair foto (base64)
       let fotoUrl = null;
-      const fotoMatch = vcard.match(/PHOTO(?:;[^:]*)?:([a-zA-Z0-9+/=\n]+?)(?:\n[A-Z]|$)/);
+      const fotoMatch = vcard.match(/PHOTO[^:]*:([a-zA-Z0-9+/=\n]+?)(?:\nFN|$)/);
       if (fotoMatch) {
         const fotoData = fotoMatch[1].replace(/\n/g, '');
         if (fotoData.trim()) {
@@ -78,33 +68,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         }
       }
       
-      console.log('✅ Contato extraído com sucesso!', { displayName, telefone, temFoto: !!fotoUrl });
       return { displayName, telefone, fotoUrl };
     } catch (e) {
-      console.error('❌ Erro ao extrair contato:', e);
+      return null;
     }
-    return null;
   };
   
   const queryClient = useQueryClient();
   const isVendedor = mensagem.remetente === 'vendedor';
 
-  // Processar contactMessage ao montar
-  useEffect(() => {
-    if (mensagem.tipo_conteudo === 'texto' && mensagem.texto) {
-      try {
-        const obj = JSON.parse(mensagem.texto);
-        if (obj.contactMessage) {
-          const contato = extrairContatoVCard(mensagem.texto);
-          if (contato) {
-            setContatoExtraido(contato);
-          }
-        }
-      } catch (e) {
-        console.error('Erro ao processar contactMessage:', e);
-      }
-    }
-  }, [mensagem.id, mensagem.texto]);
+
 
   // Confirmar leitura ao montar a mensagem (se for mensagem de cliente)
   useEffect(() => {
@@ -243,55 +216,47 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           if (contato && contato.telefone) {
             return (
               <div className="flex flex-col gap-2 w-56">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-b from-green-50 to-green-100 border border-green-200">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-b from-green-50 to-green-100 border border-green-300 shadow-sm">
                   {contato.fotoUrl ? (
-                    <img src={contato.fotoUrl} alt="Contato" className="w-12 h-12 rounded-full object-cover border-2 border-white" />
+                    <img src={contato.fotoUrl} alt={contato.displayName} className="w-14 h-14 rounded-full object-cover border-2 border-white flex-shrink-0" />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 border-2 border-white">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 border-2 border-white">
                       {contato.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="text-left flex-1 min-w-0">
                     <p className="font-bold text-sm text-slate-900 truncate">{contato.displayName}</p>
-                    <p className="text-xs text-slate-700">{contato.telefone}</p>
+                    <p className="text-xs text-slate-600 font-mono">{contato.telefone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}</p>
                   </div>
                 </div>
                 <button
-                  onClick={() => toast.info('Contato salvo!')}
-                  className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
-                >
-                  📥 Salvar Contato
-                </button>
-                <button
                   onClick={async () => {
                     try {
-                      // Buscar conversa existente ou criar uma nova
+                      const tel = contato.telefone.replace(/\D/g, '');
                       const convs = await base44.entities.ConversaWhatsapp.filter({
-                        cliente_telefone: contato.telefone.replace(/\D/g, ''),
+                        cliente_telefone: tel,
                         empresa_id: user?.empresa_id
                       });
                       
                       if (convs.length > 0) {
-                        // Navegar para conversa existente
                         window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
                       } else {
-                        // Criar nova conversa
                         const novaConv = await base44.entities.ConversaWhatsapp.create({
                           empresa_id: user?.empresa_id,
-                          cliente_telefone: contato.telefone.replace(/\D/g, ''),
+                          cliente_telefone: tel,
                           cliente_nome: contato.displayName,
                           status: 'ativa'
                         });
                         window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
                       }
                     } catch (err) {
-                      console.error('Erro ao abrir conversa:', err);
+                      console.error('Erro:', err);
                       toast.error('Erro ao abrir conversa');
                     }
                   }}
-                  className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2 px-3 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
-                  💬 Conversar
+                  💬 Conversar com {contato.displayName}
                 </button>
               </div>
             );
@@ -304,62 +269,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       }
     }
 
-    // Se contatoExtraido já foi setado, renderizar o card de contato
-    if (contatoExtraido && contatoExtraido.telefone) {
-      return (
-        <div className="flex flex-col gap-2 w-56">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-b from-green-50 to-green-100 border border-green-200">
-            {contatoExtraido.fotoUrl ? (
-              <img src={contatoExtraido.fotoUrl} alt="Contato" className="w-12 h-12 rounded-full object-cover border-2 border-white" />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 border-2 border-white">
-                {contatoExtraido.displayName.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="text-left flex-1 min-w-0">
-              <p className="font-bold text-sm text-slate-900 truncate">{contatoExtraido.displayName}</p>
-              <p className="text-xs text-slate-700">{contatoExtraido.telefone}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => toast.info('Contato salvo!')}
-            className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
-          >
-            📥 Salvar Contato
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const convs = await base44.entities.ConversaWhatsapp.filter({
-                  cliente_telefone: contatoExtraido.telefone.replace(/\D/g, ''),
-                  empresa_id: user?.empresa_id
-                });
-                
-                if (convs.length > 0) {
-                  window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
-                } else {
-                  const novaConv = await base44.entities.ConversaWhatsapp.create({
-                    empresa_id: user?.empresa_id,
-                    cliente_telefone: contatoExtraido.telefone.replace(/\D/g, ''),
-                    cliente_nome: contatoExtraido.displayName,
-                    status: 'ativa'
-                  });
-                  window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
-                }
-              } catch (err) {
-                console.error('Erro ao abrir conversa:', err);
-                toast.error('Erro ao abrir conversa');
-              }
-            }}
-            className="w-full py-2 px-3 bg-white border border-green-200 rounded-lg text-sm font-medium text-slate-900 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
-          >
-            💬 Conversar
-          </button>
-        </div>
-      );
-    }
-
-    // Ignorar mensagens internas do WhatsApp codificadas (incluindo contactMessage sem telefone)
+    // Ignorar mensagens internas do WhatsApp codificadas
     if (isJsonEncodedMessage()) {
       return null;
     }
