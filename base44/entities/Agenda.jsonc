@@ -66,6 +66,11 @@
       "format": "date-time",
       "description": "Timestamp de quando o lembrete de 10 minutos foi enviado (opcional)"
     },
+    "lembrete_0_enviado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de quando o lembrete na hora foi enviado (opcional)"
+    },
     "cancelado_em": {
       "type": "string",
       "format": "date-time",
