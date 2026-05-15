@@ -79,6 +79,9 @@ export default function FunilSelectionModal({
           return;
         }
 
+        const vendedorNome = user?.nome_perfil || user?.full_name || 'Desconhecido';
+        const vendedorFoto = user?.foto_perfil || '';
+
         const novaOportunidade = await base44.entities.Oportunidade.create({
           empresa_id: empresaId,
           titulo: contato?.nome || contato?.telefone || 'Lead',
@@ -88,7 +91,11 @@ export default function FunilSelectionModal({
           etapa_id: etapaSelecionada,
           etapa_nome: etapaData?.nome || 'Desconhecida',
           vendedor_id: vendedorId,
-          vendedor_nome: user?.nome_perfil || user?.full_name || 'Desconhecido',
+          vendedor_nome: vendedorNome,
+          foto_perfil_responsavel: vendedorFoto,
+          responsaveis_ids: JSON.stringify([vendedorId]),
+          responsaveis_nomes: JSON.stringify([vendedorNome]),
+          responsaveis_fotos: JSON.stringify([vendedorFoto]),
           status: 'aberta',
           produto: funilSelecionado,
           origem: 'BatePapo',
