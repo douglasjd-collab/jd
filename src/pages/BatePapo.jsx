@@ -518,7 +518,7 @@ export default function BatePapo() {
       const ordenadas = [...msgs].reverse();
       return ordenadas;
     },
-    staleTime: 2000,
+    staleTime: 0,
     refetchInterval: 3000,  // Polling a cada 3 segundos
     placeholderData: (prev) => prev,
   });
@@ -631,16 +631,19 @@ export default function BatePapo() {
 
       // SEMPRE refetch mensagens da conversa aberta — não depender do conversa_id no payload
       if (conversaAtualId) {
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
-        refetchMensagens?.();
-        setTimeout(() => refetchMensagens?.(), 500);
+        // Forçar refetch mesmo que os dados sejam "frescos"
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId], refetchType: 'all' });
+        queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId], type: 'active' });
+        setTimeout(() => {
+          queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId], type: 'active' });
+        }, 800);
         // Scroll para o final após refetch
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
-        }, 600);
+        }, 1000);
       }
 
       // Atualizar contador de não lidas e marcar último remetente como cliente
