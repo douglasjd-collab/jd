@@ -786,29 +786,7 @@ export default function FunilVendas() {
   // HU 05 - Indicadores
   const filteredOportunidades = (() => {
     const agora = new Date();
-    const base = oportunidades
-      .filter((o) => {
-        if (!currentUser) return false;
-        // Vendedores sempre veem apenas seus próprios leads
-        if (!isAdmin && !isGerente) {
-          return (
-            o.vendedor_id === currentUser.id ||
-            o.vendedor_id === currentUser.colaborador_id ||
-            o.vendedor_id === currentUser.auth_id
-          );
-        }
-        // Filtro de VISÃO para admin/gerente
-        if (filterVisao === 'meus') {
-          return (
-            o.vendedor_id === currentUser.id ||
-            o.vendedor_id === currentUser.colaborador_id ||
-            o.vendedor_id === currentUser.auth_id
-          );
-        }
-        if (filterVisao === 'sem_responsavel') return !o.vendedor_id;
-        if (filterVisao === 'equipe') return true;
-        return true; // 'todos'
-      })
+    const base = oportunidadesDoVendedor
       .filter((o) => {
         if (filterProduto === 'todos') return true;
         return o.produto === filterProduto;
@@ -890,9 +868,8 @@ export default function FunilVendas() {
 
   const etapasOrdenadas = [...etapas].sort((a, b) => a.ordem - b.ordem);
 
-  // Oportunidades filtradas pelo vendedor atual (sem filtro de produto/visão)
-  const oportunidadesDoVendedor = oportunidades.filter(o => {
-    if (!currentUser) return false;
+  // Base de oportunidades visíveis para o usuário atual (respeita visão/perfil)
+  const oportunidadesDoVendedor = !currentUser ? [] : oportunidades.filter(o => {
     if (!isAdmin && !isGerente) {
       return (
         o.vendedor_id === currentUser.id ||
