@@ -478,7 +478,7 @@ export default function BatePapo() {
   const { data: conversas = [], refetch: refetchConversas } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
-    staleTime: 30000,
+    staleTime: 60000,
     queryFn: async () => {
       if (!empresaId) return [];
       console.log(`📞 Buscando conversas para empresa: ${empresaId}`);
@@ -500,7 +500,7 @@ export default function BatePapo() {
 
       return filtradas;
     },
-    refetchInterval: 10000,  // Polling da lista de conversas a cada 10 segundos
+    refetchInterval: 30000,  // Polling da lista de conversas a cada 30 segundos
     placeholderData: (prev) => prev,
   });
 
@@ -519,7 +519,7 @@ export default function BatePapo() {
       return ordenadas;
     },
     staleTime: 0,
-    refetchInterval: 3000,  // Polling a cada 3 segundos
+    refetchInterval: 8000,  // Polling a cada 8 segundos
     placeholderData: (prev) => prev,
   });
 
@@ -579,7 +579,7 @@ export default function BatePapo() {
     if (refetchConversasDebounced.current) clearTimeout(refetchConversasDebounced.current);
     refetchConversasDebounced.current = setTimeout(() => {
       refetchConversasRef.current?.().catch(e => console.error('Erro ao refetch:', e));
-    }, 800);
+    }, 3000);
   }, []);
 
   useEffect(() => {
