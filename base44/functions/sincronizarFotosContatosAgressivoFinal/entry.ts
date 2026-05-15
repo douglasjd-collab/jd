@@ -16,17 +16,17 @@ Deno.serve(async (req) => {
 
     console.log(`🔄 Sincronizando TODAS as fotos de contatos da empresa ${empresaId}`);
 
-    // 1. Buscar TODOS os contatos do WhatsApp
-    const contatos = await base44.entities.ContatoWhatsapp.filter(
+    // 1. Buscar TODAS as conversas (elas têm foto_url salva)
+    const conversas = await base44.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-created_date',
       5000 // Limite máximo
     );
 
-    console.log(`📋 Total de contatos encontrados: ${contatos.length}`);
+    console.log(`📋 Total de conversas encontradas: ${conversas.length}`);
 
-    if (contatos.length === 0) {
-      return Response.json({ success: true, mensagem: 'Nenhum contato encontrado', atualizados: 0 });
+    if (conversas.length === 0) {
+      return Response.json({ success: true, mensagem: 'Nenhuma conversa encontrada', atualizados: 0 });
     }
 
     // 2. Chamar a API Evolution para cada contato para buscar foto
@@ -43,13 +43,13 @@ Deno.serve(async (req) => {
 
     // Processar em paralelo com controle de concorrência
     const batchSize = 10;
-    for (let i = 0; i < contatos.length; i += batchSize) {
-      const batch = contatos.slice(i, i + batchSize);
+    for (let i = 0; i < conversas.length; i += batchSize) {
+      const batch = conversas.slice(i, i + batchSize);
       
-      const promises = batch.map(async (contato) => {
+      const promises = batch.map(async (conversa) => {
         try {
           // Formatar telefone para formato Evolution (sem símbolos)
-          const tel = contato.telefone.replace(/\D/g, '');
+          const tel = conversa.cliente_telefone?.replace(/\D/g, '');
           if (!tel || tel.length < 10) return null;
 
           // Tentar múltiplas vezes
@@ -77,22 +77,22 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Se encontrou foto e é diferente, atualizar
-          if (fotoUrl && fotoUrl !== contato.foto_url) {
-            await base44.entities.ContatoWhatsapp.update(contato.id, {
+          // Se encontrou foto e é diferente, atualizar na conversa
+          if (fotoUrl && fotoUrl !== conversa.foto_url) {
+            await base44.entities.ConversaWhatsapp.update(conversa.id, {
               foto_url: fotoUrl
             });
             atualizados++;
-            console.log(`✅ ${contato.nome || tel}: foto atualizada`);
-          } else if (!fotoUrl && contato.foto_url) {
+            console.log(`✅ ${conversa.cliente_nome || tel}: foto atualizada`);
+          } else if (!fotoUrl && conversa.foto_url) {
             // Manter a foto existente
-            console.log(`⏭️  ${contato.nome || tel}: mantendo foto existente`);
+            console.log(`⏭️  ${conversa.cliente_nome || tel}: mantendo foto existente`);
           }
 
-          return { id: contato.id, nome: contato.nome, sucesso: true };
+          return { id: conversa.id, nome: conversa.cliente_nome, sucesso: true };
         } catch (erro) {
-          console.error(`❌ Erro processando ${contato.nome}:`, erro.message);
-          erros.push({ contato: contato.nome, erro: erro.message });
+          console.error(`❌ Erro processando ${conversa.cliente_nome}:`, erro.message);
+          erros.push({ conversa: conversa.cliente_nome, erro: erro.message });
           return null;
         }
       });
@@ -104,10 +104,10 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      totalContatos: contatos.length,
+      totalConversas: conversas.length,
       atualizados,
       erros,
-      mensagem: `Sincronização concluída. ${atualizados} fotos atualizadas de ${contatos.length} contatos.`
+      mensagem: `Sincronização concluída. ${atualizados} fotos atualizadas de ${conversas.length} conversas.`
     });
   } catch (error) {
     console.error('Erro ao sincronizar fotos:', error);

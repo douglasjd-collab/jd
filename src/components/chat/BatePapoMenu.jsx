@@ -41,15 +41,18 @@ export default function BatePapoMenu({
       });
       const data = resp?.data;
       if (data?.success) {
-        toast.success(`✅ ${data.atualizados}/${data.totalContatos} fotos sincronizadas`);
-        // Aguardar um pouco e recarregar
+        toast.success(`✅ ${data.atualizados}/${data.totalConversas || data.totalContatos} fotos sincronizadas`);
         await new Promise(r => setTimeout(r, 1000));
         refetchConversas();
       } else {
-        toast.error('Erro: ' + (data?.mensagem || 'Desconhecido'));
+        const erro = data?.error || data?.mensagem || 'Erro desconhecido';
+        console.error('Erro na sincronização:', erro);
+        toast.error('Erro: ' + erro);
       }
     } catch (e) {
-      toast.error('❌ Erro ao sincronizar: ' + e.message);
+      console.error('Erro ao invocar função:', e);
+      const mensagem = e?.response?.data?.error || e?.message || 'Erro ao sincronizar';
+      toast.error('❌ ' + mensagem);
     } finally {
       setSincronizando(false);
     }
