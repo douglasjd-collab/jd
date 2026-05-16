@@ -30,7 +30,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const [velocidadeAudio, setVelocidadeAudio] = useState(1);
   const [contatoModalAberto, setContatoModalAberto] = useState(false);
   const [contatoExtraido, setContatoExtraido] = useState(null);
+  const [statusAtual, setStatusAtual] = useState(mensagem.status);
   const audioRef = React.useRef(null);
+
+  // Sincronizar statusAtual com a prop mensagem.status para re-render imediato
+  useEffect(() => {
+    const prioridade = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0, 'erro': -1 };
+    if ((prioridade[mensagem.status] ?? -99) > (prioridade[statusAtual] ?? -99)) {
+      setStatusAtual(mensagem.status);
+    }
+  }, [mensagem.status]);
 
   // Extrair informações do vCard com suporte a múltiplos contatos
   const extrairContatosVCard = (texto) => {
@@ -565,13 +574,13 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           </p>
           {isVendedor && (
             <div className="flex items-center gap-0.5">
-              {mensagem.status === 'lida' ? (
-                <span className="text-sm font-bold" style={{ color: '#53bdeb' }}>✓✓</span>
-              ) : mensagem.status === 'entregue' ? (
+              {statusAtual === 'lida' ? (
+                <span className="text-sm font-bold" style={{ color: '#53bdeb', transition: 'color 0.2s' }}>✓✓</span>
+              ) : statusAtual === 'entregue' ? (
                 <span className="text-sm font-bold text-white/80">✓✓</span>
-              ) : mensagem.status === 'enviada' ? (
+              ) : statusAtual === 'enviada' ? (
                 <span className="text-sm font-bold text-white/80">✓✓</span>
-              ) : mensagem.status === 'erro' ? (
+              ) : statusAtual === 'erro' ? (
                 <span className="text-sm font-bold text-red-300">✕</span>
               ) : (
                 <span className="text-sm font-bold text-white/50">✓</span>
