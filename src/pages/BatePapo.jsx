@@ -702,26 +702,31 @@ export default function BatePapo() {
   // Subscription para updates de status de mensagens (ACKs/leitura)
   useEffect(() => {
     if (!empresaId) return;
-    console.log(`🔌 Conectando subscription de status de mensagens...`);
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
       if (event.type !== 'update') return;
       const msgData = event.data;
       if (!msgData?.id || !msgData?.conversa_id) return;
-      
-      console.log(`📢 Subscription event: ${msgData.id} → status: ${msgData.status}`);
-      
-      // 1. Atualizar cache LOCAL IMEDIATAMENTE
-      queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) =>
-        old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m)
-      );
-      
-      // 2. Refetch IMEDIATO (não apenas invalidar)
+
+      // Só processar se tiver status relevante
+      if (!['enviada', 'entregue', 'lida'].includes(msgData.status)) return;
+
+      // 1. Atualizar cache LOCAL IMEDIATAMENTE (pelo ID real)
+      queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) => {
+        if (!old) return old;
+        // Verificar se a mensagem existe no cache pelo ID real
+        const existe = old.some(m => m.id === msgData.id);
+        if (existe) {
+          return old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m);
+        }
+        // Se não existe (ainda é temp_), fazer refetch para substituir
+        return old;
+      });
+
+      // 2. Sempre refetch para garantir que a mensagem real substitui a temp_
       queryClient.refetchQueries({ 
         queryKey: ['mensagens-whatsapp', msgData.conversa_id],
         type: 'active'
       });
-      
-      console.log(`✅ Status atualizado IMEDIATAMENTE: ${msgData.id} → ${msgData.status}`);
     });
     return unsub;
   }, [empresaId, queryClient]);
@@ -953,12 +958,7 @@ export default function BatePapo() {
           )
         );
 
-        // 2. Atualizar status da mensagem para "enviada" no cache LOCAL
-        queryClient.setQueryData(['mensagens-whatsapp', conversaSelecionadaId], (old = []) =>
-          old.map(m => m.id?.startsWith('temp_') ? { ...m, status: 'enviada' } : m)
-        );
-
-        // 3. Salvar no banco em background (sem bloquear a UI)
+        // 2. Salvar no banco em background (sem bloquear a UI)
         base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
           ultima_mensagem: msgExibicao,
           data_ultima_mensagem: new Date().toISOString(),
@@ -968,13 +968,16 @@ export default function BatePapo() {
           responsavel_expira_em: expira,
         }).then(() => refetchConversas()).catch(() => {});
       }
-      // Refetch IMEDIATO após envio para capturar ACKs rápido
+
+      // 3. Substituir mensagem temporária pelo ID real do banco (CRÍTICO para ACKs funcionarem)
+      // O refetch trará a mensagem real com o whatsapp_message_id correto
       setTimeout(() => {
         queryClient.refetchQueries({ 
           queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
           type: 'active'
         });
-      }, 300);
+      }, 500);
+
       toast.success('Mensagem enviada');
     }
   });
