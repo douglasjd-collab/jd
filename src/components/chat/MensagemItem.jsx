@@ -564,6 +564,14 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             </p>
           </div>
         )}
+        {isVendedor && (
+          <div className="flex items-center gap-1 mb-1">
+            <span className="text-[10px]">👤</span>
+            <p className="text-xs font-semibold opacity-75">
+              {mensagem.usuario_nome || 'WhatsApp'}
+            </p>
+          </div>
+        )}
         {!isGrupo && !isVendedor && mensagem.usuario_nome && (
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
