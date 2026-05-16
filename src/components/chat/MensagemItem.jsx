@@ -547,7 +547,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         }`}
       >
         {/* Nome do remetente em grupos com avatar */}
-        {isGrupo && mensagem.remetente_nome && (
+        {isGrupo && !isVendedor && mensagem.remetente_nome && (
           <div className="flex items-center gap-2 mb-1 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
             // Extrair telefone do nome ou participant JID
             const participant = mensagem.remetente_nome;
