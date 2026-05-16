@@ -711,7 +711,7 @@ export default function BatePapo() {
       if (event.type !== 'update') return;
       const msgData = event.data;
       if (!msgData?.id || !msgData?.conversa_id) return;
-      if (!['enviada', 'entregue', 'lida'].includes(msgData.status)) return;
+      if (!msgData.status) return; // ignorar updates sem status
 
       console.log(`🟢 ACK recebido via subscription: ${msgData.id} → ${msgData.status}`);
 
