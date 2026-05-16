@@ -201,12 +201,12 @@ async function processarWebhook(req, rawBody, base44) {
       const remoteId = upd.key?.id || upd.id || upd.messageId;
       if (!remoteId) continue;
       
-      // Evolution envia: status como string (DELIVERY_ACK, READ, SENT, etc) ou número (1,2,3)
-      const rawStatus = (upd.status || upd.ack || upd.update?.status || '').toString().toUpperCase().trim();
+      // Evolution envia: status em upd.update.status (v2) ou upd.status (v1)
+      const rawStatus = (upd.update?.status || upd.status || upd.ack || '').toString().toUpperCase().trim();
       const rawStatusNum = parseInt(rawStatus);
       let novoStatus = null;
 
-      console.log(`  🔍 msgId: ${remoteId} | rawStatus: "${rawStatus}" | upd keys: ${Object.keys(upd).join(',')}`);
+      console.log(`  🔍 msgId: ${remoteId} | rawStatus: "${rawStatus}" | update obj: ${JSON.stringify(upd.update || {})} | upd keys: ${Object.keys(upd).join(',')}`);;
       
       // Mapear strings da Evolution API
       if (['DELIVERY_ACK', 'DELIVERED', '2'].includes(rawStatus) || rawStatusNum === 2) {
