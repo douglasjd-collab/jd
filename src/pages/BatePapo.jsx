@@ -715,10 +715,14 @@ export default function BatePapo() {
 
       console.log(`🟢 ACK recebido via subscription: ${msgData.id} → ${msgData.status}`);
 
-      // Atualizar cache LOCAL imediatamente — sem refetch extra para evitar 429
-      queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) => {
-        if (!old) return old;
-        return old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m);
+      // Atualizar cache LOCAL imediatamente com novo array para forçar re-render
+      queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old) => {
+        if (!old || !Array.isArray(old)) return old;
+        const idx = old.findIndex(m => m.id === msgData.id);
+        if (idx === -1) return old; // mensagem não encontrada, não alterar
+        const nova = [...old];
+        nova[idx] = { ...nova[idx], status: msgData.status };
+        return nova;
       });
     });
     return unsub;
