@@ -581,15 +581,20 @@ export default function BatePapo() {
       const msgs = await base44.entities.MensagemWhatsapp.filter(
         { conversa_id: conversaSelecionadaId },
         '-data_envio',
-        1000  // Reduzir limite para carregar mais rápido
+        1000
       );
       console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
+      // Remover msgs temp_ do cache ao fazer o fetch real (evita duplicatas)
       const ordenadas = [...msgs].reverse();
       return ordenadas;
     },
     staleTime: 0,
-    refetchInterval: 2000,  // Polling a cada 2 segundos (mais rápido para status)
-    placeholderData: (prev) => prev,
+    refetchInterval: 2000,
+    placeholderData: (prev) => {
+      // Manter dados anteriores mas remover msgs temp_ se já tiver dados reais
+      if (!prev) return prev;
+      return prev.filter(m => !m.id?.startsWith('temp_'));
+    },
   });
 
   // Buscar mensagens não lidas do banco e montar contadores por conversa
@@ -706,23 +711,17 @@ export default function BatePapo() {
       if (event.type !== 'update') return;
       const msgData = event.data;
       if (!msgData?.id || !msgData?.conversa_id) return;
-
-      // Só processar se tiver status relevante
       if (!['enviada', 'entregue', 'lida'].includes(msgData.status)) return;
 
-      // 1. Atualizar cache LOCAL IMEDIATAMENTE (pelo ID real)
+      console.log(`🟢 ACK recebido via subscription: ${msgData.id} → ${msgData.status}`);
+
+      // Atualizar cache LOCAL imediatamente
       queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) => {
         if (!old) return old;
-        // Verificar se a mensagem existe no cache pelo ID real
-        const existe = old.some(m => m.id === msgData.id);
-        if (existe) {
-          return old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m);
-        }
-        // Se não existe (ainda é temp_), fazer refetch para substituir
-        return old;
+        return old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m);
       });
 
-      // 2. Sempre refetch para garantir que a mensagem real substitui a temp_
+      // Garantir refetch para refletir na UI
       queryClient.refetchQueries({ 
         queryKey: ['mensagens-whatsapp', msgData.conversa_id],
         type: 'active'
@@ -973,11 +972,20 @@ export default function BatePapo() {
       queryClient.setQueryData(['mensagens-whatsapp', conversaSelecionadaId], (old = []) =>
         old.filter(m => !m.id?.startsWith('temp_'))
       );
-      // Refetch imediato para carregar a mensagem real com o whatsapp_message_id correto
       queryClient.refetchQueries({ 
         queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
         type: 'active'
       });
+
+      // 4. Após 3s, forçar busca de status atualizado na Evolution (ACK pode demorar)
+      setTimeout(() => {
+        base44.functions.invoke('forcarStatusMensagensRecentes', {
+          conversa_id: conversaSelecionadaId,
+          empresa_id: empresaId
+        }).then(() => {
+          queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId], type: 'active' });
+        }).catch(() => {});
+      }, 3000);
 
       toast.success('Mensagem enviada');
     }
@@ -1003,22 +1011,27 @@ export default function BatePapo() {
     fazerScrollParaFim();
   }, [mensagens, fazerScrollParaFim]);
 
-  // Ao abrir conversa, forçar refetch do histórico e scroll para fim
+  // Ao abrir conversa, forçar refetch do histórico e forçar atualização de status
   React.useEffect(() => {
-    if (!conversaSelecionada?.id) return;
-    
-    console.log(`🔄 Acionando refetch de mensagens para conversa: ${conversaSelecionada.id}`);
-    
+    if (!conversaSelecionada?.id || !empresaId) return;
+
     // Invalidar query para forçar novo fetch
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
     
-    // Aguardar um pouco e refetch
     setTimeout(() => {
       refetchMensagens?.().catch(e => console.error('Erro no refetch:', e));
-      // Scroll para fim após carregamento
       setTimeout(fazerScrollParaFim, 300);
     }, 100);
-  }, [conversaSelecionada?.id, refetchMensagens, fazerScrollParaFim]);
+
+    // Forçar atualização de status das mensagens enviadas via Evolution API
+    base44.functions.invoke('forcarStatusMensagensRecentes', {
+      conversa_id: conversaSelecionada.id,
+      empresa_id: empresaId
+    }).then(() => {
+      // Após atualizar status no banco, refetch para refletir na UI
+      queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id], type: 'active' });
+    }).catch(() => {});
+  }, [conversaSelecionada?.id, empresaId]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN
   const normalizarTelefone = (tel) => {
