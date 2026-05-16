@@ -589,7 +589,7 @@ export default function BatePapo() {
       return ordenadas;
     },
     staleTime: 0,
-    refetchInterval: 2000,
+    refetchInterval: 10000,
     placeholderData: (prev) => {
       // Manter dados anteriores mas remover msgs temp_ se já tiver dados reais
       if (!prev) return prev;
@@ -715,16 +715,10 @@ export default function BatePapo() {
 
       console.log(`🟢 ACK recebido via subscription: ${msgData.id} → ${msgData.status}`);
 
-      // Atualizar cache LOCAL imediatamente
+      // Atualizar cache LOCAL imediatamente — sem refetch extra para evitar 429
       queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old = []) => {
         if (!old) return old;
         return old.map(m => m.id === msgData.id ? { ...m, status: msgData.status } : m);
-      });
-
-      // Garantir refetch para refletir na UI
-      queryClient.refetchQueries({ 
-        queryKey: ['mensagens-whatsapp', msgData.conversa_id],
-        type: 'active'
       });
     });
     return unsub;
@@ -972,11 +966,6 @@ export default function BatePapo() {
       queryClient.setQueryData(['mensagens-whatsapp', conversaSelecionadaId], (old = []) =>
         old.filter(m => !m.id?.startsWith('temp_'))
       );
-      queryClient.refetchQueries({ 
-        queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
-        type: 'active'
-      });
-
       // 4. Após 3s, forçar busca de status atualizado na Evolution (ACK pode demorar)
       setTimeout(() => {
         base44.functions.invoke('forcarStatusMensagensRecentes', {

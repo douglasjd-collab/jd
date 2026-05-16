@@ -572,6 +572,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 </>
               ) : mensagem.status === 'entregue' ? (
                 <span className="text-xs font-bold text-white/70">✓✓</span>
+              ) : mensagem.status === 'enviada' ? (
+                <span className="text-xs font-bold text-white/70">✓✓</span>
               ) : mensagem.status === 'erro' ? (
                 <span className="text-xs font-bold text-red-300">✕</span>
               ) : (
