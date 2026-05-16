@@ -1017,13 +1017,19 @@ export default function BatePapo() {
     }, 100);
 
     // Forçar atualização de status das mensagens enviadas via Evolution API
-    base44.functions.invoke('forcarStatusMensagensRecentes', {
-      conversa_id: conversaSelecionada.id,
-      empresa_id: empresaId
-    }).then(() => {
-      // Após atualizar status no banco, refetch para refletir na UI
-      queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id], type: 'active' });
-    }).catch(() => {});
+    const atualizarStatus = () => {
+      base44.functions.invoke('forcarStatusMensagensRecentes', {
+        conversa_id: conversaSelecionada.id,
+        empresa_id: empresaId
+      }).then(() => {
+        queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id], type: 'active' });
+      }).catch(() => {});
+    };
+
+    atualizarStatus();
+    // Polling a cada 10s para pegar status atualizados (lida/entregue)
+    const intervalo = setInterval(atualizarStatus, 10000);
+    return () => clearInterval(intervalo);
   }, [conversaSelecionada?.id, empresaId]);
 
   // Normalizar telefone para +55 DD NNNNNNNNN

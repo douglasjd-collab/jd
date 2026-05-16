@@ -33,9 +33,9 @@ Deno.serve(async (req) => {
       filtro, '-data_envio', 50
     );
 
-    // Filtrar apenas mensagens com status não-final (pendente ou enviada) e com whatsapp_message_id
+    // Filtrar mensagens com status não-final (pendente, enviada ou entregue) e com whatsapp_message_id
     const pendentes = mensagens.filter(m => 
-      ['pendente', 'enviada'].includes(m.status) && 
+      ['pendente', 'enviada', 'entregue'].includes(m.status) && 
       m.whatsapp_message_id && 
       !m.whatsapp_message_id.startsWith('temp_')
     );
