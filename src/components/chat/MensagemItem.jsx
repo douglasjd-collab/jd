@@ -30,11 +30,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const [velocidadeAudio, setVelocidadeAudio] = useState(1);
   const [contatoModalAberto, setContatoModalAberto] = useState(false);
   const [contatoExtraido, setContatoExtraido] = useState(null);
+  const [statusAtual, setStatusAtual] = useState(mensagem.status);
   const audioRef = React.useRef(null);
 
-  // Usar sempre o status mais alto entre o recebido e o anterior (sem estado local, re-render direto)
-  const prioridade = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0, 'erro': -1 };
-  const statusAtual = mensagem.status;
+  // Sincronizar statusAtual com a prop mensagem.status para re-render imediato
+  useEffect(() => {
+    const prioridade = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0, 'erro': -1 };
+    if ((prioridade[mensagem.status] ?? -99) > (prioridade[statusAtual] ?? -99)) {
+      setStatusAtual(mensagem.status);
+    }
+  }, [mensagem.status]);
 
   // Extrair informações do vCard com suporte a múltiplos contatos
   const extrairContatosVCard = (texto) => {
@@ -542,7 +547,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         }`}
       >
         {/* Nome do remetente em grupos com avatar */}
-        {isGrupo && !isVendedor && mensagem.remetente_nome && (
+        {isGrupo && mensagem.remetente_nome && (
           <div className="flex items-center gap-2 mb-1 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
             // Extrair telefone do nome ou participant JID
             const participant = mensagem.remetente_nome;
@@ -578,15 +583,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           {isVendedor && (
             <div className="flex items-center gap-0.5">
               {statusAtual === 'lida' ? (
-                <span className="text-sm font-bold" style={{ color: '#53bdeb' }}>✓✓</span>
+                <span className="text-sm font-bold" style={{ color: '#53bdeb', transition: 'color 0.2s' }}>✓✓</span>
               ) : statusAtual === 'entregue' ? (
-                <span className="text-sm font-bold text-white/90">✓✓</span>
+                <span className="text-sm font-bold text-white/80">✓✓</span>
               ) : statusAtual === 'enviada' ? (
-                <span className="text-sm font-bold text-white/60">✓</span>
+                <span className="text-sm font-bold text-white/80">✓✓</span>
               ) : statusAtual === 'erro' ? (
                 <span className="text-sm font-bold text-red-300">✕</span>
               ) : (
-                <span className="text-sm font-bold text-white/40">🕐</span>
+                <span className="text-sm font-bold text-white/50">✓</span>
               )}
             </div>
           )}
