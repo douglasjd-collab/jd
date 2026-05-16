@@ -152,7 +152,8 @@ async function processarWebhook(req, rawBody, base44) {
     return;
   }
 
-  const event = (payload.event || '').toLowerCase().replace(/\./g, '_');
+  const eventRaw = (payload.event || '').toLowerCase();
+  const event = eventRaw.replace(/\./g, '_');
   const instancePayload = payload.instance || '';
   const instanceFinal = instancePayload || instanceFromQuery || '';
 
@@ -174,7 +175,7 @@ async function processarWebhook(req, rawBody, base44) {
   }
 
   // ─── ACK / status update ──────────────────────────────────────────────────
-  if (['messages_update', 'message_ack', 'messages_ack', 'webhook_update', 'message_upsert'].includes(event)) {
+  if (['messages_update', 'messages.update', 'message_ack', 'messages_ack', 'webhook_update'].includes(event) || eventRaw === 'messages.update') {
     // Evolution pode enviar ACK como array direto em data ou aninhado em data.messages
     let updates = [];
     if (Array.isArray(data)) {
@@ -200,26 +201,23 @@ async function processarWebhook(req, rawBody, base44) {
       const remoteId = upd.key?.id || upd.id || upd.messageId;
       if (!remoteId) continue;
       
-      // Evolution envia: status (0=pendente, 1=enviada, 2=entregue, 3=lida) ou ack (string/number)
-      let rawStatusNum = parseInt(upd.status) || parseInt(upd.ack) || parseInt(upd.status?.toString());
-      let rawStatus = (upd.status || upd.ack || '').toString().toUpperCase().trim();
+      // Evolution envia: status como string (DELIVERY_ACK, READ, SENT, etc) ou número (1,2,3)
+      const rawStatus = (upd.status || upd.ack || upd.update?.status || '').toString().toUpperCase().trim();
+      const rawStatusNum = parseInt(rawStatus);
       let novoStatus = null;
+
+      console.log(`  🔍 msgId: ${remoteId} | rawStatus: "${rawStatus}" | upd keys: ${Object.keys(upd).join(',')}`);
       
-      // Tentar por número primeiro (mais confiável)
-      if (!isNaN(rawStatusNum)) {
-        if (rawStatusNum === 1) novoStatus = 'enviada';
-        else if (rawStatusNum === 2) novoStatus = 'entregue';
-        else if (rawStatusNum === 3 || rawStatusNum === 4) novoStatus = 'lida';
-        console.log(`  ✓ msgId: ${remoteId} | ack(num): ${rawStatusNum} → ${novoStatus}`);
-      } else if (rawStatus) {
-        // Fallback para string
-        if (['SENT', '1', 'PENDING'].includes(rawStatus)) novoStatus = 'enviada';
-        else if (['DELIVERED', '2', 'RECEIVED'].includes(rawStatus)) novoStatus = 'entregue';
-        else if (['READ', 'PLAYED', '3', '4'].includes(rawStatus)) novoStatus = 'lida';
-        if (novoStatus) {
-          console.log(`  ✓ msgId: ${remoteId} | ack(str): ${rawStatus} → ${novoStatus}`);
-        }
+      // Mapear strings da Evolution API
+      if (['DELIVERY_ACK', 'DELIVERED', '2'].includes(rawStatus) || rawStatusNum === 2) {
+        novoStatus = 'entregue';
+      } else if (['READ', 'PLAYED', '3', '4'].includes(rawStatus) || rawStatusNum === 3 || rawStatusNum === 4) {
+        novoStatus = 'lida';
+      } else if (['SENT', 'SERVER_ACK', '1'].includes(rawStatus) || rawStatusNum === 1) {
+        novoStatus = 'enviada';
       }
+
+      console.log(`  ✓ msgId: ${remoteId} | status: "${rawStatus}" → ${novoStatus}`);
 
       if (remoteId && novoStatus) {
         const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
@@ -242,7 +240,7 @@ async function processarWebhook(req, rawBody, base44) {
     return;
   }
 
-  const isUpsert = ['messages_upsert', 'messages'].includes(event);
+  const isUpsert = ['messages_upsert'].includes(event);
   if (!isUpsert) {
     console.log(`⏭️ Evento ignorado: "${event}"`);
     return;
