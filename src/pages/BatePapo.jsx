@@ -589,7 +589,7 @@ export default function BatePapo() {
       return ordenadas;
     },
     staleTime: 0,
-    refetchInterval: 10000,
+    refetchInterval: 30000,
     placeholderData: (prev) => {
       // Manter dados anteriores mas remover msgs temp_ se já tiver dados reais
       if (!prev) return prev;

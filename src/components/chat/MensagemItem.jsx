@@ -566,18 +566,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           {isVendedor && (
             <div className="flex items-center gap-0.5">
               {mensagem.status === 'lida' ? (
-                <>
-                  <span className="text-xs font-bold text-blue-300">✓✓</span>
-                  <span className="text-xs text-blue-300 font-medium">Lido</span>
-                </>
+                <span className="text-sm font-bold" style={{ color: '#53bdeb' }}>✓✓</span>
               ) : mensagem.status === 'entregue' ? (
-                <span className="text-xs font-bold text-white/70">✓✓</span>
+                <span className="text-sm font-bold text-white/80">✓✓</span>
               ) : mensagem.status === 'enviada' ? (
-                <span className="text-xs font-bold text-white/70">✓✓</span>
+                <span className="text-sm font-bold text-white/80">✓✓</span>
               ) : mensagem.status === 'erro' ? (
-                <span className="text-xs font-bold text-red-300">✕</span>
+                <span className="text-sm font-bold text-red-300">✕</span>
               ) : (
-                <span className="text-xs font-bold text-white/50">✓</span>
+                <span className="text-sm font-bold text-white/50">✓</span>
               )}
             </div>
           )}
