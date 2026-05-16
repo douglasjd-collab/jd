@@ -969,14 +969,15 @@ export default function BatePapo() {
         }).then(() => refetchConversas()).catch(() => {});
       }
 
-      // 3. Substituir mensagem temporária pelo ID real do banco (CRÍTICO para ACKs funcionarem)
-      // O refetch trará a mensagem real com o whatsapp_message_id correto
-      setTimeout(() => {
-        queryClient.refetchQueries({ 
-          queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
-          type: 'active'
-        });
-      }, 500);
+      // 3. Remover mensagem temp_ do cache E trazer a mensagem real do banco
+      queryClient.setQueryData(['mensagens-whatsapp', conversaSelecionadaId], (old = []) =>
+        old.filter(m => !m.id?.startsWith('temp_'))
+      );
+      // Refetch imediato para carregar a mensagem real com o whatsapp_message_id correto
+      queryClient.refetchQueries({ 
+        queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
+        type: 'active'
+      });
 
       toast.success('Mensagem enviada');
     }
