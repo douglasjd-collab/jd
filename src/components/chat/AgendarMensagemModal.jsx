@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { CalendarClock, Trash2, RefreshCw, Send } from 'lucide-react';
+import { CalendarClock, Trash2, RefreshCw, Image as ImageIcon, Video, FileText, Upload, X } from 'lucide-react';
 
 export default function AgendarMensagemModal({ open, onOpenChange, conversa, currentUser }) {
-  const [tab, setTab] = useState('novo'); // 'novo' | 'agendados'
+  const [tab, setTab] = useState('novo');
   const [tipo, setTipo] = useState('unica');
+  const [tipoEnvio, setTipoEnvio] = useState('texto');
   const [mensagem, setMensagem] = useState('');
   const [dataEnvio, setDataEnvio] = useState('');
   const [horaEnvio, setHoraEnvio] = useState('08:00');
@@ -21,13 +21,27 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
   const [agendados, setAgendados] = useState([]);
   const [loadingAgendados, setLoadingAgendados] = useState(false);
 
+  // Mídia
+  const [arquivo, setArquivo] = useState(null); // File object
+  const [arquivoPreview, setArquivoPreview] = useState(null); // URL preview
+  const [uploadando, setUploadando] = useState(false);
+  const fileInputRef = useRef(null);
+
   useEffect(() => {
     if (open && conversa) {
       loadAgendados();
-      // Data mínima = hoje
       setDataEnvio(format(new Date(), 'yyyy-MM-dd'));
     }
+    if (!open) resetForm();
   }, [open, conversa]);
+
+  const resetForm = () => {
+    setMensagem('');
+    setTipo('unica');
+    setTipoEnvio('texto');
+    setArquivo(null);
+    setArquivoPreview(null);
+  };
 
   const loadAgendados = async () => {
     if (!conversa?.id) return;
@@ -46,16 +60,72 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
     }
   };
 
+  const handleTipoEnvioChange = (val) => {
+    setTipoEnvio(val);
+    // Limpar arquivo ao mudar tipo
+    setArquivo(null);
+    setArquivoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar formato
+    if (tipoEnvio === 'texto_imagem') {
+      const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        toast.error('Formato inválido. Use JPG, PNG ou WEBP.');
+        return;
+      }
+    }
+    if (tipoEnvio === 'texto_video') {
+      const allowed = ['video/mp4', 'video/quicktime'];
+      if (!allowed.includes(file.type)) {
+        toast.error('Formato inválido. Use MP4 ou MOV.');
+        return;
+      }
+    }
+
+    setArquivo(file);
+    const url = URL.createObjectURL(file);
+    setArquivoPreview(url);
+  };
+
+  const removeArquivo = () => {
+    setArquivo(null);
+    setArquivoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSalvar = async () => {
     if (!mensagem.trim()) { toast.error('Digite a mensagem'); return; }
     if (!dataEnvio) { toast.error('Selecione a data'); return; }
     if (!horaEnvio) { toast.error('Selecione o horário'); return; }
+    if (tipoEnvio !== 'texto' && !arquivo) {
+      toast.error('Anexe o arquivo de mídia ou mude o tipo para "Somente texto".');
+      return;
+    }
 
-    // Calcular proxima_execucao
     const proximaExecucao = new Date(`${dataEnvio}T${horaEnvio}:00`).toISOString();
 
     setSaving(true);
     try {
+      let arquivoUrl = '';
+      let arquivoTipo = '';
+      let arquivoNome = '';
+
+      // Upload da mídia se necessário
+      if (arquivo) {
+        setUploadando(true);
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: arquivo });
+        arquivoUrl = file_url;
+        arquivoTipo = arquivo.type;
+        arquivoNome = arquivo.name;
+        setUploadando(false);
+      }
+
       await base44.entities.MensagemAgendada.create({
         empresa_id: currentUser?.empresa_id || '',
         conversa_id: conversa.id,
@@ -64,6 +134,11 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
         mensagem: mensagem.trim(),
         tipo,
         recorrencia: tipo === 'recorrente' ? 'mensal' : '',
+        tipo_envio: tipoEnvio,
+        arquivo_url: arquivoUrl,
+        arquivo_tipo: arquivoTipo,
+        arquivo_nome: arquivoNome,
+        legenda: tipoEnvio !== 'texto' ? mensagem.trim() : '',
         data_envio: dataEnvio,
         hora_envio: horaEnvio,
         status: 'agendada',
@@ -72,14 +147,16 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
         instancia_whatsapp: conversa.instancia || '',
         proxima_execucao: proximaExecucao,
       });
+
       toast.success('✅ Mensagem agendada com sucesso!');
-      setMensagem('');
+      resetForm();
       setTab('agendados');
       loadAgendados();
     } catch (e) {
-      toast.error('Erro ao agendar mensagem');
+      toast.error('Erro ao agendar mensagem: ' + (e.message || ''));
     } finally {
       setSaving(false);
+      setUploadando(false);
     }
   };
 
@@ -96,9 +173,21 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
     cancelada: 'bg-gray-100 text-gray-500',
   };
 
+  const tipoEnvioLabel = {
+    texto: '💬 Somente texto',
+    texto_imagem: '🖼️ Texto + imagem',
+    texto_video: '🎬 Texto + vídeo',
+  };
+
+  const aceitaArquivo = tipoEnvio === 'texto_imagem'
+    ? 'image/jpeg,image/png,image/webp'
+    : tipoEnvio === 'texto_video'
+    ? 'video/mp4,video/quicktime'
+    : '';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarClock className="w-5 h-5 text-blue-600" />
@@ -124,7 +213,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
 
         {tab === 'novo' ? (
           <div className="space-y-4 mt-1">
-            {/* Tipo */}
+            {/* Tipo de agendamento */}
             <div>
               <Label>Tipo de agendamento</Label>
               <Select value={tipo} onValueChange={setTipo}>
@@ -138,17 +227,100 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
               </Select>
             </div>
 
+            {/* Tipo de envio */}
+            <div>
+              <Label>Tipo de envio</Label>
+              <Select value={tipoEnvio} onValueChange={handleTipoEnvioChange}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="texto">💬 Somente texto</SelectItem>
+                  <SelectItem value="texto_imagem">🖼️ Texto + imagem (JPG, PNG, WEBP)</SelectItem>
+                  <SelectItem value="texto_video">🎬 Texto + vídeo (MP4, MOV)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500 mt-1">
+                {tipoEnvio === 'texto' && 'Envia apenas a mensagem digitada.'}
+                {tipoEnvio === 'texto_imagem' && 'Envia a imagem com a mensagem como legenda.'}
+                {tipoEnvio === 'texto_video' && 'Envia o vídeo com a mensagem como legenda.'}
+              </p>
+            </div>
+
             {/* Mensagem */}
             <div>
-              <Label>Mensagem</Label>
+              <Label>{tipoEnvio === 'texto' ? 'Mensagem' : 'Mensagem (legenda)'}</Label>
               <Textarea
                 className="mt-1"
-                rows={4}
+                rows={3}
                 placeholder="Digite a mensagem que será enviada ao cliente..."
                 value={mensagem}
                 onChange={(e) => setMensagem(e.target.value)}
               />
             </div>
+
+            {/* Upload de mídia */}
+            {tipoEnvio !== 'texto' && (
+              <div>
+                <Label>{tipoEnvio === 'texto_imagem' ? 'Imagem' : 'Vídeo'}</Label>
+                {!arquivo ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-1 w-full border-2 border-dashed border-slate-300 rounded-lg p-4 flex flex-col items-center gap-2 text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                  >
+                    {tipoEnvio === 'texto_imagem'
+                      ? <ImageIcon className="w-8 h-8" />
+                      : <Video className="w-8 h-8" />}
+                    <span className="text-sm font-medium">Clique para anexar</span>
+                    <span className="text-xs">
+                      {tipoEnvio === 'texto_imagem' ? 'JPG, PNG ou WEBP' : 'MP4 ou MOV'}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="mt-1 relative border rounded-lg overflow-hidden bg-slate-50">
+                    {tipoEnvio === 'texto_imagem' ? (
+                      <img src={arquivoPreview} alt="preview" className="w-full max-h-48 object-contain" />
+                    ) : (
+                      <video src={arquivoPreview} className="w-full max-h-48" controls />
+                    )}
+                    <button
+                      onClick={removeArquivo}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <p className="text-xs text-slate-500 p-2 truncate">{arquivo.name}</p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={aceitaArquivo}
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </div>
+            )}
+
+            {/* Pré-visualização */}
+            {mensagem.trim() && (
+              <div>
+                <Label className="text-slate-500 text-xs">Pré-visualização</Label>
+                <div className="mt-1 bg-[#dcf8c6] rounded-xl rounded-br-none p-3 max-w-xs ml-auto shadow-sm">
+                  {arquivo && arquivoPreview && tipoEnvio === 'texto_imagem' && (
+                    <img src={arquivoPreview} alt="preview" className="w-full rounded-lg mb-1 max-h-32 object-cover" />
+                  )}
+                  {arquivo && arquivoPreview && tipoEnvio === 'texto_video' && (
+                    <video src={arquivoPreview} className="w-full rounded-lg mb-1 max-h-32" />
+                  )}
+                  <p className="text-sm text-slate-800 whitespace-pre-wrap">{mensagem}</p>
+                  <p className="text-[10px] text-slate-500 text-right mt-1">
+                    {dataEnvio && horaEnvio ? `${dataEnvio} ${horaEnvio}` : 'Agendado'} · ⏰
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Data e hora */}
             <div className="grid grid-cols-2 gap-3">
@@ -181,9 +353,9 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button onClick={handleSalvar} disabled={saving} className="bg-blue-600 hover:bg-blue-700 gap-2">
+              <Button onClick={handleSalvar} disabled={saving || uploadando} className="bg-blue-600 hover:bg-blue-700 gap-2">
                 <CalendarClock className="w-4 h-4" />
-                {saving ? 'Agendando...' : 'Agendar mensagem'}
+                {uploadando ? 'Enviando arquivo...' : saving ? 'Agendando...' : 'Agendar mensagem'}
               </Button>
             </div>
           </div>
@@ -197,7 +369,23 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
               agendados.map(a => (
                 <div key={a.id} className="border rounded-lg p-3 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-slate-800 flex-1">{a.mensagem}</p>
+                    <div className="flex-1 min-w-0">
+                      {/* Badge tipo envio */}
+                      {a.tipo_envio && a.tipo_envio !== 'texto' && (
+                        <span className="text-xs text-slate-500 mb-1 block">
+                          {a.tipo_envio === 'texto_imagem' ? '🖼️ Imagem' : '🎬 Vídeo'}
+                          {a.arquivo_nome && ` · ${a.arquivo_nome}`}
+                        </span>
+                      )}
+                      {/* Prévia de mídia */}
+                      {a.arquivo_url && a.tipo_envio === 'texto_imagem' && (
+                        <img src={a.arquivo_url} alt="mídia" className="w-full max-h-24 object-cover rounded mb-1" />
+                      )}
+                      {a.arquivo_url && a.tipo_envio === 'texto_video' && (
+                        <video src={a.arquivo_url} className="w-full max-h-24 rounded mb-1" />
+                      )}
+                      <p className="text-sm text-slate-800">{a.mensagem}</p>
+                    </div>
                     {a.status === 'agendada' && (
                       <button onClick={() => handleCancelar(a.id)} className="text-red-500 hover:text-red-700 flex-shrink-0" title="Cancelar">
                         <Trash2 className="w-4 h-4" />

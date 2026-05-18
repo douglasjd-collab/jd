@@ -33,6 +33,27 @@
       ],
       "default": ""
     },
+    "tipo_envio": {
+      "type": "string",
+      "enum": [
+        "texto",
+        "texto_imagem",
+        "texto_video"
+      ],
+      "default": "texto"
+    },
+    "arquivo_url": {
+      "type": "string"
+    },
+    "arquivo_tipo": {
+      "type": "string"
+    },
+    "arquivo_nome": {
+      "type": "string"
+    },
+    "legenda": {
+      "type": "string"
+    },
     "data_envio": {
       "type": "string",
       "format": "date"

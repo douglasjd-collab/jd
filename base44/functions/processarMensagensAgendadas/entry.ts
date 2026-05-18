@@ -4,11 +4,9 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Para automação agendada, usar service role
     const agora = new Date();
     const agoraISO = agora.toISOString();
 
-    // Buscar todas agendadas com proxima_execucao <= agora
     const todas = await base44.asServiceRole.entities.MensagemAgendada.filter({ status: 'agendada' }, null, 500);
     const pendentes = todas.filter(m => m.proxima_execucao && m.proxima_execucao <= agoraISO);
 
@@ -21,7 +19,6 @@ Deno.serve(async (req) => {
 
     for (const msg of pendentes) {
       try {
-        // Buscar configuração de WhatsApp da empresa
         const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: msg.empresa_id });
         const empresa = empresas[0];
 
@@ -47,23 +44,49 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Formatar telefone (remover caracteres especiais, garantir formato internacional)
         let telefone = (msg.telefone || '').replace(/\D/g, '');
         if (!telefone.startsWith('55')) telefone = '55' + telefone;
         const jid = telefone + '@s.whatsapp.net';
 
-        // Enviar via Evolution API
-        const resp = await fetch(`${evolutionUrl}/message/sendText/${instancia}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': evolutionKey,
-          },
-          body: JSON.stringify({
-            number: jid,
-            text: msg.mensagem,
-          }),
-        });
+        const tipoEnvio = msg.tipo_envio || 'texto';
+        let resp;
+        let tipoConteudo = 'texto';
+
+        if (tipoEnvio === 'texto_imagem' && msg.arquivo_url) {
+          // Enviar imagem com legenda
+          resp = await fetch(`${evolutionUrl}/message/sendMedia/${instancia}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
+            body: JSON.stringify({
+              number: jid,
+              mediatype: 'image',
+              media: msg.arquivo_url,
+              caption: msg.mensagem,
+            }),
+          });
+          tipoConteudo = 'imagem';
+        } else if (tipoEnvio === 'texto_video' && msg.arquivo_url) {
+          // Enviar vídeo com legenda
+          resp = await fetch(`${evolutionUrl}/message/sendMedia/${instancia}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
+            body: JSON.stringify({
+              number: jid,
+              mediatype: 'video',
+              media: msg.arquivo_url,
+              caption: msg.mensagem,
+            }),
+          });
+          tipoConteudo = 'video';
+        } else {
+          // Enviar texto simples
+          resp = await fetch(`${evolutionUrl}/message/sendText/${instancia}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
+            body: JSON.stringify({ number: jid, text: msg.mensagem }),
+          });
+          tipoConteudo = 'texto';
+        }
 
         if (!resp.ok) {
           const errText = await resp.text();
@@ -73,15 +96,17 @@ Deno.serve(async (req) => {
         const respData = await resp.json();
         const whatsappMsgId = respData?.key?.id || respData?.messageId || '';
 
-        // Registrar mensagem no histórico da conversa
+        // Registrar mensagem no histórico
         await base44.asServiceRole.entities.MensagemWhatsapp.create({
           conversa_id: msg.conversa_id,
           empresa_id: msg.empresa_id,
           remetente: 'vendedor',
           usuario_id: msg.responsavel_id || '',
           usuario_nome: msg.responsavel_nome || 'Agendamento automático',
-          tipo_conteudo: 'texto',
+          tipo_conteudo: tipoConteudo,
           texto: msg.mensagem,
+          arquivo_url: msg.arquivo_url || '',
+          arquivo_nome: msg.arquivo_nome || '',
           whatsapp_message_id: whatsappMsgId,
           data_envio: new Date().toISOString(),
           status: 'enviada',
@@ -94,7 +119,7 @@ Deno.serve(async (req) => {
           ultimo_remetente: 'vendedor',
         });
 
-        // Calcular próxima execução se for recorrente
+        // Recorrente: reagendar para o próximo mês
         if (msg.tipo === 'recorrente' && msg.recorrencia === 'mensal') {
           const proximaData = new Date(msg.proxima_execucao);
           proximaData.setMonth(proximaData.getMonth() + 1);
@@ -105,7 +130,6 @@ Deno.serve(async (req) => {
             proxima_execucao: proximaData.toISOString(),
           });
         } else {
-          // Mensagem única: marcar como enviada
           await base44.asServiceRole.entities.MensagemAgendada.update(msg.id, {
             status: 'enviada',
             ultima_execucao: new Date().toISOString(),
@@ -123,13 +147,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({
-      ok: true,
-      processadas: pendentes.length,
-      enviadas,
-      falhas,
-      timestamp: agoraISO,
-    });
+    return Response.json({ ok: true, processadas: pendentes.length, enviadas, falhas, timestamp: agoraISO });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
