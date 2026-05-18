@@ -719,6 +719,15 @@ export default function FunilVendas() {
 
     const produtoFinal = formData.produto;
 
+    // Normalizar telefone: adicionar prefixo 55 se não tiver
+    const normalizarTelefone = (tel) => {
+      if (!tel) return '';
+      const nums = tel.replace(/\D/g, '');
+      if (!nums) return '';
+      if (nums.startsWith('55') && nums.length >= 12) return nums;
+      return '55' + nums;
+    };
+
     const data = {
       ...formData,
       empresa_id: currentUser?.empresa_id || '',
@@ -730,6 +739,7 @@ export default function FunilVendas() {
       etapa_nome: etapa?.nome || '',
       valor_estimado: parseFloat(formData.valor_estimado) || 0,
       vendedor_id: vendedorIdFinal,
+      telefone_lead: normalizarTelefone(formData.telefone_lead),
       observacoes: formData.origem === 'Indicação' && (indicadorNome || indicadorTelefone)
         ? `${formData.observacoes ? formData.observacoes + '\n\n' : ''}👤 Indicado por: ${indicadorNome || 'N/A'}\n📞 Telefone: ${indicadorTelefone || 'N/A'}`
         : formData.observacoes
