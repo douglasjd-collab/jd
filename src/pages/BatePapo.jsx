@@ -88,6 +88,7 @@ import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
 import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
 import BatePapoMenu from '@/components/chat/BatePapoMenu';
 import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
+import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -279,6 +280,7 @@ export default function BatePapo() {
   const [funilModalOpen, setFunilModalOpen] = useState(false);
   const [oportunidadeAtual, setOportunidadeAtual] = useState(null);
   const [agendarMensagemModal, setAgendarMensagemModal] = useState(null); // conversa
+  const [agendadasOpen, setAgendadasOpen] = useState(false);
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -684,8 +686,6 @@ export default function BatePapo() {
     });
     return unsub;
   }, [empresaId, refetchConversasComDebounce]);
-
-  // Polling de mensagens removido — o refetchInterval do useQuery já cuida disso
 
 
 
@@ -1408,6 +1408,8 @@ export default function BatePapo() {
           empresaId={empresaId}
         />
 
+        <MensagensAgendadasModal open={agendadasOpen} onOpenChange={setAgendadasOpen} empresaId={empresaId} />
+
         {/* Modal Agendar Mensagem */}
         <AgendarMensagemModal
           open={!!agendarMensagemModal}
@@ -1551,6 +1553,7 @@ export default function BatePapo() {
                   refetchConversas={refetchConversas}
                   sincronizarTodosContatosEvolution={sincronizarTodosContatosEvolution}
                   sincronizarHistoricoTodasConversas={sincronizarHistoricoTodasConversas}
+                  setAgendadasOpen={setAgendadasOpen}
                 />
               </div>
             </CardHeader>

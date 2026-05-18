@@ -15,6 +15,7 @@ import {
   Lock,
   Trash2,
   Tag,
+  CalendarClock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
@@ -31,6 +32,7 @@ export default function BatePapoMenu({
   refetchConversas,
   sincronizarTodosContatosEvolution,
   sincronizarHistoricoTodasConversas,
+  setAgendadasOpen,
 }) {
   const handleSincronizarFotosAgressivo = async () => {
     setSincronizando(true);
@@ -69,6 +71,10 @@ export default function BatePapoMenu({
         <DropdownMenuItem onClick={() => setGerenciamentoTagsOpen(true)}>
           <Tag className="mr-2 h-4 w-4" />
           Gerenciar Tags
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setAgendadasOpen(true)}>
+          <CalendarClock className="mr-2 h-4 w-4" />
+          Mensagens Agendadas
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem 
