@@ -16,6 +16,7 @@ import {
   Unlock,
   Check,
   Trash2,
+  CalendarClock,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ export default function ConversaContextMenu({
   setContatoParaTags,
   setTagsModalOpen,
   setTransferirModal,
+  onAgendarMensagem,
 }) {
   const queryClient = useQueryClient();
 
@@ -161,6 +163,10 @@ export default function ConversaContextMenu({
       <DropdownMenuItem onClick={() => setTransferirModal(conversa)}>
         <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
         Transferir atendimento
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => onAgendarMensagem && onAgendarMensagem(conversa)}>
+        <CalendarClock className="mr-2 h-3.5 w-3.5 text-blue-600" />
+        <span className="text-blue-600">Agendar mensagem</span>
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
         <Star className="mr-2 h-3.5 w-3.5" />

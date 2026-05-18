@@ -87,6 +87,7 @@ import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
 import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
 import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
 import BatePapoMenu from '@/components/chat/BatePapoMenu';
+import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -277,6 +278,7 @@ export default function BatePapo() {
   const [gerenciamentoTagsOpen, setGerenciamentoTagsOpen] = useState(false);
   const [funilModalOpen, setFunilModalOpen] = useState(false);
   const [oportunidadeAtual, setOportunidadeAtual] = useState(null);
+  const [agendarMensagemModal, setAgendarMensagemModal] = useState(null); // conversa
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -1406,6 +1408,14 @@ export default function BatePapo() {
           empresaId={empresaId}
         />
 
+        {/* Modal Agendar Mensagem */}
+        <AgendarMensagemModal
+          open={!!agendarMensagemModal}
+          onOpenChange={(v) => !v && setAgendarMensagemModal(null)}
+          conversa={agendarMensagemModal}
+          currentUser={user}
+        />
+
         {/* Modal Funil de Vendas */}
         <FunilSelectionModal
           open={funilModalOpen}
@@ -1729,7 +1739,8 @@ export default function BatePapo() {
                                      setContatoParaTags={setContatoParaTags}
                                      setTagsModalOpen={setTagsModalOpen}
                                      setTransferirModal={setTransferirModal}
-                                   />
+                                     onAgendarMensagem={setAgendarMensagemModal}
+                                     />
                                    <DropdownMenuSeparator />
                                    <DropdownMenuItem
                                      className="text-red-600 focus:text-red-600 focus:bg-red-50"

@@ -1,0 +1,83 @@
+{
+  "name": "MensagemAgendada",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "conversa_id": {
+      "type": "string"
+    },
+    "cliente_id": {
+      "type": "string"
+    },
+    "telefone": {
+      "type": "string"
+    },
+    "mensagem": {
+      "type": "string"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "unica",
+        "recorrente"
+      ],
+      "default": "unica"
+    },
+    "recorrencia": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        ""
+      ],
+      "default": ""
+    },
+    "data_envio": {
+      "type": "string",
+      "format": "date"
+    },
+    "hora_envio": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "agendada",
+        "enviada",
+        "cancelada",
+        "falha"
+      ],
+      "default": "agendada"
+    },
+    "responsavel_id": {
+      "type": "string"
+    },
+    "responsavel_nome": {
+      "type": "string"
+    },
+    "instancia_whatsapp": {
+      "type": "string"
+    },
+    "ultima_execucao": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "proxima_execucao": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "erro_detalhe": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "conversa_id",
+    "telefone",
+    "mensagem",
+    "tipo",
+    "data_envio",
+    "hora_envio"
+  ]
+}
