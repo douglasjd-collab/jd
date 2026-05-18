@@ -860,29 +860,7 @@ export default function FunilVendas() {
         return true;
       });
 
-    // Deduplicar: por cliente_id, manter apenas a oportunidade mais recente por etapa
-    // Oportunidades sem cliente_id (leads sem cliente) não são deduplicadas
-    const semCliente = base.filter(o => !o.cliente_id);
-    const comCliente = base.filter(o => !!o.cliente_id);
-
-    // Para cada cliente, manter apenas 1 oportunidade por etapa (a mais recente)
-    const mapaClienteEtapa = new Map();
-    for (const o of comCliente) {
-      const chave = `${o.cliente_id}__${o.etapa_id}`;
-      const existente = mapaClienteEtapa.get(chave);
-      if (!existente) {
-        mapaClienteEtapa.set(chave, o);
-      } else {
-        // Manter o mais recente por data_ultima_movimentacao ou created_date
-        const dataAtual = new Date(o.data_ultima_movimentacao || o.created_date || 0);
-        const dataExistente = new Date(existente.data_ultima_movimentacao || existente.created_date || 0);
-        if (dataAtual > dataExistente) {
-          mapaClienteEtapa.set(chave, o);
-        }
-      }
-    }
-
-    return [...semCliente, ...Array.from(mapaClienteEtapa.values())];
+    return base;
   })();
 
   const calcularIndicadores = (etapaId) => {
