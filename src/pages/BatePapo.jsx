@@ -106,9 +106,11 @@ export default function BatePapo() {
   // Definir conversaSelecionadaId ANTES de qualquer hook que o use
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
-  const selecionarConversa = async (conversa, forcarSync = true) => {
+  const isMobile = () => window.innerWidth < 1024;
+
+  const selecionarConversa = async (conversa, forcarSync = true, abrirMobile = true) => {
      setConversaSelecionada(conversa);
-     setMobileViewChat(true); // no mobile, abrir o chat ao selecionar
+     if (abrirMobile) setMobileViewChat(true); // no mobile, abrir o chat ao selecionar
      localStorage.setItem('ultimaConversaId', conversa.id);
      // Zerar contador de não lidas ao abrir a conversa — garantir que não reapareça
      setNaoLidasPorConversa(prev => {
@@ -539,7 +541,6 @@ export default function BatePapo() {
       console.log(`📞 Buscando conversas para empresa: ${empresaId}`);
       const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId, limit: 10000 });
       const data = resp?.data?.conversas || [];
-      console.log(`✅ Recebidas ${data.length} conversas`);
       
       // Atualizar cache de contatos — incluir foto_url da conversa como fallback
       const novoCache = {};
@@ -634,7 +635,8 @@ export default function BatePapo() {
     if (!conversaSelecionada) {
       const ultimaId = localStorage.getItem('ultimaConversaId');
       const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
-      selecionarConversa(ultimaConversa || conversas[0]);
+      // No mobile, não abrir chat automaticamente (usuário deve clicar)
+      selecionarConversa(ultimaConversa || conversas[0], true, !isMobile());
     } else {
       const aindaExiste = conversas.find(c => c.id === conversaSelecionada.id);
       if (!aindaExiste) {
@@ -1212,6 +1214,8 @@ export default function BatePapo() {
               min-width: 100% !important;
               width: 100% !important;
             }
+            #batepapo-root { padding: 0 !important; }
+            #batepapo-root > div { border-radius: 0 !important; }
           }
           .jd-messenger-top {
             flex-shrink: 0;
