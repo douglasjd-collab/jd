@@ -330,20 +330,22 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
               )}
             </div>
             {imagemAberta && mediaUrl && (
-              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-                <div className="relative max-w-3xl max-h-[90vh] flex items-center justify-center">
-                  <img
-                    src={mediaUrl}
-                    alt="Imagem ampliada"
-                    className="w-full h-auto rounded-lg max-h-[90vh] object-contain"
-                  />
-                  <button
-                    onClick={() => setImagemAberta(false)}
-                    className="absolute top-2 right-2 bg-white rounded-full p-2 hover:bg-slate-100 transition-colors"
-                  >
-                    <X className="w-5 h-5 text-black" />
-                  </button>
-                </div>
+              <div
+                className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
+                onClick={() => setImagemAberta(false)}
+              >
+                <button
+                  onClick={() => setImagemAberta(false)}
+                  className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 rounded-full p-2 transition-colors z-10"
+                >
+                  <X className="w-6 h-6 text-white" />
+                </button>
+                <img
+                  src={mediaUrl}
+                  alt="Imagem ampliada"
+                  className="max-w-full max-h-[90vh] rounded-lg object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
               </div>
             )}
           </>
