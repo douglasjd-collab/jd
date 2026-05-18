@@ -106,11 +106,9 @@ export default function BatePapo() {
   // Definir conversaSelecionadaId ANTES de qualquer hook que o use
   const conversaSelecionadaId = conversaSelecionada?.id || null;
 
-  const isMobile = () => window.innerWidth < 1024;
-
   const selecionarConversa = async (conversa, forcarSync = true, abrirMobile = true) => {
      setConversaSelecionada(conversa);
-     if (abrirMobile) setMobileViewChat(true); // no mobile, abrir o chat ao selecionar
+     if (abrirMobile) setMobileViewChat(true);
      localStorage.setItem('ultimaConversaId', conversa.id);
      // Zerar contador de não lidas ao abrir a conversa — garantir que não reapareça
      setNaoLidasPorConversa(prev => {
@@ -561,7 +559,7 @@ export default function BatePapo() {
       setContatosWhatsapp(prev => ({ ...prev, ...novoCache }));
       
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
-      console.log(`🔍 Após filtro: ${filtradas.length} conversas válidas`);
+
 
       // Sincronizar fotos agressivamente em background
       setTimeout(async () => {
@@ -636,7 +634,8 @@ export default function BatePapo() {
       const ultimaId = localStorage.getItem('ultimaConversaId');
       const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
       // No mobile, não abrir chat automaticamente (usuário deve clicar)
-      selecionarConversa(ultimaConversa || conversas[0], true, !isMobile());
+      const isMobileDevice = window.innerWidth < 1024;
+      selecionarConversa(ultimaConversa || conversas[0], true, !isMobileDevice);
     } else {
       const aindaExiste = conversas.find(c => c.id === conversaSelecionada.id);
       if (!aindaExiste) {
@@ -1649,7 +1648,10 @@ export default function BatePapo() {
                         <div
                           key={c.id}
                           className={classNames('jd-chat-card', conversaSelecionada?.id === c.id && 'selected')}
-                          onClick={() => selecionarConversa(c)}
+                          onClick={(e) => {
+                            if (e.target.closest('.jd-chat-menu') || e.target.closest('[data-radix-dropdown-menu-trigger]')) return;
+                            selecionarConversa(c);
+                          }}
                         >
                           {/* Avatar */}
                           <div className="jd-chat-avatar">
