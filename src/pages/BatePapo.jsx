@@ -1794,6 +1794,7 @@ export default function BatePapo() {
                   refetchMensagens={refetchMensagens}
                   queryClient={queryClient}
                   setConversaSelecionada={setConversaSelecionada}
+                  onAgendarMensagem={setAgendarMensagemModal}
                 />
 
                 {/* Área principal: mensagens + painel lead lado a lado */}

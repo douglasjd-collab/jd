@@ -11,7 +11,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Check, ArrowRightLeft, MoreVertical, RefreshCw, Tag, Clock,
-  Contact, Pencil, BellOff, Pin, X, AlignJustify
+  Contact, Pencil, BellOff, Pin, X, AlignJustify, CalendarClock
 } from "lucide-react";
 import AvatarContato from './AvatarContato';
 import { toast } from 'sonner';
@@ -31,6 +31,7 @@ export default function ChatHeader({
   refetchMensagens,
   queryClient,
   setConversaSelecionada,
+  onAgendarMensagem,
 }) {
   if (!conversaSelecionada) return null;
 
@@ -142,6 +143,10 @@ export default function ChatHeader({
             <DropdownMenuItem onClick={() => setCriarTarefaOpen(true)}>
               <Clock className="mr-2 h-3.5 w-3.5" />
               Criar Tarefa
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAgendarMensagem?.(conversaSelecionada)}>
+              <CalendarClock className="mr-2 h-3.5 w-3.5" />
+              Agendar mensagem
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
