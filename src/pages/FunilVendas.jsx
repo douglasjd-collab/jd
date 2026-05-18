@@ -1009,9 +1009,19 @@ export default function FunilVendas() {
             <Input placeholder="Buscar lead..." value={searchCard} onChange={(e) => setSearchCard(e.target.value)} className="pl-9 w-48 h-9" />
             {searchCard && <button onClick={() => setSearchCard('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>}
           </div>
-          <Link to={createPageUrl('ConfiguracaoFunis')}>
-            <Button variant="outline" size="sm" className="gap-1.5 h-9"><Settings className="w-4 h-4" /> Configurar</Button>
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 h-9"><Settings className="w-4 h-4" /> Configurar</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate(createPageUrl('ConfiguracaoFunis'))}>
+                <Settings className="w-4 h-4 mr-2" /> Configurar Etapas
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate(createPageUrl('AutomacaoFunis'))}>
+                <Zap className="w-4 h-4 mr-2" /> Automação de Funis
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
