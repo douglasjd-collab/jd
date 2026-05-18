@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Loader2, Phone, ChevronRight, ChevronLeft, User, MoveHorizontal,
-  CheckCircle2, XCircle, UserCheck, CheckSquare, Tag, Bell
+  CheckCircle2, XCircle, UserCheck, CheckSquare, Tag, Bell, UserPlus, ArrowLeftRight, GitBranch
 } from 'lucide-react';
 import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
@@ -22,6 +22,8 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
   const [painelAberto, setPainelAberto] = useState(true);
   const [novaEtapaId, setNovaEtapaId] = useState('');
   const [novoResponsavelId, setNovoResponsavelId] = useState('');
+  const [adicionarResponsavelId, setAdicionarResponsavelId] = useState('');
+  const [novoFunilProduto, setNovoFunilProduto] = useState('');
   const [criandoTarefa, setCriandoTarefa] = useState(false);
   const [tituloTarefa, setTituloTarefa] = useState('');
 
@@ -220,11 +222,86 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
         vendedor_id: responsavelId,
         vendedor_nome: v?.nome || v?.razao_social || '',
         foto_perfil_responsavel: v?.foto_perfil || '',
+        responsaveis_ids: JSON.stringify([responsavelId]),
+        responsaveis_nomes: JSON.stringify([v?.nome || v?.razao_social || '']),
+        responsaveis_fotos: JSON.stringify([v?.foto_perfil || '']),
         data_ultima_movimentacao: new Date().toISOString(),
       });
     },
     onSuccess: () => {
-      toast.success('Responsável alterado!');
+      toast.success('Responsável transferido!');
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      onOportunidadeChanged?.();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const adicionarResponsavelMutation = useMutation({
+    mutationFn: async (responsavelId) => {
+      const v = vendedores.find(x => x.id === responsavelId);
+      // Obter responsáveis atuais
+      let idsAtuais = [];
+      let nomesAtuais = [];
+      let fotosAtuais = [];
+      try { idsAtuais = oportunidade.responsaveis_ids ? JSON.parse(oportunidade.responsaveis_ids) : [oportunidade.vendedor_id].filter(Boolean); } catch { idsAtuais = [oportunidade.vendedor_id].filter(Boolean); }
+      try { nomesAtuais = oportunidade.responsaveis_nomes ? JSON.parse(oportunidade.responsaveis_nomes) : [oportunidade.vendedor_nome].filter(Boolean); } catch { nomesAtuais = [oportunidade.vendedor_nome].filter(Boolean); }
+      try { fotosAtuais = oportunidade.responsaveis_fotos ? JSON.parse(oportunidade.responsaveis_fotos) : [oportunidade.foto_perfil_responsavel || '']; } catch { fotosAtuais = ['']; }
+      
+      if (idsAtuais.includes(responsavelId)) throw new Error('Este responsável já está adicionado');
+      
+      const novosIds = [...idsAtuais, responsavelId];
+      const novosNomes = [...nomesAtuais, v?.nome || v?.razao_social || ''];
+      const novasFotos = [...fotosAtuais, v?.foto_perfil || ''];
+
+      await base44.entities.Oportunidade.update(oportunidade.id, {
+        empresa_id: oportunidade.empresa_id,
+        titulo: oportunidade.titulo,
+        etapa_id: oportunidade.etapa_id,
+        vendedor_id: oportunidade.vendedor_id,
+        responsaveis_ids: JSON.stringify(novosIds),
+        responsaveis_nomes: JSON.stringify(novosNomes),
+        responsaveis_fotos: JSON.stringify(novasFotos),
+        data_ultima_movimentacao: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      toast.success('Responsável adicionado!');
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      onOportunidadeChanged?.();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  // Funis disponíveis (produtos únicos das etapas)
+  const funisDisponiveis = [...new Set(etapas.map(e => e.produto).filter(Boolean))];
+
+  const trocarFunilMutation = useMutation({
+    mutationFn: async (produto) => {
+      // Pegar a primeira etapa do novo funil
+      const primeiraEtapa = etapas.filter(e => e.produto === produto).sort((a, b) => a.ordem - b.ordem)[0];
+      if (!primeiraEtapa) throw new Error('Nenhuma etapa encontrada para este funil');
+      await base44.entities.Oportunidade.update(oportunidade.id, {
+        empresa_id: oportunidade.empresa_id,
+        titulo: oportunidade.titulo,
+        vendedor_id: oportunidade.vendedor_id,
+        produto,
+        etapa_id: primeiraEtapa.id,
+        etapa_nome: primeiraEtapa.nome,
+        data_ultima_movimentacao: new Date().toISOString(),
+        status: 'aberta',
+      });
+      await base44.entities.MovimentacaoFunil.create({
+        oportunidade_id: oportunidade.id,
+        etapa_origem_id: oportunidade.etapa_id,
+        etapa_origem_nome: oportunidade.etapa_nome || '',
+        etapa_destino_id: primeiraEtapa.id,
+        etapa_destino_nome: primeiraEtapa.nome,
+        usuario_id: currentUser.id,
+        usuario_nome: currentUser.full_name,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Funil alterado!');
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
       onOportunidadeChanged?.();
     },
@@ -415,9 +492,55 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
 
               <hr />
 
+              {/* Trocar Funil */}
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1"><GitBranch className="w-3.5 h-3.5" /> Trocar de Funil</p>
+                <Select value={novoFunilProduto} onValueChange={setNovoFunilProduto}>
+                  <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Selecionar funil..." /></SelectTrigger>
+                  <SelectContent>
+                    {funisDisponiveis.filter(p => p !== oportunidade?.produto).map(p => (
+                      <SelectItem key={p} value={p} className="text-xs">
+                        {p === 'consorcio' ? '🏦 Consórcio' : p === 'emprestimo' ? '💳 Empréstimo' : `🗂️ ${p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {novoFunilProduto && (
+                  <Button size="sm" className="w-full mt-1.5 h-7 text-xs bg-[#1e3a5f] hover:bg-[#2a4a73]"
+                    onClick={() => { trocarFunilMutation.mutate(novoFunilProduto); setNovoFunilProduto(''); }}
+                    disabled={trocarFunilMutation.isPending}>
+                    Confirmar
+                  </Button>
+                )}
+              </div>
+
+              <hr />
+
+              {/* Adicionar Responsável */}
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1"><UserPlus className="w-3.5 h-3.5" /> Adicionar Responsável</p>
+                <Select value={adicionarResponsavelId} onValueChange={setAdicionarResponsavelId}>
+                  <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Adicionar responsável..." /></SelectTrigger>
+                  <SelectContent>
+                    {vendedores.map(v => (
+                      <SelectItem key={v.id} value={v.id} className="text-xs">{v.nome || v.razao_social || v.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {adicionarResponsavelId && (
+                  <Button size="sm" className="w-full mt-1.5 h-7 text-xs bg-[#1e3a5f] hover:bg-[#2a4a73]"
+                    onClick={() => { adicionarResponsavelMutation.mutate(adicionarResponsavelId); setAdicionarResponsavelId(''); }}
+                    disabled={adicionarResponsavelMutation.isPending}>
+                    Confirmar
+                  </Button>
+                )}
+              </div>
+
+              <hr />
+
               {/* Transferir */}
               <div>
-                <p className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1"><UserCheck className="w-3.5 h-3.5" /> Transferir</p>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1"><ArrowLeftRight className="w-3.5 h-3.5" /> Transferir Responsável</p>
                 <Select value={novoResponsavelId} onValueChange={setNovoResponsavelId}>
                   <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Novo responsável..." /></SelectTrigger>
                   <SelectContent>
