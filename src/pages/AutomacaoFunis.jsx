@@ -10,7 +10,9 @@ import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Zap, Clock, MessageCircle, ChevronDown, ChevronUp, Image, Video, Mic, Type, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Zap, Clock, MessageCircle, ChevronDown, ChevronUp, Image, Video, Mic, Type, Upload, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 
 export default function AutomacaoFunis() {
@@ -27,6 +29,7 @@ export default function AutomacaoFunis() {
   });
   const [uploadingMidia, setUploadingMidia] = useState(false);
 
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -138,9 +141,14 @@ export default function AutomacaoFunis() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">⚙️ Automação de Funis</h1>
-          <p className="text-slate-500 text-sm mt-1">Configure mensagens automáticas por etapa do funil</p>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" onClick={() => navigate(createPageUrl('FunilVendas'))} className="h-9 w-9">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">⚙️ Automação de Funis</h1>
+            <p className="text-slate-500 text-sm mt-1">Configure mensagens automáticas por etapa do funil</p>
+          </div>
         </div>
         <Button onClick={() => { resetForm(); setEditando(null); setFormOpen(true); }} className="bg-[#1e3a5f] hover:bg-[#2a4a73] gap-2">
           <Plus className="w-4 h-4" /> Nova Automação
