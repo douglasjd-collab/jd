@@ -267,6 +267,11 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
   });
 
   const etapaAtual = etapas.find(e => e.id === oportunidade?.etapa_id);
+  
+  // Filtrar etapas apenas do mesmo funil/produto da oportunidade
+  const etapasDoProduto = oportunidade?.produto
+    ? etapas.filter(e => e.produto === oportunidade.produto)
+    : etapas;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -372,7 +377,7 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
                 <Select value={novaEtapaId} onValueChange={setNovaEtapaId}>
                   <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Selecionar etapa..." /></SelectTrigger>
                   <SelectContent>
-                    {etapas.filter(e => e.id !== oportunidade?.etapa_id).map(e => (
+                    {etapasDoProduto.filter(e => e.id !== oportunidade?.etapa_id).map(e => (
                       <SelectItem key={e.id} value={e.id} className="text-xs">{e.nome}</SelectItem>
                     ))}
                   </SelectContent>
