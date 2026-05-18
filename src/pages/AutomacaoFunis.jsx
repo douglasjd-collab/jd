@@ -50,10 +50,14 @@ export default function AutomacaoFunis() {
     queryFn: () => base44.entities.EtapaFunil.list('ordem', 500),
   });
 
+  const isSuperAdmin = ['super_admin', 'master'].includes(currentUser?.perfil);
+
   const { data: automacoes = [] } = useQuery({
-    queryKey: ['automacoes-funil', currentUser?.empresa_id],
+    queryKey: ['automacoes-funil', currentUser?.empresa_id, isSuperAdmin],
     enabled: !!currentUser,
-    queryFn: () => base44.entities.AutomacaoFunil.filter({ empresa_id: currentUser.empresa_id }, 'ordem'),
+    queryFn: () => isSuperAdmin
+      ? base44.entities.AutomacaoFunil.list('ordem', 1000)
+      : base44.entities.AutomacaoFunil.filter({ empresa_id: currentUser.empresa_id }, 'ordem'),
   });
 
   const { data: historico = [] } = useQuery({
