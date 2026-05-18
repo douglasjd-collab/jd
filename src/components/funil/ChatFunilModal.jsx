@@ -146,11 +146,18 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
         empresa_id: currentUser.empresa_id,
         arquivo,
       });
-      if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Erro ao enviar');
+      // Considerar sucesso se a mensagem foi salva no banco, mesmo que o WhatsApp falhe
+      if (!resp?.data?.success && !resp?.data?.mensagem_id) {
+        throw new Error(resp?.data?.error || 'Erro ao enviar');
+      }
+      if (!resp?.data?.success && resp?.data?.error) {
+        // Mensagem salva mas envio WhatsApp falhou — avisar mas não travar
+        toast.warning('Mensagem salva, mas pode não ter chegado: ' + resp.data.error);
+      }
       return { ...resp.data, conversaId: conversaAtual.id };
     },
     onMutate: async ({ texto, arquivo }) => {
-      if (!conversaId) return {}; // Conversa será criada no mutationFn
+      if (!conversaId) return {};
       const qk = ['mensagens-funil', conversaId];
       await queryClient.cancelQueries({ queryKey: qk });
       const previous = queryClient.getQueryData(qk);
@@ -166,16 +173,12 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
       return { previous, qk };
     },
     onError: (err, _v, ctx) => {
-      if (ctx?.previous) queryClient.setQueryData(ctx.qk, ctx.previous);
-      toast.error(err.message);
+      if (ctx?.previous && ctx?.qk) queryClient.setQueryData(ctx.qk, ctx.previous);
+      toast.error('Erro ao enviar: ' + (err.message || 'Tente novamente'));
     },
     onSuccess: async (data, vars) => {
       const cidAtual = data?.conversaId || conversaId;
       if (cidAtual) {
-        await base44.entities.ConversaWhatsapp.update(cidAtual, {
-          ultima_mensagem: vars.texto || vars.arquivo?.nome || '',
-          data_ultima_mensagem: new Date().toISOString(),
-        });
         queryClient.invalidateQueries({ queryKey: ['mensagens-funil', cidAtual] });
         queryClient.invalidateQueries({ queryKey: ['conversa-funil', contato?.telefone, currentUser?.empresa_id] });
       }
@@ -414,6 +417,7 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
               onEnviar={async ({ texto, arquivo }) => { await enviarMutation.mutateAsync({ texto, arquivo }); }}
               isLoading={enviarMutation.isPending}
               nomeUsuario={currentUser?.full_name || ''}
+              empresaId={currentUser?.empresa_id || null}
             />
           </div>
         </div>
