@@ -1,4 +1,7 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.26';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+
+// Garantir que o app ID está disponível para service role
+const APP_ID = Deno.env.get('BASE44_APP_ID') || '6950a9860c8af0e2ff10fc9e';
 
 async function registrarLog(base44, empresaId, tipoEvento, dados) {
   try {
@@ -686,6 +689,7 @@ Deno.serve(async (req) => {
   console.log(`📦 Body: ${rawBody.length} bytes`);
 
   // Criar client com service role para webhooks externos (sem token de usuário)
+  // Usar createClientFromRequest mas todas as operações via asServiceRole
   const base44 = createClientFromRequest(req);
 
   // Processar IMEDIATAMENTE (não em background)
