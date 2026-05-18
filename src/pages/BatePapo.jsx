@@ -1798,7 +1798,9 @@ export default function BatePapo() {
                   queryClient={queryClient}
                   setConversaSelecionada={setConversaSelecionada}
                   onAgendarMensagem={setAgendarMensagemModal}
-                />
+                  setFunilModalOpen={setFunilModalOpen}
+                  oportunidadeAtual={oportunidadeAtual}
+                  />
 
                 {/* Área principal: mensagens + painel lead lado a lado */}
                 <div className="flex flex-1 overflow-hidden">
