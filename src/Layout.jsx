@@ -324,15 +324,7 @@ export default function Layout({ children, currentPageName }) {
       ]
     },
     { name: 'Financiamento de Veículos', icon: Car, page: 'FinanciamentoVeiculos', roles: ALL_ROLES },
-    { 
-      name: 'Funil de Vendas', 
-      icon: TrendingUp, 
-      roles: ALL_ROLES,
-      submenu: [
-        { name: 'Kanban', page: 'FunilVendas' },
-        { name: 'Automação de Funis', page: 'AutomacaoFunis' },
-      ]
-    },
+    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ALL_ROLES },
     { name: 'Tarefas', icon: CheckSquare, page: 'Tarefas', roles: ALL_ROLES },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
