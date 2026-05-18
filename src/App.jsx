@@ -36,6 +36,7 @@ import DashboardSeguros from './pages/DashboardSeguros';
 import FinanciamentoVeiculos from './pages/FinanciamentoVeiculos';
 import ConfiguracaoFunis from './pages/ConfiguracaoFunis';
 import AutomacaoFunis from './pages/AutomacaoFunis';
+import ConfiguracaoWhatsappPessoal from './pages/ConfiguracaoWhatsappPessoal';
 import Seguros from './pages/Seguros';
 import RenovacoesSeguro from './pages/RenovacoesSeguro';
 import CobrancaSeguro from './pages/CobrancaSeguro';
@@ -124,6 +125,7 @@ const AuthenticatedApp = () => {
       <Route path="/FinanciamentoVeiculos" element={<LayoutWrapper currentPageName="FinanciamentoVeiculos"><FinanciamentoVeiculos /></LayoutWrapper>} />
       <Route path="/ConfiguracaoFunis" element={<LayoutWrapper currentPageName="ConfiguracaoFunis"><ConfiguracaoFunis /></LayoutWrapper>} />
       <Route path="/AutomacaoFunis" element={<LayoutWrapper currentPageName="AutomacaoFunis"><AutomacaoFunis /></LayoutWrapper>} />
+      <Route path="/ConfiguracaoWhatsappPessoal" element={<LayoutWrapper currentPageName="ConfiguracaoWhatsappPessoal"><ConfiguracaoWhatsappPessoal /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

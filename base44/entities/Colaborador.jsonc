@@ -239,7 +239,7 @@
     },
     "evolution_instance_name": {
       "type": "string",
-      "description": "Nome da inst\u00e2ncia WhatsApp Evolution"
+      "description": "Nome da inst\u00e2ncia WhatsApp Evolution (legado)"
     },
     "menus_permitidos": {
       "type": "array",
@@ -260,6 +260,46 @@
       "type": "boolean",
       "default": false,
       "description": "Se o cadastro est\u00e1 completo (com endere\u00e7o, banco/PIX)"
+    },
+    "whatsapp_pessoal_evolution_url": {
+      "type": "string",
+      "description": "URL da API Evolution para WhatsApp pessoal do colaborador"
+    },
+    "whatsapp_pessoal_instance_name": {
+      "type": "string",
+      "description": "Nome da inst\u00e2ncia Evolution do WhatsApp pessoal do colaborador"
+    },
+    "whatsapp_pessoal_api_key": {
+      "type": "string",
+      "description": "Chave API Evolution do WhatsApp pessoal do colaborador"
+    },
+    "whatsapp_pessoal_access_token": {
+      "type": "string",
+      "description": "Access Token da API Oficial Meta para WhatsApp pessoal"
+    },
+    "whatsapp_pessoal_phone_number_id": {
+      "type": "string",
+      "description": "Phone Number ID da API Oficial Meta para WhatsApp pessoal"
+    },
+    "whatsapp_pessoal_api_preferida": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "evolution",
+        "meta_oficial"
+      ],
+      "default": "auto",
+      "description": "API preferida para WhatsApp pessoal do colaborador"
+    },
+    "whatsapp_pessoal_conectado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o WhatsApp pessoal est\u00e1 configurado/conectado"
+    },
+    "whatsapp_pessoal_webhook_configurado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o webhook da inst\u00e2ncia pessoal j\u00e1 foi configurado"
     }
   },
   "required": [
