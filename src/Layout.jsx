@@ -383,7 +383,6 @@ export default function Layout({ children, currentPageName }) {
     },
     { name: 'Minhas Comissões', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
-    { name: 'Meu WhatsApp Pessoal', icon: MessageSquare, page: 'ConfiguracaoWhatsappPessoal', roles: ALL_ROLES },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
     {
