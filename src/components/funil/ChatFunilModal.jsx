@@ -36,9 +36,33 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
     enabled: open && !!contato?.telefone && !!currentUser?.empresa_id,
     queryFn: async () => {
       const tel = contato.telefone.replace(/\D/g, '');
-      const variacoes = [tel];
-      if (tel.startsWith('55') && tel.length === 12) variacoes.push(tel.slice(0, 4) + '9' + tel.slice(4));
-      if (tel.startsWith('55') && tel.length === 13) variacoes.push(tel.slice(0, 4) + tel.slice(5));
+      
+      // Gerar todas as variações possíveis do número
+      const variacoes = new Set([tel]);
+      
+      // Com 55 no início
+      if (!tel.startsWith('55')) {
+        variacoes.add('55' + tel);
+        variacoes.add('55' + '9' + tel.slice(2)); // tenta inserir 9
+      }
+      
+      // 12 dígitos: 55 + DDD(2) + 8 dígitos → adicionar 9
+      if (tel.startsWith('55') && tel.length === 12) {
+        variacoes.add(tel.slice(0, 4) + '9' + tel.slice(4)); // 55DD9XXXXXXXX
+      }
+      // 13 dígitos: 55 + DDD(2) + 9 + 8 dígitos → remover 9
+      if (tel.startsWith('55') && tel.length === 13) {
+        variacoes.add(tel.slice(0, 4) + tel.slice(5)); // 55DDXXXXXXXX sem o 9
+      }
+      
+      // Versão sem o 55
+      if (tel.startsWith('55') && tel.length >= 12) {
+        const semCodigo = tel.slice(2);
+        variacoes.add(semCodigo);
+        if (semCodigo.length === 10) variacoes.add('9' + semCodigo); // com 9
+        if (semCodigo.length === 11 && semCodigo[2] === '9') variacoes.add(semCodigo[0] + semCodigo[1] + semCodigo.slice(3)); // sem 9
+      }
+
       for (const v of variacoes) {
         const convs = await base44.entities.ConversaWhatsapp.filter(
           { empresa_id: currentUser.empresa_id, cliente_telefone: v },
@@ -95,18 +119,36 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
 
   const enviarMutation = useMutation({
     mutationFn: async ({ texto, arquivo }) => {
-      if (!conversa) throw new Error('Nenhuma conversa encontrada');
+      let conversaAtual = conversa;
+      
+      // Se não existe conversa, criar uma nova
+      if (!conversaAtual) {
+        const tel = contato.telefone.replace(/\D/g, '');
+        conversaAtual = await base44.entities.ConversaWhatsapp.create({
+          empresa_id: currentUser.empresa_id,
+          cliente_telefone: tel,
+          cliente_nome: contato.nome || tel,
+          status: 'ativa',
+          ultima_mensagem: '',
+          data_ultima_mensagem: new Date().toISOString(),
+          tipo_conexao: 'empresa',
+        });
+        // Atualizar o cache da conversa
+        queryClient.setQueryData(['conversa-funil', contato?.telefone, currentUser?.empresa_id], conversaAtual);
+      }
+
       const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
-        conversa_id: conversa.id,
+        conversa_id: conversaAtual.id,
         mensagem_texto: texto,
-        numero_cliente: conversa.cliente_telefone,
+        numero_cliente: conversaAtual.cliente_telefone,
         empresa_id: currentUser.empresa_id,
         arquivo,
       });
       if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Erro ao enviar');
-      return resp.data;
+      return { ...resp.data, conversaId: conversaAtual.id };
     },
     onMutate: async ({ texto, arquivo }) => {
+      if (!conversaId) return {}; // Conversa será criada no mutationFn
       const qk = ['mensagens-funil', conversaId];
       await queryClient.cancelQueries({ queryKey: qk });
       const previous = queryClient.getQueryData(qk);
@@ -126,11 +168,15 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
       toast.error(err.message);
     },
     onSuccess: async (data, vars) => {
-      await base44.entities.ConversaWhatsapp.update(conversa.id, {
-        ultima_mensagem: vars.texto || vars.arquivo?.nome || '',
-        data_ultima_mensagem: new Date().toISOString(),
-      });
-      queryClient.invalidateQueries({ queryKey: ['mensagens-funil', conversaId] });
+      const cidAtual = data?.conversaId || conversaId;
+      if (cidAtual) {
+        await base44.entities.ConversaWhatsapp.update(cidAtual, {
+          ultima_mensagem: vars.texto || vars.arquivo?.nome || '',
+          data_ultima_mensagem: new Date().toISOString(),
+        });
+        queryClient.invalidateQueries({ queryKey: ['mensagens-funil', cidAtual] });
+        queryClient.invalidateQueries({ queryKey: ['conversa-funil', contato?.telefone, currentUser?.empresa_id] });
+      }
     },
   });
 
