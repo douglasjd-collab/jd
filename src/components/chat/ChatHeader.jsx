@@ -152,7 +152,7 @@ export default function ChatHeader({
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setFunilModalOpen?.(true)}>
               <TrendingUp className="mr-2 h-3.5 w-3.5" />
-              {oportunidadeAtual ? 'Ver no Funil' : '➕ Adicionar ao Funil'}
+              {oportunidadeAtual ? 'Ver no Funil' : 'Adicionar ao Funil'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
