@@ -733,9 +733,6 @@ export default function BatePapo() {
     return unsub;
   }, [empresaId, queryClient]);
 
-  // Não usar refetch agressivo - confiar na subscription em tempo real
-  // O webhook já atualiza automaticamente quando ACK chega
-
   useEffect(() => {
     if (!empresaId || !refetchConversas) return;
     console.log(`🔌 Conectando subscription de mensagens...`);
@@ -1737,6 +1734,8 @@ export default function BatePapo() {
                                      setTagsModalOpen={setTagsModalOpen}
                                      setTransferirModal={setTransferirModal}
                                      onAgendarMensagem={setAgendarMensagemModal}
+                                     setFunilModalOpen={setFunilModalOpen}
+                                     oportunidadeAtual={oportunidadeAtual}
                                      />
                                    <DropdownMenuSeparator />
                                    <DropdownMenuItem
