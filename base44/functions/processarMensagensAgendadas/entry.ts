@@ -44,21 +44,21 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Formatar número — Evolution API espera apenas dígitos (sem @s.whatsapp.net)
         let telefone = (msg.telefone || '').replace(/\D/g, '');
         if (!telefone.startsWith('55')) telefone = '55' + telefone;
-        const jid = telefone + '@s.whatsapp.net';
+        const baseUrl = evolutionUrl.replace(/\/$/, '');
 
         const tipoEnvio = msg.tipo_envio || 'texto';
         let resp;
         let tipoConteudo = 'texto';
 
         if (tipoEnvio === 'texto_imagem' && msg.arquivo_url) {
-          // Enviar imagem com legenda
-          resp = await fetch(`${evolutionUrl}/message/sendMedia/${instancia}`, {
+          resp = await fetch(`${baseUrl}/message/sendMedia/${instancia}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
             body: JSON.stringify({
-              number: jid,
+              number: telefone,
               mediatype: 'image',
               media: msg.arquivo_url,
               caption: msg.mensagem,
@@ -66,12 +66,11 @@ Deno.serve(async (req) => {
           });
           tipoConteudo = 'imagem';
         } else if (tipoEnvio === 'texto_video' && msg.arquivo_url) {
-          // Enviar vídeo com legenda
-          resp = await fetch(`${evolutionUrl}/message/sendMedia/${instancia}`, {
+          resp = await fetch(`${baseUrl}/message/sendMedia/${instancia}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
             body: JSON.stringify({
-              number: jid,
+              number: telefone,
               mediatype: 'video',
               media: msg.arquivo_url,
               caption: msg.mensagem,
@@ -79,11 +78,10 @@ Deno.serve(async (req) => {
           });
           tipoConteudo = 'video';
         } else {
-          // Enviar texto simples
-          resp = await fetch(`${evolutionUrl}/message/sendText/${instancia}`, {
+          resp = await fetch(`${baseUrl}/message/sendText/${instancia}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
-            body: JSON.stringify({ number: jid, text: msg.mensagem }),
+            body: JSON.stringify({ number: telefone, text: msg.mensagem }),
           });
           tipoConteudo = 'texto';
         }
