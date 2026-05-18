@@ -86,7 +86,7 @@ export default function EditarSubcontaModal({ open, onOpenChange, empresa, onSuc
   };
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.asServiceRole.entities.Empresa.update(empresa.id, data),
+    mutationFn: (data) => base44.entities.Empresa.update(empresa.id, data),
     onSuccess: () => {
       toast.success('Subconta atualizada com sucesso!');
       onSuccess();
