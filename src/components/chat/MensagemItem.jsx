@@ -103,9 +103,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar apenas áudio e vídeo ao montar (PDF sob demanda = mais rápido)
+  // Auto-carregar mídia ao montar:
+  // - Vendedor (enviadas por mim): imagem, vídeo e áudio carregam automaticamente
+  // - Cliente (recebidas): apenas áudio e vídeo (imagem fica sob demanda para não sobrecarregar)
   useEffect(() => {
-    if ((mensagem.tipo_conteudo === 'audio' || mensagem.tipo_conteudo === 'video') && mensagem.arquivo_url && !mediaUrl && !loadingMedia) {
+    const isVendedorMsg = mensagem.remetente === 'vendedor';
+    const tiposAutoVendedor = ['imagem', 'audio', 'video'];
+    const tiposAutoCliente = ['audio', 'video'];
+    const tiposAuto = isVendedorMsg ? tiposAutoVendedor : tiposAutoCliente;
+    if (tiposAuto.includes(mensagem.tipo_conteudo) && mensagem.arquivo_url && !mediaUrl && !loadingMedia) {
       handleCarregarMidia();
     }
   }, [mensagem.id]);
@@ -160,15 +166,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         const data = res?.data;
         if (data?.arquivo_url) {
           setMediaUrl(data.arquivo_url);
-          // Auto-download para imagens
-          if (mensagem.tipo_conteudo === 'imagem') {
-            setTimeout(() => {
-              const link = document.createElement('a');
-              link.href = data.arquivo_url;
-              link.download = `image_${mensagem.id}.jpg`;
-              link.click();
-            }, 300);
-          }
         }
       })
       .catch(err => console.error('Erro ao baixar mídia:', err))
