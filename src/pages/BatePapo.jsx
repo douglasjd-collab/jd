@@ -108,6 +108,7 @@ export default function BatePapo() {
 
   const selecionarConversa = async (conversa, forcarSync = true) => {
      setConversaSelecionada(conversa);
+     setMobileViewChat(true); // no mobile, abrir o chat ao selecionar
      localStorage.setItem('ultimaConversaId', conversa.id);
      // Zerar contador de não lidas ao abrir a conversa — garantir que não reapareça
      setNaoLidasPorConversa(prev => {
@@ -281,6 +282,7 @@ export default function BatePapo() {
   const [oportunidadeAtual, setOportunidadeAtual] = useState(null);
   const [agendarMensagemModal, setAgendarMensagemModal] = useState(null); // conversa
   const [agendadasOpen, setAgendadasOpen] = useState(false);
+  const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -1141,28 +1143,7 @@ export default function BatePapo() {
     grupos_bloqueados: conversas.filter(c => isGrupo(c) && (c.bloqueado === true || c.bloqueado === 'true')).length,
   };
 
-  // Debug temporário
-  React.useEffect(() => {
-    if (filtroStatus === 'grupos') {
-      console.log('[GRUPOS DEBUG] Total conversas:', conversas.length);
-      const grupos = conversas.filter(c => isGrupo(c));
-      console.log('[GRUPOS DEBUG] Grupos detectados:', grupos.length);
-      grupos.forEach(g => console.log('  grupo:', { id: g.id, nome: g.cliente_nome, telefone: g.cliente_telefone, whatsapp_id: g.whatsapp_id }));
-      // Mostrar também as primeiras não-grupo para comparar
-      const naoGrupos = conversas.filter(c => !isGrupo(c)).slice(0, 3);
-      naoGrupos.forEach(g => console.log('  não-grupo:', { telefone: g.cliente_telefone, whatsapp_id: g.whatsapp_id }));
-    }
-  }, [filtroStatus, conversas]);
 
-  React.useEffect(() => {
-    if (filtroStatus === 'espera') {
-      const ativas = conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa');
-      const comCliente = ativas.filter(c => c.ultimo_remetente === 'cliente');
-      const comNaoLidas = ativas.filter(c => naoLidasPorConversa[c.id] > 0);
-      console.log('[ESPERA DEBUG] ativas:', ativas.length, 'ultimo_remetente=cliente:', comCliente.length, 'naoLidas>0:', comNaoLidas.length);
-      if (comCliente.length > 0) console.log('[ESPERA DEBUG] exemplo:', comCliente[0]);
-    }
-  }, [filtroStatus, conversasValidas, naoLidasPorConversa]);
 
   const conversasFiltradas = conversas
     .filter(c => {
@@ -1224,6 +1205,13 @@ export default function BatePapo() {
             overflow: hidden;
             display: flex;
             flex-direction: column;
+          }
+          @media (max-width: 1023px) {
+            .jd-messenger-sidebar {
+              max-width: 100% !important;
+              min-width: 100% !important;
+              width: 100% !important;
+            }
           }
           .jd-messenger-top {
             flex-shrink: 0;
@@ -1535,7 +1523,7 @@ export default function BatePapo() {
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className="jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden" style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
+          <Card className={`jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden ${mobileViewChat ? 'hidden lg:flex' : 'flex'}`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
             <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
               <p className="text-lg font-semibold">Conversas</p>
               <div className="flex items-center gap-1">
@@ -1778,9 +1766,16 @@ export default function BatePapo() {
           </Card>
 
           {/* Coluna central - Chat + painel lead */}
-          <Card className="flex flex-1 flex-col overflow-hidden rounded-none rounded-r-xl h-full">
+          <Card className={`flex flex-1 flex-col overflow-hidden rounded-none rounded-r-xl h-full ${!mobileViewChat ? 'hidden lg:flex' : 'flex'}`}>
             {conversaSelecionada ? (
               <>
+                {/* Botão voltar mobile */}
+                <div className="flex lg:hidden items-center gap-2 px-3 py-2 bg-[#10353C] text-white shrink-0">
+                  <button onClick={() => setMobileViewChat(false)} className="p-1.5 rounded-full hover:bg-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                  </button>
+                  <span className="text-sm font-medium">Voltar</span>
+                </div>
                 {/* Header do chat - fixo */}
                 <ChatHeader
                   conversaSelecionada={conversaSelecionada}
