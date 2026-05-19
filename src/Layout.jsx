@@ -32,7 +32,8 @@ import {
         Zap,
         Edit3,
         Shield,
-        Car
+        Car,
+        Phone
       } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -288,6 +289,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
     { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
+    { name: 'Call Center', icon: Phone, page: 'CallCenter', roles: ALL_ROLES },
     { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVendaConsignado', roles: ALL_ROLES },
     { 
       name: 'Empréstimos', 

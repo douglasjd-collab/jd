@@ -1,0 +1,57 @@
+{
+  "name": "ConfiguracaoNvoip",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "numbersip": {
+      "type": "string",
+      "description": "N\u00famero SIP da conta NVOIP"
+    },
+    "user_token": {
+      "type": "string",
+      "description": "User token para gerar access_token"
+    },
+    "napikey": {
+      "type": "string",
+      "description": "Chave de API NVOIP (napikey)"
+    },
+    "access_token": {
+      "type": "string",
+      "description": "Token OAuth gerado"
+    },
+    "refresh_token": {
+      "type": "string",
+      "description": "Refresh token OAuth"
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Quando o token expira"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se a integra\u00e7\u00e3o est\u00e1 ativa"
+    }
+  },
+  "required": [
+    "empresa_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin') return true; return record.empresa_id === user.empresa_id && (user.perfil === 'admin' || user.perfil === 'master');"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin') return true; return record.empresa_id === user.empresa_id && user.perfil === 'admin';"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin') return true; return record.empresa_id === user.empresa_id && user.perfil === 'admin';"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin') return true; return record.empresa_id === user.empresa_id && user.perfil === 'admin';"
+    }
+  }
+}
