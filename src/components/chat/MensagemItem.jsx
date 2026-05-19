@@ -36,7 +36,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Sincronizar statusAtual com a prop mensagem.status para re-render imediato
   useEffect(() => {
     const prioridade = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0, 'erro': -1 };
-    if ((prioridade[mensagem.status] ?? -99) > (prioridade[statusAtual] ?? -99)) {
+    if ((prioridade[mensagem.status] ?? -99) >= (prioridade[statusAtual] ?? -99)) {
       setStatusAtual(mensagem.status);
     }
   }, [mensagem.status]);
