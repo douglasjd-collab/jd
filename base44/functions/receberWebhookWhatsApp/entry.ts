@@ -702,18 +702,22 @@ async function processarWebhook(req, rawBody, base44) {
     if (found.length > 0) { contatoExistente = found[0]; break; }
   }
 
-  // Tentar buscar foto de perfil da Evolution
+  // Tentar buscar foto de perfil da Evolution (com timeout de 3s)
   let fotoUrl = contatoExistente?.foto_url || null;
   try {
     const evolutionUrl = empresaEvolutionUrl;
     const evolutionKey = empresaEvolutionKey;
     const evolutionInstance = instanceFinal || Deno.env.get('EVOLUTION_INSTANCE_NAME');
-    if (evolutionUrl && evolutionKey && evolutionInstance) {
+    if (evolutionUrl && evolutionKey && evolutionInstance && !contatoExistente?.foto_url) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
       const resProfile = await fetch(`${evolutionUrl.replace(/\/$/, '')}/contact/fetchProfile/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: telefoneLimpo })
+        body: JSON.stringify({ number: telefoneLimpo }),
+        signal: controller.signal
       });
+      clearTimeout(timeout);
       if (resProfile.ok) {
         const profileData = await resProfile.json();
         const novaFoto = profileData?.profilePictureUrl || profileData?.picture || profileData?.pictureUrl;
@@ -787,15 +791,17 @@ Deno.serve(async (req) => {
   console.log(`📦 Body: ${rawBody.length} bytes`);
 
   // Criar client com service role para webhooks externos (sem token de usuário)
-  // Usar createClientFromRequest mas todas as operações via asServiceRole
   const base44 = createClientFromRequest(req);
 
-  // Processar IMEDIATAMENTE (não em background)
-  await processarWebhook(req, rawBody, base44).catch((error) => {
+  // ⚡ Responder 200 IMEDIATAMENTE para evitar timeout da Evolution
+  // Processar em background após responder
+  const response = Response.json({ success: true, received: true });
+
+  // Processar em background (não bloqueia a resposta)
+  processarWebhook(req, rawBody, base44).catch((error) => {
     console.error('❌ Erro ao processar:', error.message);
     console.error('❌ STACK:', error.stack);
   });
 
-  // ⚡ Responder 200 após processar
-  return Response.json({ success: true, received: true });
+  return response;
 });
