@@ -184,14 +184,9 @@ export default function FunilVendas() {
     queryKey: ['vendedores'],
     enabled: !!currentUser && (isAdmin || isGerente),
     queryFn: async () => {
-      const [colabs, users] = await Promise.all([
-        base44.entities.Colaborador.filter({ status: 'ativo' }),
-        base44.entities.User.list(),
-      ]);
-      const userIds = new Set(users.map(u => u.id));
+      const colabs = await base44.entities.Colaborador.filter({ status: 'ativo' });
       return colabs.filter(c =>
-        ['vendedor', 'gerente', 'admin', 'master', 'super_admin'].includes(c.perfil) &&
-        userIds.has(c.user_id)
+        ['vendedor', 'gerente', 'admin', 'master', 'super_admin'].includes(c.perfil)
       );
     },
   });
