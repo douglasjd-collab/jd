@@ -4,13 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, MessageSquare } from 'lucide-react';
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, MessageSquare, LogOut, QrCode } from 'lucide-react';
+import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 
 export default function MonitoramentoJD() {
   const [lastCheck, setLastCheck] = useState(null);
   const [diagnostico, setDiagnostico] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [desconectando, setDesconectando] = useState(false);
 
   // Buscar logs recentes
   const { data: logsRecentes } = useQuery({
@@ -67,12 +69,35 @@ export default function MonitoramentoJD() {
     try {
       const resp = await base44.functions.invoke('gerarQrCodeEvolution', { instanceName: 'JDPROMOTORA' });
       if (resp.data.base64) {
-        alert('QR Code gerado! Escaneie com o WhatsApp.');
+        toast.success('QR Code gerado! Escaneie com o WhatsApp.');
       } else {
-        alert('Erro ao gerar QR Code: ' + (resp.data.erro || 'Instância pode estar em processo de conexão'));
+        toast.error('Erro ao gerar QR Code: ' + (resp.data.erro || 'Instância pode estar em processo de conexão'));
       }
     } catch (err) {
-      alert('Erro: ' + err.message);
+      toast.error('Erro: ' + err.message);
+    }
+  };
+
+  const desconectarWhatsapp = async () => {
+    if (!window.confirm('⚠️ Tem certeza que deseja desconectar o WhatsApp? Será necessário gerar um novo QR Code para reconectar.')) {
+      return;
+    }
+    
+    setDesconectando(true);
+    try {
+      const resp = await base44.functions.invoke('desconectarWhatsappEvolution', { 
+        instance_name: 'JDPROMOTORA' 
+      });
+      if (resp.data.success) {
+        toast.success('✅ WhatsApp desconectado com sucesso!');
+        setTimeout(() => executarDiagnostico(), 1000);
+      } else {
+        toast.error('Erro ao desconectar: ' + resp.data.error);
+      }
+    } catch (err) {
+      toast.error('Erro: ' + err.message);
+    } finally {
+      setDesconectando(false);
     }
   };
 
@@ -109,9 +134,18 @@ export default function MonitoramentoJD() {
           <Button
             onClick={gerarQRCode}
             variant="default"
+            className="bg-cyan-500 hover:bg-cyan-600"
           >
-            <MessageSquare className="w-4 h-4 mr-2" />
+            <QrCode className="w-4 h-4 mr-2" />
             Gerar QR Code
+          </Button>
+          <Button
+            onClick={desconectarWhatsapp}
+            disabled={desconectando}
+            variant="destructive"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            {desconectando ? 'Desconectando...' : 'Desconectar'}
           </Button>
         </div>
       </div>
