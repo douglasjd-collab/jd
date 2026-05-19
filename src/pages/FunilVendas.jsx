@@ -1270,7 +1270,7 @@ export default function FunilVendas() {
                                          setAlterarResponsavelOpen(true);
                                        }}>
                                          <UserCheck className="w-4 h-4 mr-2" />
-                                         Alterar Responsáveis
+                                         Adicionar Responsáveis
                                        </DropdownMenuItem>
                                      )}
                                      {podeAlterarQuadro && (

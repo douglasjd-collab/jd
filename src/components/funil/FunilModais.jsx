@@ -25,10 +25,12 @@ export function ModalAlterarResponsavel({
   responsaveisSelecionados, setResponsaveisSelecionados,
   podeAlterarResponsavel, onConfirmar, isPending
 }) {
+  const [searchResponsavel, setSearchResponsavel] = React.useState('');
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSearchResponsavel(''); }}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Gerenciar Responsáveis</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Adicionar Responsáveis</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
             <Label className="text-sm text-slate-600">Oportunidade</Label>
@@ -37,12 +39,27 @@ export function ModalAlterarResponsavel({
           <div>
             <Label className="text-sm mb-2 block">Responsáveis *</Label>
             <p className="text-xs text-slate-500 mb-2">O primeiro selecionado será o principal.</p>
-            <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-lg p-2">
+            <div className="relative mb-2">
+              <input
+                type="text"
+                value={searchResponsavel}
+                onChange={(e) => setSearchResponsavel(e.target.value)}
+                placeholder="Buscar vendedor..."
+                className="w-full h-8 pl-8 pr-3 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" /></svg>
+            </div>
+            <div className="space-y-2 max-h-[260px] overflow-y-auto border rounded-lg p-2">
               {loadingVendedores ? (
                 <p className="text-sm text-slate-500 p-2">Carregando...</p>
               ) : vendedores.length === 0 ? (
                 <p className="text-sm text-slate-500 p-2">Nenhum vendedor disponível</p>
-              ) : vendedores.filter(v => ['vendedor', 'gerente', 'admin', 'master'].includes(v.perfil) && v.status === 'ativo').map((v) => (
+              ) : vendedores.filter(v => {
+                  if (!['vendedor', 'gerente', 'admin', 'master'].includes(v.perfil) || v.status !== 'ativo') return false;
+                  if (!searchResponsavel.trim()) return true;
+                  const name = (v.razao_social || v.full_name || '').toLowerCase();
+                  return name.includes(searchResponsavel.toLowerCase());
+                }).map((v) => (
                 <div
                   key={v.id}
                   className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
