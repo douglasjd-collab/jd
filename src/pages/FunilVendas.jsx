@@ -28,6 +28,7 @@ import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, Trending
 import ChatFunilModal from '@/components/funil/ChatFunilModal';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import { ModalAlterarResponsavel, ModalComentarios, ModalAlterarQuadro, ModalCriarFunil, ModalVenda } from '@/components/funil/FunilModais';
+import VendedorSearchSelect from '@/components/funil/VendedorSearchSelect';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
@@ -1526,26 +1527,16 @@ export default function FunilVendas() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {(isAdmin || isGerente) && (
-                <div>
-                  <Label>Vendedor</Label>
-                  <Select
-                    value={formData.vendedor_id}
-                    onValueChange={(value) => setFormData({ ...formData, vendedor_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[200px]">
-                      {vendedores.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>{v.nome || v.razao_social || v.full_name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
+            {(isAdmin || isGerente) && (
+              <div>
+                <Label>Vendedor</Label>
+                <VendedorSearchSelect
+                  vendedores={vendedores}
+                  value={formData.vendedor_id}
+                  onChange={(value) => setFormData({ ...formData, vendedor_id: value })}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
