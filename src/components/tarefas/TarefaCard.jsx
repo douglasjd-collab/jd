@@ -93,13 +93,19 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
         </p>
       )}
 
-      {/* Setor */}
-      {tarefa.setor && (
-        <p className="text-xs text-slate-400 mb-2 flex items-center gap-1">
-          <Briefcase className="w-3 h-3 flex-shrink-0" />
-          {setorLabel[tarefa.setor] || tarefa.setor}
-        </p>
-      )}
+      {/* Setor e Subsetor */}
+      <div className="flex flex-wrap gap-1 mb-2 items-center">
+        {tarefa.setor_nome && (
+          <Badge variant="outline" className="text-xs px-1.5 py-0 bg-slate-50 text-slate-600 border-slate-200">
+            {tarefa.setor_nome}
+          </Badge>
+        )}
+        {tarefa.subsetor_nome && (
+          <Badge variant="outline" className="text-xs px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">
+            {tarefa.subsetor_nome}
+          </Badge>
+        )}
+      </div>
 
       {/* Badges */}
       <div className="flex flex-wrap gap-1 mb-2">
