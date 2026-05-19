@@ -333,7 +333,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
     { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
-    { name: 'Empresas Parceiras', icon: Building2, page: 'EmpresasParceiras', roles: ['master', 'super_admin', 'admin'] },
     { 
       name: 'Financeiro', 
       icon: Wallet, 
