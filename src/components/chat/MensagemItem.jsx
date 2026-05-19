@@ -103,14 +103,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia ao montar:
-  // - Vendedor (enviadas por mim): imagem, vídeo e áudio carregam automaticamente
-  // - Cliente (recebidas): apenas áudio e vídeo (imagem fica sob demanda para não sobrecarregar)
+  // Auto-carregar mídia ao montar: imagem, vídeo e áudio para todos
   useEffect(() => {
-    const isVendedorMsg = mensagem.remetente === 'vendedor';
-    const tiposAutoVendedor = ['imagem', 'audio', 'video'];
-    const tiposAutoCliente = ['audio', 'video'];
-    const tiposAuto = isVendedorMsg ? tiposAutoVendedor : tiposAutoCliente;
+    const tiposAuto = ['imagem', 'audio', 'video'];
     if (tiposAuto.includes(mensagem.tipo_conteudo) && mensagem.arquivo_url && !mediaUrl && !loadingMedia) {
       handleCarregarMidia();
     }
