@@ -221,14 +221,19 @@ async function processarWebhook(req, rawBody, base44) {
         continue;
       }
 
-      // Extrair status — todos os campos possíveis
-      const rawStatusVal =
-        upd.update?.status ??
-        upd.status ??
-        upd.ack ??
-        upd.update?.ack ??
-        upd.receipt ??
-        null;
+      // Extrair status — todos os campos possíveis, incluindo MessageUpdate[] da Evolution
+      const statusPriorityEv = { 'READ': 4, 'PLAYED': 4, 'VIEWED': 4, 'DELIVERY_ACK': 2, 'DELIVERED': 2, 'DEVICE_READ': 2, 'SERVER_ACK': 1, 'SENT': 1 };
+      let bestStatusVal = upd.update?.status ?? upd.status ?? upd.ack ?? upd.update?.ack ?? upd.receipt ?? null;
+      // Verificar também MessageUpdate array
+      if (Array.isArray(upd.MessageUpdate)) {
+        for (const mu of upd.MessageUpdate) {
+          const s = String(mu?.status || '').toUpperCase();
+          if ((statusPriorityEv[s] ?? -1) > (statusPriorityEv[String(bestStatusVal || '').toUpperCase()] ?? -1)) {
+            bestStatusVal = s;
+          }
+        }
+      }
+      const rawStatusVal = bestStatusVal;
 
       const rawStatus = rawStatusVal !== null && rawStatusVal !== undefined
         ? String(rawStatusVal).toUpperCase().trim()
