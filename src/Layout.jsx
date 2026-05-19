@@ -290,12 +290,12 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
     { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Call Center', icon: Phone, page: 'CallCenter', roles: ALL_ROLES },
-    { name: 'Nova Venda', icon: ShoppingCart, page: 'NovaVendaConsignado', roles: ALL_ROLES },
     { 
       name: 'Empréstimos', 
       icon: FileText, 
       roles: ALL_ROLES,
       submenu: [
+        { name: 'Nova Venda', page: 'NovaVendaConsignado' },
         { name: 'Propostas', page: 'VendasEmprestimos' },
         { name: 'Propostas sem Vendedor', page: 'PropostasSemVendedor' },
       ]
