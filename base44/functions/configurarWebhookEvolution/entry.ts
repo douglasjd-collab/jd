@@ -26,11 +26,14 @@ Deno.serve(async (req) => {
     }
 
     // URL do webhook que a Evolution API deve chamar
-    const WEBHOOK_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp?instance=PROMOTORAJD';
+    // IMPORTANTE: A URL base é fixa, mas CADA EMPRESA deve ter seu próprio ?instance=NOME
+    // Esta função está hardcoded para PROMOTORAJD - deve ser atualizada para usar a empresa correta
+    const WEBHOOK_URL = `https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp?instance=${INSTANCE_NAME}`;
 
     console.log('🔧 Configurando webhook na Evolution API...');
-    console.log('URL:', WEBHOOK_URL);
-    console.log('Instance:', INSTANCE_NAME);
+    console.log('🔗 URL completa:', WEBHOOK_URL);
+    console.log('🏷️ Instance:', INSTANCE_NAME);
+    console.log('📋 URL base fixa: https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp');
 
     // Configurar webhook na Evolution
     // Tentar com header Authorization Bearer primeiro

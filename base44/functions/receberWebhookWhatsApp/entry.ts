@@ -152,6 +152,11 @@ async function processarWebhook(req, rawBody, base44) {
   const payload = normalizarPayload(rawBody);
   if (!payload) {
     console.error('❌ Body inválido');
+    await registrarLog(base44, null, 'erro', {
+      status: 'erro',
+      erro: 'Body inválido',
+      instancia: instanceFromQuery
+    });
     return;
   }
 
@@ -160,14 +165,27 @@ async function processarWebhook(req, rawBody, base44) {
   const instancePayload = payload.instance || '';
   const instanceFinal = instancePayload || instanceFromQuery || '';
 
-  // 🔥 LOG DETALHADO DO PAYLOAD INTEIRO
+  // 🔥 LOGS OBRIGATÓRIOS PARA DEBUG
   console.log(`\n${'='.repeat(70)}`);
   console.log(`📥 WEBHOOK RECEBIDO | ${new Date().toISOString()}`);
+  console.log(`🔗 URL recebida: ${req.url}`);
+  console.log(`🏷️ instance recebida: "${instanceFinal || 'NENHUMA'}"`);
   console.log(`📋 Event: "${event}"`);
   console.log(`🔑 Payload keys: ${Object.keys(payload).join(', ')}`);
   console.log(`📊 Data type: ${Array.isArray(payload.data) ? 'ARRAY' : 'OBJECT'}`);
   console.log(`📄 Full data: ${JSON.stringify(payload.data).substring(0, 500)}`);
   console.log(`${'='.repeat(70)}\n`);
+
+  // ⚠️ VALIDAR INSTÂNCIA
+  if (!instanceFinal) {
+    console.error('❌ ERRO CRÍTICO: Instância não identificada no webhook');
+    await registrarLog(base44, null, 'erro', {
+      status: 'erro',
+      erro: 'Instância não identificada no webhook',
+      instancia: instanceFromQuery
+    });
+    return;
+  }
 
   let data = payload.data || {};
   
@@ -355,38 +373,44 @@ async function processarWebhook(req, rawBody, base44) {
   const isGrupo = remoteJidOriginal.includes('@g.us');
 
   // Determinar empresa pela instância Evolution (cada empresa tem sua instância)
-  let empresaId = '699696c2c9f5bffc2e67402b'; // fallback para JD Promotora
-  let clienteId = null;
-  let colaboradorId = null;
-  let tipoConexao = 'empresa';
+  let empresaId = null;
   let empresaEvolutionUrl = null;
   let empresaEvolutionKey = null;
+  let empresaNome = null;
 
-  if (instanceFinal) {
-    // Buscar empresa que possui esta instância configurada
-    try {
-      const empresasPorInstancia = await base44.asServiceRole.entities.Empresa.filter(
-        { evolution_instance_name: instanceFinal }, null, 5
-      );
-      if (empresasPorInstancia.length > 0) {
-        const emp = empresasPorInstancia[0];
-        empresaId = emp.id;
-        empresaEvolutionUrl = emp.evolution_url || Deno.env.get('EVOLUTION_API_URL');
-        empresaEvolutionKey = emp.evolution_api_key || Deno.env.get('EVOLUTION_API_KEY');
-        console.log(`✅ Empresa identificada pela instância "${instanceFinal}": ${empresaId} | URL: ${empresaEvolutionUrl}`);
-      } else {
-        console.warn(`⚠️ Nenhuma empresa encontrada para instância "${instanceFinal}" — usando fallback`);
-        empresaEvolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-        empresaEvolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-      }
-    } catch (e) {
-      console.warn(`⚠️ Erro ao buscar empresa por instância: ${e.message}`);
-      empresaEvolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-      empresaEvolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+  // 🔥 LOG: Buscando empresa pela instância
+  console.log(`🔍 Buscando empresa com evolution_instance_name = "${instanceFinal}"...`);
+
+  // Buscar empresa que possui esta instância configurada
+  try {
+    const empresasPorInstancia = await base44.asServiceRole.entities.Empresa.filter(
+      { evolution_instance_name: instanceFinal }, null, 5
+    );
+    
+    if (empresasPorInstancia.length > 0) {
+      const emp = empresasPorInstancia[0];
+      empresaId = emp.id;
+      empresaEvolutionUrl = emp.evolution_url || Deno.env.get('EVOLUTION_API_URL');
+      empresaEvolutionKey = emp.evolution_api_key || Deno.env.get('EVOLUTION_API_KEY');
+      empresaNome = emp.nome;
+      console.log(`✅ EMPRESA ENCONTRADA: id="${empresaId}" | nome="${empresaNome}" | instance="${instanceFinal}"`);
+    } else {
+      console.error(`❌ ERRO: Nenhuma empresa encontrada para instância "${instanceFinal}"`);
+      await registrarLog(base44, null, 'erro', {
+        status: 'erro',
+        erro: `Instância "${instanceFinal}" não pertence a nenhuma empresa`,
+        instancia: instanceFinal
+      });
+      return;
     }
-  } else {
-    empresaEvolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-    empresaEvolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+  } catch (e) {
+    console.error(`❌ Erro ao buscar empresa por instância: ${e.message}`);
+    await registrarLog(base44, null, 'erro', {
+      status: 'erro',
+      erro: `Erro ao buscar empresa: ${e.message}`,
+      instancia: instanceFinal
+    });
+    return;
   }
 
   // Para grupos: usar o JID completo como identificador

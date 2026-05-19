@@ -51,7 +51,18 @@ Deno.serve(async (req) => {
     });
 
     console.log(`✅ Config salva para empresa ${empresa_id} | instancia: ${evolution_instance_name}`);
-    return Response.json({ success: true });
+    
+    // 🔥 LOG: URL do webhook gerada
+    const webhookUrlGerada = `https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp?instance=${encodeURIComponent(evolution_instance_name || '')}`;
+    console.log(`🔗 URL do webhook gerada: ${webhookUrlGerada}`);
+    console.log(`📋 URL base fixa: https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp`);
+    console.log(`🏷️ Parâmetro instance: ${evolution_instance_name || 'NENHUM'}`);
+    
+    return Response.json({ 
+      success: true,
+      webhook_url: webhookUrlGerada,
+      message: 'Configurações salvas. URL do webhook gerada automaticamente.'
+    });
 
   } catch (error) {
     console.error('❌ Erro:', error.message);

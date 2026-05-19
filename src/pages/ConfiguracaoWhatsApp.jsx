@@ -129,7 +129,8 @@ export default function ConfiguracaoWhatsApp() {
     return token;
   };
 
-  const BASE_WEBHOOK_URL = 'https://app--waze-crm.base44.app/api/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
+  // URL BASE FIXA - NUNCA DEVE SER ALTERADA
+  const BASE_WEBHOOK_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
 
   const gerarUrlWebhook = (instancia) => {
     if (!instancia) return BASE_WEBHOOK_URL;
@@ -584,14 +585,14 @@ export default function ConfiguracaoWhatsApp() {
             </div>
 
             <div>
-              <Label className="mb-2 block">Nome da Instância</Label>
+              <Label className="mb-2 block font-semibold text-blue-900">🏷️ Nome da Instância (OBRIGATÓRIO)</Label>
               <div className="flex gap-2">
                 <Input 
                   value={editMode ? tempInstance : instanceName}
                   onChange={(e) => editMode && setTempInstance(e.target.value)}
                   readOnly={!editMode}
-                  placeholder="Nome da instância no Evolution API"
-                  className={editMode ? '' : 'bg-slate-50'}
+                  placeholder="Ex: jd_promotora"
+                  className={editMode ? 'border-blue-300' : 'bg-slate-50 border-blue-300'}
                 />
                 {!editMode && instanceName && (
                   <Button variant="outline" size="icon" onClick={() => copyToClipboard(instanceName, 'instance')}>
@@ -599,6 +600,9 @@ export default function ConfiguracaoWhatsApp() {
                   </Button>
                 )}
               </div>
+              <p className="text-xs text-blue-700 mt-1 font-semibold">
+                ⚠️ Este nome identifica sua empresa no webhook. Cada empresa tem sua própria instância.
+              </p>
             </div>
 
             <div>
@@ -848,47 +852,47 @@ export default function ConfiguracaoWhatsApp() {
           </CardHeader>
           <CardContent className="space-y-4">
             
-            <div className="bg-amber-100 border-2 border-amber-400 rounded-lg p-4">
+            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4">
               <div className="flex gap-2 items-start mb-3">
-                <AlertCircle className="w-6 h-6 text-amber-700 mt-0.5 flex-shrink-0" />
+                <CheckCircle2 className="w-6 h-6 text-green-700 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-bold text-amber-900">⚠️ ATENÇÃO: URL do Deployment Atual</p>
-                  <p className="text-sm text-amber-800 mt-2">
-                    A URL abaixo é gerada automaticamente pelo seu deployment atual. 
-                    <strong className="block mt-1">Se você configurou uma URL diferente na Evolution API, as mensagens NÃO chegarão.</strong>
+                  <p className="text-sm font-bold text-green-900">✅ URL DO WEBHOOK GERADA AUTOMATICAMENTE</p>
+                  <p className="text-sm text-green-800 mt-2">
+                    <strong className="block mb-1">Regra obrigatória:</strong>
+                    A URL base é FIXA e NUNCA deve ser alterada. O sistema adiciona automaticamente o parâmetro <code>?instance=</code> com o nome da sua instância.
                   </p>
-                  <ol className="text-sm text-amber-900 mt-3 space-y-1 list-decimal list-inside font-semibold">
-                    <li>Copie a URL abaixo (clique no botão copiar)</li>
+                  <ol className="text-sm text-green-900 mt-3 space-y-1 list-decimal list-inside font-semibold">
+                    <li>Copie a URL abaixo (já inclui sua instância)</li>
                     <li>Vá na Evolution API → Configuração WhatsApp → Webhook URL</li>
-                    <li>Cole esta URL EXATA no campo de webhook</li>
-                    <li>Ou clique no botão "Configurar Automaticamente" abaixo</li>
+                    <li>Cole esta URL EXATA no campo de webhook da Evolution API</li>
                   </ol>
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              {/* URL Base (fixa) */}
+              {/* URL Base (fixa - somente leitura) */}
               <div>
                 <Label className="mb-2 block text-sm font-semibold text-slate-700">
-                  🔒 URL Base (fixa — nunca muda):
+                  🔒 URL Base (fixa — NUNCA ALTERAR):
                 </Label>
                 <div className="flex gap-2">
                   <Input
                     value="https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp"
                     readOnly
-                    className="bg-slate-50 font-mono text-xs text-slate-600"
+                    className="bg-slate-100 font-mono text-xs text-slate-600 border-slate-300"
                   />
                   <Button variant="outline" size="icon" onClick={() => copyToClipboard('https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp', 'base')}>
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-slate-500 mt-1">Esta URL é fixa e nunca muda.</p>
               </div>
 
               {/* URL da Subconta (com nome da empresa) */}
               <div>
                 <Label className="mb-2 block text-base font-bold text-green-900">
-                  📋 URL desta Subconta — CONFIGURE NA EVOLUTION API:
+                  📋 URL COMPLETA DO WEBHOOK — CONFIGURE NA EVOLUTION API:
                 </Label>
                 {loading ? (
                   <div className="flex items-center gap-2 text-slate-500">
@@ -917,10 +921,13 @@ export default function ConfiguracaoWhatsApp() {
                     </div>
                     <div className="p-3 bg-green-100 border border-green-300 rounded-lg">
                       <p className="text-xs text-green-900 font-semibold">
-                        ✅ URL gerada com o nome da instância: <code className="bg-white px-2 py-1 rounded">={instanceName || 'NOME_INSTANCIA'}</code>
+                        ✅ URL gerada automaticamente: <code className="bg-white px-2 py-1 rounded">?instance={instanceName || 'NOME_INSTANCIA'}</code>
                       </p>
-                      <p className="text-xs text-green-800 mt-1">
-                        Cada subconta tem sua própria URL com o nome da instância, permitindo ao webhook identificar qual empresa recebeu a mensagem.
+                      <p className="text-xs text-green-800 mt-1 font-semibold">
+                        ⚠️ IMPORTANTE: Cada empresa tem sua própria URL com seu nome de instância único. Isso garante que as mensagens cheguem apenas na empresa correta.
+                      </p>
+                      <p className="text-xs text-green-700 mt-2">
+                        🔍 No webhook, o sistema lê o parâmetro <code>instance</code>, identifica sua empresa e salva as mensagens apenas no seu banco.
                       </p>
                     </div>
                   </>
