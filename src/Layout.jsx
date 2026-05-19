@@ -289,6 +289,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
     { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
+    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ALL_ROLES },
     { name: 'Call Center', icon: Phone, page: 'CallCenter', roles: ALL_ROLES },
     { 
       name: 'Empréstimos', 
@@ -326,7 +327,7 @@ export default function Layout({ children, currentPageName }) {
       ]
     },
     { name: 'Financiamento de Veículos', icon: Car, page: 'FinanciamentoVeiculos', roles: ALL_ROLES },
-    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ALL_ROLES },
+
     { name: 'Tarefas', icon: CheckSquare, page: 'Tarefas', roles: ALL_ROLES },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
     { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
