@@ -536,13 +536,21 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   };
 
+  const isSticker = mensagem.tipo_conteudo === 'imagem' && (
+    mensagem.arquivo_nome?.toLowerCase().includes('sticker') ||
+    mensagem.texto === 'Sticker' ||
+    (!mensagem.texto && mensagem.arquivo_url && !mensagem.arquivo_nome)
+  );
+
   return (
     <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
       <div
-        className={`max-w-md px-4 py-3 rounded-2xl shadow-sm ${
-          isVendedor
-            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md'
-            : 'bg-white text-slate-900 rounded-bl-md border border-slate-200'
+        className={`max-w-md rounded-2xl shadow-sm ${
+          isSticker
+            ? 'bg-transparent border-0 shadow-none px-0 py-0'
+            : isVendedor
+            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md px-4 py-3'
+            : 'bg-white text-slate-900 rounded-bl-md border border-slate-200 px-4 py-3'
         }`}
       >
         {/* Nome do remetente em grupos com avatar */}
