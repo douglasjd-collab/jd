@@ -593,17 +593,24 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
           </p>
           {isVendedor && (
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5" title={statusAtual}>
               {statusAtual === 'lida' ? (
-                <span className="text-sm font-bold" style={{ color: '#53bdeb', transition: 'color 0.2s' }}>✓✓</span>
+                // Dois checks AZUIS = lida pelo destinatário
+                <span className="text-sm font-bold" style={{ color: '#53bdeb', transition: 'color 0.3s' }}>✓✓</span>
               ) : statusAtual === 'entregue' ? (
-                <span className="text-sm font-bold text-white/80">✓✓</span>
+                // Dois checks CINZA = entregue no celular, ainda não lida
+                <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓✓</span>
               ) : statusAtual === 'enviada' ? (
-                <span className="text-sm font-bold text-white/80">✓✓</span>
+                // Um check = saiu do servidor
+                <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓</span>
               ) : statusAtual === 'erro' ? (
-                <span className="text-sm font-bold text-red-300">✕</span>
+                // X vermelho = falha no envio
+                <span className="text-sm font-bold text-red-300" title="Falha no envio">✕</span>
               ) : (
-                <span className="text-sm font-bold text-white/50">✓</span>
+                // Relógio = pendente (ainda não saiu do servidor)
+                <svg className="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
               )}
             </div>
           )}

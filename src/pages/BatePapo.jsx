@@ -709,24 +709,28 @@ export default function BatePapo() {
   React.useEffect(() => { conversasRef.current = conversas; }, [conversas]);
   React.useEffect(() => { empresaIdRef.current = empresaId; }, [empresaId]);
 
-  // Subscription para updates de status de mensagens (ACKs/leitura)
+  // Subscription para updates de status de mensagens (ACKs/leitura) em tempo real
   useEffect(() => {
     if (!empresaId) return;
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
       if (event.type !== 'update') return;
       const msgData = event.data;
       if (!msgData?.id || !msgData?.conversa_id) return;
-      if (!msgData.status) return; // ignorar updates sem status
 
-      console.log(`🟢 ACK recebido via subscription: ${msgData.id} → ${msgData.status}`);
+      console.log(`🟢 Update msg via subscription: ${msgData.id} → status: ${msgData.status}`);
 
-      // Atualizar cache LOCAL imediatamente com novo array para forçar re-render
+      // Atualizar cache LOCAL imediatamente — mesclar todos os campos atualizados (status, reaction, etc.)
       queryClient.setQueryData(['mensagens-whatsapp', msgData.conversa_id], (old) => {
         if (!old || !Array.isArray(old)) return old;
         const idx = old.findIndex(m => m.id === msgData.id);
-        if (idx === -1) return old; // mensagem não encontrada, não alterar
+        if (idx === -1) return old;
         const nova = [...old];
-        nova[idx] = { ...nova[idx], status: msgData.status };
+        // Mesclar com prioridade para status (nunca fazer downgrade)
+        const statusPriority = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0 };
+        const novoStatus = msgData.status && (statusPriority[msgData.status] ?? -1) >= (statusPriority[nova[idx].status] ?? -1)
+          ? msgData.status
+          : nova[idx].status;
+        nova[idx] = { ...nova[idx], ...msgData, status: novoStatus };
         return nova;
       });
     });
