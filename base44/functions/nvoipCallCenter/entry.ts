@@ -3,6 +3,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const NVOIP_BASE = 'https://api.nvoip.com.br/v2';
 const BASIC_AUTH = 'Basic TnZvaXBBcGlWMjpUblp2YVhCQmNHbFdNakl3TWpFPQ==';
 
+async function getEmpresaId(base44, user) {
+  // Tenta pegar empresa_id do user (caso já venha populado)
+  if (user.empresa_id) return user.empresa_id;
+
+  // Busca pelo colaborador vinculado ao user
+  const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id });
+  if (colabs && colabs.length > 0) {
+    const colab = colabs.find(c => c.empresa_id && c.status === 'ativo') || colabs[0];
+    if (colab && colab.empresa_id) return colab.empresa_id;
+  }
+
+  throw new Error('Empresa não encontrada para este usuário');
+}
+
 async function getNvoipConfig(base44, empresaId) {
   const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
   if (!configs || configs.length === 0) throw new Error('Configuração NVOIP não encontrada para esta empresa');
@@ -10,7 +24,6 @@ async function getNvoipConfig(base44, empresaId) {
 }
 
 async function getValidToken(base44, config) {
-  // Verifica se o token ainda é válido
   if (config.access_token && config.token_expires_at) {
     const expiresAt = new Date(config.token_expires_at);
     if (expiresAt > new Date(Date.now() + 60000)) {
@@ -18,7 +31,6 @@ async function getValidToken(base44, config) {
     }
   }
 
-  // Gera novo token
   const body = new URLSearchParams();
   if (config.refresh_token) {
     body.append('grant_type', 'refresh_token');
@@ -39,7 +51,6 @@ async function getValidToken(base44, config) {
   });
 
   if (!res.ok) {
-    // Se refresh falhou, tenta com credenciais
     if (config.refresh_token) {
       const body2 = new URLSearchParams();
       body2.append('username', config.numbersip);
@@ -50,7 +61,10 @@ async function getValidToken(base44, config) {
         headers: { 'Authorization': BASIC_AUTH, 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body2.toString(),
       });
-      if (!res2.ok) throw new Error('Falha ao autenticar na NVOIP');
+      if (!res2.ok) {
+        const errData = await res2.json().catch(() => ({}));
+        throw new Error(`Falha ao autenticar na NVOIP: ${errData.error_description || errData.message || JSON.stringify(errData)}`);
+      }
       const data2 = await res2.json();
       await base44.asServiceRole.entities.ConfiguracaoNvoip.update(config.id, {
         access_token: data2.access_token,
@@ -59,7 +73,8 @@ async function getValidToken(base44, config) {
       });
       return data2.access_token;
     }
-    throw new Error('Falha ao autenticar na NVOIP');
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(`Falha ao autenticar na NVOIP: ${errData.error_description || errData.message || JSON.stringify(errData)}`);
   }
 
   const data = await res.json();
@@ -78,28 +93,15 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Não autorizado' }, { status: 401 });
 
-    const empresaId = user.empresa_id;
     const body = await req.json().catch(() => ({}));
     const { action } = body;
 
-    // Ação especial: salvar configuração
-    if (action === 'salvarConfig') {
-      const { numbersip, user_token, napikey } = body;
-      const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
-
-      const configData = { empresa_id: empresaId, numbersip, user_token, napikey, ativo: false, access_token: null, refresh_token: null, token_expires_at: null };
-
-      if (configs.length > 0) {
-        await base44.asServiceRole.entities.ConfiguracaoNvoip.update(configs[0].id, configData);
-      } else {
-        await base44.asServiceRole.entities.ConfiguracaoNvoip.create(configData);
-      }
-      return Response.json({ success: true });
-    }
-
-    // Ação: testar conexão
+    // Testar conexão não precisa de empresa salva
     if (action === 'testarConexao') {
       const { numbersip, user_token } = body;
+      if (!numbersip || !user_token) {
+        return Response.json({ success: false, error: 'NumberSIP e User Token são obrigatórios' });
+      }
       const bodyParams = new URLSearchParams();
       bodyParams.append('username', numbersip);
       bodyParams.append('password', user_token);
@@ -111,23 +113,49 @@ Deno.serve(async (req) => {
         body: bodyParams.toString(),
       });
       const data = await res.json();
-      if (!res.ok) return Response.json({ success: false, error: data });
+      if (!res.ok) {
+        return Response.json({ success: false, error: data.error_description || data.message || JSON.stringify(data) });
+      }
       return Response.json({ success: true, access_token: data.access_token });
     }
 
-    // Para as demais ações, precisamos da config
+    // Buscar empresa_id do colaborador
+    const empresaId = await getEmpresaId(base44, user);
+
+    // Salvar configuração
+    if (action === 'salvarConfig') {
+      const { numbersip, user_token, napikey } = body;
+      const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
+
+      const configData = {
+        empresa_id: empresaId,
+        numbersip,
+        user_token,
+        napikey: napikey || null,
+        ativo: false,
+        access_token: null,
+        refresh_token: null,
+        token_expires_at: null,
+      };
+
+      if (configs.length > 0) {
+        await base44.asServiceRole.entities.ConfiguracaoNvoip.update(configs[0].id, configData);
+      } else {
+        await base44.asServiceRole.entities.ConfiguracaoNvoip.create(configData);
+      }
+      return Response.json({ success: true });
+    }
+
     const config = await getNvoipConfig(base44, empresaId);
     const token = await getValidToken(base44, config);
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-    // Consultar saldo
     if (action === 'saldo') {
       const res = await fetch(`${NVOIP_BASE}/balance`, { headers });
       const data = await res.json();
       return Response.json(data);
     }
 
-    // Realizar chamada
     if (action === 'realizarChamada') {
       const { caller, called } = body;
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -139,7 +167,6 @@ Deno.serve(async (req) => {
       return Response.json(data);
     }
 
-    // Consultar chamada
     if (action === 'consultarChamada') {
       const { callId } = body;
       const res = await fetch(`${NVOIP_BASE}/calls?callId=${callId}`, { headers });
@@ -147,7 +174,6 @@ Deno.serve(async (req) => {
       return Response.json(data);
     }
 
-    // Encerrar chamada
     if (action === 'encerrarChamada') {
       const { callId } = body;
       const res = await fetch(`${NVOIP_BASE}/endcall?callId=${callId}`, { headers });
@@ -155,7 +181,6 @@ Deno.serve(async (req) => {
       return Response.json(data);
     }
 
-    // Histórico de chamadas
     if (action === 'historicoChamadas') {
       const { type, date } = body;
       let url = `${NVOIP_BASE}/calls/history`;
@@ -168,7 +193,6 @@ Deno.serve(async (req) => {
       return Response.json({ calls: Array.isArray(data) ? data : [data] });
     }
 
-    // Enviar SMS
     if (action === 'enviarSMS') {
       const { numberPhone, message, flashSms } = body;
       const res = await fetch(`${NVOIP_BASE}/sms`, {
@@ -180,7 +204,6 @@ Deno.serve(async (req) => {
       return Response.json(data);
     }
 
-    // Torpedo de voz
     if (action === 'torpedoVoz') {
       const { caller, called, mensagem } = body;
       const res = await fetch(`${NVOIP_BASE}/torpedo/voice`, {
@@ -197,7 +220,6 @@ Deno.serve(async (req) => {
       return Response.json(data);
     }
 
-    // Listar usuários
     if (action === 'listarUsuarios') {
       const res = await fetch(`${NVOIP_BASE}/list/users`, { headers });
       const data = await res.json();
