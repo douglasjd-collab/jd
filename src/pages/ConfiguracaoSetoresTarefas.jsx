@@ -176,23 +176,25 @@ export default function ConfiguracaoSetoresTarefas() {
 
   return (
     <div className="space-y-6 p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
+      <div className="mb-6">
         <Button 
           variant="ghost" 
-          size="icon"
-          className="h-10 w-10"
+          size="sm"
+          className="h-auto px-0 py-0 text-sm text-slate-600 hover:text-slate-900 font-medium gap-1 mb-2"
           onClick={() => window.history.back()}
           title="Voltar"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold text-slate-900">Configuração de Setores e Tipos de Tarefa</h1>
-          <p className="text-sm text-slate-500 mt-1">Organize e gerencie os setores e os tipos de tarefa do sistema.</p>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-slate-900">Configuração de Setores e Tipos de Tarefa</h1>
+            <p className="text-sm text-slate-500 mt-1">Organize e gerencie os setores e os tipos de tarefa do sistema.</p>
+          </div>
+          <Button onClick={() => abrirFormSetor()} className="gap-2 bg-blue-600 hover:bg-blue-700 flex-shrink-0">
+            <Plus className="w-4 h-4" /> Novo Setor
+          </Button>
         </div>
-        <Button onClick={() => abrirFormSetor()} className="gap-2 bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4" /> Novo Setor
-        </Button>
       </div>
 
       {/* Lista de Setores com Accordion */}
