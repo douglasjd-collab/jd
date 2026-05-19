@@ -223,20 +223,38 @@ async function processarWebhook(req, rawBody, base44) {
       console.log(`  ✓ msgId: ${remoteId} | status: "${rawStatus}" → ${novoStatus}`);
 
       if (remoteId && novoStatus) {
-        const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+        const statusPriority = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0 };
+
+        // Busca primária: pelo whatsapp_message_id exato
+        let msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
           { whatsapp_message_id: remoteId }, '-created_date', 1
         );
+
+        // Fallback: busca parcial por ID limpo (Evolution às vezes usa formato diferente)
+        if (!msgs || msgs.length === 0) {
+          const idLimpo = remoteId.replace(/[^A-Za-z0-9]/g, '');
+          const statusAnterior = novoStatus === 'lida' ? 'entregue' : (novoStatus === 'entregue' ? 'enviada' : 'pendente');
+          const recentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+            { remetente: 'vendedor', status: statusAnterior }, '-created_date', 200
+          );
+          const encontrado = recentes.find(m => {
+            if (!m.whatsapp_message_id) return false;
+            const idMsg = m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '');
+            return idMsg === idLimpo;
+          });
+          if (encontrado) msgs = [encontrado];
+        }
+
         if (msgs?.length > 0) {
           const msgAtual = msgs[0];
-          // Nunca downgrade de status (lida > entregue > enviada)
-          const statusPriority = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0 };
           const novaProioridade = statusPriority[novoStatus] || 0;
           const atualPrioridade = statusPriority[msgAtual.status] || 0;
-          
           if (novaProioridade >= atualPrioridade) {
             await base44.asServiceRole.entities.MensagemWhatsapp.update(msgAtual.id, { status: novoStatus });
-            console.log(`✅ ACK aplicado: ${msgAtual.status} → ${novoStatus}`);
+            console.log(`✅ ACK aplicado: ${msgAtual.status} → ${novoStatus} (id: ${remoteId})`);
           }
+        } else {
+          console.warn(`⚠️ ACK: mensagem não encontrada para id: ${remoteId}`);
         }
       }
     }

@@ -270,14 +270,19 @@ Deno.serve(async (req) => {
       }
       
       // Extrair message ID de diferentes formatos da Evolution
-      if (result.message?.id) messageIdEvolution = result.message.id;
-      else if (result.key?.id) messageIdEvolution = result.key.id;
-      else if (result.id) messageIdEvolution = result.id;
-      else if (result.messageId) messageIdEvolution = result.messageId;
-      else if (result.messages?.[0]?.id) messageIdEvolution = result.messages[0].id;
+      // Tentar todos os campos conhecidos — incluindo nested structures
+      messageIdEvolution =
+        result.key?.id ||
+        result.message?.key?.id ||
+        result.message?.id ||
+        result.messageId ||
+        result.id ||
+        result.messages?.[0]?.key?.id ||
+        result.messages?.[0]?.id ||
+        null;
       
       console.log('📍 Message ID extraído:', messageIdEvolution || 'NÃO ENCONTRADO');
-      console.log('📋 Response completo:', JSON.stringify(result).substring(0, 500));
+      console.log('📋 Response completo:', JSON.stringify(result).substring(0, 800));
       console.log('✅ Enviado via Evolution');
     }
 

@@ -58,7 +58,29 @@ Deno.serve(async (req) => {
             console.log(`⏭️ ACK ignorado (não upgrade): ${msg.status} → ${novoStatus}`);
           }
         } else {
-          console.warn(`⚠️ Mensagem ${messageId} não encontrada no banco`);
+          // Fallback: tentar buscar por ID sem prefixo/sufixo (Evolution às vezes adiciona caracteres)
+          // Tentar buscar as mensagens mais recentes do vendedor e comparar por ID parcial
+          const idLimpo = messageId.replace(/[^A-Za-z0-9]/g, '');
+          const recentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+            { remetente: 'vendedor', status: novoStatus === 'lida' ? 'entregue' : (novoStatus === 'entregue' ? 'enviada' : 'pendente') },
+            '-created_date',
+            100
+          );
+          const encontrado = recentes.find(m => {
+            if (!m.whatsapp_message_id) return false;
+            const idMsg = m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '');
+            return idMsg === idLimpo || idMsg.includes(idLimpo) || idLimpo.includes(idMsg);
+          });
+          if (encontrado) {
+            const novaProioridade2 = statusPriority[novoStatus] || 0;
+            const atualPrioridade2 = statusPriority[encontrado.status] || 0;
+            if (novaProioridade2 > atualPrioridade2) {
+              await base44.asServiceRole.entities.MensagemWhatsapp.update(encontrado.id, { status: novoStatus });
+              console.log(`✅ ACK aplicado via fallback parcial: ${encontrado.status} → ${novoStatus}`);
+            }
+          } else {
+            console.warn(`⚠️ Mensagem ${messageId} não encontrada no banco (nem via fallback)`);
+          }
         }
       }
     } else {
