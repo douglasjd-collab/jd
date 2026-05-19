@@ -968,10 +968,9 @@ export default function BatePapo() {
         }).then(() => refetchConversas()).catch(() => {});
       }
 
-      // 3. Remover mensagem temp_ do cache E trazer a mensagem real do banco
-      queryClient.setQueryData(['mensagens-whatsapp', conversaSelecionadaId], (old = []) =>
-        old.filter(m => !m.id?.startsWith('temp_'))
-      );
+      // 3. Buscar mensagem real do banco imediatamente e substituir o temp_
+      queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId], type: 'active' });
+
       // 4. Após 3s, forçar busca de status atualizado na Evolution (ACK pode demorar)
       setTimeout(() => {
         base44.functions.invoke('forcarStatusMensagensRecentes', {
