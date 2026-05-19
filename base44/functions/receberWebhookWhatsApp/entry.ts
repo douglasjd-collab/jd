@@ -711,7 +711,7 @@ async function processarWebhook(req, rawBody, base44) {
     if (evolutionUrl && evolutionKey && evolutionInstance && !contatoExistente?.foto_url) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
-      const resProfile = await fetch(`${evolutionUrl.replace(/\/$/, '')}/contact/fetchProfile/${evolutionInstance}`, {
+      const resProfile = await fetch(`${evolutionUrl.replace(/\/$/, '')}/chat/fetchProfile/${evolutionInstance}`, {
         method: 'POST',
         headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ number: telefoneLimpo }),
