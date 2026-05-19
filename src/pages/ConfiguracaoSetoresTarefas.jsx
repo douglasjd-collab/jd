@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit2, Trash2, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ConfiguracaoSetoresTarefas() {
@@ -20,6 +20,7 @@ export default function ConfiguracaoSetoresTarefas() {
   const [setorSelecionado, setSetorSelecionado] = useState(null);
   const [formSetor, setFormSetor] = useState({ nome: '', descricao: '', status: 'ativo' });
   const [formSubsetor, setFormSubsetor] = useState({ nome: '', descricao: '', ativo: true, setor_id: '' });
+  const [setoresExpandidos, setSetoresExpandidos] = useState({});
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -163,88 +164,143 @@ export default function ConfiguracaoSetoresTarefas() {
 
   const subsetoresPorSetor = (setorId) => subsetores.filter(s => s.setor_id === setorId);
 
+  const toggleSetor = (setorId) => {
+    setSetoresExpandidos(prev => ({ ...prev, [setorId]: !prev[setorId] }));
+  };
+
   if (!user || !empresaId) return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin" /></div>;
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold">Configuração de Setores e Subsetores</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Configuração de Setores e Subsetores</h1>
+        <Button onClick={() => abrirFormSetor()} className="gap-2"><Plus className="w-4 h-4" /> Novo Setor</Button>
+      </div>
 
-      {/* Setores */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Setores de Tarefas</CardTitle>
-          <Button onClick={() => abrirFormSetor()} className="gap-2"><Plus className="w-4 h-4" /> Novo Setor</Button>
-        </CardHeader>
-        <CardContent>
-          {loadingSetores ? (
-            <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
-          ) : setores.length === 0 ? (
-            <p className="text-slate-500 text-center py-8">Nenhum setor cadastrado</p>
-          ) : (
-            <div className="space-y-3">
-              {setores.map((setor) => (
-                <div key={setor.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50">
-                  <div>
-                    <h3 className="font-semibold">{setor.nome}</h3>
-                    {setor.descricao && <p className="text-sm text-slate-500">{setor.descricao}</p>}
-                    <p className="text-xs text-slate-400 mt-1">{subsetoresPorSetor(setor.id).length} subsetores</p>
+      {/* Lista de Setores com Accordion */}
+      <div className="space-y-3">
+        {loadingSetores ? (
+          <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin" /></div>
+        ) : setores.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-slate-500">
+              Nenhum setor cadastrado. Clique em "Novo Setor" para começar.
+            </CardContent>
+          </Card>
+        ) : (
+          setores.map((setor) => {
+            const subsetoresDoSetor = subsetoresPorSetor(setor.id);
+            const expandido = setoresExpandidos[setor.id];
+            
+            return (
+              <Card key={setor.id} className="overflow-hidden">
+                {/* Cabeçalho do Setor (clicável) */}
+                <div
+                  className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
+                  onClick={() => toggleSetor(setor.id)}
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${expandido ? 'rotate-90' : ''}`} />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-slate-800">{setor.nome}</h3>
+                      {setor.descricao && <p className="text-sm text-slate-500 mt-0.5">{setor.descricao}</p>}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={setor.status === 'ativo' ? 'default' : 'secondary'}>{setor.status}</Badge>
-                    <Button size="sm" variant="ghost" onClick={() => abrirFormSetor(setor)}><Edit2 className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => {
-                      if (confirm('Deletar este setor?')) deletarSetorMutation.mutate(setor.id);
-                    }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={setor.status === 'ativo' ? 'default' : 'secondary'} className="text-xs">
+                      {subsetoresDoSetor.length} {subsetoresDoSetor.length === 1 ? 'subsetor' : 'subsetores'}
+                    </Badge>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => { e.stopPropagation(); abrirFormSetor(setor); }}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (confirm('Deletar este setor?')) deletarSetorMutation.mutate(setor.id); 
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Subsetores por Setor */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Subsetores por Setor</CardTitle>
-          <Button onClick={() => abrirFormSubsetor()} className="gap-2"><Plus className="w-4 h-4" /> Novo Subsetor</Button>
-        </CardHeader>
-        <CardContent>
-          {loadingSubsetores ? (
-            <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
-          ) : (
-            <div className="space-y-4">
-              {setores.map((setor) => (
-                <div key={setor.id} className="border rounded-lg p-4">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <ChevronDown className="w-4 h-4" /> {setor.nome}
-                  </h3>
-                  <div className="space-y-2 ml-6">
-                    {subsetoresPorSetor(setor.id).map((subsetor) => (
-                      <div key={subsetor.id} className="flex items-center justify-between p-3 bg-slate-50 rounded">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{subsetor.nome}</p>
-                          {subsetor.descricao && <p className="text-xs text-slate-500">{subsetor.descricao}</p>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={subsetor.ativo ? 'default' : 'secondary'}>{subsetor.ativo ? 'ativo' : 'inativo'}</Badge>
-                          <Button size="sm" variant="ghost" onClick={() => abrirFormSubsetor(subsetor)}><Edit2 className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => {
-                            if (confirm('Deletar este subsetor?')) deletarSubsetorMutation.mutate(subsetor.id);
-                          }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                        </div>
-                      </div>
-                    ))}
-                    {subsetoresPorSetor(setor.id).length === 0 && (
-                      <p className="text-xs text-slate-400 italic">Nenhum subsetor cadastrado para este setor</p>
-                    )}
+                {/* Conteúdo Expandido (Subsetores) */}
+                {expandido && (
+                  <div className="border-t bg-white">
+                    <div className="p-4 space-y-2">
+                      {/* Botão Novo Subsetor */}
+                      <Button 
+                        onClick={() => {
+                          setFormSubsetor({ nome: '', descricao: '', ativo: true, setor_id: setor.id });
+                          setSetorSelecionado(null);
+                          setSubsetorModal(true);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 w-full border-dashed"
+                      >
+                        <Plus className="w-4 h-4" /> Adicionar Subsetor
+                      </Button>
+
+                      {/* Lista de Subsetores */}
+                      {subsetoresDoSetor.length > 0 ? (
+                        subsetoresDoSetor.map((subsetor) => (
+                          <div 
+                            key={subsetor.id} 
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm text-slate-800">{subsetor.nome}</p>
+                                <Badge variant={subsetor.ativo ? 'default' : 'secondary'} className="text-xs">
+                                  {subsetor.ativo ? 'ativo' : 'inativo'}
+                                </Badge>
+                              </div>
+                              {subsetor.descricao && <p className="text-xs text-slate-500 mt-1">{subsetor.descricao}</p>}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0"
+                                onClick={() => abrirFormSubsetor(subsetor)}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0"
+                                onClick={() => {
+                                  if (confirm('Deletar este subsetor?')) deletarSubsetorMutation.mutate(subsetor.id);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-400 italic text-center py-4">
+                          Nenhum subsetor cadastrado para este setor
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                )}
+              </Card>
+            );
+          })
+        )}
+      </div>
 
       {/* Modal Setor */}
       <Dialog open={setorModal} onOpenChange={setSetorModal}>
@@ -306,7 +362,7 @@ export default function ConfiguracaoSetoresTarefas() {
               <Textarea value={formSubsetor.descricao} onChange={e => setFormSubsetor({ ...formSubsetor, descricao: e.target.value })} placeholder="Descrição do subsetor..." rows={3} />
             </div>
             <div>
-              <Label>Ativo</Label>
+              <Label>Status</Label>
               <Select value={formSubsetor.ativo ? 'sim' : 'nao'} onValueChange={v => setFormSubsetor({ ...formSubsetor, ativo: v === 'sim' })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
