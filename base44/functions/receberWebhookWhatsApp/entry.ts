@@ -221,6 +221,9 @@ async function processarWebhook(req, rawBody, base44) {
         continue;
       }
 
+      // Log do objeto completo do update para diagnóstico
+      console.log(`  📦 upd completo: ${JSON.stringify(upd).substring(0, 400)}`);
+
       // Extrair status — todos os campos possíveis, incluindo MessageUpdate[] da Evolution
       const statusPriorityEv = { 'READ': 4, 'PLAYED': 4, 'VIEWED': 4, 'DELIVERY_ACK': 2, 'DELIVERED': 2, 'DEVICE_READ': 2, 'SERVER_ACK': 1, 'SENT': 1 };
       let bestStatusVal = upd.update?.status ?? upd.status ?? upd.ack ?? upd.update?.ack ?? upd.receipt ?? null;
