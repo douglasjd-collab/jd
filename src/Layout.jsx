@@ -312,6 +312,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Simulador', page: 'SimuladorEscolha' },
         { name: 'Resultado de Assembleia', page: 'HistoricoResultadoAssembleia' },
         { name: 'Oferta de Lance', page: 'OfertaLance' },
+        { name: 'Cartas Contempladas', page: 'CartasContempladas' },
       ]
     },
     {
@@ -330,7 +331,7 @@ export default function Layout({ children, currentPageName }) {
 
     { name: 'Tarefas', icon: CheckSquare, page: 'Tarefas', roles: ALL_ROLES },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
-    { name: 'Cartas Contempladas', icon: FileText, page: 'CartasContempladas', roles: ALL_ROLES },
+
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
     { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
     { 
