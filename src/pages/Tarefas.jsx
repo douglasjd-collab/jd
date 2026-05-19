@@ -499,6 +499,7 @@ export default function Tarefas() {
         currentUser={currentUser}
         onSaveTemplate={(data) => salvarTemplate.mutate(data)}
         tiposList={tiposList}
+        empresaId={empresaId}
       />
 
       <TarefaDetalhesModal

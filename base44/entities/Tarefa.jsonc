@@ -34,29 +34,21 @@
       "type": "string",
       "description": "Senha GOV do cliente"
     },
-    "setor": {
+    "setor_id": {
       "type": "string",
-      "enum": [
-        "consorcio",
-        "emprestimo",
-        "financiamento",
-        "administrativo",
-        "cobranca"
-      ],
-      "description": "Setor/funil da tarefa"
+      "description": "ID do setor da tarefa"
     },
-    "tipo": {
+    "setor_nome": {
       "type": "string",
-      "enum": [
-        "documento",
-        "ligacao",
-        "cobranca",
-        "visita",
-        "analise",
-        "pendencia",
-        "outros"
-      ],
-      "description": "Tipo da tarefa"
+      "description": "Nome do setor (denormalizado)"
+    },
+    "tipo_id": {
+      "type": "string",
+      "description": "ID do tipo de tarefa"
+    },
+    "tipo_nome": {
+      "type": "string",
+      "description": "Nome do tipo de tarefa (denormalizado)"
     },
     "origem": {
       "type": "string",
