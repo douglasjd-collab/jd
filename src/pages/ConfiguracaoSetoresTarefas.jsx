@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit2, Trash2, Loader2, ChevronRight, Search, GripVertical, FolderOpen, Info } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, ChevronRight, Search, GripVertical, FolderOpen, Info, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ConfiguracaoSetoresTarefas() {
@@ -176,8 +176,17 @@ export default function ConfiguracaoSetoresTarefas() {
 
   return (
     <div className="space-y-6 p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-2">
-        <div>
+      <div className="flex items-center gap-4 mb-6">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => window.history.back()}
+          title="Voltar"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold text-slate-900">Configuração de Setores e Tipos de Tarefa</h1>
           <p className="text-sm text-slate-500 mt-1">Organize e gerencie os setores e os tipos de tarefa do sistema.</p>
         </div>
