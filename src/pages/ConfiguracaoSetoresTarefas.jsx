@@ -181,7 +181,7 @@ export default function ConfiguracaoSetoresTarefas() {
           variant="ghost" 
           size="sm"
           className="h-auto px-0 py-0 text-sm text-slate-600 hover:text-slate-900 font-medium gap-1 mb-2"
-          onClick={() => window.history.back()}
+          onClick={() => window.location.href = '/Tarefas'}
           title="Voltar"
         >
           <ArrowLeft className="w-4 h-4" /> Voltar
