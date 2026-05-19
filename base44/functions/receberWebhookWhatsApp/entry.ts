@@ -178,94 +178,116 @@ async function processarWebhook(req, rawBody, base44) {
   }
 
   // ─── ACK / status update ──────────────────────────────────────────────────
-  if (['messages_update', 'messages.update', 'message_ack', 'messages_ack', 'webhook_update'].includes(event) || eventRaw === 'messages.update') {
-    // Evolution pode enviar ACK como array direto em data ou aninhado em data.messages
+  const isAckEvent = [
+    'messages_update', 'messages.update',
+    'message_update', 'message.update',
+    'message_ack', 'messages_ack',
+    'ack', 'receipt', 'status'
+  ].includes(event) || eventRaw.includes('update') || eventRaw.includes('ack');
+
+  if (isAckEvent) {
+    // Normalizar para array de updates — Evolution pode enviar de formas variadas
     let updates = [];
     if (Array.isArray(data)) {
       updates = data;
     } else if (data && typeof data === 'object') {
-      // Tentar extrair de estruturas aninhadas
-      if (Array.isArray(data.messages)) {
-        updates = data.messages;
-      } else if (data.message || data.status || data.ack) {
-        updates = [data];
-      }
+      if (Array.isArray(data.messages)) updates = data.messages;
+      else updates = [data];
     }
-    
-    if (updates.length === 0) {
-      console.log(`⏭️ ACK Event ${event} sem dados válidos`);
-      return;
-    }
-    
-    console.log(`🔔 ACK Event: ${event} | Updates: ${updates.length}`);
+
+    console.log(`🔔 ACK Event: "${event}" | Updates: ${updates.length}`);
+
+    const statusPriority = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0 };
+
     for (const upd of updates) {
       if (!upd || typeof upd !== 'object') continue;
-      
-      const remoteId = upd.key?.id || upd.id || upd.messageId;
-      if (!remoteId) continue;
-      
-      // Evolution envia: status em upd.update.status (v2) ou upd.status (v1)
-      const rawStatus = (upd.update?.status || upd.status || upd.ack || '').toString().toUpperCase().trim();
-      const rawStatusNum = parseInt(rawStatus);
-      let novoStatus = null;
 
-      console.log(`  🔍 msgId: ${remoteId} | rawStatus: "${rawStatus}" | update obj: ${JSON.stringify(upd.update || {})} | upd keys: ${Object.keys(upd).join(',')}`);;
-      
-      // Mapear strings da Evolution API
-      if (['DELIVERY_ACK', 'DELIVERED', '2'].includes(rawStatus) || rawStatusNum === 2) {
-        novoStatus = 'entregue';
-      } else if (['READ', 'PLAYED', '3', '4'].includes(rawStatus) || rawStatusNum === 3 || rawStatusNum === 4) {
+      // Extrair messageId — todos os campos possíveis da Evolution
+      const remoteId =
+        upd.key?.id ||
+        upd.id ||
+        upd.messageId ||
+        upd.message?.key?.id ||
+        upd.message?.id ||
+        null;
+
+      if (!remoteId) {
+        console.log(`⏭️ Update sem messageId: ${JSON.stringify(upd).substring(0, 200)}`);
+        continue;
+      }
+
+      // Extrair status — todos os campos possíveis
+      const rawStatusVal =
+        upd.update?.status ??
+        upd.status ??
+        upd.ack ??
+        upd.update?.ack ??
+        upd.receipt ??
+        null;
+
+      const rawStatus = rawStatusVal !== null && rawStatusVal !== undefined
+        ? String(rawStatusVal).toUpperCase().trim()
+        : '';
+      const rawStatusNum = parseInt(rawStatus, 10);
+
+      console.log(`  🔍 msgId: "${remoteId}" | rawStatus: "${rawStatus}" (num: ${rawStatusNum}) | keys: ${Object.keys(upd).join(',')}`);
+
+      let novoStatus = null;
+      if (['READ', 'PLAYED', '3', '4'].includes(rawStatus) || rawStatusNum === 3 || rawStatusNum === 4) {
         novoStatus = 'lida';
+      } else if (['DELIVERY_ACK', 'DELIVERED', '2'].includes(rawStatus) || rawStatusNum === 2) {
+        novoStatus = 'entregue';
       } else if (['SENT', 'SERVER_ACK', '1'].includes(rawStatus) || rawStatusNum === 1) {
         novoStatus = 'enviada';
       }
 
-      console.log(`  ✓ msgId: ${remoteId} | status: "${rawStatus}" → ${novoStatus}`);
+      if (!novoStatus) {
+        console.log(`  ⏭️ Status não mapeável: "${rawStatus}" — ignorado`);
+        continue;
+      }
 
-      if (remoteId && novoStatus) {
-        const statusPriority = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0 };
+      console.log(`  ✓ "${remoteId}" → ${novoStatus}`);
 
-        // Busca primária: pelo whatsapp_message_id exato
-        let msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-          { whatsapp_message_id: remoteId }, '-created_date', 1
+      // Busca primária: whatsapp_message_id exato
+      let msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+        { whatsapp_message_id: remoteId }, '-created_date', 1
+      );
+
+      // Fallback: buscar nas últimas 300 mensagens de vendedor sem filtro de status
+      if (!msgs || msgs.length === 0) {
+        console.log(`  🔍 ID não encontrado direto — tentando fallback...`);
+        const recentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+          { remetente: 'vendedor' }, '-created_date', 300
         );
-
-        // Fallback: busca sem filtro de status — a mensagem pode estar em qualquer status
-        if (!msgs || msgs.length === 0) {
-          const recentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-            { remetente: 'vendedor' }, '-created_date', 300
-          );
-          // Busca exata primeiro
-          const encontradoExato = recentes.find(m => m.whatsapp_message_id === remoteId);
-          if (encontradoExato) {
-            msgs = [encontradoExato];
-          } else {
-            // Busca por ID normalizado (sem caracteres especiais)
-            const idLimpo = remoteId.replace(/[^A-Za-z0-9]/g, '');
-            const encontrado = recentes.find(m => {
-              if (!m.whatsapp_message_id) return false;
-              return m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '') === idLimpo;
-            });
-            if (encontrado) msgs = [encontrado];
-          }
-          if (msgs?.length > 0) {
-            console.log(`🔍 ACK fallback encontrou via busca ampla: ${msgs[0].whatsapp_message_id}`);
-          } else {
-            console.warn(`⚠️ ACK fallback: nenhuma mensagem de vendedor com id próximo a "${remoteId}"`);
-          }
+        const idLimpo = remoteId.replace(/[^A-Za-z0-9]/g, '');
+        const encontrado = recentes.find(m => {
+          if (!m.whatsapp_message_id) return false;
+          if (m.whatsapp_message_id === remoteId) return true;
+          return m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '') === idLimpo;
+        });
+        if (encontrado) {
+          msgs = [encontrado];
+          console.log(`  🔍 Fallback encontrou: ${encontrado.whatsapp_message_id} | status atual: ${encontrado.status}`);
         }
+      }
 
-        if (msgs?.length > 0) {
-          const msgAtual = msgs[0];
-          const novaProioridade = statusPriority[novoStatus] || 0;
-          const atualPrioridade = statusPriority[msgAtual.status] || 0;
-          if (novaProioridade >= atualPrioridade) {
-            await base44.asServiceRole.entities.MensagemWhatsapp.update(msgAtual.id, { status: novoStatus });
-            console.log(`✅ ACK aplicado: ${msgAtual.status} → ${novoStatus} (id: ${remoteId})`);
-          }
+      if (msgs && msgs.length > 0) {
+        const msgAtual = msgs[0];
+        const novaProioridade = statusPriority[novoStatus] || 0;
+        const atualPrioridade = statusPriority[msgAtual.status] || 0;
+
+        if (novaProioridade > atualPrioridade) {
+          const updateData = { status: novoStatus };
+          if (novoStatus === 'entregue') updateData.entregue_em = new Date().toISOString();
+          if (novoStatus === 'lida') updateData.lida_em = new Date().toISOString();
+
+          await base44.asServiceRole.entities.MensagemWhatsapp.update(msgAtual.id, updateData);
+          console.log(`  ✅ Atualizado: ${msgAtual.status} → ${novoStatus} | banco id: ${msgAtual.id}`);
         } else {
-          console.warn(`⚠️ ACK: mensagem não encontrada para id: ${remoteId}`);
+          console.log(`  ⏭️ Sem upgrade: atual="${msgAtual.status}" (${atualPrioridade}) ≥ novo="${novoStatus}" (${novaProioridade})`);
         }
+      } else {
+        console.warn(`  ⚠️ Mensagem não encontrada no banco para id: "${remoteId}"`);
       }
     }
     return;
