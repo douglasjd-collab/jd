@@ -69,20 +69,23 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
       onClick={() => onVerDetalhes(tarefa)}
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-1 mb-2">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <h4 className="font-semibold text-slate-900 text-sm leading-snug flex-1">{tarefa.titulo}</h4>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 -mt-0.5">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onVerDetalhes(tarefa); }}>Ver detalhes</DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(tarefa); }}>Editar</DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(tarefa); }} className="text-red-600">Excluir</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Badge className={`text-xs px-1.5 py-0 ${pCfg.className}`}>{pCfg.label}</Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0 -mt-0.5">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onVerDetalhes(tarefa); }}>Ver detalhes</DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(tarefa); }}>Editar</DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(tarefa); }} className="text-red-600">Excluir</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Cliente */}
@@ -107,9 +110,8 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
         )}
       </div>
 
-      {/* Badges */}
+      {/* Badges de status */}
       <div className="flex flex-wrap gap-1 mb-2">
-        <Badge className={`text-xs px-1.5 py-0 ${pCfg.className}`}>{pCfg.label}</Badge>
         {atrasada && <Badge className="text-xs px-1.5 py-0 bg-red-600 text-white">⚠ Atrasada</Badge>}
         {venceHoje && !atrasada && <Badge className="text-xs px-1.5 py-0 bg-amber-500 text-white">Vence hoje</Badge>}
       </div>
