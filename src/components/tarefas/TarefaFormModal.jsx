@@ -23,7 +23,7 @@ function normalize(str) {
   return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate, tiposList = [], statusInicial = null, empresaId }) {
+export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate, setoresList = [], subsetoresList = [], statusInicial = null, empresaId }) {
   const [form, setForm] = useState({});
   const [checklist, setChecklist] = useState([]);
   const [novoItem, setNovoItem] = useState('');
@@ -36,63 +36,52 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   const [responsavelSearch, setResponsavelSearch] = useState('');
   const [cadastrandoCliente, setCadastrandoCliente] = useState(false);
   const [nomeInicialCliente, setNomeInicialCliente] = useState('');
-  const [setores, setSetores] = useState([]);
-  const [tiposFiltraiAtos, setTiposFiltrados] = useState([]);
-  const [loadingSetores, setLoadingSetores] = useState(true);
-
-  useEffect(() => {
-    if (open && empresaId) {
-      setLoadingSetores(true);
-      base44.entities.SetorTarefa.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 100)
-        .then(setSetores)
-        .catch(() => setSetores([]))
-        .finally(() => setLoadingSetores(false));
-    }
-  }, [open, empresaId]);
+  const [subsetoresFiltrados, setSubsetoresFiltrados] = useState([]);
+  const [loadingSetores, setLoadingSetores] = useState(false);
 
   useEffect(() => {
     if (form.setor_id) {
-      const filtered = tiposList.filter(t => t.setor_id === form.setor_id && t.ativo);
-      setTiposFiltrados(filtered);
+      const filtered = subsetoresList.filter(s => s.setor_id === form.setor_id && s.ativo);
+      setSubsetoresFiltrados(filtered);
     } else {
-      setTiposFiltrados([]);
+      setSubsetoresFiltrados([]);
     }
-  }, [form.setor_id, tiposList]);
+  }, [form.setor_id, subsetoresList]);
 
   useEffect(() => {
     if (open) {
       if (tarefa) {
         setForm({
-          titulo: tarefa.titulo || '',
-          descricao: tarefa.descricao || '',
-          cliente_id: tarefa.cliente_id || '',
-          cliente_nome: tarefa.cliente_nome || '',
-          cliente_cpf: tarefa.cliente_cpf || '',
-          cliente_telefone: tarefa.cliente_telefone || '',
-          senha_gov: tarefa.senha_gov || '',
-          setor_id: tarefa.setor_id || '',
-          setor_nome: tarefa.setor_nome || '',
-          tipo_id: tarefa.tipo_id || '',
-          tipo_nome: tarefa.tipo_nome || '',
-          origem: tarefa.origem || 'manual',
-          data_cadastro: tarefa.data_cadastro || format(new Date(), 'yyyy-MM-dd'),
-          data_conclusao_prevista: tarefa.data_conclusao_prevista || '',
-          status: tarefa.status || 'a_fazer',
-          prioridade: tarefa.prioridade || 'media',
-          responsavel_principal_id: tarefa.responsavel_principal_id || '',
-        });
+           titulo: tarefa.titulo || '',
+           descricao: tarefa.descricao || '',
+           cliente_id: tarefa.cliente_id || '',
+           cliente_nome: tarefa.cliente_nome || '',
+           cliente_cpf: tarefa.cliente_cpf || '',
+           cliente_telefone: tarefa.cliente_telefone || '',
+           senha_gov: tarefa.senha_gov || '',
+           setor_id: tarefa.setor_id || '',
+           setor_nome: tarefa.setor_nome || '',
+           subsetor_id: tarefa.subsetor_id || tarefa.tipo_id || '',
+           subsetor_nome: tarefa.subsetor_nome || tarefa.tipo_nome || '',
+           origem: tarefa.origem || 'manual',
+           data_cadastro: tarefa.data_cadastro || format(new Date(), 'yyyy-MM-dd'),
+           data_conclusao_prevista: tarefa.data_conclusao_prevista || '',
+           status: tarefa.status || 'a_fazer',
+           prioridade: tarefa.prioridade || 'media',
+           responsavel_principal_id: tarefa.responsavel_principal_id || '',
+         });
         try { setChecklist(tarefa.checklist ? JSON.parse(tarefa.checklist) : []); } catch { setChecklist([]); }
         try { setResponsaveisSel(tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []); } catch { setResponsaveisSel([]); }
       } else {
         setForm({
-          titulo: '', descricao: '', cliente_id: '', cliente_nome: '',
-          setor_id: '', setor_nome: '', tipo_id: '', tipo_nome: '', origem: 'manual',
-          data_cadastro: format(new Date(), 'yyyy-MM-dd'),
-          data_conclusao_prevista: '',
-          status: statusInicial || statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
-          prioridade: 'media',
-          responsavel_principal_id: currentUser?.colaborador_id || currentUser?.id || '',
-        });
+           titulo: '', descricao: '', cliente_id: '', cliente_nome: '',
+           setor_id: '', setor_nome: '', subsetor_id: '', subsetor_nome: '', origem: 'manual',
+           data_cadastro: format(new Date(), 'yyyy-MM-dd'),
+           data_conclusao_prevista: '',
+           status: statusInicial || statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
+           prioridade: 'media',
+           responsavel_principal_id: currentUser?.colaborador_id || currentUser?.id || '',
+         });
         setChecklist([]);
         setResponsaveisSel(currentUser?.colaborador_id ? [currentUser.colaborador_id] : (currentUser?.id ? [currentUser.id] : []));
       }
@@ -143,13 +132,14 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
     const cliente = clientes.find(c => c.id === form.cliente_id);
     const principalColab = colaboradores.find(c => c.id === (form.responsavel_principal_id || responsaveisFinais[0]));
 
-    const setorSelecionado = setores.find(s => s.id === form.setor_id);
-    const tipoSelecionado = tiposFiltraiAtos.find(t => t.id === form.tipo_id);
+    const setorSelecionado = setoresList.find(s => s.id === form.setor_id);
+    const subsetorSelecionado = subsetoresFiltrados.find(s => s.id === form.subsetor_id);
 
     const data = {
       ...form,
       setor_nome: setorSelecionado?.nome || '',
-      tipo_nome: tipoSelecionado?.nome || '',
+      subsetor_id: form.subsetor_id || '',
+      subsetor_nome: subsetorSelecionado?.nome || '',
       cliente_nome: cliente?.nome_completo || cliente?.pj_razao_social || form.cliente_nome || '',
       responsavel_principal_id: form.responsavel_principal_id || responsaveisFinais[0] || '',
       responsavel_principal_nome: principalColab?.nome || '',
@@ -291,42 +281,37 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             </div>
           </div>
 
-          {/* Setor + Tipo */}
+          {/* Setor + Subsetor */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Setor</Label>
               <Select value={form.setor_id || ''} onValueChange={v => {
-                const setor = setores.find(s => s.id === v);
-                setForm({ ...form, setor_id: v, tipo_id: '', tipo_nome: '' });
+                setForm({ ...form, setor_id: v, subsetor_id: '', subsetor_nome: '' });
               }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar setor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {loadingSetores ? (
-                    <div className="flex items-center justify-center p-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    </div>
-                  ) : setores.map(s => (
+                  {setoresList.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
                   ))}
-                  {!loadingSetores && setores.length === 0 && <SelectItem value="_vazio" disabled>Nenhum setor encontrado</SelectItem>}
+                  {setoresList.length === 0 && <SelectItem value="_vazio" disabled>Nenhum setor encontrado</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Tipo da Tarefa</Label>
-              <Select value={form.tipo_id || ''} onValueChange={v => {
-                const tipo = tiposFiltraiAtos.find(t => t.id === v);
-                setForm({ ...form, tipo_id: v, tipo_nome: tipo?.nome || '' });
+              <Label>Subsetor</Label>
+              <Select value={form.subsetor_id || ''} onValueChange={v => {
+                const subsetor = subsetoresFiltrados.find(s => s.id === v);
+                setForm({ ...form, subsetor_id: v, subsetor_nome: subsetor?.nome || '' });
               }} disabled={!form.setor_id}>
                 <SelectTrigger className={!form.setor_id ? 'opacity-50' : ''}>
-                  <SelectValue placeholder={!form.setor_id ? "Selecione um setor primeiro" : "Selecionar tipo"} />
+                  <SelectValue placeholder={!form.setor_id ? "Selecione um setor primeiro" : "Selecionar subsetor"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {tiposFiltraiAtos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
-                  {tiposFiltraiAtos.length === 0 && !form.setor_id && <SelectItem value="_vazio" disabled>Selecione um setor</SelectItem>}
-                  {tiposFiltraiAtos.length === 0 && form.setor_id && <SelectItem value="_vazio" disabled>Nenhum tipo neste setor</SelectItem>}
+                  {subsetoresFiltrados.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  {subsetoresFiltrados.length === 0 && !form.setor_id && <SelectItem value="_vazio" disabled>Selecione um setor</SelectItem>}
+                  {subsetoresFiltrados.length === 0 && form.setor_id && <SelectItem value="_vazio" disabled>Nenhum subsetor neste setor</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
