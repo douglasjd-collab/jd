@@ -252,6 +252,33 @@ async function processarWebhook(req, rawBody, base44) {
   const msgData = Array.isArray(data) ? data[0] : data;
   const key = msgData.key || {};
   const message = msgData.message || {};
+
+  // ─── REAÇÃO DE MENSAGEM ───────────────────────────────────────────────────
+  if (message.reactionMessage) {
+    const reaction = message.reactionMessage;
+    const emoji = reaction.text || '';
+    const targetId = reaction.key?.id || '';
+
+    console.log(`😀 ReactionMessage | emoji: "${emoji}" | targetId: "${targetId}"`);
+
+    if (targetId) {
+      // Buscar mensagem original pelo whatsapp_message_id
+      const mensagensOriginais = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+        { whatsapp_message_id: targetId }, '-created_date', 1
+      );
+      if (mensagensOriginais.length > 0) {
+        const orig = mensagensOriginais[0];
+        // Se emoji vazio = remoção da reação
+        await base44.asServiceRole.entities.MensagemWhatsapp.update(orig.id, {
+          reaction: emoji || null
+        });
+        console.log(`✅ Reação "${emoji}" aplicada à mensagem ${orig.id}`);
+      } else {
+        console.warn(`⚠️ Mensagem original não encontrada para reação: targetId=${targetId}`);
+      }
+    }
+    return; // Não processar como mensagem normal
+  }
   const pushName = msgData.pushName || msgData.senderName || 'Cliente';
   const fromMe = key.fromMe === true;
   const remoteJidOriginal = key.remoteJid || '';
@@ -529,6 +556,11 @@ async function processarWebhook(req, rawBody, base44) {
     tipo = 'imagem'; 
     conteudo = 'Sticker';
     arquivo_url = message.stickerMessage.url || '';
+  }
+  else if (message.secretEncryptedMessage || message.encPayload || message.senderKeyDistributionMessage || message.protocolMessage) {
+    // Mensagens internas/técnicas do WhatsApp — ignorar silenciosamente
+    console.log(`⏭️ Mensagem técnica interna ignorada: ${Object.keys(message).join(', ')}`);
+    return;
   }
   else conteudo = JSON.stringify(message).substring(0, 200);
 

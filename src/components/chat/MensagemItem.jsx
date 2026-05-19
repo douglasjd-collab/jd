@@ -575,6 +575,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
         <div className="mb-1">{renderConteudo()}</div>
+        {mensagem.reaction && (
+          <div className={`flex ${isVendedor ? 'justify-start' : 'justify-end'} -mb-1 mt-1`}>
+            <span
+              className="text-base leading-none bg-white border border-slate-200 rounded-full px-1.5 py-0.5 shadow-sm"
+              title="Reação"
+            >
+              {mensagem.reaction}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-end gap-1.5 mt-1">
           <p className={`text-xs ${isVendedor ? 'text-white/80' : 'text-slate-500'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
             {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
