@@ -63,6 +63,19 @@ export default function MonitoramentoJD() {
     }
   };
 
+  const gerarQRCode = async () => {
+    try {
+      const resp = await base44.functions.invoke('gerarQrCodeEvolution', { instanceName: 'JDPROMOTORA' });
+      if (resp.data.base64) {
+        alert('QR Code gerado! Escaneie com o WhatsApp.');
+      } else {
+        alert('Erro ao gerar QR Code: ' + (resp.data.erro || 'Instância pode estar em processo de conexão'));
+      }
+    } catch (err) {
+      alert('Erro: ' + err.message);
+    }
+  };
+
   // Calcular estatísticas
   const ultimosLogs = logsRecentes || [];
   const ultimaMensagemRecebida = ultimosLogs.find(log => log.tipo_evento === 'mensagem_recebida');
@@ -84,14 +97,21 @@ export default function MonitoramentoJD() {
             variant="outline"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Diagnosticar Agora
+            Diagnosticar
           </Button>
           <Button
             onClick={reconectarWebhook}
-            variant="default"
+            variant="outline"
           >
             <CheckCircle2 className="w-4 h-4 mr-2" />
             Reconectar Webhook
+          </Button>
+          <Button
+            onClick={gerarQRCode}
+            variant="default"
+          >
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Gerar QR Code
           </Button>
         </div>
       </div>
@@ -117,7 +137,31 @@ export default function MonitoramentoJD() {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {diagnostico?.webhook?.events?.length || 0} eventos configurados
+              {diagnostico?.webhook?.events?.length || 0} eventos
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Status da Instância</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              {diagnostico?.instancia?.conectado ? (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  <span className="font-semibold">Conectada</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-5 h-5 text-red-500" />
+                  <span className="font-semibold text-red-500">DESCONECTADA</span>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {diagnostico?.instancia?.name || 'JDPROMOTORA'}
             </p>
           </CardContent>
         </Card>
