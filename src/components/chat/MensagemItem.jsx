@@ -577,43 +577,34 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         {!isGrupo && !isVendedor && mensagem.usuario_nome && (
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
-        <div className="mb-1">{renderConteudo()}</div>
-        {mensagem.reaction && (
-          <div className={`flex ${isVendedor ? 'justify-start' : 'justify-end'} -mb-1 mt-1`}>
-            <span
-              className="text-base leading-none"
-              title="Reação"
-            >
-              {mensagem.reaction}
-            </span>
-          </div>
-        )}
-        <div className="flex items-center justify-end gap-1.5 mt-1">
-          <p className={`text-xs ${isVendedor ? 'text-white/80' : 'text-slate-500'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
-            {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
-          </p>
-          {isVendedor && (
-            <div className="flex items-center gap-0.5" title={statusAtual}>
-              {statusAtual === 'lida' ? (
-                // Dois checks AZUIS = lida pelo destinatário
-                <span className="text-sm font-bold" style={{ color: '#53bdeb', transition: 'color 0.3s' }}>✓✓</span>
-              ) : statusAtual === 'entregue' ? (
-                // Dois checks CINZA = entregue no celular, ainda não lida
-                <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓✓</span>
-              ) : statusAtual === 'enviada' ? (
-                // Um check = saiu do servidor
-                <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓</span>
-              ) : statusAtual === 'erro' ? (
-                // X vermelho = falha no envio
-                <span className="text-sm font-bold text-red-300" title="Falha no envio">✕</span>
-              ) : (
-                // Relógio = pendente (ainda não saiu do servidor)
-                <svg className="w-3.5 h-3.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-              )}
-            </div>
+        <div className="flex flex-wrap items-end gap-x-1.5">
+          <div className="flex-1 min-w-0">{renderConteudo()}</div>
+          {mensagem.reaction && (
+            <span className="text-base leading-none flex-shrink-0" title="Reação">{mensagem.reaction}</span>
           )}
+          {/* Hora + status inline, flutuando para direita como no WhatsApp */}
+          <div className="flex items-center gap-0.5 flex-shrink-0 self-end ml-auto" style={{ marginBottom: '-2px' }}>
+            <span className={`text-[11px] leading-none ${isVendedor ? 'text-white/70' : 'text-slate-400'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
+              {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
+            </span>
+            {isVendedor && (
+              <span title={statusAtual}>
+                {statusAtual === 'lida' ? (
+                  <span className="text-[13px] font-bold leading-none" style={{ color: '#53bdeb', transition: 'color 0.3s' }}>✓✓</span>
+                ) : statusAtual === 'entregue' ? (
+                  <span className="text-[13px] font-bold leading-none" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓✓</span>
+                ) : statusAtual === 'enviada' ? (
+                  <span className="text-[13px] font-bold leading-none" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓</span>
+                ) : statusAtual === 'erro' ? (
+                  <span className="text-[13px] font-bold leading-none text-red-300" title="Falha no envio">✕</span>
+                ) : (
+                  <svg className="w-3 h-3 opacity-60 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                )}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
