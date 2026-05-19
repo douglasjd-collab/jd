@@ -230,19 +230,29 @@ async function processarWebhook(req, rawBody, base44) {
           { whatsapp_message_id: remoteId }, '-created_date', 1
         );
 
-        // Fallback: busca parcial por ID limpo (Evolution às vezes usa formato diferente)
+        // Fallback: busca sem filtro de status — a mensagem pode estar em qualquer status
         if (!msgs || msgs.length === 0) {
-          const idLimpo = remoteId.replace(/[^A-Za-z0-9]/g, '');
-          const statusAnterior = novoStatus === 'lida' ? 'entregue' : (novoStatus === 'entregue' ? 'enviada' : 'pendente');
           const recentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-            { remetente: 'vendedor', status: statusAnterior }, '-created_date', 200
+            { remetente: 'vendedor' }, '-created_date', 300
           );
-          const encontrado = recentes.find(m => {
-            if (!m.whatsapp_message_id) return false;
-            const idMsg = m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '');
-            return idMsg === idLimpo;
-          });
-          if (encontrado) msgs = [encontrado];
+          // Busca exata primeiro
+          const encontradoExato = recentes.find(m => m.whatsapp_message_id === remoteId);
+          if (encontradoExato) {
+            msgs = [encontradoExato];
+          } else {
+            // Busca por ID normalizado (sem caracteres especiais)
+            const idLimpo = remoteId.replace(/[^A-Za-z0-9]/g, '');
+            const encontrado = recentes.find(m => {
+              if (!m.whatsapp_message_id) return false;
+              return m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '') === idLimpo;
+            });
+            if (encontrado) msgs = [encontrado];
+          }
+          if (msgs?.length > 0) {
+            console.log(`🔍 ACK fallback encontrou via busca ampla: ${msgs[0].whatsapp_message_id}`);
+          } else {
+            console.warn(`⚠️ ACK fallback: nenhuma mensagem de vendedor com id próximo a "${remoteId}"`);
+          }
         }
 
         if (msgs?.length > 0) {

@@ -62,14 +62,14 @@ Deno.serve(async (req) => {
           // Tentar buscar as mensagens mais recentes do vendedor e comparar por ID parcial
           const idLimpo = messageId.replace(/[^A-Za-z0-9]/g, '');
           const recentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-            { remetente: 'vendedor', status: novoStatus === 'lida' ? 'entregue' : (novoStatus === 'entregue' ? 'enviada' : 'pendente') },
+            { remetente: 'vendedor' },
             '-created_date',
-            100
+            300
           );
           const encontrado = recentes.find(m => {
             if (!m.whatsapp_message_id) return false;
-            const idMsg = m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '');
-            return idMsg === idLimpo || idMsg.includes(idLimpo) || idLimpo.includes(idMsg);
+            if (m.whatsapp_message_id === messageId) return true;
+            return m.whatsapp_message_id.replace(/[^A-Za-z0-9]/g, '') === idLimpo;
           });
           if (encontrado) {
             const novaProioridade2 = statusPriority[novoStatus] || 0;
