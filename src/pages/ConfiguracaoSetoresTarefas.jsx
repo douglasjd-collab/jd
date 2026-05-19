@@ -16,10 +16,10 @@ export default function ConfiguracaoSetoresTarefas() {
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [setorModal, setSetorModal] = useState(false);
-  const [tipoModal, setTipoModal] = useState(false);
+  const [subsetorModal, setSubsetorModal] = useState(false);
   const [setorSelecionado, setSetorSelecionado] = useState(null);
   const [formSetor, setFormSetor] = useState({ nome: '', descricao: '', status: 'ativo' });
-  const [formTipo, setFormTipo] = useState({ nome: '', descricao: '', status: 'ativo', setor_id: '' });
+  const [formSubsetor, setFormSubsetor] = useState({ nome: '', descricao: '', ativo: true, setor_id: '' });
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -43,10 +43,10 @@ export default function ConfiguracaoSetoresTarefas() {
     queryFn: () => base44.entities.SetorTarefa.filter({ empresa_id: empresaId }, 'nome', 100),
   });
 
-  const { data: tipos = [], isLoading: loadingTipos } = useQuery({
-    queryKey: ['tipos-tarefa', empresaId],
+  const { data: subsetores = [], isLoading: loadingSubsetores } = useQuery({
+    queryKey: ['subsetores-tarefa', empresaId],
     enabled: !!empresaId,
-    queryFn: () => base44.entities.TipoTarefa.filter({ empresa_id: empresaId }, 'setor_nome', 500),
+    queryFn: () => base44.entities.SubsetorTarefa.filter({ empresa_id: empresaId }, 'setor_nome', 500),
   });
 
   const criarSetorMutation = useMutation({
@@ -76,42 +76,42 @@ export default function ConfiguracaoSetoresTarefas() {
     mutationFn: (id) => base44.entities.SetorTarefa.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setores', empresaId] });
-      queryClient.invalidateQueries({ queryKey: ['tipos-tarefa', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['subsetores-tarefa', empresaId] });
       toast.success('Setor deletado com sucesso!');
     },
     onError: (e) => toast.error('Erro ao deletar setor: ' + e.message),
   });
 
-  const criarTipoMutation = useMutation({
-    mutationFn: (data) => base44.entities.TipoTarefa.create(data),
+  const criarSubsetorMutation = useMutation({
+    mutationFn: (data) => base44.entities.SubsetorTarefa.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tipos-tarefa', empresaId] });
-      setTipoModal(false);
-      setFormTipo({ nome: '', descricao: '', status: 'ativo', setor_id: '' });
-      toast.success('Tipo de tarefa criado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['subsetores-tarefa', empresaId] });
+      setSubsetorModal(false);
+      setFormSubsetor({ nome: '', descricao: '', ativo: true, setor_id: '' });
+      toast.success('Subsetor criado com sucesso!');
     },
-    onError: (e) => toast.error('Erro ao criar tipo: ' + e.message),
+    onError: (e) => toast.error('Erro ao criar subsetor: ' + e.message),
   });
 
-  const atualizarTipoMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.TipoTarefa.update(id, data),
+  const atualizarSubsetorMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.SubsetorTarefa.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tipos-tarefa', empresaId] });
-      setTipoModal(false);
-      setFormTipo({ nome: '', descricao: '', status: 'ativo', setor_id: '' });
+      queryClient.invalidateQueries({ queryKey: ['subsetores-tarefa', empresaId] });
+      setSubsetorModal(false);
+      setFormSubsetor({ nome: '', descricao: '', ativo: true, setor_id: '' });
       setSetorSelecionado(null);
-      toast.success('Tipo de tarefa atualizado com sucesso!');
+      toast.success('Subsetor atualizado com sucesso!');
     },
-    onError: (e) => toast.error('Erro ao atualizar tipo: ' + e.message),
+    onError: (e) => toast.error('Erro ao atualizar subsetor: ' + e.message),
   });
 
-  const deletarTipoMutation = useMutation({
-    mutationFn: (id) => base44.entities.TipoTarefa.delete(id),
+  const deletarSubsetorMutation = useMutation({
+    mutationFn: (id) => base44.entities.SubsetorTarefa.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tipos-tarefa', empresaId] });
-      toast.success('Tipo de tarefa deletado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['subsetores-tarefa', empresaId] });
+      toast.success('Subsetor deletado com sucesso!');
     },
-    onError: (e) => toast.error('Erro ao deletar tipo: ' + e.message),
+    onError: (e) => toast.error('Erro ao deletar subsetor: ' + e.message),
   });
 
   const salvarSetor = () => {
@@ -123,18 +123,18 @@ export default function ConfiguracaoSetoresTarefas() {
     }
   };
 
-  const salvarTipo = () => {
-    if (!formTipo.nome.trim()) { toast.error('Informe o nome do tipo'); return; }
-    if (!formTipo.setor_id) { toast.error('Selecione um setor'); return; }
-    const setor = setores.find(s => s.id === formTipo.setor_id);
-    if (setorSelecionado?.tipo_id) {
-      atualizarTipoMutation.mutate({ 
-        id: setorSelecionado.tipo_id, 
-        data: { ...formTipo, empresa_id: empresaId, setor_nome: setor?.nome } 
+  const salvarSubsetor = () => {
+    if (!formSubsetor.nome.trim()) { toast.error('Informe o nome do subsetor'); return; }
+    if (!formSubsetor.setor_id) { toast.error('Selecione um setor'); return; }
+    const setor = setores.find(s => s.id === formSubsetor.setor_id);
+    if (setorSelecionado?.subsetor_id) {
+      atualizarSubsetorMutation.mutate({ 
+        id: setorSelecionado.subsetor_id, 
+        data: { ...formSubsetor, empresa_id: empresaId, setor_nome: setor?.nome } 
       });
     } else {
-      criarTipoMutation.mutate({ 
-        ...formTipo, 
+      criarSubsetorMutation.mutate({ 
+        ...formSubsetor, 
         empresa_id: empresaId, 
         setor_nome: setor?.nome 
       });
@@ -151,23 +151,23 @@ export default function ConfiguracaoSetoresTarefas() {
     setSetorModal(true);
   };
 
-  const abrirFormTipo = (tipo = null) => {
-    if (tipo) {
-      setFormTipo({ nome: tipo.nome, descricao: tipo.descricao || '', status: tipo.ativo ? 'ativo' : 'inativo', setor_id: tipo.setor_id });
+  const abrirFormSubsetor = (subsetor = null) => {
+    if (subsetor) {
+      setFormSubsetor({ nome: subsetor.nome, descricao: subsetor.descricao || '', ativo: subsetor.ativo, setor_id: subsetor.setor_id });
     } else {
-      setFormTipo({ nome: '', descricao: '', status: 'ativo', setor_id: '' });
+      setFormSubsetor({ nome: '', descricao: '', ativo: true, setor_id: '' });
     }
-    setSetorSelecionado(tipo ? { tipo_id: tipo.id } : null);
-    setTipoModal(true);
+    setSetorSelecionado(subsetor ? { subsetor_id: subsetor.id } : null);
+    setSubsetorModal(true);
   };
 
-  const tiposPorSetor = (setorId) => tipos.filter(t => t.setor_id === setorId);
+  const subsetoresPorSetor = (setorId) => subsetores.filter(s => s.setor_id === setorId);
 
   if (!user || !empresaId) return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin" /></div>;
 
   return (
     <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold">Configuração de Setores e Tipos de Tarefa</h1>
+      <h1 className="text-3xl font-bold">Configuração de Setores e Subsetores</h1>
 
       {/* Setores */}
       <Card>
@@ -187,7 +187,7 @@ export default function ConfiguracaoSetoresTarefas() {
                   <div>
                     <h3 className="font-semibold">{setor.nome}</h3>
                     {setor.descricao && <p className="text-sm text-slate-500">{setor.descricao}</p>}
-                    <p className="text-xs text-slate-400 mt-1">{tiposPorSetor(setor.id).length} tipos de tarefa</p>
+                    <p className="text-xs text-slate-400 mt-1">{subsetoresPorSetor(setor.id).length} subsetores</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={setor.status === 'ativo' ? 'default' : 'secondary'}>{setor.status}</Badge>
@@ -203,14 +203,14 @@ export default function ConfiguracaoSetoresTarefas() {
         </CardContent>
       </Card>
 
-      {/* Tipos por Setor */}
+      {/* Subsetores por Setor */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Tipos de Tarefa por Setor</CardTitle>
-          <Button onClick={() => abrirFormTipo()} className="gap-2"><Plus className="w-4 h-4" /> Novo Tipo</Button>
+          <CardTitle>Subsetores por Setor</CardTitle>
+          <Button onClick={() => abrirFormSubsetor()} className="gap-2"><Plus className="w-4 h-4" /> Novo Subsetor</Button>
         </CardHeader>
         <CardContent>
-          {loadingTipos ? (
+          {loadingSubsetores ? (
             <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
           ) : (
             <div className="space-y-4">
@@ -220,23 +220,23 @@ export default function ConfiguracaoSetoresTarefas() {
                     <ChevronDown className="w-4 h-4" /> {setor.nome}
                   </h3>
                   <div className="space-y-2 ml-6">
-                    {tiposPorSetor(setor.id).map((tipo) => (
-                      <div key={tipo.id} className="flex items-center justify-between p-3 bg-slate-50 rounded">
+                    {subsetoresPorSetor(setor.id).map((subsetor) => (
+                      <div key={subsetor.id} className="flex items-center justify-between p-3 bg-slate-50 rounded">
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{tipo.nome}</p>
-                          {tipo.descricao && <p className="text-xs text-slate-500">{tipo.descricao}</p>}
+                          <p className="font-medium text-sm">{subsetor.nome}</p>
+                          {subsetor.descricao && <p className="text-xs text-slate-500">{subsetor.descricao}</p>}
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant={tipo.ativo ? 'default' : 'secondary'}>{tipo.ativo ? 'ativo' : 'inativo'}</Badge>
-                          <Button size="sm" variant="ghost" onClick={() => abrirFormTipo(tipo)}><Edit2 className="w-4 h-4" /></Button>
+                          <Badge variant={subsetor.ativo ? 'default' : 'secondary'}>{subsetor.ativo ? 'ativo' : 'inativo'}</Badge>
+                          <Button size="sm" variant="ghost" onClick={() => abrirFormSubsetor(subsetor)}><Edit2 className="w-4 h-4" /></Button>
                           <Button size="sm" variant="ghost" onClick={() => {
-                            if (confirm('Deletar este tipo?')) deletarTipoMutation.mutate(tipo.id);
+                            if (confirm('Deletar este subsetor?')) deletarSubsetorMutation.mutate(subsetor.id);
                           }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                         </div>
                       </div>
                     ))}
-                    {tiposPorSetor(setor.id).length === 0 && (
-                      <p className="text-xs text-slate-400 italic">Nenhum tipo cadastrado para este setor</p>
+                    {subsetoresPorSetor(setor.id).length === 0 && (
+                      <p className="text-xs text-slate-400 italic">Nenhum subsetor cadastrado para este setor</p>
                     )}
                   </div>
                 </div>
@@ -281,16 +281,16 @@ export default function ConfiguracaoSetoresTarefas() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Tipo */}
-      <Dialog open={tipoModal} onOpenChange={setTipoModal}>
+      {/* Modal Subsetor */}
+      <Dialog open={subsetorModal} onOpenChange={setSubsetorModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{setorSelecionado?.tipo_id ? 'Editar Tipo de Tarefa' : 'Novo Tipo de Tarefa'}</DialogTitle>
+            <DialogTitle>{setorSelecionado?.subsetor_id ? 'Editar Subsetor' : 'Novo Subsetor'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
               <Label>Setor *</Label>
-              <Select value={formTipo.setor_id} onValueChange={v => setFormTipo({ ...formTipo, setor_id: v })}>
+              <Select value={formSubsetor.setor_id} onValueChange={v => setFormSubsetor({ ...formSubsetor, setor_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
                 <SelectContent>
                   {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
@@ -298,28 +298,28 @@ export default function ConfiguracaoSetoresTarefas() {
               </Select>
             </div>
             <div>
-              <Label>Nome do Tipo *</Label>
-              <Input value={formTipo.nome} onChange={e => setFormTipo({ ...formTipo, nome: e.target.value })} placeholder="Ex: Análise de Crédito" />
+              <Label>Nome do Subsetor *</Label>
+              <Input value={formSubsetor.nome} onChange={e => setFormSubsetor({ ...formSubsetor, nome: e.target.value })} placeholder="Ex: Análise de Crédito" />
             </div>
             <div>
               <Label>Descrição</Label>
-              <Textarea value={formTipo.descricao} onChange={e => setFormTipo({ ...formTipo, descricao: e.target.value })} placeholder="Descrição do tipo..." rows={3} />
+              <Textarea value={formSubsetor.descricao} onChange={e => setFormSubsetor({ ...formSubsetor, descricao: e.target.value })} placeholder="Descrição do subsetor..." rows={3} />
             </div>
             <div>
-              <Label>Status</Label>
-              <Select value={formTipo.status} onValueChange={v => setFormTipo({ ...formTipo, status: v })}>
+              <Label>Ativo</Label>
+              <Select value={formSubsetor.ativo ? 'sim' : 'nao'} onValueChange={v => setFormSubsetor({ ...formSubsetor, ativo: v === 'sim' })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
+                  <SelectItem value="sim">Ativo</SelectItem>
+                  <SelectItem value="nao">Inativo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTipoModal(false)}>Cancelar</Button>
-            <Button onClick={salvarTipo} disabled={criarTipoMutation.isPending || atualizarTipoMutation.isPending}>
-              {criarTipoMutation.isPending || atualizarTipoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+            <Button variant="outline" onClick={() => setSubsetorModal(false)}>Cancelar</Button>
+            <Button onClick={salvarSubsetor} disabled={criarSubsetorMutation.isPending || atualizarSubsetorMutation.isPending}>
+              {criarSubsetorMutation.isPending || atualizarSubsetorMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -158,10 +158,16 @@ export default function Tarefas() {
     queryFn: () => base44.entities.ChecklistTemplate.filter({ empresa_id: empresaId }),
   });
 
-  const { data: tiposList = [] } = useQuery({
-    queryKey: ['tipos-tarefa', empresaId],
+  const { data: setoresList = [] } = useQuery({
+    queryKey: ['setores-tarefa', empresaId],
     enabled: !!empresaId,
-    queryFn: () => base44.entities.TipoTarefa.filter({ empresa_id: empresaId, ativo: true }),
+    queryFn: () => base44.entities.SetorTarefa.filter({ empresa_id: empresaId, status: 'ativo' }),
+  });
+
+  const { data: subsetoresList = [] } = useQuery({
+    queryKey: ['subsetores-tarefa', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.SubsetorTarefa.filter({ empresa_id: empresaId, ativo: true }),
   });
 
   const registrarHistorico = async ({ tarefaId, acao, descricao, statusAnterior = null, statusNovo = null, valorAnterior = null, valorNovo = null }) => {
@@ -309,7 +315,7 @@ export default function Tarefas() {
             <span className="text-xs">Kanban</span>
           </Button>
         </div>
-        <Button variant="outline" size="icon" title="Configurar status e tipos" onClick={() => setConfigOpen(true)}>
+        <Button variant="outline" size="icon" title="Configurar setores e subsetores" onClick={() => window.location.href = '/ConfiguracaoSetoresTarefas'}>
           <Settings className="w-4 h-4" />
         </Button>
       </PageHeader>
@@ -407,8 +413,8 @@ export default function Tarefas() {
           onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
           onUpdate={handleUpdate}
           currentUser={currentUser}
-          tiposList={tiposList}
-        />
+          subsetoresList={subsetoresList}
+          />
       ) : null}
 
       {modoVisualizacao === 'kanban' && (
@@ -498,7 +504,8 @@ export default function Tarefas() {
         templates={templates}
         currentUser={currentUser}
         onSaveTemplate={(data) => salvarTemplate.mutate(data)}
-        tiposList={tiposList}
+        setoresList={setoresList}
+        subsetoresList={subsetoresList}
         empresaId={empresaId}
       />
 
@@ -510,7 +517,7 @@ export default function Tarefas() {
         currentUser={currentUser}
         onUpdate={handleUpdate}
         colaboradores={colaboradores}
-        tiposList={tiposList}
+        subsetoresList={subsetoresList}
       />
 
       <ConfiguracaoTarefasModal

@@ -42,13 +42,21 @@
       "type": "string",
       "description": "Nome do setor (denormalizado)"
     },
+    "subsetor_id": {
+      "type": "string",
+      "description": "ID do subsetor (substitui tipo_id)"
+    },
+    "subsetor_nome": {
+      "type": "string",
+      "description": "Nome do subsetor (substitui tipo_nome)"
+    },
     "tipo_id": {
       "type": "string",
-      "description": "ID do tipo de tarefa"
+      "description": "ID do tipo de tarefa (legado - usar subsetor_id)"
     },
     "tipo_nome": {
       "type": "string",
-      "description": "Nome do tipo de tarefa (denormalizado)"
+      "description": "Nome do tipo de tarefa (legado - usar subsetor_nome)"
     },
     "origem": {
       "type": "string",
