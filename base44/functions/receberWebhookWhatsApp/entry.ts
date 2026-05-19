@@ -186,6 +186,11 @@ async function processarWebhook(req, rawBody, base44) {
   ].includes(event) || eventRaw.includes('update') || eventRaw.includes('ack');
 
   if (isAckEvent) {
+    // 🔥 LOG COMPLETO DO ACK para diagnóstico
+    console.log(`\n${'─'.repeat(60)}`);
+    console.log(`🔔 ACK RECEBIDO: ${JSON.stringify(payload, null, 2).substring(0, 1500)}`);
+    console.log(`${'─'.repeat(60)}\n`);
+
     // Normalizar para array de updates — Evolution pode enviar de formas variadas
     let updates = [];
     if (Array.isArray(data)) {
@@ -233,13 +238,16 @@ async function processarWebhook(req, rawBody, base44) {
       console.log(`  🔍 msgId: "${remoteId}" | rawStatus: "${rawStatus}" (num: ${rawStatusNum}) | keys: ${Object.keys(upd).join(',')}`);
 
       let novoStatus = null;
-      if (['READ', 'PLAYED', '3', '4'].includes(rawStatus) || rawStatusNum === 3 || rawStatusNum === 4) {
+      // ack 3 = lida, ack 4 = lida (PLAYED para áudio), READ, PLAYED
+      if (['READ', 'PLAYED', '3', '4', 'VIEWED'].includes(rawStatus) || rawStatusNum >= 3) {
         novoStatus = 'lida';
-      } else if (['DELIVERY_ACK', 'DELIVERED', '2'].includes(rawStatus) || rawStatusNum === 2) {
+      } else if (['DELIVERY_ACK', 'DELIVERED', 'DEVICE_READ', '2'].includes(rawStatus) || rawStatusNum === 2) {
         novoStatus = 'entregue';
-      } else if (['SENT', 'SERVER_ACK', '1'].includes(rawStatus) || rawStatusNum === 1) {
+      } else if (['SENT', 'SERVER_ACK', 'PENDING', '1'].includes(rawStatus) || rawStatusNum === 1) {
         novoStatus = 'enviada';
       }
+
+      console.log(`  🗺️ Mapeamento: rawStatus="${rawStatus}" rawNum=${rawStatusNum} → novoStatus="${novoStatus}"`);
 
       if (!novoStatus) {
         console.log(`  ⏭️ Status não mapeável: "${rawStatus}" — ignorado`);
