@@ -578,7 +578,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         {mensagem.reaction && (
           <div className={`flex ${isVendedor ? 'justify-start' : 'justify-end'} -mb-1 mt-1`}>
             <span
-              className="text-base leading-none bg-white border border-slate-200 rounded-full px-1.5 py-0.5 shadow-sm"
+              className="text-base leading-none"
               title="Reação"
             >
               {mensagem.reaction}
