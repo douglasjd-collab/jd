@@ -561,16 +561,16 @@ export default function BatePapo() {
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
 
 
-      // Sincronizar fotos agressivamente em background
-      setTimeout(async () => {
-        try {
-          console.log('🔥 Auto-sincronizando fotos em background...');
-          await base44.functions.invoke('sincronizarFotosContatosAgressivoFinal', { empresa_id: empresaId });
-          console.log('✅ Fotos sincronizadas automaticamente');
-        } catch (e) {
-          console.warn('⚠️ Sync de fotos em background falhou:', e.message);
-        }
-      }, 3000); // 3 segundos para não atrasar carregamento inicial
+      // Sincronizar fotos apenas 1x por sessão (não a cada 15s)
+      const fotosSyncKey = `fotos_sync_${empresaId}`;
+      if (!sessionStorage.getItem(fotosSyncKey)) {
+        sessionStorage.setItem(fotosSyncKey, '1');
+        setTimeout(async () => {
+          try {
+            await base44.functions.invoke('sincronizarFotosContatosAgressivoFinal', { empresa_id: empresaId });
+          } catch (e) {}
+        }, 5000);
+      }
 
       return filtradas;
     },
@@ -748,21 +748,16 @@ export default function BatePapo() {
       // Sempre refetch conversas para atualizar última mensagem (com debounce para evitar 429)
       refetchConversasComDebounce();
 
-      // SEMPRE refetch mensagens da conversa aberta — não depender do conversa_id no payload
+      // Refetch mensagens da conversa aberta — apenas 1 vez, sem duplicatas
       if (conversaAtualId) {
-        // Forçar refetch mesmo que os dados sejam "frescos"
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId], refetchType: 'all' });
-        queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId], type: 'active' });
-        setTimeout(() => {
-          queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId], type: 'active' });
-        }, 800);
+        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         // Scroll para o final após refetch
         setTimeout(() => {
           if (scrollAreaRef.current) {
             const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;
           }
-        }, 1000);
+        }, 800);
       }
 
       // Atualizar contador de não lidas e marcar último remetente como cliente
@@ -1028,8 +1023,8 @@ export default function BatePapo() {
     };
 
     atualizarStatus();
-    // Polling a cada 10s para pegar status atualizados (lida/entregue)
-    const intervalo = setInterval(atualizarStatus, 10000);
+    // Polling a cada 60s (reduzido de 10s) para pegar status atualizados — ACKs vêm via subscription
+    const intervalo = setInterval(atualizarStatus, 60000);
     return () => clearInterval(intervalo);
   }, [conversaSelecionada?.id, empresaId]);
 
