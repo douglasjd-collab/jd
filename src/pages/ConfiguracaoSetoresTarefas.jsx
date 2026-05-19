@@ -188,7 +188,7 @@ export default function ConfiguracaoSetoresTarefas() {
         </Button>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-slate-900">Configuração de Setores e Tipos de Tarefa</h1>
+            <h1 className="text-3xl font-bold text-slate-900">Configuração de Setores</h1>
             <p className="text-sm text-slate-500 mt-1">Organize e gerencie os setores e os tipos de tarefa do sistema.</p>
           </div>
           <Button onClick={() => abrirFormSetor()} className="gap-2 bg-blue-600 hover:bg-blue-700 flex-shrink-0">
