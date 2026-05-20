@@ -410,19 +410,17 @@ export default function ComissoesEmprestimos() {
       cursorY = doc.lastAutoTable.finalY + 4;
     }
 
-    // Resumo final
-    const boxH = adiantamentosDesc.length > 0 ? 22 : 12;
-    doc.setFillColor(16, 53, 60);
-    doc.roundedRect(10, cursorY, 277, boxH, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    // Resumo final (somente se houver adiantamentos)
     if (adiantamentosDesc.length > 0) {
+      const boxH = 22;
+      doc.setFillColor(16, 53, 60);
+      doc.roundedRect(10, cursorY, 277, boxH, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold');
       doc.text(`Subtotal: ${fmt(totalBruto)}`, 16, cursorY + 7);
       doc.text(`(−) Adiantamentos: ${fmt(totalAdiantamentos)}`, 110, cursorY + 7);
       doc.setFontSize(11);
       doc.text(`VALOR LÍQUIDO A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 17);
-    } else {
-      doc.text(`TOTAL A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 8);
     }
 
     const ph = doc.internal.pageSize.height;
