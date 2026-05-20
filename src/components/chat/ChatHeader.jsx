@@ -34,6 +34,7 @@ export default function ChatHeader({
   onAgendarMensagem,
   setFunilModalOpen,
   oportunidadeAtual,
+  tagsDB = [],
 }) {
   if (!conversaSelecionada) return null;
 
@@ -55,39 +56,44 @@ export default function ChatHeader({
     queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
   };
 
+  const contatoAtual = contatosWhatsapp[conversaSelecionada?.id];
+  const tagsDoContato = tagsDB.filter(t => (contatoAtual?.tags_ids || []).includes(t.id));
+
   return (
-    <div className="flex flex-row items-center justify-between gap-4 border-b bg-white px-5 py-3 shrink-0">
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <AvatarContato
-            contato={contatosWhatsapp[conversaSelecionada?.id] || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_telefone, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
-            className="h-11 w-11"
-          />
-          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold leading-tight">
-            {contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada.cliente_telefone}
-          </p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <button
-              onClick={alternarApi}
-              title={ehMeta ? 'Meta Oficial — clique para alternar para Evolution' : 'Evolution — clique para alternar para Meta Oficial'}
-              className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-opacity hover:opacity-80 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-              {ehMeta ? 'Meta Oficial' : 'Evolution'}
-            </button>
-            <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+    <div className="flex flex-col border-b bg-white px-5 py-2.5 shrink-0">
+      {/* Linha 1: avatar + nome + botões */}
+      <div className="flex flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <AvatarContato
+              contato={contatoAtual || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_telefone, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
+              className="h-11 w-11"
+            />
+            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold leading-tight">
+              {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <button
+                onClick={alternarApi}
+                title={ehMeta ? 'Meta Oficial — clique para alternar para Evolution' : 'Evolution — clique para alternar para Meta Oficial'}
+                className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-opacity hover:opacity-80 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                {ehMeta ? 'Meta Oficial' : 'Evolution'}
+              </button>
+              <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300"
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300"
           onClick={async () => {
             const idFinalizar = conversaSelecionada.id;
             queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
@@ -214,20 +220,43 @@ export default function ChatHeader({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={infoLeadAberto ? "secondary" : "outline"}
-              size="icon"
-              className="h-8 w-8 rounded-md border-slate-200"
-              onClick={() => setInfoLeadAberto(!infoLeadAberto)}
-            >
-              <AlignJustify className="h-4 w-4 text-slate-500" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{infoLeadAberto ? 'Fechar' : 'Abrir'} informações do lead</TooltipContent>
-        </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={infoLeadAberto ? "secondary" : "outline"}
+                size="icon"
+                className="h-8 w-8 rounded-md border-slate-200"
+                onClick={() => setInfoLeadAberto(!infoLeadAberto)}
+              >
+                <AlignJustify className="h-4 w-4 text-slate-500" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{infoLeadAberto ? 'Fechar' : 'Abrir'} informações do lead</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
+
+      {/* Linha 2: Tags + botão gerenciar */}
+      {(tagsDoContato.length > 0 || true) && (
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+          {tagsDoContato.map(tag => (
+            <span
+              key={tag.id}
+              className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-full border"
+              style={{ backgroundColor: tag.cor + '22', color: tag.cor, borderColor: tag.cor + '66' }}
+            >
+              {tag.nome}
+            </span>
+          ))}
+          <button
+            onClick={() => { setContatoParaTags(conversaSelecionada); setTagsModalOpen(true); }}
+            className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <Tag className="w-3 h-3" />
+            {tagsDoContato.length === 0 ? 'Adicionar tag' : '+'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

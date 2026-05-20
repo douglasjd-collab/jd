@@ -1228,9 +1228,7 @@ export default function BatePapo() {
           .jd-chat-card {
             width: 100%;
             max-width: 100%;
-            height: 76px;
             min-height: 76px;
-            max-height: 76px;
             box-sizing: border-box;
             display: flex;
             align-items: center;
@@ -1675,29 +1673,24 @@ export default function BatePapo() {
                               <span className="jd-chat-name">{nome}</span>
                               <span className="jd-chat-time">{hora}</span>
                             </div>
-                            {contatosWhatsapp[c.id]?.tags_ids && contatosWhatsapp[c.id].tags_ids.length > 0 && (
-                              <div className="flex gap-1 flex-wrap mb-1">
-                                {contatosWhatsapp[c.id].tags_ids.map(tagId => {
-                                  // Buscar a tag nos contatos (se disponível)
-                                  const contato = contatosWhatsapp[c.id];
-                                  if (contato?.tags && Array.isArray(contato.tags)) {
-                                    const tag = contato.tags.find(t => t.id === tagId);
-                                    if (tag) {
-                                      return (
-                                        <span
-                                          key={tagId}
-                                          className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
-                                          style={{ backgroundColor: tag.cor }}
-                                        >
-                                          {tag.nome}
-                                        </span>
-                                      );
-                                    }
-                                  }
-                                  return null;
-                                })}
-                              </div>
-                            )}
+                            {(() => {
+                              const tagIds = contatosWhatsapp[c.id]?.tags_ids || [];
+                              const tagsContato = tagsDB.filter(t => tagIds.includes(t.id));
+                              if (tagsContato.length === 0) return null;
+                              return (
+                                <div className="flex gap-1 flex-wrap mb-1">
+                                  {tagsContato.map(tag => (
+                                    <span
+                                      key={tag.id}
+                                      className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold border"
+                                      style={{ backgroundColor: tag.cor + '22', color: tag.cor, borderColor: tag.cor + '66' }}
+                                    >
+                                      {tag.nome}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                             <div className="jd-chat-bottom">
                               <span className="jd-chat-message">{ultimaMsg}</span>
                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -1781,24 +1774,25 @@ export default function BatePapo() {
                 </div>
                 {/* Header do chat - fixo */}
                 <ChatHeader
-                  conversaSelecionada={conversaSelecionada}
-                  contatosWhatsapp={contatosWhatsapp}
-                  empresaId={empresaId}
-                  user={user}
-                  infoLeadAberto={infoLeadAberto}
-                  setInfoLeadAberto={setInfoLeadAberto}
-                  setTransferirModal={setTransferirModal}
-                  abrirSalvarCrm={abrirSalvarCrm}
-                  setContatoParaTags={setContatoParaTags}
-                  setTagsModalOpen={setTagsModalOpen}
-                  setCriarTarefaOpen={setCriarTarefaOpen}
-                  refetchMensagens={refetchMensagens}
-                  queryClient={queryClient}
-                  setConversaSelecionada={setConversaSelecionada}
-                  onAgendarMensagem={setAgendarMensagemModal}
-                  setFunilModalOpen={setFunilModalOpen}
-                  oportunidadeAtual={oportunidadeAtual}
-                  />
+                 conversaSelecionada={conversaSelecionada}
+                 contatosWhatsapp={contatosWhatsapp}
+                 empresaId={empresaId}
+                 user={user}
+                 infoLeadAberto={infoLeadAberto}
+                 setInfoLeadAberto={setInfoLeadAberto}
+                 setTransferirModal={setTransferirModal}
+                 abrirSalvarCrm={abrirSalvarCrm}
+                 setContatoParaTags={setContatoParaTags}
+                 setTagsModalOpen={setTagsModalOpen}
+                 setCriarTarefaOpen={setCriarTarefaOpen}
+                 refetchMensagens={refetchMensagens}
+                 queryClient={queryClient}
+                 setConversaSelecionada={setConversaSelecionada}
+                 onAgendarMensagem={setAgendarMensagemModal}
+                 setFunilModalOpen={setFunilModalOpen}
+                 oportunidadeAtual={oportunidadeAtual}
+                 tagsDB={tagsDB}
+                 />
 
                 {/* Área principal: mensagens + painel lead lado a lado */}
                 <div className="flex flex-1 overflow-hidden">
