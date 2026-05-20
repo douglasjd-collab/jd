@@ -29,8 +29,7 @@ Deno.serve(async (req) => {
       {
         method: 'DELETE',
         headers: {
-          'apikey': EVOLUTION_API_KEY,
-          'Content-Type': 'application/json'
+          'apikey': EVOLUTION_API_KEY
         }
       }
     );
