@@ -3,17 +3,19 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    
-    if (!user || (user.perfil !== 'super_admin' && user.perfil !== 'master' && user.perfil !== 'admin')) {
+
+    // Suporta chamada via automação (sem usuário) ou via frontend (com usuário admin)
+    const user = await base44.auth.me().catch(() => null);
+    if (user && user.perfil && !['super_admin', 'master', 'admin'].includes(user.perfil)) {
       return Response.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 
+    // Usar service role para garantir acesso mesmo sem usuário (automação agendada)
     // Buscar empresa JD PROMOTORA
-    let empresas = await base44.entities.Empresa.filter({ nome: { $regex: 'JD PROMOTORA' } });
+    let empresas = await base44.asServiceRole.entities.Empresa.filter({ nome: { $regex: 'JD PROMOTORA' } });
     
     if (!empresas || empresas.length === 0) {
-      empresas = await base44.entities.Empresa.filter({ codigo: { $regex: 'JD' } });
+      empresas = await base44.asServiceRole.entities.Empresa.filter({ codigo: { $regex: 'JD' } });
     }
     
     if (!empresas || empresas.length === 0) {
