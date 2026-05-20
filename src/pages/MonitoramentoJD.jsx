@@ -74,8 +74,8 @@ export default function MonitoramentoJD() {
   const verificarStatusConexao = async () => {
     try {
       const resp = await base44.functions.invoke('gerarQrCodeEvolution', {});
-      // Se retornar já_conectado ou state=open, está conectado
-      if (resp.data.ja_conectado || resp.data.state === 'open') {
+      // gerarQrCodeEvolution retorna state='open' quando já está conectado
+      if (resp.data.state === 'open' || resp.data.ja_conectado) {
         return true;
       }
       return false;

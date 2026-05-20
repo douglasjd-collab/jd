@@ -40,9 +40,10 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Obter webhook URL correto
-    const appUrl = new URL(req.url).origin;
-    const webhookUrl = `${appUrl}/functions/receberWebhookWhatsApp`;
+    // URL base FIXA — nunca alterar. Apenas adicionar ?instance= para identificar a subconta.
+    const WEBHOOK_BASE_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
+    const webhookUrl = `${WEBHOOK_BASE_URL}?instance=${encodeURIComponent(instanceName)}`;
+    console.log(`🔗 URL do webhook configurada: ${webhookUrl}`);
     
     // Configurar webhook com todos os eventos - formato Evolution V2
     const webhookPayload = {
