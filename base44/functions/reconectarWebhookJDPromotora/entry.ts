@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // URL base FIXA — nunca alterar. Apenas adicionar ?instance= para identificar a subconta.
-    const WEBHOOK_BASE_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
+    // URL base FIXA — formato correto Base44
+    const WEBHOOK_BASE_URL = 'https://app--appjdpromorora.base44.app/api/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
     const webhookUrl = `${WEBHOOK_BASE_URL}?instance=${encodeURIComponent(instanceName)}`;
     console.log(`🔗 URL do webhook configurada: ${webhookUrl}`);
     
@@ -50,6 +50,8 @@ Deno.serve(async (req) => {
       webhook: {
         url: webhookUrl,
         enabled: true,
+        webhookBase64: false,
+        webhookByEvents: false,
         events: [
           'QRCODE_UPDATED',
           'MESSAGES_SET',
@@ -73,6 +75,17 @@ Deno.serve(async (req) => {
       }
     };
 
+    // Tentar deletar webhook existente primeiro (para forçar recriação com base64=false)
+    try {
+      await fetch(`${evolutionUrl}/webhook/set/${instanceName}`, {
+        method: 'DELETE',
+        headers: { 'apikey': evolutionApiKey, 'Authorization': `Bearer ${evolutionApiKey}` }
+      });
+    } catch (e) { /* ignorar erro ao deletar */ }
+
+    // Aguardar 500ms para garantir deleção
+    await new Promise(r => setTimeout(r, 500));
+
     // Configurar webhook na Evolution
     const webhookResponse = await fetch(
       `${evolutionUrl}/webhook/set/${instanceName}`,
@@ -88,6 +101,7 @@ Deno.serve(async (req) => {
     );
 
     const webhookResult = await webhookResponse.json();
+    console.log(`📋 Webhook set result: ${JSON.stringify(webhookResult)}`);
     
     if (!webhookResponse.ok) {
       return Response.json({

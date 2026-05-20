@@ -817,7 +817,7 @@ Deno.serve(async (req) => {
 
   // Ler body ANTES de responder
   const rawBody = await req.text();
-  console.log(`📦 Body: ${rawBody.length} bytes`);
+  console.log(`📦 Body: ${rawBody.length} bytes | preview: ${rawBody.substring(0, 300)}`);
 
   // Criar client com service role para webhooks externos (sem token de usuário)
   const base44 = createClientFromRequest(req);
