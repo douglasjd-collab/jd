@@ -78,6 +78,7 @@ import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
 import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
+import GrupoImagens from '@/components/chat/GrupoImagens';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
 import AvatarContato from '@/components/chat/AvatarContato';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
