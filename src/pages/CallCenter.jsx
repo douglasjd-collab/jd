@@ -97,19 +97,48 @@ export default function CallCenter() {
 
       {/* Não configurado */}
       {naoConfigurado && (
-        <Card className="border-dashed border-2 border-slate-300">
-          <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-            <WifiOff className="w-16 h-16 text-slate-300" />
-            <div className="text-center">
-              <h3 className="font-semibold text-slate-600 text-lg">NVOIP não configurado</h3>
-              <p className="text-slate-400 text-sm mt-1">Configure suas credenciais para usar o Call Center</p>
-            </div>
-            <Button onClick={() => setConfigOpen(true)} className="bg-[#10353C] hover:bg-[#10353C]/90 text-white">
-              <Settings className="w-4 h-4 mr-2" />
-              Configurar Agora
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card className="border-dashed border-2 border-slate-300">
+            <CardContent className="flex flex-col items-center justify-center py-8 gap-4">
+              <WifiOff className="w-12 h-12 text-slate-300" />
+              <div className="text-center">
+                <h3 className="font-semibold text-slate-600 text-lg">NVOIP não configurado</h3>
+                <p className="text-slate-400 text-sm mt-1">
+                  Faça login no painel NVOIP abaixo para obter suas credenciais, depois clique em <strong>Configurar Agora</strong>.
+                </p>
+              </div>
+              <Button onClick={() => setConfigOpen(true)} className="bg-[#10353C] hover:bg-[#10353C]/90 text-white">
+                <Settings className="w-4 h-4 mr-2" />
+                Configurar Agora
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Painel NVOIP embutido para login */}
+          <Card>
+            <CardContent className="p-0 overflow-hidden rounded-xl">
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b">
+                <PhoneCall className="w-4 h-4 text-[#23BE84]" />
+                <span className="text-sm font-medium text-slate-600">Painel NVOIP — faça login para obter suas credenciais</span>
+                <a
+                  href="https://painel.nvoip.com.br/chat"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto text-xs text-blue-500 hover:underline"
+                >
+                  Abrir em nova aba ↗
+                </a>
+              </div>
+              <iframe
+                src="https://painel.nvoip.com.br/chat"
+                title="Painel NVOIP"
+                className="w-full"
+                style={{ height: '600px', border: 'none' }}
+                allow="microphone; camera"
+              />
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Conteúdo principal */}
