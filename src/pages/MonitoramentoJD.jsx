@@ -71,9 +71,11 @@ export default function MonitoramentoJD() {
     }
   };
 
+  const EMPRESA_ID = '699696c2c9f5bffc2e67402b';
+
   const verificarStatusConexao = async () => {
     try {
-      const resp = await base44.functions.invoke('gerarQrCodeEvolution', {});
+      const resp = await base44.functions.invoke('gerarQrCodeEvolution', { empresa_id: EMPRESA_ID });
       // gerarQrCodeEvolution retorna state='open' quando já está conectado
       if (resp.data.state === 'open' || resp.data.ja_conectado) {
         return true;
@@ -118,7 +120,7 @@ export default function MonitoramentoJD() {
     setQrCodeData(null);
     setWhatsappConectado(false);
     try {
-      const resp = await base44.functions.invoke('gerarQrCodeEvolution', {});
+      const resp = await base44.functions.invoke('gerarQrCodeEvolution', { empresa_id: EMPRESA_ID });
       if (resp.data.ok && resp.data.base64) {
         setQrCodeData(resp.data.base64);
         toast.success('QR Code gerado! Escaneie com o WhatsApp.');
