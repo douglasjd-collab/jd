@@ -114,17 +114,29 @@ export default function CallCenter() {
             </CardContent>
           </Card>
 
+          {/* Instruções passo a passo */}
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="py-4 px-5">
+              <p className="text-sm font-semibold text-blue-800 mb-2">📋 Como configurar em 3 passos:</p>
+              <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                <li>No painel NVOIP abaixo, vá em <strong>Configurações → API</strong> e copie o <strong>NumberSIP</strong> e o <strong>User Token</strong>.</li>
+                <li>Clique no botão <strong>"Configurar Agora"</strong> acima e cole as credenciais.</li>
+                <li>Clique em <strong>Testar Conexão</strong> e depois em <strong>Salvar</strong> — pronto para fazer ligações!</li>
+              </ol>
+            </CardContent>
+          </Card>
+
           {/* Painel NVOIP embutido para login */}
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-xl">
               <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b">
                 <PhoneCall className="w-4 h-4 text-[#23BE84]" />
-                <span className="text-sm font-medium text-slate-600">Painel NVOIP — faça login para obter suas credenciais</span>
+                <span className="text-sm font-medium text-slate-600">Painel NVOIP — navegue até <strong>Configurações → API</strong> para copiar suas credenciais</span>
                 <a
                   href="https://painel.nvoip.com.br/chat"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-auto text-xs text-blue-500 hover:underline"
+                  className="ml-auto text-xs text-blue-500 hover:underline flex-shrink-0"
                 >
                   Abrir em nova aba ↗
                 </a>
