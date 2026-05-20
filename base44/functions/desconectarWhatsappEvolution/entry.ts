@@ -11,8 +11,16 @@ Deno.serve(async (req) => {
 
     const { instance_name = 'JDPROMOTORA' } = await req.json();
 
-    const EVOLUTION_API_URL = Deno.env.get('EVOLUTION_API_URL');
-    const EVOLUTION_API_KEY = Deno.env.get('EVOLUTION_API_KEY');
+    // Buscar empresa para obter URL e KEY corretas (igual ao diagnosticoForcarRecebimentoJD)
+    let empresas = await base44.asServiceRole.entities.Empresa.filter({ evolution_instance_name: instance_name });
+    if (!empresas || empresas.length === 0) {
+      empresas = await base44.asServiceRole.entities.Empresa.filter({ nome: { $regex: 'JD PROMOTORA' } });
+    }
+
+    const empresa = empresas?.[0];
+    const EVOLUTION_API_URL = (empresa?.evolution_url || Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/$/, '');
+    const EVOLUTION_API_KEY = empresa?.evolution_api_key || Deno.env.get('EVOLUTION_API_KEY');
+    const instanceName = empresa?.evolution_instance_name || instance_name;
 
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
       return Response.json({
@@ -21,11 +29,11 @@ Deno.serve(async (req) => {
       }, { status: 500 });
     }
 
-    console.log(`🔌 Desconectando WhatsApp da instância: ${instance_name}`);
+    console.log(`🔌 Desconectando WhatsApp da instância: ${instanceName} | URL: ${EVOLUTION_API_URL}`);
 
     // Chamar endpoint de logout da Evolution API
     const logoutResponse = await fetch(
-      `${EVOLUTION_API_URL}/instance/logout/${instance_name}`,
+      `${EVOLUTION_API_URL}/instance/logout/${instanceName}`,
       {
         method: 'DELETE',
         headers: {
@@ -41,7 +49,7 @@ Deno.serve(async (req) => {
       return Response.json({
         success: true,
         message: '✅ WhatsApp desconectado com sucesso',
-        instance: instance_name,
+        instance: instanceName,
         resultado: result
       });
     } else {
