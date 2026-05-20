@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, MessageSquare, LogOut, QrCode } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, MessageSquare, LogOut, QrCode, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 
@@ -13,6 +14,8 @@ export default function MonitoramentoJD() {
   const [diagnostico, setDiagnostico] = useState(null);
   const [loading, setLoading] = useState(false);
   const [desconectando, setDesconectando] = useState(false);
+  const [gerandoQR, setGerandoQR] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState(null);
 
   // Buscar logs recentes
   const { data: logsRecentes } = useQuery({
@@ -66,15 +69,20 @@ export default function MonitoramentoJD() {
   };
 
   const gerarQRCode = async () => {
+    setGerandoQR(true);
+    setQrCodeData(null);
     try {
-      const resp = await base44.functions.invoke('gerarQrCodeEvolution', { instanceName: 'JDPROMOTORA' });
-      if (resp.data.base64) {
+      const resp = await base44.functions.invoke('gerarQrCodeEvolution', {});
+      if (resp.data.ok && resp.data.base64) {
+        setQrCodeData(resp.data.base64);
         toast.success('QR Code gerado! Escaneie com o WhatsApp.');
       } else {
-        toast.error('Erro ao gerar QR Code: ' + (resp.data.erro || 'Instância pode estar em processo de conexão'));
+        toast.error('Erro: ' + (resp.data.erro || resp.data.error || 'Não foi possível gerar o QR Code'));
       }
     } catch (err) {
       toast.error('Erro: ' + err.message);
+    } finally {
+      setGerandoQR(false);
     }
   };
 
@@ -133,11 +141,12 @@ export default function MonitoramentoJD() {
           </Button>
           <Button
             onClick={gerarQRCode}
+            disabled={gerandoQR}
             variant="default"
             className="bg-cyan-500 hover:bg-cyan-600"
           >
-            <QrCode className="w-4 h-4 mr-2" />
-            Gerar QR Code
+            {gerandoQR ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <QrCode className="w-4 h-4 mr-2" />}
+            {gerandoQR ? 'Gerando...' : 'Gerar QR Code'}
           </Button>
           <Button
             onClick={desconectarWhatsapp}
@@ -334,6 +343,30 @@ export default function MonitoramentoJD() {
           Última verificação: {lastCheck.toLocaleString('pt-BR')}
         </p>
       )}
+
+      {/* Modal QR Code */}
+      <Dialog open={!!qrCodeData} onOpenChange={(open) => !open && setQrCodeData(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="w-5 h-5" />
+              Conectar WhatsApp
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            {qrCodeData && (
+              <img src={qrCodeData} alt="QR Code WhatsApp" className="w-64 h-64 border rounded-lg" />
+            )}
+            <p className="text-sm text-muted-foreground text-center">
+              Abra o WhatsApp → <strong>Configurações</strong> → <strong>Aparelhos conectados</strong> → <strong>Conectar aparelho</strong> e escaneie o código acima.
+            </p>
+            <Button onClick={gerarQRCode} variant="outline" size="sm" disabled={gerandoQR}>
+              {gerandoQR ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              Atualizar QR Code
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

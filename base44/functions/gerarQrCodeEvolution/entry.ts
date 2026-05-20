@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     let empresaId = body.empresa_id || user.empresa_id;
 
-    if (!empresaId && user.perfil === 'super_admin') {
+    if (!empresaId) {
       const todasEmps = await base44.asServiceRole.entities.Empresa.filter({}, '-created_date', 50).catch(() => []);
       const empComEvo = todasEmps.find(e => e.evolution_url && e.evolution_api_key && e.evolution_instance_name);
       if (empComEvo) empresaId = empComEvo.id;
@@ -20,55 +20,63 @@ Deno.serve(async (req) => {
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId }).catch(() => []);
     const emp = empresas?.[0];
     if (!emp?.evolution_url || !emp?.evolution_api_key || !emp?.evolution_instance_name) {
-      return Response.json({ error: 'Evolution não configurada' }, { status: 400 });
+      return Response.json({ error: 'Evolution não configurada para esta empresa' }, { status: 400 });
     }
 
     const evolutionUrl = emp.evolution_url.replace(/\/$/, '');
     const evolutionKey = emp.evolution_api_key;
     const instanceName = emp.evolution_instance_name;
 
-    console.log(`📱 Gerando QR Code para ${instanceName}...`);
+    console.log(`📱 Buscando QR Code para ${instanceName} em ${evolutionUrl}...`);
 
-    // Reiniciar instância para gerar novo QR Code
-    const restartRes = await fetch(`${evolutionUrl}/instance/restart/${instanceName}`, {
-      method: 'POST',
+    // Tentar buscar QR Code diretamente via /instance/connect
+    const connectRes = await fetch(`${evolutionUrl}/instance/connect/${instanceName}`, {
+      method: 'GET',
       headers: { 'apikey': evolutionKey }
     });
 
-    if (!restartRes.ok) {
-      return Response.json({ erro: 'Erro ao reiniciar instância' }, { status: 400 });
-    }
+    console.log(`Connect status: ${connectRes.status}`);
+    const connectData = await connectRes.json().catch(() => ({}));
+    console.log(`Connect data: ${JSON.stringify(connectData)}`);
 
-    console.log(`⏳ Aguardando QR Code...`);
-    await new Promise(r => setTimeout(r, 3000));
+    // O QR pode vir em vários formatos dependendo da versão da Evolution API
+    const qrBase64 = connectData?.base64 || connectData?.qrcode?.base64 || connectData?.qr?.base64 || connectData?.data?.base64;
+    const qrCode = connectData?.code || connectData?.qrcode?.code || connectData?.qr?.code;
 
-    // Buscar QR Code
-    const infoRes = await fetch(`${evolutionUrl}/instance/info/${instanceName}`, {
-      headers: { 'apikey': evolutionKey }
-    });
-
-    if (!infoRes.ok) {
-      return Response.json({ erro: 'Erro ao buscar QR Code' }, { status: 400 });
-    }
-
-    const infoData = await infoRes.json();
-    const qrcode = infoData?.qrcode;
-
-    if (!qrcode) {
+    if (qrBase64 || qrCode) {
       return Response.json({
-        erro: 'QR Code não gerado',
-        status: infoData?.instance?.status || 'desconhecido'
-      }, { status: 400 });
+        ok: true,
+        base64: qrBase64,
+        code: qrCode,
+        mensagem: 'Escaneie com WhatsApp em Configurações > Aparelhos conectados'
+      });
     }
 
-    console.log(`✅ QR Code gerado com sucesso`);
+    // Se não retornou QR, pode ser que a instância já esteja conectada
+    const stateRes = await fetch(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
+      headers: { 'apikey': evolutionKey }
+    });
+    const stateData = await stateRes.json().catch(() => ({}));
+    console.log(`State data: ${JSON.stringify(stateData)}`);
+
+    const state = stateData?.instance?.state || stateData?.state || '';
+    if (state === 'open') {
+      return Response.json({
+        ok: false,
+        erro: 'Instância já está conectada ao WhatsApp. Desconecte primeiro para gerar um novo QR Code.',
+        state: 'open'
+      });
+    }
 
     return Response.json({
-      ok: true,
-      qrcode: qrcode,
-      mensagem: 'Escaneie com WhatsApp em Configurações > Aparelhos conectados'
+      ok: false,
+      erro: 'QR Code não disponível. Estado atual: ' + (state || 'desconhecido'),
+      state,
+      connectData
     });
+
   } catch (error) {
+    console.error('Erro:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
