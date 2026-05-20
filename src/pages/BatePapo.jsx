@@ -556,11 +556,14 @@ export default function BatePapo() {
           };
         }
       });
-      setContatosWhatsapp(prev => ({ ...prev, ...novoCache }));
-      
+      setContatosWhatsapp(prev => {
+        const merged = { ...prev };
+        Object.entries(novoCache).forEach(([id, n]) => {
+          merged[id] = { ...n, tags_ids: n.tags_ids?.length ? n.tags_ids : (prev[id]?.tags_ids || []) };
+        });
+        return merged;
+      });
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
-
-
       // Sincronizar fotos apenas 1x por sessão (não a cada 15s)
       const fotosSyncKey = `fotos_sync_${empresaId}`;
       if (!sessionStorage.getItem(fotosSyncKey)) {
