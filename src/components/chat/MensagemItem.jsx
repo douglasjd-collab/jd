@@ -167,6 +167,30 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       .finally(() => setLoadingMedia(false));
   };
 
+  // Download forçado via blob (evita problemas de CORS e abre em nova aba se necessário)
+  const handleDownload = async (url, nomeArquivo) => {
+    if (!url) return;
+    try {
+      toast.message('Preparando download...');
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Falha ao baixar');
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = nomeArquivo || 'arquivo';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      toast.success('Download iniciado!');
+    } catch (e) {
+      // Fallback: abrir em nova aba
+      window.open(url, '_blank');
+      toast.info('Arquivo aberto em nova aba');
+    }
+  };
+
   const handleTranscrever = async () => {
     if (!mediaUrl) return;
     setTranscrevendo(true);
@@ -308,13 +332,22 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
               ) : mediaUrl ? (
-                <img
-                  src={mediaUrl}
-                  alt="Imagem"
-                  className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                  onError={() => setMediaUrl(null)}
-                  onClick={() => setImagemAberta(true)}
-                />
+                <div className="relative group/img">
+                  <img
+                    src={mediaUrl}
+                    alt="Imagem"
+                    className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    onError={() => setMediaUrl(null)}
+                    onClick={() => setImagemAberta(true)}
+                  />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, `imagem_${mensagem.id}.jpg`); }}
+                    className="absolute bottom-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                    title="Baixar imagem"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               ) : (
                 <button onClick={handleCarregarMidia} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg p-4 text-sm opacity-75 transition-colors cursor-pointer">
                   <Download className="w-4 h-4" /> Carregar imagem
@@ -469,9 +502,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   )}
                 </div>
                 {urlDoc && (
-                  <a href={urlDoc} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex-shrink-0">
-                    <Download className="w-4 h-4 hover:opacity-70 transition-opacity" />
-                  </a>
+                  <button onClick={(e) => { e.stopPropagation(); handleDownload(urlDoc, nomeDoc); }} className="flex-shrink-0 hover:opacity-70 transition-opacity" title="Baixar arquivo">
+                    <Download className="w-4 h-4" />
+                  </button>
                 )}
               </div>
             </div>
@@ -485,9 +518,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   </div>
                   <div className="flex items-center gap-2">
                     {urlDoc && (
-                      <a href={urlDoc} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="outline" className="gap-1.5 text-xs"><Download className="w-3.5 h-3.5" /> Baixar</Button>
-                      </a>
+                      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => handleDownload(urlDoc, nomeDoc)}>
+                        <Download className="w-3.5 h-3.5" /> Baixar
+                      </Button>
                     )}
                     <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPdfAberto(false)}>
                       <X className="w-4 h-4" />
@@ -641,18 +674,14 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
              <Pin className="w-4 h-4 mr-2" />
              Fixar
            </DropdownMenuItem>
-           {mensagem.tipo_conteudo === 'audio' && mediaUrl && (
-             <>
-               <DropdownMenuItem onClick={() => {
-                 const link = document.createElement('a');
-                 link.href = mediaUrl;
-                 link.download = `audio_${mensagem.id}.mp3`;
-                 link.click();
-               }}>
-                 <Download className="w-4 h-4 mr-2" />
-                 Baixar áudio
-               </DropdownMenuItem>
-             </>
+           {(mensagem.tipo_conteudo === 'audio' || mensagem.tipo_conteudo === 'imagem' || mensagem.tipo_conteudo === 'pdf' || mensagem.tipo_conteudo === 'documento' || mensagem.tipo_conteudo === 'video') && mediaUrl && (
+             <DropdownMenuItem onClick={() => {
+               const ext = mensagem.tipo_conteudo === 'audio' ? 'mp3' : mensagem.tipo_conteudo === 'imagem' ? 'jpg' : mensagem.tipo_conteudo === 'video' ? 'mp4' : 'pdf';
+               handleDownload(mediaUrl, mensagem.arquivo_nome || `${mensagem.tipo_conteudo}_${mensagem.id}.${ext}`);
+             }}>
+               <Download className="w-4 h-4 mr-2" />
+               Baixar arquivo
+             </DropdownMenuItem>
            )}
            <DropdownMenuItem 
              onClick={handleDeletar}
