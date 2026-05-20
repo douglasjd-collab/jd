@@ -91,9 +91,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Se temos URL temporária válida, retornar direto (mais rápido)
-    if (urlAtual && !urlAtual.includes('.enc')) {
-      console.log(`✅ URL temporária válida retornada direto: ${urlAtual}`);
+    // Se temos URL temporária válida E já temos base64 (do método 1), continuar para upload permanente
+    // Se NÃO temos base64 ainda E a URL parece ser um storage permanente externo (não .enc), retornar direta
+    const isUrlExternaEstavel = urlAtual && !urlAtual.includes('.enc') && 
+      (urlAtual.includes('supabase') || urlAtual.includes('amazonaws') || urlAtual.includes('base44'));
+    if (!base64Data && isUrlExternaEstavel) {
+      console.log(`✅ URL permanente retornada: ${urlAtual}`);
       return Response.json({ ok: true, arquivo_url: urlAtual });
     }
 

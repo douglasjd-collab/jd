@@ -167,18 +167,33 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       .finally(() => setLoadingMedia(false));
   };
 
-  // Download via link direto (abre em nova aba como fallback universal)
-  const handleDownload = (url, nomeArquivo) => {
+  // Download: garante URL permanente via backend antes de baixar
+  const handleDownload = async (url, nomeArquivo) => {
     if (!url) return;
-    // Tentar download direto via <a download>
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = nomeArquivo || 'arquivo';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    let urlFinal = url;
+    
+    // Se a URL não é permanente (não é do nosso storage), buscar via backend
+    const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
+    if (!isPermanente) {
+      toast.message('Preparando arquivo...');
+      try {
+        const res = await base44.functions.invoke('baixarMidiaWhatsApp', {
+          mensagem_id: mensagem.id,
+          arquivo_url: url,
+          conversa_id: conversaId || mensagem.conversa_id
+        });
+        if (res?.data?.arquivo_url) {
+          urlFinal = res.data.arquivo_url;
+          setMediaUrl(urlFinal);
+        }
+      } catch (e) {
+        console.warn('Erro ao obter URL permanente:', e);
+      }
+    }
+    
+    // Abrir em nova aba (funciona para qualquer domínio)
+    window.open(urlFinal, '_blank');
   };
 
   const handleTranscrever = async () => {
