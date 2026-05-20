@@ -416,6 +416,7 @@ async function processarWebhook(req, rawBody, base44) {
   // Tipo de conexão: empresa (instância da empresa) ou usuario (instância pessoal do colaborador)
   const tipoConexao = 'empresa';
   const colaboradorId = '';
+  const clienteId = '';
 
   // Para grupos: usar o JID completo como identificador
   if (isGrupo) {
