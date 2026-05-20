@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,9 @@ export default function MonitoramentoJD() {
   const [desconectando, setDesconectando] = useState(false);
   const [gerandoQR, setGerandoQR] = useState(false);
   const [qrCodeData, setQrCodeData] = useState(null);
+  const [verificandoConexao, setVerificandoConexao] = useState(false);
+  const [whatsappConectado, setWhatsappConectado] = useState(false);
+  const pollingRef = React.useRef(null);
 
   // Buscar logs recentes
   const { data: logsRecentes } = useQuery({
@@ -68,14 +71,58 @@ export default function MonitoramentoJD() {
     }
   };
 
+  const verificarStatusConexao = async () => {
+    try {
+      const resp = await base44.functions.invoke('gerarQrCodeEvolution', {});
+      // Se retornar já_conectado ou state=open, está conectado
+      if (resp.data.ja_conectado || resp.data.state === 'open') {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const iniciarPollingConexao = () => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    pollingRef.current = setInterval(async () => {
+      setVerificandoConexao(true);
+      const conectado = await verificarStatusConexao();
+      setVerificandoConexao(false);
+      if (conectado) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+        setWhatsappConectado(true);
+        toast.success('✅ WhatsApp conectado com sucesso!');
+        // Atualizar empresa no banco
+        try {
+          await base44.entities.Empresa.update('699696c2c9f5bffc2e67402b', { whatsapp_conectado: true });
+        } catch {}
+        setTimeout(() => {
+          setQrCodeData(null);
+          setWhatsappConectado(false);
+          executarDiagnostico();
+        }, 3000);
+      }
+    }, 3000);
+  };
+
+  // Limpar polling ao desmontar
+  useEffect(() => {
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, []);
+
   const gerarQRCode = async () => {
     setGerandoQR(true);
     setQrCodeData(null);
+    setWhatsappConectado(false);
     try {
       const resp = await base44.functions.invoke('gerarQrCodeEvolution', {});
       if (resp.data.ok && resp.data.base64) {
         setQrCodeData(resp.data.base64);
         toast.success('QR Code gerado! Escaneie com o WhatsApp.');
+        iniciarPollingConexao();
       } else {
         toast.error('Erro: ' + (resp.data.erro || resp.data.error || 'Não foi possível gerar o QR Code'));
       }
@@ -345,7 +392,13 @@ export default function MonitoramentoJD() {
       )}
 
       {/* Modal QR Code */}
-      <Dialog open={!!qrCodeData} onOpenChange={(open) => !open && setQrCodeData(null)}>
+      <Dialog open={!!qrCodeData} onOpenChange={(open) => {
+        if (!open) {
+          if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+          setQrCodeData(null);
+          setWhatsappConectado(false);
+        }
+      }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -354,16 +407,38 @@ export default function MonitoramentoJD() {
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-2">
-            {qrCodeData && (
-              <img src={qrCodeData} alt="QR Code WhatsApp" className="w-64 h-64 border rounded-lg" />
+            {whatsappConectado ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <CheckCircle2 className="w-20 h-20 text-green-500" />
+                <p className="text-xl font-bold text-green-600">WhatsApp Conectado!</p>
+                <p className="text-sm text-muted-foreground text-center">A instância foi conectada com sucesso. Esta janela fechará automaticamente.</p>
+              </div>
+            ) : (
+              <>
+                {qrCodeData && (
+                  <div className="relative">
+                    <img src={qrCodeData} alt="QR Code WhatsApp" className="w-64 h-64 border rounded-lg" />
+                    {verificandoConexao && (
+                      <div className="absolute bottom-2 right-2 bg-white rounded-full p-1 shadow">
+                        <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground text-center">
+                  Abra o WhatsApp → <strong>Configurações</strong> → <strong>Aparelhos conectados</strong> → <strong>Conectar aparelho</strong> e escaneie o código acima.
+                </p>
+                {verificandoConexao && (
+                  <p className="text-xs text-cyan-600 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Aguardando conexão...
+                  </p>
+                )}
+                <Button onClick={gerarQRCode} variant="outline" size="sm" disabled={gerandoQR}>
+                  {gerandoQR ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Atualizar QR Code
+                </Button>
+              </>
             )}
-            <p className="text-sm text-muted-foreground text-center">
-              Abra o WhatsApp → <strong>Configurações</strong> → <strong>Aparelhos conectados</strong> → <strong>Conectar aparelho</strong> e escaneie o código acima.
-            </p>
-            <Button onClick={gerarQRCode} variant="outline" size="sm" disabled={gerandoQR}>
-              {gerandoQR ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              Atualizar QR Code
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
