@@ -690,7 +690,7 @@ async function processarWebhook(req, rawBody, base44) {
 
   if (conversa) {
     // Atualizar conversa existente — SEMPRE com número normalizado (12 dígitos)
-    await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+    const updateData = {
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       status: 'ativa',
@@ -702,10 +702,24 @@ async function processarWebhook(req, rawBody, base44) {
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
       whatsapp_id: conversa.whatsapp_id || `${telefoneLimpo}@s.whatsapp.net`
-    });
+    };
+
+    // Se a mensagem foi enviada pelo vendedor (fora do CRM), marcar como em atendimento por 10 min
+    if (fromMe) {
+      const expira = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      updateData.responsavel_expira_em = expira;
+      // Manter responsavel_id existente se já houver, senão deixar sem (não temos user aqui)
+      if (!conversa.responsavel_id) {
+        updateData.responsavel_id = 'externo'; // sinaliza que foi respondido externamente
+        updateData.responsavel_nome = pushName || 'Atendente';
+      }
+      console.log(`📤 Mensagem enviada externamente — conversa marcada como Em Atendimento por 10min`);
+    }
+
+    await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateData);
   } else {
     // Criar conversa APENAS com número normalizado (NUNCA @lid)
-    conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+    const novaConversaData = {
       empresa_id: empresaId, cliente_id: clienteId,
       cliente_nome: pushName || telefoneLimpo, 
       cliente_telefone: telefoneLimpo,
@@ -717,7 +731,13 @@ async function processarWebhook(req, rawBody, base44) {
       tipo_conexao: tipoConexao, 
       colaborador_id: colaboradorId || '',
       instancia: instanceFinal
-    });
+    };
+    if (fromMe) {
+      novaConversaData.responsavel_expira_em = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      novaConversaData.responsavel_id = 'externo';
+      novaConversaData.responsavel_nome = pushName || 'Atendente';
+    }
+    conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create(novaConversaData);
     console.log(`✅ Conversa criada: ${conversa.id} | Tel: ${telefoneLimpo}`);
   }
 
