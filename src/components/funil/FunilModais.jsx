@@ -55,9 +55,9 @@ export function ModalAlterarResponsavel({
               ) : vendedores.length === 0 ? (
                 <p className="text-sm text-slate-500 p-2">Nenhum vendedor disponível</p>
               ) : vendedores.filter(v => {
-                  if (!['vendedor', 'gerente', 'admin', 'master'].includes(v.perfil) || v.status !== 'ativo') return false;
+                  if (!['vendedor', 'gerente', 'admin', 'master', 'super_admin'].includes(v.perfil) || v.status !== 'ativo') return false;
                   if (!searchResponsavel.trim()) return true;
-                  const name = (v.razao_social || v.full_name || '').toLowerCase();
+                  const name = (v.nome || v.razao_social || v.full_name || '').toLowerCase();
                   return name.includes(searchResponsavel.toLowerCase());
                 }).map((v) => (
                 <div
@@ -74,7 +74,7 @@ export function ModalAlterarResponsavel({
                     <AvatarFallback className="text-xs">{getInitials(v.full_name)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{v.razao_social || v.full_name}</p>
+                    <p className="text-sm font-medium">{v.nome || v.razao_social || v.full_name}</p>
                     <p className="text-xs text-slate-500 capitalize">{v.perfil}</p>
                   </div>
                   {responsaveisSelecionados.includes(v.id) && (
@@ -92,7 +92,7 @@ export function ModalAlterarResponsavel({
           {responsaveisSelecionados.length > 0 && (
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-xs text-blue-700 mb-1">{responsaveisSelecionados.length} responsável(is) selecionado(s)</p>
-              <p className="text-xs text-blue-600">Principal: {vendedores.find(v => v.id === responsaveisSelecionados[0])?.razao_social || vendedores.find(v => v.id === responsaveisSelecionados[0])?.full_name}</p>
+              <p className="text-xs text-blue-600">Principal: {(() => { const v = vendedores.find(v => v.id === responsaveisSelecionados[0]); return v?.nome || v?.razao_social || v?.full_name || ''; })()}</p>
             </div>
           )}
           <div className="flex justify-end gap-3 pt-4">

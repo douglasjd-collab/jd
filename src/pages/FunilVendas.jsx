@@ -181,10 +181,12 @@ export default function FunilVendas() {
   });
 
   const { data: vendedores = [], isLoading: loadingVendedores } = useQuery({
-    queryKey: ['vendedores'],
+    queryKey: ['vendedores', currentUser?.empresa_id],
     enabled: !!currentUser && (isAdmin || isGerente),
     queryFn: async () => {
-      const colabs = await base44.entities.Colaborador.filter({ status: 'ativo' });
+      const filtro = { status: 'ativo' };
+      if (currentUser?.empresa_id) filtro.empresa_id = currentUser.empresa_id;
+      const colabs = await base44.entities.Colaborador.filter(filtro);
       return colabs.filter(c =>
         ['vendedor', 'gerente', 'admin', 'master', 'super_admin'].includes(c.perfil)
       );
