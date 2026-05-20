@@ -167,28 +167,18 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       .finally(() => setLoadingMedia(false));
   };
 
-  // Download forçado via blob (evita problemas de CORS e abre em nova aba se necessário)
-  const handleDownload = async (url, nomeArquivo) => {
+  // Download via link direto (abre em nova aba como fallback universal)
+  const handleDownload = (url, nomeArquivo) => {
     if (!url) return;
-    try {
-      toast.message('Preparando download...');
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Falha ao baixar');
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = nomeArquivo || 'arquivo';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      toast.success('Download iniciado!');
-    } catch (e) {
-      // Fallback: abrir em nova aba
-      window.open(url, '_blank');
-      toast.info('Arquivo aberto em nova aba');
-    }
+    // Tentar download direto via <a download>
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nomeArquivo || 'arquivo';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleTranscrever = async () => {
