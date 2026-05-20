@@ -106,7 +106,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Auto-carregar mídia ao montar: imagem, vídeo e áudio para todos
   useEffect(() => {
     const tiposAuto = ['imagem', 'audio', 'video'];
-    if (tiposAuto.includes(mensagem.tipo_conteudo) && mensagem.arquivo_url && !mediaUrl && !loadingMedia) {
+    const urlAtualInvalida = !mediaUrl || !isUrlValida(mediaUrl);
+    if (tiposAuto.includes(mensagem.tipo_conteudo) && mensagem.arquivo_url && urlAtualInvalida && !loadingMedia) {
       handleCarregarMidia();
     }
   }, [mensagem.id]);
@@ -142,15 +143,17 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   };
 
-  // Atualizar mediaUrl se mensagem for atualizada externamente (só URLs válidas)
+  // Atualizar mediaUrl se mensagem for atualizada externamente (só URLs válidas, não sobrescreve URL já carregada)
   useEffect(() => {
-    if (mensagem.arquivo_url && mensagem.arquivo_url !== mediaUrl && isUrlValida(mensagem.arquivo_url)) {
+    if (mensagem.arquivo_url && isUrlValida(mensagem.arquivo_url) && !mediaUrl) {
       setMediaUrl(mensagem.arquivo_url);
     }
   }, [mensagem.arquivo_url]);
 
   const handleCarregarMidia = () => {
-    if (loadingMedia || mediaUrl) return;
+    if (loadingMedia) return;
+    // Permitir recarregar se a URL atual for inválida (enc ou similar)
+    if (mediaUrl && isUrlValida(mediaUrl)) return;
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
