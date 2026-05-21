@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,16 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
     user_token: config?.user_token || '',
     napikey: config?.napikey || '',
   });
+
+  useEffect(() => {
+    if (config) {
+      setForm({
+        numbersip: config.numbersip || '',
+        user_token: config.user_token || '',
+        napikey: config.napikey || '',
+      });
+    }
+  }, [config]);
   const [loading, setLoading] = useState(false);
   const [testando, setTestando] = useState(false);
   const [testeOk, setTesteOk] = useState(null);
@@ -66,33 +76,41 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
           <DialogTitle>Configuração NVOIP</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <p className="text-sm text-slate-500">
-            Acesse o painel NVOIP em <strong>API</strong> para obter suas credenciais.
-          </p>
+          <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
+            <p className="font-semibold mb-1">Como obter as credenciais:</p>
+            <p>Acesse <strong>nvoip.com.br → Painel → API → Nvoip API v2 (legado)</strong> para copiar a <strong>Napikey</strong> e o <strong>User Token</strong>.</p>
+          </div>
+
           <div className="space-y-2">
             <Label>NumberSIP *</Label>
             <Input
-              placeholder="Ex: 1049"
+              placeholder="Ex: 1049 (número do ramal SIP)"
               value={form.numbersip}
               onChange={e => setForm({ ...form, numbersip: e.target.value })}
             />
+            <p className="text-xs text-slate-400">Número do seu ramal SIP no painel NVOIP</p>
           </div>
+
           <div className="space-y-2">
             <Label>User Token *</Label>
             <Input
               type="password"
-              placeholder="Token do painel NVOIP"
+              placeholder="Cole o User Token do painel NVOIP"
               value={form.user_token}
               onChange={e => setForm({ ...form, user_token: e.target.value })}
             />
+            <p className="text-xs text-slate-400">Ex: 84682144-1804-11f1-a3b7-027e3c96bf59</p>
           </div>
+
           <div className="space-y-2">
-            <Label>Napikey (opcional)</Label>
+            <Label>Napikey</Label>
             <Input
-              placeholder="Chave de API alternativa"
+              type="password"
+              placeholder="Cole a Napikey do painel NVOIP"
               value={form.napikey}
               onChange={e => setForm({ ...form, napikey: e.target.value })}
             />
+            <p className="text-xs text-slate-400">Chave de API encontrada na seção API v2 (legado)</p>
           </div>
 
           <div className="flex items-center gap-2">

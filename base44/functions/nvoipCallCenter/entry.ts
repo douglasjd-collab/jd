@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const NVOIP_BASE = 'https://api.nvoip.com.br/v2';
+// Basic auth para o endpoint OAuth2 da NVOIP API v2
+// Credenciais de aplicação: NvoipApiV2 / TnZvaXBBcGlWMjpUblp2YVhCQmNHbFdNakl3TWpFPQ==
 const BASIC_AUTH = 'Basic TnZvaXBBcGlWMjpUblp2YVhCQmNHbFdNakl3TWpFPQ==';
 
 async function getEmpresaId(base44, user) {
@@ -24,6 +26,7 @@ async function getNvoipConfig(base44, empresaId) {
 }
 
 async function getValidToken(base44, config) {
+  // Token ainda válido (com 60s de margem)
   if (config.access_token && config.token_expires_at) {
     const expiresAt = new Date(config.token_expires_at);
     if (expiresAt > new Date(Date.now() + 60000)) {
@@ -31,57 +34,55 @@ async function getValidToken(base44, config) {
     }
   }
 
-  const body = new URLSearchParams();
+  // Tenta usar refresh_token primeiro
   if (config.refresh_token) {
-    body.append('grant_type', 'refresh_token');
-    body.append('refresh_token', config.refresh_token);
-  } else {
-    body.append('username', config.numbersip);
-    body.append('password', config.user_token);
-    body.append('grant_type', 'password');
+    const bodyRefresh = new URLSearchParams();
+    bodyRefresh.append('grant_type', 'refresh_token');
+    bodyRefresh.append('refresh_token', config.refresh_token);
+    const resRefresh = await fetch(`${NVOIP_BASE}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Authorization': BASIC_AUTH, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: bodyRefresh.toString(),
+    });
+    if (resRefresh.ok) {
+      const d = await resRefresh.json();
+      await base44.asServiceRole.entities.ConfiguracaoNvoip.update(config.id, {
+        access_token: d.access_token,
+        refresh_token: d.refresh_token || config.refresh_token,
+        token_expires_at: new Date(Date.now() + (d.expires_in || 3600) * 1000).toISOString(),
+        ativo: true,
+      });
+      return d.access_token;
+    }
   }
+
+  // Autentica com user_token (password grant)
+  if (!config.numbersip || !config.user_token) {
+    throw new Error('NumberSIP e User Token são obrigatórios para autenticar na NVOIP');
+  }
+
+  const bodyPwd = new URLSearchParams();
+  bodyPwd.append('grant_type', 'password');
+  bodyPwd.append('username', config.numbersip);
+  bodyPwd.append('password', config.user_token);
 
   const res = await fetch(`${NVOIP_BASE}/oauth/token`, {
     method: 'POST',
-    headers: {
-      'Authorization': BASIC_AUTH,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: body.toString(),
+    headers: { 'Authorization': BASIC_AUTH, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: bodyPwd.toString(),
   });
 
   if (!res.ok) {
-    if (config.refresh_token) {
-      const body2 = new URLSearchParams();
-      body2.append('username', config.numbersip);
-      body2.append('password', config.user_token);
-      body2.append('grant_type', 'password');
-      const res2 = await fetch(`${NVOIP_BASE}/oauth/token`, {
-        method: 'POST',
-        headers: { 'Authorization': BASIC_AUTH, 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body2.toString(),
-      });
-      if (!res2.ok) {
-        const errData = await res2.json().catch(() => ({}));
-        throw new Error(`Falha ao autenticar na NVOIP: ${errData.error_description || errData.message || JSON.stringify(errData)}`);
-      }
-      const data2 = await res2.json();
-      await base44.asServiceRole.entities.ConfiguracaoNvoip.update(config.id, {
-        access_token: data2.access_token,
-        refresh_token: data2.refresh_token,
-        token_expires_at: new Date(Date.now() + data2.expires_in * 1000).toISOString(),
-      });
-      return data2.access_token;
-    }
     const errData = await res.json().catch(() => ({}));
-    throw new Error(`Falha ao autenticar na NVOIP: ${errData.error_description || errData.message || JSON.stringify(errData)}`);
+    const errMsg = errData.error_description || errData.message || errData.error || JSON.stringify(errData);
+    throw new Error(`Falha ao autenticar na NVOIP: ${errMsg}. Verifique o NumberSIP e User Token.`);
   }
 
   const data = await res.json();
   await base44.asServiceRole.entities.ConfiguracaoNvoip.update(config.id, {
     access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    refresh_token: data.refresh_token || null,
+    token_expires_at: new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString(),
     ativo: true,
   });
   return data.access_token;
@@ -112,11 +113,12 @@ Deno.serve(async (req) => {
         headers: { 'Authorization': BASIC_AUTH, 'Content-Type': 'application/x-www-form-urlencoded' },
         body: bodyParams.toString(),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        return Response.json({ success: false, error: data.error_description || data.message || JSON.stringify(data) });
+        const errMsg = data.error_description || data.message || data.error || `HTTP ${res.status}`;
+        return Response.json({ success: false, error: `Credenciais inválidas: ${errMsg}` });
       }
-      return Response.json({ success: true, access_token: data.access_token });
+      return Response.json({ success: true, message: 'Conexão NVOIP estabelecida com sucesso!' });
     }
 
     // Buscar empresa_id do colaborador
