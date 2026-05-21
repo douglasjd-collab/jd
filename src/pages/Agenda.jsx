@@ -15,10 +15,11 @@ import {
 import {
   Calendar, Clock, MapPin, Search, Edit2, Trash2, CheckCircle,
   XCircle, Plus, ChevronLeft, ChevronRight, CalendarDays, MoreVertical,
-  AlertCircle, RefreshCw, Settings, MessageCircle, X,
+  AlertCircle, RefreshCw, Settings, MessageCircle, X, Bell,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
+import ConfiguracaoLembretesAgenda from '@/components/agenda/ConfiguracaoLembretesAgenda';
 import {
   format, parseISO, addDays, subDays, startOfWeek, endOfWeek,
   isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths,
@@ -612,6 +613,7 @@ export default function AgendaPage() {
   const [viewMode, setViewMode] = useState('semana');
   const [configStatusOpen, setConfigStatusOpen] = useState(false);
   const [whatsAppItem, setWhatsAppItem] = useState(null);
+  const [activeTab, setActiveTab] = useState('agenda');
   const [customLabels, saveCustomLabels] = useStatusLabels();
   const statusConfig = useMemo(() => buildStatusConfig(customLabels), [customLabels]);
 
@@ -723,19 +725,48 @@ export default function AgendaPage() {
           <p className="text-slate-500 text-sm">Gerencie seus compromissos e atividades</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setConfigStatusOpen(true)}
-            className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 transition-all"
-            title="Personalizar status"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-          <Button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 gap-2">
-            <Plus className="w-4 h-4" />
-            Novo compromisso
-          </Button>
+          {activeTab === 'agenda' && (
+            <>
+              <button
+                onClick={() => setConfigStatusOpen(true)}
+                className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 transition-all"
+                title="Personalizar status"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              <Button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 gap-2">
+                <Plus className="w-4 h-4" />
+                Novo compromisso
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Abas */}
+      <div className="flex gap-1 bg-white rounded-xl border p-1 w-fit">
+        <button
+          onClick={() => setActiveTab('agenda')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'agenda' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+        >
+          <CalendarDays className="w-4 h-4" />
+          Agenda
+        </button>
+        <button
+          onClick={() => setActiveTab('lembretes')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'lembretes' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+        >
+          <Bell className="w-4 h-4" />
+          ⚙️ Configuração de Lembretes
+        </button>
+      </div>
+
+      {/* Aba Configuração de Lembretes */}
+      {activeTab === 'lembretes' && (
+        <ConfiguracaoLembretesAgenda user={user} />
+      )}
+
+      {activeTab === 'agenda' && (<>
 
       {/* Barra de navegação de semana + busca */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -934,6 +965,7 @@ export default function AgendaPage() {
           </form>
         </DialogContent>
       </Dialog>
+      </>)}
     </div>
   );
 }

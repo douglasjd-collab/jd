@@ -1,0 +1,78 @@
+{
+  "name": "AgendaLembretesEnviados",
+  "type": "object",
+  "properties": {
+    "agenda_id": {
+      "type": "string",
+      "description": "ID do compromisso da Agenda"
+    },
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "destinatario_telefone": {
+      "type": "string",
+      "description": "Telefone do destinat\u00e1rio"
+    },
+    "destinatario_nome": {
+      "type": "string",
+      "description": "Nome do destinat\u00e1rio"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "cliente",
+        "responsavel"
+      ],
+      "description": "Tipo do destinat\u00e1rio"
+    },
+    "minutos_antes": {
+      "type": "number",
+      "description": "Minutos antes que este lembrete foi enviado"
+    },
+    "horario_programado": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Hor\u00e1rio que deveria ser enviado"
+    },
+    "horario_enviado": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Hor\u00e1rio real de envio"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "enviado",
+        "erro",
+        "ignorado"
+      ],
+      "default": "enviado"
+    },
+    "erro": {
+      "type": "string",
+      "description": "Detalhe do erro se houver"
+    }
+  },
+  "required": [
+    "agenda_id",
+    "empresa_id",
+    "destinatario_telefone",
+    "minutos_antes",
+    "status"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin';"
+    }
+  }
+}
