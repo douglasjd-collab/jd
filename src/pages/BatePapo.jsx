@@ -92,6 +92,7 @@ import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
 import BatePapoMenu from '@/components/chat/BatePapoMenu';
 import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
+import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -286,6 +287,7 @@ export default function BatePapo() {
   const [oportunidadeAtual, setOportunidadeAtual] = useState(null);
   const [agendarMensagemModal, setAgendarMensagemModal] = useState(null); // conversa
   const [agendadasOpen, setAgendadasOpen] = useState(false);
+  const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
   const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
 
   const abrirGruposBloqueados = async () => {
@@ -1393,6 +1395,14 @@ export default function BatePapo() {
           currentUser={user}
         />
 
+        {/* Modal Agendar Reunião */}
+        <AgendarReuniaoModal
+          open={!!agendarReuniaoModal}
+          onOpenChange={(v) => !v && setAgendarReuniaoModal(null)}
+          conversa={agendarReuniaoModal}
+          user={user}
+        />
+
         {/* Modal Funil de Vendas */}
         <FunilSelectionModal
           open={funilModalOpen}
@@ -1719,6 +1729,7 @@ export default function BatePapo() {
                                      setFunilModalOpen={setFunilModalOpen}
                                      oportunidadeAtual={oportunidadeAtual}
                                      onCriarTarefa={(conv) => { setConversaTarefa(conv); setCriarTarefaOpen(true); }}
+                                     onAgendarReuniao={setAgendarReuniaoModal}
                                      />
                                    <DropdownMenuSeparator />
                                    <DropdownMenuItem

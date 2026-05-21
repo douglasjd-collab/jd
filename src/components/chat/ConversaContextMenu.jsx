@@ -17,6 +17,7 @@ import {
   Check,
   Trash2,
   CalendarClock,
+  CalendarCheck,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ export default function ConversaContextMenu({
   setTransferirModal,
   onAgendarMensagem,
   onCriarTarefa,
+  onAgendarReuniao,
 }) {
   const queryClient = useQueryClient();
 
@@ -164,6 +166,10 @@ export default function ConversaContextMenu({
       <DropdownMenuItem onClick={() => setTransferirModal(conversa)}>
         <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
         Transferir atendimento
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => onAgendarReuniao && onAgendarReuniao(conversa)}>
+        <CalendarCheck className="mr-2 h-3.5 w-3.5 text-green-600" />
+        <span className="text-green-600">Agendar reunião</span>
       </DropdownMenuItem>
       <DropdownMenuItem onClick={() => onAgendarMensagem && onAgendarMensagem(conversa)}>
         <CalendarClock className="mr-2 h-3.5 w-3.5 text-blue-600" />
