@@ -28,7 +28,7 @@ export default function SimuladorNormal() {
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [grupo, setGrupo] = useState('');
-  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '' }]);
+  const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '', nomePlano: '' }]);
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(false);
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
@@ -139,7 +139,7 @@ export default function SimuladorNormal() {
   const [relogioContemplacao, setRelogioContemplacao] = useState(null);
 
   const adicionarCarta = () => {
-    setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '' }]);
+    setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '', nomePlano: '' }]);
   };
 
   const duplicarCarta = (index) => {
@@ -320,9 +320,11 @@ export default function SimuladorNormal() {
     }
     // O lance embutido NÃO desconta do saldo quando:
     // 1. O usuário selecionou parcela reduzida (a parcela já está reduzida pelo embutido), OU
-    // 2. O plano selecionado é 50% ou 70% (a parcela já é a reduzida com o embutido incluso)
+    // 2. O plano selecionado é 50% ou 70% (detectado pelo planoSelecionadoInfo OU pelo nomePlano de qualquer carta)
     const planoSelecionadoUpper = planoSelecionadoInfo?.toUpperCase() || '';
-    const planoEmbComDesconto = planoSelecionadoUpper.includes('50%') || planoSelecionadoUpper.includes('70%');
+    const nomesCartasUpper = cartas.map(c => (c.nomePlano || '').toUpperCase()).join(' ');
+    const textoPlanos = planoSelecionadoUpper + ' ' + nomesCartasUpper;
+    const planoEmbComDesconto = textoPlanos.includes('50%') || textoPlanos.includes('70%');
     const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && !planoEmbComDesconto;
 
     // Aplicar lance próprio se ativo
@@ -656,7 +658,8 @@ export default function SimuladorNormal() {
         credito: plano.credito.toString(),
         parcela: plano.parcela.toString(),
         prazo: plano.prazo.toString(),
-        parcelaReduzida: parcelaReduzida
+        parcelaReduzida: parcelaReduzida,
+        nomePlano: plano.nome_bem || ''
       };
       setCartas(novasCartas);
       setPlanoSelecionadoInfo(plano.nome_bem || '');
@@ -782,22 +785,37 @@ export default function SimuladorNormal() {
 
                   {!carta.planoDecrescente ? (
                     /* Layout Normal */
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <div>
-                        <Label className="text-xs">Crédito (R$) *</Label>
-                        <Input type="text" value={carta.credito ? formatarParaExibicao(carta.credito) : ''} onChange={(e) => { const val = handleMoedaInput(e.target.value); atualizarCarta(index, 'credito', val > 0 ? val.toString() : ''); }} placeholder="0,00" className="h-9" />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div>
+                          <Label className="text-xs">Crédito (R$) *</Label>
+                          <Input type="text" value={carta.credito ? formatarParaExibicao(carta.credito) : ''} onChange={(e) => { const val = handleMoedaInput(e.target.value); atualizarCarta(index, 'credito', val > 0 ? val.toString() : ''); }} placeholder="0,00" className="h-9" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Parcela (R$) *</Label>
+                          <Input type="text" value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''} onChange={(e) => { const val = handleMoedaInput(e.target.value); atualizarCarta(index, 'parcela', val > 0 ? val.toString() : ''); }} placeholder="0,00" className="h-9" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Prazo (meses) *</Label>
+                          <Input type="number" value={carta.prazo} onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)} placeholder="120" className="h-9" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">1ª Parcela Reduzida</Label>
+                          <Input type="text" value={carta.parcelaReduzida ? formatarParaExibicao(carta.parcelaReduzida) : ''} onChange={(e) => { const val = handleMoedaInput(e.target.value); atualizarCarta(index, 'parcelaReduzida', val > 0 ? val.toString() : ''); }} placeholder="0,00" className="h-9" />
+                        </div>
                       </div>
                       <div>
-                        <Label className="text-xs">Parcela (R$) *</Label>
-                        <Input type="text" value={carta.parcela ? formatarParaExibicao(carta.parcela) : ''} onChange={(e) => { const val = handleMoedaInput(e.target.value); atualizarCarta(index, 'parcela', val > 0 ? val.toString() : ''); }} placeholder="0,00" className="h-9" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Prazo (meses) *</Label>
-                        <Input type="number" value={carta.prazo} onChange={(e) => atualizarCarta(index, 'prazo', e.target.value)} placeholder="120" className="h-9" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">1ª Parcela Reduzida</Label>
-                        <Input type="text" value={carta.parcelaReduzida ? formatarParaExibicao(carta.parcelaReduzida) : ''} onChange={(e) => { const val = handleMoedaInput(e.target.value); atualizarCarta(index, 'parcelaReduzida', val > 0 ? val.toString() : ''); }} placeholder="0,00" className="h-9" />
+                        <Label className="text-xs text-slate-500">Nome/Código do Plano <span className="text-slate-400">(opcional — ex: CR.43.05 - AUTOMÓVEL LEVE 50%)</span></Label>
+                        <Input
+                          type="text"
+                          value={carta.nomePlano || ''}
+                          onChange={(e) => atualizarCarta(index, 'nomePlano', e.target.value)}
+                          placeholder="Ex: CR.43.05 - AUTOMÓVEL LEVE 50%"
+                          className="h-9 text-xs"
+                        />
+                        {carta.nomePlano && (carta.nomePlano.toUpperCase().includes('50%') || carta.nomePlano.toUpperCase().includes('70%')) && (
+                          <p className="text-xs text-emerald-600 mt-1">✅ Plano {carta.nomePlano.toUpperCase().includes('70%') ? '70%' : '50%'} identificado — Lance embutido não descontará do saldo devedor</p>
+                        )}
                       </div>
                     </div>
                   ) : (
