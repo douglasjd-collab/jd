@@ -83,6 +83,7 @@ import ListaMensagens from '@/components/chat/ListaMensagens';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
 import AvatarContato from '@/components/chat/AvatarContato';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
+import { useTarefaFormData } from '@/hooks/useTarefaFormData';
 import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoModal';
 import TagsModal from '@/components/chat/TagsModal';
 import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
@@ -502,36 +503,8 @@ export default function BatePapo() {
   });
 
   // Dados para o modal de criar tarefa
-  const { data: colaboradoresTarefa = [] } = useQuery({
-    queryKey: ['colaboradores-tarefa', empresaId],
-    enabled: !!empresaId,
-    staleTime: 60000,
-    queryFn: () => base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 200),
-  });
-  const { data: clientesTarefa = [] } = useQuery({
-    queryKey: ['clientes-tarefa', empresaId],
-    enabled: !!empresaId,
-    staleTime: 60000,
-    queryFn: () => base44.entities.Cliente.filter({ empresa_id: empresaId }, 'nome_completo', 500),
-  });
-  const { data: statusListTarefa = [] } = useQuery({
-    queryKey: ['status-tarefa'],
-    enabled: !!empresaId,
-    staleTime: 60000,
-    queryFn: async () => {
-      try { return await base44.entities.StatusTarefa.list('ordem', 100); }
-      catch { return [{ slug: 'a_fazer', nome: 'A Fazer' }, { slug: 'em_andamento', nome: 'Em Andamento' }, { slug: 'concluido', nome: 'Concluído' }]; }
-    },
-  });
-  const { data: tiposListTarefa = [] } = useQuery({
-    queryKey: ['tipos-tarefa', empresaId],
-    enabled: !!empresaId,
-    staleTime: 60000,
-    queryFn: async () => {
-      try { return await base44.entities.TipoTarefa.filter({ empresa_id: empresaId }); }
-      catch { return []; }
-    },
-  });
+  const { colaboradores: colaboradoresTarefa, clientes: clientesTarefa, statusList: statusListTarefa, setores: setoresTarefa, subsetores: subsetoresTarefa } = useTarefaFormData(empresaId);
+  const tiposListTarefa = [];
 
   const { data: conversas = [], refetch: refetchConversas } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
@@ -1389,6 +1362,8 @@ export default function BatePapo() {
           statusList={statusListTarefa}
           templates={[]}
           tiposList={tiposListTarefa}
+          setoresList={setoresTarefa}
+          subsetoresList={subsetoresTarefa}
           currentUser={user}
           empresaId={empresaId}
         />
