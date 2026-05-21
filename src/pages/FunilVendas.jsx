@@ -1244,7 +1244,7 @@ export default function FunilVendas() {
                                            origem: oport.origem || '',
                                            observacoes: oport.observacoes || '',
                                            data_fechamento_prevista: oport.data_fechamento_prevista || '',
-                                           telefone_lead: oport.telefone_lead || '',
+                                           telefone_lead: oport.telefone_lead || oport.cliente_telefone || '',
                                            data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
                                          });
                                          // Extrair dados do indicador se existir
