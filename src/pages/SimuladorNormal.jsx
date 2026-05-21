@@ -312,10 +312,13 @@ export default function SimuladorNormal() {
     let saldoDevedorTotal = totalPlano;
     
     // Aplicar lance embutido se ativo (% do crédito total)
+    // Se parcela reduzida está selecionada, o lance embutido já está "embutido" na parcela menor,
+    // então NÃO desconta do saldo devedor
     if (usarLanceEmbutido && lanceEmbutidoPercentual) {
       const pctEmbutido = parseFloat(lanceEmbutidoPercentual) / 100;
       lanceEmbutidoValor = creditoTotal * pctEmbutido;
     }
+    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0);
 
     // Aplicar lance próprio se ativo
     if (usarLanceProprio && lanceProprio) {
@@ -326,9 +329,11 @@ export default function SimuladorNormal() {
       }
     }
 
+    // Se parcela reduzida, o lance embutido NÃO desconta do saldo devedor
+    const lanceEmbutidoParaSaldo = lanceEmbutidoDescontaNoSaldo ? lanceEmbutidoValor : 0;
     const lanceTotalValor = lanceProprioValor + lanceEmbutidoValor;
-    // O lance sempre desconta do saldo total do plano (calculado com parcela cheia)
-    saldoDevedorTotal = totalPlano - lanceTotalValor;
+    // Saldo: desconta lance próprio sempre; lance embutido só desconta se parcela cheia
+    saldoDevedorTotal = totalPlano - lanceProprioValor - lanceEmbutidoParaSaldo;
 
     const saldoAposLance = saldoDevedorTotal;
 
@@ -364,11 +369,12 @@ export default function SimuladorNormal() {
         // Parcelas na carência: valor original sem desconto
         parcelaCarenciaValor = parcela1a10;
 
-        if (lanceTotalValor > 0) {
+        const lanceEfetivoDecrescente = lanceProprioValor + lanceEmbutidoParaSaldo;
+        if (lanceEfetivoDecrescente > 0) {
           // Saldo após parcela paga no ato
           const saldoAposParcela = totalPlano - parcela1a10;
           // Saldo após lance
-          const saldoAposLanceDecrescente = saldoAposParcela - lanceTotalValor;
+          const saldoAposLanceDecrescente = saldoAposParcela - lanceEfetivoDecrescente;
 
           // Calcular total original apenas das parcelas RESTANTES (após ato + carência)
           // Faixa 1 restante: parcelas primeiraParcRestante a 10
@@ -403,6 +409,7 @@ export default function SimuladorNormal() {
         }
       }
     } else {
+      // saldoDevedorTotal já foi calculado sem embutido quando parcela reduzida
       // Sempre desconta a 1ª parcela no ato do saldo devedor (usa a parcela escolhida pelo cliente)
       const saldoDevedorReal = saldoDevedorTotal - primeiraParcelaNoAto;
       novoPrazo = prazoNum - 1;
@@ -466,6 +473,8 @@ export default function SimuladorNormal() {
       usarLanceEmbutido,
       lanceEmbutido: lanceEmbutidoValor,
       lanceEmbutidoPercentual: usarLanceEmbutido ? parseFloat(lanceEmbutidoPercentual) : 0,
+      lanceEmbutidoDescontaNoSaldo,
+      parcelaReduzidaSelecionada: usarParcelaReduzida && parcelaReduzidaTotal > 0,
       lanceTotal: lanceTotalValor,
       saldoAposLance,
       saldoDevedor: saldoDevedorExibicao,
@@ -1189,17 +1198,17 @@ export default function SimuladorNormal() {
                         </div>
                       </>
                     )}
-                    {resultado.usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">(-) Lance Embutido ({resultado.lanceEmbutidoPercentual}%):</span>
-                        <span className="font-semibold text-emerald-700">- {formatCurrency(resultado.lanceEmbutido)}</span>
-                      </div>
+                    {resultado.usarLanceEmbutido && resultado.lanceEmbutidoDescontaNoSaldo && (
+                     <div className="flex justify-between">
+                       <span className="text-slate-600">(-) Lance Embutido ({resultado.lanceEmbutidoPercentual}%):</span>
+                       <span className="font-semibold text-emerald-700">- {formatCurrency(resultado.lanceEmbutido)}</span>
+                     </div>
                     )}
-                    {resultado.usarLanceEmbutido && (usarParcelaReduzida && parcelaReduzidaTotal > 0) && (
-                      <div className="flex justify-between text-xs text-emerald-700">
-                        <span>✨ Lance Embutido já incluso na parcela reduzida</span>
-                        <span className="font-semibold">{formatCurrency(resultado.lanceEmbutido)}</span>
-                      </div>
+                    {resultado.usarLanceEmbutido && !resultado.lanceEmbutidoDescontaNoSaldo && (
+                     <div className="flex justify-between text-xs text-emerald-700">
+                       <span>✨ Lance Embutido incluso na parcela reduzida (não desconta do saldo)</span>
+                       <span className="font-semibold">{formatCurrency(resultado.lanceEmbutido)}</span>
+                     </div>
                     )}
                     {resultado.usarLanceProprio && !resultado.temPlanoDecrescente && resultado.modoReducao !== '5050' && (
                       <div className="flex justify-between">
