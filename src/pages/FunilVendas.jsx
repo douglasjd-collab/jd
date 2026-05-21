@@ -1309,11 +1309,11 @@ export default function FunilVendas() {
                                 </div>
 
                                 {oport.cliente_nome && (
-                                  <p className="text-xs text-slate-600 mb-2">👤 {oport.cliente_nome}</p>
+                                  <p className="text-xs text-slate-600 mb-1">👤 {oport.cliente_nome}</p>
                                 )}
 
-                                {oport.telefone_lead && (
-                                  <p className="text-xs text-slate-600 mb-2">📞 {oport.telefone_lead}</p>
+                                {(oport.telefone_lead || oport.cliente_telefone) && (
+                                  <p className="text-xs text-slate-900 font-semibold mb-3">📱 {oport.telefone_lead || oport.cliente_telefone}</p>
                                 )}
 
                                 {/* Badge campanhas planejamento */}
