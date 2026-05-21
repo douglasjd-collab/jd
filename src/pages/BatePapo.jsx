@@ -271,6 +271,7 @@ export default function BatePapo() {
   const [empresas, setEmpresas] = useState([]); // apenas para super_admin
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
+  const [conversaTarefa, setConversaTarefa] = useState(null); // conversa para pré-preencher tarefa
   const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
   const [marcadasNaoLidasManual, setMarcadasNaoLidasManual] = useState(new Set()); // IDs marcadas manualmente como não lido
@@ -1358,18 +1359,22 @@ export default function BatePapo() {
         {/* Modal Criar Tarefa */}
         <TarefaFormModal
           open={criarTarefaOpen}
-          onOpenChange={setCriarTarefaOpen}
-          tarefa={null}
+          onOpenChange={(v) => { setCriarTarefaOpen(v); if (!v) setConversaTarefa(null); }}
+          tarefa={conversaTarefa ? {
+            cliente_nome: contatosWhatsapp[conversaTarefa.id]?.nome || conversaTarefa.cliente_nome || '',
+            cliente_telefone: conversaTarefa.cliente_telefone || '',
+          } : null}
           onSave={async (data) => {
             try {
               await base44.entities.Tarefa.create({
                 ...data,
                 empresa_id: empresaId,
-                cliente_telefone: data.cliente_telefone || conversaSelecionada?.cliente_telefone || '',
-                cliente_nome: data.cliente_nome || conversaSelecionada?.cliente_nome || '',
+                cliente_telefone: data.cliente_telefone || conversaTarefa?.cliente_telefone || conversaSelecionada?.cliente_telefone || '',
+                cliente_nome: data.cliente_nome || contatosWhatsapp[conversaTarefa?.id]?.nome || conversaTarefa?.cliente_nome || '',
               });
               toast.success('Tarefa criada com sucesso!');
               setCriarTarefaOpen(false);
+              setConversaTarefa(null);
             } catch (e) {
               toast.error('Erro ao criar tarefa: ' + e.message);
             }
@@ -1380,6 +1385,7 @@ export default function BatePapo() {
           templates={[]}
           tiposList={tiposListTarefa}
           currentUser={user}
+          empresaId={empresaId}
         />
 
         {/* Modal Tags - Atribuir a Contato */}
@@ -1732,6 +1738,7 @@ export default function BatePapo() {
                                      onAgendarMensagem={setAgendarMensagemModal}
                                      setFunilModalOpen={setFunilModalOpen}
                                      oportunidadeAtual={oportunidadeAtual}
+                                     onCriarTarefa={(conv) => { setConversaTarefa(conv); setCriarTarefaOpen(true); }}
                                      />
                                    <DropdownMenuSeparator />
                                    <DropdownMenuItem

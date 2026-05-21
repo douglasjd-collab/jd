@@ -35,6 +35,7 @@ export default function ConversaContextMenu({
   setTagsModalOpen,
   setTransferirModal,
   onAgendarMensagem,
+  onCriarTarefa,
 }) {
   const queryClient = useQueryClient();
 
@@ -156,7 +157,7 @@ export default function ConversaContextMenu({
         <Tag className="mr-2 h-3.5 w-3.5" />
         Tags
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => toast.info('Criar tarefa em desenvolvimento')}>
+      <DropdownMenuItem onClick={() => onCriarTarefa && onCriarTarefa(conversa)}>
         <Clock className="mr-2 h-3.5 w-3.5" />
         Criar tarefa
       </DropdownMenuItem>
