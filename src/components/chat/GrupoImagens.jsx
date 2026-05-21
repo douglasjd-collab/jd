@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Download, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
@@ -7,13 +7,16 @@ const CELL_SIZE = 160; // px por célula
 const GAP = 3;
 
 export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
+  const isUrlValida = (url) => {
+    if (!url) return false;
+    if (url.endsWith('.enc') || url.includes('.enc?')) return false;
+    return url.includes('base44') || url.includes('supabase') || url.includes('amazonaws') || url.startsWith('blob:') || (url.startsWith('http') && !url.includes('/media/'));
+  };
+
   const [urls, setUrls] = useState(() => {
     const init = {};
     mensagens.forEach(m => {
-      const url = m.arquivo_url;
-      const valida = url && !url.endsWith('.enc') && !url.includes('.enc?') &&
-        (url.includes('base44') || url.includes('supabase') || url.includes('amazonaws') || url.startsWith('http'));
-      init[m.id] = valida ? url : null;
+      init[m.id] = isUrlValida(m.arquivo_url) ? m.arquivo_url : null;
     });
     return init;
   });
@@ -21,9 +24,17 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
   const [failed, setFailed] = useState({});
   const [imagemAberta, setImagemAberta] = useState(null);
 
+  // Refs para evitar stale closure no useEffect
+  const urlsRef = useRef(urls);
+  const loadingRef = useRef(loading);
+  useEffect(() => { urlsRef.current = urls; }, [urls]);
+  useEffect(() => { loadingRef.current = loading; }, [loading]);
+
   const carregarImagem = async (msg) => {
-    if (loading[msg.id] || urls[msg.id]) return;
+    // Usar refs para checar estado mais recente
+    if (loadingRef.current[msg.id] || urlsRef.current[msg.id]) return;
     setLoading(prev => ({ ...prev, [msg.id]: true }));
+    loadingRef.current = { ...loadingRef.current, [msg.id]: true };
     try {
       const res = await base44.functions.invoke('baixarMidiaWhatsApp', {
         mensagem_id: msg.id,
@@ -32,6 +43,7 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
       });
       if (res?.data?.arquivo_url) {
         setUrls(prev => ({ ...prev, [msg.id]: res.data.arquivo_url }));
+        urlsRef.current = { ...urlsRef.current, [msg.id]: res.data.arquivo_url };
         setFailed(prev => ({ ...prev, [msg.id]: false }));
       } else {
         setFailed(prev => ({ ...prev, [msg.id]: true }));
@@ -41,16 +53,18 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
       setFailed(prev => ({ ...prev, [msg.id]: true }));
     } finally {
       setLoading(prev => ({ ...prev, [msg.id]: false }));
+      loadingRef.current = { ...loadingRef.current, [msg.id]: false };
     }
   };
 
-  // Auto-carregar todas as imagens ao montar
+  // Auto-carregar todas as imagens ao montar — sem depender do estado (usa refs)
   useEffect(() => {
     mensagens.forEach(msg => {
-      if (!urls[msg.id] && !loading[msg.id]) {
+      if (!isUrlValida(msg.arquivo_url) && !urlsRef.current[msg.id] && !loadingRef.current[msg.id]) {
         carregarImagem(msg);
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const total = mensagens.length;
