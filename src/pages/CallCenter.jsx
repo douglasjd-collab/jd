@@ -16,6 +16,8 @@ import EnviarSmsModal from '@/components/callcenter/EnviarSmsModal';
 import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
 import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
+import SoftphonePanel from '@/components/callcenter/SoftphonePanel';
+import useSoftphone from '@/components/callcenter/useSoftphone';
 
 export default function CallCenter() {
   const [user, setUser] = useState(null);
@@ -29,7 +31,8 @@ export default function CallCenter() {
   const [smsOpen, setSmsOpen] = useState(false);
   const [torpedoOpen, setTorpedoOpen] = useState(false);
 
-  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino }
+  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino } — API REST
+  const softphone = useSoftphone(config);
 
   useEffect(() => {
     const init = async () => {
@@ -192,17 +195,42 @@ export default function CallCenter() {
       {/* Conteúdo principal */}
       {!naoConfigurado && (
         <>
+          {/* Layout: softphone à esquerda + conteúdo à direita */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Softphone WebRTC */}
+            <div className="lg:col-span-1">
+              <SoftphonePanel softphone={softphone} numbersip={config?.numbersip} />
+              {!config?.sip_password && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                  <strong>⚠️ Senha SIP não configurada.</strong> Para fazer/receber ligações com áudio, clique em <strong>Configurar</strong> e preencha a Senha SIP do seu ramal.
+                </div>
+              )}
+            </div>
+
+            {/* Ações + histórico */}
+            <div className="lg:col-span-2 space-y-4">
+
           {/* Cards de ação rápida */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card
               className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-green-300"
-              onClick={() => setChamadaOpen(true)}
+              onClick={() => {
+                // Se SIP registrado, usa softphone (scrolla até ele); senão abre modal API
+                if (softphone.sipStatus === 'registrado') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  setChamadaOpen(true);
+                }
+              }}
             >
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                   <Phone className="w-6 h-6 text-green-600" />
                 </div>
                 <span className="font-semibold text-sm text-slate-700">Nova Chamada</span>
+                <span className="text-xs text-slate-400">
+                  {softphone.sipStatus === 'registrado' ? 'WebRTC ativo' : 'API REST'}
+                </span>
               </CardContent>
             </Card>
 
@@ -254,9 +282,9 @@ export default function CallCenter() {
             </Card>
           </div>
 
-          {/* Chamada ativa */}
+          {/* Chamada ativa (API REST click-to-call) */}
           {chamadaAtiva && (
-            <div className="max-w-sm mx-auto">
+            <div className="max-w-sm">
               <ChamadaAtiva
                 callId={chamadaAtiva.callId}
                 destino={chamadaAtiva.destino}
@@ -277,6 +305,9 @@ export default function CallCenter() {
               <HistoricoChamadas />
             </TabsContent>
           </Tabs>
+
+            </div>{/* fim col-span-2 */}
+          </div>{/* fim grid */}
         </>
       )}
 

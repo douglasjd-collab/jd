@@ -10,6 +10,10 @@
       "type": "string",
       "description": "N\u00famero SIP da conta NVOIP"
     },
+    "sip_password": {
+      "type": "string",
+      "description": "Senha SIP para registro WebRTC (diferente do user_token)"
+    },
     "user_token": {
       "type": "string",
       "description": "User token para gerar access_token"

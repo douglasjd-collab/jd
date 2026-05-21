@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onSalvo }) {
   const [form, setForm] = useState({
     numbersip: config?.numbersip || '',
+    sip_password: config?.sip_password || '',
     user_token: config?.user_token || '',
     napikey: config?.napikey || '',
   });
@@ -18,6 +19,7 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
     if (config) {
       setForm({
         numbersip: config.numbersip || '',
+        sip_password: config.sip_password || '',
         user_token: config.user_token || '',
         napikey: config.napikey || '',
       });
@@ -84,11 +86,22 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
           <div className="space-y-2">
             <Label>NumberSIP *</Label>
             <Input
-              placeholder="Ex: 1049 (número do ramal SIP)"
+              placeholder="Ex: 142502001 (número do ramal SIP)"
               value={form.numbersip}
               onChange={e => setForm({ ...form, numbersip: e.target.value })}
             />
             <p className="text-xs text-slate-400">Número do seu ramal SIP no painel NVOIP</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Senha SIP <span className="text-blue-600 font-semibold">(para chamadas de voz)</span></Label>
+            <Input
+              type="password"
+              placeholder="Senha SIP do ramal (painel NVOIP → Ramais)"
+              value={form.sip_password}
+              onChange={e => setForm({ ...form, sip_password: e.target.value })}
+            />
+            <p className="text-xs text-slate-400">No painel NVOIP: <strong>Ramais → seu ramal → Senha SIP</strong>. Necessária para fazer/receber ligações com áudio.</p>
           </div>
 
           <div className="space-y-2">
