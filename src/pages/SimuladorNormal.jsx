@@ -318,7 +318,11 @@ export default function SimuladorNormal() {
       const pctEmbutido = parseFloat(lanceEmbutidoPercentual) / 100;
       lanceEmbutidoValor = creditoTotal * pctEmbutido;
     }
-    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0);
+    // O lance embutido NÃO desconta do saldo quando:
+    // 1. O usuário selecionou parcela reduzida (a parcela já está reduzida pelo embutido), OU
+    // 2. O plano selecionado é 70% (a parcela já é a reduzida com o embutido incluso)
+    const planoE70 = planoSelecionadoInfo?.toUpperCase().includes('70%');
+    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && !planoE70;
 
     // Aplicar lance próprio se ativo
     if (usarLanceProprio && lanceProprio) {
