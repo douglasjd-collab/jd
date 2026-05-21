@@ -79,6 +79,7 @@ import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import GrupoImagens from '@/components/chat/GrupoImagens';
+import ListaMensagens from '@/components/chat/ListaMensagens';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
 import AvatarContato from '@/components/chat/AvatarContato';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
@@ -1822,34 +1823,14 @@ export default function BatePapo() {
                           </div>
                         </div>
                       ) : (
-                        <div className="space-y-3 pb-4">
-                          {mensagens.map((msg, idx) => {
-                            const dataMsg = new Date(msg.data_envio || msg.created_date);
-                            const dataMsgAnterior = idx > 0 ? new Date(mensagens[idx - 1].data_envio || mensagens[idx - 1].created_date) : null;
-                            const mostrarSeparador = !dataMsgAnterior || !isSameDay(dataMsg, dataMsgAnterior);
-                            let labelData = '';
-                            if (mostrarSeparador) {
-                              if (isToday(dataMsg)) labelData = 'Hoje';
-                              else if (isYesterday(dataMsg)) labelData = 'Ontem';
-                              else labelData = format(dataMsg, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-                            }
-                            return (
-                              <div key={msg.id}>
-                                {mostrarSeparador && (
-                                  <div className="flex items-center gap-2 my-3">
-                                    <div className="flex-1 h-px bg-slate-300/50" />
-                                    <span className="text-[11px] text-slate-500 bg-white/70 backdrop-blur-sm px-2.5 py-0.5 rounded-full shadow-sm font-medium">
-                                      {labelData}
-                                    </span>
-                                    <div className="flex-1 h-px bg-slate-300/50" />
-                                  </div>
-                                )}
-                                <MensagemItem mensagem={msg} conversaId={conversaSelecionada?.id} isGrupo={isGrupo(conversaSelecionada)} onResponder={setMensagemParaResponder} user={user} />
-                              </div>
-                            );
-                          })}
-                          <div ref={mensagensEndRef} />
-                        </div>
+                        <ListaMensagens
+                          mensagens={mensagens}
+                          conversaSelecionada={conversaSelecionada}
+                          isGrupo={isGrupo(conversaSelecionada)}
+                          onResponder={setMensagemParaResponder}
+                          user={user}
+                          mensagensEndRef={mensagensEndRef}
+                        />
                       )}
                     </ScrollArea>
 

@@ -3,8 +3,8 @@ import { Download, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 
-const CELL_SIZE = 148; // px por célula
-const GAP = 2;
+const CELL_SIZE = 160; // px por célula
+const GAP = 3;
 
 export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
   const [urls, setUrls] = useState(() => {
@@ -18,6 +18,7 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
     return init;
   });
   const [loading, setLoading] = useState({});
+  const [failed, setFailed] = useState({});
   const [imagemAberta, setImagemAberta] = useState(null);
 
   const carregarImagem = async (msg) => {
@@ -31,28 +32,33 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
       });
       if (res?.data?.arquivo_url) {
         setUrls(prev => ({ ...prev, [msg.id]: res.data.arquivo_url }));
+        setFailed(prev => ({ ...prev, [msg.id]: false }));
+      } else {
+        setFailed(prev => ({ ...prev, [msg.id]: true }));
       }
     } catch (e) {
       console.error('Erro ao carregar imagem:', e);
+      setFailed(prev => ({ ...prev, [msg.id]: true }));
     } finally {
       setLoading(prev => ({ ...prev, [msg.id]: false }));
     }
   };
 
+  // Auto-carregar todas as imagens ao montar
   useEffect(() => {
     mensagens.forEach(msg => {
-      if (!urls[msg.id]) carregarImagem(msg);
+      if (!urls[msg.id] && !loading[msg.id]) {
+        carregarImagem(msg);
+      }
     });
   }, []);
 
   const total = mensagens.length;
-  // Mostrar no máximo 4 células, extras contados a partir da 4ª
   const MAX_CELLS = 4;
   const visiveis = mensagens.slice(0, MAX_CELLS);
   const extras = total > MAX_CELLS ? total - MAX_CELLS : 0;
   const ultima = mensagens[mensagens.length - 1];
 
-  // Hora e status (sobrepostos na última célula visível)
   const statusIcon = isVendedor ? (
     ultima.status === 'lida' ? (
       <span style={{ color: '#53bdeb', fontSize: 11, fontWeight: 700 }}>✓✓</span>
@@ -65,50 +71,76 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
 
   const horaLabel = format(new Date(ultima.data_envio || ultima.created_date), 'HH:mm');
 
-  // Layout: 1 imagem = largura total; 2 = lado a lado; 3 = primeira grande + 2 menores; 4 = 2x2
-  const renderCelula = (msg, idx, width, height, isLastVisible) => {
+  const renderCelula = (msg, idx, width, height, isLastVisible, borderRadius = '0px') => {
     const url = urls[msg.id];
     const isLoading = loading[msg.id];
+    const hasFailed = failed[msg.id];
     const isLastAndHasExtras = isLastVisible && extras > 0;
 
     return (
       <div
         key={msg.id}
-        style={{ width, height, position: 'relative', flexShrink: 0, overflow: 'hidden', backgroundColor: '#d1d5db', cursor: 'pointer' }}
+        style={{
+          width, height,
+          position: 'relative',
+          flexShrink: 0,
+          overflow: 'hidden',
+          backgroundColor: '#c8ccd0',
+          borderRadius,
+          cursor: url ? 'pointer' : 'default',
+        }}
         onClick={() => url && setImagemAberta(url)}
       >
         {isLoading ? (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          // Skeleton loading
+          <div style={{
+            width: '100%', height: '100%',
+            background: 'linear-gradient(90deg, #d1d5db 25%, #e5e7eb 50%, #d1d5db 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
             <Loader2 style={{ width: 20, height: 20, color: '#9ca3af' }} className="animate-spin" />
           </div>
         ) : url ? (
-          <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            onError={() => setUrls(prev => ({ ...prev, [msg.id]: null }))} />
-        ) : (
+          <img
+            src={url}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            onError={() => { setUrls(prev => ({ ...prev, [msg.id]: null })); setFailed(prev => ({ ...prev, [msg.id]: true })); }}
+          />
+        ) : hasFailed ? (
+          // Falhou no download: mostrar botão de tentar novamente
           <div
-            style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e5e7eb' }}
-            onClick={e => { e.stopPropagation(); carregarImagem(msg); }}
+            style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#e5e7eb', cursor: 'pointer' }}
+            onClick={e => { e.stopPropagation(); setFailed(prev => ({ ...prev, [msg.id]: false })); carregarImagem(msg); }}
           >
-            <Download style={{ width: 20, height: 20, color: '#9ca3af' }} />
+            <Download style={{ width: 20, height: 20, color: '#6b7280' }} />
+            <span style={{ fontSize: 10, color: '#6b7280' }}>Tentar novamente</span>
+          </div>
+        ) : (
+          // Ainda carregando (sem URL e sem falha = aguardando início)
+          <div style={{ width: '100%', height: '100%', background: '#d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Loader2 style={{ width: 20, height: 20, color: '#9ca3af' }} className="animate-spin" />
           </div>
         )}
 
         {/* Overlay "+X" */}
         {isLastAndHasExtras && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>+{extras}</span>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius }}>
+            <span style={{ color: '#fff', fontSize: 24, fontWeight: 700 }}>+{extras}</span>
           </div>
         )}
 
-        {/* Hora + status na última célula visível (canto inferior direito) */}
+        {/* Hora + status na última célula visível */}
         {isLastVisible && (
           <div style={{
-            position: 'absolute', bottom: 4, right: 6,
+            position: 'absolute', bottom: 6, right: 6,
             display: 'flex', alignItems: 'center', gap: 2,
             background: 'rgba(0,0,0,0.45)', borderRadius: 10,
-            padding: '1px 5px'
+            padding: '2px 6px'
           }}>
-            <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: 11 }}>{horaLabel}</span>
+            <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 11 }}>{horaLabel}</span>
             {statusIcon}
           </div>
         )}
@@ -117,47 +149,47 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
   };
 
   const totalW = CELL_SIZE * 2 + GAP;
+  const BR = 12; // border-radius do grupo inteiro
 
-  // Decide layout baseado na quantidade de imagens
+  // Calcular border-radius por célula para dar aspecto arredondado nas extremidades
+  const getBR = (topLeft, topRight, bottomRight, bottomLeft) =>
+    `${topLeft}px ${topRight}px ${bottomRight}px ${bottomLeft}px`;
+
   let grid;
   if (visiveis.length === 1) {
-    // 1 imagem: largura total, altura 200
     grid = (
       <div style={{ width: totalW }}>
-        {renderCelula(visiveis[0], 0, totalW, 200, true)}
+        {renderCelula(visiveis[0], 0, totalW, 200, true, `${BR}px`)}
       </div>
     );
   } else if (visiveis.length === 2) {
-    // 2 imagens: lado a lado, 1 linha
     grid = (
       <div style={{ display: 'flex', gap: GAP, width: totalW }}>
-        {visiveis.map((msg, idx) =>
-          renderCelula(msg, idx, CELL_SIZE, CELL_SIZE, idx === 1)
-        )}
+        {renderCelula(visiveis[0], 0, CELL_SIZE, CELL_SIZE, false, getBR(BR, 0, 0, BR))}
+        {renderCelula(visiveis[1], 1, CELL_SIZE, CELL_SIZE, true, getBR(0, BR, BR, 0))}
       </div>
     );
   } else if (visiveis.length === 3) {
-    // 3 imagens: primeira grande em cima, duas menores embaixo
     grid = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, width: totalW }}>
-        {renderCelula(visiveis[0], 0, totalW, CELL_SIZE, false)}
+        {renderCelula(visiveis[0], 0, totalW, CELL_SIZE, false, getBR(BR, BR, 0, 0))}
         <div style={{ display: 'flex', gap: GAP }}>
-          {renderCelula(visiveis[1], 1, CELL_SIZE, CELL_SIZE, false)}
-          {renderCelula(visiveis[2], 2, CELL_SIZE, CELL_SIZE, true)}
+          {renderCelula(visiveis[1], 1, CELL_SIZE, CELL_SIZE, false, getBR(0, 0, 0, BR))}
+          {renderCelula(visiveis[2], 2, CELL_SIZE, CELL_SIZE, true, getBR(0, 0, BR, 0))}
         </div>
       </div>
     );
   } else {
-    // 4 imagens: 2x2 grid (igual à foto do WhatsApp)
+    // 4+ imagens: 2x2
     grid = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, width: totalW }}>
         <div style={{ display: 'flex', gap: GAP }}>
-          {renderCelula(visiveis[0], 0, CELL_SIZE, CELL_SIZE, false)}
-          {renderCelula(visiveis[1], 1, CELL_SIZE, CELL_SIZE, false)}
+          {renderCelula(visiveis[0], 0, CELL_SIZE, CELL_SIZE, false, getBR(BR, 0, 0, 0))}
+          {renderCelula(visiveis[1], 1, CELL_SIZE, CELL_SIZE, false, getBR(0, BR, 0, 0))}
         </div>
         <div style={{ display: 'flex', gap: GAP }}>
-          {renderCelula(visiveis[2], 2, CELL_SIZE, CELL_SIZE, false)}
-          {renderCelula(visiveis[3], 3, CELL_SIZE, CELL_SIZE, true)}
+          {renderCelula(visiveis[2], 2, CELL_SIZE, CELL_SIZE, false, getBR(0, 0, 0, BR))}
+          {renderCelula(visiveis[3], 3, CELL_SIZE, CELL_SIZE, true, getBR(0, 0, BR, 0))}
         </div>
       </div>
     );
@@ -165,12 +197,18 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: isVendedor ? 'flex-end' : 'flex-start' }}>
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
+      <div style={{ display: 'flex', justifyContent: isVendedor ? 'flex-end' : 'flex-start', marginBottom: 2 }}>
         <div style={{
-          borderRadius: 12,
+          borderRadius: BR,
           overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-          background: isVendedor ? '#d9fdd3' : '#ffffff',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+          // Sem background, sem borda azul — imagem limpa
         }}>
           {grid}
         </div>
