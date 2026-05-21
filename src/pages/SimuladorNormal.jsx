@@ -538,7 +538,10 @@ export default function SimuladorNormal() {
         saldo_apos_contemplacao: resultado.saldoDevedor - primeira_parcela_no_ato,
         lance_proprio_ativo: resultado.usarLanceProprio || false,
         lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
-        lance_total: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
+        lance_embutido_ativo: resultado.usarLanceEmbutido || false,
+        lance_embutido_valor: resultado.usarLanceEmbutido ? resultado.lanceEmbutido : 0,
+        lance_embutido_percentual: resultado.usarLanceEmbutido ? resultado.lanceEmbutidoPercentual : 0,
+        lance_total: resultado.lanceTotal || 0,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
         status: 'ativa'
