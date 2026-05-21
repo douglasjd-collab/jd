@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -616,6 +616,8 @@ export default function AgendaPage() {
   const [activeTab, setActiveTab] = useState('agenda');
   const [customLabels, saveCustomLabels] = useStatusLabels();
   const statusConfig = useMemo(() => buildStatusConfig(customLabels), [customLabels]);
+  const [atrasadosModalOpen, setAtrasadosModalOpen] = useState(false);
+  const atrasadosShownRef = React.useRef(false);
 
   const [formData, setFormData] = useState({
     titulo: '', tipo: 'reuniao', inicio: '', fim: '', status: 'agendado', descricao: '', local: '', telefone: '',
@@ -692,6 +694,22 @@ export default function AgendaPage() {
     setSelectedItem(p => p?.id === item.id ? { ...p, status: 'cancelado' } : p);
   };
   const handleDelete = (id) => { if (window.confirm('Excluir compromisso?')) deleteMutation.mutate(id); };
+
+  // Abrir popup de atrasados uma vez ao carregar
+  useEffect(() => {
+    if (atrasadosShownRef.current) return;
+    if (compromissos.length === 0) return;
+    const atrasados = compromissos.filter(c => {
+      try {
+        return (c.status === 'agendado' || c.status === 'confirmado') &&
+          isBefore(parseISO(c.inicio), startOfDay(new Date()));
+      } catch { return false; }
+    });
+    if (atrasados.length > 0) {
+      atrasadosShownRef.current = true;
+      setAtrasadosModalOpen(true);
+    }
+  }, [compromissos]);
 
   // Agrupar por dia
   const filteredBySearch = useMemo(() => compromissos.filter(c =>
@@ -897,6 +915,80 @@ export default function AgendaPage() {
             empresaId={user?.empresa_id}
             user={user}
           />
+        );
+      })()}
+
+      {/* Modal compromissos atrasados */}
+      {(() => {
+        const atrasados = compromissos.filter(c => {
+          try {
+            return (c.status === 'agendado' || c.status === 'confirmado') &&
+              isBefore(parseISO(c.inicio), startOfDay(new Date()));
+          } catch { return false; }
+        }).sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
+
+        return (
+          <Dialog open={atrasadosModalOpen} onOpenChange={setAtrasadosModalOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600">
+                  <AlertCircle className="w-5 h-5" />
+                  Compromissos Atrasados ({atrasados.length})
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto py-1">
+                {atrasados.map(item => {
+                  const cfg = statusConfig[item.status] || statusConfig.agendado;
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-red-100 bg-red-50 cursor-pointer hover:bg-red-100 transition-all"
+                      onClick={() => {
+                        try { setSelectedDate(parseISO(item.inicio)); } catch {}
+                        setSelectedItem(item);
+                        setAtrasadosModalOpen(false);
+                      }}
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${avatarColor(item.titulo)}`}>
+                        {getInitials(item.titulo)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 text-sm truncate">{item.titulo}</p>
+                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                          <Calendar className="w-3 h-3" />
+                          {formatDateBR(item.inicio)}
+                        </p>
+                        {item.local && (
+                          <p className="text-xs text-slate-400 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />{item.local}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${cfg.color}`}>{cfg.label}</span>
+                        <span className="text-xs text-red-600 font-semibold">Atrasado</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setAtrasadosModalOpen(false)}>Fechar</Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    if (atrasados[0]) {
+                      try { setSelectedDate(parseISO(atrasados[0].inicio)); } catch {}
+                      setSelectedItem(atrasados[0]);
+                    }
+                    setAtrasadosModalOpen(false);
+                  }}
+                >
+                  Ver primeiro atrasado
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         );
       })()}
 
