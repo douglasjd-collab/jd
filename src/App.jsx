@@ -43,7 +43,6 @@ import RenovacoesSeguro from './pages/RenovacoesSeguro';
 import CobrancaSeguro from './pages/CobrancaSeguro';
 import ConfiguracaoSeguros from './pages/ConfiguracaoSeguros';
 import ConfiguracaoSetoresTarefas from './pages/ConfiguracaoSetoresTarefas';
-import MonitoramentoJD from './pages/MonitoramentoJD';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -131,7 +130,6 @@ const AuthenticatedApp = () => {
       <Route path="/ConfiguracaoWhatsappPessoal" element={<LayoutWrapper currentPageName="ConfiguracaoWhatsappPessoal"><ConfiguracaoWhatsappPessoal /></LayoutWrapper>} />
       <Route path="/CallCenter" element={<LayoutWrapper currentPageName="CallCenter"><CallCenter /></LayoutWrapper>} />
       <Route path="/ConfiguracaoSetoresTarefas" element={<LayoutWrapper currentPageName="ConfiguracaoSetoresTarefas"><ConfiguracaoSetoresTarefas /></LayoutWrapper>} />
-      <Route path="/MonitoramentoJD" element={<LayoutWrapper currentPageName="MonitoramentoJD"><MonitoramentoJD /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
