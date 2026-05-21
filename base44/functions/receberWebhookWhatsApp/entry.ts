@@ -714,6 +714,26 @@ async function processarWebhook(req, rawBody, base44) {
         updateData.responsavel_nome = pushName || 'Atendente';
       }
       console.log(`📤 Mensagem enviada externamente — conversa marcada como Em Atendimento por 10min`);
+
+      // Zerar contagem de não lidas: marcar todas as mensagens do cliente como lidas
+      try {
+        const naoLidas = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+          conversa_id: conversa.id,
+          remetente: 'cliente',
+          status: 'pendente'
+        }, null, 200);
+        for (const msg of naoLidas) {
+          await base44.asServiceRole.entities.MensagemWhatsapp.update(msg.id, {
+            status: 'lida',
+            lida_em: new Date().toISOString()
+          });
+        }
+        if (naoLidas.length > 0) {
+          console.log(`✅ ${naoLidas.length} mensagem(ns) do cliente marcadas como lidas (resposta externa)`);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Erro ao zerar não lidas: ${e.message}`);
+      }
     }
 
     await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateData);
