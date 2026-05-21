@@ -578,6 +578,75 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     (!mensagem.texto && mensagem.arquivo_url && !mensagem.arquivo_nome)
   );
 
+  // Imagem sem texto = sem balão, renderizar direto como bloco limpo
+  const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && !mensagem.texto;
+
+  if (isImagemLimpa) {
+    return (
+      <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+        <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', maxWidth: 280, minWidth: 80 }}>
+          {loadingMedia ? (
+            <div style={{ width: 200, height: 200, background: 'linear-gradient(90deg, #d1d5db 25%, #e5e7eb 50%, #d1d5db 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Loader2 style={{ width: 24, height: 24, color: '#9ca3af' }} className="animate-spin" />
+            </div>
+          ) : mediaUrl ? (
+            <div className="relative group/img">
+              <img
+                src={mediaUrl}
+                alt="Imagem"
+                style={{ display: 'block', maxWidth: '100%', height: 'auto', cursor: 'pointer' }}
+                onError={() => setMediaUrl(null)}
+                onClick={() => setImagemAberta(true)}
+              />
+              {/* Hora + status overlay */}
+              <div style={{ position: 'absolute', bottom: 6, right: 6, display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.45)', borderRadius: 10, padding: '2px 6px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 11 }}>
+                  {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
+                </span>
+                {isVendedor && (
+                  statusAtual === 'lida' ? <span style={{ color: '#53bdeb', fontSize: 11, fontWeight: 700 }}>✓✓</span>
+                  : statusAtual === 'entregue' ? <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700 }}>✓✓</span>
+                  : statusAtual === 'enviada' ? <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700 }}>✓</span>
+                  : null
+                )}
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, `imagem_${mensagem.id}.jpg`); }}
+                className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={handleCarregarMidia} style={{ width: 160, height: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#e5e7eb', cursor: 'pointer', border: 'none' }}>
+              <Download style={{ width: 20, height: 20, color: '#6b7280' }} />
+              <span style={{ fontSize: 11, color: '#6b7280' }}>Carregar imagem</span>
+            </button>
+          )}
+        </div>
+        {imagemAberta && mediaUrl && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4" onClick={() => setImagemAberta(false)}>
+            <button onClick={() => setImagemAberta(false)} className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 rounded-full p-2 z-10"><X className="w-6 h-6 text-white" /></button>
+            <img src={mediaUrl} alt="Imagem ampliada" className="max-w-full max-h-[90vh] rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          </div>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity self-end" disabled={deletando}>
+              <MoreVertical className="w-4 h-4 text-slate-400" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align={isVendedor ? "end" : "start"}>
+            <DropdownMenuItem onClick={() => onResponder?.(mensagem)}><Reply className="w-4 h-4 mr-2" />Responder</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDeletar} disabled={deletando} className="text-red-600 focus:text-red-600">
+              {deletando ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Deletando...</> : <><Trash2 className="w-4 h-4 mr-2" />Deletar mensagem</>}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
       <div
