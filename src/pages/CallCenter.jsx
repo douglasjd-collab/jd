@@ -32,17 +32,46 @@ export default function CallCenter() {
   const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino }
 
   useEffect(() => {
-    base44.auth.me().then(me => {
-      setUser(me);
-      if (me?.empresa_id) carregarConfig(me.empresa_id);
-      else setLoadingConfig(false);
-    });
+    const init = async () => {
+      try {
+        const me = await base44.auth.me();
+        setUser(me);
+
+        let empresaId = me?.empresa_id;
+
+        // Se não veio empresa_id no user, busca pelo colaborador
+        if (!empresaId) {
+          const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+          const colab = colabs?.find(c => c.empresa_id) || colabs?.[0];
+          if (colab?.empresa_id) {
+            empresaId = colab.empresa_id;
+            // Atualiza o user local com empresa_id correto
+            setUser(prev => ({ ...prev, empresa_id: empresaId }));
+          }
+        }
+
+        if (empresaId) {
+          await carregarConfig(empresaId);
+        } else {
+          setLoadingConfig(false);
+        }
+      } catch (e) {
+        console.error('Erro ao inicializar CallCenter:', e);
+        setLoadingConfig(false);
+      }
+    };
+    init();
   }, []);
 
   const carregarConfig = async (empresaId) => {
     setLoadingConfig(true);
-    const configs = await base44.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
-    setConfig(configs.length > 0 ? configs[0] : null);
+    try {
+      const configs = await base44.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
+      setConfig(configs.length > 0 ? configs[0] : null);
+    } catch (e) {
+      console.error('Erro ao carregar config NVOIP:', e);
+      setConfig(null);
+    }
     setLoadingConfig(false);
   };
 
@@ -57,8 +86,15 @@ export default function CallCenter() {
     }
   };
 
-  const handleConfigSalva = () => {
-    if (user?.empresa_id) carregarConfig(user.empresa_id);
+  const handleConfigSalva = async () => {
+    let empresaId = user?.empresa_id;
+    if (!empresaId) {
+      const me = await base44.auth.me();
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+      const colab = colabs?.find(c => c.empresa_id) || colabs?.[0];
+      empresaId = colab?.empresa_id;
+    }
+    if (empresaId) carregarConfig(empresaId);
   };
 
   if (loadingConfig) {
