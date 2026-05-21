@@ -18,6 +18,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   };
   const [mediaUrl, setMediaUrl] = useState(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
+  // Refs para evitar stale closure no auto-download
+  const mediaUrlRef = React.useRef(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
+  const loadingMediaRef = React.useRef(false);
+  React.useEffect(() => { mediaUrlRef.current = mediaUrl; }, [mediaUrl]);
+  React.useEffect(() => { loadingMediaRef.current = loadingMedia; }, [loadingMedia]);
   const [transcricao, setTranscricao] = useState(
     mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
       ? mensagem.texto : null
@@ -103,13 +108,36 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia ao montar: imagem, vídeo e áudio para todos
+  // Auto-carregar mídia ao montar: imagem, vídeo e áudio para todos — usa refs para evitar stale closure
   useEffect(() => {
     const tiposAuto = ['imagem', 'audio', 'video'];
-    const urlAtualInvalida = !mediaUrl || !isUrlValida(mediaUrl);
-    if (tiposAuto.includes(mensagem.tipo_conteudo) && mensagem.arquivo_url && urlAtualInvalida && !loadingMedia) {
-      handleCarregarMidia();
+    if (tiposAuto.includes(mensagem.tipo_conteudo) && mensagem.arquivo_url) {
+      const urlAtualInvalida = !mediaUrlRef.current || !isUrlValida(mediaUrlRef.current);
+      if (urlAtualInvalida && !loadingMediaRef.current) {
+        // Chamar diretamente sem depender do estado em closure
+        if (loadingMediaRef.current) return;
+        loadingMediaRef.current = true;
+        setLoadingMedia(true);
+        base44.functions.invoke('baixarMidiaWhatsApp', {
+          mensagem_id: mensagem.id,
+          arquivo_url: mensagem.arquivo_url,
+          conversa_id: conversaId || mensagem.conversa_id
+        })
+          .then(res => {
+            const data = res?.data;
+            if (data?.arquivo_url) {
+              setMediaUrl(data.arquivo_url);
+              mediaUrlRef.current = data.arquivo_url;
+            }
+          })
+          .catch(err => console.error('Erro ao baixar mídia auto:', err))
+          .finally(() => {
+            setLoadingMedia(false);
+            loadingMediaRef.current = false;
+          });
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mensagem.id]);
 
   const handleDeletar = async () => {
@@ -578,8 +606,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     (!mensagem.texto && mensagem.arquivo_url && !mensagem.arquivo_nome)
   );
 
-  // Imagem sem texto = sem balão, renderizar direto como bloco limpo
-  const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && !mensagem.texto;
+  // Imagem sem texto = sem balão azul, renderizar direto como bloco limpo
+  const textoVazio = !mensagem.texto || mensagem.texto.trim() === '';
+  const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio;
 
   if (isImagemLimpa) {
     return (
