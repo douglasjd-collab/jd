@@ -320,9 +320,10 @@ export default function SimuladorNormal() {
     }
     // O lance embutido NÃO desconta do saldo quando:
     // 1. O usuário selecionou parcela reduzida (a parcela já está reduzida pelo embutido), OU
-    // 2. O plano selecionado é 70% (a parcela já é a reduzida com o embutido incluso)
-    const planoE70 = planoSelecionadoInfo?.toUpperCase().includes('70%');
-    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && !planoE70;
+    // 2. O plano selecionado é 50% ou 70% (a parcela já é a reduzida com o embutido incluso)
+    const planoSelecionadoUpper = planoSelecionadoInfo?.toUpperCase() || '';
+    const planoEmbComDesconto = planoSelecionadoUpper.includes('50%') || planoSelecionadoUpper.includes('70%');
+    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && !planoEmbComDesconto;
 
     // Aplicar lance próprio se ativo
     if (usarLanceProprio && lanceProprio) {
