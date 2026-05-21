@@ -111,39 +111,44 @@ export default function SincronizacaoCanopus() {
   // Sincronizar
   const sincronizarMutation = useMutation({
     mutationFn: async () => {
-      // dica: loga o payload para confirmar
       const payload = { id_tipo_produto: tipoProduto, permite_reserva: permiteReserva };
-      console.log("[Canopus Sync] payload:", payload);
-
+      console.log("[Canopus Sync] Iniciando sincronização, payload:", payload);
       const response = await base44.functions.invoke("syncCanopusPlanos", payload);
-
-      // loga resposta em caso de sucesso
-      console.log("[Canopus Sync] response:", response);
-
+      console.log("[Canopus Sync] Resposta:", response?.data);
       return response?.data ?? response;
     },
 
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["plano-canopus"] });
-
       const criados = data?.criados ?? 0;
       const atualizados = data?.atualizados ?? 0;
-
       toast.success(`Sincronização concluída! ${criados} criados, ${atualizados} atualizados`);
     },
 
     onError: (err) => {
       const info = getErrorInfo(err);
-
-      // imprime tudo no console (isso aqui vai ajudar MUITO)
       console.error("[Canopus Sync] ERROR RAW:", err);
       console.error("[Canopus Sync] ERROR INFO:", info);
 
-      toast.error(
-        info.status
-          ? `Erro ${info.status}: ${info.text}`
-          : `Erro: ${info.text}`
-      );
+      // Mensagens específicas por tipo de erro
+      const msg = info.text || "";
+      const status = info.status;
+
+      if (msg.includes("não configuradas") || msg.includes("usuário e senha")) {
+        toast.error("Credenciais da Canopus não configuradas. Clique em 'Configurar Credenciais'.");
+      } else if (msg.includes("captcha") || msg.includes("segurança")) {
+        toast.error("A sincronização automática foi bloqueada por verificação de segurança/captcha.");
+      } else if (msg.includes("Sessão Canopus não foi mantida")) {
+        toast.error("Sessão Canopus não foi mantida. Verificar cookies, CSRF ou redirecionamento.");
+      } else if (msg.includes("usuário e senha") || msg.includes("Verifique usuário")) {
+        toast.error("Não foi possível acessar a Canopus. Verifique usuário e senha.");
+      } else if (status === 502 || msg.includes("502") || msg.includes("não respondeu")) {
+        toast.error("A Canopus não respondeu corretamente no momento. Tente novamente ou verifique se o portal está disponível.");
+      } else if (status === 504 || msg.includes("Timeout") || msg.includes("timeout")) {
+        toast.error("Timeout ao conectar na Canopus. O portal pode estar lento. Tente novamente.");
+      } else {
+        toast.error(status ? `Erro ${status}: ${msg}` : `Erro: ${msg}`);
+      }
     },
   });
 

@@ -1,5 +1,5 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.6";
-import cheerio from "npm:cheerio@1.0.0-rc.12";
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
+import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 
 function j(status, data) {
   return new Response(JSON.stringify(data), {
@@ -8,237 +8,362 @@ function j(status, data) {
   });
 }
 
-async function fetchCanopus(url, cookie = "", method = "GET", body = null) {
-  const headers = {
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "connection": "keep-alive",
-  };
-  if (cookie) headers["cookie"] = cookie;
-  if (body) headers["content-type"] = "application/x-www-form-urlencoded";
+// Gerenciador de cookies simples e robusto (sem tough-cookie)
+function createCookieJar() {
+  const jar = new Map();
 
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 20000);
-
-  try {
-    let lastErr;
-    for (let i = 0; i < 3; i++) {
-      try {
-        const res = await fetch(url, {
-          method,
-          headers,
-          body,
-          redirect: "manual",
-          signal: controller.signal,
-        });
-        return res;
-      } catch (e) {
-        lastErr = e;
-        if (i < 2) await new Promise(r => setTimeout(r, 500 * Math.pow(2, i)));
-      }
+  function setCookiesFromHeader(setCookieHeader) {
+    if (!setCookieHeader) return;
+    const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
+    for (const sc of cookies) {
+      const part = sc.split(";")[0].trim();
+      const eq = part.indexOf("=");
+      if (eq < 0) continue;
+      const name = part.slice(0, eq).trim();
+      const value = part.slice(eq + 1).trim();
+      if (name) jar.set(name, value);
     }
-    throw lastErr;
-  } finally {
-    clearTimeout(t);
   }
+
+  function getCookieString() {
+    return Array.from(jar.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+
+  return { setCookiesFromHeader, getCookieString };
 }
 
-function mergeCookies(prevCookie, setCookieHeader) {
-  const jar = new Map();
-  
-  if (prevCookie) {
-    prevCookie.split(";").forEach(kv => {
-      const [k, ...v] = kv.split("=");
-      if (k) jar.set(k.trim(), v.join("=").trim());
-    });
+// Fetch com retry (502/503/504 ou timeout)
+async function fetchWithRetry(url, init = {}, maxRetries = 3) {
+  let lastErr;
+  for (let i = 0; i < maxRetries; i++) {
+    if (i > 0) {
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i - 1)));
+      console.log(`[Canopus Sync] Tentativa ${i + 1} de ${maxRetries} para: ${url}`);
+    }
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000); // 60s timeout
+      try {
+        const res = await fetch(url, { ...init, signal: controller.signal });
+        if ([502, 503, 504].includes(res.status) && i < maxRetries - 1) {
+          console.log(`[Canopus Sync] Recebido ${res.status}, aguardando para retry...`);
+          lastErr = new Error(`HTTP ${res.status}`);
+          continue;
+        }
+        return res;
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (e) {
+      lastErr = e;
+      if (e.name === "AbortError") {
+        lastErr = new Error("Timeout de 60s ao conectar na Canopus");
+      }
+      console.log(`[Canopus Sync] Erro na tentativa ${i + 1}: ${lastErr.message}`);
+    }
   }
-  
-  if (setCookieHeader) {
-    const cookies = Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader];
-    cookies.forEach(sc => {
-      const part = sc.split(";")[0];
-      const [k, ...v] = part.split("=");
-      if (k) jar.set(k.trim(), v.join("=").trim());
-    });
-  }
-  
-  return Array.from(jar.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+  throw lastErr;
+}
+
+function isLoginPage(html) {
+  const h = (html || "").toLowerCase();
+  return (
+    h.includes('name="login"') ||
+    h.includes("name='login'") ||
+    h.includes("validar_login") ||
+    h.includes("tela de login") ||
+    (h.includes("senha") && h.includes("usuário") && !h.includes("plano"))
+  );
+}
+
+function isCaptchaPage(html) {
+  const h = (html || "").toLowerCase();
+  return h.includes("captcha") || h.includes("recaptcha") || h.includes("g-recaptcha");
+}
+
+function moneyToNumber(v) {
+  const s = (v || "")
+    .replace("R$", "")
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
 }
 
 Deno.serve(async (req) => {
-  let step = "init";
   const t0 = Date.now();
-  
+  let step = "init";
+
   try {
-    step = "base44_client";
-    const base44 = createClientFromRequest(req);
+    console.log("[Canopus Sync] Iniciando sincronização");
 
     step = "auth";
+    const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return j(401, { error: "Unauthorized", step });
+    if (!user) return j(401, { error: "Não autenticado" });
+
+    const isAdmin = ["admin", "super_admin", "master"].includes(user.role) ||
+      ["admin", "super_admin", "master"].includes(user.perfil);
+    if (!isAdmin) return j(403, { error: "Acesso restrito a administradores" });
 
     step = "body";
-    const bodyTxt = await req.text();
-    const body = bodyTxt ? JSON.parse(bodyTxt) : {};
-    const { id_tipo_produto = "101", permite_reserva = "N" } = body;
+    let bodyData = {};
+    try {
+      const txt = await req.text();
+      if (txt) bodyData = JSON.parse(txt);
+    } catch (_) {}
+    const { id_tipo_produto = "101", permite_reserva = "N" } = bodyData;
 
-    step = "validate";
-    if (!id_tipo_produto) return j(422, { error: "id_tipo_produto obrigatório", step });
-
+    // --- empresa_id ---
     step = "get_empresa";
     let empresaId = user.empresa_id;
     if (!empresaId) {
-      const colabs = await base44.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
+      const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id, status: "ativo" });
       if (colabs?.length) empresaId = colabs[0].empresa_id;
     }
-    if (!empresaId) return j(400, { error: "Empresa não encontrada", step });
+    if (!empresaId) return j(400, { error: "Empresa não encontrada" });
 
+    // --- credenciais ---
     step = "get_credentials";
-    const integs = await base44.entities.IntegracaoCanopus.filter({
+    console.log("[Canopus Sync] Buscando credenciais da empresa");
+
+    const integs = await base44.asServiceRole.entities.IntegracaoCanopus.filter({
       empresa_id: empresaId,
       origem: "CANOPUS",
-      status: "ativo"
+      status: "ativo",
     });
-    if (!integs?.length) return j(400, { error: "Credenciais Canopus não configuradas", step });
 
-    const { usuario, senha, url = "https://afv.consorciocanopus.com.br/Sistema/" } = integs[0];
+    if (!integs?.length) {
+      return j(400, { error: "Credenciais da Canopus não configuradas.", step });
+    }
 
-    let cookieJar = "";
+    const { usuario, senha, url: configUrl } = integs[0];
 
+    if (!usuario || !senha) {
+      return j(400, { error: "Credenciais da Canopus não configuradas. Informe usuário e senha.", step });
+    }
+
+    const baseUrl = (configUrl || "https://afv.consorciocanopus.com.br/Sistema/").replace(/\/?$/, "/");
+    const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
+
+    const cookies = createCookieJar();
+
+    // --- 1) Acesso inicial para pegar cookies de sessão ---
     step = "visit_home";
-    const homeRes = await fetchCanopus(url);
-    cookieJar = mergeCookies(cookieJar, homeRes.headers.get("set-cookie"));
+    console.log("[Canopus Sync] Acessando tela de login");
 
-    step = "login_canopus";
-    const loginBody = new URLSearchParams({ usuario, senha });
-    const loginRes = await fetchCanopus(`${url}login`, cookieJar, "POST", loginBody);
-    cookieJar = mergeCookies(cookieJar, loginRes.headers.get("set-cookie"));
-    
-    if (!cookieJar) {
-      return j(400, { 
-        error: "Falha no login - sem cookies", 
+    const homeRes = await fetchWithRetry(baseUrl, {
+      method: "GET",
+      headers: { "User-Agent": UA, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "pt-BR,pt;q=0.9" },
+      redirect: "follow",
+    });
+
+    cookies.setCookiesFromHeader(homeRes.headers.getSetCookie ? homeRes.headers.getSetCookie() : homeRes.headers.get("set-cookie"));
+    const homeHtml = await homeRes.text();
+
+    // --- 2) Extrair CSRF token se houver ---
+    step = "csrf";
+    let csrfToken = null;
+    const $ = cheerio.load(homeHtml);
+
+    const csrfInput = $('input[name="_token"], input[name="csrf_token"], input[name="token"], input[name="_csrf"]').first();
+    if (csrfInput.length) {
+      csrfToken = csrfInput.attr("value") || null;
+    }
+
+    if (csrfToken) {
+      console.log("[Canopus Sync] CSRF token encontrado");
+    } else {
+      console.log("[Canopus Sync] CSRF token não utilizado");
+    }
+
+    // --- 3) Login ---
+    step = "login";
+    console.log("[Canopus Sync] Enviando login");
+
+    const loginParams = new URLSearchParams({ login: String(usuario), senha: String(senha) });
+    if (csrfToken) loginParams.set("_token", csrfToken);
+
+    const loginUrl = baseUrl + "validar_login.php";
+    const loginRes = await fetchWithRetry(loginUrl, {
+      method: "POST",
+      headers: {
+        "User-Agent": UA,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9",
+        "Referer": baseUrl,
+        "Origin": new URL(baseUrl).origin,
+        "Cookie": cookies.getCookieString(),
+      },
+      body: loginParams.toString(),
+      redirect: "follow",
+    });
+
+    cookies.setCookiesFromHeader(loginRes.headers.getSetCookie ? loginRes.headers.getSetCookie() : loginRes.headers.get("set-cookie"));
+    const loginHtml = await loginRes.text();
+
+    if (isCaptchaPage(loginHtml)) {
+      return j(400, { error: "A sincronização automática foi bloqueada por verificação de segurança/captcha.", step });
+    }
+
+    if (isLoginPage(loginHtml)) {
+      console.log("[Canopus Sync] Erro detalhado: retornou tela de login após POST");
+      return j(400, {
+        error: "Não foi possível acessar a Canopus. Verifique usuário e senha.",
         step,
-        status: loginRes.status,
-        elapsed_ms: Date.now() - t0
+        hint: "O sistema retornou a tela de login. Verifique as credenciais na configuração.",
       });
     }
 
-    step = "fetch_planos";
-    const planosRes = await fetchCanopus(
-      `${url}planos?id_tipo_produto=${id_tipo_produto}&permite_reserva=${permite_reserva}`,
-      cookieJar
-    );
+    if (!cookies.getCookieString()) {
+      return j(400, { error: "Sessão Canopus não foi mantida. Verificar cookies, CSRF ou redirecionamento.", step });
+    }
 
-    if (!planosRes.ok) {
-      const text = await planosRes.text();
+    console.log("[Canopus Sync] Login realizado com sucesso");
+
+    // --- 4) Buscar planos ---
+    step = "fetch_planos";
+    console.log("[Canopus Sync] Buscando planos disponíveis");
+
+    const planosUrl = `${baseUrl}planos/listagem_planos.php`;
+    const planosRes = await fetchWithRetry(planosUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": UA,
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9",
+        "Referer": baseUrl,
+        "Cookie": cookies.getCookieString(),
+      },
+      redirect: "follow",
+    });
+
+    if ([502, 503, 504].includes(planosRes.status)) {
       return j(502, {
-        error: "Canopus respondeu com erro HTTP",
+        error: "A Canopus não respondeu corretamente no momento. Tente novamente ou verifique se o portal está disponível.",
         step,
         http_status: planosRes.status,
-        preview: text.slice(0, 500),
-        elapsed_ms: Date.now() - t0,
       });
     }
 
-    step = "parse_html";
-    const html = await planosRes.text();
-    const $ = cheerio.load(html);
+    const planosHtml = await planosRes.text();
+    console.log("[Canopus Sync] HTML/JSON recebido");
 
+    if (isCaptchaPage(planosHtml)) {
+      return j(400, { error: "A sincronização automática foi bloqueada por verificação de segurança/captcha.", step });
+    }
+
+    if (isLoginPage(planosHtml)) {
+      return j(400, {
+        error: "Sessão Canopus não foi mantida. Verificar cookies, CSRF ou redirecionamento.",
+        step,
+      });
+    }
+
+    // --- 5) Parse do HTML ---
+    step = "parse";
+    const $p = cheerio.load(planosHtml);
     const planos = [];
-    $("table tbody tr").each((_, row) => {
-      const cols = $(row).find("td");
-      if (cols.length >= 6) {
-        planos.push({
-          external_hash: $(cols[0]).text().trim(),
-          nome: $(cols[1]).text().trim(),
-          valor: parseFloat($(cols[2]).text().replace(/[^\d,]/g, "").replace(",", ".")) || 0,
-          prazo: parseInt($(cols[3]).text()) || 0,
-          primeira_parcela: parseFloat($(cols[4]).text().replace(/[^\d,]/g, "").replace(",", ".")) || 0,
-          plano: $(cols[5]).text().trim(),
-        });
-      }
+
+    let rows = $p("#table_planos tbody tr");
+    if (!rows.length) rows = $p("table tbody tr");
+
+    rows.each((_, tr) => {
+      const tds = $p(tr).find("td");
+      if (tds.length < 5) return;
+
+      const nome_bem = $p(tds[0]).text().trim();
+      if (!nome_bem) return;
+
+      const valor_bem = moneyToNumber($p(tds[1]).text().trim());
+      const prazo_meses = parseInt($p(tds[2]).text().trim()) || 0;
+      const parcela = moneyToNumber($p(tds[3]).text().trim());
+      const plano = $p(tds[4]).text().trim();
+      const tipo_venda = tds.length > 5 ? $p(tds[5]).text().trim() : "";
+      const taxa_adm = tds.length > 6 ? moneyToNumber($p(tds[6]).text().trim()) : 0;
+
+      const external_hash = `${empresaId}|${id_tipo_produto}|${permite_reserva}|${nome_bem}|${prazo_meses}|${plano}|${tipo_venda}`;
+
+      planos.push({ nome_bem, valor_bem, prazo_meses, parcela, plano, tipo_venda, taxa_adm, external_hash });
     });
 
+    console.log(`[Canopus Sync] Planos extraídos: ${planos.length}`);
+
     if (planos.length === 0) {
-      return j(400, { 
-        error: "Nenhum plano encontrado no HTML", 
-        step, 
-        preview: html.substring(0, 500),
-        elapsed_ms: Date.now() - t0
+      return j(400, {
+        error: "Nenhum plano encontrado na página. A estrutura HTML pode ter mudado ou não há planos disponíveis.",
+        step,
+        preview: planosHtml.slice(0, 800),
       });
     }
 
-    step = "save_db";
+    // --- 6) Salvar no banco ---
+    step = "save";
     let criados = 0;
     let atualizados = 0;
 
-    for (const plano of planos) {
-      const existe = await base44.entities.PlanoCanopus.filter({
+    for (const p of planos) {
+      const existentes = await base44.asServiceRole.entities.PlanoCanopus.filter({
         empresa_id: empresaId,
-        external_hash: plano.external_hash
+        external_hash: p.external_hash,
       });
 
-      const data = {
+      const dados = {
         empresa_id: empresaId,
         origem: "CANOPUS",
         produto_id: id_tipo_produto,
         permite_reserva,
-        external_hash: plano.external_hash,
-        nome: plano.nome,
-        valor: plano.valor,
-        prazo: plano.prazo,
-        primeira_parcela: plano.primeira_parcela,
-        plano: plano.plano,
-        tipo_venda: "",
-        ultima_sincronizacao: new Date().toISOString(),
+        external_hash: p.external_hash,
+        nome_bem: p.nome_bem,
+        valor_bem: p.valor_bem,
+        prazo_meses: p.prazo_meses,
+        parcela: p.parcela,
+        plano: p.plano,
+        tipo_venda: p.tipo_venda,
+        taxa_adm: p.taxa_adm,
         status: "ativo",
+        ultima_sincronizacao: new Date().toISOString(),
       };
 
-      if (existe?.length) {
-        await base44.entities.PlanoCanopus.update(existe[0].id, data);
+      if (existentes?.length) {
+        await base44.asServiceRole.entities.PlanoCanopus.update(existentes[0].id, dados);
         atualizados++;
       } else {
-        await base44.entities.PlanoCanopus.create(data);
+        await base44.asServiceRole.entities.PlanoCanopus.create(dados);
         criados++;
       }
     }
 
-    return j(200, { 
-      ok: true, 
-      criados, 
+    console.log(`[Canopus Sync] Planos criados: ${criados}`);
+    console.log(`[Canopus Sync] Planos atualizados: ${atualizados}`);
+    console.log(`[Canopus Sync] Sincronização finalizada em ${Date.now() - t0}ms`);
+
+    return j(200, {
+      ok: true,
+      criados,
       atualizados,
       total: planos.length,
-      elapsed_ms: Date.now() - t0
+      elapsed_ms: Date.now() - t0,
     });
 
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const lower = msg.toLowerCase();
 
-    if (lower.includes("connection reset") || lower.includes("reset by peer")) {
-      return j(502, { 
-        error: "Canopus rejeitou a conexão (reset by peer)", 
-        step, 
-        message: msg,
-        elapsed_ms: Date.now() - t0
-      });
+    console.error(`[Canopus Sync] Erro detalhado - step: ${step} | ${msg}`);
+
+    if (lower.includes("502") || lower.includes("bad gateway")) {
+      return j(502, { error: "A Canopus não respondeu corretamente no momento. Tente novamente ou verifique se o portal está disponível.", step, message: msg, elapsed_ms: Date.now() - t0 });
+    }
+    if (lower.includes("timeout") || lower.includes("aborted") || lower.includes("abort")) {
+      return j(504, { error: "Timeout ao conectar na Canopus. O portal pode estar lento. Tente novamente.", step, message: msg, elapsed_ms: Date.now() - t0 });
+    }
+    if (lower.includes("connection reset") || lower.includes("econnreset")) {
+      return j(502, { error: "A Canopus não respondeu corretamente no momento. Tente novamente ou verifique se o portal está disponível.", step, message: msg, elapsed_ms: Date.now() - t0 });
     }
 
-    if (lower.includes("aborted") || lower.includes("timeout")) {
-      return j(504, { 
-        error: "Timeout ao conectar no Canopus", 
-        step, 
-        message: msg,
-        elapsed_ms: Date.now() - t0
-      });
-    }
-
-    return j(500, { 
-      error: "Erro interno na função", 
-      step, 
-      message: msg,
-      elapsed_ms: Date.now() - t0
-    });
+    return j(500, { error: "Erro interno na sincronização. Tente novamente.", step, message: msg, elapsed_ms: Date.now() - t0 });
   }
 });
