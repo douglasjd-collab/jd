@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import MensagemItem from './MensagemItem';
 import GrupoImagens from './GrupoImagens';
 
-const INTERVALO_MAX_MS = 60 * 1000; // 60 segundos
+const INTERVALO_MAX_MS = 5 * 60 * 1000; // 5 minutos (igual ao WhatsApp)
 
 /**
  * Agrupa mensagens de imagem consecutivas do mesmo remetente em curto intervalo.
@@ -16,17 +16,18 @@ function agruparMensagens(mensagens) {
   let i = 0;
   while (i < mensagens.length) {
     const msg = mensagens[i];
-    // Tentar iniciar grupo de imagens (somente imagens SEM texto)
-    if (msg.tipo_conteudo === 'imagem' && !msg.texto) {
+    const textoVazio = !msg.texto || msg.texto.trim() === '';
+    // Tentar iniciar grupo de imagens (somente imagens SEM texto/legenda)
+    if (msg.tipo_conteudo === 'imagem' && textoVazio) {
       const grupoImgs = [msg];
       let j = i + 1;
       while (j < mensagens.length) {
         const next = mensagens[j];
+        const nextTextoVazio = !next.texto || next.texto.trim() === '';
         if (
           next.tipo_conteudo === 'imagem' &&
-          !next.texto &&
-          next.remetente === msg.remetente &&
-          next.conversa_id === msg.conversa_id
+          nextTextoVazio &&
+          next.remetente === msg.remetente
         ) {
           const tPrev = new Date(mensagens[j - 1].data_envio || mensagens[j - 1].created_date).getTime();
           const tCurr = new Date(next.data_envio || next.created_date).getTime();
