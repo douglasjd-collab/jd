@@ -22,6 +22,11 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [mensagensRapidasOpen, setMensagensRapidasOpen] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Focar o textarea automaticamente ao montar
+  useEffect(() => {
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  }, []);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
