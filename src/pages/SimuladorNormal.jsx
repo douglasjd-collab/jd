@@ -611,6 +611,14 @@ export default function SimuladorNormal() {
       const is50ou70 = nomeBem.includes('50%') || nomeBem.includes('70%');
       
       let parcelaReduzida = '';
+      let ativarLanceEmbutido = false;
+      let lanceEmbutidoPercentualAuto = '';
+      
+      // Se o plano é 70%, ativar lance embutido de 30%
+      if (nomeBem.includes('70%')) {
+        ativarLanceEmbutido = true;
+        lanceEmbutidoPercentualAuto = '30';
+      }
       
       // Se não for 50% nem 70%, buscar o equivalente de 50%
       if (!is50ou70 && plano.credito && plano.prazo && empresaId) {
@@ -647,7 +655,15 @@ export default function SimuladorNormal() {
       };
       setCartas(novasCartas);
       setPlanoSelecionadoInfo(plano.nome_bem || '');
-      toast.success(`Plano selecionado: ${plano.nome_bem}`);
+      
+      // Ativar lance embutido automaticamente se plano é 70%
+      if (ativarLanceEmbutido) {
+        setUsarLanceEmbutido(true);
+        setLanceEmbutidoPercentual(lanceEmbutidoPercentualAuto);
+        toast.success(`Plano selecionado: ${plano.nome_bem} — Lance Embutido (30%) ativado automaticamente!`);
+      } else {
+        toast.success(`Plano selecionado: ${plano.nome_bem}`);
+      }
     }
   };
 
