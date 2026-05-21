@@ -643,8 +643,13 @@ export default function BatePapo() {
       const isMobileDevice = window.innerWidth < 1024;
       selecionarConversa(ultimaConversa || conversas[0], true, !isMobileDevice);
     } else {
-      const aindaExiste = conversas.find(c => c.id === conversaSelecionada.id);
-      if (!aindaExiste) {
+      // Conversa já selecionada: apenas sincronizar dados atualizados sem trocar nem re-selecionar
+      const conversaAtualizada = conversas.find(c => c.id === conversaSelecionada.id);
+      if (conversaAtualizada) {
+        // Atualizar silenciosamente os dados da conversa selecionada (status, última mensagem, etc.)
+        setConversaSelecionada(prev => prev ? { ...conversaAtualizada, ...prev, status: conversaAtualizada.status, ultima_mensagem: conversaAtualizada.ultima_mensagem, data_ultima_mensagem: conversaAtualizada.data_ultima_mensagem } : prev);
+      } else {
+        // Conversa não existe mais — tentar encontrar pelo telefone
         const mesmTelefone = conversas.find(c =>
           c.cliente_telefone === conversaSelecionada.cliente_telefone
         );
