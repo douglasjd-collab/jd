@@ -18,16 +18,26 @@ export default function HistoricoChamadas() {
   const [tipo, setTipo] = useState('');
   const [data, setData] = useState('');
 
+  const [erro, setErro] = useState(null);
+
   const carregar = async () => {
     setLoading(true);
-    const res = await base44.functions.invoke('nvoipCallCenter', {
-      action: 'historicoChamadas',
-      type: tipo || undefined,
-      date: data || undefined,
-    });
-    setLoading(false);
-    if (res.data?.calls) {
-      setChamadas(res.data.calls.filter(c => c && c.date));
+    setErro(null);
+    try {
+      const res = await base44.functions.invoke('nvoipCallCenter', {
+        action: 'historicoChamadas',
+        type: tipo || undefined,
+        date: data || undefined,
+      });
+      if (res.data?.error) {
+        setErro(res.data.error);
+      } else if (res.data?.calls) {
+        setChamadas(res.data.calls.filter(c => c && c.date));
+      }
+    } catch (e) {
+      setErro(e.message || 'Erro ao carregar histórico');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,6 +77,13 @@ export default function HistoricoChamadas() {
       {loading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        </div>
+      ) : erro ? (
+        <div className="text-center py-12 text-red-400">
+          <Phone className="w-12 h-12 mx-auto mb-2 opacity-30" />
+          <p className="text-sm font-medium">Erro ao carregar histórico</p>
+          <p className="text-xs mt-1 text-slate-400">{erro}</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={carregar}>Tentar novamente</Button>
         </div>
       ) : chamadas.length === 0 ? (
         <div className="text-center py-12 text-slate-400">

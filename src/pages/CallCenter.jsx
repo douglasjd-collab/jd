@@ -86,12 +86,25 @@ export default function CallCenter() {
 
   const carregarSaldo = async () => {
     setLoadingSaldo(true);
-    const res = await base44.functions.invoke('nvoipCallCenter', { action: 'saldo' });
-    setLoadingSaldo(false);
-    if (res.data?.balance !== undefined) {
-      setSaldo(res.data.balance);
-    } else {
-      toast.error('Erro ao consultar saldo');
+    try {
+      const res = await base44.functions.invoke('nvoipCallCenter', { action: 'saldo' });
+      if (res.data?.error) {
+        toast.error('Erro ao consultar saldo: ' + res.data.error);
+      } else if (res.data?.balance !== undefined) {
+        setSaldo(res.data.balance);
+      } else {
+        // Tenta outros campos possíveis da API NVOIP
+        const val = res.data?.saldo ?? res.data?.amount ?? res.data?.value;
+        if (val !== undefined) {
+          setSaldo(val);
+        } else {
+          toast.error('Erro ao consultar saldo: credenciais inválidas ou expiradas. Reconfigure o NVOIP.');
+        }
+      }
+    } catch (e) {
+      toast.error('Erro ao consultar saldo: ' + e.message);
+    } finally {
+      setLoadingSaldo(false);
     }
   };
 
