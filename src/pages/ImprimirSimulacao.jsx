@@ -371,7 +371,7 @@ export default function ImprimirSimulacao() {
               <div className="card-section flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-1.5 rounded">
                 <span className="font-bold">Saldo devedor:</span>
                 <span className="text-base font-bold text-blue-900">
-                  {formatCurrency((simulacao.prazo_original * simulacao.parcela_total) - simulacao.lance_total - primeiraParcelaNoAto)}
+                  {formatCurrency(simulacao.saldo_apos_contemplacao)}
                 </span>
               </div>
               {simulacao.opcao_pos_contemplacao === 'prazo' && (
