@@ -8,7 +8,6 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 export default function RealizarChamadaModal({ open, onOpenChange, numbersip, numeroInicial = '', onChamadaIniciada }) {
-  const [caller, setCaller] = useState(numbersip || '');
   const [called, setCalled] = useState(numeroInicial);
   const [loading, setLoading] = useState(false);
 
@@ -18,14 +17,14 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
   }, [numeroInicial]);
 
   const handleLigar = async () => {
-    if (!caller || !called) {
-      toast.error('Preencha o ramal de origem e o número de destino');
+    if (!called) {
+      toast.error('Informe o número de destino');
       return;
     }
     setLoading(true);
     const res = await base44.functions.invoke('nvoipCallCenter', {
       action: 'realizarChamada',
-      caller,
+      caller: numbersip,
       called,
     });
     setLoading(false);
@@ -49,14 +48,11 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>Ramal de Origem (Caller)</Label>
-            <Input
-              placeholder="Ex: 1049"
-              value={caller}
-              onChange={e => setCaller(e.target.value)}
-            />
-          </div>
+          {numbersip && (
+            <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-600">
+              <span className="font-medium">Ramal de origem:</span> {numbersip}
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Número de Destino *</Label>
             <Input
