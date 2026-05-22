@@ -535,7 +535,7 @@ export default function SimuladorNormal() {
         parcela_reduzida: primeira_parcela_reduzida_total > 0,
         primeira_parcela_reduzida_total: primeira_parcela_reduzida_total,
         primeira_parcela_no_ato: primeira_parcela_no_ato,
-        saldo_apos_contemplacao: resultado.saldoDevedor - primeira_parcela_no_ato,
+        saldo_apos_contemplacao: resultado.saldoDevedor,
         lance_proprio_ativo: resultado.usarLanceProprio || false,
         lance_proprio_valor: resultado.usarLanceProprio ? resultado.lanceProprio : 0,
         lance_embutido_ativo: resultado.usarLanceEmbutido || false,
