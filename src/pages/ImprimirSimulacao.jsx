@@ -351,31 +351,51 @@ export default function ImprimirSimulacao() {
             </h2>
             <div className="space-y-0.5 text-xs">
               <div className="flex justify-between">
-                <span>Total a pagar:</span>
+                <span>Total do Plano:</span>
                 <span className="font-semibold">
                   {formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}
                 </span>
               </div>
+              {simulacao.lance_embutido_ativo && simulacao.lance_embutido_valor > 0 && (
+                <div className="flex justify-between text-emerald-700">
+                  <span>✨ Lance Embutido incluso na parcela reduzida (não desconta do saldo):</span>
+                  <span className="font-semibold">
+                    {formatCurrency(simulacao.lance_embutido_valor)}
+                  </span>
+                </div>
+              )}
               {simulacao.lance_proprio_ativo && simulacao.lance_proprio_valor > 0 && (
                 <div className="flex justify-between text-red-600">
-                  <span>(-) Lance Próprio ({lanceProprioPercentual}%):</span>
+                  <span>(-) Lance Próprio:</span>
                   <span className="font-semibold">
                     -{formatCurrency(simulacao.lance_proprio_valor)}
                   </span>
                 </div>
               )}
               <div className="flex justify-between text-red-600">
-                <span>(-) 1ª parcela na contratação{isParcelaReduzida ? ' - Reduzida' : ''}:</span>
+                <span>(-) 1ª Parcela (no ato):</span>
                 <span className="font-semibold">
                   -{formatCurrency(primeiraParcelaNoAto)}
                 </span>
               </div>
               <div className="card-section flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-1.5 rounded">
-                <span className="font-bold">Saldo devedor:</span>
+                <span className="font-bold">Saldo Restante:</span>
                 <span className="text-base font-bold text-blue-900">
                   {formatCurrency(simulacao.saldo_apos_contemplacao)}
                 </span>
               </div>
+              {simulacao.novo_prazo && simulacao.prazo_original && simulacao.novo_prazo < simulacao.prazo_original && (
+                <>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Carência:</span>
+                    <span className="font-semibold">{simulacao.prazo_original - simulacao.novo_prazo - 1} meses</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Parcelas Restantes:</span>
+                    <span className="font-semibold">{simulacao.novo_prazo} meses</span>
+                  </div>
+                </>
+              )}
               {simulacao.opcao_pos_contemplacao === 'prazo' && (
                 <p className="text-xs text-slate-600 italic mt-1">
                   ⏱️ Carência 3 meses reduz prazo
