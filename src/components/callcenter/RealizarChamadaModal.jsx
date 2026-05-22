@@ -28,13 +28,13 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
       called,
     });
     setLoading(false);
-    if (res.data?.state === 'success') {
+    if (res.data?.callId) {
       toast.success('Chamada iniciada!');
       onChamadaIniciada?.(res.data.callId, called);
       onOpenChange(false);
       setCalled('');
     } else {
-      toast.error('Erro ao realizar chamada: ' + (res.data?.error || 'Erro desconhecido'));
+      toast.error('Erro ao realizar chamada: ' + (res.data?.error || res.data?.message || 'Erro desconhecido'));
     }
   };
 
