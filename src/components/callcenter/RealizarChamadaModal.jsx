@@ -3,11 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Phone } from 'lucide-react';
+import { Loader2, Phone, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
-export default function RealizarChamadaModal({ open, onOpenChange, numbersip, numeroInicial = '', onChamadaIniciada }) {
+export default function RealizarChamadaModal({ open, onOpenChange, numbersip, numeroInicial = '', sipConectado = false, onChamadaIniciada }) {
   const [called, setCalled] = useState(numeroInicial);
   const [loading, setLoading] = useState(false);
 
@@ -51,6 +51,14 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
           {numbersip && (
             <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-600">
               <span className="font-medium">Ramal de origem:</span> {numbersip}
+            </div>
+          )}
+          {!sipConectado && (
+            <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong>Softphone desconectado.</strong> A chamada será iniciada via API REST (click-to-call): a NVOIP ligará primeiro para seu ramal <strong>{numbersip}</strong>. Certifique-se de que seu ramal está ativo no painel NVOIP ou configure a <strong>Senha SIP</strong> para ativar o softphone no navegador.
+              </div>
             </div>
           )}
           <div className="space-y-2">

@@ -126,12 +126,13 @@ Deno.serve(async (req) => {
 
     // Salvar configuração
     if (action === 'salvarConfig') {
-      const { numbersip, user_token, napikey } = body;
+      const { numbersip, user_token, napikey, sip_password } = body;
       const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
 
       const configData = {
         empresa_id: empresaId,
         numbersip,
+        sip_password: sip_password || null,
         user_token,
         napikey: napikey || null,
         ativo: false,

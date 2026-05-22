@@ -361,6 +361,7 @@ export default function CallCenter() {
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numbersip={config?.numbersip}
         numeroInicial={numeroParaChamar}
+        sipConectado={softphone.sipStatus === 'registrado'}
         onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
       />
       <EnviarSmsModal
