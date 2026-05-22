@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,12 @@ export default function CallCenter() {
 
   const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino } — API REST
   const softphone = useSoftphone(config);
+
+  // Puxar número da URL (?numero=...)
+  const numeroInicial = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get('numero') || '').replace(/\D/g, '');
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -199,7 +205,7 @@ export default function CallCenter() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Softphone WebRTC */}
             <div className="lg:col-span-1">
-              <SoftphonePanel softphone={softphone} numbersip={config?.numbersip} />
+              <SoftphonePanel softphone={softphone} numbersip={config?.numbersip} numeroInicial={numeroInicial} />
               {!config?.sip_password && (
                 <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
                   <strong>⚠️ Senha SIP não configurada.</strong> Para fazer/receber ligações com áudio, clique em <strong>Configurar</strong> e preencha a Senha SIP do seu ramal.

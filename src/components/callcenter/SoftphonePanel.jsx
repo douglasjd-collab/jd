@@ -15,13 +15,13 @@ const statusConfig = {
   erro:         { label: 'Erro SIP', color: 'bg-red-100 text-red-700', icon: WifiOff },
 };
 
-export default function SoftphonePanel({ softphone, numbersip }) {
+export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '' }) {
   const {
     sipStatus, chamadaAtiva, chamadaEntrante,
     realizarChamada, atenderChamada, rejeitarChamada, encerrarChamada
   } = softphone;
 
-  const [numero, setNumero] = useState('');
+  const [numero, setNumero] = useState(numeroInicial);
   const [mutado, setMutado] = useState(false);
   const [duracao, setDuracao] = useState(0);
   const timerRef = useRef(null);
