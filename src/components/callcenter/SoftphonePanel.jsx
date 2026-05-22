@@ -15,7 +15,7 @@ const statusConfig = {
   erro:         { label: 'Erro SIP', color: 'bg-red-100 text-red-700', icon: WifiOff },
 };
 
-export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '' }) {
+export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '', onChamadaApiRest }) {
   const {
     sipStatus, chamadaAtiva, chamadaEntrante,
     realizarChamada, atenderChamada, rejeitarChamada, encerrarChamada
@@ -50,9 +50,16 @@ export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '
 
   const handleLigar = () => {
     if (!numero.trim()) return;
-    realizarChamada(numero.trim());
+    if (sipStatus === 'registrado') {
+      realizarChamada(numero.trim());
+    } else if (onChamadaApiRest) {
+      onChamadaApiRest(numero.trim());
+    }
     setNumero('');
   };
+
+  // Permite digitar/discar sempre, independente do status SIP
+  const podeDiscar = !!numero.trim();
 
   const formatDuracao = (s) => {
     const m = Math.floor(s / 60);
@@ -152,7 +159,7 @@ export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '
           </div>
         )}
 
-        {/* Discador — só mostra quando não há chamada ativa */}
+        {/* Discador — sempre visível quando não há chamada ativa */}
         {!chamadaAtiva && !chamadaEntrante && (
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -160,13 +167,13 @@ export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '
                 placeholder="Digite o número (DDD + número)"
                 value={numero}
                 onChange={e => setNumero(e.target.value.replace(/\D/g, ''))}
-                onKeyDown={e => e.key === 'Enter' && handleLigar()}
-                disabled={sipStatus !== 'registrado'}
+                onKeyDown={e => e.key === 'Enter' && podeDiscar && handleLigar()}
                 className="flex-1"
+                autoFocus
               />
               <Button
                 onClick={handleLigar}
-                disabled={!numero.trim() || sipStatus !== 'registrado'}
+                disabled={!podeDiscar}
                 className="bg-green-600 hover:bg-green-700 text-white px-4"
               >
                 <Phone className="w-4 h-4" />
@@ -179,20 +186,21 @@ export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '
                 <button
                   key={d}
                   onClick={() => setNumero(prev => prev + d)}
-                  disabled={sipStatus !== 'registrado'}
-                  className="h-10 rounded-lg border bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-sm disabled:opacity-40 transition-colors"
+                  className="h-10 rounded-lg border bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-sm transition-colors"
                 >
                   {d}
                 </button>
               ))}
             </div>
 
-            {sipStatus !== 'registrado' && (
-              <p className="text-xs text-slate-400 text-center">
-                {sipStatus === 'conectando' ? 'Conectando ao servidor SIP...' :
-                 sipStatus === 'erro' ? 'Erro na conexão SIP. Verifique a Senha SIP nas configurações.' :
-                 'Configure a Senha SIP para ativar chamadas de voz.'}
-              </p>
+            {sipStatus === 'registrado' && (
+              <p className="text-xs text-green-600 text-center">● WebRTC ativo — chamadas com áudio direto</p>
+            )}
+            {sipStatus === 'conectando' && (
+              <p className="text-xs text-yellow-600 text-center">Conectando ao servidor SIP...</p>
+            )}
+            {sipStatus === 'erro' && (
+              <p className="text-xs text-red-500 text-center">Erro SIP — verifique a Senha SIP nas configurações.</p>
             )}
           </div>
         )}

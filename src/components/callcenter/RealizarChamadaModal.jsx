@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,15 @@ import { Loader2, Phone } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
-export default function RealizarChamadaModal({ open, onOpenChange, numbersip, onChamadaIniciada }) {
+export default function RealizarChamadaModal({ open, onOpenChange, numbersip, numeroInicial = '', onChamadaIniciada }) {
   const [caller, setCaller] = useState(numbersip || '');
-  const [called, setCalled] = useState('');
+  const [called, setCalled] = useState(numeroInicial);
   const [loading, setLoading] = useState(false);
+
+  // Atualiza 'called' quando numeroInicial muda (vem do softphone)
+  useEffect(() => {
+    if (numeroInicial) setCalled(numeroInicial);
+  }, [numeroInicial]);
 
   const handleLigar = async () => {
     if (!caller || !called) {

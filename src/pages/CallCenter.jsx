@@ -33,6 +33,7 @@ export default function CallCenter() {
   const [torpedoOpen, setTorpedoOpen] = useState(false);
 
   const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino } — API REST
+  const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const softphone = useSoftphone(config);
 
   // Puxar número da URL (?numero=...)
@@ -219,7 +220,17 @@ export default function CallCenter() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Softphone WebRTC */}
             <div className="lg:col-span-1">
-              <SoftphonePanel softphone={softphone} numbersip={config?.numbersip} numeroInicial={numeroInicial} />
+              <SoftphonePanel
+                softphone={softphone}
+                numbersip={config?.numbersip}
+                numeroInicial={numeroInicial}
+                onChamadaApiRest={(numero) => {
+                  setChamadaOpen(true);
+                  // Preenche o número no modal de chamada via URL param não funciona, então abrimos o modal
+                  // O usuário já digitou o número — passamos via estado
+                  setNumeroParaChamar(numero);
+                }}
+              />
               {!config?.sip_password && (
                 <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
                   <strong>⚠️ Senha SIP não configurada.</strong> Para fazer/receber ligações com áudio, clique em <strong>Configurar</strong> e preencha a Senha SIP do seu ramal.
@@ -347,8 +358,9 @@ export default function CallCenter() {
       />
       <RealizarChamadaModal
         open={chamadaOpen}
-        onOpenChange={setChamadaOpen}
+        onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numbersip={config?.numbersip}
+        numeroInicial={numeroParaChamar}
         onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
       />
       <EnviarSmsModal
