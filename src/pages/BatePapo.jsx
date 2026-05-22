@@ -274,6 +274,16 @@ export default function BatePapo() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
   const [conversaTarefa, setConversaTarefa] = useState(null); // conversa para pré-preencher tarefa
+
+  // Memoizar para evitar que re-renders do BatePapo recriem o objeto e disparem o useEffect do modal
+  const tarefaPreenchida = React.useMemo(() => {
+    if (!conversaTarefa) return null;
+    return {
+      cliente_nome: contatosWhatsapp[conversaTarefa.id]?.nome || conversaTarefa.cliente_nome || '',
+      cliente_telefone: conversaTarefa.cliente_telefone || '',
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversaTarefa?.id]);
   const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
   const [marcadasNaoLidasManual, setMarcadasNaoLidasManual] = useState(new Set()); // IDs marcadas manualmente como não lido
@@ -1340,10 +1350,7 @@ export default function BatePapo() {
         <TarefaFormModal
           open={criarTarefaOpen}
           onOpenChange={(v) => { setCriarTarefaOpen(v); if (!v) setConversaTarefa(null); }}
-          tarefa={conversaTarefa ? {
-            cliente_nome: contatosWhatsapp[conversaTarefa.id]?.nome || conversaTarefa.cliente_nome || '',
-            cliente_telefone: conversaTarefa.cliente_telefone || '',
-          } : null}
+          tarefa={tarefaPreenchida}
           onSave={async (data) => {
             try {
               await base44.entities.Tarefa.create({
