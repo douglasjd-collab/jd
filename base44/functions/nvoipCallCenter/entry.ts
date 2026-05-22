@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'listarNumeros') {
-      const res = await fetch(`${NVOIP_BASE}/list/numbers`, { headers });
+      const res = await fetch(`${NVOIP_BASE}/list/dids`, { headers });
       const data = await res.json();
       return Response.json({ numbers: Array.isArray(data) ? data : (data ? [data] : []) });
     }
