@@ -356,12 +356,14 @@ export default function ImprimirSimulacao() {
                   {formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}
                 </span>
               </div>
-              <div className="flex justify-between text-red-600">
-                <span>(-) Lance total:</span>
-                <span className="font-semibold">
-                  -{formatCurrency(simulacao.lance_total)}
-                </span>
-              </div>
+              {simulacao.lance_proprio_ativo && simulacao.lance_proprio_valor > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>(-) Lance Próprio ({lanceProprioPercentual}%):</span>
+                  <span className="font-semibold">
+                    -{formatCurrency(simulacao.lance_proprio_valor)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-red-600">
                 <span>(-) 1ª parcela na contratação{isParcelaReduzida ? ' - Reduzida' : ''}:</span>
                 <span className="font-semibold">
