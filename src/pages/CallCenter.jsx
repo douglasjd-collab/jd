@@ -360,6 +360,7 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numbersip={config?.numbersip}
+        numeroDid={config?.numero_did}
         numeroInicial={numeroParaChamar}
         sipConectado={softphone.sipStatus === 'registrado'}
         onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
