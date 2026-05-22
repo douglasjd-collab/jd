@@ -28,7 +28,10 @@ export default function useSoftphone(config) {
   }, []);
 
   const conectar = useCallback(() => {
-    if (!config?.numbersip || !config?.sip_password) return;
+    if (!config?.numbersip || !config?.sip_password) {
+      console.warn('SIP: numbersip ou sip_password ausente. Configure nas credenciais NVOIP.');
+      return;
+    }
     if (uaRef.current) desconectar();
 
     setSipStatus('conectando');
@@ -49,11 +52,20 @@ export default function useSoftphone(config) {
 
     ua.on('connecting', () => setSipStatus('conectando'));
     ua.on('connected', () => setSipStatus('conectando'));
-    ua.on('disconnected', () => setSipStatus('desconectado'));
-    ua.on('registered', () => setSipStatus('registrado'));
-    ua.on('unregistered', () => setSipStatus('desconectado'));
+    ua.on('disconnected', (e) => {
+      console.warn('SIP disconnected:', e?.cause || e);
+      setSipStatus('desconectado');
+    });
+    ua.on('registered', () => {
+      console.log('SIP registrado com sucesso:', config.numbersip);
+      setSipStatus('registrado');
+    });
+    ua.on('unregistered', (e) => {
+      console.warn('SIP unregistered:', e?.cause || e);
+      setSipStatus('desconectado');
+    });
     ua.on('registrationFailed', (e) => {
-      console.error('SIP registration failed:', e.cause);
+      console.error('SIP registration failed:', e?.cause, e?.response?.status_code);
       setSipStatus('erro');
     });
 

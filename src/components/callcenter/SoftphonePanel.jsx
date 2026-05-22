@@ -18,7 +18,8 @@ const statusConfig = {
 export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '', onChamadaApiRest }) {
   const {
     sipStatus, chamadaAtiva, chamadaEntrante,
-    realizarChamada, atenderChamada, rejeitarChamada, encerrarChamada
+    realizarChamada, atenderChamada, rejeitarChamada, encerrarChamada,
+    conectar
   } = softphone;
 
   const [numero, setNumero] = useState(numeroInicial);
@@ -193,14 +194,24 @@ export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '
               ))}
             </div>
 
+            {sipStatus === 'conectando' && (
+              <p className="text-xs text-yellow-600 text-center animate-pulse">⟳ Conectando ao servidor SIP...</p>
+            )}
             {sipStatus === 'registrado' && (
               <p className="text-xs text-green-600 text-center">● WebRTC ativo — chamadas com áudio direto</p>
             )}
-            {sipStatus === 'conectando' && (
-              <p className="text-xs text-yellow-600 text-center">Conectando ao servidor SIP...</p>
-            )}
             {sipStatus === 'erro' && (
-              <p className="text-xs text-red-500 text-center">Erro SIP — verifique a Senha SIP nas configurações.</p>
+              <div className="text-center space-y-1">
+                <p className="text-xs text-red-500">⚠️ Erro ao registrar. Verifique a Senha SIP.</p>
+                {conectar && <button onClick={conectar} className="text-xs text-blue-600 hover:underline">Tentar reconectar</button>}
+              </div>
+            )}
+            {sipStatus === 'desconectado' && conectar && (
+              <div className="text-center">
+                <button onClick={conectar} className="text-xs text-blue-600 hover:underline">
+                  🔌 Conectar softphone
+                </button>
+              </div>
             )}
           </div>
         )}

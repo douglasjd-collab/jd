@@ -126,13 +126,14 @@ Deno.serve(async (req) => {
 
     // Salvar configuração
     if (action === 'salvarConfig') {
-      const { numbersip, user_token, napikey, sip_password } = body;
+      const { numbersip, user_token, napikey, sip_password, numero_did } = body;
       const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
 
       const configData = {
         empresa_id: empresaId,
         numbersip,
         sip_password: sip_password || null,
+        numero_did: numero_did || null,
         user_token,
         napikey: napikey || null,
         ativo: false,
@@ -160,7 +161,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'realizarChamada') {
-      const { caller, called } = body;
+      const { called } = body;
+      // Usa numero_did como caller (número externo); fallback para numbersip se não houver DID
+      const caller = config.numero_did || config.numbersip;
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
         headers,

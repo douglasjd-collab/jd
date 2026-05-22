@@ -11,6 +11,7 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
   const [form, setForm] = useState({
     numbersip: config?.numbersip || '',
     sip_password: config?.sip_password || '',
+    numero_did: config?.numero_did || '',
     user_token: config?.user_token || '',
     napikey: config?.napikey || '',
   });
@@ -20,6 +21,7 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
       setForm({
         numbersip: config.numbersip || '',
         sip_password: config.sip_password || '',
+        numero_did: config.numero_did || '',
         user_token: config.user_token || '',
         napikey: config.napikey || '',
       });
@@ -91,6 +93,16 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
               onChange={e => setForm({ ...form, numbersip: e.target.value })}
             />
             <p className="text-xs text-slate-400">Número do seu ramal SIP no painel NVOIP</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Número DID <span className="text-slate-500 text-xs">(número externo para saída)</span></Label>
+            <Input
+              placeholder="Ex: 558132998470 (DDI+DDD+número)"
+              value={form.numero_did}
+              onChange={e => setForm({ ...form, numero_did: e.target.value })}
+            />
+            <p className="text-xs text-slate-400">Número DID externo da NVOIP — aparecerá no identificador de chamadas. No painel NVOIP: <strong>Números → seu DID</strong>.</p>
           </div>
 
           <div className="space-y-2">
