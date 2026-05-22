@@ -228,6 +228,12 @@ Deno.serve(async (req) => {
       return Response.json({ users: Array.isArray(data) ? data : [data] });
     }
 
+    if (action === 'listarNumeros') {
+      const res = await fetch(`${NVOIP_BASE}/list/numbers`, { headers });
+      const data = await res.json();
+      return Response.json({ numbers: Array.isArray(data) ? data : (data ? [data] : []) });
+    }
+
     return Response.json({ error: 'Ação desconhecida' }, { status: 400 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

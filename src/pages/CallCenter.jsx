@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Phone, MessageSquare, Volume2, History, Settings,
-  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw
+  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw, Hash
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,6 +15,7 @@ import RealizarChamadaModal from '@/components/callcenter/RealizarChamadaModal';
 import EnviarSmsModal from '@/components/callcenter/EnviarSmsModal';
 import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
+import MeusNumeros from '@/components/callcenter/MeusNumeros';
 import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
 import SoftphonePanel from '@/components/callcenter/SoftphonePanel';
 import useSoftphone from '@/components/callcenter/useSoftphone';
@@ -319,9 +320,16 @@ export default function CallCenter() {
                 <History className="w-4 h-4 mr-1.5" />
                 Histórico de Chamadas
               </TabsTrigger>
+              <TabsTrigger value="numeros">
+                <Hash className="w-4 h-4 mr-1.5" />
+                Meus Números
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="historico" className="mt-4">
               <HistoricoChamadas />
+            </TabsContent>
+            <TabsContent value="numeros" className="mt-4">
+              <MeusNumeros />
             </TabsContent>
           </Tabs>
 
