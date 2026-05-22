@@ -34,6 +34,7 @@ export default function CallCenter() {
 
   const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino } — API REST
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
+  const [ramalStatus, setRamalStatus] = useState(null); // 'Online' | 'Offline' | null
   const softphone = useSoftphone(config);
 
   // Puxar número da URL (?numero=...)
@@ -86,6 +87,21 @@ export default function CallCenter() {
     setLoadingConfig(false);
   };
 
+  const verificarRamalStatus = async () => {
+    try {
+      const res = await base44.functions.invoke('nvoipCallCenter', { action: 'listarUsuarios' });
+      const users = res.data?.users || [];
+      const meuRamal = users.find(u => u.numbersip === config?.numbersip);
+      if (meuRamal) setRamalStatus(meuRamal.status);
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (config?.numbersip && !naoConfigurado) {
+      verificarRamalStatus();
+    }
+  }, [config?.numbersip]);
+
   const carregarSaldo = async () => {
     setLoadingSaldo(true);
     try {
@@ -130,6 +146,7 @@ export default function CallCenter() {
   }
 
   const naoConfigurado = !config || !config.numbersip;
+  const ramalOffline = ramalStatus === 'Offline' && softphone.sipStatus !== 'registrado';
 
   return (
     <div className="space-y-6">
@@ -154,6 +171,21 @@ export default function CallCenter() {
           </Button>
         </div>
       </div>
+
+      {/* Alerta: ramal offline */}
+      {!naoConfigurado && ramalOffline && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
+          <span className="text-xl">📵</span>
+          <div>
+            <p className="font-semibold">Ramal <strong>{config.numbersip}</strong> está Offline na NVOIP</p>
+            <p className="text-xs mt-1 text-red-700">
+              O click-to-call exige que o ramal esteja registrado/online. Para resolver:
+              <br />• <strong>Opção 1:</strong> Configure a <strong>Senha SIP</strong> clicando em "Configurar" — o softphone do navegador registrará seu ramal automaticamente.
+              <br />• <strong>Opção 2:</strong> Abra o webphone no <a href="https://painel.nvoip.com.br" target="_blank" rel="noopener noreferrer" className="underline">painel NVOIP</a> para registrar o ramal manualmente.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Não configurado */}
       {naoConfigurado && (

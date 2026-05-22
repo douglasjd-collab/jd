@@ -162,14 +162,18 @@ Deno.serve(async (req) => {
 
     if (action === 'realizarChamada') {
       const { called } = body;
-      // Usa numero_did como caller (número externo); fallback para numbersip se não houver DID
-      const caller = config.numero_did || config.numbersip;
+      // O caller deve ser o numbersip (ramal SIP) — a NVOIP liga para o ramal primeiro, depois para o destino
+      const caller = config.numbersip;
+
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ caller, called }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        return Response.json({ error: data.message || data.error || `HTTP ${res.status}`, _debug: data }, { status: 200 });
+      }
       return Response.json(data);
     }
 

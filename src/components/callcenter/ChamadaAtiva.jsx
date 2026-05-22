@@ -43,9 +43,14 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       if (state === 'established' && res.data?.talkingDurationSeconds) {
         setDuracao(res.data.talkingDurationSeconds);
       }
-      if (['finished', 'failed', 'noanswer', 'busy'].includes(state)) {
+      if (['finished', 'noanswer', 'busy'].includes(state)) {
         clearInterval(poll);
         setTimeout(() => onEncerrada?.(), 3000);
+      }
+      if (state === 'failed') {
+        clearInterval(poll);
+        // Mostra por mais tempo para o usuário ler a mensagem
+        setTimeout(() => onEncerrada?.(), 5000);
       }
     }, 3000);
 
@@ -83,6 +88,11 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       <Badge className={statusColor[status] || 'bg-slate-700 text-white'}>
         {statusLabel[status] || status}
       </Badge>
+      {status === 'failed' && (
+        <p className="text-xs text-red-300 max-w-xs mx-auto leading-relaxed">
+          ⚠️ Seu ramal SIP está <strong>Offline</strong> na NVOIP. A chamada click-to-call exige que o ramal esteja registrado. Acesse o painel NVOIP e ative seu ramal, ou configure a <strong>Senha SIP</strong> para usar o softphone do navegador.
+        </p>
+      )}
       {status === 'established' && duracao > 0 && (
         <p className="text-2xl font-mono text-green-400">{formatDuracao(duracao)}</p>
       )}
