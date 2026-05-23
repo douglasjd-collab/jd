@@ -42,14 +42,6 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       toast.error('Número inválido. Informe DDD + número (mínimo 8 dígitos).');
       return;
     }
-    if (!temRamalPessoal) {
-      toast.error('Configure seu ramal NVOIP pessoal antes de realizar chamadas.', {
-        description: 'Acesse Call Center → Meu Ramal para configurar.',
-        duration: 6000,
-      });
-      return;
-    }
-
     setLoading(true);
     const res = await base44.functions.invoke('nvoipCallCenter', {
       action: 'realizarChamada',
@@ -130,7 +122,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button
               onClick={handleLigar}
-              disabled={loading || !temRamalPessoal || loadingConfig}
+              disabled={loading || loadingConfig}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               {loading
