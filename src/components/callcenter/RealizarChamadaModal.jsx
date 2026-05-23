@@ -7,7 +7,7 @@ import { Loader2, Phone, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
-export default function RealizarChamadaModal({ open, onOpenChange, numbersip, numeroInicial = '', sipConectado = false, onChamadaIniciada }) {
+export default function RealizarChamadaModal({ open, onOpenChange, numbersip, numeroInicial = '', sipConectado = false, ramalOnline = false, onChamadaIniciada }) {
   const [called, setCalled] = useState(numeroInicial);
   const [loading, setLoading] = useState(false);
 
@@ -53,11 +53,19 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
               <span className="font-medium">Ramal de origem:</span> {numbersip}
             </div>
           )}
-          {!sipConectado && (
+          {!sipConectado && ramalOnline && (
+            <div className="flex gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+              <Phone className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+              <div>
+                Chamada via <strong>click-to-call</strong>: a NVOIP ligará primeiro para seu ramal <strong>{numbersip}</strong> e depois conectará ao destino.
+              </div>
+            </div>
+          )}
+          {!sipConectado && !ramalOnline && (
             <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div>
-                <strong>Softphone desconectado.</strong> A chamada será iniciada via API REST (click-to-call): a NVOIP ligará primeiro para seu ramal <strong>{numbersip}</strong>. Certifique-se de que seu ramal está ativo no painel NVOIP ou configure a <strong>Senha SIP</strong> para ativar o softphone no navegador.
+                <strong>Ramal offline.</strong> Configure a <strong>Senha SIP</strong> para ativar o softphone, ou acesse o painel NVOIP para registrar seu ramal.
               </div>
             </div>
           )}

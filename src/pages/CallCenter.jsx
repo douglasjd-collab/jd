@@ -147,6 +147,7 @@ export default function CallCenter() {
 
   const naoConfigurado = !config || !config.numbersip;
   const ramalOffline = ramalStatus === 'Offline' && softphone.sipStatus !== 'registrado';
+  const ramalOnline = ramalStatus === 'Online' || softphone.sipStatus === 'registrado';
 
   return (
     <div className="space-y-6">
@@ -174,16 +175,21 @@ export default function CallCenter() {
 
       {/* Alerta: ramal offline */}
       {!naoConfigurado && ramalOffline && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
-          <span className="text-xl">📵</span>
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          <span className="text-xl">⚠️</span>
           <div>
             <p className="font-semibold">Ramal <strong>{config.numbersip}</strong> está Offline na NVOIP</p>
-            <p className="text-xs mt-1 text-red-700">
-              O click-to-call exige que o ramal esteja registrado/online. Para resolver:
-              <br />• <strong>Opção 1:</strong> Configure a <strong>Senha SIP</strong> clicando em "Configurar" — o softphone do navegador registrará seu ramal automaticamente.
-              <br />• <strong>Opção 2:</strong> Abra o webphone no <a href="https://painel.nvoip.com.br" target="_blank" rel="noopener noreferrer" className="underline">painel NVOIP</a> para registrar o ramal manualmente.
+            <p className="text-xs mt-1 text-amber-700">
+              Configure a <strong>Senha SIP</strong> para ativar o softphone no navegador, ou acesse o <a href="https://painel.nvoip.com.br" target="_blank" rel="noopener noreferrer" className="underline">painel NVOIP</a> para registrar o ramal.
             </p>
           </div>
+        </div>
+      )}
+      {/* Ramal online — tudo OK */}
+      {!naoConfigurado && ramalOnline && softphone.sipStatus !== 'registrado' && (
+        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
+          <span className="text-lg">✅</span>
+          <p>Ramal <strong>{config.numbersip}</strong> está Online na NVOIP. Click-to-call disponível.</p>
         </div>
       )}
 
@@ -395,6 +401,7 @@ export default function CallCenter() {
         numeroDid={config?.numero_did}
         numeroInicial={numeroParaChamar}
         sipConectado={softphone.sipStatus === 'registrado'}
+        ramalOnline={ramalOnline}
         onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
       />
       <EnviarSmsModal
