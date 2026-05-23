@@ -104,15 +104,13 @@ export default function useSoftphone(config) {
     uaRef.current = ua;
   }, [config, desconectar]);
 
-  // Conecta/desconecta quando config muda
+  // NÃO conecta automaticamente — NVOIP usa SIP/UDP, incompatível com SIP/WebSocket do browser.
+  // O softphone só seria útil com um servidor SIP que suporte WSS (ex: Asterisk com mod_transport).
+  // Conexão automática causa conflito: o ramal fica registrado no browser e "rouba" as chamadas
+  // click-to-call que deveriam ser encaminhadas para o chip físico.
   useEffect(() => {
-    if (config?.numbersip && config?.sip_password) {
-      conectar();
-    } else {
-      desconectar();
-    }
-    return () => desconectar();
-  }, [config?.numbersip, config?.sip_password]);
+    return () => desconectar(); // cleanup apenas
+  }, []);
 
   const realizarChamada = useCallback((numero) => {
     if (!uaRef.current || sipStatus !== 'registrado') return;
