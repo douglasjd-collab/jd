@@ -25,10 +25,12 @@ const statusColor = {
   failed:              'bg-red-100 text-red-700',
 };
 
-export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
+export default function ChamadaAtiva({ callId, destino, chip, onEncerrada }) {
   const [status, setStatus] = useState('calling_origin');
   const [duracao, setDuracao] = useState(0);
   const [encerrando, setEncerrando] = useState(false);
+  const [logTecnico, setLogTecnico] = useState(null);
+  const [mostrarLog, setMostrarLog] = useState(false);
 
   useEffect(() => {
     if (!callId) return;
@@ -39,18 +41,19 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
         callId,
       });
       const state = res.data?.state;
+      // Salva log técnico completo
+      setLogTecnico(res.data);
       if (state) setStatus(state);
       if (state === 'established' && res.data?.talkingDurationSeconds) {
         setDuracao(res.data.talkingDurationSeconds);
       }
       if (['finished', 'noanswer', 'busy'].includes(state)) {
         clearInterval(poll);
-        setTimeout(() => onEncerrada?.(), 3000);
+        setTimeout(() => onEncerrada?.(), 4000);
       }
       if (state === 'failed') {
         clearInterval(poll);
-        // Mostra por mais tempo para o usuário ler a mensagem
-        setTimeout(() => onEncerrada?.(), 5000);
+        setTimeout(() => onEncerrada?.(), 6000);
       }
     }, 3000);
 
@@ -76,40 +79,69 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
 
   const isAtiva = ['calling_origin', 'calling_destination', 'established'].includes(status);
 
+  const chipFormatado = chip || logTecnico?._chip || '—';
+
   return (
     <div className="bg-slate-900 text-white rounded-2xl p-6 text-center space-y-4 shadow-xl">
       <div className="flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mx-auto">
         <Phone className="w-8 h-8" />
       </div>
+
+      {/* Destino + callId */}
       <div>
         <p className="text-lg font-semibold">{destino}</p>
-        <p className="text-slate-400 text-sm">{callId}</p>
+        <p className="text-slate-400 text-xs">ID: {callId}</p>
       </div>
+
       <Badge className={statusColor[status] || 'bg-slate-700 text-white'}>
         {statusLabel[status] || status}
       </Badge>
+
+      {/* Passo 1 — ligando para o chip */}
       {status === 'calling_origin' && (
-        <div className="text-xs text-yellow-200 max-w-xs mx-auto leading-relaxed bg-yellow-900/40 rounded-lg p-3 space-y-1.5">
+        <div className="text-xs text-yellow-200 text-left bg-yellow-900/40 rounded-lg p-3 space-y-1.5">
           <p className="font-semibold text-yellow-300">📲 Passo 1 de 2 — Atenda no seu chip!</p>
-          <p>A NVOIP está ligando agora para o <strong>seu chip/ramal</strong>. Atenda essa ligação — ela conectará você ao cliente <strong>{destino}</strong> automaticamente.</p>
+          <p className="text-yellow-100">Primeira ligação enviada para: <strong className="text-white">{chipFormatado}</strong></p>
+          <p>Atenda essa chamada — depois a NVOIP disca para o cliente <strong>{destino}</strong>.</p>
         </div>
       )}
+
+      {/* Passo 2 — discando para o cliente */}
       {status === 'calling_destination' && (
-        <div className="text-xs text-blue-200 max-w-xs mx-auto leading-relaxed bg-blue-900/40 rounded-lg p-3 space-y-1.5">
+        <div className="text-xs text-blue-200 text-left bg-blue-900/40 rounded-lg p-3 space-y-1.5">
           <p className="font-semibold text-blue-300">📞 Passo 2 de 2 — Ligando para o cliente!</p>
-          <p>Você atendeu. A NVOIP está agora discando para <strong>{destino}</strong>. Aguarde o cliente atender.</p>
+          <p>Chip <strong>{chipFormatado}</strong> atendeu. Discando para <strong>{destino}</strong>...</p>
         </div>
       )}
-      {status === 'failed' && (
-        <div className="text-xs text-red-300 max-w-xs mx-auto leading-relaxed space-y-1 text-left bg-red-900/30 rounded-lg p-3">
-          <p className="font-semibold">Chamada não completada.</p>
-          <p>O chip/ramal não atendeu ou o cliente estava indisponível.</p>
-          <p className="font-medium mt-1 text-yellow-300">Lembre-se: a NVOIP liga <strong>primeiro para o seu chip</strong> — atenda essa ligação para conectar ao cliente.</p>
+
+      {/* Não atendida — diagnóstico detalhado */}
+      {(status === 'noanswer' || status === 'failed') && (
+        <div className="text-xs text-left bg-red-900/40 rounded-lg p-3 space-y-2">
+          <p className="font-semibold text-red-300">❌ Chamada não atendida</p>
+          <p className="text-red-200">A NVOIP tentou ligar para o chip <strong className="text-white">{chipFormatado}</strong>, mas essa chamada não foi atendida ou não completou.</p>
+          <div className="text-red-300 space-y-0.5 pt-1 border-t border-red-700/50">
+            <p className="font-medium text-yellow-300">Verifique:</p>
+            <p>• O celular <strong>{chipFormatado}</strong> tocou?</p>
+            <p>• O número está correto? (Meu Ramal → Número do Chip)</p>
+            <p>• O encaminhamento está ativo no painel NVOIP?</p>
+          </div>
         </div>
       )}
+
+      {/* Busy */}
+      {status === 'busy' && (
+        <div className="text-xs text-left bg-slate-800 rounded-lg p-3 text-slate-300">
+          <p className="font-semibold">Ocupado</p>
+          <p>O chip <strong>{chipFormatado}</strong> ou o cliente estava ocupado no momento.</p>
+        </div>
+      )}
+
+      {/* Em ligação */}
       {status === 'established' && duracao > 0 && (
         <p className="text-2xl font-mono text-green-400">{formatDuracao(duracao)}</p>
       )}
+
+      {/* Botão encerrar */}
       {isAtiva && (
         <Button
           onClick={handleEncerrar}
@@ -119,6 +151,23 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
           {encerrando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <PhoneOff className="w-4 h-4 mr-2" />}
           Encerrar Chamada
         </Button>
+      )}
+
+      {/* Log técnico colapsável */}
+      {logTecnico && (
+        <div className="text-left">
+          <button
+            onClick={() => setMostrarLog(v => !v)}
+            className="text-xs text-slate-400 hover:text-slate-200 underline"
+          >
+            {mostrarLog ? 'Ocultar' : 'Ver'} log técnico
+          </button>
+          {mostrarLog && (
+            <pre className="mt-2 text-xs text-slate-300 bg-slate-800 rounded p-2 overflow-x-auto max-h-40 text-left">
+              {JSON.stringify(logTecnico, null, 2)}
+            </pre>
+          )}
+        </div>
       )}
     </div>
   );

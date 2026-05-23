@@ -18,8 +18,6 @@ import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
 import MeusNumeros from '@/components/callcenter/MeusNumeros';
 import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
-import SoftphonePanel from '@/components/callcenter/SoftphonePanel';
-import useSoftphone from '@/components/callcenter/useSoftphone';
 
 export default function CallCenter() {
   const [user, setUser] = useState(null);
@@ -37,7 +35,6 @@ export default function CallCenter() {
   const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino } — API REST
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [ramalStatus, setRamalStatus] = useState(null); // 'Online' | 'Offline' | null
-  const softphone = useSoftphone(config);
 
   // Puxar número da URL (?numero=...)
   const numeroInicial = useMemo(() => {
@@ -148,8 +145,6 @@ export default function CallCenter() {
   }
 
   const naoConfigurado = !config || !config.numbersip;
-  const ramalOffline = ramalStatus === 'Offline' && softphone.sipStatus !== 'registrado';
-  const ramalOnline = ramalStatus === 'Online' || softphone.sipStatus === 'registrado';
 
   return (
     <div className="space-y-6">
@@ -189,7 +184,7 @@ export default function CallCenter() {
               Ao clicar em ligar, a NVOIP ligará <strong>primeiro para o seu chip/ramal</strong>. Após você atender, a NVOIP disca para o cliente e a chamada é conectada.
             </p>
             <p className="mt-1 text-xs text-amber-600">
-              ℹ️ O endpoint <code className="bg-amber-100 px-1 rounded">POST /v2/calls/</code> da NVOIP opera exclusivamente em modo callback. Para ligação direta ao cliente (sem perna do vendedor), é necessário um tronco SIP ou WebRTC com originação direta — não suportado pelo endpoint atual.
+              ℹ️ Se a chamada retornar "Não atendida", verifique se o celular do chip configurado realmente tocou. Use o botão <strong>"Testar meu chip"</strong> no modal de chamada para confirmar.
             </p>
           </div>
         </div>
@@ -330,6 +325,7 @@ export default function CallCenter() {
               <ChamadaAtiva
                 callId={chamadaAtiva.callId}
                 destino={chamadaAtiva.destino}
+                chip={chamadaAtiva.chip}
                 onEncerrada={() => setChamadaAtiva(null)}
               />
             </div>
@@ -371,7 +367,7 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numeroInicial={numeroParaChamar}
-        onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
+        onChamadaIniciada={(callId, destino, chip) => setChamadaAtiva({ callId, destino, chip })}
       />
       <ConfiguracaoRamalUsuarioModal
         open={ramalUsuarioOpen}

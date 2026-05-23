@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Phone, AlertTriangle, User, Building2 } from 'lucide-react';
+import { Loader2, Phone, AlertTriangle, User, Smartphone } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial = '', onChamadaIniciada }) {
   const [called, setCalled] = useState(numeroInicial);
   const [loading, setLoading] = useState(false);
-  const [configUsuario, setConfigUsuario] = useState(null); // ramal pessoal
+  const [configUsuario, setConfigUsuario] = useState(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [testandoChip, setTestandoChip] = useState(false);
 
   useEffect(() => {
     if (numeroInicial) setCalled(numeroInicial);
@@ -36,6 +37,28 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
   const temRamalPessoal = configUsuario && configUsuario.numbersip && configUsuario.user_token;
   const temChip = configUsuario && configUsuario.numero_chip;
+
+  const handleTestarChip = async () => {
+    const chip = configUsuario?.numero_chip?.replace(/\D/g, '');
+    if (!chip) {
+      toast.error('Nenhum número de chip configurado. Acesse Meu Ramal primeiro.');
+      return;
+    }
+    setTestandoChip(true);
+    // Faz uma chamada de teste: caller = ramal, called = próprio chip (para confirmar que ele toca)
+    const res = await base44.functions.invoke('nvoipCallCenter', {
+      action: 'realizarChamada',
+      called: chip,
+      _testeChip: true,
+    });
+    setTestandoChip(false);
+    if (res.data?.callId) {
+      toast.success(`Chamada de teste enviada para ${chip}! Veja se o celular tocou.`, { duration: 8000 });
+    } else {
+      const erro = res.data?.error || 'Erro desconhecido';
+      toast.error(`Falha no teste do chip: ${erro}`, { description: 'Verifique o número e as configurações no painel NVOIP.', duration: 8000 });
+    }
+  };
 
   const handleLigar = async () => {
     const numero = called.replace(/\D/g, '');
@@ -65,7 +88,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
         description: `A NVOIP está ligando para ${chip}. Atenda para conectar ao cliente.`,
         duration: 6000,
       });
-      onChamadaIniciada?.(res.data.callId, called);
+      onChamadaIniciada?.(res.data.callId, called, res.data._chip || configUsuario?.numero_chip);
       onOpenChange(false);
       setCalled('');
     } else {
@@ -143,12 +166,25 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             <p className="text-xs text-slate-400">DDD + número, sem 0 e sem +55</p>
           </div>
 
-          {/* Fluxo callback — sempre visível */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 space-y-1">
+          {/* Fluxo callback + botão testar chip */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 space-y-2">
             <p className="font-semibold">⚠️ Modo Callback NVOIP — duas etapas:</p>
-            <p>1️⃣ NVOIP liga para o <strong>seu chip</strong> {configUsuario?.numero_chip ? `(${configUsuario.numero_chip})` : ''}</p>
+            <p>1️⃣ NVOIP liga para o <strong>seu chip</strong> {configUsuario?.numero_chip ? <strong className="text-amber-900">({configUsuario.numero_chip})</strong> : <span className="text-red-600 font-bold">(não configurado!)</span>}</p>
             <p>2️⃣ Você atende → NVOIP disca para o <strong>cliente</strong></p>
-            <p className="text-amber-600 pt-0.5">Ligação direta ao cliente requer tronco SIP — não disponível com este endpoint.</p>
+            {temChip && (
+              <button
+                type="button"
+                onClick={handleTestarChip}
+                disabled={testandoChip}
+                className="flex items-center gap-1.5 mt-1 text-amber-700 border border-amber-400 rounded px-2 py-1 hover:bg-amber-100 disabled:opacity-50 font-medium"
+              >
+                {testandoChip
+                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                  : <Smartphone className="w-3 h-3" />
+                }
+                Testar meu chip ({configUsuario.numero_chip})
+              </button>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
