@@ -267,8 +267,8 @@ export default function ComissoesEmprestimos() {
     if (!proposta.comissao_banco_recebida) {
       // Validar campos obrigatórios ao marcar como recebido
       if (!bancoDtRecebimento) { toast.error('Informe a data de recebimento'); return; }
-      if (!bancoValorRecebido || parseFloat(bancoValorRecebido) <= 0) { toast.error('Informe o valor recebido'); return; }
-      if (!bancoPercentualRecebido || parseFloat(bancoPercentualRecebido) <= 0) { toast.error('Informe o percentual recebido'); return; }
+      if (bancoValorRecebido === '' || bancoValorRecebido === null) { toast.error('Informe o valor recebido'); return; }
+      if (bancoPercentualRecebido === '' || bancoPercentualRecebido === null) { toast.error('Informe o percentual recebido'); return; }
     }
     setIsMarkingBanco(true);
     try {
