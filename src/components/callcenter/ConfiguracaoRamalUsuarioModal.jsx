@@ -77,6 +77,10 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
       toast.error('Ramal SIP e User Token são obrigatórios');
       return;
     }
+    if (!form.numero_chip) {
+      toast.error('Número do Chip é obrigatório para realizar chamadas');
+      return;
+    }
     setLoading(true);
     const res = await base44.functions.invoke('nvoipCallCenter', {
       action: 'salvarConfigUsuario',
@@ -144,15 +148,15 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               <p className="text-xs text-slate-400">NVOIP → API → Nvoip API v2 → User Token</p>
             </div>
 
-            <div className="space-y-2 p-3 bg-green-50 border-2 border-green-300 rounded-lg">
-              <Label className="text-green-800 font-bold">📱 Número do Chip/Celular</Label>
+            <div className="space-y-2 p-3 bg-red-50 border-2 border-red-400 rounded-lg">
+              <Label className="text-red-800 font-bold">📱 Número do Chip/Celular *</Label>
               <Input
                 placeholder="Ex: 87991234567 (DDD + número)"
                 value={form.numero_chip}
                 onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
-                className="border-green-300"
+                className="border-red-300 bg-white"
               />
-              <p className="text-xs text-green-700">Ao ligar, o sistema encaminhará a chamada para este celular automaticamente.</p>
+              <p className="text-xs text-red-700 font-medium">⚠️ Obrigatório. O ramal NVOIP encaminhará a chamada para este número. Sem ele, a chamada falha.</p>
             </div>
 
             <div className="space-y-2">

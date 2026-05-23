@@ -233,36 +233,55 @@ Deno.serve(async (req) => {
           error: tipo === 'empresa'
             ? 'Ramal não configurado. Configure seu ramal pessoal em Call Center → Meu Ramal, ou solicite ao administrador.'
             : 'Configure um ramal NVOIP para realizar chamadas.',
+          _error_type: 'ramal_nao_configurado',
+        }, { status: 200 });
+      }
+
+      // OBRIGATÓRIO: numero_chip para encaminhamento
+      if (!config.numero_chip) {
+        return Response.json({
+          error: 'Seu ramal NVOIP não possui número de encaminhamento (chip) configurado. Acesse Call Center → Meu Ramal → informe o Número do Chip.',
+          _error_type: 'chip_nao_configurado',
+          _caller: caller,
         }, { status: 200 });
       }
 
       // Valida número destino
       let calledFormatado = (called || '').replace(/\D/g, '');
       if (!calledFormatado || calledFormatado.length < 8) {
-        return Response.json({ error: 'Número de destino inválido. Informe DDD + número.' }, { status: 200 });
+        return Response.json({ error: 'Número de destino inválido. Informe DDD + número.', _error_type: 'numero_invalido' }, { status: 200 });
       }
       if (!calledFormatado.startsWith('55') && calledFormatado.length <= 11) {
         calledFormatado = '55' + calledFormatado;
       }
 
-      console.log(`[NVOIP] realizarChamada tipo=${tipo} caller=${caller} called=${calledFormatado}`);
+      // Formata chip e configura encaminhamento antes de ligar
+      const chip = config.numero_chip.replace(/\D/g, '');
+      const chipFormatado = chip.startsWith('55') ? chip : '55' + chip;
 
-      // Se tem numero_chip configurado, configura encaminhamento automaticamente antes de ligar
-      if (config.numero_chip) {
-        const chip = config.numero_chip.replace(/\D/g, '');
-        const chipFormatado = chip.startsWith('55') ? chip : '55' + chip;
-        try {
-          await fetch(`${NVOIP_BASE}/update/users?numbersip=${caller}`, {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify({ callForward: chipFormatado }),
-          });
-          console.log(`[NVOIP] encaminhamento configurado para chip ${chipFormatado}`);
-        } catch (e) {
-          console.log(`[NVOIP] aviso: falha ao configurar encaminhamento: ${e.message}`);
-        }
+      console.log(`[NVOIP] realizarChamada tipo=${tipo} caller=${caller} chip=${chipFormatado} called=${calledFormatado}`);
+
+      // Configura encaminhamento no ramal para o chip
+      const resEncam = await fetch(`${NVOIP_BASE}/update/users?numbersip=${caller}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ callForward: chipFormatado }),
+      });
+      const encamData = await resEncam.json().catch(() => ({}));
+      console.log(`[NVOIP] encaminhamento resultado: ${resEncam.status}`, JSON.stringify(encamData));
+
+      if (!resEncam.ok) {
+        const encamErr = encamData.message || encamData.error || `HTTP ${resEncam.status}`;
+        return Response.json({
+          error: `Falha ao configurar encaminhamento do ramal para o chip: ${encamErr}. Verifique se o ramal ${caller} existe no painel NVOIP.`,
+          _error_type: 'encaminhamento_falhou',
+          _caller: caller,
+          _chip: chipFormatado,
+          _debug: encamData,
+        }, { status: 200 });
       }
 
+      // Inicia chamada
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
         headers,
@@ -275,13 +294,15 @@ Deno.serve(async (req) => {
         const errMsg = data.message || data.error || `HTTP ${res.status}`;
         return Response.json({
           error: `Falha ao iniciar chamada: ${errMsg}`,
+          _error_type: 'chamada_falhou',
           _debug: data,
           _tipo_config: tipo,
           _caller: caller,
+          _chip: chipFormatado,
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: caller });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _chip: chipFormatado });
     }
 
     if (action === 'consultarChamada') {

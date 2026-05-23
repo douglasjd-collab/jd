@@ -35,6 +35,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
   };
 
   const temRamalPessoal = configUsuario && configUsuario.numbersip && configUsuario.user_token;
+  const temChip = configUsuario && configUsuario.numero_chip;
 
   const handleLigar = async () => {
     const numero = called.replace(/\D/g, '');
@@ -42,6 +43,15 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       toast.error('Número inválido. Informe DDD + número (mínimo 8 dígitos).');
       return;
     }
+    // Validação local antes de chamar a API
+    if (temRamalPessoal && !temChip) {
+      toast.error('Número do chip não configurado.', {
+        description: 'Acesse Call Center → Meu Ramal e informe o Número do Chip para encaminhamento.',
+        duration: 8000,
+      });
+      return;
+    }
+
     setLoading(true);
     const res = await base44.functions.invoke('nvoipCallCenter', {
       action: 'realizarChamada',
@@ -57,11 +67,22 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       setCalled('');
     } else {
       const erro = res.data?.error || res.data?.message || 'Erro desconhecido';
-      if (erro.includes('ramal') || erro.includes('configurad') || erro.includes('Configure')) {
+      const tipo = res.data?._error_type;
+      if (tipo === 'chip_nao_configurado') {
+        toast.error('Número de encaminhamento (chip) não configurado.', {
+          description: 'Acesse Call Center → Meu Ramal e informe o Número do Chip.',
+          duration: 8000,
+        });
+      } else if (tipo === 'encaminhamento_falhou') {
+        toast.error('Falha ao configurar encaminhamento no ramal NVOIP.', {
+          description: erro,
+          duration: 8000,
+        });
+      } else if (tipo === 'ramal_nao_configurado' || erro.includes('ramal') || erro.includes('configurad')) {
         toast.error(erro, { description: 'Acesse Call Center → Meu Ramal para configurar.', duration: 7000 });
       } else if (erro.includes('autenticaç') || erro.includes('token') || erro.includes('credenciai')) {
         toast.error('Falha de autenticação NVOIP. Verifique seu User Token.', { description: erro, duration: 7000 });
-      } else if (erro.includes('inválido') || erro.includes('número')) {
+      } else if (tipo === 'numero_invalido' || erro.includes('inválido') || erro.includes('número')) {
         toast.error('Número de destino inválido: ' + erro);
       } else {
         toast.error('Erro ao realizar chamada: ' + erro);
@@ -85,16 +106,22 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             <div className="flex items-center gap-2 text-sm text-slate-400 py-1">
               <Loader2 className="w-4 h-4 animate-spin" /> Verificando ramal...
             </div>
-          ) : temRamalPessoal ? (
+          ) : temRamalPessoal && temChip ? (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
               <User className="w-4 h-4 flex-shrink-0" />
               <div>
-                <span className="font-semibold">Ramal pessoal:</span> {configUsuario.numbersip}
-                {configUsuario.numero_chip && (
-                  <span className="text-green-600 ml-2 text-xs">→ chip: {configUsuario.numero_chip}</span>
-                )}
+                <span className="font-semibold">Ramal:</span> {configUsuario.numbersip}
+                <span className="text-green-600 ml-2 text-xs">→ chip: {configUsuario.numero_chip}</span>
               </div>
-              <Badge className="ml-auto bg-green-100 text-green-700 text-xs">Ativo</Badge>
+              <Badge className="ml-auto bg-green-100 text-green-700 text-xs">Pronto</Badge>
+            </div>
+          ) : temRamalPessoal && !temChip ? (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2 text-sm text-red-700">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Número do chip não configurado</p>
+                <p className="text-xs mt-0.5">Ramal <strong>{configUsuario.numbersip}</strong> sem encaminhamento. Acesse <strong>Call Center → Meu Ramal</strong> e informe o <strong>Número do Chip</strong>.</p>
+              </div>
             </div>
           ) : (
             <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-sm text-orange-700">
