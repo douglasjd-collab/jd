@@ -119,8 +119,8 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2 text-sm text-red-700">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Número do chip não configurado</p>
-                <p className="text-xs mt-0.5">Ramal <strong>{configUsuario.numbersip}</strong> sem encaminhamento. Acesse <strong>Call Center → Meu Ramal</strong> e informe o <strong>Número do Chip</strong>.</p>
+                <p className="font-semibold">📱 Número do Chip não configurado</p>
+                <p className="text-xs mt-0.5">Sem o chip/celular, não conseguiremos <strong>receber</strong> a chamada. Acesse <strong>Call Center → Meu Ramal</strong> e informe o <strong>Número do CHIP</strong>.</p>
               </div>
             </div>
           ) : (

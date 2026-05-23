@@ -148,25 +148,36 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               <p className="text-xs text-slate-400">NVOIP → API → Nvoip API v2 → User Token</p>
             </div>
 
-            <div className="space-y-2 p-3 bg-red-50 border-2 border-red-400 rounded-lg">
-              <Label className="text-red-800 font-bold">📱 Número do Chip/Celular *</Label>
-              <Input
-                placeholder="Ex: 87991234567 (DDD + número)"
-                value={form.numero_chip}
-                onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
-                className="border-red-300 bg-white"
-              />
-              <p className="text-xs text-red-700 font-medium">⚠️ Obrigatório. O ramal NVOIP encaminhará a chamada para este número. Sem ele, a chamada falha.</p>
-            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {/* CHIP - para RECEBER */}
+              <div className="space-y-2 p-3 bg-red-50 border-2 border-red-400 rounded-lg col-span-2">
+                <Label className="text-red-800 font-bold">📱 Número do CHIP (para RECEBER) *</Label>
+                <Input
+                  placeholder="Ex: 87 9 9123-4567"
+                  value={form.numero_chip}
+                  onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
+                  className="border-red-300 bg-white"
+                />
+                <div className="text-xs text-red-700 space-y-0.5">
+                  <p className="font-medium">⚠️ OBRIGATÓRIO para receber a chamada</p>
+                  <p>Seu celular/chip físico onde a chamada será encaminhada</p>
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Número DID de saída <span className="text-slate-400 text-xs font-normal">(opcional)</span></Label>
-              <Input
-                placeholder="Ex: 558132998470"
-                value={form.numero_did}
-                onChange={e => setForm({ ...form, numero_did: e.target.value.trim() })}
-              />
-              <p className="text-xs text-slate-400">Aparecerá como identificador de chamada para o cliente</p>
+              {/* DID - para SAIR */}
+              <div className="space-y-2 p-3 bg-blue-50 border-2 border-blue-300 rounded-lg col-span-2">
+                <Label className="text-blue-800 font-bold">☎️ Número DID (para SAIR) <span className="text-xs font-normal">(opcional)</span></Label>
+                <Input
+                  placeholder="Ex: 5581329984700"
+                  value={form.numero_did}
+                  onChange={e => setForm({ ...form, numero_did: e.target.value.trim() })}
+                  className="border-blue-300 bg-white"
+                />
+                <div className="text-xs text-blue-700 space-y-0.5">
+                  <p className="font-medium">Quem vai receber a chamada verá este número</p>
+                  <p>Se deixar vazio, aparecerá o ramal SIP</p>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
