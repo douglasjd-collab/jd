@@ -142,36 +142,36 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             </div>
           ) : temRamalPessoal && temChip ? (
             <div className="space-y-1.5">
-              {/* Número da empresa/origem */}
+              {/* Número da empresa/origem (Ramal SIP) */}
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800">
                 <User className="w-4 h-4 flex-shrink-0 text-slate-600" />
                 <div className="flex-1">
-                  <p className="font-semibold text-xs text-slate-500 uppercase tracking-wide mb-0.5">Ramal / Número da empresa (caller)</p>
+                  <p className="font-semibold text-xs text-slate-500 uppercase tracking-wide mb-0.5">Ramal SIP (caller)</p>
                   <p className="font-mono font-bold">{configUsuario.numbersip}</p>
                   {numeroEmpresa && numeroEmpresa !== configUsuario.numbersip && (
-                    <p className="text-xs text-slate-500 mt-0.5">DID de saída: {numeroEmpresa}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">DID virtual NVOIP: {numeroEmpresa}</p>
                   )}
                 </div>
                 <Badge className="bg-slate-200 text-slate-700 text-xs border-0">origem</Badge>
               </div>
               
-              {/* Celular físico */}
+              {/* Celular físico (1ª perna do callback) */}
               <div className={`${celularFisicoInvalido ? "bg-red-50 border-red-300" : "bg-blue-50 border-blue-200"} border rounded-lg px-3 py-2 text-sm`}>
                 <div className="flex items-start gap-2">
                   <Smartphone className={`w-4 h-4 flex-shrink-0 mt-0.5 ${celularFisicoInvalido ? "text-red-600" : "text-blue-600"}`} />
                   <div className="flex-1">
                     <p className={`font-semibold text-xs uppercase tracking-wide mb-0.5 ${celularFisicoInvalido ? "text-red-600" : "text-blue-600"}`}>
-                      Celular físico (callForward)
+                      Celular físico para callback (1ª perna)
                     </p>
                     <p className="font-mono font-bold">{celularFisico}</p>
                     {celularFisicoInvalido && (
                       <p className="text-xs text-red-600 mt-1 font-semibold">
-                        ⚠️ Este número é igual ao DID da empresa. Informe um celular físico real que irá tocar primeiro.
+                        ⚠️ Este número não pode ser igual ao DID. Use seu celular físico real.
                       </p>
                     )}
                   </div>
                   <Badge className={`${celularFisicoInvalido ? "bg-red-200 text-red-700" : "bg-blue-200 text-blue-700"} text-xs border-0`}>
-                    1ª perna
+                    callForward
                   </Badge>
                 </div>
               </div>
@@ -212,22 +212,22 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
           {/* Resumo visual do payload que será enviado */}
           {called.replace(/\D/g, '').length >= 8 && temRamalPessoal && temChip && (
             <div className={`${celularFisicoInvalido ? "bg-red-50 border-red-300" : "bg-slate-50 border-slate-200"} border rounded-lg px-3 py-2 text-xs space-y-1`}>
-              <p className="font-semibold text-slate-600 uppercase tracking-wide mb-1">Resumo da chamada</p>
+              <p className="font-semibold text-slate-600 uppercase tracking-wide mb-1">Fluxo de callback</p>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">1. Ligando do ramal:</span>
+                <span className="text-slate-500">1. Ramal de origem:</span>
                 <span className="font-mono font-bold text-slate-800">{configUsuario?.numbersip}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">2. Toca primeiro no celular:</span>
+                <span className="text-slate-500">2. NVOIP liga primeiro para:</span>
                 <span className={`font-mono font-bold ${celularFisicoInvalido ? "text-red-700" : "text-blue-700"}`}>{celularFisico}</span>
               </div>
               {celularFisicoInvalido && (
                 <p className="text-xs text-red-600 font-semibold mt-1">
-                  ⚠️ Este celular é igual ao DID da empresa. Use um número diferente que realmente toque no seu celular físico.
+                  ⚠️ Este celular não pode ser igual ao DID. Configure um celular físico diferente.
                 </p>
               )}
               <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                <span className="text-slate-500">3. Depois liga para o cliente:</span>
+                <span className="text-slate-500">3. Depois disca para:</span>
                 <span className="font-mono font-bold text-green-700">
                   {(() => { const n = called.replace(/\D/g,''); return n.startsWith('55') ? n : '55' + n; })()}
                 </span>
@@ -249,25 +249,24 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             </div>
           )}
 
-          {/* Fluxo callback + botão testar chip */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 space-y-2">
-            <p className="font-semibold">⚠️ Callback NVOIP — como funciona:</p>
-            <p className="text-amber-900"><strong>1.</strong> Você clica em "Ligar"</p>
-            <p className="text-amber-900"><strong>2.</strong> NVOIP liga primeiro para o seu <strong>celular físico</strong> {celularFisico ? <span>({celularFisico})</span> : <span className="text-red-600 font-bold">(não configurado!)</span>}</p>
-            <p className="text-amber-900"><strong>3.</strong> Você atende → NVOIP disca para o <strong>cliente</strong></p>
-            <p className="text-amber-900"><strong>4.</strong> Chamada conectada!</p>
+          {/* Instruções sobre o fluxo callback */}
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-900 space-y-2">
+            <p className="font-semibold">✓ Callback NVOIP (2 pernas):</p>
+            <p><strong>1ª perna:</strong> NVOIP liga para seu <strong>celular físico</strong> {celularFisico ? <span className="font-mono">({celularFisico})</span> : <span className="text-red-600 font-bold">(não configurado!)</span>}</p>
+            <p><strong>2ª perna:</strong> Você atende → NVOIP disca para o <strong>cliente</strong></p>
+            <p className="text-xs text-green-700 mt-1">O DID virtual {numeroEmpresa ? <span className="font-mono">({numeroEmpresa})</span> : '(não configurado)'} aparece como número de origem.</p>
             {temChip && !celularFisicoInvalido && (
               <button
                 type="button"
                 onClick={handleTestarChip}
                 disabled={testandoChip}
-                className="flex items-center gap-1.5 mt-1 text-amber-700 border border-amber-400 rounded px-2 py-1 hover:bg-amber-100 disabled:opacity-50 font-medium"
+                className="flex items-center gap-1.5 mt-2 text-green-700 border border-green-400 rounded px-2 py-1 hover:bg-green-100 disabled:opacity-50 font-medium text-xs"
               >
                 {testandoChip
                   ? <Loader2 className="w-3 h-3 animate-spin" />
                   : <Smartphone className="w-3 h-3" />
                 }
-                Testar celular físico ({celularFisico})
+                Testar celular ({celularFisico})
               </button>
             )}
           </div>

@@ -255,20 +255,29 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Formata chip e configura encaminhamento antes de ligar
+      // Formata chip (celular físico) para 1ª perna do callback
       const chip = config.numero_chip.replace(/\D/g, '');
       const chipFormatado = chip.startsWith('55') ? chip : '55' + chip;
 
       // Monta payload com os campos corretos:
-      // caller  = ramal/número da empresa (origem, ex: 558132998470)
-      // called  = número do cliente (destino, ex: 5587991426333)
-      // callForward = chip físico que atende a 1ª perna (pode ser o mesmo que caller)
-      console.log(`[NVOIP] realizarChamada:`);
-      console.log(`  caller (empresa/origem)  = ${caller}`);
-      console.log(`  called (cliente/destino) = ${calledFormatado}`);
+      // caller       = ramal/NumberSIP (origem da chamada, ex: 137715001)
+      // called       = número do cliente com DDI (destino, ex: 5587991426333)
+      // callForward  = celular físico do vendedor (1ª perna callback, ex: 5587991234567)
+      // callerId     = DID virtual NVOIP (número de saída, ex: 558132998470)
+      console.log(`[NVOIP] realizarChamada (callback):`);
+      console.log(`  caller (ramal SIP)       = ${caller}`);
+      console.log(`  called (cliente+DDI)     = ${calledFormatado}`);
       console.log(`  callForward (chip físico)= ${chipFormatado}`);
+      console.log(`  callerId (DID virtual)   = ${config.numero_did || 'não configurado'}`);
 
-      const callBody = { caller, called: calledFormatado, callForward: chipFormatado };
+      const callBody = {
+        caller,
+        called: calledFormatado,
+        callForward: chipFormatado
+      };
+      if (config.numero_did) {
+        callBody.callerId = config.numero_did.replace(/\D/g, '');
+      }
       console.log(`[NVOIP] POST /v2/calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
