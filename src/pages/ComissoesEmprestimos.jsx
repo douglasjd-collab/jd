@@ -832,7 +832,7 @@ export default function ComissoesEmprestimos() {
                               {getPercentualEmpresa(p).toFixed(2)}%
                             </td>
                             <td className="p-3 text-right font-semibold text-slate-700">{fmt(p.valor_comissao)}</td>
-                            <td className="p-3 text-right">
+                            <td className="p-3 text-right" onDoubleClick={e => e.stopPropagation()}>
                               <Input
                                 type="number"
                                 min="0"
