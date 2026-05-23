@@ -13,6 +13,7 @@ import {
   Search, Loader2, CheckCircle2, Clock, BarChart2,
   ChevronDown, ChevronUp, DollarSign, AlertCircle
 } from 'lucide-react';
+import PropostaDetalhesModal from '@/components/comissoes/PropostaDetalhesModal';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
 import 'moment/locale/pt-br';
@@ -81,6 +82,9 @@ export default function ComissoesEmprestimos() {
   // Percentuais personalizados por proposta (sobreescrevem o valor_comissao)
   // key: proposta.id, value: percentual (número)
   const [percentuaisCustom, setPercentuaisCustom] = useState({});
+
+  // Modal detalhes proposta (duplo clique)
+  const [propostaDetalhes, setPropostaDetalhes] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -799,7 +803,7 @@ export default function ComissoesEmprestimos() {
                       </thead>
                       <tbody>
                         {vendedor.propostas.map(p => (
-                          <tr key={p.id} className="border-b hover:bg-slate-50 transition-colors">
+                          <tr key={p.id} className="border-b hover:bg-slate-50 transition-colors cursor-pointer" onDoubleClick={() => setPropostaDetalhes(p)}>
                             <td className="p-3">
                                <p className="font-medium text-slate-900">{p.cliente_nome || '-'}</p>
                                {p.cliente_cpf && <p className="text-xs text-slate-400 mt-0.5">{p.cliente_cpf}</p>}
@@ -885,6 +889,12 @@ export default function ComissoesEmprestimos() {
           })}
         </div>
       )}
+
+      {/* Modal: Detalhes da Proposta (duplo clique) */}
+      <PropostaDetalhesModal
+        proposta={propostaDetalhes}
+        onClose={() => setPropostaDetalhes(null)}
+      />
 
       {/* Modal: Marcar Comissão Banco */}
       <Dialog open={marcarBancoModal} onOpenChange={(v) => {
