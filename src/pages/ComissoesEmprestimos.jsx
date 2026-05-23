@@ -407,130 +407,74 @@ export default function ComissoesEmprestimos() {
 
     const tableEndY = doc.lastAutoTable.finalY;
 
-    // ===== SUBTOTAL ABAIXO DA TABELA =====
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(16, 53, 60);
-    doc.text('SUBTOTAL COMISSÕES:', pageWidth - 50, tableEndY + 5, { align: 'right' });
-    doc.setTextColor(35, 190, 132);
-    doc.text(fmt(totalBruto), pageWidth - 12, tableEndY + 5, { align: 'right' });
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(8, 57, 66);
+    doc.text('SUBTOTAL COMISSÕES:', pageWidth - 38, tableEndY + 2, { align: 'right' });
+    doc.setTextColor(0, 100, 180);
+    doc.setFontSize(9);
+    doc.text(fmt(totalBruto), pageWidth - 12, tableEndY + 2, { align: 'right' });
 
-    let contentY = tableEndY + 12;
+    let contentY = tableEndY + 5.5;
 
-    // ===== LAYOUT 2 COLUNAS: ADIANTAMENTOS (esquerda) + CARDS RESUMO (direita) =====
-    const leftColWidth = 145;
-    const rightColX = leftColWidth + 15;
-    const rightColWidth = 65;
-
-    // ===== COLUNA ESQUERDA: ADIANTAMENTOS =====
     if (adiantamentosDesc.length > 0) {
       doc.setFillColor(245, 137, 65);
-      doc.rect(10, contentY - 3, leftColWidth, 5, 'F');
+      doc.rect(10, contentY - 2, 140, 4, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-      doc.text('🔔  ADIANTAMENTOS DESCONTADOS', 13, contentY + 0.5);
+      doc.setFontSize(7.2); doc.setFont('helvetica', 'bold');
+      doc.text('ADIANTAMENTOS DESCONTADOS', 12, contentY + 0.5);
 
       doc.autoTable({
-        startY: contentY + 3,
+        startY: contentY + 2,
         head: [['Descrição / Motivo', 'Data Adiantamento', 'Valor Descontado']],
-        body: adiantamentosDesc.map(a => [
-          a.motivo || 'Adiantamento referente à comissão disponível.',
-          moment(a.data).format('DD/MM/YYYY'),
-          fmt(a.valor),
-        ]),
+        body: adiantamentosDesc.map(a => [a.motivo || 'Adiantamento referente à comissão disponível.', moment(a.data).format('DD/MM/YYYY'), fmt(a.valor)]),
         foot: [['', 'TOTAL ADIANTAMENTOS:', fmt(totalAdiantamentos)]],
-        styles: { fontSize: 6.5, cellPadding: 2 },
+        styles: { fontSize: 6.3, cellPadding: 2.2, valign: 'middle' },
         headStyles: { fillColor: [245, 137, 65], textColor: 255, fontStyle: 'bold' },
         footStyles: { fillColor: [255, 240, 220], textColor: [180, 80, 0], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [255, 247, 240] },
-        columnStyles: { 2: { halign: 'right' } },
+        columnStyles: { 0: { halign: 'left' }, 1: { halign: 'center' }, 2: { halign: 'right' } },
         margin: { left: 10, right: 10 },
-        tableWidth: leftColWidth,
+        tableWidth: 140,
       });
-
-      contentY = doc.lastAutoTable.finalY + 3;
+      contentY = doc.lastAutoTable.finalY + 2;
     }
 
-    // ===== COLUNA DIREITA: 3 CARDS RESUMO =====
-    const cardY = tableEndY + 12;
-    const cardW = rightColWidth;
-    const cardH = 12;
+    const cardFY = contentY;
+    const cardFW = 63;
+    const cardFH = 15;
 
-    // Card 1: Subtotal
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(rightColX, cardY, cardW, cardH, 0.5, 0.5, 'F');
-    doc.setDrawColor(200, 215, 230);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(rightColX, cardY, cardW, cardH, 0.5, 0.5);
-    doc.setFontSize(6); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('Subtotal Comissões', rightColX + 2, cardY + 3.5);
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(35, 190, 132);
-    doc.text(fmt(totalBruto), rightColX + 2, cardY + 10);
-
-    // Card 2: Adiantamentos
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(rightColX, cardY + cardH + 2, cardW, cardH, 0.5, 0.5, 'F');
-    doc.setDrawColor(200, 215, 230);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(rightColX, cardY + cardH + 2, cardW, cardH, 0.5, 0.5);
-    doc.setFontSize(6); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('(−) Adiantamentos', rightColX + 2, cardY + cardH + 5.5);
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(245, 137, 65);
-    doc.text(fmt(totalAdiantamentos), rightColX + 2, cardY + cardH * 2 + 2);
-
-    // Card 3: Valor Líquido
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(rightColX, cardY + (cardH + 2) * 2, cardW, cardH, 0.5, 0.5, 'F');
-    doc.setDrawColor(200, 215, 230);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(rightColX, cardY + (cardH + 2) * 2, cardW, cardH, 0.5, 0.5);
-    doc.setFontSize(6); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('VALOR LÍQUIDO A PAGAR', rightColX + 2, cardY + (cardH + 2) * 2 + 3.5);
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(35, 190, 132);
-    doc.text(fmt(totalLiquido), rightColX + 2, cardY + (cardH + 2) * 3 + 2);
-
-    // ===== FOOTER COM DADOS BANCÁRIOS =====
-    const footerY = pageHeight - 22;
-    doc.setDrawColor(16, 53, 60);
-    doc.setLineWidth(0.5);
-    doc.line(10, footerY, pageWidth - 10, footerY);
-
-    // Dados bancários em 5 colunas
-    const bankDataY = footerY + 5;
-    const bankColW = (pageWidth - 20) / 5;
-    const bankItems = [
-      { label: 'CHAVE PIX', value: dadosBancarios?.pix || 'alan.marques@email.com' },
-      { label: 'BANCO', value: dadosBancarios?.banco || 'Banco Inter' },
-      { label: 'TIPO DE CHAVE', value: 'E-mail' },
-      { label: 'NOME DO FAVORECIDO', value: vendedorInfo?.vendedor_nome || 'Alan Marques' },
-      { label: 'CPF DO FAVORECIDO', value: '123.456.789-90' },
-    ];
-
-    bankItems.forEach((item, idx) => {
-      const xPos = 10 + idx * bankColW;
-      doc.setFontSize(6); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(100, 100, 100);
-      doc.text(item.label, xPos + 2, bankDataY - 1);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(7);
-      doc.text(item.value, xPos + 2, bankDataY + 4);
-    });
-
-    // Bottom bar
-    doc.setFillColor(16, 53, 60);
-    doc.rect(0, pageHeight - 7, pageWidth, 7, 'F');
+    doc.setFillColor(8, 57, 66);
+    doc.roundedRect(10, cardFY, cardFW, cardFH, 0.8, 0.8, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6); doc.setFont('helvetica', 'normal');
-    doc.text('🔒 Comprovante emitido eletronicamente.', 12, pageHeight - 2.5);
-    doc.text('PROMOTORA', 148, pageHeight - 2.5, { align: 'center' });
-    doc.text('CNPJ: 45.123.789/0001-40', 148, pageHeight - 4.5, { align: 'center' });
-    doc.text('www.promotora.com.br', pageWidth - 12, pageHeight - 2.5, { align: 'right' });
+    doc.setFontSize(6.2); doc.setFont('helvetica', 'normal');
+    doc.text('Subtotal Comissões', 12, cardFY + 3.5);
+    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold');
+    doc.text(fmt(totalBruto), 12, cardFY + 11);
+
+    doc.setFillColor(245, 137, 65);
+    doc.roundedRect(10 + cardFW + 2, cardFY, cardFW, cardFH, 0.8, 0.8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6.2); doc.setFont('helvetica', 'normal');
+    doc.text('(−) Adiantamentos', 12 + cardFW + 2, cardFY + 3.5);
+    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold');
+    doc.text(fmt(totalAdiantamentos), 12 + cardFW + 2, cardFY + 11);
+
+    doc.setFillColor(35, 190, 132);
+    doc.roundedRect(10 + (cardFW + 2) * 2, cardFY, cardFW, cardFH, 0.8, 0.8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6.2); doc.setFont('helvetica', 'bold');
+    doc.text('VALOR LÍQUIDO A PAGAR', 12 + (cardFW + 2) * 2, cardFY + 3.5);
+    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold');
+    doc.text(fmt(totalLiquido), 12 + (cardFW + 2) * 2, cardFY + 11);
+
+    const footerY = pageHeight - 15;
+    doc.line(10, footerY, pageWidth - 10, footerY);
+    doc.setFontSize(6.2); doc.setTextColor(100, 100, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.text('🔒 Comprovante emitido eletronicamente.', 10, footerY + 3.5);
+    doc.text('JD PROMOTORA', 148, footerY + 3.5, { align: 'center' });
+    doc.text('CNPJ: 45.123.789/0001-40', 148, footerY + 6, { align: 'center' });
+    doc.text('www.promotora.com.br', pageWidth - 10, footerY + 3.5, { align: 'right' });
 
     doc.save(`comissao_emp_${vendedorInfo?.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${moment(dataPagamento).format('YYYYMMDD')}.pdf`);
   };
