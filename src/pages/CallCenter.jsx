@@ -258,26 +258,10 @@ export default function CallCenter() {
       {/* Conteúdo principal */}
       {!naoConfigurado && (
         <>
-          {/* Layout: softphone à esquerda + conteúdo à direita */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Softphone WebRTC */}
-            <div className="lg:col-span-1">
-              <SoftphonePanel
-                softphone={softphone}
-                numbersip={config?.numbersip}
-                numeroInicial={numeroInicial}
-                onChamadaApiRest={(numero) => {
-                  setChamadaOpen(true);
-                  // Preenche o número no modal de chamada via URL param não funciona, então abrimos o modal
-                  // O usuário já digitou o número — passamos via estado
-                  setNumeroParaChamar(numero);
-                }}
-              />
-
-            </div>
-
+          {/* Layout principal */}
+          <div className="grid grid-cols-1 gap-6">
             {/* Ações + histórico */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="space-y-4">
 
           {/* Cards de ação rápida */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -373,7 +357,7 @@ export default function CallCenter() {
             </TabsContent>
           </Tabs>
 
-            </div>{/* fim col-span-2 */}
+            </div>
           </div>{/* fim grid */}
         </>
       )}

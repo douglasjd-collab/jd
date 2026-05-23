@@ -163,16 +163,25 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // Para ligar diretamente ao destino sem passar pelo ramal:
-      // - caller deve ser o número DID (número externo) ou o numbersip
-      // - O fluxo click-to-call da NVOIP SEMPRE liga para o caller primeiro (ramal) antes do destino
-      // - Usar numero_did como caller faz a NVOIP ligar direto para o destino sem intermediário
-      const caller = config.numero_did || config.numbersip;
+      // NVOIP click-to-call: caller deve ser o número DID externo (ex: 558132998470)
+      // NÃO usar numbersip (ramal interno) — a API retorna "User sip not found"
+      // O número DID fica registrado no campo numero_did da configuração
+      const caller = config.numero_did;
+
+      if (!caller) {
+        return Response.json({ error: 'Número DID não configurado. Acesse Configurar no Call Center e informe o Número DID (número externo, ex: 558132998470).' }, { status: 200 });
+      }
+
+      // Formata o número destino (garante que tem código do país se não tiver)
+      let calledFormatado = called.replace(/\D/g, '');
+      if (calledFormatado.length <= 11) {
+        calledFormatado = '55' + calledFormatado;
+      }
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ caller, called }),
+        body: JSON.stringify({ caller, called: calledFormatado }),
       });
       const data = await res.json();
       if (!res.ok) {
