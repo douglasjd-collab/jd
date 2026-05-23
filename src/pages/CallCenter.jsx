@@ -179,27 +179,19 @@ export default function CallCenter() {
         </div>
       </div>
 
-      {/* Info: como fazer chamadas */}
-      {!naoConfigurado && softphone.sipStatus !== 'registrado' && (
-        <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+      {/* Modo de chamada ativo */}
+      {!naoConfigurado && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
           <span className="text-xl">📞</span>
           <div className="flex-1">
-            <p className="font-semibold">Como fazer chamadas pelo CRM</p>
-            <p className="mt-1 text-blue-700">
-              Clique no card <strong>"Nova Chamada"</strong> ou no botão de telefone ao lado de um contato. Digite o número destino e clique em ligar — a chamada será iniciada via API NVOIP.
+            <p className="font-semibold">Modo atual: Callback NVOIP (duas pernas)</p>
+            <p className="mt-1 text-amber-700">
+              Ao clicar em ligar, a NVOIP ligará <strong>primeiro para o seu chip/ramal</strong>. Após você atender, a NVOIP disca para o cliente e a chamada é conectada.
             </p>
-            <p className="mt-1 text-xs text-blue-600">
-              💡 A NVOIP ligará para o número destino e conectará ao DID configurado ({config?.numero_did || 'configure o número DID'}).
+            <p className="mt-1 text-xs text-amber-600">
+              ℹ️ O endpoint <code className="bg-amber-100 px-1 rounded">POST /v2/calls/</code> da NVOIP opera exclusivamente em modo callback. Para ligação direta ao cliente (sem perna do vendedor), é necessário um tronco SIP ou WebRTC com originação direta — não suportado pelo endpoint atual.
             </p>
           </div>
-        </div>
-      )}
-
-      {/* Softphone registrado — tudo OK */}
-      {!naoConfigurado && softphone.sipStatus === 'registrado' && (
-        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
-          <span className="text-lg">✅</span>
-          <p>Softphone ativo — ligações acontecem <strong>direto no CRM</strong> com áudio no navegador.</p>
         </div>
       )}
 

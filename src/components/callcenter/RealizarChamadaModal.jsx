@@ -94,7 +94,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="w-5 h-5 text-green-600" />
-            Nova Chamada
+            Nova Chamada — Callback NVOIP
           </DialogTitle>
         </DialogHeader>
 
@@ -143,12 +143,12 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             <p className="text-xs text-slate-400">DDD + número, sem 0 e sem +55</p>
           </div>
 
-          {/* Explicação do fluxo callback */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 space-y-0.5">
-            <p className="font-semibold">Como funciona o callback NVOIP:</p>
-            <p>1️⃣ A NVOIP liga primeiro para o <strong>seu chip/ramal</strong></p>
-            <p>2️⃣ Você atende → NVOIP liga para o <strong>cliente</strong></p>
-            <p>3️⃣ A chamada é conectada entre você e o cliente</p>
+          {/* Fluxo callback — sempre visível */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 space-y-1">
+            <p className="font-semibold">⚠️ Modo Callback NVOIP — duas etapas:</p>
+            <p>1️⃣ NVOIP liga para o <strong>seu chip</strong> {configUsuario?.numero_chip ? `(${configUsuario.numero_chip})` : ''}</p>
+            <p>2️⃣ Você atende → NVOIP disca para o <strong>cliente</strong></p>
+            <p className="text-amber-600 pt-0.5">Ligação direta ao cliente requer tronco SIP — não disponível com este endpoint.</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
