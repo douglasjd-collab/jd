@@ -214,7 +214,17 @@ Deno.serve(async (req) => {
     }
 
     // Para todas as outras ações, pega a config com prioridade para o usuário
-    const { config, tipo } = await getConfigParaUsuario(base44, user, empresaId, colaboradorId);
+    let config, tipo;
+    try {
+      const result = await getConfigParaUsuario(base44, user, empresaId, colaboradorId);
+      config = result.config;
+      tipo = result.tipo;
+    } catch (err) {
+      return Response.json({ 
+        error: err.message, 
+        _error_type: 'sem_configuracao' 
+      }, { status: 200 });
+    }
     const token = await getValidToken(base44, config, tipo === 'usuario');
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
