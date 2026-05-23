@@ -227,22 +227,13 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      const caller = config.numbersip;
+      // Usa DID se disponível, senão usa ramal SIP
+      let caller = config.numero_did?.replace(/\D/g, '') || config.numbersip;
+      
       if (!caller) {
         return Response.json({
-          error: tipo === 'empresa'
-            ? 'Ramal não configurado. Configure seu ramal pessoal em Call Center → Meu Ramal, ou solicite ao administrador.'
-            : 'Configure um ramal NVOIP para realizar chamadas.',
+          error: 'Ramal ou DID não configurado. Acesse Call Center → Meu Ramal para configurar.',
           _error_type: 'ramal_nao_configurado',
-        }, { status: 200 });
-      }
-
-      // OBRIGATÓRIO: numero_chip para encaminhamento
-      if (!config.numero_chip) {
-        return Response.json({
-          error: 'Seu ramal NVOIP não possui número de encaminhamento (chip) configurado. Acesse Call Center → Meu Ramal → informe o Número do Chip.',
-          _error_type: 'chip_nao_configurado',
-          _caller: caller,
         }, { status: 200 });
       }
 
@@ -255,29 +246,15 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Formata chip (celular físico) para 1ª perna do callback
-      const chip = config.numero_chip.replace(/\D/g, '');
-      const chipFormatado = chip.startsWith('55') ? chip : '55' + chip;
-
-      // Monta payload com os campos corretos:
-      // caller       = ramal/NumberSIP (origem da chamada, ex: 137715001)
-      // called       = número do cliente com DDI (destino, ex: 5587991426333)
-      // callForward  = celular físico do vendedor (1ª perna callback, ex: 5587991234567)
-      // callerId     = DID virtual NVOIP (número de saída, ex: 558132998470)
-      console.log(`[NVOIP] realizarChamada (callback):`);
-      console.log(`  caller (ramal SIP)       = ${caller}`);
-      console.log(`  called (cliente+DDI)     = ${calledFormatado}`);
-      console.log(`  callForward (chip físico)= ${chipFormatado}`);
-      console.log(`  callerId (DID virtual)   = ${config.numero_did || 'não configurado'}`);
+      // Chamada direta: caller = DID/ramal, called = cliente
+      console.log(`[NVOIP] realizarChamada (direto):`);
+      console.log(`  caller (DID/ramal)  = ${caller}`);
+      console.log(`  called (cliente)    = ${calledFormatado}`);
 
       const callBody = {
         caller,
-        called: calledFormatado,
-        callForward: chipFormatado
+        called: calledFormatado
       };
-      if (config.numero_did) {
-        callBody.callerId = config.numero_did.replace(/\D/g, '');
-      }
       console.log(`[NVOIP] POST /v2/calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -296,11 +273,10 @@ Deno.serve(async (req) => {
           _debug: data,
           _tipo_config: tipo,
           _caller: caller,
-          _chip: chipFormatado,
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _chip: chipFormatado });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado });
     }
 
     if (action === 'consultarChamada') {
