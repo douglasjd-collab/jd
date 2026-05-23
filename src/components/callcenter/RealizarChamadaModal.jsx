@@ -37,6 +37,11 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
   const temRamalPessoal = configUsuario && configUsuario.numbersip && configUsuario.user_token;
   const temChip = configUsuario && configUsuario.numero_chip;
+  const numeroEmpresa = configUsuario?.numero_did || configUsuario?.numbersip || '';
+  const celularFisico = configUsuario?.numero_chip || '';
+  
+  // Validação: celular físico não pode ser igual ao número da empresa/DID
+  const celularFisicoInvalido = celularFisico && numeroEmpresa && celularFisico.replace(/\D/g,'') === numeroEmpresa.replace(/\D/g,'');
 
   const handleTestarChip = async () => {
     const chip = configUsuario?.numero_chip?.replace(/\D/g, '');
@@ -68,8 +73,15 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     }
     // Validação local antes de chamar a API
     if (temRamalPessoal && !temChip) {
-      toast.error('Número do chip não configurado.', {
-        description: 'Acesse Call Center → Meu Ramal e informe o Número do Chip para encaminhamento.',
+      toast.error('Celular físico não configurado.', {
+        description: 'Acesse Call Center → Meu Ramal e informe um CELULAR FÍSICO (ex: 87991426333). Este número irá tocar primeiro.',
+        duration: 8000,
+      });
+      return;
+    }
+    if (celularFisicoInvalido) {
+      toast.error('Celular físico inválido.', {
+        description: `O número ${celularFisico} é igual ao DID da empresa. Informe um celular físico diferente em Meu Ramal.`,
         duration: 8000,
       });
       return;
@@ -83,10 +95,11 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     setLoading(false);
 
     if (res.data?.callId) {
-      const chip = res.data?._chip || configUsuario?.numero_chip || 'seu chip';
-      toast.success('Aguarde a ligação no seu chip!', {
-        description: `A NVOIP está ligando para ${chip}. Atenda para conectar ao cliente.`,
-        duration: 6000,
+      const chip = res.data?._chip || configUsuario?.numero_chip || 'seu celular';
+      const clienteFormatado = numero.startsWith('55') ? numero : '55' + numero;
+      toast.success('Chamada iniciada!', {
+        description: `1️⃣ NVOIP ligará para ${chip}. 2️⃣ Atenda! 3️⃣ NVOIP discará para ${clienteFormatado}.`,
+        duration: 8000,
       });
       onChamadaIniciada?.(res.data.callId, called, res.data._chip || configUsuario?.numero_chip);
       onOpenChange(false);
@@ -129,29 +142,49 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             </div>
           ) : temRamalPessoal && temChip ? (
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800">
-                <User className="w-4 h-4 flex-shrink-0 text-green-600" />
+              {/* Número da empresa/origem */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800">
+                <User className="w-4 h-4 flex-shrink-0 text-slate-600" />
                 <div className="flex-1">
-                  <p className="font-semibold text-xs text-green-600 uppercase tracking-wide mb-0.5">Número de origem (empresa)</p>
+                  <p className="font-semibold text-xs text-slate-500 uppercase tracking-wide mb-0.5">Ramal / Número da empresa (caller)</p>
                   <p className="font-mono font-bold">{configUsuario.numbersip}</p>
+                  {numeroEmpresa && numeroEmpresa !== configUsuario.numbersip && (
+                    <p className="text-xs text-slate-500 mt-0.5">DID de saída: {numeroEmpresa}</p>
+                  )}
                 </div>
-                <Badge className="bg-green-100 text-green-700 text-xs border-0">caller / DID</Badge>
+                <Badge className="bg-slate-200 text-slate-700 text-xs border-0">origem</Badge>
               </div>
-              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-800">
-                <Smartphone className="w-4 h-4 flex-shrink-0 text-blue-600" />
-                <div className="flex-1">
-                  <p className="font-semibold text-xs text-blue-600 uppercase tracking-wide mb-0.5">Chip físico (toca primeiro)</p>
-                  <p className="font-mono font-bold">{configUsuario.numero_chip}</p>
+              
+              {/* Celular físico */}
+              <div className={`${celularFisicoInvalido ? "bg-red-50 border-red-300" : "bg-blue-50 border-blue-200"} border rounded-lg px-3 py-2 text-sm`}>
+                <div className="flex items-start gap-2">
+                  <Smartphone className={`w-4 h-4 flex-shrink-0 mt-0.5 ${celularFisicoInvalido ? "text-red-600" : "text-blue-600"}`} />
+                  <div className="flex-1">
+                    <p className={`font-semibold text-xs uppercase tracking-wide mb-0.5 ${celularFisicoInvalido ? "text-red-600" : "text-blue-600"}`}>
+                      Celular físico (callForward)
+                    </p>
+                    <p className="font-mono font-bold">{celularFisico}</p>
+                    {celularFisicoInvalido && (
+                      <p className="text-xs text-red-600 mt-1 font-semibold">
+                        ⚠️ Este número é igual ao DID da empresa. Informe um celular físico real que irá tocar primeiro.
+                      </p>
+                    )}
+                  </div>
+                  <Badge className={`${celularFisicoInvalido ? "bg-red-200 text-red-700" : "bg-blue-200 text-blue-700"} text-xs border-0`}>
+                    1ª perna
+                  </Badge>
                 </div>
-                <Badge className="bg-blue-100 text-blue-700 text-xs border-0">callForward</Badge>
               </div>
             </div>
           ) : temRamalPessoal && !temChip ? (
             <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2 text-sm text-red-700">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">📱 Número do Chip não configurado</p>
-                <p className="text-xs mt-0.5">O chip é o celular físico que atende a 1ª perna da chamada. Acesse <strong>Call Center → Meu Ramal</strong> e informe o <strong>Número do CHIP</strong>.</p>
+                <p className="font-semibold">📱 Celular físico não configurado</p>
+                <p className="text-xs mt-0.5">
+                  O <strong>callForward</strong> é o celular que atende a 1ª perna da chamada callback. 
+                  Acesse <strong>Call Center → Meu Ramal</strong> e informe um <strong>Número do CHIP/Celular</strong> (ex: 87991426333).
+                </p>
               </div>
             </div>
           ) : (
@@ -177,34 +210,53 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
           </div>
 
           {/* Resumo visual do payload que será enviado */}
-          {called.replace(/\D/g, '').length >= 8 && temRamalPessoal && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs space-y-1">
+          {called.replace(/\D/g, '').length >= 8 && temRamalPessoal && temChip && (
+            <div className={`${celularFisicoInvalido ? "bg-red-50 border-red-300" : "bg-slate-50 border-slate-200"} border rounded-lg px-3 py-2 text-xs space-y-1`}>
               <p className="font-semibold text-slate-600 uppercase tracking-wide mb-1">Resumo da chamada</p>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Ligando do número:</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">1. Ligando do ramal:</span>
                 <span className="font-mono font-bold text-slate-800">{configUsuario?.numbersip}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Para o cliente:</span>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">2. Toca primeiro no celular:</span>
+                <span className={`font-mono font-bold ${celularFisicoInvalido ? "text-red-700" : "text-blue-700"}`}>{celularFisico}</span>
+              </div>
+              {celularFisicoInvalido && (
+                <p className="text-xs text-red-600 font-semibold mt-1">
+                  ⚠️ Este celular é igual ao DID da empresa. Use um número diferente que realmente toque no seu celular físico.
+                </p>
+              )}
+              <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                <span className="text-slate-500">3. Depois liga para o cliente:</span>
                 <span className="font-mono font-bold text-green-700">
                   {(() => { const n = called.replace(/\D/g,''); return n.startsWith('55') ? n : '55' + n; })()}
                 </span>
               </div>
-              {temChip && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Chip toca primeiro:</span>
-                  <span className="font-mono font-bold text-blue-700">{configUsuario?.numero_chip}</span>
-                </div>
-              )}
+            </div>
+          )}
+
+          {/* Alerta quando celular físico estiver vazio ou inválido */}
+          {temRamalPessoal && !temChip && (
+            <div className="bg-red-50 border border-red-300 rounded-lg px-3 py-2 text-xs text-red-800">
+              <p className="font-semibold mb-1">❌ Celular físico obrigatório</p>
+              <p>Informe um número de celular físico (ex: 87991426333) em <strong>Meu Ramal</strong>. Este número irá tocar primeiro quando você clicar em "Ligar".</p>
+            </div>
+          )}
+          {temRamalPessoal && temChip && celularFisicoInvalido && (
+            <div className="bg-red-50 border border-red-300 rounded-lg px-3 py-2 text-xs text-red-800">
+              <p className="font-semibold mb-1">❌ Celular físico inválido</p>
+              <p>O número {celularFisico} é igual ao DID da empresa. Informe um celular físico diferente em <strong>Meu Ramal</strong>.</p>
             </div>
           )}
 
           {/* Fluxo callback + botão testar chip */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 space-y-2">
-            <p className="font-semibold">⚠️ Modo Callback NVOIP — duas etapas:</p>
-            <p>1️⃣ NVOIP liga para o <strong>chip físico</strong> {configUsuario?.numero_chip ? <strong className="text-amber-900">({configUsuario.numero_chip})</strong> : <span className="text-red-600 font-bold">(não configurado!)</span>}</p>
-            <p>2️⃣ Você atende → NVOIP disca para o <strong>cliente</strong></p>
-            {temChip && (
+            <p className="font-semibold">⚠️ Callback NVOIP — como funciona:</p>
+            <p className="text-amber-900"><strong>1.</strong> Você clica em "Ligar"</p>
+            <p className="text-amber-900"><strong>2.</strong> NVOIP liga primeiro para o seu <strong>celular físico</strong> {celularFisico ? <span>({celularFisico})</span> : <span className="text-red-600 font-bold">(não configurado!)</span>}</p>
+            <p className="text-amber-900"><strong>3.</strong> Você atende → NVOIP disca para o <strong>cliente</strong></p>
+            <p className="text-amber-900"><strong>4.</strong> Chamada conectada!</p>
+            {temChip && !celularFisicoInvalido && (
               <button
                 type="button"
                 onClick={handleTestarChip}
@@ -215,7 +267,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
                   ? <Loader2 className="w-3 h-3 animate-spin" />
                   : <Smartphone className="w-3 h-3" />
                 }
-                Testar meu chip ({configUsuario.numero_chip})
+                Testar celular físico ({celularFisico})
               </button>
             )}
           </div>

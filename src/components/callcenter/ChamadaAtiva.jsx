@@ -6,13 +6,13 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const statusLabel = {
-  calling_origin:      '📲 Aguarde — ligando para o seu chip...',
-  calling_destination: '📞 Ligando para o cliente...',
-  established:         '✅ Em ligação com o cliente',
-  noanswer:            'Sem resposta',
-  busy:                'Ocupado',
-  finished:            'Encerrada',
-  failed:              'Não atendida',
+  calling_origin:      '📲 Aguarde — NVOIP ligando para seu celular...',
+  calling_destination: '📞 Celular atendeu — ligando para o cliente...',
+  established:         '✅ Chamada conectada com o cliente',
+  noanswer:            '❌ Não atendida pelo celular',
+  busy:                '📞 Ocupado',
+  finished:            'Chamada encerrada',
+  failed:              '❌ Falha na chamada',
 };
 
 const statusColor = {

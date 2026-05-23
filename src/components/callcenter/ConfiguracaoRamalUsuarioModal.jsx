@@ -22,6 +22,10 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
   const [testando, setTestando] = useState(false);
   const [testeOk, setTesteOk] = useState(null);
   const [configAtual, setConfigAtual] = useState(null);
+  
+  // Validação: chip não pode ser igual ao DID
+  const chipIgualDid = form.numero_chip && form.numero_did && 
+    form.numero_chip.replace(/\D/g,'') === form.numero_did.replace(/\D/g,'');
 
   useEffect(() => {
     if (open) carregarConfigUsuario();
@@ -81,6 +85,13 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
       toast.error('Número do Chip é obrigatório para realizar chamadas');
       return;
     }
+    if (chipIgualDid) {
+      toast.error('Número do Chip inválido', {
+        description: 'O chip não pode ser igual ao DID. Informe um celular físico diferente.',
+        duration: 8000,
+      });
+      return;
+    }
     setLoading(true);
     const res = await base44.functions.invoke('nvoipCallCenter', {
       action: 'salvarConfigUsuario',
@@ -122,6 +133,13 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               </div>
             )}
 
+            {chipIgualDid && (
+              <div className="p-3 bg-red-50 border-2 border-red-300 rounded-lg text-sm text-red-800">
+                <p className="font-semibold mb-1">❌ Erro de configuração</p>
+                <p>O <strong>Número do CHIP</strong> está igual ao <strong>DID</strong>. O chip deve ser um <strong>celular físico real</strong> que irá tocar primeiro. O DID é apenas o número de identificação da empresa.</p>
+              </div>
+            )}
+
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
               <p className="font-semibold mb-1">⚙️ Configuração individual do ramal</p>
               <p>Cada vendedor/colaborador pode ter seu próprio ramal NVOIP. Ao realizar chamadas, o sistema usará <strong>seu ramal pessoal</strong> como origem.</p>
@@ -150,17 +168,22 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
 
             <div className="grid grid-cols-2 gap-3">
               {/* CHIP - para RECEBER */}
-              <div className="space-y-2 p-3 bg-red-50 border-2 border-red-400 rounded-lg col-span-2">
+              <div className={`${chipIgualDid ? "space-y-2 p-3 bg-red-50 border-2 border-red-600 rounded-lg" : "space-y-2 p-3 bg-red-50 border-2 border-red-400 rounded-lg"} col-span-2`}>
                 <Label className="text-red-800 font-bold">📱 Número do CHIP (para RECEBER) *</Label>
                 <Input
-                  placeholder="Ex: 87 9 9123-4567"
+                  placeholder="Ex: 87 9 9123-4567 (celular físico)"
                   value={form.numero_chip}
                   onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
-                  className="border-red-300 bg-white"
+                  className={`border-red-300 bg-white ${chipIgualDid ? "border-red-600" : ""}`}
                 />
                 <div className="text-xs text-red-700 space-y-0.5">
                   <p className="font-medium">⚠️ OBRIGATÓRIO para receber a chamada</p>
                   <p>Seu celular/chip físico onde a chamada será encaminhada</p>
+                  {chipIgualDid && (
+                    <p className="font-semibold text-red-800 mt-1">
+                      ❌ Este número é igual ao DID. Use um celular físico diferente!
+                    </p>
+                  )}
                 </div>
               </div>
 
