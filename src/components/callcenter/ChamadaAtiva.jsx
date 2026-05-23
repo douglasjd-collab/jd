@@ -89,9 +89,10 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
         {statusLabel[status] || status}
       </Badge>
       {status === 'calling_origin' && (
-        <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-          Discando para <strong>{destino}</strong>...
-        </p>
+        <div className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed bg-yellow-900/30 rounded-lg p-3 space-y-1">
+          <p className="font-semibold text-yellow-300">📲 Atenda a ligação no seu ramal!</p>
+          <p>A NVOIP está ligando para o <strong>seu ramal SIP</strong>. Quando você atender, ela conectará automaticamente ao número <strong>{destino}</strong>.</p>
+        </div>
       )}
       {status === 'calling_destination' && (
         <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
@@ -100,9 +101,9 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       )}
       {status === 'failed' && (
         <div className="text-xs text-red-300 max-w-xs mx-auto leading-relaxed space-y-1 text-left bg-red-900/30 rounded-lg p-3">
-          <p className="font-semibold">Falha na chamada.</p>
-          <p>O ramal precisa ter encaminhamento para o chip configurado no painel NVOIP:</p>
-          <p className="font-medium mt-1">nvoip.com.br → Ramais → editar ramal → Encaminhamento → informe o número do chip</p>
+          <p className="font-semibold">Chamada não atendida.</p>
+          <p>Possíveis causas: ramal offline, softphone desconectado ou chip não disponível.</p>
+          <p className="font-medium mt-1 text-yellow-300">Dica: se o softphone estiver aberto, atenda a ligação que chegará no seu ramal SIP primeiro.</p>
         </div>
       )}
       {status === 'established' && duracao > 0 && (

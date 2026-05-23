@@ -73,11 +73,6 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
           description: 'Acesse Call Center → Meu Ramal e informe o Número do Chip.',
           duration: 8000,
         });
-      } else if (tipo === 'encaminhamento_falhou') {
-        toast.error('Falha ao configurar encaminhamento no ramal NVOIP.', {
-          description: erro,
-          duration: 8000,
-        });
       } else if (tipo === 'ramal_nao_configurado' || erro.includes('ramal') || erro.includes('configurad')) {
         toast.error(erro, { description: 'Acesse Call Center → Meu Ramal para configurar.', duration: 7000 });
       } else if (erro.includes('autenticaç') || erro.includes('token') || erro.includes('credenciai')) {
