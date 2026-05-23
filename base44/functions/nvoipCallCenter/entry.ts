@@ -259,16 +259,17 @@ Deno.serve(async (req) => {
       const chip = config.numero_chip.replace(/\D/g, '');
       const chipFormatado = chip.startsWith('55') ? chip : '55' + chip;
 
-      console.log(`[NVOIP] realizarChamada tipo=${tipo} caller=${caller} chip=${chipFormatado} called=${calledFormatado}`);
+      // Monta payload com os campos corretos:
+      // caller  = ramal/número da empresa (origem, ex: 558132998470)
+      // called  = número do cliente (destino, ex: 5587991426333)
+      // callForward = chip físico que atende a 1ª perna (pode ser o mesmo que caller)
+      console.log(`[NVOIP] realizarChamada:`);
+      console.log(`  caller (empresa/origem)  = ${caller}`);
+      console.log(`  called (cliente/destino) = ${calledFormatado}`);
+      console.log(`  callForward (chip físico)= ${chipFormatado}`);
 
-      // O token OAuth (escopo call:make/call:query) não tem permissão para editar usuários.
-      // A chamada click-to-call funciona assim:
-      //   1. NVOIP liga para o ramal SIP (caller)
-      //   2. O ramal deve encaminhar para o chip (configurado manualmente no painel NVOIP ou via callForward no body)
-      //   3. Quando atender, NVOIP liga para o destino (called)
-      // Enviamos callForward no body da chamada para sugerir encaminhamento dinâmico.
       const callBody = { caller, called: calledFormatado, callForward: chipFormatado };
-      console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
+      console.log(`[NVOIP] POST /v2/calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
@@ -290,7 +291,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _chip: chipFormatado });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _chip: chipFormatado });
     }
 
     if (action === 'consultarChamada') {

@@ -128,20 +128,30 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
               <Loader2 className="w-4 h-4 animate-spin" /> Verificando ramal...
             </div>
           ) : temRamalPessoal && temChip ? (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
-              <User className="w-4 h-4 flex-shrink-0" />
-              <div>
-                <span className="font-semibold">Ramal:</span> {configUsuario.numbersip}
-                <span className="text-green-600 ml-2 text-xs">→ chip: {configUsuario.numero_chip}</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800">
+                <User className="w-4 h-4 flex-shrink-0 text-green-600" />
+                <div className="flex-1">
+                  <p className="font-semibold text-xs text-green-600 uppercase tracking-wide mb-0.5">Número de origem (empresa)</p>
+                  <p className="font-mono font-bold">{configUsuario.numbersip}</p>
+                </div>
+                <Badge className="bg-green-100 text-green-700 text-xs border-0">caller / DID</Badge>
               </div>
-              <Badge className="ml-auto bg-green-100 text-green-700 text-xs">Pronto</Badge>
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-800">
+                <Smartphone className="w-4 h-4 flex-shrink-0 text-blue-600" />
+                <div className="flex-1">
+                  <p className="font-semibold text-xs text-blue-600 uppercase tracking-wide mb-0.5">Chip físico (toca primeiro)</p>
+                  <p className="font-mono font-bold">{configUsuario.numero_chip}</p>
+                </div>
+                <Badge className="bg-blue-100 text-blue-700 text-xs border-0">callForward</Badge>
+              </div>
             </div>
           ) : temRamalPessoal && !temChip ? (
             <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2 text-sm text-red-700">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold">📱 Número do Chip não configurado</p>
-                <p className="text-xs mt-0.5">Sem o chip/celular, não conseguiremos <strong>receber</strong> a chamada. Acesse <strong>Call Center → Meu Ramal</strong> e informe o <strong>Número do CHIP</strong>.</p>
+                <p className="text-xs mt-0.5">O chip é o celular físico que atende a 1ª perna da chamada. Acesse <strong>Call Center → Meu Ramal</strong> e informe o <strong>Número do CHIP</strong>.</p>
               </div>
             </div>
           ) : (
@@ -166,10 +176,33 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             <p className="text-xs text-slate-400">DDD + número, sem 0 e sem +55</p>
           </div>
 
+          {/* Resumo visual do payload que será enviado */}
+          {called.replace(/\D/g, '').length >= 8 && temRamalPessoal && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs space-y-1">
+              <p className="font-semibold text-slate-600 uppercase tracking-wide mb-1">Resumo da chamada</p>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Ligando do número:</span>
+                <span className="font-mono font-bold text-slate-800">{configUsuario?.numbersip}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Para o cliente:</span>
+                <span className="font-mono font-bold text-green-700">
+                  {(() => { const n = called.replace(/\D/g,''); return n.startsWith('55') ? n : '55' + n; })()}
+                </span>
+              </div>
+              {temChip && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Chip toca primeiro:</span>
+                  <span className="font-mono font-bold text-blue-700">{configUsuario?.numero_chip}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Fluxo callback + botão testar chip */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 space-y-2">
             <p className="font-semibold">⚠️ Modo Callback NVOIP — duas etapas:</p>
-            <p>1️⃣ NVOIP liga para o <strong>seu chip</strong> {configUsuario?.numero_chip ? <strong className="text-amber-900">({configUsuario.numero_chip})</strong> : <span className="text-red-600 font-bold">(não configurado!)</span>}</p>
+            <p>1️⃣ NVOIP liga para o <strong>chip físico</strong> {configUsuario?.numero_chip ? <strong className="text-amber-900">({configUsuario.numero_chip})</strong> : <span className="text-red-600 font-bold">(não configurado!)</span>}</p>
             <p>2️⃣ Você atende → NVOIP disca para o <strong>cliente</strong></p>
             {temChip && (
               <button
