@@ -261,23 +261,61 @@ Deno.serve(async (req) => {
 
       console.log(`[NVOIP] realizarChamada tipo=${tipo} caller=${caller} chip=${chipFormatado} called=${calledFormatado}`);
 
-      // Configura encaminhamento no ramal para o chip
-      const resEncam = await fetch(`${NVOIP_BASE}/update/users?numbersip=${caller}`, {
+      // Validações de credenciais antes de qualquer chamada
+      if (!config.napikey) {
+        return Response.json({ error: 'Informe a Napikey NVOIP nas configurações do seu ramal.', _error_type: 'napikey_vazia' }, { status: 200 });
+      }
+      if (!config.user_token) {
+        return Response.json({ error: 'Informe o User Token nas configurações do seu ramal.', _error_type: 'user_token_vazio' }, { status: 200 });
+      }
+
+      // PASSO 1: GET do SIP existente para capturar TODOS os campos obrigatórios
+      const getUrl = `${NVOIP_BASE}/get/users?numbersip=${caller}`;
+      console.log(`[NVOIP] GET SIP: ${getUrl}`);
+      const resGet = await fetch(getUrl, { headers });
+      const sipExistente = await resGet.json().catch(() => null);
+      console.log(`[NVOIP] GET SIP resposta HTTP ${resGet.status}:`, JSON.stringify(sipExistente));
+
+      if (!resGet.ok || !sipExistente || sipExistente.error) {
+        const getErr = (sipExistente && (sipExistente.message || sipExistente.error)) || `HTTP ${resGet.status}`;
+        return Response.json({
+          error: `Ramal ${caller} não encontrado no painel NVOIP: ${getErr}. Verifique se o SIP existe.`,
+          _error_type: 'sip_nao_encontrado',
+          _endpoint: getUrl,
+          _status: resGet.status,
+          _debug: sipExistente,
+        }, { status: 200 });
+      }
+
+      // PASSO 2: Montar payload de UPDATE usando dados existentes + apenas callForward
+      // NUNCA sobrescrever: name, password, permissions, chat, voice, login2fa
+      const updatePayload = {
+        ...sipExistente,         // preserva todos os campos existentes
+        callForward: chipFormatado, // atualiza apenas o encaminhamento
+      };
+
+      const putUrl = `${NVOIP_BASE}/update/users?numbersip=${caller}`;
+      console.log(`[NVOIP] PUT SIP: ${putUrl}`, JSON.stringify(updatePayload));
+
+      const resEncam = await fetch(putUrl, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ callForward: chipFormatado }),
+        body: JSON.stringify(updatePayload),
       });
       const encamData = await resEncam.json().catch(() => ({}));
-      console.log(`[NVOIP] encaminhamento resultado: ${resEncam.status}`, JSON.stringify(encamData));
+      console.log(`[NVOIP] PUT SIP resposta HTTP ${resEncam.status}:`, JSON.stringify(encamData));
 
       if (!resEncam.ok) {
-        const encamErr = encamData.message || encamData.error || `HTTP ${resEncam.status}`;
+        const encamErr = encamData.message || encamData.error || JSON.stringify(encamData) || `HTTP ${resEncam.status}`;
         return Response.json({
-          error: `Falha ao configurar encaminhamento do ramal para o chip: ${encamErr}. Verifique se o ramal ${caller} existe no painel NVOIP.`,
+          error: `Falha ao configurar encaminhamento: ${encamErr}`,
           _error_type: 'encaminhamento_falhou',
+          _endpoint: putUrl,
+          _status: resEncam.status,
+          _payload_enviado: updatePayload,
+          _resposta_api: encamData,
           _caller: caller,
           _chip: chipFormatado,
-          _debug: encamData,
         }, { status: 200 });
       }
 
@@ -373,13 +411,36 @@ Deno.serve(async (req) => {
 
     if (action === 'atualizarEncaminhamento') {
       const { numbersip: nsip, callForward } = body;
-      const res = await fetch(`${NVOIP_BASE}/update/users?numbersip=${nsip || config.numbersip}`, {
+      const sipNum = nsip || config.numbersip;
+
+      // GET primeiro para não sobrescrever campos obrigatórios
+      const getUrl = `${NVOIP_BASE}/get/users?numbersip=${sipNum}`;
+      console.log(`[NVOIP] atualizarEncaminhamento GET: ${getUrl}`);
+      const resGet = await fetch(getUrl, { headers });
+      const sipData = await resGet.json().catch(() => null);
+      console.log(`[NVOIP] GET resposta HTTP ${resGet.status}:`, JSON.stringify(sipData));
+
+      if (!resGet.ok || !sipData || sipData.error) {
+        return Response.json({
+          error: `SIP ${sipNum} não encontrado: ${(sipData && sipData.message) || `HTTP ${resGet.status}`}`,
+          _endpoint: getUrl,
+          _status: resGet.status,
+          _debug: sipData,
+        });
+      }
+
+      const putUrl = `${NVOIP_BASE}/update/users?numbersip=${sipNum}`;
+      const payload = { ...sipData, callForward };
+      console.log(`[NVOIP] atualizarEncaminhamento PUT: ${putUrl}`, JSON.stringify(payload));
+
+      const res = await fetch(putUrl, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ callForward }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      return Response.json(data);
+      console.log(`[NVOIP] PUT resposta HTTP ${res.status}:`, JSON.stringify(data));
+      return Response.json({ ...data, _endpoint: putUrl, _status: res.status });
     }
 
     if (action === 'listarNumeros') {
