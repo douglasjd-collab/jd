@@ -414,60 +414,83 @@ export default function ComissoesEmprestimos() {
     doc.setFontSize(9);
     doc.text(fmt(totalBruto), pageWidth - 12, tableEndY + 2, { align: 'right' });
 
-    let contentY = tableEndY + 5.5;
+    const sectionY = tableEndY + 5.5;
+    const leftW = 148; // largura da coluna esquerda (adiantamentos)
+    const rightX = 163; // início da coluna direita (resumo)
+    const rightW = pageWidth - rightX - 10;
 
+    // ===== COLUNA ESQUERDA: ADIANTAMENTOS =====
     if (adiantamentosDesc.length > 0) {
       doc.setFillColor(245, 137, 65);
-      doc.rect(10, contentY - 2, 140, 4, 'F');
+      doc.rect(10, sectionY - 2, leftW, 4, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7.2); doc.setFont('helvetica', 'bold');
-      doc.text('ADIANTAMENTOS DESCONTADOS', 12, contentY + 0.5);
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.text('ADIANTAMENTOS DESCONTADOS', 12, sectionY + 0.5);
 
       doc.autoTable({
-        startY: contentY + 2,
-        head: [['Descrição / Motivo', 'Data Adiantamento', 'Valor Descontado']],
+        startY: sectionY + 2,
+        head: [['Descrição / Motivo', 'Data', 'Valor']],
         body: adiantamentosDesc.map(a => [a.motivo || 'Adiantamento referente à comissão disponível.', moment(a.data).format('DD/MM/YYYY'), fmt(a.valor)]),
         foot: [['', 'TOTAL ADIANTAMENTOS:', fmt(totalAdiantamentos)]],
-        styles: { fontSize: 6.3, cellPadding: 2.2, valign: 'middle' },
+        styles: { fontSize: 6.2, cellPadding: 2, valign: 'middle' },
         headStyles: { fillColor: [245, 137, 65], textColor: 255, fontStyle: 'bold' },
         footStyles: { fillColor: [255, 240, 220], textColor: [180, 80, 0], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [255, 247, 240] },
         columnStyles: { 0: { halign: 'left' }, 1: { halign: 'center' }, 2: { halign: 'right' } },
-        margin: { left: 10, right: 10 },
-        tableWidth: 140,
+        margin: { left: 10, right: pageWidth - 10 - leftW },
+        tableWidth: leftW,
       });
-      contentY = doc.lastAutoTable.finalY + 2;
     }
 
-    const cardFY = contentY;
-    const cardFW = 63;
-    const cardFH = 15;
+    // ===== COLUNA DIREITA: 3 LINHAS RESUMO =====
+    const rowH = 13;
+    const rowSpacing = 1.5;
 
-    doc.setFillColor(8, 57, 66);
-    doc.roundedRect(10, cardFY, cardFW, cardFH, 0.8, 0.8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6.2); doc.setFont('helvetica', 'normal');
-    doc.text('Subtotal Comissões', 12, cardFY + 3.5);
-    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold');
-    doc.text(fmt(totalBruto), 12, cardFY + 11);
+    // Linha 1: Subtotal
+    doc.setFillColor(250, 252, 250);
+    doc.roundedRect(rightX, sectionY - 2, rightW, rowH, 0.5, 0.5, 'F');
+    doc.setDrawColor(210, 230, 215);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(rightX, sectionY - 2, rightW, rowH, 0.5, 0.5);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 80, 70);
+    doc.text('Subtotal Comissões', rightX + 3, sectionY + 4);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(8, 57, 66);
+    doc.text(fmt(totalBruto), rightX + rightW - 2, sectionY + 4, { align: 'right' });
 
-    doc.setFillColor(245, 137, 65);
-    doc.roundedRect(10 + cardFW + 2, cardFY, cardFW, cardFH, 0.8, 0.8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6.2); doc.setFont('helvetica', 'normal');
-    doc.text('(−) Adiantamentos', 12 + cardFW + 2, cardFY + 3.5);
-    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold');
-    doc.text(fmt(totalAdiantamentos), 12 + cardFW + 2, cardFY + 11);
+    // Linha 2: Adiantamentos
+    doc.setFillColor(250, 252, 250);
+    doc.roundedRect(rightX, sectionY - 2 + rowH + rowSpacing, rightW, rowH, 0.5, 0.5, 'F');
+    doc.setDrawColor(210, 230, 215);
+    doc.roundedRect(rightX, sectionY - 2 + rowH + rowSpacing, rightW, rowH, 0.5, 0.5);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 80, 70);
+    doc.text('(−) Adiantamentos', rightX + 3, sectionY + 4 + rowH + rowSpacing);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(245, 137, 65);
+    doc.text(fmt(totalAdiantamentos), rightX + rightW - 2, sectionY + 4 + rowH + rowSpacing, { align: 'right' });
 
-    doc.setFillColor(35, 190, 132);
-    doc.roundedRect(10 + (cardFW + 2) * 2, cardFY, cardFW, cardFH, 0.8, 0.8, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6.2); doc.setFont('helvetica', 'bold');
-    doc.text('VALOR LÍQUIDO A PAGAR', 12 + (cardFW + 2) * 2, cardFY + 3.5);
-    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold');
-    doc.text(fmt(totalLiquido), 12 + (cardFW + 2) * 2, cardFY + 11);
+    // Separador
+    doc.setDrawColor(210, 230, 215);
+    doc.setLineWidth(0.4);
+    doc.line(rightX, sectionY - 2 + (rowH + rowSpacing) * 2 - 0.5, rightX + rightW, sectionY - 2 + (rowH + rowSpacing) * 2 - 0.5);
 
-    const footerY = pageHeight - 15;
+    // Linha 3: Valor Líquido (destaque)
+    const liqY = sectionY - 2 + (rowH + rowSpacing) * 2 + 0.5;
+    doc.setFillColor(235, 250, 243);
+    doc.roundedRect(rightX, liqY, rightW, rowH + 1, 0.5, 0.5, 'F');
+    doc.setDrawColor(35, 190, 132);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(rightX, liqY, rightW, rowH + 1, 0.5, 0.5);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(8, 57, 66);
+    doc.text('VALOR LÍQUIDO A PAGAR', rightX + 3, liqY + 5);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(35, 190, 132);
+    doc.text(fmt(totalLiquido), rightX + rightW - 2, liqY + 5, { align: 'right' });
+
+    const footerY = pageHeight - 12;
     doc.line(10, footerY, pageWidth - 10, footerY);
     doc.setFontSize(6.2); doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'normal');
