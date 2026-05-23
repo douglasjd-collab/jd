@@ -53,19 +53,15 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
               <span className="font-medium">Ramal de origem:</span> {numbersip}
             </div>
           )}
-          {!sipConectado && ramalOnline && (
+          {!sipConectado && (
             <div className="flex gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
               <Phone className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
               <div>
-                Chamada via <strong>click-to-call</strong>: a NVOIP ligará primeiro para seu ramal <strong>{numbersip}</strong> e depois conectará ao destino.
-              </div>
-            </div>
-          )}
-          {!sipConectado && !ramalOnline && (
-            <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <div>
-                <strong>Ramal offline.</strong> Configure a <strong>Senha SIP</strong> para ativar o softphone, ou acesse o painel NVOIP para registrar seu ramal.
+                <strong>Como funciona o click-to-call:</strong>
+                <ol className="mt-1 space-y-0.5 list-decimal list-inside">
+                  <li>A NVOIP <strong>liga primeiro para seu ramal {numbersip}</strong> — atenda normalmente</li>
+                  <li>Após atender, a NVOIP conecta você ao número de destino</li>
+                </ol>
               </div>
             </div>
           )}

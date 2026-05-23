@@ -6,8 +6,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const statusLabel = {
-  calling_origin: 'Chamando origem...',
-  calling_destination: 'Chamando destino...',
+  calling_origin: '📲 Ligando para seu ramal...',
+  calling_destination: '📞 Conectando ao destino...',
   established: 'Em ligação',
   noanswer: 'Sem resposta',
   busy: 'Ocupado',
@@ -88,9 +88,14 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       <Badge className={statusColor[status] || 'bg-slate-700 text-white'}>
         {statusLabel[status] || status}
       </Badge>
+      {status === 'calling_origin' && (
+        <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+          Atenda a ligação no seu ramal — depois você será conectado ao número <strong>{destino}</strong>
+        </p>
+      )}
       {status === 'failed' && (
         <p className="text-xs text-red-300 max-w-xs mx-auto leading-relaxed">
-          ⚠️ Seu ramal SIP está <strong>Offline</strong> na NVOIP. A chamada click-to-call exige que o ramal esteja registrado. Acesse o painel NVOIP e ative seu ramal, ou configure a <strong>Senha SIP</strong> para usar o softphone do navegador.
+          Falha na chamada. Verifique se seu ramal está ativo no painel NVOIP.
         </p>
       )}
       {status === 'established' && duracao > 0 && (

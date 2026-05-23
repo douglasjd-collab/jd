@@ -270,8 +270,8 @@ export default function CallCenter() {
                 }}
               />
               {!config?.sip_password && (
-                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-                  <strong>⚠️ Senha SIP não configurada.</strong> Para fazer/receber ligações com áudio, clique em <strong>Configurar</strong> e preencha a Senha SIP do seu ramal.
+                <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
+                  💡 <strong>Senha SIP não configurada.</strong> Sem ela, chamadas usam click-to-call (seu ramal toca primeiro). Configure para usar o softphone diretamente no navegador.
                 </div>
               )}
             </div>
