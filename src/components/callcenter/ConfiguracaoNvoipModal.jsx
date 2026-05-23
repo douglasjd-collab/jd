@@ -12,6 +12,7 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
     numbersip: config?.numbersip || '',
     sip_password: config?.sip_password || '',
     numero_did: config?.numero_did || '',
+    numero_chip: config?.numero_chip || '',
     user_token: config?.user_token || '',
     napikey: config?.napikey || '',
   });
@@ -22,6 +23,7 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
         numbersip: config.numbersip || '',
         sip_password: config.sip_password || '',
         numero_did: config.numero_did || '',
+        numero_chip: config.numero_chip || '',
         user_token: config.user_token || '',
         napikey: config.napikey || '',
       });
@@ -80,8 +82,14 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
           <DialogTitle>Configuração NVOIP</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 space-y-2">
+            <p className="font-semibold">⚙️ Configuração necessária no painel NVOIP:</p>
+            <p>Para as chamadas irem direto para o chip, acesse:<br/>
+            <strong>nvoip.com.br → Ramais → clique no ramal → Encaminhamento de Chamadas → informe o número do seu chip/celular</strong></p>
+            <p className="text-xs text-blue-600">Após configurar o encaminhamento, ao clicar em "Ligar" o chip irá tocar automaticamente.</p>
+          </div>
           <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
-            <p className="font-semibold mb-1">Como obter as credenciais:</p>
+            <p className="font-semibold mb-1">Como obter as credenciais de API:</p>
             <p>Acesse <strong>nvoip.com.br → Painel → API → Nvoip API v2 (legado)</strong> para copiar a <strong>Napikey</strong> e o <strong>User Token</strong>.</p>
           </div>
 
@@ -105,18 +113,16 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
             <p className="text-xs text-slate-400">Número DID externo da NVOIP — aparecerá no identificador de chamadas. No painel NVOIP: <strong>Números → seu DID</strong>.</p>
           </div>
 
-          <div className="space-y-2 p-3 bg-blue-50 border-2 border-blue-300 rounded-lg">
-            <Label className="text-blue-800 font-bold">🎧 Senha SIP — OBRIGATÓRIA para ligar pelo CRM</Label>
+          <div className="space-y-2 p-3 bg-green-50 border-2 border-green-400 rounded-lg">
+            <Label className="text-green-800 font-bold">📱 Número do Chip/Celular — para receber a ligação</Label>
             <Input
-              type="password"
-              placeholder="Senha SIP do ramal (painel NVOIP → Ramais)"
-              value={form.sip_password}
-              onChange={e => setForm({ ...form, sip_password: e.target.value })}
-              className="border-blue-300 focus:border-blue-500"
+              placeholder="Ex: 87991234567 (DDD + número)"
+              value={form.numero_chip}
+              onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
+              className="border-green-300 focus:border-green-500"
             />
-            <p className="text-xs text-blue-700">
-              No painel NVOIP: <strong>Ramais → clique no ramal → editar → campo "Senha"</strong>.<br/>
-              Sem isso, a ligação vai para o painel NVOIP em vez de acontecer aqui.
+            <p className="text-xs text-green-700">
+              Número do celular físico com o chip. Ao clicar em "Ligar", o sistema configurará o encaminhamento do ramal para este número automaticamente, e a chamada irá diretamente para o chip.
             </p>
           </div>
 

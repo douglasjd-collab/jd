@@ -8,7 +8,15 @@
     },
     "numbersip": {
       "type": "string",
-      "description": "N\u00famero SIP da conta NVOIP"
+      "description": "N\u00famero SIP da conta NVOIP (ramal interno)"
+    },
+    "numero_did": {
+      "type": "string",
+      "description": "N\u00famero DID externo NVOIP (ex: 558132998470) \u2014 usado como caller em chamadas externas"
+    },
+    "numero_chip": {
+      "type": "string",
+      "description": "N\u00famero do chip/celular f\u00edsico para encaminhamento (ex: 87991234567) \u2014 o ramal encaminha a chamada para este n\u00famero"
     },
     "sip_password": {
       "type": "string",

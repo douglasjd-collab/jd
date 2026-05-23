@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
 
     // Salvar configuração
     if (action === 'salvarConfig') {
-      const { numbersip, user_token, napikey, sip_password, numero_did } = body;
+      const { numbersip, user_token, napikey, sip_password, numero_did, numero_chip } = body;
       const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
 
       const configData = {
@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
         numbersip,
         sip_password: sip_password || null,
         numero_did: numero_did || null,
+        numero_chip: numero_chip || null,
         user_token,
         napikey: napikey || null,
         ativo: false,
@@ -163,8 +164,9 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // NVOIP click-to-call: caller = numbersip do ramal (ex: 137715001)
-      // A NVOIP liga primeiro para o ramal (caller), depois conecta ao destino (called)
+      // NVOIP bridge call: caller = numbersip do ramal
+      // O ramal DEVE estar configurado com encaminhamento para um chip/celular no painel NVOIP
+      // Caso o numero_chip esteja configurado, tentamos configurar o encaminhamento automaticamente antes de ligar
       const caller = config.numbersip;
 
       if (!caller) {
@@ -249,6 +251,26 @@ Deno.serve(async (req) => {
       const res = await fetch(`${NVOIP_BASE}/list/users`, { headers });
       const data = await res.json();
       return Response.json({ users: Array.isArray(data) ? data : [data] });
+    }
+
+    if (action === 'buscarUsuarioSip') {
+      const { numbersip: nsip } = body;
+      const res = await fetch(`${NVOIP_BASE}/get/users?numbersip=${nsip || config.numbersip}`, { headers });
+      const data = await res.json();
+      return Response.json(data);
+    }
+
+    if (action === 'atualizarEncaminhamento') {
+      // Atualiza o encaminhamento do ramal para o chip/celular
+      const { numbersip: nsip, callForward } = body;
+      const res = await fetch(`${NVOIP_BASE}/update/users?numbersip=${nsip || config.numbersip}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ callForward }),
+      });
+      const data = await res.json();
+      console.log(`[NVOIP] atualizarEncaminhamento: ${res.status}`, JSON.stringify(data));
+      return Response.json(data);
     }
 
     if (action === 'listarNumeros') {

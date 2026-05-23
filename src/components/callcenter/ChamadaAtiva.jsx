@@ -90,13 +90,20 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       </Badge>
       {status === 'calling_origin' && (
         <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-          Atenda a ligação no seu ramal — depois você será conectado ao número <strong>{destino}</strong>
+          Discando para <strong>{destino}</strong>...
+        </p>
+      )}
+      {status === 'calling_destination' && (
+        <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+          Conectando ao número <strong>{destino}</strong>...
         </p>
       )}
       {status === 'failed' && (
-        <p className="text-xs text-red-300 max-w-xs mx-auto leading-relaxed">
-          Falha na chamada. Verifique se seu ramal está ativo no painel NVOIP.
-        </p>
+        <div className="text-xs text-red-300 max-w-xs mx-auto leading-relaxed space-y-1 text-left bg-red-900/30 rounded-lg p-3">
+          <p className="font-semibold">Falha na chamada.</p>
+          <p>O ramal precisa ter encaminhamento para o chip configurado no painel NVOIP:</p>
+          <p className="font-medium mt-1">nvoip.com.br → Ramais → editar ramal → Encaminhamento → informe o número do chip</p>
+        </div>
       )}
       {status === 'established' && duracao > 0 && (
         <p className="text-2xl font-mono text-green-400">{formatDuracao(duracao)}</p>
