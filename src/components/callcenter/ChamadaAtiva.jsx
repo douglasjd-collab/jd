@@ -6,23 +6,23 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const statusLabel = {
-  calling_origin: '📲 Ligando para seu ramal...',
-  calling_destination: '📞 Conectando ao destino...',
-  established: 'Em ligação',
-  noanswer: 'Sem resposta',
-  busy: 'Ocupado',
-  finished: 'Encerrada',
-  failed: 'Falhou',
+  calling_origin:      '📲 Aguarde — ligando para o seu chip...',
+  calling_destination: '📞 Ligando para o cliente...',
+  established:         '✅ Em ligação com o cliente',
+  noanswer:            'Sem resposta',
+  busy:                'Ocupado',
+  finished:            'Encerrada',
+  failed:              'Não atendida',
 };
 
 const statusColor = {
-  calling_origin: 'bg-yellow-100 text-yellow-700',
-  calling_destination: 'bg-yellow-100 text-yellow-700',
-  established: 'bg-green-100 text-green-700',
-  noanswer: 'bg-slate-100 text-slate-600',
-  busy: 'bg-red-100 text-red-700',
-  finished: 'bg-slate-100 text-slate-600',
-  failed: 'bg-red-100 text-red-700',
+  calling_origin:      'bg-yellow-100 text-yellow-800',
+  calling_destination: 'bg-blue-100 text-blue-800',
+  established:         'bg-green-100 text-green-700',
+  noanswer:            'bg-slate-100 text-slate-600',
+  busy:                'bg-slate-100 text-slate-600',
+  finished:            'bg-slate-100 text-slate-600',
+  failed:              'bg-red-100 text-red-700',
 };
 
 export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
@@ -89,21 +89,22 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
         {statusLabel[status] || status}
       </Badge>
       {status === 'calling_origin' && (
-        <div className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed bg-yellow-900/30 rounded-lg p-3 space-y-1">
-          <p className="font-semibold text-yellow-300">📲 Atenda a ligação no seu ramal!</p>
-          <p>A NVOIP está ligando para o <strong>seu ramal SIP</strong>. Quando você atender, ela conectará automaticamente ao número <strong>{destino}</strong>.</p>
+        <div className="text-xs text-yellow-200 max-w-xs mx-auto leading-relaxed bg-yellow-900/40 rounded-lg p-3 space-y-1.5">
+          <p className="font-semibold text-yellow-300">📲 Passo 1 de 2 — Atenda no seu chip!</p>
+          <p>A NVOIP está ligando agora para o <strong>seu chip/ramal</strong>. Atenda essa ligação — ela conectará você ao cliente <strong>{destino}</strong> automaticamente.</p>
         </div>
       )}
       {status === 'calling_destination' && (
-        <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-          Conectando ao número <strong>{destino}</strong>...
-        </p>
+        <div className="text-xs text-blue-200 max-w-xs mx-auto leading-relaxed bg-blue-900/40 rounded-lg p-3 space-y-1.5">
+          <p className="font-semibold text-blue-300">📞 Passo 2 de 2 — Ligando para o cliente!</p>
+          <p>Você atendeu. A NVOIP está agora discando para <strong>{destino}</strong>. Aguarde o cliente atender.</p>
+        </div>
       )}
       {status === 'failed' && (
         <div className="text-xs text-red-300 max-w-xs mx-auto leading-relaxed space-y-1 text-left bg-red-900/30 rounded-lg p-3">
-          <p className="font-semibold">Chamada não atendida.</p>
-          <p>Possíveis causas: ramal offline, softphone desconectado ou chip não disponível.</p>
-          <p className="font-medium mt-1 text-yellow-300">Dica: se o softphone estiver aberto, atenda a ligação que chegará no seu ramal SIP primeiro.</p>
+          <p className="font-semibold">Chamada não completada.</p>
+          <p>O chip/ramal não atendeu ou o cliente estava indisponível.</p>
+          <p className="font-medium mt-1 text-yellow-300">Lembre-se: a NVOIP liga <strong>primeiro para o seu chip</strong> — atenda essa ligação para conectar ao cliente.</p>
         </div>
       )}
       {status === 'established' && duracao > 0 && (

@@ -60,8 +60,11 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     setLoading(false);
 
     if (res.data?.callId) {
-      const origem = res.data?._caller || configUsuario?.numbersip || 'ramal configurado';
-      toast.success(`Chamada iniciada! Origem: ${origem}`);
+      const chip = res.data?._chip || configUsuario?.numero_chip || 'seu chip';
+      toast.success('Aguarde a ligação no seu chip!', {
+        description: `A NVOIP está ligando para ${chip}. Atenda para conectar ao cliente.`,
+        duration: 6000,
+      });
       onChamadaIniciada?.(res.data.callId, called);
       onOpenChange(false);
       setCalled('');
@@ -129,7 +132,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
           )}
 
           <div className="space-y-2">
-            <Label>Número de Destino *</Label>
+            <Label>Número do Cliente *</Label>
             <Input
               placeholder="Ex: 87991426333 (DDD + número)"
               value={called}
@@ -138,6 +141,14 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
               autoFocus
             />
             <p className="text-xs text-slate-400">DDD + número, sem 0 e sem +55</p>
+          </div>
+
+          {/* Explicação do fluxo callback */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 space-y-0.5">
+            <p className="font-semibold">Como funciona o callback NVOIP:</p>
+            <p>1️⃣ A NVOIP liga primeiro para o <strong>seu chip/ramal</strong></p>
+            <p>2️⃣ Você atende → NVOIP liga para o <strong>cliente</strong></p>
+            <p>3️⃣ A chamada é conectada entre você e o cliente</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
