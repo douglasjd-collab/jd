@@ -63,7 +63,7 @@ function ModalReceberComissao({ proposta, contas, onClose, onConfirm, loading })
   };
 
   const valorRecebido = parseFloat(String(form.valor_recebido).replace(',', '.')) || 0;
-  const canConfirm = form.data_recebimento && form.conta_bancaria_id && valorRecebido > 0;
+  const canConfirm = form.data_recebimento && form.conta_bancaria_id && valorRecebido >= 0;
 
   return (
     <Dialog open={!!proposta} onOpenChange={onClose}>
