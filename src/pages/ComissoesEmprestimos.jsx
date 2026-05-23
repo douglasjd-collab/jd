@@ -320,55 +320,63 @@ export default function ComissoesEmprestimos() {
 
     // ===== HEADER VISUAL COM LOGO =====
     doc.setFillColor(16, 53, 60);
-    doc.rect(0, 0, pageWidth, 18, 'F');
+    doc.rect(0, 0, pageWidth, 20, 'F');
 
-    // Logo Promotora (texto)
+    // Logo Promotora hexágono + texto
+    doc.setFillColor(35, 190, 132);
+    doc.roundedRect(10, 5, 6, 10, 0.5, 0.5, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-    doc.text('promotora', 10, 11);
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('promotora', 18, 12);
 
     // Título e informações
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 148, 8, { align: 'center' });
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 148, 10, { align: 'center' });
     doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 14, { align: 'center' });
+    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 16, { align: 'center' });
 
     // Status badge (Pagamento realizado)
     doc.setFillColor(35, 190, 132);
-    doc.roundedRect(pageWidth - 52, 3, 48, 6, 1, 1, 'F');
+    doc.roundedRect(pageWidth - 52, 4, 48, 7, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6); doc.setFont('helvetica', 'bold');
-    doc.text('✓ Pagamento realizado', pageWidth - 50, 7);
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'bold');
+    doc.text('✓  Pagamento realizado', pageWidth - 50, 8);
 
-    // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
+    // ===== BLOCO DE INFORMAÇÕES (4 colunas com ícones) =====
     doc.setTextColor(0, 0, 0);
-    const infoY = 29;
-    const colW = 67;
+    const infoY = 35;
+    const colW = 70;
     const cols = [
-      { x: 10, label: 'VENDEDOR', value: vendedorInfo?.vendedor_nome || '-' },
-      { x: 10 + colW, label: 'DATA PAGAMENTO', value: moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY') },
-      { x: 10 + colW * 2, label: 'FORMA PAGAMENTO', value: formaPagto || '-' },
-      { x: 10 + colW * 3, label: 'QTD. ITENS', value: String(propostasLista.length) },
+      { x: 10, icon: '👤', label: 'VENDEDOR', value: vendedorInfo?.vendedor_nome || '-' },
+      { x: 10 + colW, icon: '📅', label: 'DATA PAGAMENTO', value: moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY') },
+      { x: 10 + colW * 2, icon: '💳', label: 'FORMA PAGAMENTO', value: formaPagto || '-' },
+      { x: 10 + colW * 3, icon: '📦', label: 'QTD. ITENS', value: String(propostasLista.length) },
     ];
 
     cols.forEach(col => {
-      doc.setFillColor(240, 245, 250);
-      doc.rect(col.x, infoY - 8, colW - 2, 13, 'F');
+      doc.setFillColor(245, 247, 250);
+      doc.rect(col.x, infoY - 9, colW - 2, 15, 'F');
       doc.setDrawColor(200, 215, 230);
-      doc.setLineWidth(0.3);
-      doc.rect(col.x, infoY - 8, colW - 2, 13);
+      doc.setLineWidth(0.5);
+      doc.rect(col.x, infoY - 9, colW - 2, 15);
 
+      // Ícone
+      doc.setFontSize(8);
+      doc.text(col.icon, col.x + 2, infoY - 4);
+
+      // Label
       doc.setFontSize(6); doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 120, 140);
-      doc.text(col.label, col.x + 2, infoY - 3);
+      doc.text(col.label, col.x + 2, infoY - 2);
 
+      // Valor
       doc.setFontSize(9); doc.setFont('helvetica', 'bold');
       doc.setTextColor(16, 53, 60);
-      doc.text(col.value, col.x + 2, infoY + 4);
+      doc.text(col.value, col.x + 2, infoY + 5);
     });
 
     // ===== TABELA PRINCIPAL =====
-    const tableStartY = 44;
+    const tableStartY = 54;
     doc.autoTable({
       startY: tableStartY,
       head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
