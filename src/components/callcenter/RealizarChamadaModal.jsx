@@ -202,15 +202,12 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
 
 
-          {/* Instruções sobre chamada direta */}
+          {/* Instruções sobre o fluxo */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-900 space-y-2">
-            <p className="font-semibold">📞 Chamada direta NVOIP:</p>
-            <p>Ao clicar em <strong>"Ligar"</strong>, a chamada será iniciada usando:</p>
-            <ul className="space-y-1 ml-2">
-              {temRamalPessoal && <li>• <strong>Origem:</strong> Seu ramal SIP ({configUsuario?.numbersip})</li>}
-              {numeroDID && <li>• <strong>Número de saída:</strong> DID virtual ({numeroDID})</li>}
-              <li>• <strong>Destino:</strong> O cliente que você informar</li>
-            </ul>
+            <p className="font-semibold">📞 Chamada via NVOIP:</p>
+            <p><strong>1ª etapa:</strong> NVOIP conecta seu <strong>ramal SIP</strong> {configUsuario?.numbersip ? <span className="font-mono">({configUsuario.numbersip})</span> : '(não configurado)'} ao cliente</p>
+            <p><strong>2ª etapa:</strong> Cliente atende → chamada estabelecida</p>
+            {numeroDID && <p className="text-xs text-blue-700 mt-1">O DID {numeroDID} aparece como número de origem para o cliente.</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

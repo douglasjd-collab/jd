@@ -227,12 +227,11 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // Usa DID se disponível, senão usa ramal SIP
-      let caller = config.numero_did?.replace(/\D/g, '') || config.numbersip;
-      
+      // OBRIGATÓRIO: ramal SIP como caller (origem)
+      const caller = config.numbersip;
       if (!caller) {
         return Response.json({
-          error: 'Ramal ou DID não configurado. Acesse Call Center → Meu Ramal para configurar.',
+          error: 'Ramal SIP não configurado. Acesse Call Center → Meu Ramal para configurar.',
           _error_type: 'ramal_nao_configurado',
         }, { status: 200 });
       }
@@ -246,15 +245,19 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Chamada direta: caller = DID/ramal, called = cliente
-      console.log(`[NVOIP] realizarChamada (direto):`);
-      console.log(`  caller (DID/ramal)  = ${caller}`);
-      console.log(`  called (cliente)    = ${calledFormatado}`);
+      // Chamada: caller = ramal SIP, callerId = DID (opcional)
+      console.log(`[NVOIP] realizarChamada:`);
+      console.log(`  caller (ramal SIP)   = ${caller}`);
+      console.log(`  callerId (DID)       = ${config.numero_did || 'não configurado'}`);
+      console.log(`  called (cliente)     = ${calledFormatado}`);
 
       const callBody = {
         caller,
         called: calledFormatado
       };
+      if (config.numero_did) {
+        callBody.callerId = config.numero_did.replace(/\D/g, '');
+      }
       console.log(`[NVOIP] POST /v2/calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -276,7 +279,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _callerId: config.numero_did });
     }
 
     if (action === 'consultarChamada') {
