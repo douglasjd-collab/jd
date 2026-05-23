@@ -74,6 +74,8 @@ export default function NovaVendaConsignado() {
     comissao_vendedor_paga: '',
     status: 'aguardando_digitacao',
     empresa_parceira: '',
+    empresa_parceira_id: '',
+    empresa_parceira_nome: '',
     observacoes: ''
   });
 
@@ -202,7 +204,9 @@ export default function NovaVendaConsignado() {
         emprestimo_valor_parcela: parseFloat(dados.parcela) || 0,
         emprestimo_saldo_devedor: parseFloat(dados.saldo_devedor) || 0,
         emprestimo_data_liberacao: dados.data_liberacao || null,
-        emprestimo_banco_anterior: dados.banco_anterior
+        emprestimo_banco_anterior: dados.banco_anterior,
+        empresa_parceira_id: dados.empresa_parceira_id || '',
+        empresa_parceira_nome: dados.empresa_parceira_nome || dados.empresa_parceira || '',
       });
 
       return proposta;
@@ -983,14 +987,17 @@ export default function NovaVendaConsignado() {
               <div>
                 <Label>Empresa Parceira</Label>
                 <select
-                  value={formData.empresa_parceira}
-                  onChange={(e) => setFormData({ ...formData, empresa_parceira: e.target.value })}
+                  value={formData.empresa_parceira_id}
+                  onChange={(e) => {
+                    const ep = empresasParceiras.find(x => x.id === e.target.value);
+                    setFormData({ ...formData, empresa_parceira_id: e.target.value, empresa_parceira_nome: ep?.nome || '', empresa_parceira: ep?.nome || '' });
+                  }}
                   disabled={user?.perfil === 'vendedor'}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                   
                   <option value="">Selecione...</option>
                   {empresasParceiras.map((ep) =>
-                  <option key={ep.id} value={ep.nome}>{ep.nome}</option>
+                  <option key={ep.id} value={ep.id}>{ep.nome}</option>
                   )}
                 </select>
               </div>
