@@ -1,32 +1,52 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const NVOIP_BASE = 'https://api.nvoip.com.br/v2';
-// Basic auth para o endpoint OAuth2 da NVOIP API v2
-// Credenciais de aplicação: NvoipApiV2 / TnZvaXBBcGlWMjpUblp2YVhCQmNHbFdNakl3TWpFPQ==
 const BASIC_AUTH = 'Basic TnZvaXBBcGlWMjpUblp2YVhCQmNHbFdNakl3TWpFPQ==';
 
-async function getEmpresaId(base44, user) {
-  // Tenta pegar empresa_id do user (caso já venha populado)
-  if (user.empresa_id) return user.empresa_id;
+async function getEmpresaEColab(base44, user) {
+  let empresaId = user.empresa_id;
+  let colaboradorId = user.colaborador_id;
 
-  // Busca pelo colaborador vinculado ao user
-  const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id });
-  if (colabs && colabs.length > 0) {
-    const colab = colabs.find(c => c.empresa_id && c.status === 'ativo') || colabs[0];
-    if (colab && colab.empresa_id) return colab.empresa_id;
+  if (!empresaId || !colaboradorId) {
+    const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id });
+    if (colabs && colabs.length > 0) {
+      const colab = colabs.find(c => c.empresa_id && c.status === 'ativo') || colabs[0];
+      if (colab) {
+        empresaId = empresaId || colab.empresa_id;
+        colaboradorId = colaboradorId || colab.id;
+      }
+    }
   }
 
-  throw new Error('Empresa não encontrada para este usuário');
+  if (!empresaId) throw new Error('Empresa não encontrada para este usuário');
+  return { empresaId, colaboradorId };
 }
 
-async function getNvoipConfig(base44, empresaId) {
-  const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
-  if (!configs || configs.length === 0) throw new Error('Configuração NVOIP não encontrada para esta empresa');
-  return configs[0];
+// Retorna config do usuário (prioritária) ou config da empresa (fallback)
+async function getConfigParaUsuario(base44, user, empresaId, colaboradorId) {
+  // 1. Tenta config pessoal do usuário
+  if (colaboradorId) {
+    const userConfigs = await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.filter({
+      colaborador_id: colaboradorId,
+      ativo: true,
+    });
+    if (userConfigs && userConfigs.length > 0 && userConfigs[0].numbersip && userConfigs[0].user_token) {
+      return { config: userConfigs[0], tipo: 'usuario' };
+    }
+  }
+
+  // 2. Fallback: config da empresa
+  const empConfigs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
+  if (empConfigs && empConfigs.length > 0) {
+    return { config: empConfigs[0], tipo: 'empresa' };
+  }
+
+  throw new Error('Nenhuma configuração NVOIP encontrada. Configure seu ramal em Call Center → Configurar.');
 }
 
-async function getValidToken(base44, config) {
-  // Token ainda válido (com 60s de margem)
+async function getValidToken(base44, config, isUsuarioConfig) {
+  const entityName = isUsuarioConfig ? 'ConfiguracaoNvoipUsuario' : 'ConfiguracaoNvoip';
+
   if (config.access_token && config.token_expires_at) {
     const expiresAt = new Date(config.token_expires_at);
     if (expiresAt > new Date(Date.now() + 60000)) {
@@ -34,7 +54,6 @@ async function getValidToken(base44, config) {
     }
   }
 
-  // Tenta usar refresh_token primeiro
   if (config.refresh_token) {
     const bodyRefresh = new URLSearchParams();
     bodyRefresh.append('grant_type', 'refresh_token');
@@ -46,17 +65,15 @@ async function getValidToken(base44, config) {
     });
     if (resRefresh.ok) {
       const d = await resRefresh.json();
-      await base44.asServiceRole.entities.ConfiguracaoNvoip.update(config.id, {
+      await base44.asServiceRole.entities[entityName].update(config.id, {
         access_token: d.access_token,
         refresh_token: d.refresh_token || config.refresh_token,
         token_expires_at: new Date(Date.now() + (d.expires_in || 3600) * 1000).toISOString(),
-        ativo: true,
       });
       return d.access_token;
     }
   }
 
-  // Autentica com user_token (password grant)
   if (!config.numbersip || !config.user_token) {
     throw new Error('NumberSIP e User Token são obrigatórios para autenticar na NVOIP');
   }
@@ -79,7 +96,7 @@ async function getValidToken(base44, config) {
   }
 
   const data = await res.json();
-  await base44.asServiceRole.entities.ConfiguracaoNvoip.update(config.id, {
+  await base44.asServiceRole.entities[entityName].update(config.id, {
     access_token: data.access_token,
     refresh_token: data.refresh_token || null,
     token_expires_at: new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString(),
@@ -97,7 +114,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { action } = body;
 
-    // Testar conexão não precisa de empresa salva
+    // Testar conexão: não precisa de empresa salva
     if (action === 'testarConexao') {
       const { numbersip, user_token } = body;
       if (!numbersip || !user_token) {
@@ -121,10 +138,9 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, message: 'Conexão NVOIP estabelecida com sucesso!' });
     }
 
-    // Buscar empresa_id do colaborador
-    const empresaId = await getEmpresaId(base44, user);
+    const { empresaId, colaboradorId } = await getEmpresaEColab(base44, user);
 
-    // Salvar configuração
+    // Salvar configuração DA EMPRESA (admin)
     if (action === 'salvarConfig') {
       const { numbersip, user_token, napikey, sip_password, numero_did, numero_chip } = body;
       const configs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
@@ -151,8 +167,55 @@ Deno.serve(async (req) => {
       return Response.json({ success: true });
     }
 
-    const config = await getNvoipConfig(base44, empresaId);
-    const token = await getValidToken(base44, config);
+    // Salvar configuração PESSOAL do usuário
+    if (action === 'salvarConfigUsuario') {
+      const { numbersip, user_token, napikey, sip_password, numero_did, numero_chip, colaborador_nome } = body;
+
+      if (!colaboradorId) {
+        return Response.json({ success: false, error: 'Colaborador não encontrado para este usuário' });
+      }
+
+      const existentes = await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.filter({
+        colaborador_id: colaboradorId,
+      });
+
+      const configData = {
+        empresa_id: empresaId,
+        colaborador_id: colaboradorId,
+        user_id: user.id,
+        colaborador_nome: colaborador_nome || user.full_name || '',
+        numbersip,
+        sip_password: sip_password || null,
+        numero_did: numero_did || null,
+        numero_chip: numero_chip || null,
+        user_token,
+        napikey: napikey || null,
+        ativo: true,
+        access_token: null,
+        refresh_token: null,
+        token_expires_at: null,
+      };
+
+      if (existentes.length > 0) {
+        await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.update(existentes[0].id, configData);
+      } else {
+        await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.create(configData);
+      }
+      return Response.json({ success: true });
+    }
+
+    // Buscar config do usuário para exibir no modal
+    if (action === 'buscarConfigUsuario') {
+      if (!colaboradorId) return Response.json({ config: null });
+      const existentes = await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.filter({
+        colaborador_id: colaboradorId,
+      });
+      return Response.json({ config: existentes.length > 0 ? existentes[0] : null });
+    }
+
+    // Para todas as outras ações, pega a config com prioridade para o usuário
+    const { config, tipo } = await getConfigParaUsuario(base44, user, empresaId, colaboradorId);
+    const token = await getValidToken(base44, config, tipo === 'usuario');
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
     if (action === 'saldo') {
@@ -164,22 +227,41 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // NVOIP bridge call: caller = numbersip do ramal
-      // O ramal DEVE estar configurado com encaminhamento para um chip/celular no painel NVOIP
-      // Caso o numero_chip esteja configurado, tentamos configurar o encaminhamento automaticamente antes de ligar
       const caller = config.numbersip;
-
       if (!caller) {
-        return Response.json({ error: 'NumberSIP não configurado. Acesse Configurar no Call Center.' }, { status: 200 });
+        return Response.json({
+          error: tipo === 'empresa'
+            ? 'Ramal não configurado. Configure seu ramal pessoal em Call Center → Meu Ramal, ou solicite ao administrador.'
+            : 'Configure um ramal NVOIP para realizar chamadas.',
+        }, { status: 200 });
       }
 
-      // Formata o número destino: remove não-dígitos, adiciona 55 se necessário
+      // Valida número destino
       let calledFormatado = (called || '').replace(/\D/g, '');
+      if (!calledFormatado || calledFormatado.length < 8) {
+        return Response.json({ error: 'Número de destino inválido. Informe DDD + número.' }, { status: 200 });
+      }
       if (!calledFormatado.startsWith('55') && calledFormatado.length <= 11) {
         calledFormatado = '55' + calledFormatado;
       }
 
-      console.log(`[NVOIP] realizarChamada caller=${caller} called=${calledFormatado}`);
+      console.log(`[NVOIP] realizarChamada tipo=${tipo} caller=${caller} called=${calledFormatado}`);
+
+      // Se tem numero_chip configurado, configura encaminhamento automaticamente antes de ligar
+      if (config.numero_chip) {
+        const chip = config.numero_chip.replace(/\D/g, '');
+        const chipFormatado = chip.startsWith('55') ? chip : '55' + chip;
+        try {
+          await fetch(`${NVOIP_BASE}/update/users?numbersip=${caller}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ callForward: chipFormatado }),
+          });
+          console.log(`[NVOIP] encaminhamento configurado para chip ${chipFormatado}`);
+        } catch (e) {
+          console.log(`[NVOIP] aviso: falha ao configurar encaminhamento: ${e.message}`);
+        }
+      }
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
@@ -188,10 +270,18 @@ Deno.serve(async (req) => {
       });
       const data = await res.json();
       console.log(`[NVOIP] resposta chamada: ${res.status}`, JSON.stringify(data));
+
       if (!res.ok) {
-        return Response.json({ error: data.message || data.error || `HTTP ${res.status}`, _debug: data }, { status: 200 });
+        const errMsg = data.message || data.error || `HTTP ${res.status}`;
+        return Response.json({
+          error: `Falha ao iniciar chamada: ${errMsg}`,
+          _debug: data,
+          _tipo_config: tipo,
+          _caller: caller,
+        }, { status: 200 });
       }
-      return Response.json(data);
+
+      return Response.json({ ...data, _tipo_config: tipo, _caller: caller });
     }
 
     if (action === 'consultarChamada') {
@@ -261,7 +351,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'atualizarEncaminhamento') {
-      // Atualiza o encaminhamento do ramal para o chip/celular
       const { numbersip: nsip, callForward } = body;
       const res = await fetch(`${NVOIP_BASE}/update/users?numbersip=${nsip || config.numbersip}`, {
         method: 'PUT',
@@ -269,7 +358,6 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ callForward }),
       });
       const data = await res.json();
-      console.log(`[NVOIP] atualizarEncaminhamento: ${res.status}`, JSON.stringify(data));
       return Response.json(data);
     }
 
@@ -281,6 +369,13 @@ Deno.serve(async (req) => {
 
     return Response.json({ error: 'Ação desconhecida' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    const msg = error.message || 'Erro interno';
+    if (msg.includes('autenticar') || msg.includes('token') || msg.includes('Token')) {
+      return Response.json({ error: `Falha de autenticação NVOIP: ${msg}` }, { status: 200 });
+    }
+    if (msg.includes('Empresa') || msg.includes('configuração') || msg.includes('ramal')) {
+      return Response.json({ error: msg }, { status: 200 });
+    }
+    return Response.json({ error: msg }, { status: 500 });
   }
 });

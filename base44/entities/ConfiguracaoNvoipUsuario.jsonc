@@ -1,0 +1,75 @@
+{
+  "name": "ConfiguracaoNvoipUsuario",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "colaborador_id": {
+      "type": "string",
+      "description": "ID do colaborador dono desta config"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID do auth user"
+    },
+    "colaborador_nome": {
+      "type": "string"
+    },
+    "numbersip": {
+      "type": "string",
+      "description": "Ramal SIP do usu\u00e1rio"
+    },
+    "numero_did": {
+      "type": "string",
+      "description": "N\u00famero DID de sa\u00edda do usu\u00e1rio"
+    },
+    "numero_chip": {
+      "type": "string",
+      "description": "Celular/chip para receber a chamada"
+    },
+    "user_token": {
+      "type": "string",
+      "description": "User token pessoal para autenticar na NVOIP"
+    },
+    "sip_password": {
+      "type": "string"
+    },
+    "napikey": {
+      "type": "string"
+    },
+    "access_token": {
+      "type": "string"
+    },
+    "refresh_token": {
+      "type": "string"
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "empresa_id",
+    "colaborador_id",
+    "numbersip"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'admin' || user.perfil === 'gerente') return record.empresa_id === user.empresa_id; return record.user_id === user.id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return record.user_id === user.id || record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return record.user_id === user.id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return record.user_id === user.id;"
+    }
+  }
+}

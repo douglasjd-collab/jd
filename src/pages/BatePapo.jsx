@@ -93,6 +93,7 @@ import BatePapoMenu from '@/components/chat/BatePapoMenu';
 import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
+import RealizarChamadaModal from '@/components/callcenter/RealizarChamadaModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -299,6 +300,8 @@ export default function BatePapo() {
   const [agendadasOpen, setAgendadasOpen] = useState(false);
   const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
   const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
+  const [chamadaModalOpen, setChamadaModalOpen] = useState(false);
+  const [chamadaNumeroInicial, setChamadaNumeroInicial] = useState('');
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -646,11 +649,8 @@ export default function BatePapo() {
     }
   }, [conversas]);
 
-  // Real-time: monitorar mudanças na oportunidade selecionada
   const oportunidadeAtualRef = React.useRef(oportunidadeAtual);
   React.useEffect(() => { oportunidadeAtualRef.current = oportunidadeAtual; }, [oportunidadeAtual]);
-
-  // Subscription para atualizar oportunidade em tempo real
   useEffect(() => {
     if (!conversaSelecionada?.id || !oportunidadeAtual?.id) return;
 
@@ -1409,6 +1409,12 @@ export default function BatePapo() {
           conversa={agendarReuniaoModal}
           user={user}
         />
+        <RealizarChamadaModal
+          open={chamadaModalOpen}
+          onOpenChange={(v) => { setChamadaModalOpen(v); if (!v) setChamadaNumeroInicial(''); }}
+          numeroInicial={chamadaNumeroInicial}
+          onChamadaIniciada={() => {}}
+        />
 
         {/* Modal Funil de Vendas */}
         <FunilSelectionModal
@@ -1874,10 +1880,20 @@ export default function BatePapo() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-1.5">
-                             <Button variant="outline" size="sm" className="h-7 justify-center gap-1 rounded-md text-[10px] px-2" title="Ligar">
-                               <PhoneCall className="h-3 w-3" />
-                               <span className="hidden sm:inline">Ligar</span>
-                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 justify-center gap-1 rounded-md text-[10px] px-2 text-green-700 border-green-300 hover:bg-green-50"
+                              title="Realizar chamada"
+                              onClick={() => {
+                                const tel = conversaSelecionada?.cliente_telefone?.replace(/\D/g, '') || '';
+                                setChamadaNumeroInicial(tel);
+                                setChamadaModalOpen(true);
+                              }}
+                            >
+                              <PhoneCall className="h-3 w-3" />
+                              <span className="hidden sm:inline">Ligar</span>
+                            </Button>
                              <Button 
                                variant={oportunidadeAtual ? "default" : "outline"}
                                size="sm" 

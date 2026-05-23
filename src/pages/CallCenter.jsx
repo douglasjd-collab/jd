@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 
 import ConfiguracaoNvoipModal from '@/components/callcenter/ConfiguracaoNvoipModal';
 import RealizarChamadaModal from '@/components/callcenter/RealizarChamadaModal';
+import ConfiguracaoRamalUsuarioModal from '@/components/callcenter/ConfiguracaoRamalUsuarioModal';
 import EnviarSmsModal from '@/components/callcenter/EnviarSmsModal';
 import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
@@ -28,6 +29,7 @@ export default function CallCenter() {
   const [loadingSaldo, setLoadingSaldo] = useState(false);
 
   const [configOpen, setConfigOpen] = useState(false);
+  const [ramalUsuarioOpen, setRamalUsuarioOpen] = useState(false);
   const [chamadaOpen, setChamadaOpen] = useState(false);
   const [smsOpen, setSmsOpen] = useState(false);
   const [torpedoOpen, setTorpedoOpen] = useState(false);
@@ -166,9 +168,13 @@ export default function CallCenter() {
               ● Conectado — {config.numbersip}
             </Badge>
           )}
+          <Button variant="outline" size="sm" onClick={() => setRamalUsuarioOpen(true)} className="border-green-300 text-green-700 hover:bg-green-50">
+            <Phone className="w-4 h-4 mr-1" />
+            Meu Ramal
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
             <Settings className="w-4 h-4 mr-1" />
-            Configurar
+            Config Empresa
           </Button>
         </div>
       </div>
@@ -372,12 +378,13 @@ export default function CallCenter() {
       <RealizarChamadaModal
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
-        numbersip={config?.numbersip}
-        numeroDid={config?.numero_did}
         numeroInicial={numeroParaChamar}
-        sipConectado={softphone.sipStatus === 'registrado'}
-        ramalOnline={ramalOnline}
         onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
+      />
+      <ConfiguracaoRamalUsuarioModal
+        open={ramalUsuarioOpen}
+        onOpenChange={setRamalUsuarioOpen}
+        onSalvo={() => {}}
       />
       <EnviarSmsModal
         open={smsOpen}
