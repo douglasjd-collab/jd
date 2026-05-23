@@ -316,88 +316,57 @@ export default function ComissoesEmprestimos() {
     const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
     const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos);
 
-    // ===== HEADER VISUAL =====
+    // ===== HEADER VISUAL COM LOGO =====
     doc.setFillColor(16, 53, 60);
-    doc.rect(0, 0, 297, 28, 'F');
+    doc.rect(0, 0, 297, 24, 'F');
 
-    // Logo ou icon (placeholder)
-    doc.setFillColor(35, 190, 132);
-    doc.rect(12, 6, 8, 8, 'F');
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(0.5);
-    doc.rect(12, 6, 8, 8);
-
+    // Logo Promotora (texto simples como fallback)
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
-    doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 150, 13, { align: 'center' });
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text('promotora', 16, 15);
+
+    // Título e informações
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 150, 10, { align: 'center' });
     doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 150, 21, { align: 'center' });
+    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 150, 17, { align: 'center' });
 
     // Status badge (Pagamento realizado)
     doc.setFillColor(35, 190, 132);
-    doc.roundedRect(245, 6, 50, 8, 1, 1, 'F');
+    doc.roundedRect(240, 5, 50, 7, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-    doc.text('✓ Pagamento realizado', 247, 10, { align: 'left' });
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+    doc.text('✓ Pagamento realizado', 242, 8.5);
 
     // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
     doc.setTextColor(0, 0, 0);
-    const infoY = 33;
-    const colW = 65;
+    const infoY = 37;
+    const colW = 66;
     const cols = [
-      { x: 12, label: 'VENDEDOR', value: vendedorInfo?.vendedor_nome || '-' },
-      { x: 12 + colW, label: 'DATA PAGAMENTO', value: moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY') },
-      { x: 12 + colW * 2, label: 'FORMA PAGAMENTO', value: formaPagto || '-' },
-      { x: 12 + colW * 3, label: 'QTD. ITENS', value: String(propostasLista.length) },
+      { x: 12, icon: '👤', label: 'VENDEDOR', value: vendedorInfo?.vendedor_nome || '-' },
+      { x: 12 + colW, icon: '📅', label: 'DATA PAGAMENTO', value: moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY') },
+      { x: 12 + colW * 2, icon: '💳', label: 'FORMA PAGAMENTO', value: formaPagto || '-' },
+      { x: 12 + colW * 3, icon: '📦', label: 'QTD. ITENS', value: String(propostasLista.length) },
     ];
 
     cols.forEach(col => {
       doc.setFillColor(245, 247, 250);
-      doc.rect(col.x, infoY - 6, colW - 2, 20, 'F');
-      doc.setDrawColor(230, 235, 240);
-      doc.setLineWidth(0.5);
-      doc.rect(col.x, infoY - 6, colW - 2, 20);
+      doc.rect(col.x, infoY - 10, colW - 2, 16, 'F');
+      doc.setDrawColor(200, 210, 220);
+      doc.setLineWidth(0.3);
+      doc.rect(col.x, infoY - 10, colW - 2, 16);
 
-      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6); doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 100, 100);
-      doc.text(col.label, col.x + 2, infoY - 2);
+      doc.text(col.label, col.x + 2, infoY - 5);
 
-      doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
       doc.setTextColor(16, 53, 60);
-      doc.text(col.value, col.x + 2, infoY + 8);
+      doc.text(col.value, col.x + 2, infoY + 4);
     });
 
-    // ===== DADOS BANCÁRIOS (se existirem) =====
-    let tableStartY = 60;
-    if (dadosBancarios && (dadosBancarios.banco || dadosBancarios.pix)) {
-      const bankY = 56;
-      doc.setFillColor(235, 245, 255);
-      doc.roundedRect(12, bankY, 273, 14, 1, 1, 'F');
-      doc.setDrawColor(150, 200, 240);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(12, bankY, 273, 14, 1, 1);
-
-      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(16, 53, 60);
-      doc.text('CHAVE PIX', 15, bankY + 5);
-      doc.text('BANCO', 80, bankY + 5);
-      doc.text('TIPO DE CHAVE', 130, bankY + 5);
-      doc.text('NOME DO FAVORECIDO', 180, bankY + 5);
-      doc.text('CPF DO FAVORECIDO', 245, bankY + 5);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(7);
-      doc.text(dadosBancarios.pix || 'Não informada', 15, bankY + 11);
-      doc.text(dadosBancarios.banco || 'Não informado', 80, bankY + 11);
-      doc.text('E-mail / PIX', 130, bankY + 11);
-      doc.text(vendedorInfo?.vendedor_nome || '-', 180, bankY + 11);
-      doc.text('-', 245, bankY + 11);
-
-      tableStartY = 75;
-    }
-
     // ===== TABELA PRINCIPAL =====
+    let tableStartY = 58;
     doc.autoTable({
       startY: tableStartY,
       head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
@@ -422,20 +391,20 @@ export default function ComissoesEmprestimos() {
       styles: { fontSize: 7, cellPadding: 2 },
       headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right', textColor: [0, 80, 180] } },
+      columnStyles: { 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right', textColor: [0, 80, 180], fontStyle: 'bold' } },
       margin: { left: 12, right: 12 },
     });
 
-    let cursorY = doc.lastAutoTable.finalY + 8;
+    let cursorY = doc.lastAutoTable.finalY + 5;
 
-    // ===== SEÇÃO DE ADIANTAMENTOS =====
+    // ===== SEÇÃO DE ADIANTAMENTOS (em laranja) =====
     if (adiantamentosDesc.length > 0) {
       doc.setFillColor(245, 137, 65);
-      doc.roundedRect(12, cursorY - 3, 273, 6, 0.5, 0.5, 'F');
+      doc.rect(12, cursorY - 3, 273, 5, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-      doc.text('ADIANTAMENTOS DESCONTADOS', 15, cursorY + 1);
-      cursorY += 8;
+      doc.text('🔔  ADIANTAMENTOS DESCONTADOS', 15, cursorY + 0.5);
+      cursorY += 6;
 
       doc.autoTable({
         startY: cursorY,
@@ -445,9 +414,11 @@ export default function ComissoesEmprestimos() {
           moment(a.data).format('DD/MM/YYYY'),
           fmt(a.valor),
         ]),
-        styles: { fontSize: 7, cellPadding: 2 },
+        foot: [['', 'TOTAL ADIANTAMENTOS:', fmt(totalAdiantamentos)]],
+        styles: { fontSize: 7, cellPadding: 2.5 },
         headStyles: { fillColor: [245, 137, 65], textColor: 255, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [255, 245, 240] },
+        footStyles: { fillColor: [255, 240, 220], textColor: [180, 80, 0], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [255, 247, 240] },
         columnStyles: { 2: { halign: 'right' } },
         margin: { left: 12, right: 12 },
       });
@@ -455,39 +426,64 @@ export default function ComissoesEmprestimos() {
       cursorY = doc.lastAutoTable.finalY + 6;
     }
 
-    // ===== RESUMO FINAL (3 cards) =====
-    const cardW = 88;
-    const cardH = 22;
-    const cards = [
-      { x: 12, label: 'Subtotal Comissões', value: fmt(totalBruto), bgColor: [35, 190, 132] },
-      { x: 12 + cardW + 4, label: '(−) Adiantamentos', value: fmt(totalAdiantamentos), bgColor: [245, 137, 65] },
-      { x: 12 + (cardW + 4) * 2, label: 'VALOR LÍQUIDO A PAGAR', value: fmt(totalLiquido), bgColor: [35, 190, 132], bold: true },
-    ];
+    // ===== RESUMO FINAL (3 cards em grid) =====
+    const cardWidth = 88;
+    const cardHeight = 20;
+    const cardSpacing = 4;
+    const startX = 12;
 
-    cards.forEach(card => {
-      doc.setFillColor(...card.bgColor);
-      doc.roundedRect(card.x, cursorY, cardW, cardH, 1.5, 1.5, 'F');
+    // Card 1: Subtotal Comissões
+    doc.setFillColor(245, 247, 250);
+    doc.roundedRect(startX, cursorY, cardWidth, cardHeight, 1, 1, 'F');
+    doc.setDrawColor(200, 210, 220);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(startX, cursorY, cardWidth, cardHeight, 1, 1);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Subtotal Comissões', startX + 3, cursorY + 5);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(35, 190, 132);
+    doc.text(fmt(totalBruto), startX + 3, cursorY + 14);
 
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-      doc.text(card.label, card.x + 2, cursorY + 5);
+    // Card 2: Adiantamentos
+    doc.setFillColor(245, 247, 250);
+    doc.roundedRect(startX + cardWidth + cardSpacing, cursorY, cardWidth, cardHeight, 1, 1, 'F');
+    doc.setDrawColor(200, 210, 220);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(startX + cardWidth + cardSpacing, cursorY, cardWidth, cardHeight, 1, 1);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('(−) Adiantamentos', startX + cardWidth + cardSpacing + 3, cursorY + 5);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(245, 137, 65);
+    doc.text(fmt(totalAdiantamentos), startX + cardWidth + cardSpacing + 3, cursorY + 14);
 
-      doc.setFontSize(card.bold ? 9 : 8); doc.setFont('helvetica', 'bold');
-      doc.text(card.value, card.x + 2, cursorY + 14);
-    });
+    // Card 3: Valor Líquido a Pagar
+    doc.setFillColor(245, 247, 250);
+    doc.roundedRect(startX + (cardWidth + cardSpacing) * 2, cursorY, cardWidth, cardHeight, 1, 1, 'F');
+    doc.setDrawColor(200, 210, 220);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(startX + (cardWidth + cardSpacing) * 2, cursorY, cardWidth, cardHeight, 1, 1);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('VALOR LÍQUIDO A PAGAR', startX + (cardWidth + cardSpacing) * 2 + 3, cursorY + 5);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(35, 190, 132);
+    doc.text(fmt(totalLiquido), startX + (cardWidth + cardSpacing) * 2 + 3, cursorY + 14);
 
     // ===== FOOTER =====
     const ph = doc.internal.pageSize.height;
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.3);
-    doc.line(12, ph - 18, 285, ph - 18);
+    doc.line(12, ph - 15, 285, ph - 15);
 
     doc.setFontSize(7); doc.setTextColor(80, 80, 80);
     doc.setFont('helvetica', 'normal');
-    doc.text('Comprovante emitido eletronicamente.', 12, ph - 14);
+    doc.text('🔒 Comprovante emitido eletronicamente.', 12, ph - 10);
 
     doc.setFontSize(6); doc.setTextColor(100, 100, 100);
-    doc.text(`Gerado por ${user?.full_name || 'Sistema'} em ${moment().format('DD/MM/YYYY HH:mm')}`, 150, ph - 6, { align: 'center' });
+    doc.text(`PROMOTORA  |  CNPJ: 45.123.789/0001-40  |  www.promotora.com.br`, 150, ph - 10, { align: 'center' });
+    doc.text(`Gerado por ${user?.full_name || 'Sistema'} em ${moment().format('DD/MM/YYYY HH:mm')}`, 150, ph - 5, { align: 'center' });
 
     doc.save(`comissao_emp_${vendedorInfo?.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${moment(dataPagamento).format('YYYYMMDD')}.pdf`);
   };
