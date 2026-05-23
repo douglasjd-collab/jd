@@ -173,23 +173,35 @@ export default function CallCenter() {
         </div>
       </div>
 
-      {/* Alerta: ramal offline */}
-      {!naoConfigurado && ramalOffline && (
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
-          <span className="text-xl">⚠️</span>
-          <div>
-            <p className="font-semibold">Ramal <strong>{config.numbersip}</strong> está Offline na NVOIP</p>
-            <p className="text-xs mt-1 text-amber-700">
-              Configure a <strong>Senha SIP</strong> para ativar o softphone no navegador, ou acesse o <a href="https://painel.nvoip.com.br" target="_blank" rel="noopener noreferrer" className="underline">painel NVOIP</a> para registrar o ramal.
+      {/* Alerta: Senha SIP não configurada — sem ela a ligação vai pro painel NVOIP */}
+      {!naoConfigurado && !config?.sip_password && softphone.sipStatus !== 'registrado' && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border-2 border-red-300 rounded-xl text-sm text-red-800">
+          <span className="text-xl">🔴</span>
+          <div className="flex-1">
+            <p className="font-bold text-base">Chamadas estão sendo desviadas para o painel NVOIP!</p>
+            <p className="mt-1 text-red-700">
+              Para ligar <strong>direto pelo CRM</strong> (com áudio aqui no navegador), você precisa configurar a <strong>Senha SIP</strong> do ramal.
+              Sem ela, a NVOIP liga primeiro para o seu ramal e você precisa atender pelo painel.
+            </p>
+            <p className="mt-2 text-xs text-red-600">
+              👉 No painel NVOIP: <strong>Ramais → clique no ramal {config.numbersip} → editar → copie a "Senha"</strong>
             </p>
           </div>
+          <Button
+            size="sm"
+            className="bg-red-600 hover:bg-red-700 text-white flex-shrink-0"
+            onClick={() => setConfigOpen(true)}
+          >
+            Corrigir Agora
+          </Button>
         </div>
       )}
-      {/* Ramal online — tudo OK */}
-      {!naoConfigurado && ramalOnline && softphone.sipStatus !== 'registrado' && (
+
+      {/* Softphone registrado — tudo OK */}
+      {!naoConfigurado && softphone.sipStatus === 'registrado' && (
         <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800">
           <span className="text-lg">✅</span>
-          <p>Ramal <strong>{config.numbersip}</strong> está Online na NVOIP. Click-to-call disponível.</p>
+          <p>Softphone ativo — ligações acontecem <strong>direto no CRM</strong> com áudio no navegador.</p>
         </div>
       )}
 
@@ -269,11 +281,7 @@ export default function CallCenter() {
                   setNumeroParaChamar(numero);
                 }}
               />
-              {!config?.sip_password && (
-                <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
-                  💡 <strong>Senha SIP não configurada.</strong> Sem ela, chamadas usam click-to-call (seu ramal toca primeiro). Configure para usar o softphone diretamente no navegador.
-                </div>
-              )}
+
             </div>
 
             {/* Ações + histórico */}

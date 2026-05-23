@@ -105,15 +105,19 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
             <p className="text-xs text-slate-400">Número DID externo da NVOIP — aparecerá no identificador de chamadas. No painel NVOIP: <strong>Números → seu DID</strong>.</p>
           </div>
 
-          <div className="space-y-2">
-            <Label>Senha SIP <span className="text-blue-600 font-semibold">(para chamadas de voz)</span></Label>
+          <div className="space-y-2 p-3 bg-blue-50 border-2 border-blue-300 rounded-lg">
+            <Label className="text-blue-800 font-bold">🎧 Senha SIP — OBRIGATÓRIA para ligar pelo CRM</Label>
             <Input
               type="password"
               placeholder="Senha SIP do ramal (painel NVOIP → Ramais)"
               value={form.sip_password}
               onChange={e => setForm({ ...form, sip_password: e.target.value })}
+              className="border-blue-300 focus:border-blue-500"
             />
-            <p className="text-xs text-slate-400">No painel NVOIP: <strong>Ramais → seu ramal → Senha SIP</strong>. Necessária para fazer/receber ligações com áudio.</p>
+            <p className="text-xs text-blue-700">
+              No painel NVOIP: <strong>Ramais → clique no ramal → editar → campo "Senha"</strong>.<br/>
+              Sem isso, a ligação vai para o painel NVOIP em vez de acontecer aqui.
+            </p>
           </div>
 
           <div className="space-y-2">
