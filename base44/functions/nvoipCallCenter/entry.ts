@@ -163,20 +163,21 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // NVOIP click-to-call: caller deve ser o número DID externo (ex: 558132998470)
-      // NÃO usar numbersip (ramal interno) — a API retorna "User sip not found"
-      // O número DID fica registrado no campo numero_did da configuração
-      const caller = config.numero_did;
+      // NVOIP click-to-call: caller = numbersip do ramal (ex: 137715001)
+      // A NVOIP liga primeiro para o ramal (caller), depois conecta ao destino (called)
+      const caller = config.numbersip;
 
       if (!caller) {
-        return Response.json({ error: 'Número DID não configurado. Acesse Configurar no Call Center e informe o Número DID (número externo, ex: 558132998470).' }, { status: 200 });
+        return Response.json({ error: 'NumberSIP não configurado. Acesse Configurar no Call Center.' }, { status: 200 });
       }
 
-      // Formata o número destino (garante que tem código do país se não tiver)
-      let calledFormatado = called.replace(/\D/g, '');
-      if (calledFormatado.length <= 11) {
+      // Formata o número destino: remove não-dígitos, adiciona 55 se necessário
+      let calledFormatado = (called || '').replace(/\D/g, '');
+      if (!calledFormatado.startsWith('55') && calledFormatado.length <= 11) {
         calledFormatado = '55' + calledFormatado;
       }
+
+      console.log(`[NVOIP] realizarChamada caller=${caller} called=${calledFormatado}`);
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
@@ -184,6 +185,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ caller, called: calledFormatado }),
       });
       const data = await res.json();
+      console.log(`[NVOIP] resposta chamada: ${res.status}`, JSON.stringify(data));
       if (!res.ok) {
         return Response.json({ error: data.message || data.error || `HTTP ${res.status}`, _debug: data }, { status: 200 });
       }

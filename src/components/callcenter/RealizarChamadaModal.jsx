@@ -21,8 +21,8 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
       toast.error('Informe um número de destino válido');
       return;
     }
-    if (!numeroDid) {
-      toast.error('Configure o Número DID nas configurações do Call Center antes de ligar.');
+    if (!numbersip) {
+      toast.error('NumberSIP não configurado. Acesse as configurações do Call Center.');
       return;
     }
     setLoading(true);
@@ -51,19 +51,9 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          {!numeroDid && (
-            <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
-              <div>
-                <strong>Número DID não configurado.</strong>
-                <p className="mt-0.5">Acesse <strong>Configurar</strong> e informe o Número DID (ex: 558132998470) para habilitar chamadas.</p>
-              </div>
-            </div>
-          )}
-
-          {numeroDid && (
+          {numbersip && (
             <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
-              <span className="font-medium">Número de saída:</span> {numeroDid}
+              <span className="font-medium">Ramal de saída:</span> {numbersip}
             </div>
           )}
 
@@ -83,7 +73,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numbersip, nu
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button
               onClick={handleLigar}
-              disabled={loading || !numeroDid}
+              disabled={loading || !numbersip}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Phone className="w-4 h-4 mr-2" />}
