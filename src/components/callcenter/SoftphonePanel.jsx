@@ -195,22 +195,18 @@ export default function SoftphonePanel({ softphone, numbersip, numeroInicial = '
             </div>
 
             {sipStatus === 'conectando' && (
-              <p className="text-xs text-yellow-600 text-center animate-pulse">⟳ Conectando ao servidor SIP...</p>
+              <p className="text-xs text-yellow-600 text-center animate-pulse">⟳ Tentando conectar ao servidor SIP...</p>
             )}
             {sipStatus === 'registrado' && (
               <p className="text-xs text-green-600 text-center">● WebRTC ativo — chamadas com áudio direto</p>
             )}
-            {sipStatus === 'erro' && (
-              <div className="text-center space-y-1">
-                <p className="text-xs text-red-500">⚠️ Erro ao registrar. Verifique a Senha SIP.</p>
-                {conectar && <button onClick={conectar} className="text-xs text-blue-600 hover:underline">Tentar reconectar</button>}
-              </div>
-            )}
-            {sipStatus === 'desconectado' && conectar && (
-              <div className="text-center">
-                <button onClick={conectar} className="text-xs text-blue-600 hover:underline">
-                  🔌 Conectar softphone
-                </button>
+            {(sipStatus === 'erro' || sipStatus === 'desconectado') && (
+              <div className="text-center space-y-2 p-3 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-800">
+                <p className="font-semibold">⚠️ NVOIP não suporta softphone via navegador</p>
+                <p>O servidor NVOIP usa SIP/UDP — incompatível com WebRTC do browser. Use o <strong>botão "Nova Chamada"</strong> ao lado para ligar via API.</p>
+                {sipStatus === 'erro' && conectar && (
+                  <button onClick={conectar} className="text-blue-600 hover:underline block mx-auto">Tentar novamente</button>
+                )}
               </div>
             )}
           </div>

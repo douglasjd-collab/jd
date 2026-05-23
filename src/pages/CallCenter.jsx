@@ -173,27 +173,19 @@ export default function CallCenter() {
         </div>
       </div>
 
-      {/* Alerta: Senha SIP não configurada — sem ela a ligação vai pro painel NVOIP */}
-      {!naoConfigurado && !config?.sip_password && softphone.sipStatus !== 'registrado' && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border-2 border-red-300 rounded-xl text-sm text-red-800">
-          <span className="text-xl">🔴</span>
+      {/* Info: como fazer chamadas */}
+      {!naoConfigurado && softphone.sipStatus !== 'registrado' && (
+        <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+          <span className="text-xl">📞</span>
           <div className="flex-1">
-            <p className="font-bold text-base">Chamadas estão sendo desviadas para o painel NVOIP!</p>
-            <p className="mt-1 text-red-700">
-              Para ligar <strong>direto pelo CRM</strong> (com áudio aqui no navegador), você precisa configurar a <strong>Senha SIP</strong> do ramal.
-              Sem ela, a NVOIP liga primeiro para o seu ramal e você precisa atender pelo painel.
+            <p className="font-semibold">Como fazer chamadas pelo CRM</p>
+            <p className="mt-1 text-blue-700">
+              Clique no card <strong>"Nova Chamada"</strong> ou no botão de telefone ao lado de um contato. Digite o número destino e clique em ligar — a chamada será iniciada via API NVOIP.
             </p>
-            <p className="mt-2 text-xs text-red-600">
-              👉 No painel NVOIP: <strong>Ramais → clique no ramal {config.numbersip} → editar → copie a "Senha"</strong>
+            <p className="mt-1 text-xs text-blue-600">
+              💡 A NVOIP ligará para o número destino e conectará ao DID configurado ({config?.numero_did || 'configure o número DID'}).
             </p>
           </div>
-          <Button
-            size="sm"
-            className="bg-red-600 hover:bg-red-700 text-white flex-shrink-0"
-            onClick={() => setConfigOpen(true)}
-          >
-            Corrigir Agora
-          </Button>
         </div>
       )}
 
@@ -290,24 +282,15 @@ export default function CallCenter() {
           {/* Cards de ação rápida */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card
-              className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-green-300"
-              onClick={() => {
-                // Se SIP registrado, usa softphone (scrolla até ele); senão abre modal API
-                if (softphone.sipStatus === 'registrado') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                  setChamadaOpen(true);
-                }
-              }}
+              className="cursor-pointer hover:shadow-md transition-shadow border-2 border-green-400 hover:border-green-500 bg-green-50"
+              onClick={() => setChamadaOpen(true)}
             >
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <Phone className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                  <Phone className="w-6 h-6 text-white" />
                 </div>
                 <span className="font-semibold text-sm text-slate-700">Nova Chamada</span>
-                <span className="text-xs text-slate-400">
-                  {softphone.sipStatus === 'registrado' ? 'WebRTC ativo' : 'API REST'}
-                </span>
+                <span className="text-xs text-green-600 font-medium">Clique para ligar</span>
               </CardContent>
             </Card>
 

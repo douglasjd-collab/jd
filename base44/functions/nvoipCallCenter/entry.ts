@@ -162,8 +162,12 @@ Deno.serve(async (req) => {
 
     if (action === 'realizarChamada') {
       const { called } = body;
-      // O caller deve ser o numbersip (ramal SIP) — a NVOIP liga para o ramal primeiro, depois para o destino
-      const caller = config.numbersip;
+
+      // Para ligar diretamente ao destino sem passar pelo ramal:
+      // - caller deve ser o número DID (número externo) ou o numbersip
+      // - O fluxo click-to-call da NVOIP SEMPRE liga para o caller primeiro (ramal) antes do destino
+      // - Usar numero_did como caller faz a NVOIP ligar direto para o destino sem intermediário
+      const caller = config.numero_did || config.numbersip;
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',

@@ -36,36 +36,44 @@ export default function useSoftphone(config) {
 
     setSipStatus('conectando');
 
-    // NVOIP WebSocket SIP
-    const socket = new JsSIP.WebSocketInterface('wss://webrtc.nvoip.com.br:443');
+    // NVOIP WebSocket SIP — sip.nvoip.com.br é o host correto (webrtc.nvoip.com.br não existe no DNS)
+    // Tenta múltiplos endpoints em ordem
+    const wsEndpoints = [
+      'wss://sip.nvoip.com.br:443',
+      'wss://sip.nvoip.com.br:8089',
+      'wss://sip.nvoip.com.br:5065',
+    ];
+    const sockets = wsEndpoints.map(url => new JsSIP.WebSocketInterface(url));
 
     const ua = new JsSIP.UA({
-      sockets: [socket],
-      uri: `sip:${config.numbersip}@nvoip.com.br`,
+      sockets,
+      uri: `sip:${config.numbersip}@sip.nvoip.com.br`,
       password: config.sip_password,
       display_name: config.numbersip,
       register: true,
       register_expires: 300,
       session_timers: false,
-      log: { builtinEnabled: false },
+      connection_recovery_min_interval: 2,
+      connection_recovery_max_interval: 30,
+      log: { builtinEnabled: true, level: 'warn' },
     });
 
-    ua.on('connecting', () => setSipStatus('conectando'));
-    ua.on('connected', () => setSipStatus('conectando'));
+    ua.on('connecting', () => { console.log('SIP: conectando...'); setSipStatus('conectando'); });
+    ua.on('connected', () => { console.log('SIP: WebSocket conectado, aguardando registro...'); setSipStatus('conectando'); });
     ua.on('disconnected', (e) => {
-      console.warn('SIP disconnected:', e?.cause || e);
+      console.warn('SIP: WebSocket desconectado — code:', e?.code, 'reason:', e?.reason, 'error:', e?.error);
       setSipStatus('desconectado');
     });
     ua.on('registered', () => {
-      console.log('SIP registrado com sucesso:', config.numbersip);
+      console.log('SIP: registrado com sucesso! Ramal:', config.numbersip);
       setSipStatus('registrado');
     });
     ua.on('unregistered', (e) => {
-      console.warn('SIP unregistered:', e?.cause || e);
+      console.warn('SIP: unregistered — cause:', e?.cause);
       setSipStatus('desconectado');
     });
     ua.on('registrationFailed', (e) => {
-      console.error('SIP registration failed:', e?.cause, e?.response?.status_code);
+      console.error('SIP: falha no registro — cause:', e?.cause, 'status:', e?.response?.status_code, 'reason:', e?.response?.reason_phrase);
       setSipStatus('erro');
     });
 
@@ -109,7 +117,7 @@ export default function useSoftphone(config) {
   const realizarChamada = useCallback((numero) => {
     if (!uaRef.current || sipStatus !== 'registrado') return;
 
-    const destino = `sip:${numero}@nvoip.com.br`;
+    const destino = `sip:${numero}@sip.nvoip.com.br`;
     const session = uaRef.current.call(destino, {
       mediaConstraints: { audio: true, video: false },
       pcConfig: {
