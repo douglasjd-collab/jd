@@ -384,7 +384,7 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numeroInicial={numeroParaChamar}
-        onChamadaIniciada={() => {}}
+        onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
       />
       <ConfiguracaoRamalUsuarioModal
         open={ramalUsuarioOpen}
