@@ -17,6 +17,7 @@ import EnviarSmsModal from '@/components/callcenter/EnviarSmsModal';
 import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
 import MeusNumeros from '@/components/callcenter/MeusNumeros';
+import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
 
 export default function CallCenter() {
   const [user, setUser] = useState(null);
@@ -31,7 +32,7 @@ export default function CallCenter() {
   const [smsOpen, setSmsOpen] = useState(false);
   const [torpedoOpen, setTorpedoOpen] = useState(false);
 
-  const [chamadaAtiva, setChamadaAtiva] = useState(null); // não usado mais
+  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino }
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [ramalStatus, setRamalStatus] = useState(null); // 'Online' | 'Offline' | null
   const [credencialInvalida, setCredencialInvalida] = useState(false);
@@ -335,6 +336,17 @@ export default function CallCenter() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Chamada ativa */}
+          {chamadaAtiva && (
+            <div className="max-w-sm">
+              <ChamadaAtiva
+                callId={chamadaAtiva.callId}
+                destino={chamadaAtiva.destino}
+                onEncerrada={() => setChamadaAtiva(null)}
+              />
+            </div>
+          )}
 
           {/* Tabs */}
           <Tabs defaultValue="historico">
