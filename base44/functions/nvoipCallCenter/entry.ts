@@ -291,52 +291,15 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Garantir que o callForward (chip) está configurado no ramal antes de ligar
-      const chipNumero = (config.numero_chip || '').replace(/\D/g, '');
-      if (chipNumero) {
-        try {
-          const resLista = await fetch(`${NVOIP_BASE}/list/users`, { headers });
-          const listaData = await resLista.json().catch(() => []);
-          const sipEncontrado = Array.isArray(listaData) ? listaData.find(u => String(u.numbersip) === String(caller)) : null;
-          if (sipEncontrado) {
-            const callForwardAtual = sipEncontrado.callForward || '';
-            if (callForwardAtual !== chipNumero) {
-              console.log(`[NVOIP] callForward desatualizado (${callForwardAtual || 'vazio'}) → atualizando para ${chipNumero}`);
-              const putPayload = {
-                name: sipEncontrado.name || '',
-                email: sipEncontrado.email || '',
-                webphone: sipEncontrado.webphone !== undefined ? sipEncontrado.webphone : true,
-                office: sipEncontrado.office || 0,
-                department: sipEncontrado.department || 0,
-                subDepartment: sipEncontrado.subDepartment || 0,
-                login2fa: false,
-                chat: false,
-                voice: true,
-                permissions: [],
-                callForward: chipNumero,
-              };
-              const resPut = await fetch(`${NVOIP_BASE}/update/users?numbersip=${caller}`, {
-                method: 'PUT',
-                headers,
-                body: JSON.stringify(putPayload),
-              });
-              const putData = await resPut.json().catch(() => ({}));
-              console.log(`[NVOIP] callForward atualizado: HTTP ${resPut.status}`, JSON.stringify(putData));
-            } else {
-              console.log(`[NVOIP] callForward já correto: ${callForwardAtual}`);
-            }
-          }
-        } catch (e) {
-          console.log(`[NVOIP] Aviso: não foi possível verificar/atualizar callForward: ${e.message}`);
-        }
-      }
+      // Chamada direta: caller = ramal SIP, called = cliente, callerId = DID (aparece para o cliente)
+      const authHeader = headers['Authorization'] || '';
+      const authTipo = authHeader.startsWith('Basic') ? 'Basic (napikey)' : 'Bearer (OAuth)';
 
-      // Chamada: caller = ramal SIP, callerId = DID (opcional)
-      console.log(`[NVOIP] realizarChamada:`);
+      console.log(`[NVOIP] realizarChamada DIRETA:`);
       console.log(`  caller (ramal SIP)   = ${caller}`);
-      console.log(`  chip (callForward)   = ${chipNumero || 'não configurado'}`);
       console.log(`  callerId (DID)       = ${config.numero_did || 'não configurado'}`);
       console.log(`  called (cliente)     = ${calledFormatado}`);
+      console.log(`  auth: ${authTipo}, tipo config: ${tipo}`);
 
       const callBody = {
         caller,
@@ -346,11 +309,7 @@ Deno.serve(async (req) => {
         callBody.callerId = config.numero_did.replace(/\D/g, '');
       }
 
-      // Log de diagnóstico — inclui tipo de auth usado
-      const authHeader = headers['Authorization'] || '';
-      const authTipo = authHeader.startsWith('Basic') ? 'Basic (napikey)' : 'Bearer (OAuth)';
-      console.log(`[NVOIP] realizarChamada — auth: ${authTipo}, tipo config: ${tipo}`);
-      console.log(`[NVOIP] POST /v2/calls/ body:`, JSON.stringify(callBody));
+      console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
@@ -365,9 +324,9 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
 
-        // Se "Invalid User", tenta com caller sem prefixo de empresa (só os últimos dígitos do ramal)
+        // Se "Invalid User/Caller", tenta com caller curto (últimos 4 dígitos)
         if ((errMsg.toLowerCase().includes('invalid user') || errMsg.toLowerCase().includes('invalid caller')) && caller.length > 4) {
-          const callerCurto = caller.slice(-4); // ex: "137715001" → "5001"
+          const callerCurto = caller.slice(-4);
           const callBody2 = { ...callBody, caller: callerCurto };
           console.log(`[NVOIP] Retry com caller curto: ${callerCurto}`);
           const res2 = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -383,14 +342,10 @@ Deno.serve(async (req) => {
           }
           const errMsg2 = data2.message || data2.error || data2.detail || `HTTP ${res2.status}`;
           return Response.json({
-            error: `Falha ao iniciar chamada: ${errMsg}. Retry com ramal curto (${callerCurto}) também falhou: ${errMsg2}. Verifique se o ramal SIP pertence a esta conta NVOIP.`,
+            error: `Falha ao iniciar chamada: ${errMsg}. Retry (${callerCurto}) também falhou: ${errMsg2}.`,
             _error_type: 'chamada_falhou',
             _debug_original: data,
             _debug_retry: data2,
-            _tipo_config: tipo,
-            _caller_original: caller,
-            _caller_retry: callerCurto,
-            _auth_tipo: authTipo,
           }, { status: 200 });
         }
 
@@ -398,13 +353,10 @@ Deno.serve(async (req) => {
           error: `Falha ao iniciar chamada: ${errMsg}`,
           _error_type: 'chamada_falhou',
           _debug: data,
-          _tipo_config: tipo,
-          _caller: caller,
-          _auth_tipo: authTipo,
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _callerId: config.numero_did, _chip: chipNumero || null });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _callerId: config.numero_did });
     }
 
     if (action === 'consultarChamada') {

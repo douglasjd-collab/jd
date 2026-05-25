@@ -125,7 +125,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="w-5 h-5 text-green-600" />
-            Nova Chamada — Callback NVOIP
+            Nova Chamada — NVOIP
           </DialogTitle>
         </DialogHeader>
 
@@ -211,11 +211,9 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
           {/* Instruções sobre o fluxo */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-900 space-y-1">
-            <p className="font-semibold">📞 Como funciona o callback:</p>
-            <p>1. NVOIP liga para seu <strong>chip</strong> {celularFisico ? <span className="font-mono text-blue-700">({celularFisico})</span> : <span className="text-red-600">(não configurado!)</span>}</p>
-            <p>2. Você atende o celular</p>
-            <p>3. NVOIP disca para o cliente e conecta as duas chamadas</p>
-            {numeroDID && <p className="text-blue-700 mt-1">DID {numeroDID} aparece como número de origem para o cliente.</p>}
+            <p className="font-semibold">📞 Como funciona:</p>
+            <p>A NVOIP disca diretamente para o cliente usando seu ramal SIP.</p>
+            {numeroDID && <p className="text-blue-700 mt-1">O número <span className="font-mono font-bold">{numeroDID}</span> aparece como origem para o cliente.</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
