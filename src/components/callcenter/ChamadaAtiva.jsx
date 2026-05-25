@@ -118,12 +118,11 @@ export default function ChamadaAtiva({ callId, destino, chip, onEncerrada }) {
       {(status === 'noanswer' || status === 'failed') && (
         <div className="text-xs text-left bg-red-900/40 rounded-lg p-3 space-y-2">
           <p className="font-semibold text-red-300">❌ Chamada não atendida</p>
-          <p className="text-red-200">A NVOIP tentou ligar para o chip <strong className="text-white">{chipFormatado}</strong>, mas essa chamada não foi atendida ou não completou.</p>
-          <div className="text-red-300 space-y-0.5 pt-1 border-t border-red-700/50">
-            <p className="font-medium text-yellow-300">Verifique:</p>
-            <p>• O celular <strong>{chipFormatado}</strong> tocou?</p>
-            <p>• O número está correto? (Meu Ramal → Número do Chip)</p>
-            <p>• O encaminhamento está ativo no painel NVOIP?</p>
+          <p className="text-red-200">A NVOIP tentou ligar para o chip <strong className="text-white">{chipFormatado}</strong>, mas não completou.</p>
+          <div className="text-yellow-200 space-y-1 pt-1 border-t border-red-700/50">
+            <p className="font-medium text-yellow-300">Causa mais provável:</p>
+            <p>• O <strong>Número do Chip</strong> pode ser igual ao DID (número virtual). Configure um <strong>celular físico real</strong> em <em>Meu Ramal → Número do CHIP</em>.</p>
+            <p>• Ou o encaminhamento no ramal NVOIP não está configurado.</p>
           </div>
         </div>
       )}

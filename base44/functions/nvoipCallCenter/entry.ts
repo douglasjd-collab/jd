@@ -291,9 +291,50 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
+      // Garantir que o callForward (chip) está configurado no ramal antes de ligar
+      const chipNumero = (config.numero_chip || '').replace(/\D/g, '');
+      if (chipNumero) {
+        try {
+          const resLista = await fetch(`${NVOIP_BASE}/list/users`, { headers });
+          const listaData = await resLista.json().catch(() => []);
+          const sipEncontrado = Array.isArray(listaData) ? listaData.find(u => String(u.numbersip) === String(caller)) : null;
+          if (sipEncontrado) {
+            const callForwardAtual = sipEncontrado.callForward || '';
+            if (callForwardAtual !== chipNumero) {
+              console.log(`[NVOIP] callForward desatualizado (${callForwardAtual || 'vazio'}) → atualizando para ${chipNumero}`);
+              const putPayload = {
+                name: sipEncontrado.name || '',
+                email: sipEncontrado.email || '',
+                webphone: sipEncontrado.webphone !== undefined ? sipEncontrado.webphone : true,
+                office: sipEncontrado.office || 0,
+                department: sipEncontrado.department || 0,
+                subDepartment: sipEncontrado.subDepartment || 0,
+                login2fa: false,
+                chat: false,
+                voice: true,
+                permissions: [],
+                callForward: chipNumero,
+              };
+              const resPut = await fetch(`${NVOIP_BASE}/update/users?numbersip=${caller}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(putPayload),
+              });
+              const putData = await resPut.json().catch(() => ({}));
+              console.log(`[NVOIP] callForward atualizado: HTTP ${resPut.status}`, JSON.stringify(putData));
+            } else {
+              console.log(`[NVOIP] callForward já correto: ${callForwardAtual}`);
+            }
+          }
+        } catch (e) {
+          console.log(`[NVOIP] Aviso: não foi possível verificar/atualizar callForward: ${e.message}`);
+        }
+      }
+
       // Chamada: caller = ramal SIP, callerId = DID (opcional)
       console.log(`[NVOIP] realizarChamada:`);
       console.log(`  caller (ramal SIP)   = ${caller}`);
+      console.log(`  chip (callForward)   = ${chipNumero || 'não configurado'}`);
       console.log(`  callerId (DID)       = ${config.numero_did || 'não configurado'}`);
       console.log(`  called (cliente)     = ${calledFormatado}`);
 

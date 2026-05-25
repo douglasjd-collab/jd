@@ -204,6 +204,29 @@ export default function CallCenter() {
         </div>
       )}
 
+      {/* Alerta: chip igual ao DID (configuração inválida) */}
+      {!naoConfigurado && config?.numero_chip && config?.numero_did &&
+        config.numero_chip.replace(/\D/g,'') === config.numero_did.replace(/\D/g,'') && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border-2 border-red-400 rounded-xl text-sm text-red-800">
+          <span className="text-xl">⚠️</span>
+          <div className="flex-1">
+            <p className="font-semibold text-red-700">Configuração inválida — Chip = DID</p>
+            <p className="mt-1 text-red-700">
+              O <strong>Número do Chip</strong> ({config.numero_chip}) está igual ao <strong>DID</strong>. O chip deve ser um <strong>celular físico real</strong> (ex: seu celular pessoal) para receber a 1ª ligação do callback.
+            </p>
+            <p className="mt-1 text-xs text-red-600">
+              Acesse <strong>Meu Ramal</strong> e informe um número de celular diferente no campo "Número do CHIP".
+            </p>
+          </div>
+          <button
+            onClick={() => setRamalUsuarioOpen(true)}
+            className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+          >
+            Corrigir
+          </button>
+        </div>
+      )}
+
       {/* Modo de chamada ativo */}
       {!naoConfigurado && (
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
@@ -212,9 +235,6 @@ export default function CallCenter() {
             <p className="font-semibold">Modo atual: Callback NVOIP (duas pernas)</p>
             <p className="mt-1 text-amber-700">
               Ao clicar em ligar, a NVOIP ligará <strong>primeiro para o seu chip/ramal</strong>. Após você atender, a NVOIP disca para o cliente e a chamada é conectada.
-            </p>
-            <p className="mt-1 text-xs text-amber-600">
-              ℹ️ Se a chamada retornar "Não atendida", verifique se o celular do chip configurado realmente tocou. Use o botão <strong>"Testar meu chip"</strong> no modal de chamada para confirmar.
             </p>
           </div>
         </div>

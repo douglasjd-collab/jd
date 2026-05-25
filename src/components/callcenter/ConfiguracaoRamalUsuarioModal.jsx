@@ -145,9 +145,14 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               </div>
             )}
 
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              <p className="font-semibold mb-1">⚙️ Configuração individual do ramal</p>
-              <p>Cada vendedor/colaborador pode ter seu próprio ramal NVOIP. Ao realizar chamadas, o sistema usará <strong>seu ramal pessoal</strong> como origem.</p>
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
+              <p className="font-semibold mb-1">📱 Como funciona o callback:</p>
+              <ol className="list-decimal list-inside space-y-0.5 text-xs">
+                <li>NVOIP liga para o seu <strong>Número do CHIP</strong> (celular físico)</li>
+                <li>Você atende o celular</li>
+                <li>NVOIP então liga para o cliente e conecta as duas chamadas</li>
+              </ol>
+              <p className="text-xs mt-1 text-amber-800 font-medium">⚠️ O CHIP deve ser um celular físico diferente do DID!</p>
             </div>
 
             <div className="space-y-2">
