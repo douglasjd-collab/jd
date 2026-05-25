@@ -68,6 +68,9 @@ export default function SimuladorInteligente() {
   const [prazoConsorcio, setPrazoConsorcio] = useState('');
   const [reajusteAnual, setReajusteAnual] = useState('3');
 
+  // Desvalorização
+  const [desvalorizacaoAnual, setDesvalorizacaoAnual] = useState('10');
+
   // Investimento
   const [rentabilidadeMensal, setRentabilidadeMensal] = useState('1.00');
   const [prazoAnalise, setPrazoAnalise] = useState('');
@@ -120,17 +123,24 @@ export default function SimuladorInteligente() {
 
     setCalculando(true);
 
+    // Desvalorização mensal do bem
+    const desvalAnual = parseFloat(desvalorizacaoAnual) / 100;
+    const desvalMes = Math.pow(1 - desvalAnual, 1 / 12) - 1; // negativo
+    // Valor do bem ao final do prazo após desvalorização
+    const valorBemFinal = vBem * Math.pow(1 - desvalAnual, prazo / 12);
+
     // ===== CENÁRIO 1: À VISTA + INVESTIMENTO DA PARCELA =====
-    // Cliente tem o dinheiro ou compra à vista. Investe mensalmente o equivalente à parcela do consórcio.
     const pmtInvestimento = parcCons > 0 ? parcCons : (vBem / prazo);
     const vfInvestAVista = vfAportesMensais(pmtInvestimento, rentMes, prazo);
-    const patrimonioAVista = vBem + vfInvestAVista;
+    // Patrimônio: valor residual do bem + investimento acumulado
+    const patrimonioAVista = valorBemFinal + vfInvestAVista;
 
     // Série mensal cenário 1
     const serieAVista = [];
     for (let m = 1; m <= prazo; m++) {
       const acum = vfAportesMensais(pmtInvestimento, rentMes, m);
-      serieAVista.push({ mes: m, patrimonio: vBem + acum, investimento: acum });
+      const bemResidual = vBem * Math.pow(1 - desvalAnual, m / 12);
+      serieAVista.push({ mes: m, patrimonio: bemResidual + acum, investimento: acum, bemResidual });
     }
 
     // ===== CENÁRIO 2: CONSÓRCIO + LANCE + INVESTIMENTO DO RESTANTE =====
@@ -159,7 +169,7 @@ export default function SimuladorInteligente() {
       ? vfCapital(capitalInvestidoConsorcio, rentMes, prazo)
       : 0;
 
-    // Série mensal consórcio
+    // Série mensal consórcio (bem se desvaloriza também, mas investimento compensa)
     const serieConsorcio = [];
     for (let m = 1; m <= prazo; m++) {
       const vfInv = capitalInvestidoConsorcio > 0 ? vfCapital(capitalInvestidoConsorcio, rentMes, m) : 0;
@@ -169,10 +179,12 @@ export default function SimuladorInteligente() {
         const ano = Math.floor((k - 1) / 12);
         totParcM += parcCons * Math.pow(1 + reaj, ano);
       }
-      serieConsorcio.push({ mes: m, patrimonio: vBem + vfInv - totParcM, investimento: vfInv });
+      const bemResidual = vBem * Math.pow(1 - desvalAnual, m / 12);
+      serieConsorcio.push({ mes: m, patrimonio: bemResidual + vfInv - totParcM, investimento: vfInv, bemResidual });
     }
 
-    const patrimonioConsorcio = vBem + vfInvestConsorcio - totalParcelasPagas;
+    // Patrimônio consórcio: valor residual + investimento - parcelas pagas
+    const patrimonioConsorcio = valorBemFinal + vfInvestConsorcio - totalParcelasPagas;
 
     // ===== CENÁRIO 3: FINANCIAMENTO + INVESTIMENTO =====
     const entrada = tipoUsoValor === 'entrada' ? vDisp : 0;
@@ -201,16 +213,15 @@ export default function SimuladorInteligente() {
     const capitalInvestidoFin = tipoUsoValor === 'entrada' ? 0 : vDisp;
     const vfInvestFin = capitalInvestidoFin > 0 ? vfCapital(capitalInvestidoFin, rentMes, prazo) : 0;
     const totalPagoFin = parcelaFin * prazoFin;
-    const patrimonioFinanciamento = vBem + vfInvestFin - totalJurosFin;
+    const patrimonioFinanciamento = valorBemFinal + vfInvestFin - totalJurosFin;
 
-    // Série mensal financiamento
+    // Série mensal financiamento (bem também desvaloriza)
     const serieFinanciamento = [];
     for (let m = 1; m <= prazo; m++) {
       const vfInv = capitalInvestidoFin > 0 ? vfCapital(capitalInvestidoFin, rentMes, m) : 0;
       const mesesPagosFin = Math.min(m, prazoFin);
       let jurosPagosM = 0;
       if (sistemaFinanciamento === 'PRICE') {
-        jurosPagosM = parcelaFin * mesesPagosFin - valorFinanciado * (1 - Math.pow(1 + taxaMes, -prazoFin) / Math.pow(1 + taxaMes, -(prazoFin - mesesPagosFin)));
         jurosPagosM = Math.max(0, parcelaFin * mesesPagosFin - (valorFinanciado - valorFinanciado * Math.pow(1 + taxaMes, mesesPagosFin) / Math.pow(1 + taxaMes, prazoFin)));
       } else {
         const amort = valorFinanciado / prazoFin;
@@ -220,7 +231,8 @@ export default function SimuladorInteligente() {
           saldo -= amort;
         }
       }
-      serieFinanciamento.push({ mes: m, patrimonio: vBem + vfInv - jurosPagosM, investimento: vfInv });
+      const bemResidual = vBem * Math.pow(1 - desvalAnual, m / 12);
+      serieFinanciamento.push({ mes: m, patrimonio: bemResidual + vfInv - jurosPagosM, investimento: vfInv, bemResidual });
     }
 
     // Combinar séries para gráficos — amostrar a cada 12 meses
@@ -236,6 +248,7 @@ export default function SimuladorInteligente() {
         invConsorcio: Math.round(serieConsorcio[idx]?.investimento || 0),
         invFin: Math.round(serieFinanciamento[idx]?.investimento || 0),
         parcela: Math.round(serieParcelas[idx]?.parcela || 0),
+        bemResidual: Math.round(serieAVista[idx]?.bemResidual || 0),
       });
     }
 
@@ -259,6 +272,9 @@ export default function SimuladorInteligente() {
       patrimonioAVista,
       patrimonioConsorcio,
       patrimonioFinanciamento,
+      valorBemFinal,
+      desvalorizacaoAnual: desvalAnual * 100,
+      desvalorizacaoTotal: ((1 - valorBemFinal / vBem) * 100),
       melhor,
       pior,
       diferenca,
@@ -508,6 +524,17 @@ export default function SimuladorInteligente() {
                   <Input type="number" value={prazoAnalise} onChange={e => setPrazoAnalise(e.target.value)} placeholder="218" className="h-9 mt-1" />
                 </div>
               </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-slate-500 uppercase">Desvalorização Anual do Bem (%)</Label>
+                <Input type="number" step="0.5" value={desvalorizacaoAnual} onChange={e => setDesvalorizacaoAnual(e.target.value)} placeholder="10" className="h-9 mt-1" />
+                {valorBem && prazoAnalise && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    Valor residual após {prazoAnalise}m: <strong>{fmt(parseFloat(valorBem) * Math.pow(1 - parseFloat(desvalorizacaoAnual) / 100, parseInt(prazoAnalise) / 12))}</strong>
+                    {' '}(−{((1 - Math.pow(1 - parseFloat(desvalorizacaoAnual) / 100, parseInt(prazoAnalise) / 12)) * 100).toFixed(1)}%)
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -607,12 +634,24 @@ export default function SimuladorInteligente() {
                 </div>
               </div>
 
+              {/* Info desvalorização */}
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-center justify-between text-sm">
+                <div>
+                  <span className="text-orange-700 font-semibold">Desvalorização do Bem ({resultado.desvalorizacaoAnual.toFixed(0)}% a.a.)</span>
+                  <span className="text-orange-600 text-xs ml-2">−{resultado.desvalorizacaoTotal.toFixed(1)}% no período</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">Valor residual</p>
+                  <p className="font-bold text-orange-700">{fmt(resultado.valorBemFinal)}</p>
+                </div>
+              </div>
+
               {/* Cards Patrimônio */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { label: 'Compra À Vista', valor: resultado.patrimonioAVista, subLabel: `Investe ${fmt(resultado.pmtInvestimento)}/mês`, cor: 'bg-[#10353C]', nome: 'À Vista' },
-                  { label: 'Consórcio + Investimento', valor: resultado.patrimonioConsorcio, subLabel: `Total parcelas: ${fmt(resultado.totalParcelasPagas)}`, cor: 'bg-orange-500', nome: 'Consórcio' },
-                  { label: 'Financiamento + Investimento', valor: resultado.patrimonioFinanciamento, subLabel: `Juros: ${fmt(resultado.totalJurosFin)}`, cor: 'bg-blue-600', nome: 'Financiamento' },
+                  { label: 'Compra À Vista', valor: resultado.patrimonioAVista, subLabel: `Bem: ${fmt(resultado.valorBemFinal)} + Invest.: ${fmt(resultado.vfInvestAVista)}`, cor: 'bg-[#10353C]', nome: 'À Vista' },
+                  { label: 'Consórcio + Investimento', valor: resultado.patrimonioConsorcio, subLabel: `Bem: ${fmt(resultado.valorBemFinal)} − Parcelas: ${fmt(resultado.totalParcelasPagas)}`, cor: 'bg-orange-500', nome: 'Consórcio' },
+                  { label: 'Financiamento + Investimento', valor: resultado.patrimonioFinanciamento, subLabel: `Bem: ${fmt(resultado.valorBemFinal)} − Juros: ${fmt(resultado.totalJurosFin)}`, cor: 'bg-blue-600', nome: 'Financiamento' },
                 ].map(c => (
                   <Card key={c.nome} className={`border-0 shadow-sm overflow-hidden ${c.nome === melhorNome ? 'ring-2 ring-[#23BE84]' : ''}`}>
                     <div className={`${c.cor} px-4 py-3 flex items-center justify-between`}>
@@ -657,6 +696,7 @@ export default function SimuladorInteligente() {
                       <Area type="monotone" dataKey="avista" name="À Vista" stroke="#083942" fill="url(#ga)" strokeWidth={2} dot={false} />
                       <Area type="monotone" dataKey="consorcio" name="Consórcio" stroke="#f58941" fill="url(#gc)" strokeWidth={2} dot={false} />
                       <Area type="monotone" dataKey="financiamento" name="Financiamento" stroke="#3b82f6" fill="url(#gf)" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="bemResidual" name="Valor Residual Bem" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="4 2" dot={false} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
