@@ -90,13 +90,6 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
       toast.error('Número do Chip é obrigatório para realizar chamadas');
       return;
     }
-    if (chipIgualDid) {
-      toast.error('Número do Chip inválido', {
-        description: 'O chip não pode ser igual ao DID. Informe um celular físico diferente.',
-        duration: 8000,
-      });
-      return;
-    }
     setLoading(true);
     const res = await base44.functions.invoke('nvoipCallCenter', {
       action: 'salvarConfigUsuario',
