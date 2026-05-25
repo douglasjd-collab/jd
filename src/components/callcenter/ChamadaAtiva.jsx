@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { PhoneOff, Loader2, Phone, Mic } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import CallEndModal from './CallEndModal';
 
 const statusLabel = {
   success:             '📞 Chamada iniciada — aguardando...',
@@ -26,12 +27,14 @@ const statusColor = {
   failed:              'bg-red-100 text-red-700',
 };
 
-export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
+export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada }) {
   const [status, setStatus] = useState('calling_origin');
   const [duracao, setDuracao] = useState(0);
   const [encerrando, setEncerrando] = useState(false);
   const [logTecnico, setLogTecnico] = useState(null);
   const [mostrarLog, setMostrarLog] = useState(false);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [savingResult, setSavingResult] = useState(false);
 
   useEffect(() => {
     if (!callId) return;
@@ -50,11 +53,11 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       }
       if (['finished', 'noanswer', 'busy'].includes(state)) {
         clearInterval(poll);
-        setTimeout(() => onEncerrada?.(), 5000);
+        setShowEndModal(true);
       }
       if (state === 'failed') {
         clearInterval(poll);
-        setTimeout(() => onEncerrada?.(), 7000);
+        setShowEndModal(true);
       }
     }, 3000);
 
@@ -68,8 +71,19 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       callId,
     });
     setEncerrando(false);
-    toast.success('Chamada encerrada');
-    onEncerrada?.();
+    setShowEndModal(true);
+  };
+
+  const handleConfirmResult = async (resultado) => {
+    setSavingResult(true);
+    try {
+      // Aqui você pode salvar o resultado em uma entidade se desejar
+      toast.success(`Ligação registrada como "${resultado}"`);
+      setShowEndModal(false);
+      setTimeout(() => onEncerrada?.(), 500);
+    } finally {
+      setSavingResult(false);
+    }
   };
 
   const formatDuracao = (s) => {
@@ -137,6 +151,17 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
           )}
         </div>
       )}
+
+      {/* Modal de encerramento */}
+      <CallEndModal
+        open={showEndModal}
+        onOpenChange={setShowEndModal}
+        contato={nomeContato || destino}
+        numero={destino}
+        duracao={duracao}
+        onConfirm={handleConfirmResult}
+        loading={savingResult}
+      />
     </div>
   );
 }

@@ -12,6 +12,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [nomeContato, setNomeContato] = useState('');
 
   useEffect(() => {
     if (numeroInicial) setCalled(numeroInicial);
@@ -53,9 +54,10 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
     if (res.data?.callId) {
       toast.success('Chamada iniciada! Aguarde tocar...');
-      onChamadaIniciada?.(res.data.callId, called);
+      onChamadaIniciada?.(res.data.callId, called, nomeContato || 'Contato');
       onOpenChange(false);
       setCalled('');
+      setNomeContato('');
     } else {
       toast.error('Erro: ' + (res.data?.error || 'Erro desconhecido'));
     }
@@ -131,6 +133,16 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
               )}
             </div>
           )})()}
+
+          <div className="space-y-2">
+            <Label>Nome do Contato (opcional)</Label>
+            <Input
+              placeholder="Ex: João Silva"
+              value={nomeContato}
+              onChange={e => setNomeContato(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLigar()}
+            />
+          </div>
 
           <div className="space-y-2">
             <Label>Número do Cliente *</Label>
