@@ -35,11 +35,11 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     }
   };
 
-  const temRamalPessoal = configUsuario && configUsuario.numbersip && configUsuario.user_token;
+  const temRamalPessoal = configUsuario && configUsuario.numbersip;
   const temChip = configUsuario && configUsuario.numero_chip;
   const numeroDID = configUsuario?.numero_did || '';
   const celularFisico = configUsuario?.numero_chip || '';
-  const temConfiguracao = temRamalPessoal || numeroDID;
+  const temConfiguracao = !!temRamalPessoal;
 
   const handleTestarChip = async () => {
     const chip = configUsuario?.numero_chip?.replace(/\D/g, '');
@@ -69,9 +69,9 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       toast.error('Número inválido. Informe DDD + número (mínimo 8 dígitos).');
       return;
     }
-    if (!temRamalPessoal && !numeroDID) {
-      toast.error('Ramal ou DID não configurado.', {
-        description: 'Acesse Call Center → Meu Ramal para configurar.',
+    if (!temConfiguracao) {
+      toast.error('Ramal não configurado.', {
+        description: 'Acesse Call Center → Meu Ramal ou Config Empresa para configurar.',
         duration: 8000,
       });
       return;

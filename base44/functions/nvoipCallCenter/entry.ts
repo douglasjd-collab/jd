@@ -206,11 +206,21 @@ Deno.serve(async (req) => {
 
     // Buscar config do usuário para exibir no modal
     if (action === 'buscarConfigUsuario') {
-      if (!colaboradorId) return Response.json({ config: null });
-      const existentes = await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.filter({
-        colaborador_id: colaboradorId,
-      });
-      return Response.json({ config: existentes.length > 0 ? existentes[0] : null });
+      // 1. Tenta config pessoal do usuário
+      if (colaboradorId) {
+        const existentes = await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.filter({
+          colaborador_id: colaboradorId,
+        });
+        if (existentes.length > 0 && existentes[0].numbersip && existentes[0].user_token) {
+          return Response.json({ config: existentes[0], tipo: 'usuario' });
+        }
+      }
+      // 2. Fallback: config da empresa
+      const empConfigs = await base44.asServiceRole.entities.ConfiguracaoNvoip.filter({ empresa_id: empresaId });
+      if (empConfigs.length > 0 && empConfigs[0].numbersip) {
+        return Response.json({ config: empConfigs[0], tipo: 'empresa' });
+      }
+      return Response.json({ config: null });
     }
 
     // Para todas as outras ações, pega a config com prioridade para o usuário
