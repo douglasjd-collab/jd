@@ -292,17 +292,16 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Discagem direta: usa o DID como caller (número de saída)
-      // O ramal SIP é usado apenas para autenticação OAuth, não como destino da chamada
-      const callerDireto = numeroDid || ramalSip;
-
+      // A NVOIP exige que caller seja o ramal SIP registrado na conta.
+      // callerId é o número que aparece para o destinatário (DID).
+      // Como o ramal está offline/webphone OFF, a NVOIP liga para o chip/callForward do ramal.
       const callBody = {
-        caller: callerDireto,
+        caller: ramalSip,
         called: calledFormatado,
       };
       if (numeroDid) callBody.callerId = numeroDid;
 
-      console.log(`[NVOIP] modo: discagem direta, caller=${callerDireto}, called=${calledFormatado}`);
+      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}`);
 
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
