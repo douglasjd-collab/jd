@@ -1,200 +1,71 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Phone, PhoneOff, Loader2, Mic, MicOff } from 'lucide-react';
+import { Phone, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
-import JsSIP from 'jssip';
 
-const SIP_SERVER = 'wss://webrtc.nvoip.com.br:8089/ws';
-const SIP_DOMAIN = 'sip.nvoip.com.br';
-
-export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial = '' }) {
+export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial = '', onChamadaIniciada }) {
   const [called, setCalled] = useState(numeroInicial);
-  const [status, setStatus] = useState('idle'); // idle | registrando | pronto | ligando | ativa | encerrada | erro
-  const [erro, setErro] = useState('');
+  const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
-  const [muted, setMuted] = useState(false);
-
-  const uaRef = useRef(null);
-  const sessionRef = useRef(null);
-  const audioRef = useRef(null);
 
   useEffect(() => {
     if (numeroInicial) setCalled(numeroInicial);
   }, [numeroInicial]);
 
   useEffect(() => {
-    if (open) {
-      carregarConfig();
-    } else {
-      desligar(true);
-    }
+    if (open) carregarConfig();
   }, [open]);
 
   const carregarConfig = async () => {
     setLoadingConfig(true);
-    setErro('');
     try {
       const res = await base44.functions.invoke('nvoipCallCenter', { action: 'buscarConfigUsuario' });
-      const cfg = res.data?.config;
-      if (!cfg?.numbersip || !cfg?.sip_password) {
-        setErro('Configure seu Ramal SIP e Senha SIP em "Meu Ramal" para fazer chamadas pelo browser.');
-        setStatus('erro');
-      } else {
-        setConfig(cfg);
-        setStatus('idle');
-      }
-    } catch (e) {
-      setErro('Erro ao carregar configuração: ' + e.message);
-      setStatus('erro');
+      setConfig(res.data?.config || null);
+    } catch {
+      setConfig(null);
     } finally {
       setLoadingConfig(false);
     }
   };
 
-  const registrarSip = () => {
-    return new Promise((resolve, reject) => {
-      if (uaRef.current) {
-        uaRef.current.stop();
-        uaRef.current = null;
-      }
-
-      const { numbersip, sip_password } = config;
-      const uri = `sip:${numbersip}@${SIP_DOMAIN}`;
-
-      const ua = new JsSIP.UA({
-        sockets: [new JsSIP.WebSocketInterface(SIP_SERVER)],
-        uri,
-        password: sip_password,
-        register: true,
-        session_timers: false,
-      });
-
-      ua.on('registered', () => {
-        console.log('[SIP] Registrado!');
-        resolve(ua);
-      });
-
-      ua.on('registrationFailed', (e) => {
-        console.error('[SIP] Falha no registro:', e.cause);
-        reject(new Error('Falha no registro SIP: ' + e.cause));
-      });
-
-      ua.on('disconnected', () => {
-        console.warn('[SIP] Desconectado');
-      });
-
-      ua.start();
-      uaRef.current = ua;
-    });
-  };
-
   const handleLigar = async () => {
     const numero = called.replace(/\D/g, '');
     if (!numero || numero.length < 8) {
-      toast.error('Número inválido.');
+      toast.error('Número inválido. Informe DDD + número.');
       return;
     }
     if (!config) {
-      toast.error('Configure o ramal SIP primeiro.');
+      toast.error('Configuração NVOIP não encontrada. Acesse Call Center → Meu Ramal.');
       return;
     }
 
-    setStatus('registrando');
-    setErro('');
+    setLoading(true);
+    const res = await base44.functions.invoke('nvoipCallCenter', {
+      action: 'realizarChamadaDireta',
+      called: numero,
+    });
+    setLoading(false);
 
-    try {
-      const ua = await registrarSip();
-      setStatus('ligando');
-
-      const numeroFormatado = numero.startsWith('55') ? numero : '55' + numero;
-      const target = `sip:${numeroFormatado}@${SIP_DOMAIN}`;
-
-      const session = ua.call(target, {
-        mediaConstraints: { audio: true, video: false },
-        rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
-      });
-
-      sessionRef.current = session;
-
-      session.on('connecting', () => setStatus('ligando'));
-      session.on('progress', () => setStatus('ligando'));
-
-      session.on('accepted', () => {
-        setStatus('ativa');
-        // Conectar áudio remoto
-        session.connection?.getReceivers().forEach(receiver => {
-          if (receiver.track?.kind === 'audio' && audioRef.current) {
-            const stream = new MediaStream([receiver.track]);
-            audioRef.current.srcObject = stream;
-            audioRef.current.play().catch(() => {});
-          }
-        });
-      });
-
-      session.on('ended', () => {
-        setStatus('encerrada');
-        sessionRef.current = null;
-        setTimeout(() => {
-          setStatus('idle');
-        }, 3000);
-      });
-
-      session.on('failed', (e) => {
-        setStatus('erro');
-        setErro('Chamada falhou: ' + (e.cause || 'erro desconhecido'));
-        sessionRef.current = null;
-      });
-
-    } catch (e) {
-      setStatus('erro');
-      setErro(e.message);
-    }
-  };
-
-  const desligar = (silencioso = false) => {
-    if (sessionRef.current) {
-      try { sessionRef.current.terminate(); } catch {}
-      sessionRef.current = null;
-    }
-    if (uaRef.current) {
-      try { uaRef.current.stop(); } catch {}
-      uaRef.current = null;
-    }
-    if (!silencioso) {
-      setStatus('idle');
-      setErro('');
-    }
-  };
-
-  const toggleMudo = () => {
-    if (!sessionRef.current) return;
-    if (muted) {
-      sessionRef.current.unmute({ audio: true });
+    if (res.data?.callId) {
+      toast.success('Chamada iniciada! Aguarde tocar...');
+      onChamadaIniciada?.(res.data.callId, called);
+      onOpenChange(false);
+      setCalled('');
     } else {
-      sessionRef.current.mute({ audio: true });
+      toast.error('Erro: ' + (res.data?.error || 'Erro desconhecido'));
     }
-    setMuted(!muted);
   };
 
-  const isAtiva = status === 'ativa';
-  const isLigando = status === 'ligando' || status === 'registrando';
-
-  const statusTexto = {
-    idle: '',
-    registrando: '🔄 Conectando ao servidor SIP...',
-    ligando: '📞 Chamando...',
-    ativa: '✅ Chamada em andamento',
-    encerrada: '✔️ Chamada encerrada',
-    erro: '',
-  };
+  const numeroDID = config?.numero_did?.replace(/\D/g, '') || config?.numbersip || '';
+  const numeroChip = config?.numero_chip?.replace(/\D/g, '') || '';
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) desligar(); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -203,84 +74,92 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
           </DialogTitle>
         </DialogHeader>
 
-        {/* Elemento de áudio invisível */}
-        <audio ref={audioRef} autoPlay hidden />
-
         <div className="space-y-4 py-2">
 
           {loadingConfig && (
             <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Loader2 className="w-4 h-4 animate-spin" /> Carregando configuração...
+              <Loader2 className="w-4 h-4 animate-spin" /> Verificando configuração...
             </div>
           )}
 
-          {!loadingConfig && status === 'erro' && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-              ❌ {erro}
+          {!loadingConfig && !config && (
+            <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <p>Configuração NVOIP não encontrada. Acesse <strong>Call Center → Meu Ramal</strong>.</p>
             </div>
           )}
 
-          {!loadingConfig && !isAtiva && !isLigando && status !== 'encerrada' && (
+          {!loadingConfig && config && (() => {
+            const chipIgualDid = config.numero_chip?.replace(/\D/g,'') === config.numero_did?.replace(/\D/g,'');
+            return (
             <div className="space-y-2">
-              <Label>Número do Cliente *</Label>
-              <Input
-                placeholder="Ex: 87991426333 (DDD + número)"
-                value={called}
-                onChange={e => setCalled(e.target.value.replace(/\D/g, ''))}
-                onKeyDown={e => e.key === 'Enter' && handleLigar()}
-                autoFocus
-                disabled={isLigando}
-              />
-              <p className="text-xs text-slate-400">DDD + número, sem 0 e sem +55</p>
+              {chipIgualDid && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-xs text-red-700">
+                  <p className="font-semibold">⚠️ Chip igual ao DID!</p>
+                  <p className="mt-1">O número do CHIP deve ser seu <strong>celular físico</strong> (ex: 5587991426333). Acesse <strong>Call Center → Meu Ramal</strong> e corrija.</p>
+                </div>
+              )}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Ramal SIP:</span>
+                  <span className="font-mono font-bold">{config.numbersip}</span>
+                </div>
+                {numeroDID && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">DID de saída:</span>
+                    <span className="font-mono font-bold text-green-700">{numeroDID}</span>
+                  </div>
+                )}
+                {numeroChip && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Chip (callback):</span>
+                    <span className="font-mono font-bold">{numeroChip}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Senha SIP:</span>
+                  <span className={`font-bold text-xs ${config.sip_password ? 'text-green-600' : 'text-red-500'}`}>
+                    {config.sip_password ? '✅ Configurada' : '❌ NÃO configurada'}
+                  </span>
+                </div>
+              </div>
+              {!config.sip_password && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
+                  <p className="font-semibold">⚠️ Senha SIP obrigatória!</p>
+                  <p className="mt-1">Acesse <strong>Call Center → Meu Ramal</strong> e preencha a <strong>Senha SIP</strong> (senha do ramal no painel NVOIP). Sem ela o encaminhamento não funciona.</p>
+                </div>
+              )}
             </div>
-          )}
+          )})()}
 
-          {statusTexto[status] && (
-            <div className={`rounded-lg p-3 text-sm font-medium text-center ${isAtiva ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-              {statusTexto[status]}
-              {isLigando && <span className="ml-2 inline-block animate-pulse">●●●</span>}
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Número do Cliente *</Label>
+            <Input
+              placeholder="Ex: 87991426333 (DDD + número)"
+              value={called}
+              onChange={e => setCalled(e.target.value.replace(/\D/g, ''))}
+              onKeyDown={e => e.key === 'Enter' && handleLigar()}
+              autoFocus
+            />
+            <p className="text-xs text-slate-400">DDD + número, sem 0 e sem +55</p>
+          </div>
 
-          {status === 'encerrada' && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600 text-center">
-              ✔️ Chamada encerrada
-            </div>
-          )}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+            <p className="font-semibold">📞 Fluxo da chamada:</p>
+            <p className="mt-1">1. NVOIP liga primeiro para o seu <strong>chip ({numeroChip || 'não configurado'})</strong></p>
+            <p>2. Você atende → NVOIP conecta com o cliente</p>
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => { desligar(); onOpenChange(false); }}>
-              Fechar
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button
+              onClick={handleLigar}
+              disabled={loading || loadingConfig || !config}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Phone className="w-4 h-4 mr-2" />}
+              Ligar
             </Button>
-
-            {isAtiva && (
-              <Button
-                variant="outline"
-                onClick={toggleMudo}
-                className={muted ? 'border-orange-400 text-orange-600' : ''}
-              >
-                {muted ? <MicOff className="w-4 h-4 mr-1" /> : <Mic className="w-4 h-4 mr-1" />}
-                {muted ? 'Desmutar' : 'Mutar'}
-              </Button>
-            )}
-
-            {(isAtiva || isLigando) && (
-              <Button onClick={() => desligar()} className="bg-red-600 hover:bg-red-700 text-white">
-                <PhoneOff className="w-4 h-4 mr-2" />
-                Desligar
-              </Button>
-            )}
-
-            {!isAtiva && !isLigando && status !== 'encerrada' && !loadingConfig && (
-              <Button
-                onClick={handleLigar}
-                disabled={!!erro || status === 'erro'}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Phone className="w-4 h-4 mr-2" />
-                Ligar
-              </Button>
-            )}
           </div>
         </div>
       </DialogContent>

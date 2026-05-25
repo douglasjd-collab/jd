@@ -270,6 +270,82 @@ Deno.serve(async (req) => {
       return Response.json(data);
     }
 
+    if (action === 'realizarChamadaDireta') {
+      // Fluxo NVOIP callback de 2 pernas:
+      // 1. caller = ramal SIP → NVOIP liga para o ramal (que encaminha para o chip via callForward)
+      // 2. Operador atende no chip → NVOIP conecta com o cliente (called)
+      //
+      // PRÉ-REQUISITO: callForward configurado no ramal via API PUT (requer senha SIP correta)
+      const { called } = body;
+
+      const ramalSip = config.numbersip;
+      const numeroDid = (config.numero_did || '').replace(/\D/g, '');
+      const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
+      const sipPassword = config.sip_password;
+
+      if (!ramalSip) {
+        return Response.json({ error: 'Ramal SIP não configurado. Acesse Meu Ramal.' });
+      }
+
+      let calledFormatado = (called || '').replace(/\D/g, '');
+      if (!calledFormatado || calledFormatado.length < 8) {
+        return Response.json({ error: 'Número de destino inválido.' });
+      }
+      if (!calledFormatado.startsWith('55') && calledFormatado.length <= 11) {
+        calledFormatado = '55' + calledFormatado;
+      }
+
+      // Se temos chip e senha SIP, tenta configurar callForward automaticamente
+      if (numeroChip && sipPassword) {
+        // Busca dados atuais do ramal
+        const resLista = await fetch(`${NVOIP_BASE}/list/users`, { headers });
+        const listaData = await resLista.json().catch(() => []);
+        const sipUser = Array.isArray(listaData) ? listaData.find(u => String(u.numbersip) === String(ramalSip)) : null;
+
+        if (sipUser) {
+          const putPayload = {
+            name: sipUser.name || '',
+            password: sipPassword,
+            email: sipUser.email || '',
+            webphone: false,
+            office: sipUser.office || 0,
+            department: sipUser.department || 0,
+            subDepartment: sipUser.subDepartment || 0,
+            login2fa: false,
+            chat: false,
+            voice: true,
+            permissions: [],
+            callForward: numeroChip,
+          };
+          const resPut = await fetch(`${NVOIP_BASE}/update/users?numbersip=${ramalSip}`, {
+            method: 'PUT', headers, body: JSON.stringify(putPayload),
+          });
+          const putData = await resPut.json().catch(() => ({}));
+          console.log(`[NVOIP] SET callForward=${numeroChip} HTTP ${resPut.status}`, JSON.stringify(putData));
+        }
+      }
+
+      // Realiza a chamada com ramal SIP como caller
+      const callBody = { caller: ramalSip, called: calledFormatado };
+      if (numeroDid) callBody.callerId = numeroDid;
+
+      console.log(`[NVOIP] realizarChamadaDireta caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} chip=${numeroChip}`);
+
+      const res = await fetch(`${NVOIP_BASE}/calls/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(callBody),
+      });
+      let data;
+      try { data = await res.json(); } catch { data = {}; }
+      console.log(`[NVOIP] resposta: HTTP ${res.status}`, JSON.stringify(data));
+
+      if (!res.ok) {
+        return Response.json({ error: data.message || data.error || `HTTP ${res.status}`, _debug: data });
+      }
+      return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _chip: numeroChip });
+    }
+
     if (action === 'realizarChamada') {
       const { called } = body;
 
