@@ -100,8 +100,8 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       {/* Discando */}
       {(status === 'success' || status === 'calling_origin') && (
         <div className="text-xs text-left bg-yellow-900/40 rounded-lg p-3 text-yellow-200 space-y-1">
-          <p className="font-semibold text-yellow-300">📞 NVOIP vai ligar para o seu ramal SIP primeiro</p>
-          <p>Atenda o seu ramal/softphone — depois a NVOIP conectará ao <strong className="text-white">{destino}</strong>.</p>
+          <p className="font-semibold text-yellow-300">📞 Discando para o contato...</p>
+          <p>A ligação está sendo conectada a <strong className="text-white">{destino}</strong>.</p>
         </div>
       )}
       {status === 'calling_destination' && (

@@ -212,7 +212,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
           {/* Instruções sobre o fluxo */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-900 space-y-1">
             <p className="font-semibold">📞 Como funciona:</p>
-            <p>A NVOIP disca diretamente para o cliente usando seu ramal SIP.</p>
+            <p>A NVOIP disca diretamente para o cliente. A ligação vai direta ao contato.</p>
             {numeroDID && <p className="text-blue-700 mt-1">O número <span className="font-mono font-bold">{numeroDID}</span> aparece como origem para o cliente.</p>}
           </div>
 

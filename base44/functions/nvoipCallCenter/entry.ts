@@ -273,16 +273,10 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // NVOIP click-to-call (callback de 2 pernas):
-      // - caller = ramal SIP (ex: 137715001) — a NVOIP liga para o ramal SIP primeiro
-      // - called = destino (cliente) — após o ramal atender, a NVOIP liga para o cliente
-      // - callerId = DID — número que aparece para o cliente
-      // IMPORTANTE: o ramal SIP precisa estar registrado (webphone ou softphone) para atender
-
       const ramalSip = config.numbersip;
       const numeroDid = (config.numero_did || '').replace(/\D/g, '');
 
-      if (!ramalSip) {
+      if (!ramalSip && !numeroDid) {
         return Response.json({
           error: 'Ramal SIP não configurado. Acesse Call Center → Meu Ramal para configurar.',
           _error_type: 'ramal_nao_configurado',
@@ -298,18 +292,35 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      console.log(`[NVOIP] realizarChamada (callback 2 pernas):`);
-      console.log(`  caller (ramal SIP)   = ${ramalSip}`);
-      console.log(`  called (cliente)     = ${calledFormatado}`);
-      console.log(`  callerId (DID)       = ${numeroDid || 'não configurado'}`);
-      console.log(`  tipo config: ${tipo}`);
+      // Busca preferências do usuário SIP para verificar se webphone está ativo
+      let webphoneAtivo = false;
+      try {
+        const resUser = await fetch(`${NVOIP_BASE}/get/users?numbersip=${ramalSip}`, { headers });
+        if (resUser.ok) {
+          const sipData = await resUser.json();
+          // sipData pode ser objeto direto ou array
+          const sipUser = Array.isArray(sipData) ? sipData[0] : sipData;
+          webphoneAtivo = sipUser?.webphone === true;
+          console.log(`[NVOIP] webphone ativo: ${webphoneAtivo}`, JSON.stringify(sipUser));
+        }
+      } catch (e) {
+        console.log(`[NVOIP] Não foi possível verificar webphone: ${e.message}`);
+      }
 
-      const callBody = {
-        caller: ramalSip,
-        called: calledFormatado,
-      };
-      if (numeroDid) {
-        callBody.callerId = numeroDid;
+      let callBody;
+
+      if (webphoneAtivo && ramalSip) {
+        // Callback 2 pernas: NVOIP liga para o ramal SIP primeiro, depois conecta ao cliente
+        callBody = { caller: ramalSip, called: calledFormatado };
+        if (numeroDid) callBody.callerId = numeroDid;
+        console.log(`[NVOIP] modo: callback 2 pernas (webphone ativo)`);
+      } else {
+        // Discagem direta: DID como caller, cliente como called
+        // Quando webphone está OFF, não há ramal registrado para atender a 1ª perna
+        const callerDireto = numeroDid || ramalSip;
+        callBody = { caller: callerDireto, called: calledFormatado };
+        if (numeroDid) callBody.callerId = numeroDid;
+        console.log(`[NVOIP] modo: discagem direta (webphone inativo), caller=${callerDireto}`);
       }
 
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
@@ -333,7 +344,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: ramalSip, _called: calledFormatado, _callerId: numeroDid });
+      return Response.json({ ...data, _tipo_config: tipo, _webphone: webphoneAtivo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid });
     }
 
     if (action === 'consultarChamada') {
