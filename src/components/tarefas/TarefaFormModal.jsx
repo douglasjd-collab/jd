@@ -343,7 +343,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           {/* Descrição */}
           <div>
             <Label>Descrição</Label>
-            <Textarea value={form.descricao || ''} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} placeholder="Descreva detalhes da tarefa..." />
+            <Textarea value={form.descricao || ''} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={6} placeholder="Descreva detalhes da tarefa..." />
           </div>
 
           {/* Responsáveis */}
