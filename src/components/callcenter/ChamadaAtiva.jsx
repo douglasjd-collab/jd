@@ -6,8 +6,9 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const statusLabel = {
-  calling_origin:      '📞 Aguarde — NVOIP discando para o contato...',
-  calling_destination: '📞 Conectando...',
+  success:             '📞 Chamada iniciada — aguardando...',
+  calling_origin:      '📞 NVOIP ligando para seu ramal SIP...',
+  calling_destination: '📞 Conectando ao contato...',
   established:         '✅ Chamada conectada',
   noanswer:            '❌ Chamada não atendida',
   busy:                '📞 Ocupado',
@@ -16,6 +17,7 @@ const statusLabel = {
 };
 
 const statusColor = {
+  success:             'bg-blue-100 text-blue-800',
   calling_origin:      'bg-yellow-100 text-yellow-800',
   calling_destination: 'bg-blue-100 text-blue-800',
   established:         'bg-green-100 text-green-700',
@@ -49,11 +51,11 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       }
       if (['finished', 'noanswer', 'busy'].includes(state)) {
         clearInterval(poll);
-        setTimeout(() => onEncerrada?.(), 4000);
+        setTimeout(() => onEncerrada?.(), 5000);
       }
       if (state === 'failed') {
         clearInterval(poll);
-        setTimeout(() => onEncerrada?.(), 6000);
+        setTimeout(() => onEncerrada?.(), 7000);
       }
     }, 3000);
 
@@ -77,7 +79,7 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
 
-  const isAtiva = ['calling_origin', 'calling_destination', 'established'].includes(status);
+  const isAtiva = ['success', 'calling_origin', 'calling_destination', 'established'].includes(status);
 
   return (
     <div className="bg-slate-900 text-white rounded-2xl p-6 text-center space-y-4 shadow-xl">
@@ -96,10 +98,16 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
       </Badge>
 
       {/* Discando */}
-      {(status === 'calling_origin' || status === 'calling_destination') && (
-        <div className="text-xs text-left bg-yellow-900/40 rounded-lg p-3 text-yellow-200">
-          <p className="font-semibold text-yellow-300">📞 Discando para o contato...</p>
-          <p>Ligando para <strong className="text-white">{destino}</strong> via NVOIP.</p>
+      {(status === 'success' || status === 'calling_origin') && (
+        <div className="text-xs text-left bg-yellow-900/40 rounded-lg p-3 text-yellow-200 space-y-1">
+          <p className="font-semibold text-yellow-300">📞 NVOIP vai ligar para o seu ramal SIP primeiro</p>
+          <p>Atenda o seu ramal/softphone — depois a NVOIP conectará ao <strong className="text-white">{destino}</strong>.</p>
+        </div>
+      )}
+      {status === 'calling_destination' && (
+        <div className="text-xs text-left bg-blue-900/40 rounded-lg p-3 text-blue-200">
+          <p className="font-semibold text-blue-300">📞 Conectando ao contato...</p>
+          <p>Ligando para <strong className="text-white">{destino}</strong>.</p>
         </div>
       )}
 

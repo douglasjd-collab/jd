@@ -273,18 +273,19 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // Na NVOIP, para chamada de saída via click-to-call:
-      // - caller = DID (número externo, ex: 558132998470) — obrigatório
-      // - called = destino (cliente)
-      // - o ramal SIP é usado apenas para autenticação OAuth
+      // NVOIP click-to-call (callback de 2 pernas):
+      // - caller = ramal SIP (ex: 137715001) — a NVOIP liga para o ramal SIP primeiro
+      // - called = destino (cliente) — após o ramal atender, a NVOIP liga para o cliente
+      // - callerId = DID — número que aparece para o cliente
+      // IMPORTANTE: o ramal SIP precisa estar registrado (webphone ou softphone) para atender
 
-      const numeroDid = (config.numero_did || '').replace(/\D/g, '');
       const ramalSip = config.numbersip;
+      const numeroDid = (config.numero_did || '').replace(/\D/g, '');
 
-      if (!numeroDid) {
+      if (!ramalSip) {
         return Response.json({
-          error: 'Número DID não configurado. Acesse Call Center → Meu Ramal e informe o número DID de saída.',
-          _error_type: 'did_nao_configurado',
+          error: 'Ramal SIP não configurado. Acesse Call Center → Meu Ramal para configurar.',
+          _error_type: 'ramal_nao_configurado',
         }, { status: 200 });
       }
 
@@ -297,20 +298,19 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      const authHeader = headers['Authorization'] || '';
-      const authTipo = authHeader.startsWith('Basic') ? 'Basic (napikey)' : 'Bearer (OAuth)';
-
-      console.log(`[NVOIP] realizarChamada:`);
-      console.log(`  caller (DID)         = ${numeroDid}`);
+      console.log(`[NVOIP] realizarChamada (callback 2 pernas):`);
+      console.log(`  caller (ramal SIP)   = ${ramalSip}`);
       console.log(`  called (cliente)     = ${calledFormatado}`);
-      console.log(`  ramal SIP (auth)     = ${ramalSip}`);
-      console.log(`  auth: ${authTipo}, tipo config: ${tipo}`);
+      console.log(`  callerId (DID)       = ${numeroDid || 'não configurado'}`);
+      console.log(`  tipo config: ${tipo}`);
 
-      // Tenta 1: caller = DID completo
       const callBody = {
-        caller: numeroDid,
+        caller: ramalSip,
         called: calledFormatado,
       };
+      if (numeroDid) {
+        callBody.callerId = numeroDid;
+      }
 
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
@@ -324,41 +324,16 @@ Deno.serve(async (req) => {
       try { data = await res.json(); } catch { data = {}; }
       console.log(`[NVOIP] resposta chamada: ${res.status}`, JSON.stringify(data));
 
-      if (res.ok) {
-        return Response.json({ ...data, _tipo_config: tipo, _caller: numeroDid, _called: calledFormatado });
-      }
-
-      const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
-
-      // Tenta 2: caller = ramal SIP (fallback)
-      if (ramalSip) {
-        const callBody2 = { caller: ramalSip, called: calledFormatado };
-        console.log(`[NVOIP] Retry com ramal SIP como caller: ${ramalSip}`);
-        const res2 = await fetch(`${NVOIP_BASE}/calls/`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(callBody2),
-        });
-        let data2;
-        try { data2 = await res2.json(); } catch { data2 = {}; }
-        console.log(`[NVOIP] Retry resposta: ${res2.status}`, JSON.stringify(data2));
-        if (res2.ok) {
-          return Response.json({ ...data2, _tipo_config: tipo, _caller: ramalSip, _called: calledFormatado });
-        }
-        const errMsg2 = data2.message || data2.error || data2.detail || `HTTP ${res2.status}`;
+      if (!res.ok) {
+        const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
         return Response.json({
-          error: `Falha ao iniciar chamada. DID (${numeroDid}): ${errMsg}. SIP (${ramalSip}): ${errMsg2}.`,
+          error: `Falha ao iniciar chamada: ${errMsg}`,
           _error_type: 'chamada_falhou',
-          _debug_did: data,
-          _debug_sip: data2,
+          _debug: data,
         }, { status: 200 });
       }
 
-      return Response.json({
-        error: `Falha ao iniciar chamada: ${errMsg}`,
-        _error_type: 'chamada_falhou',
-        _debug: data,
-      }, { status: 200 });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: ramalSip, _called: calledFormatado, _callerId: numeroDid });
     }
 
     if (action === 'consultarChamada') {
@@ -377,14 +352,35 @@ Deno.serve(async (req) => {
 
     if (action === 'historicoChamadas') {
       const { type, date } = body;
+
+      // Tenta endpoint /calls/history com parâmetros
       let url = `${NVOIP_BASE}/calls/history`;
       const params = [];
       if (type) params.push(`type=${type}`);
       if (date) params.push(`date=${date}`);
       if (params.length > 0) url += '?' + params.join('&');
+
       const res = await fetch(url, { headers });
-      const data = await res.json();
-      return Response.json({ calls: Array.isArray(data) ? data : [data] });
+      const raw = await res.text();
+      console.log(`[NVOIP] historicoChamadas HTTP ${res.status}:`, raw.substring(0, 500));
+
+      let data;
+      try { data = JSON.parse(raw); } catch { data = null; }
+
+      if (!res.ok || !data) {
+        // Fallback: tenta /calls sem path
+        const res2 = await fetch(`${NVOIP_BASE}/calls`, { headers });
+        const raw2 = await res2.text();
+        console.log(`[NVOIP] /calls fallback HTTP ${res2.status}:`, raw2.substring(0, 500));
+        let data2;
+        try { data2 = JSON.parse(raw2); } catch { data2 = []; }
+        const calls2 = Array.isArray(data2) ? data2 : (data2?.data || data2?.calls || []);
+        return Response.json({ calls: calls2 });
+      }
+
+      // Normaliza: pode vir como array, ou objeto com campo data/calls/content
+      const calls = Array.isArray(data) ? data : (data?.data || data?.calls || data?.content || []);
+      return Response.json({ calls });
     }
 
     if (action === 'enviarSMS') {
