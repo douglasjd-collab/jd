@@ -39,8 +39,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
   const numeroDID = (configUsuario?.numero_did || '').replace(/\D/g, '');
   const celularFisico = (configUsuario?.numero_chip || '').replace(/\D/g, '');
   const temConfiguracao = !!temRamalPessoal;
-  // Chip igual ao DID = configuração inválida (chip deve ser celular físico)
-  const chipIgualDid = celularFisico && numeroDID && celularFisico === numeroDID;
+  const chipIgualDid = false; // número virtual é válido como chip
 
   const handleTestarChip = async () => {
     const chip = configUsuario?.numero_chip?.replace(/\D/g, '');
@@ -170,27 +169,6 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             </div>
           )}
 
-          {/* Aviso crítico: chip = DID */}
-          {chipIgualDid && (
-            <div className="flex items-start gap-2 bg-red-50 border-2 border-red-400 rounded-lg px-3 py-2 text-sm text-red-800">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
-              <div>
-                <p className="font-semibold">Chip inválido — igual ao DID</p>
-                <p className="text-xs mt-0.5">O Número do CHIP ({celularFisico}) é igual ao DID. Configure um <strong>celular físico real</strong> em <strong>Meu Ramal → Número do CHIP</strong> para receber a 1ª ligação.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Aviso: chip não configurado */}
-          {temConfiguracao && !celularFisico && (
-            <div className="flex items-start gap-2 bg-orange-50 border border-orange-300 rounded-lg px-3 py-2 text-sm text-orange-800">
-              <Smartphone className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">Número do Chip não configurado</p>
-                <p className="text-xs mt-0.5">Acesse <strong>Meu Ramal</strong> e informe seu celular físico no campo "Número do CHIP".</p>
-              </div>
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label>Número do Cliente *</Label>

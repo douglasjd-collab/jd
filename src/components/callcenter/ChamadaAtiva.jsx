@@ -86,8 +86,7 @@ export default function ChamadaAtiva({ callId, destino, chip, chipDid, onEncerra
     || logTecnico?.callerOrigin
     || logTecnico?._chip
     || '—';
-  // Avisa se o chip é igual ao DID (configuração inválida)
-  const chipEhDid = chipDid && chip && chip.replace(/\D/g,'') === chipDid.replace(/\D/g,'');
+  const chipEhDid = false; // número virtual é válido
 
   return (
     <div className="bg-slate-900 text-white rounded-2xl p-6 text-center space-y-4 shadow-xl">
