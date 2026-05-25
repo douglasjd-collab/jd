@@ -32,7 +32,7 @@ export default function CallCenter() {
   const [smsOpen, setSmsOpen] = useState(false);
   const [torpedoOpen, setTorpedoOpen] = useState(false);
 
-  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino, chip, chipDid }
+  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino }
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [ramalStatus, setRamalStatus] = useState(null); // 'Online' | 'Offline' | null
   const [credencialInvalida, setCredencialInvalida] = useState(false);
@@ -206,18 +206,7 @@ export default function CallCenter() {
 
 
 
-      {/* Modo de chamada ativo */}
-      {!naoConfigurado && (
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
-          <span className="text-xl">📞</span>
-          <div className="flex-1">
-            <p className="font-semibold">Modo atual: Callback NVOIP (duas pernas)</p>
-            <p className="mt-1 text-amber-700">
-              Ao clicar em ligar, a NVOIP ligará <strong>primeiro para o seu chip/ramal</strong>. Após você atender, a NVOIP disca para o cliente e a chamada é conectada.
-            </p>
-          </div>
-        </div>
-      )}
+
 
       {/* Não configurado */}
       {naoConfigurado && (
@@ -348,14 +337,12 @@ export default function CallCenter() {
             </Card>
           </div>
 
-          {/* Chamada ativa (API REST click-to-call) */}
+          {/* Chamada ativa */}
           {chamadaAtiva && (
             <div className="max-w-sm">
               <ChamadaAtiva
                 callId={chamadaAtiva.callId}
                 destino={chamadaAtiva.destino}
-                chip={chamadaAtiva.chip}
-                chipDid={chamadaAtiva.chipDid}
                 onEncerrada={() => setChamadaAtiva(null)}
               />
             </div>
@@ -397,7 +384,7 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numeroInicial={numeroParaChamar}
-        onChamadaIniciada={(callId, destino, chip, numeroDID) => setChamadaAtiva({ callId, destino, chip, chipDid: numeroDID })}
+        onChamadaIniciada={(callId, destino) => setChamadaAtiva({ callId, destino })}
       />
       <ConfiguracaoRamalUsuarioModal
         open={ramalUsuarioOpen}

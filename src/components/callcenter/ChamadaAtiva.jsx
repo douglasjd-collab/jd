@@ -6,10 +6,10 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 const statusLabel = {
-  calling_origin:      '📲 Aguarde — NVOIP ligando para seu celular...',
-  calling_destination: '📞 Celular atendeu — ligando para o cliente...',
-  established:         '✅ Chamada conectada com o cliente',
-  noanswer:            '❌ Não atendida pelo celular',
+  calling_origin:      '📞 Aguarde — NVOIP discando para o contato...',
+  calling_destination: '📞 Conectando...',
+  established:         '✅ Chamada conectada',
+  noanswer:            '❌ Chamada não atendida',
   busy:                '📞 Ocupado',
   finished:            'Chamada encerrada',
   failed:              '❌ Falha na chamada',
@@ -25,7 +25,7 @@ const statusColor = {
   failed:              'bg-red-100 text-red-700',
 };
 
-export default function ChamadaAtiva({ callId, destino, chip, chipDid, onEncerrada }) {
+export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
   const [status, setStatus] = useState('calling_origin');
   const [duracao, setDuracao] = useState(0);
   const [encerrando, setEncerrando] = useState(false);
@@ -79,15 +79,6 @@ export default function ChamadaAtiva({ callId, destino, chip, chipDid, onEncerra
 
   const isAtiva = ['calling_origin', 'calling_destination', 'established'].includes(status);
 
-  // Tenta pegar o número real para qual a NVOIP ligou (origin/chip) dos dados da API
-  const chipFormatado = chip
-    || logTecnico?.origin
-    || logTecnico?.caller_origin
-    || logTecnico?.callerOrigin
-    || logTecnico?._chip
-    || '—';
-  const chipEhDid = false; // número virtual é válido
-
   return (
     <div className="bg-slate-900 text-white rounded-2xl p-6 text-center space-y-4 shadow-xl">
       <div className="flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mx-auto">
@@ -104,38 +95,19 @@ export default function ChamadaAtiva({ callId, destino, chip, chipDid, onEncerra
         {statusLabel[status] || status}
       </Badge>
 
-      {/* Passo 1 — ligando para o chip */}
-      {status === 'calling_origin' && (
-        <div className={`text-xs text-left rounded-lg p-3 space-y-1.5 ${chipEhDid ? 'bg-red-900/50 text-red-200' : 'bg-yellow-900/40 text-yellow-200'}`}>
-          <p className={`font-semibold ${chipEhDid ? 'text-red-300' : 'text-yellow-300'}`}>
-            {chipEhDid ? '⚠️ Chip = DID — Chamada não completará!' : '📲 Passo 1 de 2 — Atenda no seu chip!'}
-          </p>
-          <p>Primeira ligação enviada para: <strong className="text-white">{chipFormatado}</strong></p>
-          {chipEhDid
-            ? <p className="text-red-100">Este número é o <strong>DID virtual</strong> da NVOIP — não é um celular físico e não vai tocar. Acesse <strong>Meu Ramal</strong> e configure um celular real no campo "Número do CHIP".</p>
-            : <p>Atenda essa chamada — depois a NVOIP disca para o cliente <strong>{destino}</strong>.</p>
-          }
+      {/* Discando */}
+      {(status === 'calling_origin' || status === 'calling_destination') && (
+        <div className="text-xs text-left bg-yellow-900/40 rounded-lg p-3 text-yellow-200">
+          <p className="font-semibold text-yellow-300">📞 Discando para o contato...</p>
+          <p>Ligando para <strong className="text-white">{destino}</strong> via NVOIP.</p>
         </div>
       )}
 
-      {/* Passo 2 — discando para o cliente */}
-      {status === 'calling_destination' && (
-        <div className="text-xs text-blue-200 text-left bg-blue-900/40 rounded-lg p-3 space-y-1.5">
-          <p className="font-semibold text-blue-300">📞 Passo 2 de 2 — Ligando para o cliente!</p>
-          <p>Chip <strong>{chipFormatado}</strong> atendeu. Discando para <strong>{destino}</strong>...</p>
-        </div>
-      )}
-
-      {/* Não atendida — diagnóstico detalhado */}
+      {/* Não atendida */}
       {(status === 'noanswer' || status === 'failed') && (
-        <div className="text-xs text-left bg-red-900/40 rounded-lg p-3 space-y-2">
-          <p className="font-semibold text-red-300">❌ Chamada não atendida</p>
-          <p className="text-red-200">A NVOIP tentou ligar para o chip <strong className="text-white">{chipFormatado}</strong>, mas não completou.</p>
-          <div className="text-yellow-200 space-y-1 pt-1 border-t border-red-700/50">
-            <p className="font-medium text-yellow-300">Causa mais provável:</p>
-            <p>• O <strong>Número do Chip</strong> pode ser igual ao DID (número virtual). Configure um <strong>celular físico real</strong> em <em>Meu Ramal → Número do CHIP</em>.</p>
-            <p>• Ou o encaminhamento no ramal NVOIP não está configurado.</p>
-          </div>
+        <div className="text-xs text-left bg-red-900/40 rounded-lg p-3 space-y-1">
+          <p className="font-semibold text-red-300">❌ Chamada não completada</p>
+          <p className="text-red-200">O contato <strong className="text-white">{destino}</strong> não atendeu ou houve falha na conexão.</p>
         </div>
       )}
 
@@ -143,7 +115,7 @@ export default function ChamadaAtiva({ callId, destino, chip, chipDid, onEncerra
       {status === 'busy' && (
         <div className="text-xs text-left bg-slate-800 rounded-lg p-3 text-slate-300">
           <p className="font-semibold">Ocupado</p>
-          <p>O chip <strong>{chipFormatado}</strong> ou o cliente estava ocupado no momento.</p>
+          <p>O número <strong>{destino}</strong> estava ocupado no momento.</p>
         </div>
       )}
 
