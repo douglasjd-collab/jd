@@ -61,7 +61,7 @@ export default function SimuladorInteligente() {
   const [tipoComparacao, setTipoComparacao] = useState('completo');
   const [valorBem, setValorBem] = useState('');
   const [valorDisponivel, setValorDisponivel] = useState('');
-  const [tipoUsoValor, setTipoUsoValor] = useState('lance');
+  const [percentualLance, setPercentualLance] = useState('50');
 
   // Consórcio
   const [parcelaConsorcio, setParcelaConsorcio] = useState('');
@@ -129,10 +129,12 @@ export default function SimuladorInteligente() {
     // Valor do bem ao final do prazo após desvalorização
     const valorBemFinal = vBem * Math.pow(1 - desvalAnual, prazo / 12);
 
-    // ===== CENÁRIO 1: À VISTA + INVESTIMENTO DA PARCELA =====
+    // ===== CENÁRIO 1: À VISTA =====
+    // Cliente usa 100% do capital para comprar à vista. Capital investido restante = R$0.
+    // O que investe mensalmente é o equivalente à parcela do consórcio (oportunidade).
     const pmtInvestimento = parcCons > 0 ? parcCons : (vBem / prazo);
     const vfInvestAVista = vfAportesMensais(pmtInvestimento, rentMes, prazo);
-    // Patrimônio: valor residual do bem + investimento acumulado
+    // Patrimônio: valor residual do bem + investimento mensal acumulado
     const patrimonioAVista = valorBemFinal + vfInvestAVista;
 
     // Série mensal cenário 1
@@ -144,15 +146,11 @@ export default function SimuladorInteligente() {
     }
 
     // ===== CENÁRIO 2: CONSÓRCIO + LANCE + INVESTIMENTO DO RESTANTE =====
-    const capitalRestanteConsorcio = tipoUsoValor === 'lance'
-      ? Math.max(0, vDisp - (vDisp)) // se usou tudo como lance, 0 restante
-      : vDisp; // valor não usado como lance
-
-    // Lance: o que sobra do disponível após cobrir o bem
-    const valorLance = tipoUsoValor === 'lance' ? vDisp : 0;
-    const capitalInvestidoConsorcio = tipoUsoValor === 'lance'
-      ? 0
-      : vDisp;
+    // Lance próprio = Capital disponível × percentual de lance
+    // Capital investido = Capital disponível - lance próprio
+    const pctLance = parseFloat(percentualLance) / 100;
+    const valorLance = vDisp * pctLance;
+    const capitalInvestidoConsorcio = vDisp - valorLance; // restante fica investido
 
     // Total parcelas reajustadas
     let totalParcelasPagas = 0;
@@ -169,7 +167,7 @@ export default function SimuladorInteligente() {
       ? vfCapital(capitalInvestidoConsorcio, rentMes, prazo)
       : 0;
 
-    // Série mensal consórcio (bem se desvaloriza também, mas investimento compensa)
+    // Série mensal consórcio
     const serieConsorcio = [];
     for (let m = 1; m <= prazo; m++) {
       const vfInv = capitalInvestidoConsorcio > 0 ? vfCapital(capitalInvestidoConsorcio, rentMes, m) : 0;
@@ -186,8 +184,10 @@ export default function SimuladorInteligente() {
     // Patrimônio consórcio: valor residual + investimento - parcelas pagas
     const patrimonioConsorcio = valorBemFinal + vfInvestConsorcio - totalParcelasPagas;
 
-    // ===== CENÁRIO 3: FINANCIAMENTO + INVESTIMENTO =====
-    const entrada = tipoUsoValor === 'entrada' ? vDisp : 0;
+    // ===== CENÁRIO 3: FINANCIAMENTO =====
+    // Cliente usa o capital disponível como entrada, financia o restante.
+    // Capital investido = R$0 (usou tudo como entrada)
+    const entrada = vDisp;
     const valorFinanciado = Math.max(0, vBem - entrada);
     let parcelaFin = 0;
     let totalJurosFin = 0;
@@ -209,9 +209,9 @@ export default function SimuladorInteligente() {
       }
     }
 
-    // Capital que sobra para investir: vDisp - entrada (se for lance, investe diferença)
-    const capitalInvestidoFin = tipoUsoValor === 'entrada' ? 0 : vDisp;
-    const vfInvestFin = capitalInvestidoFin > 0 ? vfCapital(capitalInvestidoFin, rentMes, prazo) : 0;
+    // No financiamento, capital foi usado como entrada → capital investido = 0
+    const capitalInvestidoFin = 0;
+    const vfInvestFin = 0;
     const totalPagoFin = parcelaFin * prazoFin;
     const patrimonioFinanciamento = valorBemFinal + vfInvestFin - totalJurosFin;
 
@@ -295,6 +295,8 @@ export default function SimuladorInteligente() {
       entrada,
       valorFinanciado,
       valorLance,
+      valorDisponivel: vDisp,
+      percentualLance: pctLance * 100,
     });
 
     setCalculando(false);
@@ -491,26 +493,53 @@ export default function SimuladorInteligente() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Valor do Bem (R$)</Label>
-                  <Input value={fmtInput(valorBem)} onChange={e => setValorBem(handleMoedaInput(e.target.value))} placeholder="0,00" className="h-9 mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs">Capital Disponível (R$)</Label>
-                  <Input value={fmtInput(valorDisponivel)} onChange={e => setValorDisponivel(handleMoedaInput(e.target.value))} placeholder="0,00" className="h-9 mt-1" />
-                </div>
+              <div>
+                <Label className="text-xs">Valor do Bem (R$)</Label>
+                <Input value={fmtInput(valorBem)} onChange={e => setValorBem(handleMoedaInput(e.target.value))} placeholder="0,00" className="h-9 mt-1" />
               </div>
 
-              <div>
-                <Label className="text-xs font-semibold text-slate-500 uppercase">Capital usado como:</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  {[{ v: 'lance', l: 'Lance (Consórcio)' }, { v: 'entrada', l: 'Entrada (Financiamento)' }].map(op => (
-                    <button key={op.v} onClick={() => setTipoUsoValor(op.v)}
-                      className={`p-2 rounded-lg border-2 text-xs transition-all ${tipoUsoValor === op.v ? 'border-[#23BE84] bg-emerald-50 font-semibold text-[#10353C]' : 'border-slate-200 text-slate-500'}`}>
-                      {op.l}
-                    </button>
-                  ))}
+              {/* Painel Capital Disponível */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                <Label className="text-xs font-semibold text-slate-600 uppercase">Capital Disponível do Cliente</Label>
+                <Input value={fmtInput(valorDisponivel)} onChange={e => setValorDisponivel(handleMoedaInput(e.target.value))} placeholder="0,00" className="h-9" />
+                <p className="text-xs text-slate-500">Valor total que o cliente possui hoje para comprar à vista.</p>
+
+                {/* Como o capital é usado em cada cenário */}
+                <div className="pt-1 space-y-1 text-xs border-t border-slate-200">
+                  <div className="flex justify-between text-slate-600">
+                    <span>🏠 <strong>À Vista:</strong> usa 100% para comprar</span>
+                    <span className="font-semibold text-[#10353C]">{valorDisponivel ? fmt(parseFloat(valorDisponivel)) : '—'}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>🏦 <strong>Financiamento:</strong> usa 100% como entrada</span>
+                    <span className="font-semibold text-blue-600">{valorDisponivel ? fmt(parseFloat(valorDisponivel)) : '—'}</span>
+                  </div>
+                </div>
+
+                {/* Percentual de lance — só para consórcio */}
+                <div className="pt-2 border-t border-slate-200">
+                  <Label className="text-xs font-semibold text-orange-700">🔶 Consórcio — Lance Próprio (%)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number" min="0" max="100" step="1"
+                      value={percentualLance}
+                      onChange={e => setPercentualLance(e.target.value)}
+                      className="h-9 w-24"
+                    />
+                    <span className="text-xs text-slate-500">% do capital disponível</span>
+                  </div>
+                  {valorDisponivel && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center">
+                        <p className="text-xs text-orange-600">Lance próprio</p>
+                        <p className="font-bold text-orange-700 text-sm">{fmt(parseFloat(valorDisponivel) * parseFloat(percentualLance) / 100)}</p>
+                      </div>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-center">
+                        <p className="text-xs text-emerald-600">Fica investido</p>
+                        <p className="font-bold text-emerald-700 text-sm">{fmt(parseFloat(valorDisponivel) * (1 - parseFloat(percentualLance) / 100))}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -649,9 +678,9 @@ export default function SimuladorInteligente() {
               {/* Cards Patrimônio */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { label: 'Compra À Vista', valor: resultado.patrimonioAVista, subLabel: `Bem: ${fmt(resultado.valorBemFinal)} + Invest.: ${fmt(resultado.vfInvestAVista)}`, cor: 'bg-[#10353C]', nome: 'À Vista' },
-                  { label: 'Consórcio + Investimento', valor: resultado.patrimonioConsorcio, subLabel: `Bem: ${fmt(resultado.valorBemFinal)} − Parcelas: ${fmt(resultado.totalParcelasPagas)}`, cor: 'bg-orange-500', nome: 'Consórcio' },
-                  { label: 'Financiamento + Investimento', valor: resultado.patrimonioFinanciamento, subLabel: `Bem: ${fmt(resultado.valorBemFinal)} − Juros: ${fmt(resultado.totalJurosFin)}`, cor: 'bg-blue-600', nome: 'Financiamento' },
+                  { label: 'Compra À Vista', valor: resultado.patrimonioAVista, subLabel: `Bem: ${fmt(resultado.valorBemFinal)} + Invest. mensal: ${fmt(resultado.vfInvestAVista)}`, cor: 'bg-[#10353C]', nome: 'À Vista' },
+                  { label: 'Consórcio + Investimento', valor: resultado.patrimonioConsorcio, subLabel: `Lance: ${fmt(resultado.valorLance)} (${resultado.percentualLance.toFixed(0)}%) | Invest.: ${fmt(resultado.vfInvestConsorcio)} | Parcelas: −${fmt(resultado.totalParcelasPagas)}`, cor: 'bg-orange-500', nome: 'Consórcio' },
+                  { label: 'Financiamento', valor: resultado.patrimonioFinanciamento, subLabel: `Entrada: ${fmt(resultado.entrada)} | Fin.: ${fmt(resultado.valorFinanciado)} | Juros: −${fmt(resultado.totalJurosFin)}`, cor: 'bg-blue-600', nome: 'Financiamento' },
                 ].map(c => (
                   <Card key={c.nome} className={`border-0 shadow-sm overflow-hidden ${c.nome === melhorNome ? 'ring-2 ring-[#23BE84]' : ''}`}>
                     <div className={`${c.cor} px-4 py-3 flex items-center justify-between`}>
