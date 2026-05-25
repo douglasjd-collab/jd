@@ -311,6 +311,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Propostas', page: 'Vendas' },
         { name: 'Planos Canopus', page: 'PlanosCanopus' },
         { name: 'Simulador', page: 'SimuladorEscolha' },
+        { name: 'Simulador Inteligente', page: 'SimuladorInteligente' },
         { name: 'Resultado de Assembleia', page: 'HistoricoResultadoAssembleia' },
         { name: 'Oferta de Lance', page: 'OfertaLance' },
         { name: 'Cartas Contempladas', page: 'CartasContempladas' },
