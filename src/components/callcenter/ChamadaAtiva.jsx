@@ -40,26 +40,38 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada
     if (!callId) return;
 
     const poll = setInterval(async () => {
-      const res = await base44.functions.invoke('nvoipCallCenter', {
-        action: 'consultarChamada',
-        callId,
-      });
-      const state = res.data?.state;
-      // Salva log técnico completo
-      setLogTecnico(res.data);
-      if (state) setStatus(state);
-      if (state === 'established' && res.data?.talkingDurationSeconds) {
-        setDuracao(res.data.talkingDurationSeconds);
+      try {
+        const res = await base44.functions.invoke('nvoipCallCenter', {
+          action: 'consultarChamada',
+          callId,
+        });
+        const state = res.data?.state;
+        const duracao = res.data?.talkingDurationSeconds || res.data?.durationInSeconds || 0;
+        
+        // Salva log técnico completo
+        setLogTecnico(res.data);
+        
+        // Atualiza o status
+        if (state) {
+          setStatus(state);
+        }
+        
+        // Atualiza a duração se conectada
+        if (duracao > 0) {
+          setDuracao(duracao);
+        }
+        
+        // Se a chamada terminou, para o polling e mostra o modal
+        if (['finished', 'noanswer', 'busy', 'failed'].includes(state)) {
+          clearInterval(poll);
+          // Aguarda um pouco antes de mostrar o modal para garantir que o estado foi atualizado
+          setTimeout(() => setShowEndModal(true), 500);
+        }
+      } catch (err) {
+        console.error('Erro ao consultar chamada:', err);
+        setLogTecnico({ error: err.message, timestamp: new Date().toISOString() });
       }
-      if (['finished', 'noanswer', 'busy'].includes(state)) {
-        clearInterval(poll);
-        setShowEndModal(true);
-      }
-      if (state === 'failed') {
-        clearInterval(poll);
-        setShowEndModal(true);
-      }
-    }, 3000);
+    }, 2000); // Poll a cada 2 segundos em vez de 3
 
     return () => clearInterval(poll);
   }, [callId]);
@@ -113,7 +125,17 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada
       </div>
 
       {/* Status chamando */}
-      <p className="text-orange-500 font-semibold text-sm">Chamando...</p>
+      <div className="flex items-center gap-2">
+        <p className={`font-semibold text-sm ${statusColor[status]?.split(' ')[0]}`}>
+          {statusLabel[status] || `Status: ${status}`}
+        </p>
+        {isAtiva && <Loader2 className="w-4 h-4 animate-spin text-orange-500" />}
+      </div>
+
+      {/* Duração se conectada */}
+      {duracao > 0 && (
+        <p className="text-lg font-bold text-green-600">{formatDuracao(duracao)}</p>
+      )}
 
       {/* Ícone telefone grande */}
       <Phone className="w-12 h-12 text-green-500" />
