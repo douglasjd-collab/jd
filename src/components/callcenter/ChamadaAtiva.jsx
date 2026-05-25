@@ -97,17 +97,19 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
         {statusLabel[status] || status}
       </Badge>
 
-      {/* Discando */}
+      {/* 1ª perna: NVOIP ligando para o ramal/celular do operador */}
       {(status === 'success' || status === 'calling_origin') && (
         <div className="text-xs text-left bg-yellow-900/40 rounded-lg p-3 text-yellow-200 space-y-1">
-          <p className="font-semibold text-yellow-300">📞 Discando para o contato...</p>
-          <p>A ligação está sendo conectada a <strong className="text-white">{destino}</strong>.</p>
+          <p className="font-semibold text-yellow-300">📱 Aguardando você atender...</p>
+          <p>A NVOIP está ligando para o seu <strong className="text-white">celular/chip configurado</strong>.</p>
+          <p className="text-yellow-300 font-medium">👆 Atenda seu celular — após você atender, a NVOIP conectará automaticamente com <strong className="text-white">{destino}</strong>.</p>
         </div>
       )}
+      {/* 2ª perna: NVOIP ligando para o contato */}
       {status === 'calling_destination' && (
         <div className="text-xs text-left bg-blue-900/40 rounded-lg p-3 text-blue-200">
-          <p className="font-semibold text-blue-300">📞 Conectando ao contato...</p>
-          <p>Ligando para <strong className="text-white">{destino}</strong>.</p>
+          <p className="font-semibold text-blue-300">📞 Você atendeu — conectando ao contato...</p>
+          <p>Ligando para <strong className="text-white">{destino}</strong>. Aguarde na linha.</p>
         </div>
       )}
 
@@ -116,6 +118,7 @@ export default function ChamadaAtiva({ callId, destino, onEncerrada }) {
         <div className="text-xs text-left bg-red-900/40 rounded-lg p-3 space-y-1">
           <p className="font-semibold text-red-300">❌ Chamada não completada</p>
           <p className="text-red-200">O contato <strong className="text-white">{destino}</strong> não atendeu ou houve falha na conexão.</p>
+          <p className="text-red-300 mt-1">💡 Se o seu celular não tocou, verifique se o <strong>callForward do ramal SIP</strong> está configurado no painel NVOIP apontando para o seu chip.</p>
         </div>
       )}
 

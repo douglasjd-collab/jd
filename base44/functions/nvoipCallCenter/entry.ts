@@ -292,17 +292,26 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // A NVOIP exige que caller seja o ramal SIP registrado na conta.
-      // callerId é o número que aparece para o destinatário (DID).
-      // Como o ramal está offline/webphone OFF, a NVOIP liga para o chip/callForward do ramal.
+      const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
+
+      // A NVOIP usa callback de 2 pernas:
+      //   1ª perna: NVOIP liga para o ramal SIP do "caller"
+      //   - Se o ramal tem callForward configurado no painel NVOIP, encaminha para o celular
+      //   - Se o ramal tem webphone ativo, abre no softphone
+      //   2ª perna: Após o usuário atender, NVOIP liga para o contato (called) e conecta
+      //
+      // Como a API PUT /update/users está retornando 500, o callForward deve estar
+      // configurado diretamente no painel NVOIP pelo admin.
+      // Aqui tentamos incluir callForward no corpo da chamada (se a NVOIP aceitar).
       const callBody = {
         caller: ramalSip,
         called: calledFormatado,
       };
       if (numeroDid) callBody.callerId = numeroDid;
+      // Alguns planos NVOIP aceitam callForward direto na chamada
+      if (numeroChip && numeroChip !== numeroDid) callBody.callForward = numeroChip;
 
-      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}`);
-
+      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}, callForward=${numeroChip}`);
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -324,7 +333,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid, _callForward: numeroChip });
     }
 
     if (action === 'consultarChamada') {

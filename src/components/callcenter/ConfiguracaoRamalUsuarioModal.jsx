@@ -148,6 +148,11 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               <p className="text-xs mt-1 text-amber-800 font-medium">⚠️ O CHIP deve ser um celular físico diferente do DID!</p>
             </div>
 
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+              <p className="font-semibold">🔧 Configuração obrigatória no painel NVOIP:</p>
+              <p className="mt-1">Acesse <strong>NVOIP → Ramais → {form.numbersip || 'seu ramal'} → Encaminhamento</strong> e configure o número do CHIP como destino de encaminhamento. Isso garante que a 1ª perna da chamada chegue no seu celular.</p>
+            </div>
+
             <div className="space-y-2">
               <Label>Ramal SIP (NumberSIP) *</Label>
               <Input
@@ -178,6 +183,17 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
                 onChange={e => setForm({ ...form, user_token: e.target.value.trim() })}
               />
               <p className="text-xs text-slate-400">NVOIP → API → Nvoip API v2 → User Token</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Senha SIP <span className="text-xs font-normal text-slate-400">(opcional — para configuração automática do encaminhamento)</span></Label>
+              <Input
+                type="password"
+                placeholder="Senha do ramal SIP no painel NVOIP"
+                value={form.sip_password}
+                onChange={e => setForm({ ...form, sip_password: e.target.value })}
+              />
+              <p className="text-xs text-slate-400">Se informada, o sistema configura o encaminhamento automaticamente ao ligar</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
