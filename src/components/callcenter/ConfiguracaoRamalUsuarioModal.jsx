@@ -55,8 +55,8 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
   };
 
   const handleTestar = async () => {
-    if (!form.numbersip || !form.user_token) {
-      toast.error('Preencha o Ramal SIP e o User Token');
+    if (!form.napikey && (!form.numbersip || !form.user_token)) {
+      toast.error('Preencha a Napikey ou o Ramal SIP + User Token');
       return;
     }
     setTestando(true);
@@ -65,6 +65,7 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
       action: 'testarConexao',
       numbersip: form.numbersip,
       user_token: form.user_token,
+      napikey: form.napikey,
     });
     setTestando(false);
     if (res.data?.success) {
@@ -77,8 +78,12 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
   };
 
   const handleSalvar = async () => {
-    if (!form.numbersip || !form.user_token) {
-      toast.error('Ramal SIP e User Token são obrigatórios');
+    if (!form.numbersip) {
+      toast.error('Ramal SIP é obrigatório');
+      return;
+    }
+    if (!form.napikey && !form.user_token) {
+      toast.error('Informe a Napikey ou o User Token');
       return;
     }
     if (!form.numero_chip) {
@@ -156,7 +161,18 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
             </div>
 
             <div className="space-y-2">
-              <Label>User Token *</Label>
+              <Label>Napikey (recomendado) <span className="text-xs font-normal text-slate-400">— NVOIP v2 legado</span></Label>
+              <Input
+                type="password"
+                placeholder="Cole sua Napikey do painel NVOIP"
+                value={form.napikey}
+                onChange={e => setForm({ ...form, napikey: e.target.value.trim() })}
+              />
+              <p className="text-xs text-slate-400">NVOIP → API → Nvoip API v2 → Napikey</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>User Token <span className="text-xs font-normal text-slate-400">(alternativo ao Napikey)</span></Label>
               <Input
                 type="password"
                 placeholder="Cole seu User Token do painel NVOIP"

@@ -44,16 +44,26 @@ async function getConfigParaUsuario(base44, user, empresaId, colaboradorId) {
   throw new Error('Nenhuma configuração NVOIP encontrada. Configure seu ramal em Call Center → Configurar.');
 }
 
-async function getValidToken(base44, config, isUsuarioConfig) {
+// Retorna headers de autenticação para a API NVOIP.
+// NVOIP v2 legado aceita: Authorization: Basic {napikey} diretamente (sem OAuth).
+// Se não tiver napikey, tenta OAuth com user_token como password.
+async function getAuthHeaders(base44, config, isUsuarioConfig) {
   const entityName = isUsuarioConfig ? 'ConfiguracaoNvoipUsuario' : 'ConfiguracaoNvoip';
 
+  // 1. Se tem napikey, usa Basic Auth direto (NVOIP v2 legado)
+  if (config.napikey) {
+    return { 'Authorization': `Basic ${config.napikey}`, 'Content-Type': 'application/json' };
+  }
+
+  // 2. Tenta token em cache
   if (config.access_token && config.token_expires_at) {
     const expiresAt = new Date(config.token_expires_at);
     if (expiresAt > new Date(Date.now() + 60000)) {
-      return config.access_token;
+      return { 'Authorization': `Bearer ${config.access_token}`, 'Content-Type': 'application/json' };
     }
   }
 
+  // 3. Refresh token
   if (config.refresh_token) {
     const bodyRefresh = new URLSearchParams();
     bodyRefresh.append('grant_type', 'refresh_token');
@@ -70,12 +80,13 @@ async function getValidToken(base44, config, isUsuarioConfig) {
         refresh_token: d.refresh_token || config.refresh_token,
         token_expires_at: new Date(Date.now() + (d.expires_in || 3600) * 1000).toISOString(),
       });
-      return d.access_token;
+      return { 'Authorization': `Bearer ${d.access_token}`, 'Content-Type': 'application/json' };
     }
   }
 
+  // 4. OAuth password grant com user_token
   if (!config.numbersip || !config.user_token) {
-    throw new Error('NumberSIP e User Token são obrigatórios para autenticar na NVOIP');
+    throw new Error('Configure a Napikey ou o User Token para autenticar na NVOIP');
   }
 
   const bodyPwd = new URLSearchParams();
@@ -102,7 +113,15 @@ async function getValidToken(base44, config, isUsuarioConfig) {
     token_expires_at: new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString(),
     ativo: true,
   });
-  return data.access_token;
+  return { 'Authorization': `Bearer ${data.access_token}`, 'Content-Type': 'application/json' };
+}
+
+// Mantém compatibilidade com código legado que chama getValidToken
+async function getValidToken(base44, config, isUsuarioConfig) {
+  const hdrs = await getAuthHeaders(base44, config, isUsuarioConfig);
+  // Retorna apenas o token (sem "Bearer ")
+  const auth = hdrs['Authorization'] || '';
+  return auth.replace(/^Bearer /, '');
 }
 
 Deno.serve(async (req) => {
@@ -116,9 +135,23 @@ Deno.serve(async (req) => {
 
     // Testar conexão: não precisa de empresa salva
     if (action === 'testarConexao') {
-      const { numbersip, user_token } = body;
+      const { numbersip, user_token, napikey } = body;
+
+      // Tenta napikey primeiro (NVOIP v2 legado)
+      if (napikey) {
+        const res = await fetch(`${NVOIP_BASE}/balance`, {
+          headers: { 'Authorization': `Basic ${napikey}`, 'Content-Type': 'application/json' },
+        });
+        if (res.ok) {
+          return Response.json({ success: true, message: 'Conexão NVOIP via napikey estabelecida com sucesso!' });
+        }
+        const errData = await res.json().catch(() => ({}));
+        const errMsg = errData.message || errData.error || `HTTP ${res.status}`;
+        return Response.json({ success: false, error: `Napikey inválida: ${errMsg}` });
+      }
+
       if (!numbersip || !user_token) {
-        return Response.json({ success: false, error: 'NumberSIP e User Token são obrigatórios' });
+        return Response.json({ success: false, error: 'Informe a Napikey ou o NumberSIP + User Token' });
       }
       const bodyParams = new URLSearchParams();
       bodyParams.append('username', numbersip);
@@ -235,8 +268,7 @@ Deno.serve(async (req) => {
         _error_type: 'sem_configuracao' 
       }, { status: 200 });
     }
-    const token = await getValidToken(base44, config, tipo === 'usuario');
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const headers = await getAuthHeaders(base44, config, tipo === 'usuario');
 
     if (action === 'saldo') {
       const res = await fetch(`${NVOIP_BASE}/balance`, { headers });
