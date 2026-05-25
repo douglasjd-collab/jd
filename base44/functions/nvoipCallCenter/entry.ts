@@ -45,17 +45,11 @@ async function getConfigParaUsuario(base44, user, empresaId, colaboradorId) {
 }
 
 // Retorna headers de autenticação para a API NVOIP.
-// NVOIP v2 legado aceita: Authorization: Basic {napikey} diretamente (sem OAuth).
-// Se não tiver napikey, tenta OAuth com user_token como password.
+// Tenta OAuth com user_token primeiro (mais confiável), napikey como fallback.
 async function getAuthHeaders(base44, config, isUsuarioConfig) {
   const entityName = isUsuarioConfig ? 'ConfiguracaoNvoipUsuario' : 'ConfiguracaoNvoip';
 
-  // 1. Se tem napikey, usa diretamente como Basic (já é base64 conforme NVOIP v2)
-  if (config.napikey) {
-    return { 'Authorization': `Basic ${config.napikey}`, 'Content-Type': 'application/json' };
-  }
-
-  // 2. Tenta token em cache
+  // 1. Tenta token em cache válido (OAuth Bearer)
   if (config.access_token && config.token_expires_at) {
     const expiresAt = new Date(config.token_expires_at);
     if (expiresAt > new Date(Date.now() + 60000)) {
@@ -63,7 +57,7 @@ async function getAuthHeaders(base44, config, isUsuarioConfig) {
     }
   }
 
-  // 3. Refresh token
+  // 2. Refresh token
   if (config.refresh_token) {
     const bodyRefresh = new URLSearchParams();
     bodyRefresh.append('grant_type', 'refresh_token');
@@ -84,9 +78,9 @@ async function getAuthHeaders(base44, config, isUsuarioConfig) {
     }
   }
 
-  // 4. OAuth password grant com user_token
+  // 3. OAuth password grant com user_token (PRINCIPAL — napikey ignorada pois pode estar inválida)
   if (!config.numbersip || !config.user_token) {
-    throw new Error('Configure a Napikey ou o User Token para autenticar na NVOIP');
+    throw new Error('Configure o NumberSIP e o User Token para autenticar na NVOIP');
   }
 
   const bodyPwd = new URLSearchParams();
