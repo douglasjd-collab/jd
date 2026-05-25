@@ -91,7 +91,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
         description: `Ligando para ${clienteFormatado}...`,
         duration: 8000,
       });
-      onChamadaIniciada?.(res.data.callId, called, celularFisico || numeroDID || '');
+      onChamadaIniciada?.(res.data.callId, called, celularFisico || numeroDID || '', numeroDID);
       onOpenChange(false);
       setCalled('');
     } else {

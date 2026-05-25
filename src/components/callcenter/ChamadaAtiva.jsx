@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PhoneOff, Loader2, Phone } from 'lucide-react';
+import { PhoneOff, Loader2, Phone, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
@@ -25,7 +25,7 @@ const statusColor = {
   failed:              'bg-red-100 text-red-700',
 };
 
-export default function ChamadaAtiva({ callId, destino, chip, onEncerrada }) {
+export default function ChamadaAtiva({ callId, destino, chip, chipDid, onEncerrada }) {
   const [status, setStatus] = useState('calling_origin');
   const [duracao, setDuracao] = useState(0);
   const [encerrando, setEncerrando] = useState(false);
@@ -79,7 +79,15 @@ export default function ChamadaAtiva({ callId, destino, chip, onEncerrada }) {
 
   const isAtiva = ['calling_origin', 'calling_destination', 'established'].includes(status);
 
-  const chipFormatado = chip || logTecnico?._chip || '—';
+  // Tenta pegar o número real para qual a NVOIP ligou (origin/chip) dos dados da API
+  const chipFormatado = chip
+    || logTecnico?.origin
+    || logTecnico?.caller_origin
+    || logTecnico?.callerOrigin
+    || logTecnico?._chip
+    || '—';
+  // Avisa se o chip é igual ao DID (configuração inválida)
+  const chipEhDid = chipDid && chip && chip.replace(/\D/g,'') === chipDid.replace(/\D/g,'');
 
   return (
     <div className="bg-slate-900 text-white rounded-2xl p-6 text-center space-y-4 shadow-xl">
@@ -99,10 +107,15 @@ export default function ChamadaAtiva({ callId, destino, chip, onEncerrada }) {
 
       {/* Passo 1 — ligando para o chip */}
       {status === 'calling_origin' && (
-        <div className="text-xs text-yellow-200 text-left bg-yellow-900/40 rounded-lg p-3 space-y-1.5">
-          <p className="font-semibold text-yellow-300">📲 Passo 1 de 2 — Atenda no seu chip!</p>
-          <p className="text-yellow-100">Primeira ligação enviada para: <strong className="text-white">{chipFormatado}</strong></p>
-          <p>Atenda essa chamada — depois a NVOIP disca para o cliente <strong>{destino}</strong>.</p>
+        <div className={`text-xs text-left rounded-lg p-3 space-y-1.5 ${chipEhDid ? 'bg-red-900/50 text-red-200' : 'bg-yellow-900/40 text-yellow-200'}`}>
+          <p className={`font-semibold ${chipEhDid ? 'text-red-300' : 'text-yellow-300'}`}>
+            {chipEhDid ? '⚠️ Chip = DID — Chamada não completará!' : '📲 Passo 1 de 2 — Atenda no seu chip!'}
+          </p>
+          <p>Primeira ligação enviada para: <strong className="text-white">{chipFormatado}</strong></p>
+          {chipEhDid
+            ? <p className="text-red-100">Este número é o <strong>DID virtual</strong> da NVOIP — não é um celular físico e não vai tocar. Acesse <strong>Meu Ramal</strong> e configure um celular real no campo "Número do CHIP".</p>
+            : <p>Atenda essa chamada — depois a NVOIP disca para o cliente <strong>{destino}</strong>.</p>
+          }
         </div>
       )}
 

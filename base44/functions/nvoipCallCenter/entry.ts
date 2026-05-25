@@ -404,7 +404,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _callerId: config.numero_did });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _callerId: config.numero_did, _chip: chipNumero || null });
     }
 
     if (action === 'consultarChamada') {

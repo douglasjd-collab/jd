@@ -32,7 +32,7 @@ export default function CallCenter() {
   const [smsOpen, setSmsOpen] = useState(false);
   const [torpedoOpen, setTorpedoOpen] = useState(false);
 
-  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino } — API REST
+  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino, chip, chipDid }
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [ramalStatus, setRamalStatus] = useState(null); // 'Online' | 'Offline' | null
   const [credencialInvalida, setCredencialInvalida] = useState(false);
@@ -376,6 +376,7 @@ export default function CallCenter() {
                 callId={chamadaAtiva.callId}
                 destino={chamadaAtiva.destino}
                 chip={chamadaAtiva.chip}
+                chipDid={chamadaAtiva.chipDid}
                 onEncerrada={() => setChamadaAtiva(null)}
               />
             </div>
@@ -417,7 +418,7 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numeroInicial={numeroParaChamar}
-        onChamadaIniciada={(callId, destino, chip) => setChamadaAtiva({ callId, destino, chip })}
+        onChamadaIniciada={(callId, destino, chip, numeroDID) => setChamadaAtiva({ callId, destino, chip, chipDid: numeroDID })}
       />
       <ConfiguracaoRamalUsuarioModal
         open={ramalUsuarioOpen}
