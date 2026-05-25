@@ -36,10 +36,11 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
   };
 
   const temRamalPessoal = configUsuario && configUsuario.numbersip;
-  const temChip = configUsuario && configUsuario.numero_chip;
-  const numeroDID = configUsuario?.numero_did || '';
-  const celularFisico = configUsuario?.numero_chip || '';
+  const numeroDID = (configUsuario?.numero_did || '').replace(/\D/g, '');
+  const celularFisico = (configUsuario?.numero_chip || '').replace(/\D/g, '');
   const temConfiguracao = !!temRamalPessoal;
+  // Chip igual ao DID = configuração inválida (chip deve ser celular físico)
+  const chipIgualDid = celularFisico && numeroDID && celularFisico === numeroDID;
 
   const handleTestarChip = async () => {
     const chip = configUsuario?.numero_chip?.replace(/\D/g, '');
@@ -90,7 +91,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
         description: `Ligando para ${clienteFormatado}...`,
         duration: 8000,
       });
-      onChamadaIniciada?.(res.data.callId, called);
+      onChamadaIniciada?.(res.data.callId, called, celularFisico || numeroDID || '');
       onOpenChange(false);
       setCalled('');
     } else {
@@ -169,6 +170,28 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             </div>
           )}
 
+          {/* Aviso crítico: chip = DID */}
+          {chipIgualDid && (
+            <div className="flex items-start gap-2 bg-red-50 border-2 border-red-400 rounded-lg px-3 py-2 text-sm text-red-800">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
+              <div>
+                <p className="font-semibold">Chip inválido — igual ao DID</p>
+                <p className="text-xs mt-0.5">O Número do CHIP ({celularFisico}) é igual ao DID. Configure um <strong>celular físico real</strong> em <strong>Meu Ramal → Número do CHIP</strong> para receber a 1ª ligação.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Aviso: chip não configurado */}
+          {temConfiguracao && !celularFisico && (
+            <div className="flex items-start gap-2 bg-orange-50 border border-orange-300 rounded-lg px-3 py-2 text-sm text-orange-800">
+              <Smartphone className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Número do Chip não configurado</p>
+                <p className="text-xs mt-0.5">Acesse <strong>Meu Ramal</strong> e informe seu celular físico no campo "Número do CHIP".</p>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Número do Cliente *</Label>
             <Input
@@ -209,11 +232,12 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
 
           {/* Instruções sobre o fluxo */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-900 space-y-2">
-            <p className="font-semibold">📞 Chamada via NVOIP:</p>
-            <p><strong>1ª etapa:</strong> NVOIP conecta seu <strong>ramal SIP</strong> {configUsuario?.numbersip ? <span className="font-mono">({configUsuario.numbersip})</span> : '(não configurado)'} ao cliente</p>
-            <p><strong>2ª etapa:</strong> Cliente atende → chamada estabelecida</p>
-            {numeroDID && <p className="text-xs text-blue-700 mt-1">O DID {numeroDID} aparece como número de origem para o cliente.</p>}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-900 space-y-1">
+            <p className="font-semibold">📞 Como funciona o callback:</p>
+            <p>1. NVOIP liga para seu <strong>chip</strong> {celularFisico ? <span className="font-mono text-blue-700">({celularFisico})</span> : <span className="text-red-600">(não configurado!)</span>}</p>
+            <p>2. Você atende o celular</p>
+            <p>3. NVOIP disca para o cliente e conecta as duas chamadas</p>
+            {numeroDID && <p className="text-blue-700 mt-1">DID {numeroDID} aparece como número de origem para o cliente.</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
