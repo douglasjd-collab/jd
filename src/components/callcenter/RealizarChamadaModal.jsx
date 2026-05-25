@@ -96,7 +96,13 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     } else {
       const erro = res.data?.error || res.data?.message || 'Erro desconhecido';
       const tipo = res.data?._error_type;
-      if (tipo === 'chip_nao_configurado') {
+      const isCredencialInvalida = erro.toLowerCase().includes('invalid user') || erro.toLowerCase().includes('forbidden') || erro.toLowerCase().includes('invalid_token');
+      if (isCredencialInvalida) {
+        toast.error('Credenciais NVOIP inválidas', {
+          description: 'A Napikey ou User Token configurados estão incorretos. Acesse Call Center → Config Empresa (ou Meu Ramal) e reconfigure com os dados corretos do painel NVOIP → API.',
+          duration: 12000,
+        });
+      } else if (tipo === 'chip_nao_configurado') {
         toast.error('Número de encaminhamento (chip) não configurado.', {
           description: 'Acesse Call Center → Meu Ramal e informe o Número do Chip.',
           duration: 8000,
@@ -104,7 +110,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       } else if (tipo === 'ramal_nao_configurado' || erro.includes('ramal') || erro.includes('configurad')) {
         toast.error(erro, { description: 'Acesse Call Center → Meu Ramal para configurar.', duration: 7000 });
       } else if (erro.includes('autenticaç') || erro.includes('token') || erro.includes('credenciai')) {
-        toast.error('Falha de autenticação NVOIP. Verifique seu User Token.', { description: erro, duration: 7000 });
+        toast.error('Falha de autenticação NVOIP.', { description: 'Reconfigure suas credenciais em Config Empresa ou Meu Ramal.', duration: 7000 });
       } else if (tipo === 'numero_invalido' || erro.includes('inválido') || erro.includes('número')) {
         toast.error('Número de destino inválido: ' + erro);
       } else {

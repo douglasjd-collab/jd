@@ -30,7 +30,7 @@ async function getConfigParaUsuario(base44, user, empresaId, colaboradorId) {
       colaborador_id: colaboradorId,
       ativo: true,
     });
-    if (userConfigs && userConfigs.length > 0 && userConfigs[0].numbersip && userConfigs[0].user_token) {
+    if (userConfigs && userConfigs.length > 0 && userConfigs[0].numbersip && (userConfigs[0].user_token || userConfigs[0].napikey)) {
       return { config: userConfigs[0], tipo: 'usuario' };
     }
   }
@@ -50,7 +50,7 @@ async function getConfigParaUsuario(base44, user, empresaId, colaboradorId) {
 async function getAuthHeaders(base44, config, isUsuarioConfig) {
   const entityName = isUsuarioConfig ? 'ConfiguracaoNvoipUsuario' : 'ConfiguracaoNvoip';
 
-  // 1. Se tem napikey, usa Basic Auth direto (NVOIP v2 legado)
+  // 1. Se tem napikey, usa diretamente como Basic (já é base64 conforme NVOIP v2)
   if (config.napikey) {
     return { 'Authorization': `Basic ${config.napikey}`, 'Content-Type': 'application/json' };
   }
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
     if (action === 'testarConexao') {
       const { numbersip, user_token, napikey } = body;
 
-      // Tenta napikey primeiro (NVOIP v2 legado)
+      // Testa napikey direto como Basic (já é base64 conforme NVOIP v2)
       if (napikey) {
         const res = await fetch(`${NVOIP_BASE}/balance`, {
           headers: { 'Authorization': `Basic ${napikey}`, 'Content-Type': 'application/json' },
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
         }
         const errData = await res.json().catch(() => ({}));
         const errMsg = errData.message || errData.error || `HTTP ${res.status}`;
-        return Response.json({ success: false, error: `Napikey inválida: ${errMsg}` });
+        return Response.json({ success: false, error: `Napikey inválida: ${errMsg}. Verifique se copiou corretamente do painel NVOIP → API → Napikey.` });
       }
 
       if (!numbersip || !user_token) {
@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
         const existentes = await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.filter({
           colaborador_id: colaboradorId,
         });
-        if (existentes.length > 0 && existentes[0].numbersip && existentes[0].user_token) {
+        if (existentes.length > 0 && existentes[0].numbersip && (existentes[0].user_token || existentes[0].napikey)) {
           return Response.json({ config: existentes[0], tipo: 'usuario' });
         }
       }
@@ -310,6 +310,11 @@ Deno.serve(async (req) => {
       if (config.numero_did) {
         callBody.callerId = config.numero_did.replace(/\D/g, '');
       }
+
+      // Log de diagnóstico — inclui tipo de auth usado
+      const authHeader = headers['Authorization'] || '';
+      const authTipo = authHeader.startsWith('Basic') ? 'Basic (napikey)' : 'Bearer (OAuth)';
+      console.log(`[NVOIP] realizarChamada — auth: ${authTipo}, tipo config: ${tipo}`);
       console.log(`[NVOIP] POST /v2/calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -317,17 +322,50 @@ Deno.serve(async (req) => {
         headers,
         body: JSON.stringify(callBody),
       });
-      const data = await res.json();
+
+      let data;
+      try { data = await res.json(); } catch { data = {}; }
       console.log(`[NVOIP] resposta chamada: ${res.status}`, JSON.stringify(data));
 
       if (!res.ok) {
-        const errMsg = data.message || data.error || `HTTP ${res.status}`;
+        const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
+
+        // Se "Invalid User", tenta com caller sem prefixo de empresa (só os últimos dígitos do ramal)
+        if ((errMsg.toLowerCase().includes('invalid user') || errMsg.toLowerCase().includes('invalid caller')) && caller.length > 4) {
+          const callerCurto = caller.slice(-4); // ex: "137715001" → "5001"
+          const callBody2 = { ...callBody, caller: callerCurto };
+          console.log(`[NVOIP] Retry com caller curto: ${callerCurto}`);
+          const res2 = await fetch(`${NVOIP_BASE}/calls/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(callBody2),
+          });
+          let data2;
+          try { data2 = await res2.json(); } catch { data2 = {}; }
+          console.log(`[NVOIP] Retry resposta: ${res2.status}`, JSON.stringify(data2));
+          if (res2.ok) {
+            return Response.json({ ...data2, _tipo_config: tipo, _caller: callerCurto, _called: calledFormatado });
+          }
+          const errMsg2 = data2.message || data2.error || data2.detail || `HTTP ${res2.status}`;
+          return Response.json({
+            error: `Falha ao iniciar chamada: ${errMsg}. Retry com ramal curto (${callerCurto}) também falhou: ${errMsg2}. Verifique se o ramal SIP pertence a esta conta NVOIP.`,
+            _error_type: 'chamada_falhou',
+            _debug_original: data,
+            _debug_retry: data2,
+            _tipo_config: tipo,
+            _caller_original: caller,
+            _caller_retry: callerCurto,
+            _auth_tipo: authTipo,
+          }, { status: 200 });
+        }
+
         return Response.json({
           error: `Falha ao iniciar chamada: ${errMsg}`,
           _error_type: 'chamada_falhou',
           _debug: data,
           _tipo_config: tipo,
           _caller: caller,
+          _auth_tipo: authTipo,
         }, { status: 200 });
       }
 

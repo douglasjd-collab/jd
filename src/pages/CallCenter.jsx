@@ -35,6 +35,7 @@ export default function CallCenter() {
   const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino } — API REST
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [ramalStatus, setRamalStatus] = useState(null); // 'Online' | 'Offline' | null
+  const [credencialInvalida, setCredencialInvalida] = useState(false);
 
   // Puxar número da URL (?numero=...)
   const numeroInicial = useMemo(() => {
@@ -89,6 +90,13 @@ export default function CallCenter() {
   const verificarRamalStatus = async () => {
     try {
       const res = await base44.functions.invoke('nvoipCallCenter', { action: 'listarUsuarios' });
+      if (res.data?.error) {
+        const err = res.data.error;
+        if (err.toLowerCase().includes('invalid user') || err.toLowerCase().includes('forbidden')) {
+          setCredencialInvalida(true);
+        }
+        return;
+      }
       const users = res.data?.users || [];
       const meuRamal = users.find(u => u.numbersip === config?.numbersip);
       if (meuRamal) setRamalStatus(meuRamal.status);
@@ -106,7 +114,10 @@ export default function CallCenter() {
     try {
       const res = await base44.functions.invoke('nvoipCallCenter', { action: 'saldo' });
       if (res.data?.error) {
-        toast.error('Erro ao consultar saldo: ' + res.data.error);
+        const err = res.data.error;
+        const isInvalid = err.toLowerCase().includes('invalid user') || err.toLowerCase().includes('forbidden');
+        if (isInvalid) setCredencialInvalida(true);
+        toast.error('Erro ao consultar saldo: ' + err);
       } else if (res.data?.balance !== undefined) {
         setSaldo(res.data.balance);
       } else {
@@ -173,6 +184,25 @@ export default function CallCenter() {
           </Button>
         </div>
       </div>
+
+      {/* Banner de credencial inválida */}
+      {credencialInvalida && !naoConfigurado && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-300 rounded-xl text-sm text-red-800">
+          <span className="text-xl">🔑</span>
+          <div className="flex-1">
+            <p className="font-semibold">Credenciais NVOIP inválidas</p>
+            <p className="mt-1 text-red-700">
+              A Napikey ou User Token configurados estão incorretos. Acesse o <strong>painel NVOIP → Configurações → API</strong> e copie a Napikey correta, depois clique em <strong>Config Empresa</strong> para atualizar.
+            </p>
+          </div>
+          <button
+            onClick={() => setConfigOpen(true)}
+            className="shrink-0 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+          >
+            Reconfigurar
+          </button>
+        </div>
+      )}
 
       {/* Modo de chamada ativo */}
       {!naoConfigurado && (
