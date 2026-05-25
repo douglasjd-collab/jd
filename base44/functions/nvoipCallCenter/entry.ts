@@ -292,36 +292,17 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Busca preferências do usuário SIP para verificar se webphone está ativo
-      let webphoneAtivo = false;
-      try {
-        const resUser = await fetch(`${NVOIP_BASE}/get/users?numbersip=${ramalSip}`, { headers });
-        if (resUser.ok) {
-          const sipData = await resUser.json();
-          // sipData pode ser objeto direto ou array
-          const sipUser = Array.isArray(sipData) ? sipData[0] : sipData;
-          webphoneAtivo = sipUser?.webphone === true;
-          console.log(`[NVOIP] webphone ativo: ${webphoneAtivo}`, JSON.stringify(sipUser));
-        }
-      } catch (e) {
-        console.log(`[NVOIP] Não foi possível verificar webphone: ${e.message}`);
-      }
+      // Discagem direta: usa o DID como caller (número de saída)
+      // O ramal SIP é usado apenas para autenticação OAuth, não como destino da chamada
+      const callerDireto = numeroDid || ramalSip;
 
-      let callBody;
+      const callBody = {
+        caller: callerDireto,
+        called: calledFormatado,
+      };
+      if (numeroDid) callBody.callerId = numeroDid;
 
-      if (webphoneAtivo && ramalSip) {
-        // Callback 2 pernas: NVOIP liga para o ramal SIP primeiro, depois conecta ao cliente
-        callBody = { caller: ramalSip, called: calledFormatado };
-        if (numeroDid) callBody.callerId = numeroDid;
-        console.log(`[NVOIP] modo: callback 2 pernas (webphone ativo)`);
-      } else {
-        // Discagem direta: DID como caller, cliente como called
-        // Quando webphone está OFF, não há ramal registrado para atender a 1ª perna
-        const callerDireto = numeroDid || ramalSip;
-        callBody = { caller: callerDireto, called: calledFormatado };
-        if (numeroDid) callBody.callerId = numeroDid;
-        console.log(`[NVOIP] modo: discagem direta (webphone inativo), caller=${callerDireto}`);
-      }
+      console.log(`[NVOIP] modo: discagem direta, caller=${callerDireto}, called=${calledFormatado}`);
 
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
@@ -344,7 +325,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _webphone: webphoneAtivo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid });
     }
 
     if (action === 'consultarChamada') {
