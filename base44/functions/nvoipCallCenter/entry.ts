@@ -273,12 +273,18 @@ Deno.serve(async (req) => {
     if (action === 'realizarChamada') {
       const { called } = body;
 
-      // OBRIGATÓRIO: ramal SIP como caller (origem)
-      const caller = config.numbersip;
-      if (!caller) {
+      // Na NVOIP, para chamada de saída via click-to-call:
+      // - caller = DID (número externo, ex: 558132998470) — obrigatório
+      // - called = destino (cliente)
+      // - o ramal SIP é usado apenas para autenticação OAuth
+
+      const numeroDid = (config.numero_did || '').replace(/\D/g, '');
+      const ramalSip = config.numbersip;
+
+      if (!numeroDid) {
         return Response.json({
-          error: 'Ramal SIP não configurado. Acesse Call Center → Meu Ramal para configurar.',
-          _error_type: 'ramal_nao_configurado',
+          error: 'Número DID não configurado. Acesse Call Center → Meu Ramal e informe o número DID de saída.',
+          _error_type: 'did_nao_configurado',
         }, { status: 200 });
       }
 
@@ -291,23 +297,20 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Chamada direta: caller = ramal SIP, called = cliente, callerId = DID (aparece para o cliente)
       const authHeader = headers['Authorization'] || '';
       const authTipo = authHeader.startsWith('Basic') ? 'Basic (napikey)' : 'Bearer (OAuth)';
 
-      console.log(`[NVOIP] realizarChamada DIRETA:`);
-      console.log(`  caller (ramal SIP)   = ${caller}`);
-      console.log(`  callerId (DID)       = ${config.numero_did || 'não configurado'}`);
+      console.log(`[NVOIP] realizarChamada:`);
+      console.log(`  caller (DID)         = ${numeroDid}`);
       console.log(`  called (cliente)     = ${calledFormatado}`);
+      console.log(`  ramal SIP (auth)     = ${ramalSip}`);
       console.log(`  auth: ${authTipo}, tipo config: ${tipo}`);
 
+      // Tenta 1: caller = DID completo
       const callBody = {
-        caller,
-        called: calledFormatado
+        caller: numeroDid,
+        called: calledFormatado,
       };
-      if (config.numero_did) {
-        callBody.callerId = config.numero_did.replace(/\D/g, '');
-      }
 
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
@@ -321,42 +324,41 @@ Deno.serve(async (req) => {
       try { data = await res.json(); } catch { data = {}; }
       console.log(`[NVOIP] resposta chamada: ${res.status}`, JSON.stringify(data));
 
-      if (!res.ok) {
-        const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
+      if (res.ok) {
+        return Response.json({ ...data, _tipo_config: tipo, _caller: numeroDid, _called: calledFormatado });
+      }
 
-        // Se "Invalid User/Caller", tenta com caller curto (últimos 4 dígitos)
-        if ((errMsg.toLowerCase().includes('invalid user') || errMsg.toLowerCase().includes('invalid caller')) && caller.length > 4) {
-          const callerCurto = caller.slice(-4);
-          const callBody2 = { ...callBody, caller: callerCurto };
-          console.log(`[NVOIP] Retry com caller curto: ${callerCurto}`);
-          const res2 = await fetch(`${NVOIP_BASE}/calls/`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(callBody2),
-          });
-          let data2;
-          try { data2 = await res2.json(); } catch { data2 = {}; }
-          console.log(`[NVOIP] Retry resposta: ${res2.status}`, JSON.stringify(data2));
-          if (res2.ok) {
-            return Response.json({ ...data2, _tipo_config: tipo, _caller: callerCurto, _called: calledFormatado });
-          }
-          const errMsg2 = data2.message || data2.error || data2.detail || `HTTP ${res2.status}`;
-          return Response.json({
-            error: `Falha ao iniciar chamada: ${errMsg}. Retry (${callerCurto}) também falhou: ${errMsg2}.`,
-            _error_type: 'chamada_falhou',
-            _debug_original: data,
-            _debug_retry: data2,
-          }, { status: 200 });
+      const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
+
+      // Tenta 2: caller = ramal SIP (fallback)
+      if (ramalSip) {
+        const callBody2 = { caller: ramalSip, called: calledFormatado };
+        console.log(`[NVOIP] Retry com ramal SIP como caller: ${ramalSip}`);
+        const res2 = await fetch(`${NVOIP_BASE}/calls/`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(callBody2),
+        });
+        let data2;
+        try { data2 = await res2.json(); } catch { data2 = {}; }
+        console.log(`[NVOIP] Retry resposta: ${res2.status}`, JSON.stringify(data2));
+        if (res2.ok) {
+          return Response.json({ ...data2, _tipo_config: tipo, _caller: ramalSip, _called: calledFormatado });
         }
-
+        const errMsg2 = data2.message || data2.error || data2.detail || `HTTP ${res2.status}`;
         return Response.json({
-          error: `Falha ao iniciar chamada: ${errMsg}`,
+          error: `Falha ao iniciar chamada. DID (${numeroDid}): ${errMsg}. SIP (${ramalSip}): ${errMsg2}.`,
           _error_type: 'chamada_falhou',
-          _debug: data,
+          _debug_did: data,
+          _debug_sip: data2,
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: caller, _called: calledFormatado, _callerId: config.numero_did });
+      return Response.json({
+        error: `Falha ao iniciar chamada: ${errMsg}`,
+        _error_type: 'chamada_falhou',
+        _debug: data,
+      }, { status: 200 });
     }
 
     if (action === 'consultarChamada') {
