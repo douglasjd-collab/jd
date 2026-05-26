@@ -400,6 +400,7 @@ Deno.serve(async (req) => {
       const { callId } = body;
       const res = await fetch(`${NVOIP_BASE}/calls?callId=${callId}`, { headers });
       const data = await res.json();
+      console.log(`[NVOIP] consultarChamada callId=${callId} HTTP ${res.status}:`, JSON.stringify(data));
       return Response.json(data);
     }
 

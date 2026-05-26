@@ -70,11 +70,15 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, empresaId, 
         const state = res.data?.state;
         const dur = res.data?.talkingDurationSeconds || res.data?.durationInSeconds || 0;
         
+        console.log(`[Polling] callId=${callId}, state=${state}, duration=${dur}`, res.data);
         setLogTecnico(res.data);
+        
         if (state) setStatus(state);
         if (dur > 0) setDuracao(dur);
         
-        if (['finished', 'noanswer', 'busy', 'failed'].includes(state)) {
+        // Só encerra se realmente terminou (não apenas em estado "failed" que pode ser transiente)
+        if (['finished', 'noanswer', 'busy'].includes(state)) {
+          console.log(`[Polling] Chamada finalizada com estado: ${state}`);
           clearInterval(poll);
           // Atualiza histórico com resultado final
           if (historicoIdRef.current && empresaId) {
