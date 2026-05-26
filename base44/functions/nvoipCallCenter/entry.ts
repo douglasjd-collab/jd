@@ -271,16 +271,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'realizarChamadaDireta') {
-      // CALLBACK TRADICIONAL (único modo que funciona na API NVOIP v2):
-      // 1. NVOIP liga para o ramal SIP (caller)
-      // 2. Se callForward estiver definido → encaminha para o chip/celular
-      // 3. Quando usuário atende → NVOIP liga para o cliente (called)
-      // 4. callerId = DID aparece para o cliente
+      // CHAMADA DIRETA (headless): sem callback
+      // 1. NVOIP usa o ramal SIP apenas como identificador/origem
+      // 2. NÃO envia callForward (remove callback)
+      // 3. callerId = DID aparece para o cliente
+      // 4. Ligação vai direto: ramal (identificador) → cliente (destino)
       const { called } = body;
 
       const ramalSip = config.numbersip;
       const numeroDid = (config.numero_did || '').replace(/\D/g, '');
-      const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
 
       if (!ramalSip) {
         return Response.json({
@@ -297,19 +296,14 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Callback: ramal → chip → cliente
+      // Chamada DIRETA: sem callForward (sem callback)
       const callBody = {
         caller: ramalSip,
         called: calledFormatado,
       };
       if (numeroDid) callBody.callerId = numeroDid;
-      if (numeroChip) {
-        let chipFormatado = numeroChip;
-        if (!chipFormatado.startsWith('55') && chipFormatado.length <= 11) chipFormatado = '55' + chipFormatado;
-        callBody.callForward = chipFormatado;
-      }
 
-      console.log(`[NVOIP] realizarChamada (callback): caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} callForward=${callBody.callForward}`);
+      console.log(`[NVOIP] realizarChamadaDireta (headless): caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} (sem callForward)`);
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -331,7 +325,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _callForward: callBody.callForward });
+      return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _tipo: 'headless_direto' });
     }
 
     if (action === 'realizarChamada') {
