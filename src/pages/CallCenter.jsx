@@ -539,7 +539,10 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numeroInicial={numeroParaChamar}
-        onChamadaIniciada={(callId, destino, nomeContato) => setChamadaAtiva({ callId, destino, nomeContato })}
+        onChamadaIniciada={(callId, destino, nomeContato) => {
+          // callId=null significa chamada via microsip: — não ativa o painel NVOIP
+          if (callId) setChamadaAtiva({ callId, destino, nomeContato });
+        }}
       />
       <ConfiguracaoRamalUsuarioModal
         open={ramalUsuarioOpen}
