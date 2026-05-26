@@ -18,10 +18,13 @@ import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
 import MeusNumeros from '@/components/callcenter/MeusNumeros';
 import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
+import SoftphonePanel from '@/components/callcenter/SoftphonePanel';
+import useSoftphone from '@/components/callcenter/useSoftphone';
 
 export default function CallCenter() {
   const [user, setUser] = useState(null);
   const [config, setConfig] = useState(null);
+  const [sipConfig, setSipConfig] = useState(null); // config com sip_password para softphone
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [saldo, setSaldo] = useState(null);
   const [loadingSaldo, setLoadingSaldo] = useState(false);
@@ -35,6 +38,9 @@ export default function CallCenter() {
   const [chamadaAtiva, setChamadaAtiva] = useState(null);
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [credencialInvalida, setCredencialInvalida] = useState(false);
+
+  // Softphone WebRTC — só inicializa se tiver sip_password
+  const softphone = useSoftphone(sipConfig?.sip_password ? sipConfig : null);
 
   const numeroInicial = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
@@ -68,6 +74,12 @@ export default function CallCenter() {
           await carregarConfig(empresaId);
         } else {
           setLoadingConfig(false);
+        }
+
+        // Carrega config com sip_password para o softphone
+        const sipRes = await base44.functions.invoke('nvoipCallCenter', { action: 'buscarConfigUsuario' });
+        if (sipRes.data?.config?.sip_password) {
+          setSipConfig(sipRes.data.config);
         }
       } catch (e) {
         console.error('Erro ao inicializar CallCenter:', e);
@@ -238,7 +250,23 @@ export default function CallCenter() {
       {/* Conteúdo principal */}
       {!naoConfigurado && (
         <div className="space-y-4">
-          {/* Cards de ação rápida */}
+
+          {/* Layout: Softphone + Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Softphone WebRTC */}
+            <div className="lg:col-span-1">
+              <SoftphonePanel
+                softphone={softphone}
+                numbersip={sipConfig?.numbersip || config?.numbersip}
+                onChamadaApiRest={(numero) => {
+                  setNumeroParaChamar(numero);
+                  setChamadaOpen(true);
+                }}
+              />
+            </div>
+
+            {/* Cards de ação rápida */}
+            <div className="lg:col-span-2">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-green-400 hover:border-green-500 bg-green-50" onClick={() => setChamadaOpen(true)}>
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
@@ -285,6 +313,8 @@ export default function CallCenter() {
               </CardContent>
             </Card>
           </div>
+            </div>{/* end lg:col-span-2 */}
+          </div>{/* end grid layout */}
 
           {/* Chamada ativa */}
           {chamadaAtiva && (
