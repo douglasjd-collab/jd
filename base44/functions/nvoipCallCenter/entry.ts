@@ -362,7 +362,13 @@ Deno.serve(async (req) => {
       };
       if (numeroDid) callBody.callerId = numeroDid;
 
-      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}, chip=${numeroChip}`);
+      console.log(`[NVOIP] INICIANDO CHAMADA:`, {
+        ramalSip,
+        called: calledFormatado,
+        callerId: numeroDid,
+        chip: numeroChip,
+        webphoneAtivo,
+      });
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -373,7 +379,11 @@ Deno.serve(async (req) => {
 
       let data;
       try { data = await res.json(); } catch { data = {}; }
-      console.log(`[NVOIP] resposta chamada: ${res.status}`, JSON.stringify(data));
+      console.log(`[NVOIP] resposta HTTP ${res.status}:`, JSON.stringify(data));
+      
+      if (data.callId) {
+        console.log(`[NVOIP] Chamada criada com sucesso: callId=${data.callId}`);
+      }
 
       if (!res.ok) {
         const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;

@@ -76,8 +76,8 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, empresaId, 
         if (state) setStatus(state);
         if (dur > 0) setDuracao(dur);
         
-        // Só encerra se realmente terminou (não apenas em estado "failed" que pode ser transiente)
-        if (['finished', 'noanswer', 'busy'].includes(state)) {
+        // Encerra se terminou ou falhou
+        if (['finished', 'noanswer', 'busy', 'failed'].includes(state)) {
           console.log(`[Polling] Chamada finalizada com estado: ${state}`);
           clearInterval(poll);
           // Atualiza histórico com resultado final
@@ -85,7 +85,8 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, empresaId, 
             await base44.entities.HistoricoChamadaMicroSIP.update(historicoIdRef.current, {
               status: state === 'finished' || state === 'established' ? 'atendida' : 
                       state === 'noanswer' ? 'nao_atendida' : 
-                      state === 'busy' ? 'ocupado' : 'nao_atendida',
+                      state === 'busy' ? 'ocupado' : 
+                      state === 'failed' ? 'nao_atendida' : 'nao_atendida',
               fim: new Date().toISOString(),
               duracao_segundos: dur,
             });
