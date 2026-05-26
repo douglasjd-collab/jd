@@ -26,8 +26,9 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     setLigando(true);
     try {
       const res = await base44.functions.invoke('nvoipCallCenter', {
-        action: 'realizarChamadaDireta',
+        action: 'realizarChamada',
         called: numero,
+        webphoneAtivo,
       });
       
       console.log('[Modal] Resposta nvoipCallCenter:', res);
