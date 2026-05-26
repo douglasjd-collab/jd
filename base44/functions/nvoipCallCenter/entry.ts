@@ -271,20 +271,23 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'realizarChamadaDireta') {
-      // Fluxo NVOIP callback de 2 pernas:
-      // 1. caller = ramal SIP → NVOIP liga para o ramal (que encaminha para o chip via callForward)
-      // 2. Operador atende no chip → NVOIP conecta com o cliente (called)
-      //
-      // PRÉ-REQUISITO: callForward configurado no ramal via API PUT (requer senha SIP correta)
+      // Fluxo DIRETO: usa o numero_chip como caller (celular físico do operador)
+      // A NVOIP liga diretamente do chip para o contato, sem perna intermediária.
+      // caller = numero_chip (celular físico do operador)
+      // called = número do cliente
+      // callerId = numero_did (aparece para o cliente como identificador)
       const { called } = body;
 
       const ramalSip = config.numbersip;
       const numeroDid = (config.numero_did || '').replace(/\D/g, '');
       const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
-      const sipPassword = config.sip_password;
 
-      if (!ramalSip) {
-        return Response.json({ error: 'Ramal SIP não configurado. Acesse Meu Ramal.' });
+      // O caller deve ser o chip (celular físico) para ligação direta
+      // Se não tiver chip, usa o ramal SIP como fallback
+      const caller = numeroChip || ramalSip;
+
+      if (!caller) {
+        return Response.json({ error: 'Ramal SIP ou Chip não configurado. Acesse Meu Ramal.' });
       }
 
       let calledFormatado = (called || '').replace(/\D/g, '');
@@ -295,41 +298,16 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Se temos chip e senha SIP, tenta configurar callForward automaticamente
-      if (numeroChip && sipPassword) {
-        // Busca dados atuais do ramal
-        const resLista = await fetch(`${NVOIP_BASE}/list/users`, { headers });
-        const listaData = await resLista.json().catch(() => []);
-        const sipUser = Array.isArray(listaData) ? listaData.find(u => String(u.numbersip) === String(ramalSip)) : null;
-
-        if (sipUser) {
-          const putPayload = {
-            name: sipUser.name || '',
-            password: sipPassword,
-            email: sipUser.email || '',
-            webphone: false,
-            office: sipUser.office || 0,
-            department: sipUser.department || 0,
-            subDepartment: sipUser.subDepartment || 0,
-            login2fa: false,
-            chat: false,
-            voice: true,
-            permissions: [],
-            callForward: numeroChip,
-          };
-          const resPut = await fetch(`${NVOIP_BASE}/update/users?numbersip=${ramalSip}`, {
-            method: 'PUT', headers, body: JSON.stringify(putPayload),
-          });
-          const putData = await resPut.json().catch(() => ({}));
-          console.log(`[NVOIP] SET callForward=${numeroChip} HTTP ${resPut.status}`, JSON.stringify(putData));
-        }
+      // Formata o caller com 55 se necessário
+      let callerFormatado = caller;
+      if (!callerFormatado.startsWith('55') && callerFormatado.length <= 11) {
+        callerFormatado = '55' + callerFormatado;
       }
 
-      // Realiza a chamada com ramal SIP como caller
-      const callBody = { caller: ramalSip, called: calledFormatado };
+      const callBody = { caller: callerFormatado, called: calledFormatado };
       if (numeroDid) callBody.callerId = numeroDid;
 
-      console.log(`[NVOIP] realizarChamadaDireta caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} chip=${numeroChip}`);
+      console.log(`[NVOIP] realizarChamadaDireta caller=${callerFormatado} called=${calledFormatado} callerId=${numeroDid}`);
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
@@ -343,7 +321,7 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         return Response.json({ error: data.message || data.error || `HTTP ${res.status}`, _debug: data });
       }
-      return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _chip: numeroChip });
+      return Response.json({ ...data, _caller: callerFormatado, _called: calledFormatado });
     }
 
     if (action === 'realizarChamada') {
