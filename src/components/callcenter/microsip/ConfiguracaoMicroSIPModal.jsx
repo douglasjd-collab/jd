@@ -86,8 +86,13 @@ export default function ConfiguracaoMicroSIPModal({ open, onOpenChange, empresaI
               <li>Baixe e instale o MicroSIP em <a href="https://www.microsip.org/downloads" target="_blank" rel="noopener noreferrer" className="underline">microsip.org</a></li>
               <li>Em <strong>Menu → Adicionar Conta</strong>, preencha com os dados abaixo</li>
               <li>Ative <strong>"Auto Resposta"</strong> ou configure conforme preferir</li>
-              <li>Para abrir o CRM ao receber chamada, configure em <strong>Avançado → Executar ao receber chamada</strong>:<br/>
-                <code className="bg-blue-100 px-1 rounded text-xs break-all">http://localhost:PORT/CallCenter?incoming=%CallerID%</code>
+              <li>Para o CRM receber chamadas, configure em MicroSIP: <strong>Menu → Configurações → Avançado → "Incoming call URL"</strong>:<br/>
+                <code className="bg-blue-100 px-1 rounded text-xs break-all select-all">{window.location.origin}/CallCenter?incoming=%CallerID%</code>
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/CallCenter?incoming=%CallerID%`); }}
+                  className="ml-1 text-blue-600 underline text-xs"
+                >copiar</button>
               </li>
             </ol>
             <a

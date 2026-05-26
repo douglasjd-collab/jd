@@ -69,7 +69,7 @@ export default function CallCenter() {
     }
   }, []);
 
-  // Hook MicroSIP
+  // Hook MicroSIP — sempre ativo para detectar chamadas entrantes em qualquer modo
   const microSIP = useMicroSIP({
     empresaId: user?.empresa_id,
     usuario: user,
@@ -81,10 +81,10 @@ export default function CallCenter() {
     microSIP.ligar(numero, clienteNome, clienteId);
   };
 
-  // Detectar número da URL para MicroSIP
+  // Detectar número da URL — funciona em ambos os modos
   useEffect(() => {
-    if (!numeroInicial || !modoMicroSIP) return;
-    microSIP.ligar(numeroInicial);
+    if (!numeroInicial) return;
+    if (modoMicroSIP) microSIP.ligar(numeroInicial);
   }, [numeroInicial, modoMicroSIP]);
 
   useEffect(() => {
@@ -263,12 +263,21 @@ export default function CallCenter() {
         </div>
       </div>
 
-      {/* Popup chamada entrante MicroSIP — global, sempre visível */}
+      {/* Popup chamada entrante MicroSIP — sempre visível em qualquer modo */}
       <ChamadaEntrantePopup
         chamadaEntrante={microSIP.chamadaEntrante}
         onAtender={microSIP.atenderChamada}
         onIgnorar={microSIP.ignorarChamada}
       />
+
+      {/* Barra de chamada ativa MicroSIP — sempre visível em qualquer modo */}
+      {microSIP.chamadaAtiva && !modoMicroSIP && (
+        <ChamadaAtivaBar
+          chamadaAtiva={microSIP.chamadaAtiva}
+          duracao={microSIP.duracao}
+          onEncerrar={microSIP.encerrarChamada}
+        />
+      )}
 
       {/* Banner de credencial inválida — só no modo NVOIP */}
       {credencialInvalida && !naoConfigurado && !modoMicroSIP && (

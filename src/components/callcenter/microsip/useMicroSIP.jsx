@@ -44,12 +44,15 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
   }, [chamadaAtiva?.status]);
 
   // ── Detectar eventos via URL (incoming / answer / hangup / outgoing) ──────
+  // Roda quando empresaId fica disponível para poder buscar o cliente
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const incoming = params.get('incoming');
     const answer   = params.get('answer');
     const hangup   = params.get('hangup');
     const outgoing = params.get('outgoing');
+
+    if (!incoming && !answer && !hangup && !outgoing) return;
 
     // Limpa todos os params do MicroSIP da URL sem reload
     const cleanUrl = () => {
@@ -62,26 +65,22 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
       const numero = incoming.replace(/\D/g, '');
       if (numero) { cleanUrl(); _processarChamadaEntrante(numero); }
     } else if (answer) {
-      // MicroSIP atendeu a chamada → marcar como atendida
       cleanUrl();
       setChamadaAtiva(prev => prev ? { ...prev, status: 'atendida' } : null);
     } else if (hangup) {
-      // MicroSIP encerrou
       cleanUrl();
       _encerrarChamadaLocal();
     } else if (outgoing) {
-      // Chamada sainte iniciada pelo MicroSIP (ex: discagem direta no app)
       const numero = outgoing.replace(/\D/g, '');
       if (numero) {
         cleanUrl();
-        // Se já há chamada ativa com esse número, só atualiza; senão registra nova
         setChamadaAtiva(prev => {
           if (prev?.numero === numero) return { ...prev, status: 'chamando' };
           return { numero, direcao: 'saida', status: 'chamando', inicio: new Date().toISOString(), historicoId: null, clienteNome: null, clienteId: null };
         });
       }
     }
-  }, []);
+  }, [empresaId]); // re-executa quando empresaId carrega
 
   // ── BroadcastChannel — detecta eventos de outras abas/helper ─────────────
   useEffect(() => {
