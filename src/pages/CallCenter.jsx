@@ -18,6 +18,7 @@ import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
 import MeusNumeros from '@/components/callcenter/MeusNumeros';
 import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
+import useSoftphone from '@/components/callcenter/useSoftphone';
 
 // MicroSIP
 import useMicroSIP from '@/components/callcenter/microsip/useMicroSIP';
@@ -91,6 +92,21 @@ export default function CallCenter() {
     // Fecha esta aba (aberta pelo MicroSIP) após retransmitir
     setTimeout(() => window.close(), 300);
   }, []);
+
+  // Hook WebRTC Softphone — ativo no modo NVOIP quando sip_password estiver configurado
+  const softphone = useSoftphone(
+    config?.sip_password ? { numbersip: config.numbersip, sip_password: config.sip_password } : null
+  );
+
+  // Popup de chamada entrante WebRTC — converte para o formato do ChamadaEntrantePopup
+  const chamadaEntranteWebRTC = softphone.chamadaEntrante ? {
+    numero: softphone.chamadaEntrante.origem,
+    clienteNome: null,
+    clienteId: null,
+  } : null;
+
+  const atenderWebRTC = () => softphone.atenderChamada();
+  const ignorarWebRTC = () => softphone.rejeitarChamada();
 
   // Hook MicroSIP — sempre ativo para detectar chamadas entrantes em qualquer modo
   const microSIP = useMicroSIP({
@@ -273,6 +289,17 @@ export default function CallCenter() {
                   ● {config.numbersip}
                 </Badge>
               )}
+              {/* Badge status WebRTC */}
+              {config?.sip_password && (
+                <Badge className={
+                  softphone.sipStatus === 'registrado' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                  softphone.sipStatus === 'conectando' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                  'bg-slate-100 text-slate-500'
+                }>
+                  {softphone.sipStatus === 'registrado' ? '🔵 WebRTC Online' :
+                   softphone.sipStatus === 'conectando' ? '⏳ Conectando...' : '⚪ WebRTC Off'}
+                </Badge>
+              )}
               <Button variant="outline" size="sm" onClick={() => setRamalUsuarioOpen(true)} className="border-green-300 text-green-700 hover:bg-green-50">
                 <Phone className="w-4 h-4 mr-1" />
                 Meu Ramal
@@ -286,15 +313,35 @@ export default function CallCenter() {
         </div>
       </div>
 
-      {/* Popup chamada entrante MicroSIP — sempre visível em qualquer modo */}
-      <ChamadaEntrantePopup
-        chamadaEntrante={microSIP.chamadaEntrante}
-        onAtender={microSIP.atenderChamada}
-        onIgnorar={microSIP.ignorarChamada}
-      />
+      {/* Popup chamada entrante WebRTC (NVOIP direto no browser) */}
+      {!modoMicroSIP && (
+        <ChamadaEntrantePopup
+          chamadaEntrante={chamadaEntranteWebRTC}
+          onAtender={atenderWebRTC}
+          onIgnorar={ignorarWebRTC}
+        />
+      )}
 
-      {/* Barra de chamada ativa MicroSIP — sempre visível em qualquer modo */}
-      {microSIP.chamadaAtiva && !modoMicroSIP && (
+      {/* Popup chamada entrante MicroSIP */}
+      {modoMicroSIP && (
+        <ChamadaEntrantePopup
+          chamadaEntrante={microSIP.chamadaEntrante}
+          onAtender={microSIP.atenderChamada}
+          onIgnorar={microSIP.ignorarChamada}
+        />
+      )}
+
+      {/* Barra de chamada ativa WebRTC (NVOIP direto) */}
+      {!modoMicroSIP && softphone.chamadaAtiva && (
+        <ChamadaAtivaBar
+          chamadaAtiva={{ numero: softphone.chamadaAtiva.destino, direcao: softphone.chamadaAtiva.direcao, status: softphone.chamadaAtiva.status === 'em_ligacao' ? 'atendida' : 'chamando' }}
+          duracao={0}
+          onEncerrar={softphone.encerrarChamada}
+        />
+      )}
+
+      {/* Barra de chamada ativa MicroSIP */}
+      {modoMicroSIP && microSIP.chamadaAtiva && (
         <ChamadaAtivaBar
           chamadaAtiva={microSIP.chamadaAtiva}
           duracao={microSIP.duracao}

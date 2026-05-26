@@ -126,6 +126,20 @@ export default function ConfiguracaoNvoipModal({ open, onOpenChange, config, onS
             </p>
           </div>
 
+          <div className="space-y-2 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+            <Label className="text-blue-800 font-bold">🔵 Senha SIP — para receber chamadas no CRM (WebRTC)</Label>
+            <Input
+              type="password"
+              placeholder="Senha SIP do ramal (encontrada no painel NVOIP → Ramais)"
+              value={form.sip_password}
+              onChange={e => setForm({ ...form, sip_password: e.target.value })}
+              className="border-blue-300"
+            />
+            <p className="text-xs text-blue-700">
+              Com a senha SIP, o CRM conecta diretamente via WebRTC e você recebe chamadas entrantes aqui, sem precisar do MicroSIP.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label>User Token *</Label>
             <Input
