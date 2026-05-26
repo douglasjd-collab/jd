@@ -43,18 +43,42 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
     return () => clearInterval(timerRef.current);
   }, [chamadaAtiva?.status]);
 
-  // ── Detectar chamada entrante via URL (?incoming=NUMERO) ──────────────────
+  // ── Detectar eventos via URL (incoming / answer / hangup / outgoing) ──────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const incoming = params.get('incoming');
+    const answer   = params.get('answer');
+    const hangup   = params.get('hangup');
+    const outgoing = params.get('outgoing');
+
+    // Limpa todos os params do MicroSIP da URL sem reload
+    const cleanUrl = () => {
+      const url = new URL(window.location.href);
+      ['incoming','answer','hangup','outgoing'].forEach(k => url.searchParams.delete(k));
+      window.history.replaceState({}, '', url.toString());
+    };
+
     if (incoming) {
       const numero = incoming.replace(/\D/g, '');
+      if (numero) { cleanUrl(); _processarChamadaEntrante(numero); }
+    } else if (answer) {
+      // MicroSIP atendeu a chamada → marcar como atendida
+      cleanUrl();
+      setChamadaAtiva(prev => prev ? { ...prev, status: 'atendida' } : null);
+    } else if (hangup) {
+      // MicroSIP encerrou
+      cleanUrl();
+      _encerrarChamadaLocal();
+    } else if (outgoing) {
+      // Chamada sainte iniciada pelo MicroSIP (ex: discagem direta no app)
+      const numero = outgoing.replace(/\D/g, '');
       if (numero) {
-        // Limpa da URL sem reload
-        const url = new URL(window.location.href);
-        url.searchParams.delete('incoming');
-        window.history.replaceState({}, '', url.toString());
-        _processarChamadaEntrante(numero);
+        cleanUrl();
+        // Se já há chamada ativa com esse número, só atualiza; senão registra nova
+        setChamadaAtiva(prev => {
+          if (prev?.numero === numero) return { ...prev, status: 'chamando' };
+          return { numero, direcao: 'saida', status: 'chamando', inicio: new Date().toISOString(), historicoId: null, clienteNome: null, clienteId: null };
+        });
       }
     }
   }, []);
@@ -189,13 +213,14 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
       clienteId,
     });
 
-    // Dispara MicroSIP via SIP URI
-    window.location.href = `microsip:${numLimpo}`;
-
-    // Após 2s marca como "atendida" (não temos feedback real do MicroSIP)
-    setTimeout(() => {
-      setChamadaAtiva(prev => prev ? { ...prev, status: 'atendida' } : null);
-    }, 2000);
+    // Dispara MicroSIP via SIP URI — usa window.open para não sair da página
+    // O link microsip: é um custom protocol handler registrado pelo MicroSIP
+    const a = document.createElement('a');
+    a.href = `microsip:${numLimpo}`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 500);
   }, [empresaId, usuario]);
 
   const atenderChamada = useCallback(async () => {

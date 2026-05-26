@@ -54,10 +54,19 @@ export default function CallCenter() {
     try { const p = JSON.parse(c); return !!(p.sip_user && p.sip_password && p.sip_domain); } catch { return false; }
   });
 
-  // Puxar número da URL (?numero=...)
+  // Puxar parâmetros da URL
   const numeroInicial = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return (params.get('numero') || '').replace(/\D/g, '');
+  }, []);
+
+  // Se URL tem parâmetros do MicroSIP (incoming/answer/hangup/outgoing), força modo MicroSIP
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('incoming') || params.get('answer') || params.get('hangup') || params.get('outgoing')) {
+      setModoMicroSIP(true);
+      localStorage.setItem('callcenter_modo', 'microsip');
+    }
   }, []);
 
   // Hook MicroSIP

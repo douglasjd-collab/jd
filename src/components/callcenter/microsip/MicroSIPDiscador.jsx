@@ -78,7 +78,8 @@ export default function MicroSIPDiscador({ onLigar, onConfigOpen, sipConfigOk })
         </div>
 
         <p className="text-xs text-slate-400 text-center">
-          Ao clicar em ligar, o MicroSIP iniciará a chamada automaticamente
+          Ao clicar em ligar, o MicroSIP abrirá e iniciará a chamada.<br/>
+          O CRM permanece aberto normalmente.
         </p>
       </div>
     </div>
