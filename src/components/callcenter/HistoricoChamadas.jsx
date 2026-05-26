@@ -32,7 +32,8 @@ export default function HistoricoChamadas() {
       if (res.data?.error) {
         setErro(res.data.error);
       } else if (res.data?.calls) {
-        setChamadas(res.data.calls.filter(c => c && c.date));
+        // Aceita qualquer chamada válida, independente do nome do campo de data
+        setChamadas(res.data.calls.filter(c => c != null));
       }
     } catch (e) {
       setErro(e.message || 'Erro ao carregar histórico');
@@ -97,19 +98,23 @@ export default function HistoricoChamadas() {
             return (
               <div key={i} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:shadow-sm transition-shadow">
                 <div className="flex items-center gap-3">
-                  {c.type === 'outbound'
-                    ? <PhoneOutgoing className="w-5 h-5 text-blue-500" />
-                    : <PhoneIncoming className="w-5 h-5 text-green-500" />
-                  }
-                  <div>
-                    <p className="font-medium text-sm">{c.destination || c.origin}</p>
-                    <p className="text-xs text-slate-400">{c.date}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-500">{c.duration}</span>
-                  {c.cost && <span className="text-xs text-slate-500">{c.cost}</span>}
-                  <Badge className={cfg.color}>{cfg.label}</Badge>
+                   {(c.type === 'outbound' || c.callType === 'outbound' || c.direction === 'outbound')
+                     ? <PhoneOutgoing className="w-5 h-5 text-blue-500" />
+                     : <PhoneIncoming className="w-5 h-5 text-green-500" />
+                   }
+                   <div>
+                     <p className="font-medium text-sm">
+                       {c.destination || c.called || c.origin || c.caller || c.number || c.phone || '-'}
+                     </p>
+                     <p className="text-xs text-slate-400">
+                       {c.date || c.dateStart || c.callDate || c.startTime || c.createdAt || c.created_at || ''}
+                     </p>
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <span className="text-xs text-slate-500">{c.duration || c.talkingDuration || c.billDuration || ''}</span>
+                   {c.cost && <span className="text-xs text-slate-500">{c.cost}</span>}
+                   <Badge className={cfg.color}>{cfg.label}</Badge>
                   {c.audio && (
                     <a href={c.audio} target="_blank" rel="noreferrer">
                       <Button variant="ghost" size="sm">

@@ -416,25 +416,49 @@ Deno.serve(async (req) => {
 
       const res = await fetch(url, { headers });
       const raw = await res.text();
-      console.log(`[NVOIP] historicoChamadas HTTP ${res.status}:`, raw.substring(0, 500));
+      console.log(`[NVOIP] historicoChamadas /calls/history HTTP ${res.status}:`, raw.substring(0, 1000));
 
       let data;
       try { data = JSON.parse(raw); } catch { data = null; }
 
-      if (!res.ok || !data) {
-        // Fallback: tenta /calls sem path
-        const res2 = await fetch(`${NVOIP_BASE}/calls`, { headers });
-        const raw2 = await res2.text();
-        console.log(`[NVOIP] /calls fallback HTTP ${res2.status}:`, raw2.substring(0, 500));
-        let data2;
-        try { data2 = JSON.parse(raw2); } catch { data2 = []; }
-        const calls2 = Array.isArray(data2) ? data2 : (data2?.data || data2?.calls || []);
-        return Response.json({ calls: calls2 });
+      // Se deu certo e tem dados, retorna
+      if (res.ok && data) {
+        const calls = Array.isArray(data) ? data : (data?.data || data?.calls || data?.content || data?.items || []);
+        console.log(`[NVOIP] /calls/history retornou ${calls.length} chamadas`);
+        if (calls.length > 0) {
+          return Response.json({ calls, _raw_sample: calls[0] });
+        }
       }
 
-      // Normaliza: pode vir como array, ou objeto com campo data/calls/content
-      const calls = Array.isArray(data) ? data : (data?.data || data?.calls || data?.content || []);
-      return Response.json({ calls });
+      // Fallback 1: /calls?type=...
+      let url2 = `${NVOIP_BASE}/calls`;
+      const params2 = [];
+      if (type) params2.push(`type=${type}`);
+      if (date) params2.push(`date=${date}`);
+      if (params2.length > 0) url2 += '?' + params2.join('&');
+
+      const res2 = await fetch(url2, { headers });
+      const raw2 = await res2.text();
+      console.log(`[NVOIP] /calls HTTP ${res2.status}:`, raw2.substring(0, 1000));
+      let data2;
+      try { data2 = JSON.parse(raw2); } catch { data2 = []; }
+      const calls2 = Array.isArray(data2) ? data2 : (data2?.data || data2?.calls || data2?.content || data2?.items || []);
+      console.log(`[NVOIP] /calls retornou ${calls2.length} chamadas`);
+
+      if (calls2.length > 0) {
+        return Response.json({ calls: calls2, _raw_sample: calls2[0] });
+      }
+
+      // Fallback 2: /calls/report
+      const res3 = await fetch(`${NVOIP_BASE}/calls/report`, { headers });
+      const raw3 = await res3.text();
+      console.log(`[NVOIP] /calls/report HTTP ${res3.status}:`, raw3.substring(0, 500));
+      let data3;
+      try { data3 = JSON.parse(raw3); } catch { data3 = []; }
+      const calls3 = Array.isArray(data3) ? data3 : (data3?.data || data3?.calls || []);
+      console.log(`[NVOIP] /calls/report retornou ${calls3.length} chamadas`);
+
+      return Response.json({ calls: calls3, _debug: { url1: `${url} -> ${res.status}`, url2: `${url2} -> ${res2.status}`, url3: `${NVOIP_BASE}/calls/report -> ${res3.status}` } });
     }
 
     if (action === 'enviarSMS') {
