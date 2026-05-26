@@ -39,16 +39,17 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       }
       
       if (res.data?.error) {
-        const isRateLimit = res.data._error_type === 'rate_limit' || res.data._fallback === 'microsip';
+        const isRateLimit = res.data._error_type === 'rate_limit' || res.data._fallback === 'microsip' || res.data.error?.includes('limit');
         toast.error(res.data.error);
         
-        // Se for limite diário, sugere MicroSIP
+        // Se for limite diário, tenta com MicroSIP via protocolo SIP
         if (isRateLimit) {
-          const usarMicroSIP = window.confirm('NVOIP atingiu o limite diário. Deseja abrir o MicroSIP para ligar?');
-          if (usarMicroSIP) {
-            window.location.href = `microsip:${numero}`;
-            onOpenChange(false);
-          }
+          setTimeout(() => {
+            const usarMicroSIP = window.confirm('NVOIP atingiu o limite diário. Deseja usar o MicroSIP desktop para ligar?');
+            if (usarMicroSIP) {
+              window.location.href = `sip:${numero}@sip.nvoip.com.br`;
+            }
+          }, 500);
         }
         return;
       }
