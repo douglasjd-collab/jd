@@ -267,7 +267,23 @@ Deno.serve(async (req) => {
     if (action === 'saldo') {
       const res = await fetch(`${NVOIP_BASE}/balance`, { headers });
       const data = await res.json();
-      return Response.json(data);
+      
+      // Tenta buscar informações de limite (se disponível)
+      let limiteInfo = null;
+      try {
+        const resLimites = await fetch(`${NVOIP_BASE}/account/limits`, { headers });
+        if (resLimites.ok) {
+          limiteInfo = await resLimites.json();
+        }
+      } catch (e) {
+        console.log('[NVOIP] Endpoint de limites não disponível');
+      }
+      
+      return Response.json({
+        ...data,
+        limite_diario: limiteInfo,
+        _observacao: 'Se atingir o limite diário, considere usar MicroSIP como fallback.'
+      });
     }
 
     if (action === 'realizarChamadaDireta') {
@@ -306,18 +322,45 @@ Deno.serve(async (req) => {
       console.log(`[NVOIP] realizarChamadaDireta (headless): caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} (sem callForward)`);
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
-      const res = await fetch(`${NVOIP_BASE}/calls/`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(callBody),
-      });
-
+      // Retry com backoff exponencial para erros 503 (rate limit)
+      let res;
+      let attempts = 0;
+      const maxAttempts = 3;
       let data;
+
+      while (attempts < maxAttempts) {
+        res = await fetch(`${NVOIP_BASE}/calls/`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(callBody),
+        });
+
+        if (res.status === 503) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            const delay = Math.pow(2, attempts) * 1000; // 2s, 4s, 8s
+            console.log(`[NVOIP] Rate limit (503). Tentativa ${attempts}/${maxAttempts}. Aguardando ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+        }
+        break;
+      }
+
       try { data = await res.json(); } catch { data = {}; }
       console.log(`[NVOIP] resposta: HTTP ${res.status}`, JSON.stringify(data));
 
       if (!res.ok) {
         const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
+        // Detecta rate limit e sugere MicroSIP como fallback
+        if (res.status === 503 || errMsg.includes('rate limit') || errMsg.includes('limite')) {
+          return Response.json({
+            error: `Limite diário de chamadas NVOIP atingido. ${errMsg}`,
+            _error_type: 'rate_limit',
+            _fallback: 'microsip',
+            _debug: data,
+          }, { status: 200 });
+        }
         return Response.json({
           error: `Falha ao iniciar chamada: ${errMsg}`,
           _error_type: 'chamada_falhou',

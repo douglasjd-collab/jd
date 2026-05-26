@@ -47,6 +47,20 @@ export default function CallCenter() {
     return (params.get('numero') || '').replace(/\D/g, '');
   }, []);
 
+  // Atalho de teclado: Ctrl+L abre modal de ligação
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        if (!naoConfigurado) {
+          setChamadaOpen(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [naoConfigurado]);
+
   useEffect(() => {
     if (numeroInicial) {
       setNumeroParaChamar(numeroInicial);
@@ -159,6 +173,7 @@ export default function CallCenter() {
             Call Center
           </h1>
           <p className="text-slate-500 text-sm mt-1">Chamadas via NVOIP API</p>
+          <p className="text-xs text-amber-600 mt-1">⚠️ Limite diário de chamadas: se atingir, use o botão "Ligar com MicroSIP" como fallback.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {!naoConfigurado && (
@@ -274,7 +289,25 @@ export default function CallCenter() {
                   <Phone className="w-6 h-6 text-white" />
                 </div>
                 <span className="font-semibold text-sm text-slate-700">Nova Chamada</span>
-                <span className="text-xs text-green-600 font-medium">Clique para ligar</span>
+                <span className="text-xs text-green-600 font-medium">Clique ou Ctrl+L</span>
+              </CardContent>
+            </Card>
+
+            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-cyan-400 hover:border-cyan-500 bg-cyan-50" onClick={() => {
+              const numero = prompt('Digite o número para ligar com MicroSIP (DDD + número):');
+              if (numero) {
+                const numLimpo = numero.replace(/\D/g, '');
+                if (numLimpo) {
+                  window.location.href = `microsip:${numLimpo}`;
+                }
+              }
+            }}>
+              <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
+                <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center">
+                  <PhoneCall className="w-6 h-6 text-white" />
+                </div>
+                <span className="font-semibold text-sm text-slate-700">Ligar com MicroSIP</span>
+                <span className="text-xs text-cyan-600 font-medium">Fallback sem limites</span>
               </CardContent>
             </Card>
 

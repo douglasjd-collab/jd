@@ -38,7 +38,17 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       }
       
       if (res.data?.error) {
-        toast.error('Erro ao ligar: ' + res.data.error);
+        const isRateLimit = res.data._error_type === 'rate_limit' || res.data._fallback === 'microsip';
+        toast.error(res.data.error);
+        
+        // Se for limite diário, sugere MicroSIP
+        if (isRateLimit) {
+          const usarMicroSIP = window.confirm('NVOIP atingiu o limite diário. Deseja abrir o MicroSIP para ligar?');
+          if (usarMicroSIP) {
+            window.location.href = `microsip:${numero}`;
+            onOpenChange(false);
+          }
+        }
         return;
       }
       
