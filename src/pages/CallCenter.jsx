@@ -269,6 +269,23 @@ export default function CallCenter() {
       {!naoConfigurado && (
         <div className="space-y-4">
 
+          {/* Chamada ativa - visível no topo */}
+          {chamadaAtiva && (
+            <div className="bg-gradient-to-r from-green-50 to-cyan-50 border-2 border-green-300 rounded-xl p-4">
+              <ChamadaAtiva
+                callId={chamadaAtiva.callId}
+                destino={chamadaAtiva.destino}
+                nomeContato={chamadaAtiva.nomeContato}
+                empresaId={user?.empresa_id}
+                usuarioId={user?.id}
+                usuarioNome={user?.nome_perfil || user?.full_name}
+                clienteId={chamadaAtiva.clienteId}
+                clienteNome={chamadaAtiva.nomeContato}
+                onEncerrada={() => setChamadaAtiva(null)}
+              />
+            </div>
+          )}
+
           {/* Layout: Softphone + Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Softphone WebRTC */}
@@ -346,22 +363,7 @@ export default function CallCenter() {
             </div>{/* end lg:col-span-2 */}
           </div>{/* end grid layout */}
 
-          {/* Chamada ativa */}
-          {chamadaAtiva && (
-            <div className="max-w-sm">
-              <ChamadaAtiva
-                callId={chamadaAtiva.callId}
-                destino={chamadaAtiva.destino}
-                nomeContato={chamadaAtiva.nomeContato}
-                empresaId={user?.empresa_id}
-                usuarioId={user?.id}
-                usuarioNome={user?.nome_perfil || user?.full_name}
-                clienteId={chamadaAtiva.clienteId}
-                clienteNome={chamadaAtiva.nomeContato}
-                onEncerrada={() => setChamadaAtiva(null)}
-              />
-            </div>
-          )}
+
 
           {/* Tabs */}
           <Tabs defaultValue="historico">
