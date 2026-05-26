@@ -353,25 +353,16 @@ Deno.serve(async (req) => {
       const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
 
       // A NVOIP usa callback de 2 pernas:
-      //   1ª perna: NVOIP liga para o ramal SIP do "caller"
-      //   - Se webphone estiver ATIVO no browser → a chamada toca direto no softphone (NÃO enviar callForward)
-      //   - Se webphone INATIVO → enviar callForward para encaminhar ao chip/celular
-      //   2ª perna: Após o usuário atender, NVOIP liga para o contato (called) e conecta
+      //   1ª perna: NVOIP liga para o ramal SIP do "caller" (usuário)
+      //   2ª perna: Após usuário atender, NVOIP liga para o contato (called) e conecta
+      // O encaminhamento para o chip já está configurado no painel NVOIP — NÃO enviar callForward
       const callBody = {
         caller: ramalSip,
         called: calledFormatado,
       };
       if (numeroDid) callBody.callerId = numeroDid;
 
-      // Só envia callForward quando webphone NÃO está registrado no browser
-      // Quando webphone está ativo, a NVOIP já sabe tocar no softphone — não precisa redirecionar para chip
-      if (!webphoneAtivo && numeroChip && numeroChip !== numeroDid) {
-        let chipFormatado = numeroChip;
-        if (!chipFormatado.startsWith('55') && chipFormatado.length <= 11) chipFormatado = '55' + chipFormatado;
-        callBody.callForward = chipFormatado;
-      }
-
-      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}, callForward=${callBody.callForward}, webphoneAtivo=${webphoneAtivo}`);
+      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}, chip=${numeroChip}`);
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -393,7 +384,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid, _callForward: numeroChip });
+      return Response.json({ ...data, _tipo_config: tipo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid });
     }
 
     if (action === 'consultarChamada') {
