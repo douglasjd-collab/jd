@@ -324,8 +324,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'realizarChamadaDireta') {
-      // Chamada DIRETA/HEADLESS: liga direto para o número sem callback para o ramal
-      // Não toca no webphone/chip, liga diretamente
+      // Chamada DIRETA/HEADLESS: o NVOIP lê o DID como caller e liga para o destinatário
+      // Nota: este é o comportamento esperado quando caller === DID em modo direto
+      // Se a ligação se encerra, é porque o NVOIP está tentando fazer callback para o ramal
+      // Solução: usar apenas o DID, sem nenhum forwarding
       const { called } = body;
 
       const numeroDid = (config.numero_did || '').replace(/\D/g, '');
@@ -344,15 +346,15 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Chamada DIRETA: usa DID como caller (não ramal SIP)
-      // Isto faz com que NVOIP ligue direto para o número sem callback para o usuário
+      // Chamada DIRETA: DID chama direto para called SEM callback
+      // NVOIP interpreta isso como uma chamada de entrada para o DID (sem agent/ramal)
       const callBody = {
-        caller: numeroDid,  // DID como origin — não callback para ramal
+        caller: numeroDid,  // DID como origin — ligação sai do DID
         called: calledFormatado,
-        callerId: numeroDid,
+        // NÃO incluir callerId, pois queremos que seja headless sem callback
       };
 
-      console.log(`[NVOIP] chamadaDireta caller(DID)=${numeroDid}, called=${calledFormatado} (SEM CALLBACK para ramal)`);
+      console.log(`[NVOIP] chamadaDireta: DID(${numeroDid}) → called(${calledFormatado})`);
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -374,7 +376,7 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _caller_did: numeroDid, _called: calledFormatado, _tipo: 'direto_sem_callback' });
+      return Response.json({ ...data, _caller_did: numeroDid, _called: calledFormatado, _tipo: 'direto_headless' });
     }
 
     if (action === 'realizarChamada') {
