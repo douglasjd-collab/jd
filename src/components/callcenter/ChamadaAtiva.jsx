@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { PhoneOff, Loader2, Phone, Mic } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -27,7 +27,7 @@ const statusColor = {
   failed:              'bg-red-100 text-red-700',
 };
 
-export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada }) {
+export default function ChamadaAtiva({ callId, destino, nomeContato, empresaId, usuarioId, usuarioNome, clienteId, clienteNome, onEncerrada }) {
   const [status, setStatus] = useState('calling_origin');
   const [duracao, setDuracao] = useState(0);
   const [encerrando, setEncerrando] = useState(false);
@@ -35,6 +35,28 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada
   const [mostrarLog, setMostrarLog] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [savingResult, setSavingResult] = useState(false);
+  const historicoIdRef = useRef(null);
+  const inicioRef = useRef(new Date().toISOString());
+
+  // Cria registro "em_andamento" no histórico ao montar
+  useEffect(() => {
+    if (!empresaId || !callId) return;
+    const criar = async () => {
+      const reg = await base44.entities.HistoricoChamadaMicroSIP.create({
+        empresa_id: empresaId,
+        usuario_id: usuarioId || '',
+        usuario_nome: usuarioNome || '',
+        direcao: 'saida',
+        numero: destino,
+        cliente_id: clienteId || '',
+        cliente_nome: clienteNome || '',
+        status: 'em_andamento',
+        inicio: inicioRef.current,
+      });
+      historicoIdRef.current = reg?.id;
+    };
+    criar();
+  }, []);
 
   useEffect(() => {
     if (!callId) return;
@@ -46,32 +68,31 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada
           callId,
         });
         const state = res.data?.state;
-        const duracao = res.data?.talkingDurationSeconds || res.data?.durationInSeconds || 0;
+        const dur = res.data?.talkingDurationSeconds || res.data?.durationInSeconds || 0;
         
-        // Salva log técnico completo
         setLogTecnico(res.data);
+        if (state) setStatus(state);
+        if (dur > 0) setDuracao(dur);
         
-        // Atualiza o status
-        if (state) {
-          setStatus(state);
-        }
-        
-        // Atualiza a duração se conectada
-        if (duracao > 0) {
-          setDuracao(duracao);
-        }
-        
-        // Se a chamada terminou, para o polling e mostra o modal
         if (['finished', 'noanswer', 'busy', 'failed'].includes(state)) {
           clearInterval(poll);
-          // Aguarda um pouco antes de mostrar o modal para garantir que o estado foi atualizado
+          // Atualiza histórico com resultado final
+          if (historicoIdRef.current && empresaId) {
+            await base44.entities.HistoricoChamadaMicroSIP.update(historicoIdRef.current, {
+              status: state === 'finished' || state === 'established' ? 'atendida' : 
+                      state === 'noanswer' ? 'nao_atendida' : 
+                      state === 'busy' ? 'ocupado' : 'nao_atendida',
+              fim: new Date().toISOString(),
+              duracao_segundos: dur,
+            });
+          }
           setTimeout(() => setShowEndModal(true), 500);
         }
       } catch (err) {
         console.error('Erro ao consultar chamada:', err);
         setLogTecnico({ error: err.message, timestamp: new Date().toISOString() });
       }
-    }, 2000); // Poll a cada 2 segundos em vez de 3
+    }, 2000);
 
     return () => clearInterval(poll);
   }, [callId]);
@@ -82,6 +103,14 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada
       action: 'encerrarChamada',
       callId,
     });
+    // Atualiza histórico
+    if (historicoIdRef.current && empresaId) {
+      await base44.entities.HistoricoChamadaMicroSIP.update(historicoIdRef.current, {
+        status: duracao > 0 ? 'atendida' : 'nao_atendida',
+        fim: new Date().toISOString(),
+        duracao_segundos: duracao,
+      });
+    }
     setEncerrando(false);
     setShowEndModal(true);
   };
@@ -89,7 +118,6 @@ export default function ChamadaAtiva({ callId, destino, nomeContato, onEncerrada
   const handleConfirmResult = async (resultado) => {
     setSavingResult(true);
     try {
-      // Aqui você pode salvar o resultado em uma entidade se desejar
       toast.success(`Ligação registrada como "${resultado}"`);
       setShowEndModal(false);
       setTimeout(() => onEncerrada?.(), 500);

@@ -403,8 +403,34 @@ export default function CallCenter() {
                 sipConfigOk={sipConfigOk}
               />
 
-              {/* Botão de teste para simular chamada entrante */}
-              <div className="mt-3 p-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+              {/* Configuração MicroSIP — URL de notificação */}
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                <p className="text-xs font-semibold text-blue-800">📲 Para receber chamadas no CRM:</p>
+                <p className="text-xs text-blue-700">Configure no MicroSIP → Menu → Settings → Automation:</p>
+                <div className="space-y-1">
+                  <div>
+                    <p className="text-xs text-blue-600 font-medium">On Incoming Call (URL a abrir):</p>
+                    <code className="text-xs bg-white border border-blue-200 rounded px-2 py-1 block break-all text-blue-900 select-all">
+                      {window.location.origin}/CallCenter?incoming=%CallerID%
+                    </code>
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-600 font-medium">On Call Answered:</p>
+                    <code className="text-xs bg-white border border-blue-200 rounded px-2 py-1 block break-all text-blue-900 select-all">
+                      {window.location.origin}/CallCenter?answer=%CallerID%
+                    </code>
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-600 font-medium">On Call Hangup:</p>
+                    <code className="text-xs bg-white border border-blue-200 rounded px-2 py-1 block break-all text-blue-900 select-all">
+                      {window.location.origin}/CallCenter?hangup=%CallerID%
+                    </code>
+                  </div>
+                </div>
+              </div>
+
+              {/* Simular chamada entrante */}
+              <div className="mt-2 p-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
                 <p className="text-xs text-slate-500 font-medium mb-2">🧪 Simular chamada entrante (teste):</p>
                 <div className="flex gap-2">
                   <input
@@ -422,10 +448,6 @@ export default function CallCenter() {
                     Simular
                   </button>
                 </div>
-                <p className="text-xs text-slate-400 mt-1.5">
-                  Ou configure o MicroSIP para abrir:<br/>
-                  <code className="bg-slate-200 px-1 rounded">...CallCenter?incoming=%CallerID%</code>
-                </p>
               </div>
             </div>
 
@@ -518,6 +540,11 @@ export default function CallCenter() {
                 callId={chamadaAtiva.callId}
                 destino={chamadaAtiva.destino}
                 nomeContato={chamadaAtiva.nomeContato}
+                empresaId={user?.empresa_id}
+                usuarioId={user?.id}
+                usuarioNome={user?.nome_perfil || user?.full_name}
+                clienteId={chamadaAtiva.clienteId}
+                clienteNome={chamadaAtiva.nomeContato}
                 onEncerrada={() => setChamadaAtiva(null)}
               />
             </div>

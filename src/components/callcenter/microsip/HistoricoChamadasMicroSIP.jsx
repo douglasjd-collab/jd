@@ -33,7 +33,29 @@ export default function HistoricoChamadasMicroSIP({ empresaId }) {
       '-created_date',
       100
     );
-    setChamadas(data);
+
+    // Auto-encerra chamadas "em_andamento" com mais de 2 horas (ficaram presas)
+    const limite = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const presas = data.filter(c => c.status === 'em_andamento' && c.inicio && c.inicio < limite);
+    for (const c of presas) {
+      await base44.entities.HistoricoChamadaMicroSIP.update(c.id, {
+        status: 'nao_atendida',
+        fim: c.inicio,
+        duracao_segundos: 0,
+      });
+    }
+
+    // Recarrega se havia presas
+    if (presas.length > 0) {
+      const atualizado = await base44.entities.HistoricoChamadaMicroSIP.filter(
+        { empresa_id: empresaId },
+        '-created_date',
+        100
+      );
+      setChamadas(atualizado);
+    } else {
+      setChamadas(data);
+    }
     setLoading(false);
   };
 

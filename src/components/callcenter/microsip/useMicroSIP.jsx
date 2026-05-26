@@ -43,6 +43,19 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
     return () => clearInterval(timerRef.current);
   }, [chamadaAtiva?.status]);
 
+  // ── Auto-encerrar chamadas "em_andamento" presas (sem hangup recebido) ───
+  // Se a chamada ficar em status 'chamando' por mais de 90s sem atender, encerra
+  const autoEncerrarRef = useRef(null);
+  useEffect(() => {
+    clearTimeout(autoEncerrarRef.current);
+    if (chamadaAtiva?.status === 'chamando') {
+      autoEncerrarRef.current = setTimeout(() => {
+        encerrarLocalRef.current?.();
+      }, 90000); // 90 segundos sem atender = não atendida
+    }
+    return () => clearTimeout(autoEncerrarRef.current);
+  }, [chamadaAtiva?.status, chamadaAtiva?.numero]);
+
   // ── Detectar eventos via URL (incoming / answer / hangup / outgoing) ──────
   // Guarda o evento da URL na primeira renderização
   const urlEventRef = useRef(() => {
