@@ -7,7 +7,7 @@ import { Phone, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 
-export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial = '', onChamadaIniciada }) {
+export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial = '', onChamadaIniciada, webphoneAtivo = false }) {
   const [called, setCalled] = useState(numeroInicial);
   const [nomeContato, setNomeContato] = useState('');
   const [ligando, setLigando] = useState(false);
@@ -28,6 +28,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
       const res = await base44.functions.invoke('nvoipCallCenter', {
         action: 'realizarChamada',
         called: numero,
+        webphoneAtivo: webphoneAtivo === true,
       });
       if (res.data?.error) {
         toast.error('Erro ao ligar: ' + res.data.error);
@@ -81,7 +82,10 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
             <p className="font-semibold">📞 Como funciona:</p>
-            <p className="mt-1">O sistema NVOIP ligará para o número via API. Atenda o retorno no seu chip configurado.</p>
+            {webphoneAtivo
+              ? <p className="mt-1">✅ <strong>Webphone ativo</strong> — a chamada tocará diretamente aqui no browser.</p>
+              : <p className="mt-1">O sistema NVOIP ligará para o número via API. Atenda o retorno no seu chip configurado.</p>
+            }
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

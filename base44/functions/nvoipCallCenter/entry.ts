@@ -324,7 +324,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'realizarChamada') {
-      const { called } = body;
+      const { called, webphoneAtivo } = body;
 
       const ramalSip = config.numbersip;
       const numeroDid = (config.numero_did || '').replace(/\D/g, '');
@@ -349,22 +349,24 @@ Deno.serve(async (req) => {
 
       // A NVOIP usa callback de 2 pernas:
       //   1ª perna: NVOIP liga para o ramal SIP do "caller"
-      //   - Se o ramal tem callForward configurado no painel NVOIP, encaminha para o celular
-      //   - Se o ramal tem webphone ativo, abre no softphone
+      //   - Se webphone estiver ATIVO no browser → a chamada toca direto no softphone (NÃO enviar callForward)
+      //   - Se webphone INATIVO → enviar callForward para encaminhar ao chip/celular
       //   2ª perna: Após o usuário atender, NVOIP liga para o contato (called) e conecta
-      //
-      // Como a API PUT /update/users está retornando 500, o callForward deve estar
-      // configurado diretamente no painel NVOIP pelo admin.
-      // Aqui tentamos incluir callForward no corpo da chamada (se a NVOIP aceitar).
       const callBody = {
         caller: ramalSip,
         called: calledFormatado,
       };
       if (numeroDid) callBody.callerId = numeroDid;
-      // Alguns planos NVOIP aceitam callForward direto na chamada
-      if (numeroChip && numeroChip !== numeroDid) callBody.callForward = numeroChip;
 
-      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}, callForward=${numeroChip}`);
+      // Só envia callForward quando webphone NÃO está registrado no browser
+      // Quando webphone está ativo, a NVOIP já sabe tocar no softphone — não precisa redirecionar para chip
+      if (!webphoneAtivo && numeroChip && numeroChip !== numeroDid) {
+        let chipFormatado = numeroChip;
+        if (!chipFormatado.startsWith('55') && chipFormatado.length <= 11) chipFormatado = '55' + chipFormatado;
+        callBody.callForward = chipFormatado;
+      }
+
+      console.log(`[NVOIP] caller(ramal)=${ramalSip}, called=${calledFormatado}, callerId=${numeroDid}, callForward=${callBody.callForward}, webphoneAtivo=${webphoneAtivo}`);
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
