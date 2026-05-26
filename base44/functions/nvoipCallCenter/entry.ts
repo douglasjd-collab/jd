@@ -271,11 +271,11 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'realizarChamadaDireta') {
-      // Fluxo CALLBACK:
-      //   caller = ramal SIP (137715001) — NVOIP liga para o ramal primeiro
-      //   callForward = chip do operador — se ramal tiver encaminhamento, cai no celular
-      //   called = número do cliente
-      //   callerId = DID (aparece para o cliente)
+      // CALLBACK TRADICIONAL (único modo que funciona na API NVOIP v2):
+      // 1. NVOIP liga para o ramal SIP (caller)
+      // 2. Se callForward estiver definido → encaminha para o chip/celular
+      // 3. Quando usuário atende → NVOIP liga para o cliente (called)
+      // 4. callerId = DID aparece para o cliente
       const { called } = body;
 
       const ramalSip = config.numbersip;
@@ -283,58 +283,9 @@ Deno.serve(async (req) => {
       const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
 
       if (!ramalSip) {
-        return Response.json({ error: 'Ramal SIP não configurado. Acesse Call Center → Meu Ramal.' });
-      }
-
-      let calledFormatado = (called || '').replace(/\D/g, '');
-      if (!calledFormatado || calledFormatado.length < 8) {
-        return Response.json({ error: 'Número de destino inválido.' });
-      }
-      if (!calledFormatado.startsWith('55') && calledFormatado.length <= 11) {
-        calledFormatado = '55' + calledFormatado;
-      }
-
-      // caller = ramal SIP (identificador de usuário na NVOIP, sem +55)
-      const callBody = {
-        caller: ramalSip,
-        called: calledFormatado,
-      };
-      if (numeroDid) callBody.callerId = numeroDid;
-      if (numeroChip) {
-        let chipFormatado = numeroChip;
-        if (!chipFormatado.startsWith('55') && chipFormatado.length <= 11) chipFormatado = '55' + chipFormatado;
-        callBody.callForward = chipFormatado;
-      }
-
-      console.log(`[NVOIP] realizarChamadaDireta caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} callForward=${callBody.callForward}`);
-
-      const res = await fetch(`${NVOIP_BASE}/calls/`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(callBody),
-      });
-      let data;
-      try { data = await res.json(); } catch { data = {}; }
-      console.log(`[NVOIP] resposta: HTTP ${res.status}`, JSON.stringify(data));
-
-      if (!res.ok) {
-        return Response.json({ error: data.message || data.error || `HTTP ${res.status}`, _debug: data });
-      }
-      return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _callForward: callBody.callForward });
-    }
-
-    if (action === 'realizarChamadaDireta') {
-      // Chamada DIRETA/HEADLESS: o NVOIP lê o DID como caller e liga para o destinatário
-      // Nota: este é o comportamento esperado quando caller === DID em modo direto
-      // Se a ligação se encerra, é porque o NVOIP está tentando fazer callback para o ramal
-      // Solução: usar apenas o DID, sem nenhum forwarding
-      const { called } = body;
-
-      const numeroDid = (config.numero_did || '').replace(/\D/g, '');
-      if (!numeroDid) {
         return Response.json({
-          error: 'Número DID não configurado para fazer chamadas diretas. Acesse Call Center → Meu Ramal.',
-          _error_type: 'did_nao_configurado',
+          error: 'Ramal SIP não configurado. Acesse Call Center → Meu Ramal.',
+          _error_type: 'ramal_nao_configurado',
         }, { status: 200 });
       }
 
@@ -346,15 +297,19 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Chamada DIRETA: DID chama direto para called SEM callback
-      // NVOIP interpreta isso como uma chamada de entrada para o DID (sem agent/ramal)
+      // Callback: ramal → chip → cliente
       const callBody = {
-        caller: numeroDid,  // DID como origin — ligação sai do DID
+        caller: ramalSip,
         called: calledFormatado,
-        // NÃO incluir callerId, pois queremos que seja headless sem callback
       };
+      if (numeroDid) callBody.callerId = numeroDid;
+      if (numeroChip) {
+        let chipFormatado = numeroChip;
+        if (!chipFormatado.startsWith('55') && chipFormatado.length <= 11) chipFormatado = '55' + chipFormatado;
+        callBody.callForward = chipFormatado;
+      }
 
-      console.log(`[NVOIP] chamadaDireta: DID(${numeroDid}) → called(${calledFormatado})`);
+      console.log(`[NVOIP] realizarChamada (callback): caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} callForward=${callBody.callForward}`);
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
@@ -365,18 +320,18 @@ Deno.serve(async (req) => {
 
       let data;
       try { data = await res.json(); } catch { data = {}; }
-      console.log(`[NVOIP] resposta chamada direta: ${res.status}`, JSON.stringify(data));
+      console.log(`[NVOIP] resposta: HTTP ${res.status}`, JSON.stringify(data));
 
       if (!res.ok) {
         const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
         return Response.json({
-          error: `Falha ao fazer chamada direta: ${errMsg}`,
+          error: `Falha ao iniciar chamada: ${errMsg}`,
           _error_type: 'chamada_falhou',
           _debug: data,
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _caller_did: numeroDid, _called: calledFormatado, _tipo: 'direto_headless' });
+      return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _callForward: callBody.callForward });
     }
 
     if (action === 'realizarChamada') {

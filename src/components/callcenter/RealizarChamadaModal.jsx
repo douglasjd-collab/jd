@@ -81,7 +81,10 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
             <p className="font-semibold">📞 Como funciona:</p>
-            <p className="mt-1">✅ <strong>Chamada direta</strong> — ligação vai direto para o número, sem callback.</p>
+            <p className="mt-1">1️⃣ A NVOIP liga para seu <strong>chip/celular</strong> primeiro</p>
+            <p className="mt-1">2️⃣ Quando você atende, ela liga para o <strong>cliente</strong></p>
+            <p className="mt-1">3️⃣ As duas chamadas são conectadas</p>
+            <p className="mt-2 text-red-700"><strong>⚠️ Atenda seu celular rapidamente!</strong> A ligação se encerra se você não atender em ~30 segundos.</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
