@@ -88,12 +88,6 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
     }
   }, [empresaId]); // aguarda empresaId carregar antes de processar
 
-  // Refs para manter funções sempre atualizadas no BroadcastChannel
-  const processarEntranteRef = useRef(null);
-  const encerrarLocalRef = useRef(null);
-  useEffect(() => { processarEntranteRef.current = _processarChamadaEntrante; }, [_processarChamadaEntrante]);
-  useEffect(() => { encerrarLocalRef.current = _encerrarChamadaLocal; }, [_encerrarChamadaLocal]);
-
   // ── BroadcastChannel — detecta eventos de outras abas/helper ─────────────
   useEffect(() => {
     if (!window.BroadcastChannel) return;
@@ -161,6 +155,10 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
     });
   }, [buscarCliente]);
 
+  // Refs para manter funções sempre atualizadas no BroadcastChannel e polling
+  const processarEntranteRef = useRef(null);
+  const encerrarLocalRef = useRef(null);
+
   // ── Encerrar chamada (local, sem API) ─────────────────────────────────────
   const _encerrarChamadaLocal = useCallback(() => {
     setChamadaAtiva(prev => {
@@ -170,6 +168,10 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
     setChamadaEntrante(null);
     clearInterval(timerRef.current);
   }, []);
+
+  // Atualiza refs sempre que as funções mudam
+  useEffect(() => { processarEntranteRef.current = _processarChamadaEntrante; }, [_processarChamadaEntrante]);
+  useEffect(() => { encerrarLocalRef.current = _encerrarChamadaLocal; }, [_encerrarChamadaLocal]);
 
   // ── Salvar histórico ──────────────────────────────────────────────────────
   const _salvarHistorico = async (chamada, duracaoSeg) => {
