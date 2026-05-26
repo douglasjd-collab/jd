@@ -96,48 +96,26 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
             </div>
           )}
 
-          {!loadingConfig && config && (() => {
-            const chipIgualDid = config.numero_chip?.replace(/\D/g,'') === config.numero_did?.replace(/\D/g,'');
-            return (
-            <div className="space-y-2">
-              {chipIgualDid && (
-                <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-xs text-red-700">
-                  <p className="font-semibold">⚠️ Chip igual ao DID!</p>
-                  <p className="mt-1">O número do CHIP deve ser seu <strong>celular físico</strong> (ex: 5587991426333). Acesse <strong>Call Center → Meu Ramal</strong> e corrija.</p>
+          {!loadingConfig && config && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Ramal SIP:</span>
+                <span className="font-mono font-bold">{config.numbersip}</span>
+              </div>
+              {numeroDID && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">DID de saída:</span>
+                  <span className="font-mono font-bold text-green-700">{numeroDID}</span>
                 </div>
               )}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1">
+              {numeroChip && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Ramal SIP:</span>
-                  <span className="font-mono font-bold">{config.numbersip}</span>
-                </div>
-                {numeroDID && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">DID de saída:</span>
-                    <span className="font-mono font-bold text-green-700">{numeroDID}</span>
-                  </div>
-                )}
-                {numeroChip && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Chip (callback):</span>
-                    <span className="font-mono font-bold">{numeroChip}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Senha SIP:</span>
-                  <span className={`font-bold text-xs ${config.sip_password ? 'text-green-600' : 'text-red-500'}`}>
-                    {config.sip_password ? '✅ Configurada' : '❌ NÃO configurada'}
-                  </span>
-                </div>
-              </div>
-              {!config.sip_password && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
-                  <p className="font-semibold">⚠️ Senha SIP obrigatória!</p>
-                  <p className="mt-1">Acesse <strong>Call Center → Meu Ramal</strong> e preencha a <strong>Senha SIP</strong> (senha do ramal no painel NVOIP). Sem ela o encaminhamento não funciona.</p>
+                  <span className="text-slate-500">Chip (callback):</span>
+                  <span className="font-mono font-bold">{numeroChip}</span>
                 </div>
               )}
             </div>
-          )})()}
+          )}
 
           <div className="space-y-2">
             <Label>Nome do Contato (opcional)</Label>
