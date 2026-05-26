@@ -46,20 +46,25 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     }
 
     setLoading(true);
-    const res = await base44.functions.invoke('nvoipCallCenter', {
-      action: 'realizarChamadaDireta',
-      called: numero,
-    });
-    setLoading(false);
+    try {
+      const res = await base44.functions.invoke('nvoipCallCenter', {
+        action: 'realizarChamadaDireta',
+        called: numero,
+      });
 
-    if (res.data?.callId) {
-      toast.success('Chamada iniciada! Aguarde tocar...');
-      onChamadaIniciada?.(res.data.callId, called, nomeContato || 'Contato');
-      onOpenChange(false);
-      setCalled('');
-      setNomeContato('');
-    } else {
-      toast.error('Erro: ' + (res.data?.error || 'Erro desconhecido'));
+      if (res.data?.callId) {
+        toast.success('Chamada iniciada! Aguarde tocar...');
+        onChamadaIniciada?.(res.data.callId, called, nomeContato || 'Contato');
+        onOpenChange(false);
+        setCalled('');
+        setNomeContato('');
+      } else {
+        toast.error('Erro: ' + (res.data?.error || 'Erro desconhecido'));
+      }
+    } catch (err) {
+      toast.error('Falha ao iniciar chamada: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setLoading(false);
     }
   };
 
