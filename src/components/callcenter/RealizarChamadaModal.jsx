@@ -29,18 +29,32 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
         action: 'realizarChamadaDireta',
         called: numero,
       });
+      
+      console.log('[Modal] Resposta nvoipCallCenter:', res);
+      
+      if (res.status && res.status >= 400) {
+        toast.error('Erro ' + res.status + ': Falha ao iniciar chamada');
+        return;
+      }
+      
       if (res.data?.error) {
         toast.error('Erro ao ligar: ' + res.data.error);
-      } else {
-        const callId = res.data?.call_id || res.data?.id || res.data?.callId || null;
-        toast.success('Chamada iniciada para ' + numero);
-        onChamadaIniciada?.(callId, numero, nomeContato || 'Contato');
-        onOpenChange(false);
-        setCalled('');
-        setNomeContato('');
+        return;
       }
+      
+      const callId = res.data?.callId || res.data?.call_id || res.data?.id || null;
+      if (!callId) {
+        toast.warning('Chamada iniciada, mas ID não foi retornado');
+      } else {
+        toast.success('Chamada iniciada para ' + numero);
+      }
+      onChamadaIniciada?.(callId, numero, nomeContato || 'Contato');
+      onOpenChange(false);
+      setCalled('');
+      setNomeContato('');
     } catch (e) {
-      toast.error('Erro ao iniciar chamada: ' + e.message);
+      console.error('[Modal] Erro na chamada:', e);
+      toast.error('Erro ao iniciar chamada: ' + (e.message || 'Erro desconhecido'));
     } finally {
       setLigando(false);
     }
