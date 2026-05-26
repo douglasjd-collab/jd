@@ -323,6 +323,60 @@ Deno.serve(async (req) => {
       return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _callForward: callBody.callForward });
     }
 
+    if (action === 'realizarChamadaDireta') {
+      // Chamada DIRETA/HEADLESS: liga direto para o número sem callback para o ramal
+      // Não toca no webphone/chip, liga diretamente
+      const { called } = body;
+
+      const numeroDid = (config.numero_did || '').replace(/\D/g, '');
+      if (!numeroDid) {
+        return Response.json({
+          error: 'Número DID não configurado para fazer chamadas diretas. Acesse Call Center → Meu Ramal.',
+          _error_type: 'did_nao_configurado',
+        }, { status: 200 });
+      }
+
+      let calledFormatado = (called || '').replace(/\D/g, '');
+      if (!calledFormatado || calledFormatado.length < 8) {
+        return Response.json({ error: 'Número de destino inválido. Informe DDD + número.', _error_type: 'numero_invalido' }, { status: 200 });
+      }
+      if (!calledFormatado.startsWith('55') && calledFormatado.length <= 11) {
+        calledFormatado = '55' + calledFormatado;
+      }
+
+      // Chamada DIRETA: usa DID como caller (não ramal SIP)
+      // Isto faz com que NVOIP ligue direto para o número sem callback para o usuário
+      const callBody = {
+        caller: numeroDid,  // DID como origin — não callback para ramal
+        called: calledFormatado,
+        callerId: numeroDid,
+      };
+
+      console.log(`[NVOIP] chamadaDireta caller(DID)=${numeroDid}, called=${calledFormatado} (SEM CALLBACK para ramal)`);
+      console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
+
+      const res = await fetch(`${NVOIP_BASE}/calls/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(callBody),
+      });
+
+      let data;
+      try { data = await res.json(); } catch { data = {}; }
+      console.log(`[NVOIP] resposta chamada direta: ${res.status}`, JSON.stringify(data));
+
+      if (!res.ok) {
+        const errMsg = data.message || data.error || data.detail || `HTTP ${res.status}`;
+        return Response.json({
+          error: `Falha ao fazer chamada direta: ${errMsg}`,
+          _error_type: 'chamada_falhou',
+          _debug: data,
+        }, { status: 200 });
+      }
+
+      return Response.json({ ...data, _caller_did: numeroDid, _called: calledFormatado, _tipo: 'direto_sem_callback' });
+    }
+
     if (action === 'realizarChamada') {
       const { called, webphoneAtivo } = body;
 

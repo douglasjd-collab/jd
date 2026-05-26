@@ -26,9 +26,8 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
     setLigando(true);
     try {
       const res = await base44.functions.invoke('nvoipCallCenter', {
-        action: 'realizarChamada',
+        action: 'realizarChamadaDireta',
         called: numero,
-        webphoneAtivo: webphoneAtivo === true,
       });
       if (res.data?.error) {
         toast.error('Erro ao ligar: ' + res.data.error);
@@ -82,10 +81,7 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
             <p className="font-semibold">📞 Como funciona:</p>
-            {webphoneAtivo
-              ? <p className="mt-1">✅ <strong>Webphone ativo</strong> — a chamada tocará diretamente aqui no browser.</p>
-              : <p className="mt-1">O sistema NVOIP ligará para o número via API. Atenda o retorno no seu chip configurado.</p>
-            }
+            <p className="mt-1">✅ <strong>Chamada direta</strong> — ligação vai direto para o número, sem callback.</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
