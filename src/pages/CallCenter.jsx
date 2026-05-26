@@ -304,7 +304,7 @@ export default function CallCenter() {
                   <PhoneCall className="w-6 h-6 text-white" />
                 </div>
                 <span className="font-semibold text-sm text-slate-700">Ligar com MicroSIP</span>
-                <span className="text-xs text-cyan-600 font-medium">Fallback sem limites</span>
+                <span className="text-xs text-cyan-600 font-medium">Dentro do CRM</span>
               </CardContent>
             </Card>
 
