@@ -44,43 +44,49 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
   }, [chamadaAtiva?.status]);
 
   // ── Detectar eventos via URL (incoming / answer / hangup / outgoing) ──────
-  // Roda quando empresaId fica disponível para poder buscar o cliente
-  useEffect(() => {
+  // Guarda o evento da URL na primeira renderização
+  const urlEventRef = useRef(() => {
     const params = new URLSearchParams(window.location.search);
-    const incoming = params.get('incoming');
-    const answer   = params.get('answer');
-    const hangup   = params.get('hangup');
-    const outgoing = params.get('outgoing');
-
-    if (!incoming && !answer && !hangup && !outgoing) return;
-
-    // Limpa todos os params do MicroSIP da URL sem reload
-    const cleanUrl = () => {
-      const url = new URL(window.location.href);
-      ['incoming','answer','hangup','outgoing'].forEach(k => url.searchParams.delete(k));
-      window.history.replaceState({}, '', url.toString());
+    return {
+      incoming: params.get('incoming'),
+      answer:   params.get('answer'),
+      hangup:   params.get('hangup'),
+      outgoing: params.get('outgoing'),
     };
+  });
+  const urlEvent = useRef(urlEventRef.current());
+
+  // Limpa URL imediatamente para não reprocessar
+  useEffect(() => {
+    const { incoming, answer, hangup, outgoing } = urlEvent.current;
+    if (!incoming && !answer && !hangup && !outgoing) return;
+    const url = new URL(window.location.href);
+    ['incoming','answer','hangup','outgoing'].forEach(k => url.searchParams.delete(k));
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
+  // Processa o evento quando empresaId estiver disponível
+  useEffect(() => {
+    const { incoming, answer, hangup, outgoing } = urlEvent.current;
+    if (!incoming && !answer && !hangup && !outgoing) return;
 
     if (incoming) {
       const numero = incoming.replace(/\D/g, '');
-      if (numero) { cleanUrl(); _processarChamadaEntrante(numero); }
+      if (numero) _processarChamadaEntrante(numero);
     } else if (answer) {
-      cleanUrl();
       setChamadaAtiva(prev => prev ? { ...prev, status: 'atendida' } : null);
     } else if (hangup) {
-      cleanUrl();
       _encerrarChamadaLocal();
     } else if (outgoing) {
       const numero = outgoing.replace(/\D/g, '');
       if (numero) {
-        cleanUrl();
         setChamadaAtiva(prev => {
           if (prev?.numero === numero) return { ...prev, status: 'chamando' };
           return { numero, direcao: 'saida', status: 'chamando', inicio: new Date().toISOString(), historicoId: null, clienteNome: null, clienteId: null };
         });
       }
     }
-  }, [empresaId]); // re-executa quando empresaId carrega
+  }, [empresaId]); // aguarda empresaId carregar antes de processar
 
   // ── BroadcastChannel — detecta eventos de outras abas/helper ─────────────
   useEffect(() => {
@@ -91,8 +97,13 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
       const { type, numero } = e.data || {};
       if (type === 'incoming' && numero) _processarChamadaEntrante(numero.replace(/\D/g, ''));
       if (type === 'hangup') _encerrarChamadaLocal();
-      if (type === 'answered') {
-        setChamadaAtiva(prev => prev ? { ...prev, status: 'atendida' } : null);
+      if (type === 'answered') setChamadaAtiva(prev => prev ? { ...prev, status: 'atendida' } : null);
+      if (type === 'outgoing' && numero) {
+        const n = numero.replace(/\D/g, '');
+        if (n) setChamadaAtiva(prev => {
+          if (prev?.numero === n) return { ...prev, status: 'chamando' };
+          return { numero: n, direcao: 'saida', status: 'chamando', inicio: new Date().toISOString(), historicoId: null, clienteNome: null, clienteId: null };
+        });
       }
     };
     return () => ch.close();

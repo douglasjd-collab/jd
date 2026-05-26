@@ -60,13 +60,36 @@ export default function CallCenter() {
     return (params.get('numero') || '').replace(/\D/g, '');
   }, []);
 
-  // Se URL tem parâmetros do MicroSIP (incoming/answer/hangup/outgoing), força modo MicroSIP
+  // Se URL tem parâmetros do MicroSIP (incoming/answer/hangup/outgoing):
+  // Retransmite via BroadcastChannel + localStorage para a aba principal e fecha esta aba
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('incoming') || params.get('answer') || params.get('hangup') || params.get('outgoing')) {
-      setModoMicroSIP(true);
-      localStorage.setItem('callcenter_modo', 'microsip');
+    const incoming = params.get('incoming');
+    const answer   = params.get('answer');
+    const hangup   = params.get('hangup');
+    const outgoing = params.get('outgoing');
+
+    if (!incoming && !answer && !hangup && !outgoing) return;
+
+    setModoMicroSIP(true);
+    localStorage.setItem('callcenter_modo', 'microsip');
+
+    // Envia evento via BroadcastChannel para aba principal
+    if (window.BroadcastChannel) {
+      const ch = new BroadcastChannel('microsip_events');
+      if (incoming) ch.postMessage({ type: 'incoming', numero: incoming });
+      else if (answer) ch.postMessage({ type: 'answered', numero: answer });
+      else if (hangup) ch.postMessage({ type: 'hangup', numero: hangup });
+      else if (outgoing) ch.postMessage({ type: 'outgoing', numero: outgoing });
+      ch.close();
     }
+
+    // Também via localStorage como fallback
+    if (incoming) localStorage.setItem('microsip_incoming', incoming);
+    else if (hangup) localStorage.setItem('microsip_hangup', hangup);
+
+    // Fecha esta aba (aberta pelo MicroSIP) após retransmitir
+    setTimeout(() => window.close(), 300);
   }, []);
 
   // Hook MicroSIP — sempre ativo para detectar chamadas entrantes em qualquer modo
