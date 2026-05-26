@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Phone, MessageSquare, Volume2, History, Settings,
-  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw, Hash, Smartphone
+  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw, Hash
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,13 +18,6 @@ import TorpedoVozModal from '@/components/callcenter/TorpedoVozModal';
 import HistoricoChamadas from '@/components/callcenter/HistoricoChamadas';
 import MeusNumeros from '@/components/callcenter/MeusNumeros';
 import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
-// MicroSIP
-import useMicroSIP from '@/components/callcenter/microsip/useMicroSIP';
-import ChamadaEntrantePopup from '@/components/callcenter/microsip/ChamadaEntrantePopup';
-import ChamadaAtivaBar from '@/components/callcenter/microsip/ChamadaAtivaBar';
-import ConfiguracaoMicroSIPModal from '@/components/callcenter/microsip/ConfiguracaoMicroSIPModal';
-import MicroSIPDiscador from '@/components/callcenter/microsip/MicroSIPDiscador';
-import HistoricoChamadasMicroSIP from '@/components/callcenter/microsip/HistoricoChamadasMicroSIP';
 
 export default function CallCenter() {
   const [user, setUser] = useState(null);
@@ -39,75 +32,21 @@ export default function CallCenter() {
   const [smsOpen, setSmsOpen] = useState(false);
   const [torpedoOpen, setTorpedoOpen] = useState(false);
 
-  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { callId, destino }
+  const [chamadaAtiva, setChamadaAtiva] = useState(null);
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
-  const [ramalStatus, setRamalStatus] = useState(null); // 'Online' | 'Offline' | null
   const [credencialInvalida, setCredencialInvalida] = useState(false);
-  const [modoMicroSIP, setModoMicroSIP] = useState(() => {
-    return localStorage.getItem('callcenter_modo') === 'microsip';
-  });
-  const [microSIPConfigOpen, setMicroSIPConfigOpen] = useState(false);
-  const [sipConfigOk, setSipConfigOk] = useState(() => {
-    const c = localStorage.getItem('microsip_config_local');
-    if (!c) return false;
-    try { const p = JSON.parse(c); return !!(p.sip_user && p.sip_password && p.sip_domain); } catch { return false; }
-  });
 
-  // Puxar parâmetros da URL
   const numeroInicial = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return (params.get('numero') || '').replace(/\D/g, '');
   }, []);
 
-  // Se URL tem parâmetros do MicroSIP (incoming/answer/hangup/outgoing):
-  // Retransmite via BroadcastChannel + localStorage para a aba principal e fecha esta aba
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const incoming = params.get('incoming');
-    const answer   = params.get('answer');
-    const hangup   = params.get('hangup');
-    const outgoing = params.get('outgoing');
-
-    if (!incoming && !answer && !hangup && !outgoing) return;
-
-    setModoMicroSIP(true);
-    localStorage.setItem('callcenter_modo', 'microsip');
-
-    // Envia evento via BroadcastChannel para aba principal
-    if (window.BroadcastChannel) {
-      const ch = new BroadcastChannel('microsip_events');
-      if (incoming) ch.postMessage({ type: 'incoming', numero: incoming });
-      else if (answer) ch.postMessage({ type: 'answered', numero: answer });
-      else if (hangup) ch.postMessage({ type: 'hangup', numero: hangup });
-      else if (outgoing) ch.postMessage({ type: 'outgoing', numero: outgoing });
-      ch.close();
+    if (numeroInicial) {
+      setNumeroParaChamar(numeroInicial);
+      setChamadaOpen(true);
     }
-
-    // Também via localStorage como fallback
-    if (incoming) localStorage.setItem('microsip_incoming', incoming);
-    else if (hangup) localStorage.setItem('microsip_hangup', hangup);
-
-    // Fecha esta aba (aberta pelo MicroSIP) após retransmitir
-    setTimeout(() => window.close(), 300);
-  }, []);
-
-  // Hook MicroSIP — sempre ativo para detectar chamadas entrantes em qualquer modo
-  const microSIP = useMicroSIP({
-    empresaId: user?.empresa_id,
-    usuario: user,
-    sipConfig: null,
-  });
-
-  // Ligar via MicroSIP (chamado por vários pontos)
-  const ligarViaMicroSIP = (numero, clienteNome = null, clienteId = null) => {
-    microSIP.ligar(numero, clienteNome, clienteId);
-  };
-
-  // Detectar número da URL — funciona em ambos os modos
-  useEffect(() => {
-    if (!numeroInicial) return;
-    if (modoMicroSIP) microSIP.ligar(numeroInicial);
-  }, [numeroInicial, modoMicroSIP]);
+  }, [numeroInicial]);
 
   useEffect(() => {
     const init = async () => {
@@ -116,14 +55,11 @@ export default function CallCenter() {
         setUser(me);
 
         let empresaId = me?.empresa_id;
-
-        // Se não veio empresa_id no user, busca pelo colaborador
         if (!empresaId) {
           const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
           const colab = colabs?.find(c => c.empresa_id) || colabs?.[0];
           if (colab?.empresa_id) {
             empresaId = colab.empresa_id;
-            // Atualiza o user local com empresa_id correto
             setUser(prev => ({ ...prev, empresa_id: empresaId }));
           }
         }
@@ -153,46 +89,24 @@ export default function CallCenter() {
     setLoadingConfig(false);
   };
 
-  const verificarRamalStatus = async () => {
-    try {
-      const res = await base44.functions.invoke('nvoipCallCenter', { action: 'listarUsuarios' });
-      if (res.data?.error) {
-        const err = res.data.error;
-        if (err.toLowerCase().includes('invalid user') || err.toLowerCase().includes('forbidden')) {
-          setCredencialInvalida(true);
-        }
-        return;
-      }
-      const users = res.data?.users || [];
-      const meuRamal = users.find(u => u.numbersip === config?.numbersip);
-      if (meuRamal) setRamalStatus(meuRamal.status);
-    } catch {}
-  };
-
-  useEffect(() => {
-    if (config?.numbersip && !naoConfigurado) {
-      verificarRamalStatus();
-    }
-  }, [config?.numbersip]);
-
   const carregarSaldo = async () => {
     setLoadingSaldo(true);
     try {
       const res = await base44.functions.invoke('nvoipCallCenter', { action: 'saldo' });
       if (res.data?.error) {
         const err = res.data.error;
-        const isInvalid = err.toLowerCase().includes('invalid user') || err.toLowerCase().includes('forbidden');
-        if (isInvalid) setCredencialInvalida(true);
+        if (err.toLowerCase().includes('invalid user') || err.toLowerCase().includes('forbidden')) {
+          setCredencialInvalida(true);
+        }
         toast.error('Erro ao consultar saldo: ' + err);
       } else if (res.data?.balance !== undefined) {
         setSaldo(res.data.balance);
       } else {
-        // Tenta outros campos possíveis da API NVOIP
         const val = res.data?.saldo ?? res.data?.amount ?? res.data?.value;
         if (val !== undefined) {
           setSaldo(val);
         } else {
-          toast.error('Erro ao consultar saldo: credenciais inválidas ou expiradas. Reconfigure o NVOIP.');
+          toast.error('Erro ao consultar saldo: credenciais inválidas ou expiradas.');
         }
       }
     } catch (e) {
@@ -200,12 +114,6 @@ export default function CallCenter() {
     } finally {
       setLoadingSaldo(false);
     }
-  };
-
-  const toggleModo = () => {
-    const novo = !modoMicroSIP;
-    setModoMicroSIP(novo);
-    localStorage.setItem('callcenter_modo', novo ? 'microsip' : 'nvoip');
   };
 
   const handleConfigSalva = async () => {
@@ -238,77 +146,33 @@ export default function CallCenter() {
             <PhoneCall className="w-7 h-7 text-[#23BE84]" />
             Call Center
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            {modoMicroSIP ? 'Modo MicroSIP Local — chamadas diretas sem callback' : 'Modo NVOIP API — chamadas via callback'}
-          </p>
+          <p className="text-slate-500 text-sm mt-1">Chamadas via NVOIP API</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Toggle de modo */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-            <button
-              onClick={() => { setModoMicroSIP(false); localStorage.setItem('callcenter_modo', 'nvoip'); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${!modoMicroSIP ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              NVOIP API
-            </button>
-            <button
-              onClick={() => { setModoMicroSIP(true); localStorage.setItem('callcenter_modo', 'microsip'); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1 ${modoMicroSIP ? 'bg-[#10353C] shadow text-white' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              MicroSIP Local
-            </button>
-          </div>
-
-          {modoMicroSIP ? (
-            <Button variant="outline" size="sm" onClick={() => setMicroSIPConfigOpen(true)}>
-              <Settings className="w-4 h-4 mr-1" />
-              Config MicroSIP
-            </Button>
-          ) : (
-            <>
-              {!naoConfigurado && (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  ● {config.numbersip}
-                </Badge>
-              )}
-              <Button variant="outline" size="sm" onClick={() => setRamalUsuarioOpen(true)} className="border-green-300 text-green-700 hover:bg-green-50">
-                <Phone className="w-4 h-4 mr-1" />
-                Meu Ramal
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-                <Settings className="w-4 h-4 mr-1" />
-                Config Empresa
-              </Button>
-            </>
+          {!naoConfigurado && (
+            <Badge className="bg-green-100 text-green-700 border-green-200">
+              ● {config.numbersip}
+            </Badge>
           )}
+          <Button variant="outline" size="sm" onClick={() => setRamalUsuarioOpen(true)} className="border-green-300 text-green-700 hover:bg-green-50">
+            <Phone className="w-4 h-4 mr-1" />
+            Meu Ramal
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
+            <Settings className="w-4 h-4 mr-1" />
+            Configurações
+          </Button>
         </div>
       </div>
 
-      {/* Popup chamada entrante MicroSIP */}
-      <ChamadaEntrantePopup
-        chamadaEntrante={microSIP.chamadaEntrante}
-        onAtender={microSIP.atenderChamada}
-        onIgnorar={microSIP.ignorarChamada}
-      />
-
-      {/* Barra de chamada ativa MicroSIP */}
-      {microSIP.chamadaAtiva && (
-        <ChamadaAtivaBar
-          chamadaAtiva={microSIP.chamadaAtiva}
-          duracao={microSIP.duracao}
-          onEncerrar={microSIP.encerrarChamada}
-        />
-      )}
-
-      {/* Banner de credencial inválida — só no modo NVOIP */}
-      {credencialInvalida && !naoConfigurado && !modoMicroSIP && (
+      {/* Banner credencial inválida */}
+      {credencialInvalida && !naoConfigurado && (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-300 rounded-xl text-sm text-red-800">
           <span className="text-xl">🔑</span>
           <div className="flex-1">
             <p className="font-semibold">Credenciais NVOIP inválidas</p>
             <p className="mt-1 text-red-700">
-              A Napikey ou User Token configurados estão incorretos. Acesse o <strong>painel NVOIP → Configurações → API</strong> e copie a Napikey correta, depois clique em <strong>Config Empresa</strong> para atualizar.
+              A Napikey ou User Token estão incorretos. Acesse o <strong>painel NVOIP → Configurações → API</strong> e copie a Napikey correta.
             </p>
           </div>
           <button
@@ -320,12 +184,8 @@ export default function CallCenter() {
         </div>
       )}
 
-
-
-
-
-      {/* Não configurado (NVOIP) — só mostra no modo NVOIP */}
-      {naoConfigurado && !modoMicroSIP && (
+      {/* Não configurado */}
+      {naoConfigurado && (
         <div className="space-y-4">
           <Card className="border-dashed border-2 border-slate-300">
             <CardContent className="flex flex-col items-center justify-center py-8 gap-4">
@@ -333,7 +193,7 @@ export default function CallCenter() {
               <div className="text-center">
                 <h3 className="font-semibold text-slate-600 text-lg">NVOIP não configurado</h3>
                 <p className="text-slate-400 text-sm mt-1">
-                  Faça login no painel NVOIP abaixo para obter suas credenciais, depois clique em <strong>Configurar Agora</strong>.
+                  Acesse o painel NVOIP abaixo para obter suas credenciais e clique em <strong>Configurações</strong>.
                 </p>
               </div>
               <Button onClick={() => setConfigOpen(true)} className="bg-[#10353C] hover:bg-[#10353C]/90 text-white">
@@ -343,30 +203,23 @@ export default function CallCenter() {
             </CardContent>
           </Card>
 
-          {/* Instruções passo a passo */}
           <Card className="border-blue-200 bg-blue-50">
             <CardContent className="py-4 px-5">
               <p className="text-sm font-semibold text-blue-800 mb-2">📋 Como configurar em 3 passos:</p>
               <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
                 <li>No painel NVOIP abaixo, vá em <strong>Configurações → API</strong> e copie o <strong>NumberSIP</strong> e o <strong>User Token</strong>.</li>
-                <li>Clique no botão <strong>"Configurar Agora"</strong> acima e cole as credenciais.</li>
-                <li>Clique em <strong>Testar Conexão</strong> e depois em <strong>Salvar</strong> — pronto para fazer ligações!</li>
+                <li>Clique em <strong>"Configurar Agora"</strong> acima e cole as credenciais.</li>
+                <li>Clique em <strong>Testar Conexão</strong> e depois em <strong>Salvar</strong>.</li>
               </ol>
             </CardContent>
           </Card>
 
-          {/* Painel NVOIP embutido para login */}
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-xl">
               <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b">
                 <PhoneCall className="w-4 h-4 text-[#23BE84]" />
-                <span className="text-sm font-medium text-slate-600">Painel NVOIP — navegue até <strong>Configurações → API</strong> para copiar suas credenciais</span>
-                <a
-                  href="https://painel.nvoip.com.br/chat"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-auto text-xs text-blue-500 hover:underline flex-shrink-0"
-                >
+                <span className="text-sm font-medium text-slate-600">Painel NVOIP — <strong>Configurações → API</strong></span>
+                <a href="https://painel.nvoip.com.br/chat" target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 hover:underline flex-shrink-0">
                   Abrir em nova aba ↗
                 </a>
               </div>
@@ -382,100 +235,12 @@ export default function CallCenter() {
         </div>
       )}
 
-      {/* ── MODO MICROSIP ──────────────────────────────────────────────────── */}
-      {modoMicroSIP && (
-        <div className="space-y-4">
-          {/* Chamada ativa bar */}
-          {microSIP.chamadaAtiva && (
-            <ChamadaAtivaBar
-              chamadaAtiva={microSIP.chamadaAtiva}
-              duracao={microSIP.duracao}
-              onEncerrar={microSIP.encerrarChamada}
-            />
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Discador */}
-            <div className="lg:col-span-1">
-              <MicroSIPDiscador
-                onLigar={ligarViaMicroSIP}
-                onConfigOpen={() => setMicroSIPConfigOpen(true)}
-                sipConfigOk={sipConfigOk}
-              />
-
-              {/* Configuração MicroSIP — URL de notificação */}
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-                <p className="text-xs font-semibold text-blue-800">📲 Para receber chamadas no CRM:</p>
-                <p className="text-xs text-blue-700">Configure no MicroSIP → Menu → Settings → Automation:</p>
-                <div className="space-y-1">
-                  <div>
-                    <p className="text-xs text-blue-600 font-medium">On Incoming Call (URL a abrir):</p>
-                    <code className="text-xs bg-white border border-blue-200 rounded px-2 py-1 block break-all text-blue-900 select-all">
-                      {window.location.origin}/CallCenter?incoming=%CallerID%
-                    </code>
-                  </div>
-                  <div>
-                    <p className="text-xs text-blue-600 font-medium">On Call Answered:</p>
-                    <code className="text-xs bg-white border border-blue-200 rounded px-2 py-1 block break-all text-blue-900 select-all">
-                      {window.location.origin}/CallCenter?answer=%CallerID%
-                    </code>
-                  </div>
-                  <div>
-                    <p className="text-xs text-blue-600 font-medium">On Call Hangup:</p>
-                    <code className="text-xs bg-white border border-blue-200 rounded px-2 py-1 block break-all text-blue-900 select-all">
-                      {window.location.origin}/CallCenter?hangup=%CallerID%
-                    </code>
-                  </div>
-                </div>
-              </div>
-
-              {/* Simular chamada entrante */}
-              <div className="mt-2 p-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
-                <p className="text-xs text-slate-500 font-medium mb-2">🧪 Simular chamada entrante (teste):</p>
-                <div className="flex gap-2">
-                  <input
-                    className="flex-1 text-xs border rounded px-2 py-1"
-                    placeholder="81999991234"
-                    id="sim-numero-input"
-                  />
-                  <button
-                    onClick={() => {
-                      const n = document.getElementById('sim-numero-input')?.value;
-                      microSIP.simularEntrada(n);
-                    }}
-                    className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                  >
-                    Simular
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Histórico */}
-            <div className="lg:col-span-2">
-              <div className="bg-white border rounded-2xl p-4">
-                <HistoricoChamadasMicroSIP empresaId={user?.empresa_id} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODO NVOIP (existente) ──────────────────────────────────────────── */}
       {/* Conteúdo principal */}
-      {!naoConfigurado && !modoMicroSIP && (
-        <>
-          {/* Layout principal */}
-          <div className="grid grid-cols-1 gap-6">
-            {/* Ações + histórico */}
-            <div className="space-y-4">
-
+      {!naoConfigurado && (
+        <div className="space-y-4">
           {/* Cards de ação rápida */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card
-              className="cursor-pointer hover:shadow-md transition-shadow border-2 border-green-400 hover:border-green-500 bg-green-50"
-              onClick={() => setChamadaOpen(true)}
-            >
+            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-green-400 hover:border-green-500 bg-green-50" onClick={() => setChamadaOpen(true)}>
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
                 <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                   <Phone className="w-6 h-6 text-white" />
@@ -485,10 +250,7 @@ export default function CallCenter() {
               </CardContent>
             </Card>
 
-            <Card
-              className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300"
-              onClick={() => setSmsOpen(true)}
-            >
+            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300" onClick={() => setSmsOpen(true)}>
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                   <MessageSquare className="w-6 h-6 text-blue-600" />
@@ -497,10 +259,7 @@ export default function CallCenter() {
               </CardContent>
             </Card>
 
-            <Card
-              className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-purple-300"
-              onClick={() => setTorpedoOpen(true)}
-            >
+            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-purple-300" onClick={() => setTorpedoOpen(true)}>
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
                 <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                   <Volume2 className="w-6 h-6 text-purple-600" />
@@ -509,16 +268,10 @@ export default function CallCenter() {
               </CardContent>
             </Card>
 
-            <Card
-              className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-amber-300"
-              onClick={carregarSaldo}
-            >
+            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-amber-300" onClick={carregarSaldo}>
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
                 <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                  {loadingSaldo
-                    ? <Loader2 className="w-6 h-6 text-amber-600 animate-spin" />
-                    : <Wallet className="w-6 h-6 text-amber-600" />
-                  }
+                  {loadingSaldo ? <Loader2 className="w-6 h-6 text-amber-600 animate-spin" /> : <Wallet className="w-6 h-6 text-amber-600" />}
                 </div>
                 {saldo !== null
                   ? <span className="font-bold text-green-600">R$ {saldo}</span>
@@ -569,22 +322,8 @@ export default function CallCenter() {
               <MeusNumeros />
             </TabsContent>
           </Tabs>
-
-            </div>
-          </div>{/* fim grid */}
-        </>
+        </div>
       )}
-
-      {/* Modal MicroSIP Config */}
-      <ConfiguracaoMicroSIPModal
-        open={microSIPConfigOpen}
-        onOpenChange={setMicroSIPConfigOpen}
-        empresaId={user?.empresa_id}
-        onSalvo={() => {
-          const c = localStorage.getItem('microsip_config_local');
-          if (c) { try { const p = JSON.parse(c); setSipConfigOk(!!(p.sip_user && p.sip_password && p.sip_domain)); } catch {} }
-        }}
-      />
 
       {/* Modais */}
       <ConfiguracaoNvoipModal
@@ -597,7 +336,6 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numeroInicial={numeroParaChamar}
-        modoMicroSIP={modoMicroSIP}
         onChamadaIniciada={(callId, destino, nomeContato) => {
           if (callId) setChamadaAtiva({ callId, destino, nomeContato });
         }}
