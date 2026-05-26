@@ -421,7 +421,7 @@ export default function CallCenter() {
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-lg font-semibold text-slate-800">MicroSIP - Ligar</h2>
+              <h2 className="text-lg font-semibold text-slate-800">MicroSIP - Ligar (dentro do CRM)</h2>
               <button 
                 onClick={() => {
                   setMicroSIPOpen(false);
@@ -446,12 +446,14 @@ export default function CallCenter() {
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && numeroMicroSIP.length >= 8) {
-                        window.location.href = `sip:${numeroMicroSIP}@sip.nvoip.com.br`;
+                        setNumeroParaChamar(numeroMicroSIP);
+                        setMicroSIPOpen(false);
+                        setChamadaOpen(true);
                       }
                     }}
                     autoFocus
                   />
-                  <p className="text-xs text-slate-500 mt-1">Seu aplicativo MicroSIP será acionado automaticamente.</p>
+                  <p className="text-xs text-slate-500 mt-1">A ligação será feita via NVOIP dentro do CRM.</p>
                 </div>
               </div>
             </div>
@@ -468,7 +470,9 @@ export default function CallCenter() {
               <button
                 onClick={() => {
                   if (numeroMicroSIP.length >= 8) {
-                    window.location.href = `sip:${numeroMicroSIP}@sip.nvoip.com.br`;
+                    setNumeroParaChamar(numeroMicroSIP);
+                    setMicroSIPOpen(false);
+                    setChamadaOpen(true);
                   }
                 }}
                 disabled={numeroMicroSIP.length < 8}
