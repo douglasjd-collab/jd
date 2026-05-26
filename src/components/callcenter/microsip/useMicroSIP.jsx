@@ -88,6 +88,12 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
     }
   }, [empresaId]); // aguarda empresaId carregar antes de processar
 
+  // Refs para manter funções sempre atualizadas no BroadcastChannel
+  const processarEntranteRef = useRef(null);
+  const encerrarLocalRef = useRef(null);
+  useEffect(() => { processarEntranteRef.current = _processarChamadaEntrante; }, [_processarChamadaEntrante]);
+  useEffect(() => { encerrarLocalRef.current = _encerrarChamadaLocal; }, [_encerrarChamadaLocal]);
+
   // ── BroadcastChannel — detecta eventos de outras abas/helper ─────────────
   useEffect(() => {
     if (!window.BroadcastChannel) return;
@@ -95,8 +101,8 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
     channelRef.current = ch;
     ch.onmessage = (e) => {
       const { type, numero } = e.data || {};
-      if (type === 'incoming' && numero) _processarChamadaEntrante(numero.replace(/\D/g, ''));
-      if (type === 'hangup') _encerrarChamadaLocal();
+      if (type === 'incoming' && numero) processarEntranteRef.current?.(numero.replace(/\D/g, ''));
+      if (type === 'hangup') encerrarLocalRef.current?.();
       if (type === 'answered') setChamadaAtiva(prev => prev ? { ...prev, status: 'atendida' } : null);
       if (type === 'outgoing' && numero) {
         const n = numero.replace(/\D/g, '');
@@ -116,12 +122,12 @@ export default function useMicroSIP({ empresaId, usuario, sipConfig }) {
       if (evt) {
         localStorage.removeItem('microsip_incoming');
         const numero = evt.replace(/\D/g, '');
-        if (numero) _processarChamadaEntrante(numero);
+        if (numero) processarEntranteRef.current?.(numero);
       }
       const hangup = localStorage.getItem('microsip_hangup');
       if (hangup) {
         localStorage.removeItem('microsip_hangup');
-        _encerrarChamadaLocal();
+        encerrarLocalRef.current?.();
       }
     }, 800);
     return () => clearInterval(poll);
