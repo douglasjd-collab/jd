@@ -299,7 +299,7 @@ export default function CallCenter() {
               if (numero) {
                 const numLimpo = numero.replace(/\D/g, '');
                 if (numLimpo) {
-                  window.location.href = `microsip:${numLimpo}`;
+                  window.location.href = `sip:${numLimpo}@sip.nvoip.com.br`;
                 }
               }
             }}>
