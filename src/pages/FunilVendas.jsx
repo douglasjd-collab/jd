@@ -24,9 +24,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare, Bell } from 'lucide-react';
 import ChatFunilModal from '@/components/funil/ChatFunilModal';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
+import AlertasPreFechamentoBell from '@/components/funil/AlertasPreFechamentoBell';
+import ConfiguracaoAlertasPreFechamento from '@/components/funil/ConfiguracaoAlertasPreFechamento';
 import { ModalAlterarResponsavel, ModalComentarios, ModalAlterarQuadro, ModalCriarFunil, ModalVenda } from '@/components/funil/FunilModais';
 import VendedorSearchSelect from '@/components/funil/VendedorSearchSelect';
 import { toast } from 'sonner';
@@ -59,6 +61,7 @@ export default function FunilVendas() {
   const [novoFunil, setNovoFunil] = useState({ nome: '', cor: '#3b82f6' });
   const [searchCard, setSearchCard] = useState('');
   const [chatFunilOportunidade, setChatFunilOportunidade] = useState(null);
+  const [configAlertasOpen, setConfigAlertasOpen] = useState(false);
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -84,6 +87,7 @@ export default function FunilVendas() {
     origem: '',
     observacoes: '',
     data_fechamento_prevista: '',
+    data_pre_fechamento: '',
     telefone_lead: '',
     data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
   });
@@ -569,6 +573,27 @@ export default function FunilVendas() {
         } : {}),
       });
 
+      // Se estava em Pré-Fechamento e saiu, encerrar alertas ativos
+      const etapaOrigemObj = etapas.find(e => e.id === oportunidade?.etapa_id);
+      const eraPreFechamento = etapaOrigemObj?.nome?.toLowerCase().includes('pré-fechamento') ||
+        etapaOrigemObj?.nome?.toLowerCase().includes('pre-fechamento') ||
+        etapaOrigemObj?.nome?.toLowerCase().includes('pré fechamento') ||
+        etapaOrigemObj?.nome?.toLowerCase().includes('pre fechamento');
+      const continuaPreFechamento = etapaDestino?.nome?.toLowerCase().includes('pré-fechamento') ||
+        etapaDestino?.nome?.toLowerCase().includes('pre-fechamento') ||
+        etapaDestino?.nome?.toLowerCase().includes('pré fechamento') ||
+        etapaDestino?.nome?.toLowerCase().includes('pre fechamento');
+      if (eraPreFechamento && !continuaPreFechamento) {
+        // Encerrar alertas ativos deste lead
+        const alertasAtivos = await base44.entities.AlertePreFechamento.filter({
+          oportunidade_id: oportunidadeId,
+          status: 'ativo'
+        });
+        for (const alerta of alertasAtivos) {
+          await base44.entities.AlertePreFechamento.update(alerta.id, { status: 'encerrado' });
+        }
+      }
+
       // histórico
       await base44.entities.MovimentacaoFunil.create({
         oportunidade_id: oportunidadeId,
@@ -768,6 +793,7 @@ export default function FunilVendas() {
       origem: '',
       observacoes: '',
       data_fechamento_prevista: '',
+      data_pre_fechamento: '',
       telefone_lead: '',
       data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
     });
@@ -1002,6 +1028,10 @@ export default function FunilVendas() {
             <Input placeholder="Buscar lead..." value={searchCard} onChange={(e) => setSearchCard(e.target.value)} className="pl-9 w-48 h-9" />
             {searchCard && <button onClick={() => setSearchCard('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>}
           </div>
+          <AlertasPreFechamentoBell
+            empresaId={currentUser?.empresa_id}
+            userId={currentUser?.id}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-9"><Settings className="w-4 h-4" /> Configurar</Button>
@@ -1012,6 +1042,9 @@ export default function FunilVendas() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate(createPageUrl('AutomacaoFunis'))}>
                 <Zap className="w-4 h-4 mr-2" /> Automação de Funis
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setConfigAlertasOpen(true)}>
+                <Target className="w-4 h-4 mr-2" /> Alertas Pré-Fechamento
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1185,6 +1218,17 @@ export default function FunilVendas() {
                              const etapaAtual = etapas.find(e => e.id === oport.etapa_id);
                              const isVendaFechada = etapaAtual?.tipo === 'ganho';
 
+                             // Detectar Pré-Fechamento
+                             const isPreFechamento = etapaAtual?.nome?.toLowerCase().includes('pré-fechamento') ||
+                               etapaAtual?.nome?.toLowerCase().includes('pre-fechamento') ||
+                               etapaAtual?.nome?.toLowerCase().includes('pré fechamento') ||
+                               etapaAtual?.nome?.toLowerCase().includes('pre fechamento');
+                             const hoje = new Date().toISOString().split('T')[0];
+                             const preFechamentoAtivo = isPreFechamento && oport.data_pre_fechamento && oport.data_pre_fechamento <= hoje;
+                             const diasAtrasoPreFech = preFechamentoAtivo
+                               ? Math.floor((new Date(hoje) - new Date(oport.data_pre_fechamento)) / (1000 * 60 * 60 * 24))
+                               : 0;
+
                              // Calcular se está sem resposta (>24h sem movimentação)
                              const diffHorasSemResposta = (new Date() - new Date(oport.data_ultima_movimentacao || oport.created_date || new Date())) / (1000 * 60 * 60);
                              const semResposta = diffHorasSemResposta >= 24 && oport.status === 'aberta';
@@ -1199,6 +1243,13 @@ export default function FunilVendas() {
                              } else if (oport.status === 'perdida') {
                                cardClasses = 'bg-red-50 border-2 border-red-500';
                                prioridadeLabel = <span className="text-xs font-bold text-red-600">🔴 Perdido</span>;
+                             } else if (preFechamentoAtivo) {
+                               cardClasses = 'bg-purple-50 border-2 border-purple-500 shadow-[0_0_14px_rgba(168,85,247,0.3)]';
+                               prioridadeLabel = (
+                                 <span className="text-xs font-bold text-purple-700 flex items-center gap-1">
+                                   🎯 Pré-Fechamento{diasAtrasoPreFech > 0 ? ` · ${diasAtrasoPreFech}d atraso` : ' · Hoje!'}
+                                 </span>
+                               );
                              } else if (dataAtrasada) {
                                cardClasses = 'bg-orange-50 border-2 border-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.25)]';
                                prioridadeLabel = <span className="text-xs font-bold text-orange-600">🔴 Urgente</span>;
@@ -1220,6 +1271,14 @@ export default function FunilVendas() {
                                onDoubleClick={() => navigate(createPageUrl(`OportunidadeDetalhes?id=${oport.id}`))}
                              >
                                 {prioridadeLabel && <div className="mb-1.5">{prioridadeLabel}</div>}
+                                {preFechamentoAtivo && (
+                                  <div className="mb-2 p-2 bg-purple-100 rounded-lg border border-purple-300 text-xs text-purple-800">
+                                    <p className="font-semibold">⚡ Atenção: este lead está pronto para fechar!</p>
+                                    <p className="mt-0.5 text-purple-600">
+                                      Data Pré-Fechamento: {oport.data_pre_fechamento?.split('-').reverse().join('/')}
+                                    </p>
+                                  </div>
+                                )}
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
                                     <h4 className="font-medium text-slate-900 text-sm">{oport.titulo}</h4>
@@ -1235,17 +1294,18 @@ export default function FunilVendas() {
                                        <DropdownMenuItem onClick={() => {
                                          setSelectedOportunidade(oport);
                                          setFormData({
-                                           titulo: oport.titulo,
-                                           cliente_id: oport.cliente_id || '',
-                                           valor_estimado: oport.valor_estimado?.toString() || '',
-                                           etapa_id: oport.etapa_id,
-                                           produto: oport.produto || '',
-                                           vendedor_id: oport.vendedor_id,
-                                           origem: oport.origem || '',
-                                           observacoes: oport.observacoes || '',
-                                           data_fechamento_prevista: oport.data_fechamento_prevista || '',
-                                           telefone_lead: oport.telefone_lead || oport.cliente_telefone || '',
-                                           data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
+                                          titulo: oport.titulo,
+                                          cliente_id: oport.cliente_id || '',
+                                          valor_estimado: oport.valor_estimado?.toString() || '',
+                                          etapa_id: oport.etapa_id,
+                                          produto: oport.produto || '',
+                                          vendedor_id: oport.vendedor_id,
+                                          origem: oport.origem || '',
+                                          observacoes: oport.observacoes || '',
+                                          data_fechamento_prevista: oport.data_fechamento_prevista || '',
+                                          data_pre_fechamento: oport.data_pre_fechamento || '',
+                                          telefone_lead: oport.telefone_lead || oport.cliente_telefone || '',
+                                          data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
                                          });
                                          // Extrair dados do indicador se existir
                                          const obsMatch = oport.observacoes?.match(/👤 Indicado por: (.+)\n📞 Telefone: (.+)/);
@@ -1603,6 +1663,22 @@ export default function FunilVendas() {
               </div>
             </div>
 
+            <div>
+              <Label htmlFor="data_pre_fechamento" className="flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-purple-600" />
+                Data de Pré-Fechamento
+              </Label>
+              <Input
+                id="data_pre_fechamento"
+                type="date"
+                value={formData.data_pre_fechamento}
+                onChange={(e) => setFormData({ ...formData, data_pre_fechamento: e.target.value })}
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Quando o lead estiver na etapa "Pré-Fechamento" e esta data chegar, o sistema alertará automaticamente o responsável.
+              </p>
+            </div>
+
             {formData.origem === 'Indicação' && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div>
@@ -1741,6 +1817,11 @@ export default function FunilVendas() {
           onOportunidadeChanged={() => queryClient.invalidateQueries({ queryKey: ['oportunidades'] })}
         />
       )}
+
+      <ConfiguracaoAlertasPreFechamento
+        open={configAlertasOpen}
+        onOpenChange={setConfigAlertasOpen}
+      />
 
       {/* FAB - Nova Oportunidade */}
       <button

@@ -92,6 +92,11 @@
       "format": "date",
       "description": "Previs\u00e3o de fechamento"
     },
+    "data_pre_fechamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de Pr\u00e9-Fechamento \u2014 quando o lead deve ser tentado fechar"
+    },
     "data_ultima_movimentacao": {
       "type": "string",
       "format": "date-time",

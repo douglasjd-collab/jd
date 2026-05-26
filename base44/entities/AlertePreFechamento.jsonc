@@ -1,0 +1,85 @@
+{
+  "name": "AlertePreFechamento",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "oportunidade_id": {
+      "type": "string"
+    },
+    "oportunidade_titulo": {
+      "type": "string"
+    },
+    "cliente_nome": {
+      "type": "string"
+    },
+    "cliente_telefone": {
+      "type": "string"
+    },
+    "valor_estimado": {
+      "type": "number"
+    },
+    "data_pre_fechamento": {
+      "type": "string",
+      "format": "date"
+    },
+    "responsavel_id": {
+      "type": "string"
+    },
+    "responsavel_nome": {
+      "type": "string"
+    },
+    "responsavel_telefone": {
+      "type": "string"
+    },
+    "data_alerta": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do alerta (para evitar duplicatas no mesmo dia)"
+    },
+    "dias_atraso": {
+      "type": "number",
+      "default": 0
+    },
+    "lido": {
+      "type": "boolean",
+      "default": false
+    },
+    "lido_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "whatsapp_enviado": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "encerrado"
+      ],
+      "default": "ativo"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "oportunidade_id",
+    "data_alerta"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
