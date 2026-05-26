@@ -47,20 +47,6 @@ export default function CallCenter() {
     return (params.get('numero') || '').replace(/\D/g, '');
   }, []);
 
-  // Atalho de teclado: Ctrl+L abre modal de ligação
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
-        e.preventDefault();
-        if (!naoConfigurado) {
-          setChamadaOpen(true);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [naoConfigurado]);
-
   useEffect(() => {
     if (numeroInicial) {
       setNumeroParaChamar(numeroInicial);
@@ -152,6 +138,21 @@ export default function CallCenter() {
     }
     if (empresaId) carregarConfig(empresaId);
   };
+
+  // Atalho de teclado: Ctrl+L abre modal de ligação
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        const isConfigurado = config && config.numbersip;
+        if (isConfigurado) {
+          setChamadaOpen(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [config]);
 
   if (loadingConfig) {
     return (
