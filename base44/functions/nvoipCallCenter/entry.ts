@@ -271,23 +271,19 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'realizarChamadaDireta') {
-      // Fluxo DIRETO: usa o numero_chip como caller (celular físico do operador)
-      // A NVOIP liga diretamente do chip para o contato, sem perna intermediária.
-      // caller = numero_chip (celular físico do operador)
-      // called = número do cliente
-      // callerId = numero_did (aparece para o cliente como identificador)
+      // Fluxo CALLBACK:
+      //   caller = ramal SIP (137715001) — NVOIP liga para o ramal primeiro
+      //   callForward = chip do operador — se ramal tiver encaminhamento, cai no celular
+      //   called = número do cliente
+      //   callerId = DID (aparece para o cliente)
       const { called } = body;
 
       const ramalSip = config.numbersip;
       const numeroDid = (config.numero_did || '').replace(/\D/g, '');
       const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
 
-      // O caller deve ser o chip (celular físico) para ligação direta
-      // Se não tiver chip, usa o ramal SIP como fallback
-      const caller = numeroChip || ramalSip;
-
-      if (!caller) {
-        return Response.json({ error: 'Ramal SIP ou Chip não configurado. Acesse Meu Ramal.' });
+      if (!ramalSip) {
+        return Response.json({ error: 'Ramal SIP não configurado. Acesse Call Center → Meu Ramal.' });
       }
 
       let calledFormatado = (called || '').replace(/\D/g, '');
@@ -298,16 +294,19 @@ Deno.serve(async (req) => {
         calledFormatado = '55' + calledFormatado;
       }
 
-      // Formata o caller com 55 se necessário
-      let callerFormatado = caller;
-      if (!callerFormatado.startsWith('55') && callerFormatado.length <= 11) {
-        callerFormatado = '55' + callerFormatado;
+      // caller = ramal SIP (identificador de usuário na NVOIP, sem +55)
+      const callBody = {
+        caller: ramalSip,
+        called: calledFormatado,
+      };
+      if (numeroDid) callBody.callerId = numeroDid;
+      if (numeroChip) {
+        let chipFormatado = numeroChip;
+        if (!chipFormatado.startsWith('55') && chipFormatado.length <= 11) chipFormatado = '55' + chipFormatado;
+        callBody.callForward = chipFormatado;
       }
 
-      const callBody = { caller: callerFormatado, called: calledFormatado };
-      if (numeroDid) callBody.callerId = numeroDid;
-
-      console.log(`[NVOIP] realizarChamadaDireta caller=${callerFormatado} called=${calledFormatado} callerId=${numeroDid}`);
+      console.log(`[NVOIP] realizarChamadaDireta caller=${ramalSip} called=${calledFormatado} callerId=${numeroDid} callForward=${callBody.callForward}`);
 
       const res = await fetch(`${NVOIP_BASE}/calls/`, {
         method: 'POST',
@@ -321,7 +320,7 @@ Deno.serve(async (req) => {
       if (!res.ok) {
         return Response.json({ error: data.message || data.error || `HTTP ${res.status}`, _debug: data });
       }
-      return Response.json({ ...data, _caller: callerFormatado, _called: calledFormatado });
+      return Response.json({ ...data, _caller: ramalSip, _called: calledFormatado, _callForward: callBody.callForward });
     }
 
     if (action === 'realizarChamada') {
