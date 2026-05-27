@@ -168,13 +168,14 @@ export default function useSoftphone(config) {
       authorization_user: String(cfg.numbersip),
       display_name: String(cfg.numbersip),
       register: true,
-      register_expires: 120,          // TTL curto → re-registro frequente, servidor sabe que estamos online
+      register_expires: 300,
       session_timers: false,
-      hackIpAddrAnyEnabled: true,
-      hackViaTcp: true,               // evita problemas de NAT com UDP
+      // IMPORTANTE: NÃO usar hackViaTcp — isso quebra chamadas entrantes
+      // O servidor precisa saber usar WSS para rotear INVITEs de volta
+      use_preloaded_route: false,
       connection_recovery_min_interval: 4,
-      connection_recovery_max_interval: 60,
-      log: { builtinEnabled: false, level: 'error' },
+      connection_recovery_max_interval: 30,
+      log: { builtinEnabled: true, level: 'warn' },
     });
 
     ua.on('connecting',    () => { if (mountedRef.current) setSipStatus('conectando'); });
@@ -237,6 +238,11 @@ export default function useSoftphone(config) {
         || 'Desconhecido';
 
       console.log(`📲 Chamada ENTRANTE de: ${origem}`);
+
+      // Pré-configura ICE para que o SDP de resposta já inclua os servidores STUN
+      try {
+        session._rtcOfferConstraints = { offerToReceiveAudio: true, offerToReceiveVideo: false };
+      } catch {}
 
       // Coloca como "tocando" sem cliente ainda; busca assíncrona e atualiza
       setChamadaEntrante({ session, origem, clienteNome: null, clienteId: null, buscando: true });
@@ -306,6 +312,7 @@ export default function useSoftphone(config) {
       pcConfig: { iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun.nvoip.com.br:3478' },
       ]},
       extraHeaders: cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did}`] : [],
     });
@@ -330,11 +337,11 @@ export default function useSoftphone(config) {
 
     session.answer({
       mediaConstraints: { audio: true, video: false },
-      rtcAnswerConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun.nvoip.com.br:3478' },
         ],
       },
     });
