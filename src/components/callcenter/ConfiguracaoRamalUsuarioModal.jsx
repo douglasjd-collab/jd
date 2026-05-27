@@ -90,14 +90,16 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
       toast.error('Senha SIP é obrigatória para o Webphone funcionar');
       return;
     }
+    // Modo Webphone: garante que numero_chip seja salvo vazio
+    const dadosSalvar = { ...form, numero_chip: '' };
     setLoading(true);
     const res = await base44.functions.invoke('nvoipCallCenter', {
       action: 'salvarConfigUsuario',
-      ...form,
+      ...dadosSalvar,
     });
     setLoading(false);
     if (res.data?.success) {
-      toast.success('Ramal pessoal configurado! Suas chamadas usarão este ramal.');
+      toast.success('Ramal configurado! Chip removido — chamadas chegarão direto no Webphone.');
       onSalvo?.();
       onOpenChange(false);
     } else {
@@ -192,44 +194,44 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               <p className="text-xs text-slate-400">NVOIP → Ramais → selecione o ramal → campo "Senha SIP"</p>
             </div>
 
-            {/* CHIP - ATENÇÃO: desvia chamadas para fora do Webphone */}
-            <div className={`space-y-2 p-3 rounded-lg border-2 ${form.numero_chip ? 'bg-amber-50 border-amber-400' : 'bg-slate-50 border-slate-200'}`}>
-              <Label className={form.numero_chip ? 'text-amber-800 font-bold' : 'text-slate-700'}>
-                📱 Número Chip (encaminhamento para celular físico)
-                {form.numero_chip && <span className="ml-2 text-xs font-normal text-amber-700">— chamadas serão desviadas para este celular!</span>}
-              </Label>
-              <Input
-                placeholder="Deixe vazio para receber no Webphone (navegador)"
-                value={form.numero_chip}
-                onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
-                className={form.numero_chip ? 'border-amber-300 bg-white' : 'bg-white'}
-              />
-              {form.numero_chip ? (
-                <div className="text-xs text-amber-800 space-y-0.5">
-                  <p className="font-semibold">⚠️ Com este campo preenchido, o NVOIP vai desviar TODAS as chamadas entrantes para o celular {form.numero_chip}.</p>
-                  <p>Para receber chamadas no Webphone (navegador), <strong>deixe este campo vazio</strong>.</p>
-                  <button type="button" onClick={() => setForm({ ...form, numero_chip: '' })} className="text-red-600 hover:underline font-semibold mt-1 block">
-                    🗑️ Limpar — quero receber no Webphone
-                  </button>
+            {/* CHIP - sempre limpo no modo Webphone */}
+            {form.numero_chip ? (
+              <div className="p-3 bg-red-50 border-2 border-red-500 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <span className="text-red-600 text-lg shrink-0">🚫</span>
+                  <div className="flex-1 text-sm text-red-800 space-y-1">
+                    <p className="font-bold text-red-700">Número Chip detectado: {form.numero_chip}</p>
+                    <p>O NVOIP está desviando TODAS as chamadas entrantes para este celular físico. O Webphone <strong>não receberá nenhuma chamada</strong> enquanto este campo estiver preenchido.</p>
+                    <p className="font-semibold">Para receber chamadas no CRM, remova o Chip e garanta que o DID aponte para o ramal SIP.</p>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, numero_chip: '' })}
+                      className="mt-1 px-3 py-1 bg-red-600 text-white rounded-md text-xs font-bold hover:bg-red-700"
+                    >
+                      🗑️ Remover Chip — ativar recebimento no Webphone
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-xs text-green-700 font-medium">✅ Vazio = chamadas chegam direto no Webphone (navegador)</p>
-              )}
-              {chipIgualDid && (
-                <p className="text-xs font-semibold text-red-800">❌ Este número é igual ao DID. Use um celular físico diferente!</p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="p-2 bg-green-50 border border-green-300 rounded-lg text-xs text-green-700 font-medium">
+                ✅ Sem chip — chamadas entrantes chegam direto no Webphone (navegador)
+              </div>
+            )}
 
-            {/* DID - para SAIR */}
+            {/* DID - para SAIR e RECEBER */}
             <div className="space-y-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <Label className="text-blue-800 font-semibold">☎️ Número DID (CallerID de saída) <span className="text-xs font-normal">(opcional)</span></Label>
+              <Label className="text-blue-800 font-semibold">☎️ Número DID <span className="text-xs font-normal">(CallerID de saída / entrada)</span></Label>
               <Input
-                placeholder="Ex: 5581329984700"
+                placeholder="Ex: 558132998470"
                 value={form.numero_did}
                 onChange={e => setForm({ ...form, numero_did: e.target.value.trim() })}
                 className="border-blue-300 bg-white"
               />
-              <p className="text-xs text-blue-700">Quem receber sua ligação verá este número. Se vazio, aparecerá o ramal SIP.</p>
+              <div className="text-xs text-blue-700 space-y-1">
+                <p>Quem receber sua ligação verá este número no identificador de chamadas.</p>
+                <p className="font-semibold text-blue-800">⚠️ Para receber chamadas: certifique-se de que no painel NVOIP o DID está roteado para o ramal <strong>{form.numbersip || 'SIP'}</strong>. Caso contrário, chamadas não chegam no Webphone.</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
