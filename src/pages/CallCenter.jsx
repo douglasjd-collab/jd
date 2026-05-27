@@ -293,57 +293,56 @@ export default function CallCenter() {
               />
             </div>
 
-            {/* Cards de ação rápida */}
-            <div className="lg:col-span-2">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-green-400 hover:border-green-500 bg-green-50" onClick={() => setChamadaOpen(true)}>
-              <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                  <Phone className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-semibold text-sm text-slate-700">Nova Chamada</span>
-                <span className="text-xs text-green-600 font-medium">Clique ou Ctrl+L</span>
-              </CardContent>
-            </Card>
+            {/* Cards de ação secundária */}
+             <div className="lg:col-span-2">
+               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                 <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300" onClick={() => setSmsOpen(true)}>
+                   <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
+                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                       <MessageSquare className="w-6 h-6 text-blue-600" />
+                     </div>
+                     <span className="font-semibold text-sm text-slate-700">Enviar SMS</span>
+                   </CardContent>
+                 </Card>
 
+                 <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-purple-300" onClick={() => setTorpedoOpen(true)}>
+                   <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
+                     <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                       <Volume2 className="w-6 h-6 text-purple-600" />
+                     </div>
+                     <span className="font-semibold text-sm text-slate-700">Torpedo de Voz</span>
+                   </CardContent>
+                 </Card>
 
+                 <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-amber-300" onClick={carregarSaldo}>
+                   <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
+                     <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                       {loadingSaldo ? <Loader2 className="w-6 h-6 text-amber-600 animate-spin" /> : <Wallet className="w-6 h-6 text-amber-600" />}
+                     </div>
+                     {saldo !== null
+                       ? <span className="font-bold text-green-600">R$ {saldo}</span>
+                       : <span className="font-semibold text-sm text-slate-700">Ver Saldo</span>
+                     }
+                     {saldo !== null && (
+                       <button onClick={(e) => { e.stopPropagation(); setSaldo(null); carregarSaldo(); }}>
+                         <RefreshCw className="w-3 h-3 text-slate-400" />
+                       </button>
+                     )}
+                   </CardContent>
+                 </Card>
 
-            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300" onClick={() => setSmsOpen(true)}>
-              <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <MessageSquare className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="font-semibold text-sm text-slate-700">Enviar SMS</span>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-purple-300" onClick={() => setTorpedoOpen(true)}>
-              <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Volume2 className="w-6 h-6 text-purple-600" />
-                </div>
-                <span className="font-semibold text-sm text-slate-700">Torpedo de Voz</span>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-amber-300" onClick={carregarSaldo}>
-              <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                  {loadingSaldo ? <Loader2 className="w-6 h-6 text-amber-600 animate-spin" /> : <Wallet className="w-6 h-6 text-amber-600" />}
-                </div>
-                {saldo !== null
-                  ? <span className="font-bold text-green-600">R$ {saldo}</span>
-                  : <span className="font-semibold text-sm text-slate-700">Ver Saldo</span>
-                }
-                {saldo !== null && (
-                  <button onClick={(e) => { e.stopPropagation(); setSaldo(null); carregarSaldo(); }}>
-                    <RefreshCw className="w-3 h-3 text-slate-400" />
-                  </button>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-            </div>{/* end lg:col-span-2 */}
+                 {/* Fallback: API Callback NVOIP */}
+                 <Card className="cursor-pointer hover:shadow-md transition-shadow border hover:border-slate-400 opacity-70 hover:opacity-100" onClick={() => setChamadaOpen(true)}>
+                   <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
+                     <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
+                       <PhoneCall className="w-6 h-6 text-slate-500" />
+                     </div>
+                     <span className="font-semibold text-sm text-slate-600">Fallback: API</span>
+                     <span className="text-xs text-slate-400 text-center">Callback NVOIP REST</span>
+                   </CardContent>
+                 </Card>
+               </div>
+             </div>{/* end lg:col-span-2 */}
           </div>{/* end grid layout */}
 
 
@@ -389,7 +388,11 @@ export default function CallCenter() {
       <ConfiguracaoRamalUsuarioModal
         open={ramalUsuarioOpen}
         onOpenChange={setRamalUsuarioOpen}
-        onSalvo={() => {}}
+        onSalvo={async () => {
+          // Recarrega sipConfig para o softphone reconectar com nova senha SIP
+          const sipRes = await base44.functions.invoke('nvoipCallCenter', { action: 'buscarConfigUsuario' });
+          if (sipRes.data?.config?.sip_password) setSipConfig(sipRes.data.config);
+        }}
       />
       <EnviarSmsModal
         open={smsOpen}

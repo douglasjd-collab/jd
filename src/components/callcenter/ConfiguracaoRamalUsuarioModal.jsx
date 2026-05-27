@@ -86,8 +86,8 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
       toast.error('Informe a Napikey ou o User Token');
       return;
     }
-    if (!form.numero_chip) {
-      toast.error('Número do Chip é obrigatório para realizar chamadas');
+    if (!form.sip_password) {
+      toast.error('Senha SIP é obrigatória para o Webphone funcionar');
       return;
     }
     setLoading(true);
@@ -138,19 +138,14 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               </div>
             )}
 
-            <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-900">
-              <p className="font-semibold mb-1">📱 Como funciona o callback:</p>
+            <div className="p-3 bg-green-50 border border-green-300 rounded-lg text-sm text-green-900">
+              <p className="font-semibold mb-1">📡 Como funciona o Webphone:</p>
               <ol className="list-decimal list-inside space-y-0.5 text-xs">
-                <li>NVOIP liga para o seu <strong>Número do CHIP</strong> (celular físico)</li>
-                <li>Você atende o celular</li>
-                <li>NVOIP então liga para o cliente e conecta as duas chamadas</li>
+                <li>O CRM registra seu ramal SIP via WebSocket seguro (WSS)</li>
+                <li>Ao clicar em "Ligar", o CRM envia o INVITE SIP diretamente</li>
+                <li>O áudio acontece dentro do navegador — sem celular físico</li>
+                <li>Chamadas recebidas aparecem em popup dentro do CRM</li>
               </ol>
-              <p className="text-xs mt-1 text-amber-800 font-medium">⚠️ O CHIP deve ser um celular físico diferente do DID!</p>
-            </div>
-
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
-              <p className="font-semibold">🔧 Configuração obrigatória no painel NVOIP:</p>
-              <p className="mt-1">Acesse <strong>NVOIP → Ramais → {form.numbersip || 'seu ramal'} → Encaminhamento</strong> e configure o número do CHIP como destino de encaminhamento. Isso garante que a 1ª perna da chamada chegue no seu celular.</p>
             </div>
 
             <div className="space-y-2">
@@ -186,14 +181,15 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
             </div>
 
             <div className="space-y-2">
-              <Label>Senha SIP <span className="text-xs font-normal text-slate-400">(opcional — para configuração automática do encaminhamento)</span></Label>
+              <Label>Senha SIP <span className="text-red-500 font-semibold">*</span> <span className="text-xs font-normal text-slate-400">— obrigatória para o Webphone</span></Label>
               <Input
                 type="password"
-                placeholder="Senha do ramal SIP no painel NVOIP"
+                placeholder="Senha SIP do ramal (painel NVOIP → Ramais → Editar)"
                 value={form.sip_password}
                 onChange={e => setForm({ ...form, sip_password: e.target.value })}
+                className={!form.sip_password ? 'border-amber-400 focus:ring-amber-400' : ''}
               />
-              <p className="text-xs text-slate-400">Se informada, o sistema configura o encaminhamento automaticamente ao ligar</p>
+              <p className="text-xs text-slate-400">NVOIP → Ramais → selecione o ramal → campo "Senha SIP"</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
