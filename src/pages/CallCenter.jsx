@@ -294,6 +294,7 @@ export default function CallCenter() {
               <SoftphonePanel
                 softphone={softphone}
                 numbersip={sipConfig?.numbersip || config?.numbersip}
+                numeroChip={sipConfig?.numero_chip || config?.numero_chip}
               />
             </div>
 

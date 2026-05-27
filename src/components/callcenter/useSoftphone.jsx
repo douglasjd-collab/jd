@@ -161,13 +161,14 @@ export default function useSoftphone(config) {
       uri: `sip:${cfg.numbersip}@app.nvoip.com.br`,
       password: cfg.sip_password,
       authorization_user: String(cfg.numbersip),
-      display_name: 'JD Promotora',
+      display_name: String(cfg.numbersip),
       register: true,
-      register_expires: 600,
+      register_expires: 120,          // TTL curto → re-registro frequente, servidor sabe que estamos online
       session_timers: false,
-      hackIpAddrAnyEnabled: true,   // necessário para receber chamadas atrás de NAT
-      connection_recovery_min_interval: 2,
-      connection_recovery_max_interval: 30,
+      hackIpAddrAnyEnabled: true,
+      hackViaTcp: true,               // evita problemas de NAT com UDP
+      connection_recovery_min_interval: 4,
+      connection_recovery_max_interval: 60,
       log: { builtinEnabled: false, level: 'error' },
     });
 
@@ -187,8 +188,7 @@ export default function useSoftphone(config) {
     // ── CHAMADA ENTRANTE ────────────────────────────────────────────────────
     ua.on('newRTCSession', (data) => {
       const { session, originator } = data;
-      console.log(`📞 newRTCSession — originator: ${originator}`, session?.remote_identity?.uri?.toString?.());
-      // 'remote' = entrante | 'local' = saída (saída já tratada em realizarChamada)
+      console.log(`📞 newRTCSession — originator: ${originator}`, session?.remote_identity?.uri?.toString?.(), '| direction:', session?.direction);
       if (originator === 'local') return;
 
       // Extrai número de origem
@@ -227,24 +227,23 @@ export default function useSoftphone(config) {
     uaRef.current = ua;
   }, []);
 
-  // Auto-conecta ao receber config válida — evita reconexão desnecessária
-  const lastConnectedRef = useRef(''); // ramal+senha da última conexão bem-sucedida
+  // Auto-conecta ao receber config válida — conecta 1x, sem re-conectar em re-renders
+  const lastConnectedRef = useRef('');
   useEffect(() => {
-    const key = `${config?.numbersip}|${config?.sip_password}`;
-    if (config?.numbersip && config?.sip_password) {
-      if (lastConnectedRef.current === key && uaRef.current) return; // já conectado com mesma config
-      lastConnectedRef.current = key;
-      conectar();
-    } else if (config?.numbersip && !config?.sip_password) {
-      setSipStatus('erro');
-      setErroMsg('Senha SIP não configurada. Acesse "Meu Ramal".');
+    if (!config?.numbersip || !config?.sip_password) {
+      if (config?.numbersip && !config?.sip_password) {
+        setSipStatus('erro');
+        setErroMsg('Senha SIP não configurada. Acesse "Meu Ramal".');
+      }
+      return;
     }
-    return () => {
-      // só desconecta se a config mudou de verdade (unmount ou nova config)
-      lastConnectedRef.current = '';
-      desconectar();
-    };
-  }, [config?.numbersip, config?.sip_password]);
+    const key = `${config.numbersip}|${config.sip_password}`;
+    if (lastConnectedRef.current === key && uaRef.current) return;
+    lastConnectedRef.current = key;
+    conectar();
+    // cleanup só no unmount real — não roda em re-renders do mesmo efeito
+    return () => { lastConnectedRef.current = ''; desconectar(); };
+  }, [config?.numbersip, config?.sip_password]); // eslint-disable-line
 
   // ── CHAMADA DE SAÍDA ──────────────────────────────────────────────────────
   const realizarChamada = useCallback((numero) => {

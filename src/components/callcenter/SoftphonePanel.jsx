@@ -16,7 +16,7 @@ const STATUS_CFG = {
   erro:         { label: 'Erro SIP',       color: 'bg-red-100 text-red-700',       icon: WifiOff,  dot: 'bg-red-500' },
 };
 
-export default function SoftphonePanel({ softphone, numbersip }) {
+export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
   const {
     sipStatus, erroMsg,
     chamadaAtiva, chamadaEntrante,
@@ -138,6 +138,17 @@ export default function SoftphonePanel({ softphone, numbersip }) {
               <Button onClick={encerrarChamada} size="sm" className="flex-1 bg-red-600 hover:bg-red-700 text-white">
                 <PhoneOff className="w-4 h-4 mr-1" /> Encerrar
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Aviso: numero_chip desvia chamadas para celular físico */}
+        {numeroChip && sipStatus === 'registrado' && !chamadaAtiva && !chamadaEntrante && (
+          <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-800 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+            <div>
+              <p className="font-semibold">Chamadas sendo desviadas para celular!</p>
+              <p className="mt-0.5">O campo <strong>"Número Chip"</strong> está preenchido ({numeroChip}). O NVOIP encaminha chamadas entrantes para esse número em vez do Webphone. Para receber aqui, limpe esse campo em <strong>"Meu Ramal"</strong>.</p>
             </div>
           </div>
         )}
